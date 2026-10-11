@@ -1,0 +1,22 @@
+{
+  "name": "@dc/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "start": "NODE_ENV=production tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@dc/core": "workspace:*",
+    "@hono/node-server": "^2.1.4",
+    "chokidar": "^5.0.0",
+    "hono": "^4.13.13",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

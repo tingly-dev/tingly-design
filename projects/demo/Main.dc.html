@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Agent 设置</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <nav style="width:240px;background:#ffffff;border-right:1px solid #e2e5ea;padding:20px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px" aria-label="Agents">
+    <div style="font-size:12px;letter-spacing:.06em;color:#6b7383;margin:0 10px 8px">编码工具</div>
+    <sc-for list="{{agents}}" as="a" hint-placeholder-count="6">
+      <div style="height:{{rowHeight}};border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{a.bg}}">
+        <div style="width:16px;height:16px;border-radius:4px;background:{{a.chip}}"></div>
+        <div style="font-size:14px;flex:1">{{a.name}}</div>
+        <div style="font-size:12px;color:#6b7383">{{a.tail}}</div>
+      </div>
+    </sc-for>
+  </nav>
+  <main style="flex:1;padding:32px 40px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px;min-width:0">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:26px;font-weight:700">Claude Code</h1>
+      <div style="height:32px;box-sizing:border-box;padding:0 12px;border-radius:16px;border:1px solid {{accent}};color:{{accent}};font-size:13px;display:flex;align-items:center">配置：work-profile</div>
+    </div>
+    <p style="margin:0;font-size:15px;line-height:1.6;color:#4a5263;max-width:640px">选择这个 Agent 使用的模型路由。改动会在下一次会话开始时生效。</p>
+    <section style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:16px">
+      <div style="background:#ffffff;border:1px solid #e2e5ea;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:13px;color:#6b7383">本周请求</div>
+        <div style="font-size:28px;font-weight:700">[数量]</div>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e2e5ea;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:13px;color:#6b7383">默认模型</div>
+        <div style="font-size:28px;font-weight:700">[模型名]</div>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e2e5ea;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:13px;color:#6b7383">凭据</div>
+        <div style="font-size:28px;font-weight:700">2 个服务</div>
+      </div>
+    </section>
+    <div style="display:flex;gap:12px">
+      <button style="height:44px;padding:0 20px;border-radius:10px;border:0;background:{{accent}};color:#ffffff;font-size:15px;font-weight:600">保存配置</button>
+      <button style="height:44px;padding:0 20px;border-radius:10px;border:1px solid #c9ced8;background:#ffffff;color:#1f2430;font-size:15px">恢复默认</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2f6fed","options":["#2f6fed","#15803d","#b45309","#7c3aed"]},"density":{"editor":"enum","default":"comfortable","options":["compact","comfortable"]},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#2f6fed';
+    const names = ['Claude Code', 'Codex', 'OpenCode', 'Cursor', 'Xcode', 'VS Code'];
+    const agents = names.map((name, i) => ({
+      name,
+      bg: i === 0 ? '#e8efff' : 'transparent',
+      chip: i === 0 ? accent : '#c9ced8',
+      tail: i === 0 ? 'work' : '',
+    }));
+    return { accent, agents, rowHeight: this.props.density === 'compact' ? '30px' : '38px' };
+  }
+}
+</script>
+</body>
+</html>

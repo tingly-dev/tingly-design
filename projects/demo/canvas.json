@@ -1,0 +1,25 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-11T12:00:00Z" },
+  "title": "双向编辑演示",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1200, "h": 760, "title": "Agent 设置页" },
+    "Flow.dc.html": { "x": 1280, "y": 0, "w": 1040, "h": 520, "title": "原理：三个编辑者" },
+    "Pricing.dc.html": { "x": 1280, "y": 640, "w": 880, "h": 560, "title": "可交互：套餐切换", "is_interactive": true }
+  },
+  "order": ["Main.dc.html", "Flow.dc.html", "Pricing.dc.html"],
+  "notes": {
+    "t1": { "kind": "title1", "x": 0, "y": -260, "text": "在画布上改，也让 AI 改，改的都是同一份源码", "maxW": 2320 },
+    "s1": {
+      "x": 0,
+      "y": 840,
+      "w": 520,
+      "fill": "green",
+      "size": 20,
+      "text": "试试看\n\n① 点选任意元素，右侧面板改颜色、间距\n② 双击标题直接改字\n③ 选中后在底部输入“把它改成绿色”（需要 API key），或切到 jQuery 模式手写语句\n④ 在终端里用 Claude Code 改 projects/demo 下的文件，画布会实时更新"
+    }
+  },
+  "designSystems": []
+}

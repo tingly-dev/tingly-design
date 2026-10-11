@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>套餐</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:880px;height:560px;box-sizing:border-box;padding:48px;display:flex;flex-direction:column;gap:24px;background:#fbfaf7">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <h2 style="margin:0;font-size:28px">选择套餐</h2>
+    <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:#ece9e1">
+      <sc-for list="{{periods}}" as="p" hint-placeholder-count="2">
+        <button onClick="{{p.pick}}" style="height:36px;padding:0 16px;border:0;border-radius:9px;font-size:14px;background:{{p.bg}};color:#1f2430">{{p.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:16px;flex:1">
+    <sc-for list="{{plans}}" as="plan" hint-placeholder-count="3">
+      <div style="background:#ffffff;border:1px solid #e3dfd4;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:15px;font-weight:600">{{plan.name}}</div>
+        <div style="font-size:34px;font-weight:700">{{plan.price}}</div>
+        <div style="font-size:13px;color:#6b6a65">{{plan.note}}</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":560}}'>
+class Component extends DCLogic {
+  state = { yearly: false };
+  renderVals() {
+    const yearly = this.state.yearly;
+    const periods = [
+      { label: '按月', on: !yearly, pick: () => this.setState({ yearly: false }) },
+      { label: '按年（省 20%）', on: yearly, pick: () => this.setState({ yearly: true }) },
+    ].map((p) => ({ ...p, bg: p.on ? '#ffffff' : 'transparent' }));
+    const base = [['个人', 0], ['专业', 20], ['团队', 30]];
+    const plans = base.map(([name, m]) => ({
+      name,
+      price: m === 0 ? '免费' : '$' + (yearly ? Math.round(m * 0.8) : m),
+      note: m === 0 ? '适合试用' : yearly ? '每月，按年付费' : '每月',
+    }));
+    return { periods, plans };
+  }
+}
+</script>
+</body>
+</html>
