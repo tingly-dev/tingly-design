@@ -1,0 +1,52 @@
+<section id="fold" data-transition="fade" style="background:radial-gradient(circle at 72% 50%, #172452 0%, #0A0E1C 62%);color:#EAF2FF;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:700;letter-spacing:6px;color:#4FD1FF;width:540px">EP.03 · 指数增长</p>
+<h2 style="font-family:'ZCOOL QingKe HuangYou', 'Noto Sans SC', sans-serif;font-size:80px;font-weight:400;line-height:1.1;color:#EAF2FF;width:560px">折纸折到月球</h2>
+<p style="font-size:30px;line-height:1.6;color:#B7C6E0;width:520px">一张纸只有 0.1 毫米厚。假如能一直对折下去，要折多少次，它的厚度才能从地球一直够到月球？</p>
+<div data-build-in="rise" style="position:absolute;left:128px;top:640px;width:500px;display:flex;flex-direction:column;gap:8px;background:rgba(79,209,255,0.06);padding:28px 32px;border:1px solid rgba(79,209,255,0.35);border-radius:16px">
+<p style="font-size:64px;font-weight:700;line-height:1.2;color:#FFD166">只要 42 次</p>
+<p style="font-size:24px;line-height:1.5;color:#B7C6E0">第 42 次时厚约 44 万公里，超过地月距离 38 万公里。</p>
+</div>
+<x-embed style="position:absolute;left:680px;top:128px;width:1112px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=1112,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function begin(){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);const s=Math.min(c.width/LW,c.height/LH);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);g.globalAlpha=1;g.shadowBlur=0;g.globalCompositeOperation='source-over';g.lineCap='round';g.lineJoin='round';g.textBaseline='alphabetic';g.setLineDash([])}
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif';
+const CY='#4FD1FF',OR='#FF8A3D',GD='#FFD166',PK='#FF5C8A',TX='#EAF2FF',MU='#9AAACB';
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function ln(a,b,c2,d){g.beginPath();g.moveTo(a,b);g.lineTo(c2,d);g.stroke()}
+function tx(s,x,y,sz,col,w,al,gl){g.font=(w||400)+' '+sz+'px '+F;g.fillStyle=col;g.textAlign=al||'left';if(gl){g.shadowColor=col;g.shadowBlur=gl}g.fillText(s,x,y);g.shadowBlur=0}
+let FA=1;function cap(s,t,a,b,y,sz,col){const k=Math.min(sm(t,a,a+.4),1-sm(t,b-.4,b));if(k<=0)return;g.globalAlpha=FA*k;tx(s,LW/2,y||64,sz||32,col||TX,700,'center',col?14:0);g.globalAlpha=FA}
+let t0s=null;function loop(f){function k(ms){if(t0s===null)t0s=ms;begin();f((ms-t0s)/1000);requestAnimationFrame(k)}requestAnimationFrame(k)}
+const stars=[];for(let i=0;i<160;i++)stars.push([Math.random()*LW,Math.random()*640,Math.random()*1.6+.4,Math.random()*6]);
+const T=15,y0=760,y1=150,lmin=-4,lmax=8.8,RX=300,CX=RX+31,L2=Math.log10(2);
+const Y=l=>y0-(l-lmin)/(lmax-lmin)*(y0-y1);
+const LM=[[-4,'一张纸 0.1 毫米'],[.23,'一个人 1.7 米'],[2.52,'埃菲尔铁塔 330 米'],[3.95,'珠穆朗玛峰 8848 米'],[5.6,'空间站轨道 400 公里'],[8.585,'月球 38 万公里']];
+const TK={'-3':'1 毫米','0':'1 米','3':'1 公里','6':'1000 公里'};
+function fmtH(l){const h=Math.pow(10,l);if(h<.01)return (h*1000).toFixed(1)+' 毫米';if(h<1)return (h*100).toFixed(1)+' 厘米';if(h<1000)return h.toFixed(1)+' 米';return Math.round(h/1000).toLocaleString('en-US')+' 公里'}
+loop(function(t0){const t=t0%T;FA=Math.min(sm(t,0,.5),1-sm(t,T-.5,T));
+const n=42*cl((t-1.2)/10,0,1),ni=Math.floor(n),l=lmin+n*L2,li=lmin+ni*L2;
+const sA=cl((l-2.5)/3,0,1);g.fillStyle='#CFE3FF';for(const s of stars){g.globalAlpha=FA*sA*(.35+.35*Math.sin(t0*1.5+s[3]));g.fillRect(s[0],s[1],s[2],s[2])}
+g.globalAlpha=FA;
+g.fillStyle='#0D2A4D';g.shadowColor=CY;g.shadowBlur=40;g.beginPath();g.arc(CX,y0+1400,1400,0,7);g.fill();g.shadowBlur=0;
+g.strokeStyle=CY;g.lineWidth=2;g.beginPath();g.arc(CX,y0+1400,1400,Math.PI*1.25,Math.PI*1.75);g.stroke();
+g.strokeStyle='rgba(154,170,203,0.6)';g.lineWidth=2;ln(RX,y0,RX,y1-20);
+for(let d=-4;d<=8;d++){const y=Y(d);ln(RX-8,y,RX,y);if(TK[d])tx(TK[d],RX-16,y+8,24,MU,400,'right')}
+const mY=Y(8.585)-34,mg=sm(l,7,8.6);
+g.shadowColor='#F3F0E0';g.shadowBlur=30+40*mg;g.fillStyle='#E9E6D6';g.beginPath();g.arc(CX,mY,32,0,7);g.fill();g.shadowBlur=0;
+g.fillStyle='rgba(120,120,110,0.35)';g.beginPath();g.arc(CX-10,mY-8,7,0,7);g.fill();g.beginPath();g.arc(CX+11,mY+9,5,0,7);g.fill();
+const yt=Y(l),gr=g.createLinearGradient(0,y0,0,yt-1);gr.addColorStop(0,CY);gr.addColorStop(1,GD);
+g.fillStyle=gr;g.shadowColor=GD;g.shadowBlur=24;g.fillRect(RX+14,yt,34,y0-yt);g.shadowBlur=0;
+const fr=n-ni;if(n>0&&n<42){g.strokeStyle=GD;g.globalAlpha=FA*(1-fr);g.lineWidth=3;g.beginPath();g.arc(CX,yt,8+fr*40,0,7);g.stroke();g.globalAlpha=FA}
+for(const m of LM){const ll=m[0],y=Y(ll),ok=l>=ll;g.strokeStyle=ok?GD:'rgba(154,170,203,0.45)';g.lineWidth=2;g.setLineDash([6,8]);ln(RX+60,y,410,y);g.setLineDash([]);
+tx(m[1],420,y+9,26,ok?GD:MU,ok?700:400,'left',ok?12:0);
+if(ok&&l-ll<.8&&ll>-4){const f=(l-ll)/.8;g.strokeStyle=GD;g.globalAlpha=FA*(1-f);g.lineWidth=3;g.beginPath();g.arc(CX,y,12+f*70,0,7);g.stroke();g.globalAlpha=FA}}
+tx('第 '+ni+' 次对折',1080,380,38,TX,700,'right');
+tx(fmtH(li),1080,462,56,GD,700,'right',20);
+tx('每折一次，厚度 × 2',1080,516,26,MU,400,'right');
+cap('一张 0.1 毫米厚的纸，一直对折下去……',t,.2,3.4,60);
+cap('第 42 次：约 44 万公里，冲过了 38 万公里外的月球！',t,11.2,14.8,60,32,GD);
+});
+</script></x-embed>
+<p style="position:absolute;left:128px;bottom:64px;width:520px;font-size:24px;color:#7F8FB0">数学奇遇记 · EP.03 / 07</p>
+<aside>左边的刻度是“对数刻度”：每往上一格，长度就变成 10 倍，否则月球会在屏幕外几十万公里。注意节奏：前 14 次折完还不到一个人高，折到第 22 次超过埃菲尔铁塔，第 27 次超过珠峰，第 32 次到空间站，第 42 次越过月球。每次只是“乘 2”，但乘 42 次就是 4 万亿倍。现实中一张纸手工最多只能对折七八次，这是个思想实验。</aside>
+</section>
