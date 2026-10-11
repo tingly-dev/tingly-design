@@ -6,6 +6,7 @@ import {
   flipSelection,
   orderSelection,
   paste,
+  selectFirstChild,
   selectParent,
   ungroupSelection,
   wrapSelection,
@@ -51,7 +52,15 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
     if (s.menu) useStore.setState({ menu: null });
     else if (s.mode === 'play') useStore.setState({ mode: 'edit' });
     else if (s.tool !== 'select') useStore.setState({ tool: 'select' });
-    else selectParent();
+    else useStore.setState({ selection: null, editingNote: null });
+    return true;
+  }
+  if (key === 'Enter' && shift && s.mode === 'edit') {
+    selectParent();
+    return true;
+  }
+  if (key === 'Enter' && !shift && s.mode === 'edit') {
+    selectFirstChild();
     return true;
   }
   if (s.mode === 'play') return false;

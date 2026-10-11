@@ -42,6 +42,10 @@ export function RightPanel() {
   } else {
     body = (
       <div className="sec">
+        <div className="empty" style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+          <div style={{ color: 'var(--ink)', fontWeight: 500 }}>未选中任何内容</div>
+          点击设计里的任意元素，在这里编辑。
+        </div>
         <h3>画布</h3>
         <Row label="名称">
           <Field value={canvas.title} numeric={false} onCommit={(v) => v.trim() && editCanvas((c) => (c.title = v.trim()), `title → ${v.trim()}`)} label="画布名称" />
@@ -50,7 +54,7 @@ export function RightPanel() {
           点选画板里的任意元素来编辑；双击文字直接改。拖动已选中的元素可以调整顺序，拖出父容器就变成自由定位。
         </p>
         <p className="hint" style={{ margin: 0 }}>
-          V 选择 · H 抓手 · T 文字 · A 画板 · N 便签 · P 画笔 · R 矩形 · O 椭圆 · L 直线 · ⇧1 适应全部 · ⇧2 缩放到选中 · Esc 选中上一级
+          V 选择 · H 抓手 · T 文字 · A 画板 · N 便签 · P 画笔 · R 矩形 · O 椭圆 · L 直线 · ⇧1 适应全部 · ⇧2 缩放到选中 · Esc 取消选中 · ⇧↵ 选中上一级 · ↵ 选中下一级
         </p>
       </div>
     );

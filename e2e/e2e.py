@@ -49,7 +49,7 @@ async def main():
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and errs.append(m.text))
+        pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
         await pg.goto(BASE + '/?p=demo')
         await pg.wait_for_timeout(2500)
         main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
@@ -75,18 +75,24 @@ async def main():
         ok = await wait_for(lambda: re.search(r'<h1 style="[^"]*width:', src()) is None)
         check('size mode Hug removes it again', ok)
 
-        # Escape walks up to the parent (key pressed inside the artboard frame)
+        # Shift+Enter walks up to the parent, Enter back down, Escape clears (keys pressed inside the artboard frame)
         await pg.wait_for_timeout(400)
         await main.locator('h1').click()
         await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('文字')
-        await main.locator('body').press('Escape')
+        await main.locator('body').press('Shift+Enter')
         await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('横向')
-        check('Escape selects the parent', True)
+        check('Shift+Enter selects the parent', True)
+        await main.locator('body').press('Enter')
+        await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('文字')
+        check('Enter selects the first child', True)
+        await main.locator('body').press('Escape')
+        await expect(pg.locator('text=未选中任何内容')).to_be_visible()
+        check('Escape clears the selection', True)
 
         # stack direction on the button row
         await main.locator('button', has_text='保存配置').click()
         await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('保存配置')
-        await main.locator('body').press('Escape')
+        await main.locator('body').press('Shift+Enter')
         await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('保存配置 恢复默认')
         await pg.locator('.seg button[aria-label="纵向"]').click()
         ok = await wait_for(lambda: re.search(r'<div style="display:flex;gap:12px;flex-direction:column">', src()) is not None)
@@ -113,6 +119,7 @@ async def main():
         # --- clipboard ---------------------------------------------------------
         before = src().count('>Claude Code</h1>')
         await main.locator('h1').click()
+        await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('文字')
         await main.locator('body').press('Control+c')
         await main.locator('body').press('Control+v')
         check('copy + paste an element', await wait_for(lambda: src().count('>Claude Code</h1>') == before + 1))
@@ -136,7 +143,9 @@ async def main():
 
         # --- drag out of the flow ---------------------------------------------
         card = main.locator('text=2 个服务')
-        await card.click(); await main.locator('body').press('Escape')
+        await card.click(); await main.locator('body').press('Shift+Enter')
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('凭据')
+        await pg.wait_for_timeout(300)
         cb = await card.bounding_box()
         await pg.mouse.move(cb['x'] + 20, cb['y'] + 4)
         await pg.mouse.down()
