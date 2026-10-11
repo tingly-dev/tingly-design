@@ -1,0 +1,21 @@
+{
+  "v": 1,
+  "source": "db",
+  "db": {
+    "meta": "deck/meta",
+    "collections": [
+      "deck",
+      "slides",
+      "fonts"
+    ],
+    "cover": {
+      "collection": "slides",
+      "orderField": "order"
+    }
+  },
+  "files": {
+    "index": "project/deck.json",
+    "order": "order",
+    "cover": "cover"
+  }
+}

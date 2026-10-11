@@ -1,0 +1,14 @@
+{
+  "description": "腾讯控股 2025-10-17 至 2026-10-09 日线收盘价与成交量（港元，未复权），来自 Yahoo Finance 与 Investing.com；均线与 RSI(14) 由收盘价计算。",
+  "source": {
+    "format": "csv",
+    "kind": "file",
+    "name": "tencent_0700_daily.csv",
+    "url": "/_blob/21a5e03d8a3cb65699c92729e76b8a01"
+  },
+  "title": "0700 日线收盘价",
+  "updated": {
+    "at": "2026-10-11T14:40:00Z",
+    "by": "Claude"
+  }
+}

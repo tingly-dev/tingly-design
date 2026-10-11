@@ -1,0 +1,40 @@
+<section id="cover" data-transition="fade" style="background:radial-gradient(circle at 70% 45%, #2A1650 0%, #0A0E1C 65%);color:#EAF2FF;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:36px">
+<p style="font-size:24px;font-weight:700;letter-spacing:8px;color:#4FD1FF;width:640px">MATH IN MOTION · 第一季</p>
+<h1 style="font-family:'ZCOOL QingKe HuangYou', 'Noto Sans SC', sans-serif;font-size:128px;font-weight:400;line-height:1.1;width:660px;background:linear-gradient(90deg, #4FD1FF, #FF5C8A);background-clip:text;-webkit-text-fill-color:transparent">数学奇遇记</h1>
+<p style="font-size:30px;line-height:1.6;color:#B7C6E0;width:620px">7 个会动的数学瞬间。每一个，都会让你“啊？”一声。</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:620px">
+<p style="font-size:24px;color:#B7C6E0">01 绕地球的绳子</p>
+<p style="font-size:24px;color:#B7C6E0">02 剥开一个圆</p>
+<p style="font-size:24px;color:#B7C6E0">03 折纸折到月球</p>
+<p style="font-size:24px;color:#B7C6E0">04 23 个人的生日</p>
+<p style="font-size:24px;color:#B7C6E0">05 向日葵的秘密</p>
+<p style="font-size:24px;color:#B7C6E0">06 混沌游戏</p>
+<p style="font-size:24px;color:#B7C6E0">07 圆圈画万物</p>
+</div>
+<x-embed style="position:absolute;left:800px;top:128px;width:992px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=992,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function begin(){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);const s=Math.min(c.width/LW,c.height/LH);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);g.globalAlpha=1;g.shadowBlur=0;g.globalCompositeOperation='source-over';g.lineCap='round';g.lineJoin='round'}
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function ln(a,b,c2,d){g.beginPath();g.moveTo(a,b);g.lineTo(c2,d);g.stroke()}
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const SETS=[[5,3,4.2],[7,3,5],[8,5,5],[9,4,6.5],[6,1,2.6]],DUR=8,cx=496,cy=412,S=2400;
+let t0s=null;
+function frame(ms){if(t0s===null)t0s=ms;const t0=(ms-t0s)/1000;begin();
+const idx=Math.floor(t0/DUR)%SETS.length,t=t0%DUR,R=SETS[idx][0],r=SETS[idx][1],d=SETS[idx][2];
+const per=2*Math.PI*r/gcd(R,r),sc=340/(R-r+d),p=sm(t,.3,6.4),fa=Math.min(sm(t,0,.3),1-sm(t,DUR-.9,DUR));
+const pt=u=>[cx+sc*((R-r)*Math.cos(u)+d*Math.cos((R-r)/r*u)),cy+sc*((R-r)*Math.sin(u)-d*Math.sin((R-r)/r*u))];
+g.globalAlpha=fa;g.globalCompositeOperation='lighter';g.lineWidth=2.2;g.shadowBlur=14;
+const m=Math.floor(S*p);
+for(let j=0;j<m;j+=24){const e=Math.min(m,j+24),hue=(190+j/S*150+idx*37)%360,col='hsl('+hue+',95%,62%)';g.strokeStyle=col;g.shadowColor=col;g.beginPath();for(let q=j;q<=e;q++){const P=pt(q/S*per);if(q===j)g.moveTo(P[0],P[1]);else g.lineTo(P[0],P[1])}g.stroke()}
+g.shadowBlur=0;g.globalCompositeOperation='source-over';
+if(p<1){const u=p*per,ccx=cx+sc*(R-r)*Math.cos(u),ccy=cy+sc*(R-r)*Math.sin(u),P=pt(u);
+g.strokeStyle='rgba(234,242,255,0.18)';g.lineWidth=1.5;g.beginPath();g.arc(cx,cy,sc*R,0,7);g.stroke();
+g.strokeStyle='rgba(234,242,255,0.35)';g.beginPath();g.arc(ccx,ccy,sc*r,0,7);g.stroke();
+g.strokeStyle='rgba(234,242,255,0.6)';ln(ccx,ccy,P[0],P[1]);
+g.fillStyle='#FFFFFF';g.shadowColor='#FFD166';g.shadowBlur=20;g.beginPath();g.arc(P[0],P[1],6,0,7);g.fill();g.shadowBlur=0}
+requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></x-embed>
+<aside>开场。右边是“万花尺”曲线：一个小圆在大圆里滚，小圆上的一支笔画出来的轨迹。换一组齿轮大小，就换一朵花。整季 7 个故事都是这个味道：一个简单规则，加上运动，变出让人意外的结果。</aside>
+</section>

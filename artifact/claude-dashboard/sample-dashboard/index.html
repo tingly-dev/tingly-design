@@ -1,0 +1,335 @@
+<style>
+#dash-root { --dash-gutter: clamp(16px, 3vw, 32px); }
+.tx { font-family: var(--font-anthropic-sans); color: var(--color-fg); max-width: 1180px; margin-inline: auto; }
+.tx-head h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0 0 var(--cds-gap-xs); }
+.tx-sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); line-height: 1.55; margin: 0 0 var(--cds-gap-lg); max-width: 60rem; }
+.tx-sub b { font-weight: 600; color: var(--color-fg); }
+.tx-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--cds-gap-md); margin-bottom: var(--cds-gap-lg); }
+.tx-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); }
+.tx-kpi .lb { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.tx-kpi .v { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; margin: var(--cds-gap-xs) 0 2px; min-height: 1.3em; }
+.tx-kpi .n { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.tx .up { color: var(--color-ok); } .tx .dn { color: var(--color-bad); }
+.tx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); margin-top: var(--cds-gap-md); }
+.tx-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); position: relative; min-width: 0; }
+.tx-card h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.tx-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 4px 0 var(--cds-gap-md); }
+.tx-row { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--cds-gap-sm); flex-wrap: wrap; }
+.tx-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.tx-seg button { font: inherit; font-size: var(--cds-font-size-caption); background: transparent; color: var(--color-fg-muted); border: 0; padding: 4px 10px; cursor: pointer; }
+.tx-seg button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-fg); font-weight: 600; }
+.tx-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-bottom: var(--cds-gap-sm); }
+.tx-legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+.tx-chart { position: relative; min-height: 360px; }
+.tx-vol { position: relative; min-height: 110px; }
+.tx-rsi { position: relative; min-height: 170px; }
+.tx svg text { font-family: var(--font-anthropic-sans); }
+.tx-tip { position: absolute; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); pointer-events: none; white-space: nowrap; opacity: 0; z-index: 3; font-variant-numeric: tabular-nums; }
+.tx-tip .d { color: var(--cds-text-secondary); margin-bottom: 2px; }
+.tx-tip .ev { margin-top: 3px; max-width: 240px; white-space: normal; }
+.tx-tip span.sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.tx-levels { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+.tx-levels td, .tx-levels th { padding: 7px 4px; border-bottom: 1px solid var(--color-border-line); text-align: left; }
+.tx-levels th { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-weight: 400; }
+.tx-levels td.r, .tx-levels th.r { text-align: right; }
+.tx-ev { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); }
+.tx-ev th { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-weight: 400; text-align: left; padding: 6px 6px 6px 0; border-bottom: 1px solid var(--color-border-line); }
+.tx-ev td { padding: 8px 6px 8px 0; border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.tx-ev td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--color-fg-muted); }
+.tx-ev td:nth-child(2) { white-space: nowrap; font-weight: 600; }
+.tx-ev td:nth-child(3) { color: var(--color-fg-muted); }
+@media (max-width: 560px) { .tx-ev th:nth-child(3), .tx-ev td:nth-child(3) { display: none; } }
+.tx-foot { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: var(--cds-gap-lg); line-height: 1.5; }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.tx-fail { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.tx-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+</style>
+
+<div class="tx">
+  <header class="tx-head" id="top">
+    <h1>腾讯控股 0700.HK 走势</h1>
+    <p class="tx-sub" id="takeaway">
+      截至 <b data-source="kpi" data-field="lastDate" data-row="0" class="dash-skeleton">—</b>，收 <b data-source="kpi" data-field="last" data-row="0">—</b> 港元，较去年底 <b data-source="kpi" data-field="ytdPct" data-row="0">—</b>，较一年收盘高点回撤 <b data-source="kpi" data-field="ddPct" data-row="0">—</b>。股价位于 20/60/120 日均线之下且三线向下排列，中期仍是下行趋势；近半年在约 <b data-source="kpi" data-field="low6m" data-row="0">—</b>–<b data-source="kpi" data-field="high6m" data-row="0">—</b> 港元区间内震荡，<span data-source="kpi" data-field="lowNote" data-row="0">—</span>。
+    </p>
+  </header>
+
+  <section class="tx-kpis" id="kpis">
+    <div class="tx-kpi"><div class="lb">最新收盘（港元）</div><div class="v" data-source="kpi" data-field="last" data-row="0">—</div><div class="n"><span data-source="kpi" data-field="d1Pct" data-row="0">—</span> 较前一日</div></div>
+    <div class="tx-kpi"><div class="lb">近 5 个交易日</div><div class="v" data-source="kpi" data-field="d5Pct" data-row="0">—</div><div class="n">收盘对收盘</div></div>
+    <div class="tx-kpi"><div class="lb">近 20 个交易日</div><div class="v" data-source="kpi" data-field="d20Pct" data-row="0">—</div><div class="n">约一个月</div></div>
+    <div class="tx-kpi"><div class="lb">年初至今</div><div class="v" data-source="kpi" data-field="ytdPct" data-row="0">—</div><div class="n">对比 2025 年末收盘</div></div>
+    <div class="tx-kpi"><div class="lb">距一年高点</div><div class="v" data-source="kpi" data-field="ddPct" data-row="0">—</div><div class="n">高点 <span data-source="kpi" data-field="hi" data-row="0">—</span>（收盘）</div></div>
+    <div class="tx-kpi"><div class="lb">RSI(14)</div><div class="v" data-source="px" data-field="rsi14" data-row="240" id="rsiNow">—</div><div class="n">30 以下超卖，70 以上超买</div></div>
+  </section>
+
+  <section class="tx-card" id="price">
+    <div class="tx-row">
+      <div><h2>收盘价与均线</h2><p class="tx-note">日线收盘价（港元，未复权）。圆点为关键事件，悬停查看。</p></div>
+      <div class="tx-seg" id="rangeSeg">
+        <button data-r="63">3 个月</button><button data-r="126">6 个月</button><button data-r="999" aria-pressed="true">1 年</button>
+      </div>
+    </div>
+    <div class="tx-legend" id="legend"></div>
+    <div class="tx-chart" id="chart" data-source="px events"></div>
+    <div class="tx-vol" id="vol" data-source="px"></div>
+    <div class="tx-tip" id="tip"></div>
+  </section>
+
+  <div class="tx-grid">
+    <section class="tx-card" id="levels">
+      <h2>关键价位</h2>
+      <p class="tx-note">与最新收盘价的距离；均线是常用的压力/支撑参考。</p>
+      <table class="tx-levels" data-source="levels" data-row-key="name">
+        <thead><tr><th data-field="name">价位</th><th data-field="price" class="r">港元</th><th data-field="gapPct" class="r">距现价</th></tr></thead>
+        <tbody id="levelsBody"></tbody>
+      </table>
+    </section>
+    <section class="tx-card" id="rsi">
+      <h2>RSI(14) 动量</h2>
+      <p class="tx-note">同一时间窗口；虚线为 30 / 70。</p>
+      <div class="tx-rsi" id="rsiChart" data-source="px"></div>
+      <div class="tx-tip" id="tip2"></div>
+    </section>
+  </div>
+
+  <section class="tx-card" id="events" style="margin-top: var(--cds-gap-md)">
+    <h2>近一年关键事件</h2>
+    <p class="tx-note">驱动股价的主要节点。</p>
+    <table class="tx-ev" data-source="events" data-row-key="date">
+      <thead><tr><th data-field="date">日期</th><th data-field="label">事件</th><th data-field="detail">说明</th></tr></thead>
+      <tbody id="evBody"></tbody>
+    </table>
+  </section>
+
+  <p class="tx-foot">数据为公开行情网站的日线收盘价，未做除权复权，非实时，仅供参考，不构成投资建议。</p>
+</div>
+
+<script>
+(function () {
+  const num = (x) => (x === '' || x == null ? null : Number(x));
+  const parse = (rows) => rows.map(r => ({ date: String(r.date).slice(0, 10), d: new Date(String(r.date).slice(0, 10)), close: num(r.close), volume: num(r.volume), ma20: num(r.ma20), ma60: num(r.ma60), ma120: num(r.ma120), rsi14: num(r.rsi14) })).sort((a, b) => a.d - b.d);
+  window.txParse = parse;
+
+  dash.calc('kpi', {
+    inputs: ['px'],
+    title: '走势摘要指标',
+    description: '最新收盘、各区间涨跌、年初至今与距一年高点回撤，由日线收盘价计算。',
+    fn: (px) => {
+      const c = px.map(r => ({ date: String(r.date).slice(0, 10), close: Number(r.close) })).sort((a, b) => a.date < b.date ? -1 : 1);
+      const n = c.length, last = c[n - 1];
+      const pct = (a, b) => (a / b - 1);
+      const yEnd = c.filter(r => r.date < last.date.slice(0, 4) + '-01-01').pop();
+      const hi = Math.max(...c.map(r => r.close));
+      const last6 = c.slice(-126).map(r => r.close);
+      const low6 = Math.min(...last6), high6 = Math.max(...last6);
+      return [{
+        lastDate: last.date, last: last.close,
+        d1Pct: pct(last.close, c[n - 2].close), d5Pct: pct(last.close, c[n - 6].close), d20Pct: pct(last.close, c[n - 21].close),
+        ytdPct: pct(last.close, yEnd.close), hi, ddPct: pct(last.close, hi),
+        low6m: low6, high6m: high6,
+        lowNote: last6.slice(-5).includes(low6) ? '本周刚刷新一年收盘新低后反弹，底部支撑仍待确认' : '暂未跌破半年低点'
+      }];
+    }
+  });
+
+  dash.calc('levels', {
+    inputs: ['px'],
+    title: '关键价位',
+    description: '最新的 20/60/120 日均线、近半年收盘高低点与现价的距离。',
+    fn: (px) => {
+      const c = px.map(r => ({ date: String(r.date).slice(0, 10), close: Number(r.close), ma20: Number(r.ma20), ma60: Number(r.ma60), ma120: Number(r.ma120) })).sort((a, b) => a.date < b.date ? -1 : 1);
+      const last = c[c.length - 1], s = c.slice(-126).map(r => r.close);
+      const rows = [
+        { name: '近半年收盘高点', price: Math.max(...s) },
+        { name: '120 日均线', price: last.ma120 },
+        { name: '60 日均线', price: last.ma60 },
+        { name: '20 日均线', price: last.ma20 },
+        { name: '最新收盘', price: last.close },
+        { name: '近半年收盘低点', price: Math.min(...s) }
+      ];
+      return rows.map(r => ({ name: r.name, price: Math.round(r.price * 100) / 100, gapPct: r.price / last.close - 1 }));
+    }
+  });
+
+  let range = 999;
+  const seg = document.getElementById('rangeSeg');
+  seg.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    range = +b.dataset.r;
+    seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    draw();
+  });
+
+  const fmtP = d3.format('+.1%'), fmt2 = d3.format(',.2f'), fmt1 = d3.format(',.1f');
+  const fmtD = d3.utcFormat('%Y-%m-%d');
+  const fmtVol = (v) => v == null ? '—' : (v / 1e6).toFixed(1) + ' 百万股';
+  const signCls = (el, v) => { el.classList.remove('up', 'dn'); if (v > 0) el.classList.add('up'); else if (v < 0) el.classList.add('dn'); };
+
+  function fail(el) { el.innerHTML = ''; const d = document.createElement('div'); d.className = 'tx-fail'; d.textContent = 'Failed to load'; el.appendChild(d); }
+
+  function fillKpi() {
+    const k = dash.data('kpi');
+    const els = document.querySelectorAll('[data-source="kpi"]');
+    if (k.status !== 'ok' || !k.data || !k.data[0]) { els.forEach(e => { e.textContent = '—'; if (k.status === 'loading') e.classList.add('dash-skeleton'); }); return; }
+    const r = k.data[0];
+    els.forEach(e => {
+      e.classList.remove('dash-skeleton');
+      const f = e.dataset.field, v = r[f];
+      if (f.endsWith('Pct')) { e.textContent = fmtP(v); signCls(e, v); }
+      else if (typeof v === 'number') e.textContent = fmt2(v);
+      else e.textContent = v;
+    });
+  }
+
+  function fillLevels() {
+    const L = dash.data('levels'), tb = document.getElementById('levelsBody');
+    tb.innerHTML = '';
+    if (L.status !== 'ok') return;
+    L.data.forEach(r => {
+      const tr = document.createElement('tr');
+      const a = document.createElement('td'); a.textContent = r.name;
+      const b = document.createElement('td'); b.className = 'r'; b.textContent = fmt2(r.price);
+      const c = document.createElement('td'); c.className = 'r';
+      c.textContent = Math.abs(r.gapPct) < 1e-9 ? '—' : fmtP(r.gapPct); signCls(c, r.gapPct);
+      if (r.name === '最新收盘') { a.style.fontWeight = '600'; b.style.fontWeight = '600'; }
+      tr.append(a, b, c); tb.appendChild(tr);
+    });
+  }
+
+  function fillEvents() {
+    const E = dash.data('events'), tb = document.getElementById('evBody');
+    tb.innerHTML = '';
+    if (E.status !== 'ok') return;
+    [...E.data].sort((a, b) => a.date < b.date ? 1 : -1).forEach(r => {
+      const tr = document.createElement('tr');
+      [r.date, r.label, r.detail].forEach(t => { const td = document.createElement('td'); td.textContent = t; tr.appendChild(td); });
+      tb.appendChild(tr);
+    });
+  }
+
+  const SERIES = [
+    { key: 'close', name: '收盘', ci: 0, w: 2 },
+    { key: 'ma20', name: '20 日均线', ci: 1, w: 1.5 },
+    { key: 'ma60', name: '60 日均线', ci: 2, w: 1.5 },
+    { key: 'ma120', name: '120 日均线', ci: 3, w: 1.5 }
+  ];
+
+  function legend() {
+    const lg = document.getElementById('legend'); lg.innerHTML = '';
+    SERIES.forEach(s => { const sp = document.createElement('span'); const i = document.createElement('i'); i.style.background = dash.colors[s.ci]; i.style.height = s.w + 'px'; sp.append(i, document.createTextNode(s.name)); lg.appendChild(sp); });
+  }
+
+  function measure(svg, texts) {
+    const t = svg.append('text').attr('font-size', 'var(--cds-font-size-caption)').style('font-size', '12px');
+    let m = 0; texts.forEach(s => { t.text(s); m = Math.max(m, t.node().getComputedTextLength()); }); t.remove(); return m;
+  }
+
+  function draw() {
+    const P = dash.data('px'), E = dash.data('events');
+    const box = document.getElementById('chart'), vbox = document.getElementById('vol'), rbox = document.getElementById('rsiChart');
+    box.innerHTML = ''; vbox.innerHTML = ''; rbox.innerHTML = '';
+    const rsiEl = document.getElementById('rsiNow');
+    if (P.status === 'error') { fail(box); fail(rbox); rsiEl.textContent = '—'; return; }
+    if (P.status !== 'ok') { box.classList.add('dash-skeleton'); rsiEl.textContent = '—'; return; }
+    box.classList.remove('dash-skeleton');
+    const all = parse(P.data);
+    const rows = all.slice(-Math.min(range, all.length));
+    const lastR = all[all.length - 1];
+    rsiEl.textContent = lastR.rsi14 == null ? '—' : fmt1(lastR.rsi14);
+    rsiEl.setAttribute('data-row', String(P.data.findIndex(r => String(r.date).slice(0, 10) === lastR.date)));
+    const evs = (E.status === 'ok' ? E.data : []).map(e => ({ ...e, row: rows.find(r => r.date === e.date) })).filter(e => e.row);
+
+    const W = box.clientWidth, H = 360;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    const vals = rows.flatMap(r => SERIES.map(s => r[s.key]).filter(v => v != null));
+    const y = d3.scaleLinear([d3.min(vals) * 0.97, d3.max(vals) * 1.02], [H - 26, 10]).nice();
+    const yt = y.ticks(6);
+    const ml = Math.ceil(measure(svg, yt.map(d3.format(',')))) + 10, mr = 12;
+    const x = d3.scaleUtc(d3.extent(rows, r => r.d), [ml, W - mr]);
+    const g = svg.append('g');
+    g.selectAll('line.grid').data(yt).join('line').attr('x1', ml).attr('x2', W - mr).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+    g.selectAll('text.yt').data(yt).join('text').attr('x', ml - 8).attr('y', d => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(d3.format(','));
+    const xt = x.ticks(Math.max(2, Math.floor((W - ml) / 90)));
+    const xf = range <= 126 ? d3.utcFormat('%m-%d') : d3.utcFormat('%Y-%m');
+    g.selectAll('text.xt').data(xt).join('text').attr('x', x).attr('y', H - 6).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(xf);
+    g.append('line').attr('x1', ml).attr('x2', W - mr).attr('y1', H - 26).attr('y2', H - 26).attr('stroke', 'var(--cds-chart-axis)');
+
+    // area under close
+    const gid = 'txg' + Math.random().toString(36).slice(2, 7);
+    const grad = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    [[0, .26], [.25, .16], [.5, .08], [.75, .03], [1, 0]].forEach(([o, a]) => grad.append('stop').attr('offset', o).attr('style', `stop-color:${dash.colors[0]};stop-opacity:${a}`));
+    g.append('path').datum(rows).attr('fill', `url(#${gid})`).attr('d', d3.area().x(r => x(r.d)).y0(H - 26).y1(r => y(r.close)));
+
+    [...SERIES].reverse().forEach(s => {
+      g.append('path').datum(rows.filter(r => r[s.key] != null)).attr('fill', 'none').attr('stroke', dash.colors[s.ci]).attr('stroke-width', s.w)
+        .attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('opacity', s.key === 'close' ? 1 : .85)
+        .attr('d', d3.line().x(r => x(r.d)).y(r => y(r[s.key])));
+    });
+    g.selectAll('circle.ev').data(evs).join('circle').attr('cx', e => x(e.row.d)).attr('cy', e => y(e.row.close)).attr('r', 4.5)
+      .attr('fill', 'var(--color-panel)').attr('stroke', 'var(--color-fg)').attr('stroke-width', 1.5);
+
+    // volume
+    const VH = 110, vsvg = d3.select(vbox).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${VH}`).attr('height', VH);
+    const vmax = d3.max(rows, r => r.volume || 0);
+    const vy = d3.scaleLinear([0, vmax], [VH - 4, 18]);
+    vsvg.append('text').attr('x', ml).attr('y', 11).attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text('成交量（百万股）');
+    vsvg.append('text').attr('x', ml - 8).attr('y', vy(vmax)).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(d3.format(',.0f')(vmax / 1e6));
+    const bw = Math.max(1, (W - ml - mr) / rows.length - 1);
+    vsvg.selectAll('rect').data(rows.filter(r => r.volume != null)).join('rect').attr('x', r => x(r.d) - bw / 2).attr('width', bw)
+      .attr('y', r => vy(r.volume)).attr('height', r => VH - 4 - vy(r.volume)).attr('rx', Math.min(2, bw / 2))
+      .attr('fill', (r) => { const i = all.indexOf(r); return i > 0 && r.close < all[i - 1].close ? 'var(--cds-chart-status-critical)' : 'var(--cds-chart-muted)'; }).attr('opacity', .75);
+
+    // hover
+    const tip = document.getElementById('tip'), card = document.getElementById('price');
+    const rule = g.append('line').attr('y1', 10).attr('y2', H - 26).attr('stroke', 'var(--cds-chart-reference)').attr('opacity', 0);
+    const dot = g.append('circle').attr('r', 4).attr('fill', dash.colors[0]).attr('opacity', 0);
+    const bis = d3.bisector(r => r.d).center;
+    svg.append('rect').attr('x', ml).attr('y', 0).attr('width', W - ml - mr).attr('height', H).attr('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const [mx] = d3.pointer(ev); const r = rows[bis(rows, x.invert(mx))]; if (!r) return;
+        rule.attr('x1', x(r.d)).attr('x2', x(r.d)).attr('opacity', 1); dot.attr('cx', x(r.d)).attr('cy', y(r.close)).attr('opacity', 1);
+        tip.innerHTML = '';
+        const d = document.createElement('div'); d.className = 'd'; d.textContent = r.date; tip.appendChild(d);
+        SERIES.forEach(s => { if (r[s.key] == null) return; const l = document.createElement('div'); const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = dash.colors[s.ci]; l.append(sw, document.createTextNode(`${s.name} ${fmt2(r[s.key])}`)); tip.appendChild(l); });
+        const vl = document.createElement('div'); vl.textContent = '成交量 ' + fmtVol(r.volume); tip.appendChild(vl);
+        const e = evs.find(e => e.date === r.date);
+        if (e) { const el = document.createElement('div'); el.className = 'ev'; const b = document.createElement('b'); b.textContent = e.label; el.append(b, document.createTextNode('：' + e.detail)); tip.appendChild(el); }
+        const cr = card.getBoundingClientRect(), br = box.getBoundingClientRect();
+        let left = br.left - cr.left + x(r.d) * (br.width / W) + 12; const top = br.top - cr.top + 20;
+        tip.style.opacity = 1; const tw = tip.offsetWidth; if (left + tw > cr.width - 8) left = left - tw - 24; tip.style.left = Math.max(8, left) + 'px'; tip.style.top = top + 'px';
+      })
+      .on('pointerleave', () => { tip.style.opacity = 0; rule.attr('opacity', 0); dot.attr('opacity', 0); });
+
+    // RSI
+    const RW = rbox.clientWidth, RH = 170;
+    const rs = d3.select(rbox).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${RW} ${RH}`).attr('height', RH);
+    const ry = d3.scaleLinear([0, 100], [RH - 22, 6]);
+    const rml = Math.ceil(measure(rs, ['100'])) + 10;
+    const rx = d3.scaleUtc(d3.extent(rows, r => r.d), [rml, RW - 10]);
+    rs.selectAll('line.g').data([30, 50, 70]).join('line').attr('x1', rml).attr('x2', RW - 10).attr('y1', ry).attr('y2', ry)
+      .attr('stroke', d => d === 50 ? 'var(--cds-chart-grid)' : 'var(--cds-chart-reference)').attr('stroke-dasharray', d => d === 50 ? null : '4 4');
+    rs.selectAll('text.t').data([30, 70]).join('text').attr('x', rml - 8).attr('y', ry).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(d => d);
+    const rxt = rx.ticks(Math.max(2, Math.floor((RW - rml) / 90)));
+    rs.selectAll('text.x').data(rxt).join('text').attr('x', rx).attr('y', RH - 4).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(xf);
+    rs.append('path').datum(rows.filter(r => r.rsi14 != null)).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('d', d3.line().x(r => rx(r.d)).y(r => ry(r.rsi14)));
+    const tip2 = document.getElementById('tip2'), rcard = document.getElementById('rsi');
+    const rdot = rs.append('circle').attr('r', 4).attr('fill', dash.colors[0]).attr('opacity', 0);
+    rs.append('rect').attr('x', rml).attr('width', RW - rml - 10).attr('height', RH).attr('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const [mx] = d3.pointer(ev); const r = rows[bis(rows, rx.invert(mx))]; if (!r || r.rsi14 == null) return;
+        rdot.attr('cx', rx(r.d)).attr('cy', ry(r.rsi14)).attr('opacity', 1);
+        tip2.innerHTML = ''; const d = document.createElement('div'); d.className = 'd'; d.textContent = r.date; const v = document.createElement('div'); v.textContent = 'RSI ' + fmt1(r.rsi14); tip2.append(d, v);
+        const cr = rcard.getBoundingClientRect(), br = rbox.getBoundingClientRect();
+        let left = br.left - cr.left + rx(r.d) * (br.width / RW) + 12; tip2.style.opacity = 1; if (left + tip2.offsetWidth > cr.width - 8) left -= tip2.offsetWidth + 24;
+        tip2.style.left = Math.max(8, left) + 'px'; tip2.style.top = (br.top - cr.top + 4) + 'px';
+      })
+      .on('pointerleave', () => { tip2.style.opacity = 0; rdot.attr('opacity', 0); });
+  }
+
+  legend();
+  dash.onData(() => { fillKpi(); fillLevels(); fillEvents(); draw(); });
+})();
+</script>
+

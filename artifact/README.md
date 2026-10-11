@@ -11,6 +11,37 @@ Source: the published files of the user's own canvas
 type `Design`, type release `1791586906-56be`, canvas versions
 `1791718275-07b4` and `1791721890-54ef`, fetched 2026-10-11.
 
+## The other types (added 2026-10-11)
+
+Claude's artifact platform has five core types; Design is the one this repo
+replicates so far. The account's type listing (`Artifact list scope:types`):
+
+| Type | Type link | Where content lives | Collected here |
+|---|---|---|---|
+| Design | `QKN21svewxgyPb6SYRqWnd` | files: `project/canvas.json` + `*.dc.html` | `claude-design/` |
+| Slides | `8jTsAFQMFDb2oA8MsPJ2eL` (release `1791584864-97b0`) | files: `project/deck.json` + `project/slides/<id>.html` | `claude-slides/` |
+| Dashboard | `GZLZthZ2sQjn7T16skfdeF` (release `1791487385-53e8`) | the artifact's db: `dash/meta`, `datasets/<id>`, `files/index.html` | `claude-dashboard/` |
+| Docs | `Rp9naXUCj2xozpUkyQy19W` (release `1791658616-c881`) | an external Claude Docs service, via its MCP connector | `claude-docs/NOTES.md` |
+| Design System | `5M7UeXXcx16TP3vzVFNDzd` (release `1791558544-c1cf`) | files: `project/design-system.json`, `tokens.json`, components, assets | `claude-design-system/NOTES.md` |
+
+- `claude-slides/`: `type/` = the type's files from the user's deck
+  `https://claude.ai/artifact/LJTLFf6JFqr4nf3Axzp5C2` ("数学奇遇记", version
+  `1791727153-61e8`): `SKILL.md`, `index.html`, `app.js`/`app.css` (+
+  `app.pretty.js`), `reference/*.md` (`format.md` is the whole slide subset),
+  `thumbnail/`, `fonts/`. `sample-deck/` = that deck's `deck.json` and 8
+  slides (each with a live `<x-embed>` animation).
+- `claude-dashboard/`: `type/` = the type's files from the user's dashboard
+  `https://claude.ai/artifact/RZsi2NiWzRRCNfVn5yHn4z` ("腾讯控股 0700 走势",
+  version `1791729436-b8a0`). `sample-dashboard/` = its store documents
+  (`dash/meta`, `datasets/*`) and the page (`index.html`, from
+  `files/index.html`). The two attached data files (`/_blob/…`) could not be
+  read from the session that collected this, so the sample has no rows.
+- `claude-docs/`, `claude-design-system/`: the user has no instance of these, so
+  only notes from each type's `SKILL.md`; any instance makes the type's files
+  readable.
+- `FINDINGS.md` in `claude-slides/` and `claude-dashboard/`: what the editors
+  do, read from their bundles.
+
 ## claude-design/
 
 | Path | What it is |
