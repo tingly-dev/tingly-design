@@ -34,3 +34,10 @@ Cut, Copy, Paste, Duplicate · Move to last / Move to first · Group / Ungroup �
 
 ## Saving
 - Every change publishes the touched files with `ifMatch` per file; the sync badge shows progress. Undo is per edit (Ctrl+Z).
+
+## canvas.json item formats (from app.js)
+- Text items: `note` (default kind, sticky; default size 14, fill `default` = yellow) and `title1` (default size 72, bold). Size presets s=14, m=24, l=40, xl=72, xxl=120. Fields: x, y, w, text, size, bold, italic, color, fill (note only), maxW (title1), maxH, page, rotate.
+- Shapes: `rect` / `oval` / `pen` / `image` with x, y, w, h, rotate, flipX/flipY; `line` / `arrow` with x, y, x2, y2, headStart / headEnd (`none` | `open` | `filled`; an arrow ends `filled` by default). `pen` stores its stroke as an SVG path `d` in box coordinates; `image` has `src` (and optional `video`, `alt`, `crop`).
+- Shape style lives in a `css` object limited to: background, background-color, opacity, border-radius (+ per corner), border-style/color/width (+ per side), box-shadow, filter, backdrop-filter, object-fit, object-position, stroke, stroke-width.
+- Tools and shortcuts: Select, Hand (H), Text (T), Artboard (A), Note (N), Draw (P), Rectangle (R), Oval (O), Arrow (Shift+L), Line (L); Escape returns to Select. Context menu: Move to first `[`, Move to last `]`, Group Ctrl+G, Ungroup Ctrl+Shift+G, Flip Shift+H / Shift+V, Wrap in flex Shift+A, Duplicate Ctrl+D.
+- The artboard runtime paints the canvas background `#ededeb`.

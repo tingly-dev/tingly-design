@@ -18,6 +18,7 @@ import {
   type DcElement,
   type DcNode,
   type FromRuntime,
+  type Inspect,
   type Mode,
   type ToRuntime,
 } from '@dc/core';
@@ -350,6 +351,14 @@ const current: State = {
 const mount = document.getElementById('dc-app')!;
 const root = createRoot(mount);
 let renderKey = 0;
+/** The source whose DOM is actually on screen (React commits asynchronously). */
+let committedSource = '';
+function Committed({ source }: { source: string }) {
+  React.useLayoutEffect(() => {
+    committedSource = source;
+  }, [source]);
+  return null;
+}
 
 function render() {
   const doc = docFor(current.source);
@@ -357,16 +366,21 @@ function render() {
   root.render(
     <Boundary key={renderKey} file={current.file}>
       <DcComponent key={current.source} source={current.source} file={current.file} props={current.props} ctx={current.ctx()} />
+      <Committed source={current.source} />
     </Boundary>,
   );
 }
 
 // ---------------------------------------------------------------- overlay
 
+const BLUE = '#2f6fed';
 const overlay = document.createElement('div');
 overlay.setAttribute('aria-hidden', 'true');
 overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647';
 document.documentElement.appendChild(overlay);
+
+let externalHover: number | null = null;
+let indicator: { x: number; y: number; w: number; h: number } | null = null;
 
 function rectOf(el: Element): DOMRect | null {
   const r = el.getBoundingClientRect();
@@ -386,23 +400,38 @@ function rectOf(el: Element): DOMRect | null {
   return u;
 }
 
+const instances = (tid: number) => Array.from(document.querySelectorAll(`[data-dc-tid="${tid}"]`));
+
+function box(r: { left: number; top: number; width: number; height: number }, css: string): string {
+  return `<div style="position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;box-sizing:border-box;${css}"></div>`;
+}
+
 function drawBoxes() {
-  const boxes: string[] = [];
-  const add = (tid: number | null, solid: boolean) => {
-    if (tid === null) return;
-    for (const el of Array.from(document.querySelectorAll(`[data-dc-tid="${tid}"]`))) {
-      const r = rectOf(el);
-      if (!r) continue;
-      boxes.push(
-        `<div style="position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;box-sizing:border-box;border:${solid ? '2px solid #2f6fed' : '1px dashed #2f6fed'};${solid ? 'background:rgba(47,111,237,.06)' : ''}"></div>`,
-      );
-    }
-  };
+  const out: string[] = [];
   if (current.mode === 'edit' && !current.editing) {
-    if (current.hover !== current.selected) add(current.hover, false);
-    add(current.selected, true);
+    const hover = externalHover ?? current.hover;
+    if (hover !== null && hover !== current.selected) {
+      for (const el of instances(hover)) {
+        const r = rectOf(el);
+        if (r) out.push(box(r, `border:1px solid ${BLUE}`));
+      }
+    }
+    if (current.selected !== null) {
+      const els = instances(current.selected);
+      for (const el of els) {
+        const r = rectOf(el);
+        if (!r) continue;
+        out.push(box(r, `border:1.5px solid ${BLUE}`));
+        if (els.length === 1 && !drag?.active) {
+          for (const [x, y] of [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]]) {
+            out.push(box({ left: x - 3.5, top: y - 3.5, width: 7, height: 7 }, `background:#fff;border:1.5px solid ${BLUE}`));
+          }
+        }
+      }
+    }
+    if (indicator) out.push(box({ left: indicator.x, top: indicator.y, width: indicator.w, height: indicator.h }, `background:${BLUE};border-radius:1px`));
   }
-  const html = boxes.join('');
+  const html = out.join('');
   if (overlay.innerHTML !== html) overlay.innerHTML = html;
 }
 (function loop() {
@@ -416,11 +445,256 @@ function tidOf(target: EventTarget | null): number | null {
   return Number(el.getAttribute('data-dc-tid'));
 }
 
+// ---------------------------------------------------------------- inspect
+
+const COMPUTED = [
+  'display', 'position', 'flex-direction', 'flex-wrap', 'flex-grow', 'align-items', 'justify-content', 'gap',
+  'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height',
+  'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+  'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'color', 'text-align',
+  'background-color', 'background-image', 'opacity', 'border-radius', 'border-top-width', 'border-top-style', 'border-top-color',
+  'box-shadow', 'left', 'top', 'transform', 'overflow',
+];
+
+function opaque(c: string): boolean {
+  const m = /rgba?\(([^)]+)\)/.exec(c);
+  if (!m) return c !== 'transparent' && c !== '';
+  const parts = m[1].split(/[,\s/]+/).filter(Boolean);
+  return parts.length < 4 || parseFloat(parts[3]) > 0.5;
+}
+
+let lastInspect = '';
+function inspect() {
+  const tid = current.selected;
+  const el = tid === null ? null : (instances(tid)[0] as HTMLElement | undefined);
+  let info: Inspect | null = null;
+  if (el && tid !== null) {
+    const r = rectOf(el) ?? new DOMRect();
+    const cs = getComputedStyle(el.style.display === 'contents' && el.firstElementChild ? el.firstElementChild : el);
+    const computed: Record<string, string> = {};
+    for (const k of COMPUTED) computed[k] = cs.getPropertyValue(k);
+    computed['offset-left'] = String(el.offsetLeft);
+    computed['offset-top'] = String(el.offsetTop);
+    let backdrop = '#ffffff';
+    for (let a: Element | null = el; a; a = a.parentElement) {
+      const bg = getComputedStyle(a).backgroundColor;
+      if (opaque(bg)) {
+        backdrop = bg;
+        break;
+      }
+    }
+    const p = el.parentElement?.closest('[data-dc-tid]') as HTMLElement | null;
+    const pcs = p ? getComputedStyle(p) : null;
+    const doc = docFor(current.source);
+    const srcParent = doc.elements[tid]?.parent ?? null;
+    info = {
+      tid,
+      rect: { x: r.left, y: r.top, w: r.width, h: r.height },
+      count: instances(tid).length,
+      computed,
+      backdrop,
+      parent: {
+        tid: p ? Number(p.getAttribute('data-dc-tid')) : null,
+        display: pcs?.display ?? 'block',
+        flexDirection: pcs?.flexDirection ?? 'row',
+        position: pcs?.position ?? 'static',
+        hasHeight: !!(srcParent && /(^|;)\s*height\s*:/.test(srcParent.attrs.find((a) => a.name === 'style')?.value ?? '')),
+      },
+    };
+  }
+  const sig = JSON.stringify(info);
+  if (sig !== lastInspect) {
+    lastInspect = sig;
+    post({ dc: 'inspect', info });
+  }
+}
+
+let lastCounts = '';
+function postCounts() {
+  const counts: Record<number, number> = {};
+  for (const el of Array.from(document.querySelectorAll('[data-dc-tid]'))) {
+    const t = Number(el.getAttribute('data-dc-tid'));
+    counts[t] = (counts[t] ?? 0) + 1;
+  }
+  const sig = JSON.stringify(counts);
+  if (sig !== lastCounts) {
+    lastCounts = sig;
+    post({ dc: 'counts', counts });
+  }
+}
+
+// layout settles over a few frames (fonts, images): keep the inspection fresh
+setInterval(() => {
+  if (current.mode === 'edit' && !drag?.active) {
+    inspect();
+    postCounts();
+  }
+}, 250);
+
 // ------------------------------------------------------------- gestures
 
 const inEdit = () => current.mode === 'edit';
 
-for (const type of ['mousedown', 'pointerdown', 'mouseup', 'submit', 'auxclick']) {
+interface Drag {
+  tid: number;
+  el: HTMLElement;
+  parent: HTMLElement;
+  start: { x: number; y: number };
+  rect: DOMRect;
+  abs: boolean;
+  axis: 'x' | 'y';
+  siblings: HTMLElement[];
+  active: boolean;
+  mode: 'reorder' | 'out';
+  drop: { target: number; where: 'before' | 'after' } | null;
+  saved: { opacity: string; transform: string; transition: string };
+}
+let drag: Drag | null = null;
+let suppressClick = false;
+
+function draggable(tid: number): boolean {
+  const doc = docFor(current.source);
+  const el = doc.elements[tid];
+  if (!el || !el.parent) return false; // top-level: the artboard itself
+  for (let a: DcElement | null = el.parent; a; a = a.parent) if (a.tag === 'sc-for') return false;
+  return instances(tid).length === 1;
+}
+
+/** The source-level sibling of `tid` that contains the rendered element `domTid`. */
+function sourceSibling(tid: number, domTid: number): number | null {
+  const doc = docFor(current.source);
+  const parent = doc.elements[tid]?.parent;
+  let el = doc.elements[domTid];
+  while (el && el.parent !== parent) el = el.parent as typeof el;
+  return el && el.tid !== tid ? el.tid : null;
+}
+
+function startDrag(tid: number, e: PointerEvent) {
+  const el = instances(tid)[0] as HTMLElement | undefined;
+  const parent = el?.parentElement?.closest('[data-dc-tid]') as HTMLElement | null;
+  if (!el || !parent) return;
+  const cs = getComputedStyle(el);
+  const pcs = getComputedStyle(parent);
+  const axis: 'x' | 'y' = pcs.display.includes('flex') && !pcs.flexDirection.startsWith('column') ? 'x' : 'y';
+  const siblings = (Array.from(parent.querySelectorAll('[data-dc-tid]')) as HTMLElement[]).filter((c) => {
+    if (c === el || c.parentElement?.closest('[data-dc-tid]') !== parent) return false;
+    const s = getComputedStyle(c);
+    return s.position !== 'absolute' && s.position !== 'fixed' && s.display !== 'none';
+  });
+  drag = {
+    tid,
+    el,
+    parent,
+    start: { x: e.clientX, y: e.clientY },
+    rect: el.getBoundingClientRect(),
+    abs: cs.position === 'absolute',
+    axis,
+    siblings,
+    active: false,
+    mode: 'reorder',
+    drop: null,
+    saved: { opacity: el.style.opacity, transform: el.style.transform, transition: el.style.transition },
+  };
+}
+
+function moveDrag(e: PointerEvent) {
+  const d = drag;
+  if (!d) return;
+  const dx = e.clientX - d.start.x;
+  const dy = e.clientY - d.start.y;
+  if (!d.active && Math.hypot(dx, dy) < 4) return;
+  d.active = true;
+  const pr = d.parent.getBoundingClientRect();
+  const outside = e.clientX < pr.left - 16 || e.clientX > pr.right + 16 || e.clientY < pr.top - 16 || e.clientY > pr.bottom + 16;
+  d.mode = d.abs || outside || !d.siblings.length ? 'out' : 'reorder';
+  d.el.style.transition = 'none';
+  if (d.mode === 'out') {
+    indicator = null;
+    d.drop = null;
+    d.el.style.opacity = d.saved.opacity;
+    d.el.style.transform = `translate(${dx}px, ${dy}px)`;
+    return;
+  }
+  d.el.style.transform = d.saved.transform;
+  d.el.style.opacity = '0.45';
+  const p = d.axis === 'x' ? e.clientX : e.clientY;
+  let before: HTMLElement | null = null;
+  for (const s of d.siblings) {
+    const r = s.getBoundingClientRect();
+    const mid = d.axis === 'x' ? r.left + r.width / 2 : r.top + r.height / 2;
+    if (p < mid) {
+      before = s;
+      break;
+    }
+  }
+  const ref = before ?? d.siblings[d.siblings.length - 1];
+  const rr = ref.getBoundingClientRect();
+  const edge = before ? (d.axis === 'x' ? rr.left - 2 : rr.top - 2) : d.axis === 'x' ? rr.right + 1 : rr.bottom + 1;
+  indicator =
+    d.axis === 'x'
+      ? { x: edge - 1, y: rr.top, w: 3, h: rr.height }
+      : { x: Math.min(rr.left, d.rect.left), y: edge - 1, w: Math.max(rr.width, d.rect.width), h: 3 };
+  const target = sourceSibling(d.tid, Number(ref.getAttribute('data-dc-tid')));
+  d.drop = target === null ? null : { target, where: before ? 'before' : 'after' };
+}
+
+function endDrag(e: PointerEvent, cancel = false) {
+  const d = drag;
+  drag = null;
+  indicator = null;
+  if (!d) return;
+  const restore = () => {
+    d.el.style.opacity = d.saved.opacity;
+    d.el.style.transform = d.saved.transform;
+    d.el.style.transition = d.saved.transition;
+  };
+  if (!d.active || cancel) return restore();
+  suppressClick = true;
+  if (d.mode === 'reorder') {
+    restore();
+    if (d.drop) post({ dc: 'move', tid: d.tid, ...d.drop });
+    return;
+  }
+  const dx = e.clientX - d.start.x;
+  const dy = e.clientY - d.start.y;
+  const pr = d.parent.getBoundingClientRect();
+  const left = Math.round(d.rect.left + dx - pr.left - d.parent.clientLeft + d.parent.scrollLeft);
+  const top = Math.round(d.rect.top + dy - pr.top - d.parent.clientTop + d.parent.scrollTop);
+  const set: Record<string, string> = { left: `${left}px`, top: `${top}px` };
+  const parentSet: Record<string, string> = {};
+  if (!d.abs) {
+    Object.assign(set, { position: 'absolute', width: `${Math.round(d.rect.width)}px`, margin: '0' });
+    if (getComputedStyle(d.parent).position === 'static') parentSet.position = 'relative';
+    // keep the parent from collapsing now that the element left the flow
+    const doc = docFor(current.source);
+    const srcParent = doc.elements[d.tid]?.parent;
+    const ps = srcParent?.attrs.find((a) => a.name === 'style')?.value ?? '';
+    if (srcParent?.parent && !/(^|;)\s*height\s*:/.test(ps)) parentSet.height = `${Math.round(pr.height)}px`;
+  }
+  const parentTid = Number(d.parent.getAttribute('data-dc-tid'));
+  post({ dc: 'dragout', tid: d.tid, set, parentTid: Number.isFinite(parentTid) ? parentTid : null, parentSet });
+}
+
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    if (!inEdit()) return;
+    if (current.editing?.contains(e.target as Node)) return;
+    e.preventDefault();
+    if (current.editing) commitText();
+    if (e.button !== 0) return;
+    // grabbing anything inside the selected element drags the selected element
+    const sel = current.selected;
+    const selEl = sel === null ? null : instances(sel)[0];
+    if (sel !== null && selEl?.contains(e.target as Node) && draggable(sel)) startDrag(sel, e);
+  },
+  true,
+);
+document.addEventListener('pointermove', (e) => drag && moveDrag(e), true);
+document.addEventListener('pointerup', (e) => drag && endDrag(e), true);
+window.addEventListener('blur', () => drag && endDrag(new PointerEvent('pointerup'), true));
+
+for (const type of ['mousedown', 'mouseup', 'submit', 'auxclick']) {
   document.addEventListener(
     type,
     (e) => {
@@ -437,8 +711,13 @@ document.addEventListener(
     if (inEdit()) {
       e.preventDefault();
       e.stopPropagation();
-      if (current.editing) commitText();
-      post({ dc: 'select', tid: tidOf(e.target), shift: e.shiftKey });
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
+      const tid = tidOf(e.target);
+      current.selected = tid;
+      post({ dc: 'select', tid, shift: e.shiftKey, x: e.clientX, y: e.clientY });
       return;
     }
     // play mode: links between artboards
@@ -460,9 +739,24 @@ document.addEventListener(
 );
 
 document.addEventListener(
-  'mousemove',
+  'contextmenu',
   (e) => {
     if (!inEdit()) return;
+    e.preventDefault();
+    const tid = tidOf(e.target);
+    if (tid !== current.selected) {
+      current.selected = tid;
+      post({ dc: 'select', tid, shift: false, x: e.clientX, y: e.clientY });
+    }
+    post({ dc: 'contextmenu', tid, x: e.clientX, y: e.clientY });
+  },
+  true,
+);
+
+document.addEventListener(
+  'mousemove',
+  (e) => {
+    if (!inEdit() || drag?.active) return;
     const tid = tidOf(e.target);
     if (tid !== current.hover) {
       current.hover = tid;
@@ -482,6 +776,26 @@ function editableTids(): Set<number> {
 }
 
 let editingOriginal = '';
+function beginText(el: HTMLElement) {
+  current.editing = el;
+  editingOriginal = el.innerText;
+  try {
+    el.contentEditable = 'plaintext-only';
+  } catch {
+    el.contentEditable = 'true';
+  }
+  if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
+  el.style.outline = `1.5px solid ${BLUE}`;
+  el.style.outlineOffset = '1px';
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+  el.addEventListener('blur', () => commitText(), { once: true });
+}
+
 document.addEventListener(
   'dblclick',
   (e) => {
@@ -492,23 +806,7 @@ document.addEventListener(
     if (!el) return;
     const tid = Number(el.getAttribute('data-dc-tid'));
     if (!editableTids().has(tid)) return;
-    current.editing = el;
-    editingOriginal = el.innerText;
-    try {
-      el.contentEditable = 'plaintext-only';
-    } catch {
-      el.contentEditable = 'true';
-    }
-    if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
-    el.style.outline = '2px solid #2f6fed';
-    el.style.outlineOffset = '2px';
-    el.focus();
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-    el.addEventListener('blur', () => commitText(), { once: true });
+    beginText(el);
   },
   true,
 );
@@ -547,10 +845,15 @@ document.addEventListener(
       }
       return;
     }
+    if (drag && e.key === 'Escape') {
+      endDrag(new PointerEvent('pointerup'), true);
+      return;
+    }
     if (!inEdit() && e.key !== 'Escape') return;
     const t = e.target as HTMLElement;
     if (!inEdit() && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-    if (inEdit()) e.preventDefault();
+    if (inEdit() && !(e.metaKey || e.ctrlKey) ) e.preventDefault();
+    if (inEdit() && (e.metaKey || e.ctrlKey) && /^[cvxzydg=+-]$/i.test(e.key)) e.preventDefault();
     post({ dc: 'key', key: e.key, meta: e.metaKey || e.ctrlKey, shift: e.shiftKey, alt: e.altKey });
   },
   true,
@@ -567,6 +870,24 @@ window.addEventListener(
   { passive: false },
 );
 
+// ----------------------------------------------------------------- export
+
+async function exportPng(id: string, scale: number) {
+  try {
+    const node = mount.querySelector('[data-dc-tid]') as HTMLElement | null;
+    if (!node) throw new Error('nothing to export');
+    const { toPng } = await import('html-to-image');
+    const prevSel = current.selected;
+    current.selected = null;
+    overlay.innerHTML = '';
+    const dataUrl = await toPng(node, { pixelRatio: scale, skipFonts: true, cacheBust: false });
+    current.selected = prevSel;
+    post({ dc: 'exported', id, dataUrl });
+  } catch (err) {
+    post({ dc: 'exported', id, error: (err as Error).message || String(err) });
+  }
+}
+
 // --------------------------------------------------------------- messages
 
 function onMessage(m: ToRuntime) {
@@ -575,17 +896,39 @@ function onMessage(m: ToRuntime) {
       current.pending = m;
       return;
     }
-    const changed = m.source !== current.source || m.files !== current.files || JSON.stringify(m.props) !== JSON.stringify(current.props) || m.mode !== current.mode;
+    const changed =
+      m.source !== current.source ||
+      m.files !== current.files ||
+      JSON.stringify(m.props) !== JSON.stringify(current.props) ||
+      m.mode !== current.mode;
     Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected });
     document.documentElement.dataset.mode = m.mode;
     if (changed) render();
   } else if (m.dc === 'select') {
     current.selected = m.tid;
+    inspect();
+  } else if (m.dc === 'hover') {
+    externalHover = m.tid;
   } else if (m.dc === 'mode') {
     current.mode = m.mode;
     document.documentElement.dataset.mode = m.mode;
     renderKey++;
     render();
+  } else if (m.dc === 'export') {
+    void exportPng(m.id, m.scale);
+  } else if (m.dc === 'edit') {
+    // the element may only exist after the render that is on its way
+    let tries = 0;
+    const tid = m.tid;
+    const attempt = () => {
+      // tids are positions in the source: only trust them once that source is rendered
+      const el = committedSource === current.source ? (instances(tid)[0] as HTMLElement | undefined) : undefined;
+      if (el && editableTids().has(tid)) {
+        current.selected = tid;
+        beginText(el);
+      } else if (tries++ < 20) setTimeout(attempt, 50);
+    };
+    attempt();
   }
 }
 

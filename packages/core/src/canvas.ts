@@ -15,17 +15,42 @@ export interface BoardEntry {
 
 export type NoteFill = 'gray' | 'red' | 'orange' | 'green' | 'teal' | 'blue' | 'purple' | 'pink';
 
+export type ShapeKind = 'rect' | 'oval' | 'line' | 'arrow' | 'pen' | 'image';
+export type ArrowHead = 'none' | 'open' | 'filled';
+
+/**
+ * Everything on the canvas that isn't an artboard: sticky notes (no kind),
+ * titles (`title1`) and shapes. Field names follow the original editor so
+ * canvases move between the two.
+ */
 export interface NoteEntry {
   x: number;
   y: number;
-  text: string;
-  kind?: 'title1' | string;
+  text?: string;
+  kind?: 'title1' | ShapeKind | string;
+  /** shapes: box size (rect/oval/pen/image) */
+  h?: number;
+  /** line/arrow: the end point */
+  x2?: number;
+  y2?: number;
+  headStart?: ArrowHead;
+  headEnd?: ArrowHead;
+  /** pen: SVG path in box coordinates */
+  d?: string;
+  /** image */
+  src?: string;
+  alt?: string;
+  rotate?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  /** shape styling: background, border-*, opacity, box-shadow, stroke, stroke-width… */
+  css?: Record<string, string>;
   w?: number;
   maxW?: number;
   maxH?: number;
   size?: number | 's' | 'm' | 'l' | 'xl' | 'xxl';
-  fill?: NoteFill;
-  color?: NoteFill;
+  fill?: NoteFill | 'default';
+  color?: NoteFill | 'default';
   bold?: boolean;
   italic?: boolean;
   page?: string;
@@ -45,6 +70,32 @@ export interface CanvasJson {
 }
 
 export const CANVAS_FILE = 'canvas.json';
+
+export const NOTE_SIZES = { s: 14, m: 24, l: 40, xl: 72, xxl: 120 } as const;
+
+export function isShape(n: NoteEntry): boolean {
+  return n.kind === 'rect' || n.kind === 'oval' || n.kind === 'line' || n.kind === 'arrow' || n.kind === 'pen' || n.kind === 'image';
+}
+
+/** Bounding box of any canvas item, in canvas px. */
+export function noteBox(n: NoteEntry): { x: number; y: number; w: number; h: number } {
+  if (n.kind === 'line' || n.kind === 'arrow') {
+    const x2 = n.x2 ?? n.x;
+    const y2 = n.y2 ?? n.y;
+    return { x: Math.min(n.x, x2), y: Math.min(n.y, y2), w: Math.abs(x2 - n.x), h: Math.abs(y2 - n.y) };
+  }
+  if (isShape(n)) return { x: n.x, y: n.y, w: n.w ?? 0, h: n.h ?? 0 };
+  const size = typeof n.size === 'number' ? n.size : n.size ? NOTE_SIZES[n.size as keyof typeof NOTE_SIZES] : n.kind === 'title1' ? 72 : 14;
+  const w = n.kind === 'title1' ? Math.min(n.maxW ?? 1600, Math.max(200, (n.text ?? '').length * size * 0.9)) : n.w ?? 240;
+  const lines = Math.max(1, (n.text ?? '').split('\n').length);
+  return { x: n.x, y: n.y, w, h: Math.min(n.maxH ?? 99999, Math.round(size * 1.45 * lines) + (n.kind === 'title1' ? 0 : 32)) };
+}
+
+export function uniqueNoteId(c: CanvasJson, prefix = 'n'): string {
+  let i = Object.keys(c.notes).length + 1;
+  while (c.notes[prefix + i]) i++;
+  return prefix + i;
+}
 
 export function parseCanvas(text: string | undefined): CanvasJson {
   let raw: Partial<CanvasJson> = {};

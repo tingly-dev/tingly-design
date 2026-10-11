@@ -12,6 +12,9 @@ import {
   type HumanOp,
   type JournalEntry,
   type Mode,
+  type Inspect,
+  type NoteEntry,
+  noteBox,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 
@@ -76,6 +79,8 @@ interface UndoItem {
   after: string;
 }
 
+export type Tool = 'select' | 'hand' | 'text' | 'frame' | 'note' | 'draw' | 'rect' | 'oval' | 'line' | 'arrow';
+
 export interface Toast {
   id: number;
   text: string;
@@ -91,8 +96,25 @@ interface State {
   drafts: Record<string, string>;
   journal: JournalEntry[];
   selection: Selection;
-  tool: 'select' | 'hand';
+  tool: Tool;
   mode: Mode;
+  /** right panel */
+  panelOpen: boolean;
+  panelTab: 'props' | 'code' | 'tweaks';
+  /** what the runtime measured about the selected element */
+  inspect: Inspect | null;
+  /** rendered instances per tid, per artboard (for "Repeating group · N items") */
+  counts: Record<string, Record<number, number>>;
+  /** layer-tree hover, mirrored as an outline inside the artboard */
+  layerHover: { file: string; tid: number } | null;
+  /** current page id ('' = the first page) */
+  page: string;
+  /** an artboard opened full window */
+  focused: string | null;
+  /** a note being retyped on the canvas */
+  editingNote: string | null;
+  menu: { x: number; y: number } | null;
+  journalOpen: boolean;
   view: { x: number; y: number; zoom: number };
   viewport: { w: number; h: number };
   runtimeErrors: Record<string, string | null>;
@@ -101,7 +123,6 @@ interface State {
   toasts: Toast[];
   undo: UndoItem[];
   redo: UndoItem[];
-  leftTab: 'boards' | 'journal';
 }
 
 export const useStore = create<State>(() => ({
@@ -115,6 +136,16 @@ export const useStore = create<State>(() => ({
   selection: null,
   tool: 'select',
   mode: 'edit',
+  panelOpen: true,
+  panelTab: 'props',
+  inspect: null,
+  counts: {},
+  layerHover: null,
+  page: '',
+  focused: null,
+  editingNote: null,
+  menu: null,
+  journalOpen: false,
   view: { x: 80, y: 120, zoom: 0.5 },
   viewport: { w: 1000, h: 700 },
   runtimeErrors: {},
@@ -123,7 +154,6 @@ export const useStore = create<State>(() => ({
   toasts: [],
   undo: [],
   redo: [],
-  leftTab: 'boards',
 }));
 
 const get = useStore.getState;
@@ -414,20 +444,23 @@ export function zoomAt(factor: number, sx: number, sy: number): void {
   setView({ zoom, x: sx - (sx - view.x) * k, y: sy - (sy - view.y) * k });
 }
 
-export function fitTo(rect: { x: number; y: number; w: number; h: number }, pad = 60): void {
+export function fitTo(rect: { x: number; y: number; w: number; h: number }, pad = 64): void {
   const { viewport } = get();
-  const zoom = Math.min(2, Math.max(0.05, Math.min((viewport.w - pad * 2) / rect.w, (viewport.h - pad * 2 - 80) / rect.h)));
-  setView({ zoom, x: (viewport.w - rect.w * zoom) / 2 - rect.x * zoom, y: (viewport.h - 80 - rect.h * zoom) / 2 - rect.y * zoom });
+  const zoom = Math.min(2, Math.max(0.05, Math.min((viewport.w - pad * 2) / rect.w, (viewport.h - pad * 2) / rect.h)));
+  setView({ zoom, x: (viewport.w - rect.w * zoom) / 2 - rect.x * zoom, y: (viewport.h - rect.h * zoom) / 2 - rect.y * zoom });
 }
 
-export function contentBounds(c: CanvasJson): { x: number; y: number; w: number; h: number } | null {
-  const rects: { x: number; y: number; w: number; h: number }[] = Object.values(c.boards).map((b) => ({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 }));
-  for (const n of Object.values(c.notes)) {
-    if (typeof n.x !== 'number') continue;
-    const w = n.kind === 'title1' ? Math.min(n.maxW ?? 1600, 1600) : n.w ?? 320;
-    const h = n.kind === 'title1' ? 90 : n.maxH ?? (n.w ?? 320) * (4 / 3);
-    rects.push({ x: n.x, y: n.y, w, h });
-  }
+/** Is a board or note on the current page? Items without a page sit on the first page. */
+export function onPage(c: CanvasJson, page: string | undefined, current: string): boolean {
+  const first = c.pages[0]?.id ?? '';
+  const p = page ?? first;
+  return (current || first) === p || (!page && !current);
+}
+
+export function contentBounds(c: CanvasJson, page = get().page): { x: number; y: number; w: number; h: number } | null {
+  const rects: { x: number; y: number; w: number; h: number }[] = [];
+  for (const b of Object.values(c.boards)) if (onPage(c, b.page, page)) rects.push({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 });
+  for (const n of Object.values(c.notes)) if (typeof n.x === 'number' && onPage(c, n.page, page)) rects.push(noteBox(n));
   if (!rects.length) return null;
   const x = Math.min(...rects.map((r) => r.x));
   const y = Math.min(...rects.map((r) => r.y));
@@ -440,8 +473,23 @@ export function fitAll(): void {
 }
 
 export function focusBoard(file: string): void {
-  const b = canvasOf(get()).boards[file];
-  if (b) fitTo({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 }, 80);
+  const c = canvasOf(get());
+  const b = c.boards[file];
+  if (!b) return;
+  if (b.page && b.page !== get().page) set({ page: b.page });
+  fitTo({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 }, 80);
+}
+
+/** Zoom to whatever is selected (Shift+2). */
+export function zoomToSelection(): void {
+  const s = get();
+  const c = canvasOf(s);
+  const sel = s.selection;
+  if (sel?.kind === 'board' || sel?.kind === 'el') focusBoard(sel.file);
+  else if (sel?.kind === 'note' && c.notes[sel.id]) {
+    const b = noteBox(c.notes[sel.id]);
+    fitTo({ x: b.x, y: b.y, w: Math.max(b.w, 200), h: Math.max(b.h, 120) }, 120);
+  } else fitAll();
 }
 
 export function visibleBoards(): string[] {
@@ -454,6 +502,28 @@ export function visibleBoards(): string[] {
   const y1 = y0 + viewport.h / view.zoom;
   return c.order.filter((f) => {
     const b = c.boards[f];
-    return b && b.x < x1 && b.x + b.w > x0 && b.y < y1 && b.y + b.h > y0;
+    return b && onPage(c, b.page, s.page) && b.x < x1 && b.x + b.w > x0 && b.y < y1 && b.y + b.h > y0;
   });
+}
+
+/** Screen point → canvas point. */
+export function toCanvas(sx: number, sy: number): { x: number; y: number } {
+  const { view } = get();
+  return { x: (sx - view.x) / view.zoom, y: (sy - view.y) / view.zoom };
+}
+
+// ----------------------------------------------------------------- clipboard
+
+export type Clip = { kind: 'el'; html: string } | { kind: 'items'; items: NoteEntry[] };
+let clip: Clip | null = null;
+export function setClip(c: Clip): void {
+  clip = c;
+  try {
+    navigator.clipboard?.writeText(c.kind === 'el' ? c.html : JSON.stringify(c.items, null, 2)).catch(() => {});
+  } catch {
+    // clipboard permission is optional: the in-app clipboard still works
+  }
+}
+export function getClip(): Clip | null {
+  return clip;
 }

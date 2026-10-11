@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
-import { fitAll, focusBoard, openProject, toast, useStore, canvasOf } from './store';
+import { canvasOf, fitAll, focusBoard, openProject, toast, useStore } from './store';
 import { installShortcuts } from './shortcuts';
-import { TopBar } from './components/TopBar';
 import { Canvas } from './components/Canvas';
-import { LeftPanel } from './components/LeftPanel';
-import { Inspector } from './components/Inspector';
+import { LeftBar, RightBar } from './components/Bars';
+import { RightPanel } from './components/panel/RightPanel';
 import { PromptBar } from './components/PromptBar';
+import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './components/Overlays';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -34,7 +34,7 @@ function Picker() {
     <div className="picker">
       <div className="card">
         <h1>选择画布</h1>
-        <div className="list" style={{ padding: 0 }}>
+        <div className="list">
           {list === null && <div className="hint">读取中…</div>}
           {list?.length === 0 && <div className="hint">还没有画布，在下面新建一个。</div>}
           {list?.map((p) => (
@@ -72,15 +72,17 @@ export function App() {
   const project = new URLSearchParams(location.search).get('p');
   const loaded = useStore((s) => s.loaded);
   const mode = useStore((s) => s.mode);
+  const tool = useStore((s) => s.tool);
+  const panelOpen = useStore((s) => s.panelOpen);
 
   useEffect(() => {
     api.health().then((health) => useStore.setState({ health }), () => toast('连不上服务端，确认 pnpm dev 在运行。', 'error'));
     if (!project) return;
     openProject(project)
       .then(() => {
-        // wait a frame so the canvas has measured itself
         requestAnimationFrame(() => {
           const c = canvasOf(useStore.getState());
+          if (c.pages.length) useStore.setState({ page: c.launch.page ?? c.pages[0].id });
           if (c.launch.view === 'focused' && c.launch.file) focusBoard(c.launch.file);
           else fitAll();
         });
@@ -91,18 +93,18 @@ export function App() {
 
   if (!project) return <Picker />;
   return (
-    <div className={`app ${mode}`}>
-      <TopBar />
-      <aside className="left" aria-label="画板与改动记录">
-        <LeftPanel />
-      </aside>
-      <main className="main">
+    <div className={`app ${mode}`} data-tool={tool} data-mode={mode}>
+      <main className="stage">
         <Canvas />
+        <LeftBar />
+        <RightBar />
         {loaded && mode === 'edit' && <PromptBar />}
+        <JournalPopover />
       </main>
-      <aside className="right" aria-label="属性">
-        <Inspector />
-      </aside>
+      {panelOpen && mode === 'edit' && <RightPanel />}
+      <ContextMenu />
+      {mode === 'edit' && <NoteFormatBar />}
+      <FocusView />
       <Toasts />
     </div>
   );

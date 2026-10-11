@@ -4,6 +4,19 @@ import type { StatementResult } from './exec';
 
 export type Mode = 'edit' | 'play';
 
+/** What the runtime measured about the selected element. */
+export interface Inspect {
+  tid: number;
+  rect: { x: number; y: number; w: number; h: number };
+  /** rendered instances (more than 1 inside an <sc-for>) */
+  count: number;
+  /** a subset of getComputedStyle */
+  computed: Record<string, string>;
+  /** the first opaque background behind the element, for contrast checks */
+  backdrop: string;
+  parent: { tid: number | null; display: string; flexDirection: string; position: string; hasHeight: boolean };
+}
+
 export type ToRuntime =
   | {
       dc: 'render';
@@ -16,11 +29,23 @@ export type ToRuntime =
       selected: number | null;
     }
   | { dc: 'select'; tid: number | null }
-  | { dc: 'mode'; mode: Mode };
+  | { dc: 'hover'; tid: number | null }
+  | { dc: 'mode'; mode: Mode }
+  | { dc: 'export'; id: string; scale: number }
+  /** start retyping an element's text in place */
+  | { dc: 'edit'; tid: number };
 
 export type FromRuntime =
   | { dc: 'ready' }
-  | { dc: 'select'; tid: number | null; shift: boolean }
+  | { dc: 'select'; tid: number | null; shift: boolean; x: number; y: number }
+  | { dc: 'inspect'; info: Inspect | null }
+  | { dc: 'counts'; counts: Record<number, number> }
+  | { dc: 'contextmenu'; tid: number | null; x: number; y: number }
+  /** a drag inside the artboard: reorder among siblings */
+  | { dc: 'move'; tid: number; target: number; where: 'before' | 'after' }
+  /** a drag out of the flow: the element becomes absolutely positioned */
+  | { dc: 'dragout'; tid: number; set: Record<string, string>; parentTid: number | null; parentSet: Record<string, string> }
+  | { dc: 'exported'; id: string; dataUrl?: string; error?: string }
   | { dc: 'hover'; tid: number | null }
   | { dc: 'text'; tid: number; text: string }
   | { dc: 'wheel'; dx: number; dy: number; ctrl: boolean; x: number; y: number }
