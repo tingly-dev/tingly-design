@@ -1,0 +1,44 @@
+<section id="fourier" data-transition="fade" style="background:radial-gradient(circle at 72% 50%, #172452 0%, #0A0E1C 62%);color:#EAF2FF;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:700;letter-spacing:6px;color:#4FD1FF;width:540px">EP.07 · 傅里叶</p>
+<h2 style="font-family:'ZCOOL QingKe HuangYou', 'Noto Sans SC', sans-serif;font-size:80px;font-weight:400;line-height:1.1;color:#EAF2FF;width:560px">圆圈画万物</h2>
+<p style="font-size:30px;line-height:1.6;color:#B7C6E0;width:520px">让一个圆带着一个小圆转，小圆再带着更小的圆转……最后那个圆上的笔尖，能画出什么？</p>
+<div data-build-in="rise" style="position:absolute;left:128px;top:640px;width:500px;display:flex;flex-direction:column;gap:8px;background:rgba(79,209,255,0.06);padding:28px 32px;border:1px solid rgba(79,209,255,0.35);border-radius:16px">
+<p style="font-size:64px;font-weight:700;line-height:1.2;color:#FFD166">任何图形</p>
+<p style="font-size:24px;line-height:1.5;color:#B7C6E0">圆越多画得越像。这就是傅里叶级数，手机压缩照片和音乐，用的也是这个思想。</p>
+</div>
+<x-embed style="position:absolute;left:680px;top:128px;width:1112px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=1112,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function begin(){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);const s=Math.min(c.width/LW,c.height/LH);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);g.globalAlpha=1;g.shadowBlur=0;g.globalCompositeOperation='source-over';g.lineCap='round';g.lineJoin='round';g.textBaseline='alphabetic';g.setLineDash([])}
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif';
+const CY='#4FD1FF',OR='#FF8A3D',GD='#FFD166',PK='#FF5C8A',TX='#EAF2FF',MU='#9AAACB';
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function ln(a,b,c2,d){g.beginPath();g.moveTo(a,b);g.lineTo(c2,d);g.stroke()}
+function tx(s,x,y,sz,col,w,al,gl){g.font=(w||400)+' '+sz+'px '+F;g.fillStyle=col;g.textAlign=al||'left';if(gl){g.shadowColor=col;g.shadowBlur=gl}g.fillText(s,x,y);g.shadowBlur=0}
+let FA=1;function cap(s,t,a,b,y,sz,col){const k=Math.min(sm(t,a,a+.4),1-sm(t,b-.4,b));if(k<=0)return;g.globalAlpha=FA*k;tx(s,LW/2,y||60,sz||30,col||TX,700,'center',col?14:0);g.globalAlpha=FA}
+let t0s=null;function loop(f){function k(ms){if(t0s===null)t0s=ms;begin();f((ms-t0s)/1000);requestAnimationFrame(k)}requestAnimationFrame(k)}
+const N=256;
+function starPts(){const V=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?118:290;V.push([r*Math.cos(a),r*Math.sin(a)])}
+const L=[];let tot=0;for(let i=0;i<10;i++){const A=V[i],B=V[(i+1)%10],l=Math.hypot(B[0]-A[0],B[1]-A[1]);L.push(l);tot+=l}
+const P=[];for(let k=0;k<N;k++){let d=k/N*tot,i=0;while(i<9&&d>L[i]){d-=L[i];i++}const A=V[i],B=V[(i+1)%10],f=d/L[i];P.push([A[0]+(B[0]-A[0])*f,A[1]+(B[1]-A[1])*f])}return P}
+function heartPts(){const P=[];for(let k=0;k<N;k++){const s=k/N*2*Math.PI;P.push([256*Math.pow(Math.sin(s),3),-16*(13*Math.cos(s)-5*Math.cos(2*s)-2*Math.cos(3*s)-Math.cos(4*s))])}return P}
+function dft(P){const C=[];for(let m=-N/2;m<N/2;m++){let re=0,im=0;for(let k=0;k<N;k++){const a=-2*Math.PI*m*k/N,ca=Math.cos(a),sa=Math.sin(a);re+=P[k][0]*ca-P[k][1]*sa;im+=P[k][0]*sa+P[k][1]*ca}re/=N;im/=N;C.push({f:m,a:Math.hypot(re,im),p:Math.atan2(im,re)})}C.sort(function(x,y){return y.a-x.a});return C}
+const SP=starPts(),HP=heartPts(),SC=dft(SP),HC=dft(HP);
+const RD=[[SP,SC,4,'只用 4 个转动的圆：歪歪扭扭'],[SP,SC,12,'12 个圆：有点星星的样子了'],[SP,SC,90,'90 个圆：几乎一模一样！'],[HP,HC,8,'爱心更简单：8 个圆就分毫不差']];
+const TR=8.2,cx=556;
+function ev(C,K,tau,ox,oy){let x=ox,y=oy;for(let j=0;j<K;j++){const q=C[j],a=2*Math.PI*q.f*tau+q.p;x+=q.a*Math.cos(a);y+=q.a*Math.sin(a)}return [x,y]}
+loop(function(t0){const ri=Math.floor(t0/TR)%RD.length,t=t0%TR,R=RD[ri],P=R[0],C=R[1],K=R[2],oy=R[0]===HP?400:450;
+FA=Math.min(sm(t,0,.4),1-sm(t,TR-.5,TR));g.globalAlpha=FA;
+const tau=cl((t-.6)/6.2,0,1);
+g.strokeStyle='rgba(154,170,203,0.25)';g.lineWidth=2;g.setLineDash([5,9]);g.beginPath();for(let k=0;k<=N;k++){const p=P[k%N];if(k)g.lineTo(cx+p[0],oy+p[1]);else g.moveTo(cx+p[0],oy+p[1])}g.stroke();g.setLineDash([]);
+const S=Math.floor(tau*420);if(S>1){g.strokeStyle=GD;g.lineWidth=4;g.shadowColor=GD;g.shadowBlur=18;g.beginPath();for(let s=0;s<=S;s++){const p=ev(C,K,s/420,cx,oy);if(s)g.lineTo(p[0],p[1]);else g.moveTo(p[0],p[1])}g.stroke();g.shadowBlur=0}
+let x=cx,y=oy;for(let j=0;j<K;j++){const q=C[j],a=2*Math.PI*q.f*tau+q.p,nx=x+q.a*Math.cos(a),ny=y+q.a*Math.sin(a);
+if(q.a>.6){g.strokeStyle='rgba(79,209,255,'+(j<6?.45:.22)+')';g.lineWidth=1.5;g.beginPath();g.arc(x,y,q.a,0,7);g.stroke();g.strokeStyle='rgba(234,242,255,0.7)';g.lineWidth=j<6?2.5:1.5;ln(x,y,nx,ny)}x=nx;y=ny}
+g.fillStyle='#FFFFFF';g.shadowColor=GD;g.shadowBlur=24;g.beginPath();g.arc(x,y,7,0,7);g.fill();g.shadowBlur=0;
+tx(K+' 个圆',1090,140,56,GD,700,'right',18);
+cap(R[3],t,.2,TR-.4,60,30,ri===2||ri===3?GD:null);
+});
+</script></x-embed>
+<p style="position:absolute;left:128px;bottom:64px;width:520px;font-size:24px;color:#7F8FB0">数学奇遇记 · EP.07 / 07</p>
+<aside>每个圆都匀速转，但大小和速度不同：大圆转得慢，小圆转得快。把它们首尾相连，最后一个笔尖画出的曲线由所有圆一起决定。动画循环四轮：同一颗星星，用 4 个圆、12 个圆、90 个圆来画，越来越像；最后的爱心只要 8 个圆就画得完全一样。傅里叶在 1800 年代证明了：几乎任何形状、任何波形，都能拆成一堆转动的圆（也就是正弦波）的叠加。照片压缩和音乐压缩用的也是类似思路：只留下最重要的那些“圆”。</aside>
+</section>
