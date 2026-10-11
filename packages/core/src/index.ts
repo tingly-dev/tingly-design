@@ -7,3 +7,4 @@ export * from './exec';
 export * from './canvas';
 export * from './prompt';
 export * from './protocol';
+export * from './rebase';

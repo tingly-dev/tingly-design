@@ -250,7 +250,17 @@ export class DesignCopy {
         return isComment(k);
       });
     if (!sameShape) {
-      out.push({ ...inner, text: kids.map((k) => this.render(k, parentSrc?.tag ?? parent.localName)).join('') });
+      // the indentation this parent already uses between its children, if any
+      const ws = orig.find((o): o is Extract<DcNode, { kind: 'text' }> => o.kind === 'text' && /^\s*\n\s*$/.test(o.text))?.text.replace(/^[^\n]*\n/, '\n');
+      const tag = parentSrc?.tag ?? parent.localName;
+      let text = '';
+      kids.forEach((k, i) => {
+        const prev = kids[i - 1];
+        const fresh = (n: Node | undefined) => !!n && isElement(n) && !this.src.has(n);
+        if (ws && prev && isElement(prev) && isElement(k) && (fresh(prev) || fresh(k))) text += ws;
+        text += this.render(k, tag);
+      });
+      out.push({ ...inner, text });
       return;
     }
     const raw = parentSrc ? RAW_TEXT_ELEMENTS.has(parentSrc.tag) : false;

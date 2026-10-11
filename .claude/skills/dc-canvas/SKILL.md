@@ -1,0 +1,112 @@
+---
+name: dc-canvas
+description: Read before creating or editing a design canvas under projects/ (canvas.json and *.dc.html artboards) — the file format, the template syntax, and the rules that keep files editable on the canvas.
+---
+
+# DC canvas files
+
+A canvas is a folder under `projects/<name>/`:
+
+- `canvas.json` — where every artboard sits, plus notes and titles.
+- `<Name>.dc.html` — one file per artboard: a self-contained HTML page with a template and an optional logic class.
+
+The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files. Anything you write shows up on every open canvas within a second, and is recorded in the canvas journal as an outside edit. People edit the same files from the canvas, so **read a file right before you change it** and change only what was asked.
+
+## canvas.json
+
+```json
+{
+  "v": 3,
+  "title": "Settings redesign",
+  "boards": { "Main.dc.html": { "x": 0, "y": 0, "w": 1200, "h": 760, "title": "Current" } },
+  "order": ["Main.dc.html"],
+  "notes": {
+    "t1": { "kind": "title1", "x": 0, "y": -260, "text": "What we ship first", "maxW": 2480 },
+    "s1": { "x": 1280, "y": 0, "w": 520, "fill": "green", "size": 20, "text": "A sticky note" }
+  },
+  "pages": [],
+  "launch": { "view": "canvas" },
+  "designSystems": []
+}
+```
+
+- `boards`: one entry per artboard file, keyed by its path in the folder. `x`, `y`, `w`, `h` in CSS px. Leave 80 px between artboards in a row and 120 px between rows. Optional `title`, `is_interactive: true` (the artboard has working controls), `radius`.
+- `order`: the same paths, back to front. The first is `Main.dc.html`.
+- `notes`: `kind: "title1"` is a 72 px heading over several artboards (keep it ≥ 223 px above their row); no `kind` is a sticky note with `w` and a `fill` of gray, red, orange, green, teal, blue, purple or pink.
+- Keep every key you are not changing. To add an artboard, write its file and add a `boards` entry and an `order` slot.
+
+## An artboard file
+
+```html
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Pricing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:880px;height:560px;box-sizing:border-box;padding:48px;display:flex;flex-direction:column;gap:24px">
+  <h2 style="margin:0;font-size:28px;color:{{accent}}">Choose a plan</h2>
+  <sc-for list="{{plans}}" as="plan" hint-placeholder-count="3">
+    <div style="padding:16px;border:1px solid #e3dfd4">{{plan.name}} — {{plan.price}}</div>
+  </sc-for>
+  <sc-if value="{{yearly}}" hint-placeholder-val="{{ false }}">
+    <p style="margin:0">Billed yearly</p>
+  </sc-if>
+  <button onClick="{{toggle}}" style="height:44px;padding:0 16px">Switch billing</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2f6fed"},"$preview":{"width":880,"height":560}}'>
+class Component extends DCLogic {
+  state = { yearly: false };
+  renderVals() {
+    const yearly = this.state.yearly;
+    return {
+      accent: this.props.accent ?? '#2f6fed',
+      yearly,
+      toggle: () => this.setState({ yearly: !yearly }),
+      plans: [['Solo', 0], ['Pro', 20]].map(([name, m]) => ({ name, price: m ? '$' + (yearly ? m * 0.8 : m) : 'Free' })),
+    };
+  }
+}
+</script>
+</body>
+</html>
+```
+
+### Template rules (each one fails silently if broken)
+
+- Keep the `<script src="./support.js"></script>` line, the `<x-dc>` block and the `<script type="text/x-dc" data-dc-script>` block.
+- `{{path}}` is a dotted lookup into what `renderVals()` returns (`{{plan.name}}`, `{{$index}}`, literals like `{{ true }}`). Never an expression: compute it in `renderVals()` and return it by name.
+- An attribute that is exactly one hole gets the raw value (a function for `onClick`, an array for `list`); otherwise holes are interpolated into a string.
+- Events are camelCase attributes bound to functions: `onClick="{{toggle}}"`. Per-item handlers: put a function on each item in `renderVals()` and bind `onClick="{{item.pick}}"` inside the `<sc-for>`.
+- `<sc-for list as>` repeats, `<sc-if value>` branches, `<dc-import name="Card" item="{{it}}" hint-size="320px,120px"></dc-import>` mounts the sibling file `Card.dc.html`. Always set the `hint-*` attributes.
+- The logic class is classic JS, `class Component extends DCLogic`, no imports. You get `this.props`, `this.state`, `this.setState` and React class lifecycle methods.
+- All UI is markup inside `<x-dc>`; never build DOM from script.
+- Close every non-void element and quote every attribute.
+
+### Rules that keep a file editable on the canvas
+
+The canvas edits these files in place: a person selects an element and changes its inline style in a properties panel, double-clicks text to retype it, and a fast in-page model rewrites elements with jQuery. All of that works on the markup as written, so:
+
+- Put visual properties in inline `style="…"`. `<helmet><style>` is only for page basics (`body`, `a`, fonts).
+- Write copy as literal text in the markup, not through `renderVals()`, unless it really is data. Literal text can be retyped in place; a hole cannot.
+- Lay out siblings with flex or grid plus `gap`. Write grids as `grid-template-columns: repeat(N, minmax(0, 1fr))`.
+- `data-props` declares Tweaks — a few real levers (an accent colour, a density enum, a dark toggle), never label copy. It is a single-quoted JSON attribute: escape `&` as `&amp;` and `'` as `&#39;`.
+- Diagrams (boxes and arrows): one host `<div style="position:relative;width:…;height:…">`, every box an absolutely positioned `<div>` with its label as text, every straight arrow segment its own small `<svg>`. Never one big `<svg>`: the canvas would select it as a single block.
+- Sizes: phone screen 390×844; desktop screen or page width 1280–1440; the root element is fixed at the artboard's `w`×`h`.
+
+## Handle ids
+
+The editor shows elements by handle ids such as `#dc12`. They are not in the file: `dc12` is the 13th element (counting from 0) in document order inside `<x-dc>`, every tag counted, including `<helmet>` and the `<style>` inside it. When a request names a handle, find the element by counting, or better, by the label and source snippet that come with the request.
+
+## Content
+
+No lorem ipsum and no invented numbers: unknown facts become placeholders like `[价格]`. Real `<button>`, `<a href>`, `<input>` + `<label>`; `aria-label` on icon-only buttons; text contrast at least 4.5:1.

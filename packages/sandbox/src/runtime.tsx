@@ -149,11 +149,15 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
 
 // --------------------------------------------------------------- renderer
 
-function renderNodes(nodes: DcNode[], scope: Scope, ctx: Ctx): React.ReactNode[] {
-  return nodes.map((n, i) => renderNode(n, scope, ctx, i));
+/** Parents where whitespace-only text is not content (React warns about it there). */
+const NO_WS = new Set(['helmet', 'head', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup', 'select', 'svg', 'defs', 'g', 'marker']);
+
+function renderNodes(nodes: DcNode[], scope: Scope, ctx: Ctx, parent?: string): React.ReactNode[] {
+  const strip = parent !== undefined && NO_WS.has(parent);
+  return nodes.map((n, i) => (strip && n.kind === 'text' && !n.text.trim() ? null : renderNode(n, scope, ctx, i, parent)));
 }
 
-function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key): React.ReactNode {
+function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: string): React.ReactNode {
   if (n.kind === 'comment') return null;
   if (n.kind === 'text') {
     const v = interp(n.text, scope);
@@ -170,7 +174,7 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key): React.Re
       return (
         <React.Fragment key={key}>
           {arr.map((item, i) => (
-            <React.Fragment key={i}>{renderNodes(el.children, { ...scope, [as]: item, $index: i }, ctx)}</React.Fragment>
+            <React.Fragment key={i}>{renderNodes(el.children, { ...scope, [as]: item, $index: i }, ctx, parent)}</React.Fragment>
           ))}
         </React.Fragment>
       );
@@ -178,10 +182,10 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key): React.Re
     case 'sc-if': {
       const v = el.attrs.find((a) => a.name === 'value');
       const show = v ? interp(v.value, scope) : false;
-      return show ? <React.Fragment key={key}>{renderNodes(el.children, scope, ctx)}</React.Fragment> : null;
+      return show ? <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment> : null;
     }
     case 'helmet':
-      return createPortal(<>{renderNodes(el.children, scope, { ...ctx, tagged: false })}</>, document.head, String(key));
+      return createPortal(<>{renderNodes(el.children, scope, { ...ctx, tagged: false }, 'helmet')}</>, document.head, String(key));
     case 'script':
       return null;
     case 'dc-import': {
@@ -211,7 +215,7 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key): React.Re
     }
   }
   if (el.tag.startsWith('sc-') || el.tag === 'x-import') {
-    return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx)}</React.Fragment>;
+    return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment>;
   }
   const props = toProps(el, scope, ctx, key);
   if (VOID_ELEMENTS.has(el.tag) && el.ns === 'html') return React.createElement(el.tag, props);
@@ -220,7 +224,7 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key): React.Re
     if (!('value' in props)) props.defaultValue = text;
     return React.createElement('textarea', props);
   }
-  return React.createElement(el.tag, props, ...renderNodes(el.children, scope, ctx));
+  return React.createElement(el.tag, props, ...renderNodes(el.children, scope, ctx, el.tag));
 }
 
 // -------------------------------------------------------------- components
