@@ -1,0 +1,60 @@
+<section id="birthday" data-transition="fade" style="background:radial-gradient(circle at 72% 50%, #172452 0%, #0A0E1C 62%);color:#EAF2FF;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:700;letter-spacing:6px;color:#4FD1FF;width:540px">EP.04 · 概率</p>
+<h2 style="font-family:'ZCOOL QingKe HuangYou', 'Noto Sans SC', sans-serif;font-size:80px;font-weight:400;line-height:1.1;color:#EAF2FF;width:560px">23 个人的生日</h2>
+<p style="font-size:30px;line-height:1.6;color:#B7C6E0;width:520px">一个房间里要有多少人，才有一半以上的可能出现两个人同一天生日？很多人的第一反应是 180 人左右。</p>
+<div data-build-in="rise" style="position:absolute;left:128px;top:640px;width:500px;display:flex;flex-direction:column;gap:8px;background:rgba(79,209,255,0.06);padding:28px 32px;border:1px solid rgba(79,209,255,0.35);border-radius:16px">
+<p style="font-size:64px;font-weight:700;line-height:1.2;color:#FFD166">只要 23 人</p>
+<p style="font-size:24px;line-height:1.5;color:#B7C6E0">概率就超过 50%。到 70 人时，已经超过 99.9%。</p>
+</div>
+<x-embed style="position:absolute;left:680px;top:128px;width:1112px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=1112,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function begin(){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);const s=Math.min(c.width/LW,c.height/LH);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);g.globalAlpha=1;g.shadowBlur=0;g.globalCompositeOperation='source-over';g.lineCap='round';g.lineJoin='round';g.textBaseline='alphabetic';g.setLineDash([])}
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif';
+const CY='#4FD1FF',OR='#FF8A3D',GD='#FFD166',PK='#FF5C8A',TX='#EAF2FF',MU='#9AAACB';
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function ln(a,b,c2,d){g.beginPath();g.moveTo(a,b);g.lineTo(c2,d);g.stroke()}
+function tx(s,x,y,sz,col,w,al,gl){g.font=(w||400)+' '+sz+'px '+F;g.fillStyle=col;g.textAlign=al||'left';if(gl){g.shadowColor=col;g.shadowBlur=gl}g.fillText(s,x,y);g.shadowBlur=0}
+let t0s=null;function loop(f){function k(ms){if(t0s===null)t0s=ms;begin();f((ms-t0s)/1000);requestAnimationFrame(k)}requestAnimationFrame(k)}
+const cx=330,cy=450,R=258,ML=[31,28,31,30,31,30,31,31,30,31,30,31];
+const ang=d=>-Math.PI/2+(d+.5)/365*2*Math.PI;
+function dname(d){let m=0;while(d>=ML[m]){d-=ML[m];m++}return (m+1)+' 月 '+(d+1)+' 日'}
+const P=k=>{let q=1;for(let i=0;i<k;i++)q*=(365-i)/365;return 1-q};
+const x0=720,x1=1070,yT=210,yB=560,XK=k=>x0+(k-1)/69*(x1-x0),YP=p=>yB-p*(yB-yT);
+const st={days:new Array(365).fill(0),list:[],k:0,phase:0,timer:0,hit:-1,hitT:0},hist=[];let last=null;
+function reset(){st.days.fill(0);st.list=[];st.k=0;st.phase=0;st.timer=0;st.hit=-1}
+loop(function(t){const dt=last===null?0:Math.min(.1,t-last);last=t;st.timer+=dt;
+if(st.phase===0){const iv=st.k<6?.5:.3;if(st.timer>iv){st.timer=0;const d=Math.floor(Math.random()*365);st.k++;const lay=st.days[d];st.days[d]++;st.list.push({d:d,b:t,lay:lay});if(lay>0||st.k>=70){st.hit=lay>0?d:-1;st.phase=1;st.hitT=t;hist.push(st.k)}}}
+else if(st.timer>3.4)reset();
+const ga=st.phase===1?1-sm(t-st.hitT,3,3.4):sm(st.timer+(st.k?1:0),0,.3);
+g.globalAlpha=1;
+tx('每进来一个人，就把他的生日点亮在一年 365 天的圆环上',556,60,28,TX,700,'center');
+g.strokeStyle='rgba(154,170,203,0.35)';g.lineWidth=2;
+for(let d=0;d<365;d++){const a=ang(d);ln(cx+(R-6)*Math.cos(a),cy+(R-6)*Math.sin(a),cx+(R+6)*Math.cos(a),cy+(R+6)*Math.sin(a))}
+let acc=0;for(let m=0;m<12;m++){const a=-Math.PI/2+acc/365*2*Math.PI;g.strokeStyle='rgba(234,242,255,0.6)';ln(cx+(R-14)*Math.cos(a),cy+(R-14)*Math.sin(a),cx+(R+14)*Math.cos(a),cy+(R+14)*Math.sin(a));
+const am=-Math.PI/2+(acc+ML[m]/2)/365*2*Math.PI;tx((m+1)+'月',cx+(R+40)*Math.cos(am),cy+(R+40)*Math.sin(am)+9,24,MU,400,'center');acc+=ML[m]}
+g.globalAlpha=Math.max(0,ga);
+for(const it of st.list){const a=ang(it.d),f=ez(cl((t-it.b)/.35,0,1)),rr=(R-24-it.lay*20)*f,hit=it.d===st.hit;
+const x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);if(f<1){g.strokeStyle='rgba(79,209,255,0.4)';g.lineWidth=2;ln(cx,cy,x,y)}
+g.fillStyle=hit?PK:CY;g.shadowColor=g.fillStyle;g.shadowBlur=hit?26:14;g.beginPath();g.arc(x,y,hit?11:8,0,7);g.fill();g.shadowBlur=0}
+if(st.phase===1&&st.hit>=0){const a=ang(st.hit),e=((t-st.hitT)%1),px=cx+(R-34)*Math.cos(a),py=cy+(R-34)*Math.sin(a);
+g.strokeStyle=PK;g.lineWidth=3;const ga2=g.globalAlpha;g.globalAlpha=ga2*(1-e);g.beginPath();g.arc(px,py,14+e*60,0,7);g.stroke();g.globalAlpha=ga2;
+tx('撞了！',cx,cy-6,60,PK,700,'center',24);tx(dname(st.hit),cx,cy+46,30,TX,700,'center')}
+else{tx(String(st.k),cx,cy+24,104,TX,700,'center',18);tx('个人',cx,cy+70,28,MU,400,'center')}
+g.globalAlpha=1;
+tx('至少两人同一天生日的概率',x0,170,26,MU,700);
+g.strokeStyle='rgba(154,170,203,0.5)';g.lineWidth=2;ln(x0,yT,x0,yB);ln(x0,yB,x1,yB);
+for(const v of[0,.5,1]){tx(Math.round(v*100)+'%',x0-12,YP(v)+8,24,MU,400,'right');if(v>0){g.strokeStyle='rgba(154,170,203,0.15)';ln(x0,YP(v),x1,YP(v))}}
+for(const k of[1,23,50,70])tx(String(k),XK(k),yB+34,24,k===23?GD:MU,k===23?700:400,'center');
+g.strokeStyle=CY;g.lineWidth=4;g.shadowColor=CY;g.shadowBlur=14;g.beginPath();for(let k=1;k<=70;k++){const x=XK(k),y=YP(P(k));if(k===1)g.moveTo(x,y);else g.lineTo(x,y)}g.stroke();g.shadowBlur=0;
+const p23=P(23);g.strokeStyle=GD;g.lineWidth=2;g.setLineDash([6,7]);ln(XK(23),yB,XK(23),YP(p23));ln(x0,YP(p23),XK(23),YP(p23));g.setLineDash([]);
+tx('23 人 → 50.7%',XK(23)+14,YP(p23)+38,26,GD,700,'left',10);
+if(st.k>0){const kk=Math.min(st.k,70),x=XK(kk),y=YP(P(kk)),hc=st.phase===1;g.fillStyle=hc?PK:TX;g.shadowColor=g.fillStyle;g.shadowBlur=18;g.beginPath();g.arc(x,y,9,0,7);g.fill();g.shadowBlur=0;
+tx((P(kk)*100).toFixed(1)+'%',x,y-20,26,hc?PK:TX,700,'center')}
+if(st.phase===1)tx('这一轮，第 '+st.k+' 个人就撞上了',(x0+x1)/2,650,30,PK,700,'center',12);
+if(hist.length)tx('最近几轮撞上时的人数：'+hist.slice(-6).join('、'),556,800,26,MU,400,'center');
+});
+</script></x-embed>
+<p style="position:absolute;left:128px;bottom:64px;width:520px;font-size:24px;color:#7F8FB0">数学奇遇记 · EP.04 / 07</p>
+<aside>动画是真随机模拟，每一轮都不一样：一个个人进来，生日落到 365 天的圆环上，一旦有两个人落在同一天就“撞了”。看底部记录，撞上时的人数大多在 20 到 30 之间。为什么这么少？因为要比较的不是“和我同一天”，而是“任意两个人”：23 个人之间有 253 对组合，每一对都有机会撞上。可以现场请同学报生日试一试。</aside>
+</section>
