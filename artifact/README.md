@@ -29,6 +29,21 @@ type `Design`, type release `1791586906-56be`, canvas versions
 | `screenshots/` | Screenshot of the canvas in Claude Code (from the user). |
 | `emulator/serve.mjs` | A local stand-in for the claude.ai host so the **original** editor runs editable on this machine (see below). Ours, written for study. |
 
+## claude-slides/
+
+Collected the same way for the **Slides** type, to add decks to the editor.
+Source: the user's own deck `https://claude.ai/artifact/LJTLFf6JFqr4nf3Axzp5C2`
+("数学奇遇记"), type `Slides`, type release `1791584864-97b0`, deck version
+`1791727153-61e8`, fetched 2026-10-11.
+
+| Path | What it is |
+|---|---|
+| `type/SKILL.md` | The type's instructions for the model that fills a deck: `project/deck.json`, one `project/slides/<id>.html` per slide, the slide format, design rules. |
+| `type/reference/*.md` | `format.md` (the whole HTML/CSS subset, generated from the type's validator), `deck-files.md`, `layout.md`, `styles.md`, `fonts.md`, `images.md`, `diagrams.md`, `diagram-recipes.md`, `craft.md`, `questions.md`, `photo-library.md`, `view-state.md` (what the editor tells the model about the viewer's slide and selection). |
+| `type/index.html`, `app.js`, `app.css` | The Slides editor as published (minified, ~3.5 MB): thumbnail rail, Canvas view by sections, speaker notes, Present with builds and transitions, PPTX/PDF export, Send to Google Slides. |
+| `type/thumbnail/thumbnail.json` | How the host picks the deck's thumbnail (the `cover` slide). |
+| `sample-deck/` | The deck itself: `deck.json` and 8 slides, each with a live `<x-embed>` canvas animation — good real-world samples of the format. |
+
 ## Running the original editor locally
 
 ```bash

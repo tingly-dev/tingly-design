@@ -1,0 +1,46 @@
+<section id="chaos" data-transition="fade" style="background:radial-gradient(circle at 72% 50%, #172452 0%, #0A0E1C 62%);color:#EAF2FF;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:700;letter-spacing:6px;color:#4FD1FF;width:540px">EP.06 · 分形</p>
+<h2 style="font-family:'ZCOOL QingKe HuangYou', 'Noto Sans SC', sans-serif;font-size:80px;font-weight:400;line-height:1.1;color:#EAF2FF;width:560px">混沌游戏</h2>
+<p style="font-size:30px;line-height:1.6;color:#B7C6E0;width:520px">画三个点。随便选个起点，每次随机挑一个顶点，朝它走一半，点一个点。重复几万次，会得到一团乱麻吗？</p>
+<div data-build-in="rise" style="position:absolute;left:128px;top:640px;width:500px;display:flex;flex-direction:column;gap:8px;background:rgba(79,209,255,0.06);padding:28px 32px;border:1px solid rgba(79,209,255,0.35);border-radius:16px">
+<p style="font-size:64px;font-weight:700;line-height:1.2;color:#FFD166">完美的分形</p>
+<p style="font-size:24px;line-height:1.5;color:#B7C6E0">谢尔宾斯基三角形。纯粹的随机，画出了精确的秩序。</p>
+</div>
+<x-embed style="position:absolute;left:680px;top:128px;width:1112px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=1112,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function begin(){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);const s=Math.min(c.width/LW,c.height/LH);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);g.globalAlpha=1;g.shadowBlur=0;g.globalCompositeOperation='source-over';g.lineCap='round';g.lineJoin='round';g.textBaseline='alphabetic';g.setLineDash([])}
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif';
+const CY='#4FD1FF',OR='#FF8A3D',GD='#FFD166',PK='#FF5C8A',TX='#EAF2FF',MU='#9AAACB';
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function ln(a,b,c2,d){g.beginPath();g.moveTo(a,b);g.lineTo(c2,d);g.stroke()}
+function tx(s,x,y,sz,col,w,al,gl){g.font=(w||400)+' '+sz+'px '+F;g.fillStyle=col;g.textAlign=al||'left';if(gl){g.shadowColor=col;g.shadowBlur=gl}g.fillText(s,x,y);g.shadowBlur=0}
+let FA=1;function cap(s,t,a,b,y,sz,col){const k=Math.min(sm(t,a,a+.4),1-sm(t,b-.4,b));if(k<=0)return;g.globalAlpha=FA*k;tx(s,LW/2,y||60,sz||30,col||TX,700,'center',col?14:0);g.globalAlpha=FA}
+let t0s=null;function loop(f){function k(ms){if(t0s===null)t0s=ms;begin();f((ms-t0s)/1000);requestAnimationFrame(k)}requestAnimationFrame(k)}
+const o=document.createElement('canvas');o.width=LW*2;o.height=LH*2;const og=o.getContext('2d');og.setTransform(2,0,0,2,0,0);
+const COL=[CY,PK,GD,OR,'#A98BFF'],NM='ABCDE';
+function verts(k,x,y,r){const V=[];for(let i=0;i<k;i++){const a=-Math.PI/2+i*2*Math.PI/k;V.push([x+r*Math.cos(a),y+r*Math.sin(a)])}return V}
+const SH=[{V:verts(3,556,480,350),r:.5,a:'随机挑一个顶点，朝它走一半，点一个点',b:'谢尔宾斯基三角形：随机，却画出了完美的分形！'},{V:verts(5,556,450,320),r:.618,a:'换成五个顶点，每次朝它走 61.8%',b:'又是一个分形：五边形雪花！'}];
+const T=16;let cur=-1,sh,P,steps=0,lastJ=null;
+loop(function(t0){const rd=Math.floor(t0/T),t=t0%T;
+if(rd!==cur){cur=rd;sh=SH[rd%2];og.clearRect(0,0,LW,LH);P=[516+Math.random()*80,380+Math.random()*80];steps=0;lastJ=null}
+const target=t<6.6?Math.floor(t/.5):13+Math.floor(90000*Math.pow(cl((t-6.6)/6.4,0,1),2.2));
+while(steps<target){const v=Math.floor(Math.random()*sh.V.length),W=sh.V[v],prev=P;P=[P[0]+(W[0]-P[0])*sh.r,P[1]+(W[1]-P[1])*sh.r];steps++;og.fillStyle=COL[v];
+if(steps<=13){og.globalAlpha=1;og.beginPath();og.arc(P[0],P[1],3.5,0,7);og.fill();lastJ={a:prev,v:v,b:P,t:t}}else{og.globalAlpha=.6;og.fillRect(P[0]-.55,P[1]-.55,1.1,1.1)}}
+og.globalAlpha=1;
+FA=Math.min(sm(t,0,.4),1-sm(t,T-.5,T));g.globalAlpha=FA;
+g.shadowColor='rgba(79,209,255,0.5)';g.shadowBlur=steps>500?8:0;g.drawImage(o,0,0,LW,LH);g.shadowBlur=0;
+sh.V.forEach(function(W,i){const pulse=lastJ&&lastJ.v===i&&t<6.8?1+.5*Math.max(0,1-(t-lastJ.t)/.4):1;g.fillStyle=COL[i];g.shadowColor=COL[i];g.shadowBlur=24;g.beginPath();g.arc(W[0],W[1],10*pulse,0,7);g.fill();g.shadowBlur=0;
+const dx=W[0]-556,dy=W[1]-(sh.V.length===3?480:450),dl=Math.hypot(dx,dy);tx(NM[i],W[0]+dx/dl*36,W[1]+dy/dl*36+10,30,COL[i],700,'center')});
+if(lastJ&&t<6.8){const k=cl((t-lastJ.t)/.35,0,1),A=lastJ.a,B=lastJ.b,W=sh.V[lastJ.v];g.strokeStyle='rgba(234,242,255,0.35)';g.lineWidth=2;g.setLineDash([6,8]);ln(A[0],A[1],W[0],W[1]);g.setLineDash([]);
+const x=A[0]+(B[0]-A[0])*k,y=A[1]+(B[1]-A[1])*k;g.strokeStyle=GD;g.lineWidth=3;ln(A[0],A[1],x,y);g.fillStyle=TX;g.shadowColor=GD;g.shadowBlur=20;g.beginPath();g.arc(x,y,7,0,7);g.fill();g.shadowBlur=0;
+tx('掷骰子 → '+NM[lastJ.v],1090,800,28,COL[lastJ.v],700,'right')}
+else tx('已经点了 '+steps.toLocaleString('en-US')+' 个点',1090,800,26,MU,400,'right');
+cap(sh.a,t,.2,6.6);
+cap('然后……重复几万次',t,6.6,10.2);
+cap(sh.b,t,10.4,15.7,60,30,GD);
+});
+</script></x-embed>
+<p style="position:absolute;left:128px;bottom:64px;width:520px;font-size:24px;color:#7F8FB0">数学奇遇记 · EP.06 / 07</p>
+<aside>前十几步故意放慢：每次随机选一个顶点（颜色表示选中的是谁），从当前位置朝它走一半，留下一个点。看起来完全没有规律。之后加速到每秒几万个点，图案自己浮现出来：三角形里套三角形，无限重复，这就是谢尔宾斯基三角形。第二轮换成五边形、每次走 61.8%，又长出另一个分形。重点：随机的“每一步”，加上固定的“规则”，整体会出现精确的结构。</aside>
+</section>
