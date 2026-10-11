@@ -68,6 +68,17 @@ export interface MarkupOptions {
   truncate?: number;
 }
 
+/**
+ * A <script> for the copy that never runs (a slide's <x-embed> holds scripts,
+ * and the copy lives in a real document): scripts made by HTML parsing are
+ * marked "already started", so inserting them later executes nothing.
+ */
+function inertScript(d: Document): Element {
+  const holder = d.createElement('div');
+  holder.innerHTML = '<script></script>';
+  return holder.firstChild as Element;
+}
+
 export class DesignCopy {
   readonly doc: DcDoc;
   readonly document: Document;
@@ -109,7 +120,9 @@ export class DesignCopy {
         ? d.createElementNS(SVG_NS, n.tag)
         : n.ns === 'math'
           ? d.createElementNS(MATH_NS, n.tag)
-          : d.createElement(n.tag);
+          : n.tag === 'script'
+            ? inertScript(d)
+            : d.createElement(n.tag);
     for (const a of n.attrs) {
       try {
         if (a.name.startsWith('xlink:')) el.setAttributeNS('http://www.w3.org/1999/xlink', a.name, a.value);

@@ -29,9 +29,9 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => fetch('/api/health').then((r) => json<Health>(r)),
-  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string }[]>(r)),
-  createProject: (name: string, title: string) =>
-    fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title }) }).then((r) =>
+  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' }[]>(r)),
+  createProject: (name: string, title: string, kind: 'design' | 'slides' = 'design') =>
+    fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),
     ),
   files: (p: string) => fetch(`/api/projects/${enc(p)}/files`).then((r) => json<{ files: Record<string, FileState> }>(r)),
@@ -58,11 +58,19 @@ export const api = {
     return json<{ ok: true }>(res);
   },
 
-  fastEdit: (p: string, messages: { role: 'user' | 'assistant'; content: string }[], signal: AbortSignal) =>
+  upload: (p: string, file: File) =>
+    fetch(`/api/projects/${enc(p)}/assets?name=${enc(file.name)}`, { method: 'POST', body: file }).then((r) =>
+      json<{ path: string; size: number; type: string }>(r),
+    ),
+
+  /** Where a project's assets are served (for slide frames). */
+  rawBase: (p: string) => `${location.origin}/api/projects/${enc(p)}/raw/`,
+
+  fastEdit: (p: string, messages: { role: 'user' | 'assistant'; content: string }[], signal: AbortSignal, kind?: string) =>
     fetch(`/api/projects/${enc(p)}/fast-edit`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, kind }),
       signal,
     }),
 

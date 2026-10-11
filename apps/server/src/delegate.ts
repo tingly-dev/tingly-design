@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import type { ProjectKind } from '@dc/core';
 import { projectDir, REPO_ROOT } from './store';
 import { publish } from './hub';
 
@@ -26,6 +27,13 @@ Edit only files inside the canvas folder you are given, with your Edit and Write
 Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements inside <x-dc>.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
+const SLIDES_SYSTEM = `You are editing a slide deck stored as files. A deck folder holds deck.json (title, slide order, sections, typefaces) and one slides/<id>.html per slide: exactly one <section id="<id>"> on a fixed 1920x1080 canvas, every style inline, in a closed subset of HTML and CSS.
+Before you change any file, read .claude/skills/slides/SKILL.md in the repository root: it is the full format reference.
+Edit only files inside the deck folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
+To add a slide, write its file and add its id to "order" in deck.json; to remove one, take it out of "order" and tell the person to delete the file in the editor (you cannot delete files).
+Ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements of the slide file; they are never in the files.
+When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
+
 /** Which projects have a delegate running, so file changes can be credited to it. */
 export const activeDelegates = new Map<string, number>();
 
@@ -36,12 +44,13 @@ export interface DelegateRequest {
   journal?: string[];
 }
 
-export function startDelegate(project: string, req: DelegateRequest): string {
+export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design'): string {
   const id = randomUUID().slice(0, 8);
   const dir = relative(REPO_ROOT, projectDir(project));
+  const slides = kind === 'slides';
   const lines = [
-    `Canvas folder: ${dir}/`,
-    req.file ? `The person is looking at the artboard ${dir}/${req.file}.` : '',
+    `${slides ? 'Deck' : 'Canvas'} folder: ${dir}/`,
+    req.file ? `The person is looking at the ${slides ? 'slide' : 'artboard'} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`
       : '',
@@ -60,7 +69,7 @@ export function startDelegate(project: string, req: DelegateRequest): string {
     '--allowedTools',
     'Read,Edit,Write,Glob,Grep',
     '--append-system-prompt',
-    SYSTEM,
+    slides ? SLIDES_SYSTEM : SYSTEM,
   ];
   if (process.env.DC_DELEGATE_MODEL) args.push('--model', process.env.DC_DELEGATE_MODEL);
 

@@ -12,6 +12,8 @@ import {
   wrapSelection,
 } from './actions';
 import { fitAll, redo, undo, useStore, zoomAt, zoomToSelection, type Tool } from './store';
+import { addSlide, stepSlide } from './slides';
+import { presentStep, startPresent, stopPresent } from './components/slides/SlidesApp';
 
 const TOOL_KEYS: Record<string, Tool> = {
   v: 'select',
@@ -29,6 +31,7 @@ const TOOL_KEYS: Record<string, Tool> = {
 export function handleKey(key: string, meta: boolean, shift: boolean, _alt = false): boolean {
   const s = useStore.getState();
   const k = key.toLowerCase();
+  if (s.kind === 'slides' && slideKey(key, meta, shift)) return true;
   if (s.focused) {
     if (key === 'Escape') useStore.setState({ focused: null });
     return key === 'Escape';
@@ -76,6 +79,41 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
   else if (!shift && TOOL_KEYS[k]) useStore.setState({ tool: TOOL_KEYS[k] });
   else return false;
   return true;
+}
+
+/** Keys that mean something else in a deck: paging, presenting. */
+function slideKey(key: string, meta: boolean, shift: boolean): boolean {
+  const s = useStore.getState();
+  if (s.present) {
+    if (key === 'Escape') stopPresent();
+    else if (/^(ArrowRight|ArrowDown|PageDown| |Enter)$/.test(key)) presentStep(1);
+    else if (/^(ArrowLeft|ArrowUp|PageUp|Backspace)$/.test(key)) presentStep(-1);
+    else if (key === 'f' || key === 'F') {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else document.documentElement.requestFullscreen?.().catch(() => {});
+    } else if (key === 'n' || key === 'N') useStore.setState({ present: { ...s.present, notes: !s.present.notes } });
+    return true;
+  }
+  if (key === 'F5' || (meta && key === 'Enter')) {
+    startPresent(shift ? null : 0);
+    return true;
+  }
+  if (meta && shift && (key === 'n' || key === 'N')) {
+    addSlide();
+    return true;
+  }
+  const onSlide = s.selection === null || s.selection.kind === 'board';
+  if (!meta && onSlide && (key === 'PageDown' || key === 'ArrowDown' || key === 'ArrowRight')) {
+    stepSlide(1);
+    return true;
+  }
+  if (!meta && onSlide && (key === 'PageUp' || key === 'ArrowUp' || key === 'ArrowLeft')) {
+    stepSlide(-1);
+    return true;
+  }
+  // canvas tools and zoom keys do nothing in a deck
+  if (!meta && !shift && TOOL_KEYS[key.toLowerCase()]) return true;
+  return false;
 }
 
 export function installShortcuts(): () => void {

@@ -27,13 +27,17 @@ export type ToRuntime =
       props: Record<string, unknown>;
       mode: Mode;
       selected: number | null;
+      /** a slide file: the deck's typefaces and where its relative image paths live */
+      slide?: { head: string; base: string; still?: boolean };
     }
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }
   | { dc: 'mode'; mode: Mode }
   | { dc: 'export'; id: string; scale: number }
   /** start retyping an element's text in place */
-  | { dc: 'edit'; tid: number };
+  | { dc: 'edit'; tid: number }
+  /** presenting a slide: show its builds up to this step */
+  | { dc: 'step'; step: number };
 
 export type FromRuntime =
   | { dc: 'ready' }
@@ -51,6 +55,8 @@ export type FromRuntime =
   | { dc: 'wheel'; dx: number; dy: number; ctrl: boolean; x: number; y: number }
   | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean }
   | { dc: 'error'; message: string | null }
+  /** a slide in play mode: how many click steps its builds take */
+  | { dc: 'steps'; total: number }
   | { dc: 'navigate'; href: string };
 
 export type ToExecutor =
@@ -73,11 +79,15 @@ export function cspFor(origin: string, kind: 'runtime' | 'executor'): string {
     `default-src 'none'`,
     `script-src ${origin}/sandbox/ 'unsafe-eval'`,
     `style-src 'unsafe-inline' https://fonts.googleapis.com`,
-    `font-src https://fonts.gstatic.com data:`,
+    `font-src https://fonts.gstatic.com ${origin}/api/ data:`,
+    `frame-src ${origin}/sandbox/`,
     `img-src * data: blob:`,
     `media-src * data: blob:`,
   ].join('; ');
 }
+
+/** The page a slide's <x-embed> runs in: its own opaque origin, no network, inline scripts allowed. */
+export const EMBED_CSP = `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:`;
 
 export function sandboxDoc(origin: string, kind: 'runtime' | 'executor'): string {
   const script = kind === 'runtime' ? 'runtime.js' : 'executor.js';

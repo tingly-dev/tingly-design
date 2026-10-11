@@ -8,6 +8,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEMO = os.path.join(REPO, 'projects/demo')
 MAIN = os.path.join(DEMO, 'Main.dc.html')
 CANVAS = os.path.join(DEMO, 'canvas.json')
+CHROME = os.environ.get('DC_CHROME')  # a Chromium to use instead of Playwright's own
 
 def src(path=MAIN): return open(path, encoding='utf-8').read()
 def canvas(): return json.loads(src(CANVAS))
@@ -44,7 +45,7 @@ async def main():
     os.makedirs(OUT, exist_ok=True)
     restore()
     async with async_playwright() as p:
-        b = await p.chromium.launch()
+        b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         ctx = await b.new_context(viewport={'width': 1440, 'height': 900}, accept_downloads=True)
         pg = await ctx.new_page()
         errs = []

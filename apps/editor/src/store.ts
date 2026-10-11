@@ -15,6 +15,14 @@ import {
   type Inspect,
   type NoteEntry,
   noteBox,
+  DECK_FILE,
+  deckOrder,
+  parseDeck,
+  projectKind,
+  slideFile,
+  stringifyDeck,
+  type DeckJson,
+  type ProjectKind,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 
@@ -87,8 +95,23 @@ export interface Toast {
   kind: 'info' | 'error';
 }
 
+/** Presenting a deck: which slide, how far its builds have played, how many steps it has. */
+export interface Present {
+  index: number;
+  step: number;
+  total: number;
+  /** the slide being left, while a transition plays */
+  leaving: { index: number; dir: 1 | -1 } | null;
+  notes: boolean;
+}
+
 interface State {
   project: string | null;
+  /** design canvas or slide deck, from the project's files */
+  kind: ProjectKind | null;
+  /** slides: the slide on the stage */
+  slide: string | null;
+  present: Present | null;
   health: Health | null;
   connected: boolean;
   loaded: boolean;
@@ -127,6 +150,9 @@ interface State {
 
 export const useStore = create<State>(() => ({
   project: null,
+  kind: null,
+  slide: null,
+  present: null,
   health: null,
   connected: false,
   loaded: false,
@@ -194,6 +220,47 @@ export function parsed(src: string): DcDoc {
   return d;
 }
 
+let deckCache: { text: string | undefined; deck: DeckJson } = { text: undefined, deck: parseDeck(undefined) };
+export function deckOf(s: State): DeckJson {
+  const text = display(s, DECK_FILE);
+  if (text !== deckCache.text) deckCache = { text, deck: parseDeck(text) };
+  return deckCache.deck;
+}
+
+export function useDeck(): DeckJson {
+  return useStore((s) => deckOf(s));
+}
+
+let idsCache: { deck: DeckJson | null; keys: string; ids: string[] } = { deck: null, keys: '', ids: [] };
+/** Slide ids in deck order (files `order` leaves out come last), stable between renders. */
+export function slideIds(s: State): string[] {
+  const deck = deckOf(s);
+  const keys = Object.keys(s.files).filter((f) => f.startsWith('slides/') && (s.files[f].server || s.files[f].pending.length)).join('|');
+  if (idsCache.deck !== deck || idsCache.keys !== keys) idsCache = { deck, keys, ids: deckOrder(deck, keys ? keys.split('|') : []) };
+  return idsCache.ids;
+}
+
+export function useSlideIds(): string[] {
+  return useStore((s) => slideIds(s));
+}
+
+/** The file the stage shows (slides) — what the prompt bar and the panel act on by default. */
+export function currentSlideFile(s: State): string | null {
+  return s.slide ? slideFile(s.slide) : null;
+}
+
+export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoable = true): boolean {
+  return edit(
+    DECK_FILE,
+    (src) => {
+      const d = structuredClone(parseDeck(src));
+      mutate(d);
+      return stringifyDeck(d);
+    },
+    { actor: 'human', summary, undoable },
+  );
+}
+
 export function useCanvas(): CanvasJson {
   return useStore((s) => canvasOf(s));
 }
@@ -217,11 +284,17 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [] });
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], slide: null, present: null });
   const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
-  set({ files: entries, journal, loaded: true });
+  const kind = projectKind(Object.keys(files));
+  set({ files: entries, journal, loaded: true, kind });
+  if (kind === 'slides') {
+    const ids = slideIds(get());
+    const want = new URLSearchParams(location.search).get('s');
+    set({ slide: want && ids.includes(want) ? want : ids[0] ?? null });
+  }
   stopEvents = api.events(name, onEvent, (st) => set({ connected: st === 'open' }));
 }
 
@@ -421,6 +494,23 @@ export function redo(): void {
   if (!item) return;
   set((s) => ({ redo: s.redo.slice(0, -1), undo: [...s.undo, item] }));
   edit(item.file, (src) => rebaseSwap(src, item.before, item.after), { actor: 'undo', summary: 'redo', undoable: false });
+}
+
+/** Delete a file once its queued edits are saved (a deck's slides, an artboard). */
+export async function deleteFile(file: string): Promise<void> {
+  const project = get().project;
+  if (!project) return;
+  for (let i = 0; i < 50 && (get().files[file]?.pending.length ?? 0) > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  const v = get().files[file]?.server?.version;
+  if (v) {
+    const r = await api.remove(project, file, v);
+    if ('conflict' in r) return toast(`${file} 刚被别人改过，没有删除。`, 'error');
+  }
+  set((s) => {
+    const files = { ...s.files };
+    delete files[file];
+    return { files };
+  });
 }
 
 export async function deleteBoard(file: string): Promise<void> {

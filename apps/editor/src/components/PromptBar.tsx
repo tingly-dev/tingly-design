@@ -29,7 +29,12 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [health]);
 
-  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : canvas.order[0];
+  const slides = useStore((s) => s.kind === 'slides');
+  const placeholder = slides
+    ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题再大一点、换成深色背景”', claude: '交给 Claude Code：适合整页重写、跨页修改、新建一组幻灯片' }
+    : PLACEHOLDER;
+  const stageSlide = useStore((s) => s.slide);
+  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : slides ? (stageSlide ? `slides/${stageSlide}.html` : undefined) : canvas.order[0];
   const tid = sel?.kind === 'el' ? sel.tid : null;
   const pointed = useStore((s) => {
     if (!file || tid === null) return null;
@@ -74,7 +79,9 @@ export function PromptBar() {
               <code>{handle}</code> &lt;{tag}&gt; {label}
             </>
           ) : file ? (
-            <>整个画板 {canvas.boards[file]?.title || file}</>
+            slides ? <>整页 {file.replace(/^slides\/|\.html$/g, '')}</> : <>整个画板 {canvas.boards[file]?.title || file}</>
+          ) : slides ? (
+            '没有幻灯片'
           ) : (
             '没有画板'
           )}
@@ -99,7 +106,7 @@ export function PromptBar() {
           className={target === 'jquery' ? 'code' : ''}
           rows={target === 'jquery' ? 3 : 1}
           value={text}
-          placeholder={why ?? PLACEHOLDER[target]}
+          placeholder={why ?? placeholder[target]}
           aria-label="请求"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
