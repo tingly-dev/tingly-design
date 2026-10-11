@@ -6,3 +6,4 @@ export * from './stream';
 export * from './exec';
 export * from './canvas';
 export * from './prompt';
+export * from './protocol';

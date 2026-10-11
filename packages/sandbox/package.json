@@ -1,0 +1,22 @@
+{
+  "name": "@dc/sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dc/core": "workspace:*",
+    "jquery": "^4.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "esbuild": "^0.28.2"
+  }
+}
