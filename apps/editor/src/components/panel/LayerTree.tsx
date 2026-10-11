@@ -17,6 +17,13 @@ const ROLE_ZH: Record<string, string> = {
   Condition: '条件',
   Component: '组件',
   Group: '组',
+  Shape: '形状',
+  Embed: '动态嵌入',
+  Icon: '图标',
+  Connector: '连线',
+  Table: '表格',
+  Notes: '备注',
+  Slide: '幻灯片',
 };
 
 export function itemName(n: NoteEntry): string {

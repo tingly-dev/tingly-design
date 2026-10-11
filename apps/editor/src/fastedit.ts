@@ -7,10 +7,42 @@ import {
   retryMessage,
   splitStatements,
   attr,
+  checkSlide,
+  sectionsOf,
+  slideFile,
+  slideIdOf,
 } from '@dc/core';
 import { api } from './api';
 import { ExecSession, replay } from './executor';
-import { canvasOf, display, enqueueResult, toast, useStore, visibleBoards, type FastLine } from './store';
+import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine } from './store';
+import { slideTitle } from './slides';
+
+/** A deck's outline for the model: sections and slide titles, the current one marked. */
+function deckOutline(file: string): string {
+  const s = get();
+  const deck = deckOf(s);
+  const ids = slideIds(s);
+  const lines = [`"${deck.title}", ${ids.length} slides, 1920×1080 each`];
+  let n = 0;
+  for (const g of sectionsOf(deck, ids)) {
+    if (g.description) lines.push(`section: ${g.description}`);
+    for (const id of g.ids) {
+      n++;
+      lines.push(`- ${n}. ${slideFile(id)}${slideFile(id) === file ? ' (this one)' : ''}: ${slideTitle(display(s, slideFile(id)), id)}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+/** Subset errors a reply introduced (ones the slide already had are not the reply's). */
+function newSlideErrors(file: string, before: string, after: string): string[] {
+  const id = slideIdOf(file);
+  if (!id) return [];
+  const known = new Set(checkSlide(parseDc(before), id).map((i) => i.message));
+  return checkSlide(parseDc(after), id)
+    .filter((i) => i.level === 'error' && !known.has(i.message))
+    .map((i) => i.message);
+}
 
 /**
  * The fast in-page editor. A request becomes jQuery statements (written by
@@ -138,7 +170,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         messages.push({
           role: 'user',
           content: buildFastEditPrompt({
-            canvas: canvasOf(get()),
+            ...(get().kind === 'slides' ? { outline: deckOutline(file) } : { canvas: canvasOf(get()) }),
             file,
             markup,
             journal: get().journal,
@@ -149,7 +181,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
           }),
         });
       }
-      const res = await api.fastEdit(project, messages, signal);
+      const res = await api.fastEdit(project, messages, signal, get().kind ?? undefined);
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error((body as { error?: string }).error ?? res.statusText);
@@ -217,6 +249,17 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
       }
       if (logs.length && out === base && logRounds++ < 2) {
         messages.push({ role: 'assistant', content: reply.trim() }, { role: 'user', content: logMessage(logs) });
+        continue;
+      }
+      const broke = get().kind === 'slides' && out !== base ? newSlideErrors(file, base, out) : [];
+      if (broke.length && retries < 2) {
+        retries++;
+        setDraft(file, undefined);
+        pushLine({ code: `超出了幻灯片格式，改动已撤销，第 ${retries} 次重试`, ok: true, divider: true });
+        messages.push(
+          { role: 'assistant', content: reply.trim() || '(empty)' },
+          { role: 'user', content: `That reply was undone: the slide no longer fits the slide subset:\n${broke.map((m) => `- ${m}`).join('\n')}\nWrite the whole reply again so the slide stays inside the subset.` },
+        );
         continue;
       }
       setDraft(file, undefined);

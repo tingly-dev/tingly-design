@@ -1,4 +1,8 @@
 import * as esbuild from 'esbuild';
+import { copyFileSync, mkdirSync } from 'node:fs';
+
+mkdirSync('dist', { recursive: true });
+copyFileSync('embed.html', 'dist/embed.html');
 
 const watch = process.argv.includes('--watch');
 const ctx = await esbuild.context({

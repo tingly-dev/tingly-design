@@ -2,7 +2,20 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CANVAS_FILE, isBoardFile, newBoardSource, parseCanvas, stringifyCanvas } from '@dc/core';
+import {
+  CANVAS_FILE,
+  DECK_FILE,
+  isBoardFile,
+  isSlideFile,
+  newBoardSource,
+  newSlideSource,
+  parseCanvas,
+  parseDeck,
+  slideFile,
+  stringifyCanvas,
+  stringifyDeck,
+  type ProjectKind,
+} from '@dc/core';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 export const PROJECTS_DIR = resolve(process.env.DC_PROJECTS ?? join(REPO_ROOT, 'projects'));
@@ -37,8 +50,42 @@ export class HttpError extends Error {
 /** A path inside a project that the editor is allowed to read and write. */
 export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
-  if (r === CANVAS_FILE || isBoardFile(r)) return r;
-  throw new HttpError(400, `not a canvas file: ${rel}`);
+  if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
+  throw new HttpError(400, `not a canvas or deck file: ${rel}`);
+}
+
+/** Images and fonts a project keeps beside its files (binary, never edited as text). */
+export const ASSET_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  avif: 'image/avif',
+  woff2: 'font/woff2',
+  woff: 'font/woff',
+  ttf: 'font/ttf',
+  otf: 'font/otf',
+};
+
+export function assetRel(rel: string): string {
+  const r = rel.replace(/\\/g, '/');
+  const m = /^(assets|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_.-]{0,120})\.([a-z0-9]+)$/i.exec(r);
+  if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, `not an asset path: ${rel}`);
+  return r;
+}
+
+export async function kindOf(dir: string): Promise<ProjectKind | null> {
+  for (const [file, kind] of [[DECK_FILE, 'slides'], [CANVAS_FILE, 'design']] as const) {
+    try {
+      await stat(join(dir, file));
+      return kind;
+    } catch {
+      // try the next
+    }
+  }
+  return null;
 }
 
 export function isTracked(rel: string): boolean {
@@ -68,16 +115,25 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
   }
 }
 
-export async function listProjects(): Promise<{ name: string; title: string }[]> {
+export interface ProjectInfo {
+  name: string;
+  title: string;
+  kind: ProjectKind;
+}
+
+export async function listProjects(): Promise<ProjectInfo[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
-  const out: { name: string; title: string }[] = [];
+  const out: ProjectInfo[] = [];
   for (const e of await readdir(PROJECTS_DIR, { withFileTypes: true })) {
     if (!e.isDirectory() || !isProjectName(e.name)) continue;
+    const dir = join(PROJECTS_DIR, e.name);
+    const kind = await kindOf(dir);
+    if (!kind) continue;
     try {
-      const c = parseCanvas(await readFile(join(PROJECTS_DIR, e.name, CANVAS_FILE), 'utf8'));
-      out.push({ name: e.name, title: c.title });
+      const text = await readFile(join(dir, kind === 'slides' ? DECK_FILE : CANVAS_FILE), 'utf8');
+      out.push({ name: e.name, title: kind === 'slides' ? parseDeck(text).title : parseCanvas(text).title, kind });
     } catch {
-      // not a canvas
+      // unreadable index
     }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -85,11 +141,7 @@ export async function listProjects(): Promise<{ name: string; title: string }[]>
 
 export async function readProject(name: string): Promise<Record<string, FileState>> {
   const dir = projectDir(name);
-  try {
-    await stat(join(dir, CANVAS_FILE));
-  } catch {
-    throw new HttpError(404, `no project ${name}`);
-  }
+  if (!(await kindOf(dir))) throw new HttpError(404, `no project ${name}`);
   const files: string[] = [];
   await walk(dir, dir, files);
   const out: Record<string, FileState> = {};
@@ -132,20 +184,50 @@ export async function writeAtomic(name: string, rel: string, content: string): P
   return v;
 }
 
+export async function writeAsset(name: string, rel: string, bytes: Uint8Array): Promise<void> {
+  const path = join(projectDir(name), assetRel(rel));
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, bytes);
+}
+
+export async function readAsset(name: string, rel: string): Promise<Buffer | null> {
+  try {
+    return await readFile(join(projectDir(name), assetRel(rel)));
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    return null;
+  }
+}
+
 export async function removeFile(name: string, rel: string): Promise<void> {
   ownWrites.set(`${name}/${rel}`, 'deleted');
   await rm(join(projectDir(name), safeRel(rel)), { force: true });
 }
 
-export async function createProject(name: string, title: string): Promise<void> {
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design'): Promise<void> {
   const dir = projectDir(name);
-  try {
-    await stat(join(dir, CANVAS_FILE));
-    throw new HttpError(409, `project ${name} exists`);
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-  }
+  if (await kindOf(dir)) throw new HttpError(409, `project ${name} exists`);
   await mkdir(dir, { recursive: true });
+  if (kind === 'slides') {
+    const deck = parseDeck(JSON.stringify({
+      v: 4,
+      createdOnFiles: { v: 1, at: new Date().toISOString() },
+      lists: 'css',
+      title,
+      cover: 'cover',
+      order: ['cover'],
+      sections: {},
+      faces: {},
+      designSystems: [],
+    }));
+    await writeAtomic(name, slideFile('cover'), newSlideSource('cover', {
+      like: "background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px",
+      title,
+      body: '双击改字，或在下方让 AI 写这套幻灯片。',
+    }).replace('font-size:72px', 'font-size:112px'));
+    await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
+    return;
+  }
   const canvas = parseCanvas(JSON.stringify({
     v: 3,
     title,

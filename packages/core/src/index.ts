@@ -9,3 +9,6 @@ export * from './prompt';
 export * from './protocol';
 export * from './rebase';
 export * from './layers';
+export * from './deck';
+export * from './slides';
+export * from './slideArt';
