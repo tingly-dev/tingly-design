@@ -136,7 +136,13 @@ export const useStore = create<State>(() => ({
   selection: null,
   tool: 'select',
   mode: 'edit',
-  panelOpen: true,
+  panelOpen: (() => {
+    try {
+      return localStorage.getItem('dc.panelOpen') !== '0';
+    } catch {
+      return true;
+    }
+  })(),
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -527,3 +533,14 @@ export function setClip(c: Clip): void {
 export function getClip(): Clip | null {
   return clip;
 }
+
+// remember whether the panel is open, per browser
+useStore.subscribe((st, prev) => {
+  if (st.panelOpen !== prev.panelOpen) {
+    try {
+      localStorage.setItem('dc.panelOpen', st.panelOpen ? '1' : '0');
+    } catch {
+      // storage unavailable: the default applies next time
+    }
+  }
+});

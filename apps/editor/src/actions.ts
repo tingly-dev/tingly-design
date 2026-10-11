@@ -230,7 +230,26 @@ export function flipSelection(axis: 'x' | 'y'): void {
   editElement(e.file, [{ kind: 'style', tid: e.tid, prop: 'transform', value: next || null }]);
 }
 
-/** Escape: up one level — element → parent → artboard → nothing. */
+/** Enter: down one level — artboard → its root's first child, element → first child. */
+export function selectFirstChild(): void {
+  const s = get();
+  const sel = s.selection;
+  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : null;
+  if (!file) return;
+  const doc = parsed(display(s, file) ?? '');
+  let el = sel?.kind === 'el' ? doc.elements[sel.tid] : rootElement(doc);
+  if (!el) return;
+  if (sel?.kind === 'board') return set({ selection: { kind: 'el', file, tid: el.tid } });
+  let kid = el.children.find((c) => c.kind === 'el') as DcElement | undefined;
+  while (kid && (kid.tag.startsWith('sc-') || kid.tag === 'helmet')) {
+    el = kid;
+    kid = (kid.children.find((c) => c.kind === 'el') as DcElement | undefined) ?? undefined;
+    if (kid?.tag === 'helmet') kid = el.children.filter((c) => c.kind === 'el')[1] as DcElement | undefined;
+  }
+  if (kid) set({ selection: { kind: 'el', file, tid: kid.tid } });
+}
+
+/** Shift+Enter: up one level — element → parent → artboard → nothing. */
 export function selectParent(): void {
   const s = get();
   const sel = s.selection;
