@@ -86,7 +86,7 @@ describe('human ops write minimal patches', () => {
     const { document } = env();
     const li = find(BOARD, 'li', 0);
     const dup = applyHumanOps(BOARD, [{ kind: 'duplicate', tid: li.tid }], document).source;
-    expect(dup).toContain('<li>One</li><li>One</li>');
+    expect(dup).toContain('<li>One</li>\n      <li>One</li>');
     expect(dup).not.toMatch(/id="dc\d+"/);
     const moved = applyHumanOps(BOARD, [{ kind: 'move', tid: li.tid, dir: 1 }], document).source;
     expect(moved).toMatch(/<li>Two<\/li>\s*<li>One<\/li>/);
@@ -189,5 +189,16 @@ describe('statement splitter', () => {
       "$('#b').append(`<div>\n  <p>x</p>\n</div>`)",
       ".text('y')",
     ]);
+  });
+});
+
+describe('rebaseSwap (undo after someone else edited the file)', () => {
+  it('reverts a local change located by its context', async () => {
+    const { rebaseSwap } = await import('../src');
+    const before = 'a\n<h1 style="font-size:26px">T</h1>\n<p style="font-size:15px">x</p>\n';
+    const after = before.replace('26px', '30px');
+    const theirs = after.replace('15px', '17px');
+    expect(rebaseSwap(theirs, after, before)).toBe(before.replace('15px', '17px'));
+    expect(() => rebaseSwap(after.replace('30px', '31px'), after, before)).toThrow();
   });
 });

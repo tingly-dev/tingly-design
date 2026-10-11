@@ -5,3 +5,4 @@ dist/
 .env
 projects/*/.journal.jsonl
 test-results/
+e2e/out/
