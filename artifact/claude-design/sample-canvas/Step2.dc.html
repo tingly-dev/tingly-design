@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>第二步 页面归位</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <div style="width:76px;background:#ffffff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;box-sizing:border-box">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="7">
+      <div style="width:60px;height:54px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{r.bg}}">
+        <div style="width:20px;height:20px;border-radius:5px;border:2px solid {{r.stroke}};box-sizing:border-box"></div>
+        <div style="font-size:11px;color:{{r.fg}}">{{r.label}}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="flex:1;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:20px;font-weight:700">第二步 · 把放错地方的页面挪回去</div>
+    <div style="display:flex;gap:20px">
+      <sc-for list="{{panels}}" as="pn" hint-placeholder-count="3">
+        <div style="flex:1;background:#fff;border:1px solid #e2e5ea;border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:12px;color:#8a93a3;margin:0 10px 6px">{{pn.title}}</div>
+          <sc-for list="{{pn.rows}}" as="w" hint-placeholder-count="4">
+            <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{w.bg}}">
+              <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+              <div style="font-size:13px;color:{{w.fg}};flex:1;text-decoration:{{w.deco}}">{{w.label}}</div>
+              <div style="font-size:11px;color:{{w.tc}}">{{w.tail}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#e9f7ee;border:1px solid #9bd5ad;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:700;color:#14532d">怎么做</div>
+      <sc-for list="{{ideas}}" as="p" hint-placeholder-count="4">
+        <div style="display:flex;gap:10px;font-size:13px;line-height:1.55;color:#1f3d2b">
+          <div style="flex:none;width:20px;height:20px;border-radius:10px;background:#15803d;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">{{p.n}}</div>
+          <div>{{p.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rail = ['Dashboard','Home','Image','Team','Remote','Credentials','System'].map((n) => {
+      const on = n === 'Dashboard';
+      return { label: n, bg: on ? '#e8efff' : 'transparent', stroke: on ? '#3b6df0' : '#8a93a3', fg: on ? '#3b6df0' : '#4a5263' };
+    });
+    const R = (l, o) => Object.assign({ label: l, bg: 'transparent', chip: '#c9ced8', fg: '#2b3140', tc: '#8a93a3', deco: 'none', tail: '' }, o || {});
+    const NEW = { bg: '#e9f7ee', chip: '#15803d', tail: '新位置', tc: '#15803d' };
+    const GONE = { fg: '#8a93a3', deco: 'line-through', tail: '已迁出', tc: '#b45309' };
+    const panels = [
+      { title: 'Dashboard', rows: [R('用量'), R('Team 用量'), R('配额历史'), R('日志', NEW)] },
+      { title: 'Credentials', rows: [R('Credentials'), R('VModel'), R('Access control', NEW)] },
+      { title: 'System', rows: [R('General'), R('Experimental'), R('Develop'), R('Logs', GONE), R('Access control', GONE)] }
+    ];
+    const ideas = [
+      { n: 1, text: 'Logs 放进 Dashboard：排查问题时用户在“看数据”的上下文里，不会想到去 System。' },
+      { n: 2, text: 'Access control 放进 Credentials：它回答的是“谁能用哪些凭证”，和凭证是同一个问题。' },
+      { n: 3, text: '旧路由全部保留并重定向；System 里留一行“已迁出”提示和跳转链接，保留一两个版本。' },
+      { n: 4, text: '每次只搬一两项，搬完看有没有人找不到再继续。这一步不改一级入口。' }
+    ];
+    return { rail, panels, ideas };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>管控侧栏</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <div style="width:76px;background:#ffffff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;box-sizing:border-box">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="4">
+      <div style="width:60px;height:60px;margin-bottom:6px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{r.bg}}">
+        <div style="width:22px;height:22px;border-radius:6px;border:2px solid {{r.stroke}};box-sizing:border-box"></div>
+        <div style="font-size:12px;color:{{r.fg}}">{{r.label}}</div>
+      </div>
+    </sc-for>
+    <div style="flex:1"></div>
+    <div style="width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <div style="width:22px;height:22px;border-radius:6px;border:2px solid #8a93a3;box-sizing:border-box"></div>
+      <div style="font-size:12px;color:#4a5263">设置</div>
+    </div>
+  </div>
+  <div style="width:252px;background:#ffffff;border-right:1px solid #e2e5ea;padding:16px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+    <sc-for list="{{rows}}" as="w" hint-placeholder-count="14">
+      <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:12px 10px 4px">{{w.label}}</div>
+      </sc-if>
+      <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+        <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{w.bg}}">
+          <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+          <div style="font-size:13px;color:#2b3140;flex:1">{{w.label}}</div>
+          <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+        </div>
+      </sc-if>
+    </sc-for>
+  </div>
+  <div style="flex:1;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px">
+    <div style="font-size:20px;font-weight:700">管控 · 凭证</div>
+    <div style="height:130px;border-radius:12px;background:#ffffff;border:1px dashed #c9ced8;display:flex;align-items:center;justify-content:center;color:#8a93a3;font-size:13px">页面内容（略）</div>
+    <div style="background:#e9f7ee;border:1px solid #9bd5ad;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:700;color:#14532d">这一类收了什么</div>
+      <sc-for list="{{ideas}}" as="p" hint-placeholder-count="4">
+        <div style="display:flex;gap:10px;font-size:13px;line-height:1.55;color:#1f3d2b">
+          <div style="flex:none;width:20px;height:20px;border-radius:10px;background:#15803d;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">{{p.n}}</div>
+          <div>{{p.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rail = ['接入','管控','观测','远程'].map((n) => {
+      const on = n === '管控';
+      return { label: n, bg: on ? '#e8efff' : 'transparent', stroke: on ? '#3b6df0' : '#8a93a3', fg: on ? '#3b6df0' : '#4a5263' };
+    });
+    const H = (l) => ({ isHeader: true, isRow: false, label: l });
+    const R = (l, o) => Object.assign({ isHeader: false, isRow: true, label: l, bg: 'transparent', chip: '#c9ced8', tail: '' }, o || {});
+    const rows = [
+      H('凭证与模型'),
+      R('Credentials', { bg: '#e8efff', chip: '#3b6df0', tail: '5' }),
+      R('VModel'),
+      H('访问'),
+      R('Access control'),
+      H('安全 · 实验'),
+      R('Guardrails 概览', { tail: '实验' }),
+      R('策略组', { tail: '实验' }),
+      R('策略', { tail: '实验' }),
+      R('Secrets', { tail: '实验' }),
+      H('工具与提示词 · 实验'),
+      R('MCP', { tail: '实验' }),
+      R('Servertool', { tail: '实验' }),
+      R('Skills', { tail: '实验' })
+    ];
+    const ideas = [
+      { n: 1, text: '把「谁能用什么」放在一起：Credentials、VModel、Access control（原来藏在 System 里）。核心功能排最上，始终可见。' },
+      { n: 2, text: '实验功能整体放在下半部分，用「实验」小标签淡化（原则 9）；没开启实验开关时整段不出现，侧栏只剩 3 行。' },
+      { n: 3, text: 'Guardrails 的 5 个子页保留在这一段，但「History」移到「观测」，因为它回答的是“拦了什么”。' },
+      { n: 4, text: 'Prompt 的 User request / Skills 并入「工具与提示词」，不再单独占一个一级图标。' }
+    ];
+    return { rail, rows, ideas };
+  }
+}
+</script>
+</body>
+</html>

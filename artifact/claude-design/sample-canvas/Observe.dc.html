@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>观测侧栏</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <div style="width:76px;background:#ffffff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;box-sizing:border-box">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="4">
+      <div style="width:60px;height:60px;margin-bottom:6px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{r.bg}}">
+        <div style="width:22px;height:22px;border-radius:6px;border:2px solid {{r.stroke}};box-sizing:border-box"></div>
+        <div style="font-size:12px;color:{{r.fg}}">{{r.label}}</div>
+      </div>
+    </sc-for>
+    <div style="flex:1"></div>
+    <div style="width:60px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <div style="width:22px;height:22px;border-radius:6px;border:2px solid #8a93a3;box-sizing:border-box"></div>
+      <div style="font-size:12px;color:#4a5263">设置</div>
+    </div>
+  </div>
+  <div style="width:252px;background:#ffffff;border-right:1px solid #e2e5ea;padding:16px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+    <sc-for list="{{rows}}" as="w" hint-placeholder-count="10">
+      <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:12px 10px 4px">{{w.label}}</div>
+      </sc-if>
+      <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+        <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{w.bg}}">
+          <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+          <div style="font-size:13px;color:#2b3140;flex:1">{{w.label}}</div>
+          <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+        </div>
+      </sc-if>
+    </sc-for>
+  </div>
+  <div style="flex:1;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:20px;font-weight:700">观测 · 用量</div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{ranges}}" as="g" hint-placeholder-count="6">
+          <div style="padding:5px 10px;border-radius:7px;font-size:12px;background:{{g.bg}};color:{{g.fg}}">{{g.label}}</div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="height:130px;border-radius:12px;background:#ffffff;border:1px dashed #c9ced8;display:flex;align-items:center;justify-content:center;color:#8a93a3;font-size:13px">图表（略）</div>
+    <div style="background:#e9f7ee;border:1px solid #9bd5ad;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:700;color:#14532d">这一类收了什么</div>
+      <sc-for list="{{ideas}}" as="p" hint-placeholder-count="4">
+        <div style="display:flex;gap:10px;font-size:13px;line-height:1.55;color:#1f3d2b">
+          <div style="flex:none;width:20px;height:20px;border-radius:10px;background:#15803d;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">{{p.n}}</div>
+          <div>{{p.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rail = ['接入','管控','观测','远程'].map((n) => {
+      const on = n === '观测';
+      return { label: n, bg: on ? '#e8efff' : 'transparent', stroke: on ? '#3b6df0' : '#8a93a3', fg: on ? '#3b6df0' : '#4a5263' };
+    });
+    const H = (l) => ({ isHeader: true, isRow: false, label: l });
+    const R = (l, o) => Object.assign({ isHeader: false, isRow: true, label: l, bg: 'transparent', chip: '#c9ced8', tail: '' }, o || {});
+    const rows = [
+      H('用了多少'),
+      R('用量', { bg: '#e8efff', chip: '#3b6df0' }),
+      R('Team 用量'),
+      R('配额历史'),
+      H('出了什么事'),
+      R('日志'),
+      R('拦截记录', { tail: '实验' }),
+      H('好不好用'),
+      R('Bench', { tail: '实验' })
+    ];
+    const ranges = ['今天','昨天','3天','7天','30天','90天'].map((l) => ({ label: l, bg: l === '今天' ? '#e8efff' : 'transparent', fg: l === '今天' ? '#3b6df0' : '#4a5263' }));
+    const ideas = [
+      { n: 1, text: '分区标题直接用用户的三个问题：用了多少 / 出了什么事 / 好不好用（原则 1）。' },
+      { n: 2, text: '时间范围（今天…90 天）是页面内的控件，不再是路由层级（现在是 /dashboard/:timeRange），切范围不换页、不丢滚动位置。' },
+      { n: 3, text: 'Logs 从 System > 开发相关挪来，Guardrails History 改名「拦截记录」放这里，排查问题时不用跨一级入口找。' },
+      { n: 4, text: '只有 Bench 受实验开关控制；关闭时「好不好用」整段不显示，侧栏 6 行。' }
+    ];
+    return { rail, rows, ranges, ideas };
+  }
+}
+</script>
+</body>
+</html>

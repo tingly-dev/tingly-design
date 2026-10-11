@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Profile 切换器</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <div style="width:76px;background:#ffffff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;box-sizing:border-box">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="7">
+      <div style="width:60px;height:54px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{r.bg}}">
+        <div style="width:20px;height:20px;border-radius:5px;border:2px solid {{r.stroke}};box-sizing:border-box"></div>
+        <div style="font-size:11px;color:{{r.fg}}">{{r.label}}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="width:252px;background:#ffffff;border-right:1px solid #e2e5ea;padding:16px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+    <sc-for list="{{rows}}" as="w" hint-placeholder-count="10">
+      <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:12px 10px 4px">{{w.label}}</div>
+      </sc-if>
+      <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+        <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{w.bg}}">
+          <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+          <div style="font-size:13px;color:#2b3140;flex:1">{{w.label}}</div>
+          <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+        </div>
+      </sc-if>
+    </sc-for>
+  </div>
+  <div style="flex:1;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div style="position:relative;height:44px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font-size:20px;font-weight:700">Claude Code</div>
+        <div style="height:34px;box-sizing:border-box;padding:0 12px;border-radius:17px;border:1px solid #3b6df0;background:#e8efff;color:#3b6df0;font-size:13px;display:flex;align-items:center;gap:8px"><span>配置：<b>work-profile</b></span><span>▴</span></div>
+      </div>
+      <div style="position:absolute;left:128px;top:42px;width:300px;box-sizing:border-box;background:#fff;border:1px solid #d6d2c4;border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(31,36,48,.12);z-index:2">
+        <sc-for list="{{menu}}" as="m" hint-placeholder-count="5">
+          <sc-if value="{{m.isDivider}}" hint-placeholder-val="{{ false }}">
+            <div style="height:1px;background:#e2e5ea;margin:6px 4px"></div>
+          </sc-if>
+          <sc-if value="{{m.isItem}}" hint-placeholder-val="{{ true }}">
+            <div style="height:36px;border-radius:7px;display:flex;align-items:center;gap:8px;padding:0 10px;background:{{m.bg}}">
+              <div style="width:14px;font-size:13px;color:#3b6df0">{{m.check}}</div>
+              <div style="font-size:13px;color:{{m.fg}};flex:1">{{m.label}}</div>
+              <div style="font-size:11px;color:#8a93a3">{{m.tail}}</div>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+    </div>
+    <div style="height:110px;margin-top:6px;border-radius:12px;background:#ffffff;border:1px dashed #c9ced8;display:flex;align-items:center;justify-content:center;color:#8a93a3;font-size:13px">接入 / Quick Start / 规则（随所选配置变化，略）</div>
+    <div style="background:#e9f7ee;border:1px solid #9bd5ad;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:700;color:#14532d">C · Profile 变成页面里的切换器</div>
+      <sc-for list="{{ideas}}" as="p" hint-placeholder-count="5">
+        <div style="display:flex;gap:10px;font-size:13px;line-height:1.55;color:#1f3d2b">
+          <div style="flex:none;width:20px;height:20px;border-radius:10px;background:#15803d;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">{{p.n}}</div>
+          <div>{{p.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rail = ['Dashboard','Home','Image','Team','Remote','Credentials','System'].map((n) => {
+      const on = n === 'Home';
+      return { label: n, bg: on ? '#e8efff' : 'transparent', stroke: on ? '#3b6df0' : '#8a93a3', fg: on ? '#3b6df0' : '#4a5263' };
+    });
+    const H = (l) => ({ isHeader: true, isRow: false, label: l });
+    const R = (l, o) => Object.assign({ isHeader: false, isRow: true, label: l, bg: 'transparent', chip: '#c9ced8', tail: '' }, o || {});
+    const rows = [
+      R('Claude Code', { bg: '#e8efff', chip: '#3b6df0', tail: 'work-profile' }),
+      H('编码工具'),
+      R('Claude Desktop'), R('Codex'), R('OpenCode'), R('DeepSeek'), R('Xcode'), R('VS Code'),
+      H('▸ SDK · 4 项，已折叠')
+    ];
+    const I = (l, o) => Object.assign({ isDivider: false, isItem: true, label: l, bg: 'transparent', fg: '#2b3140', check: '', tail: '' }, o || {});
+    const menu = [
+      I('默认配置', { tail: 'Claude Code' }),
+      I('work-profile', { check: '✓', bg: '#e8efff', fg: '#3b6df0', tail: 'Unified' }),
+      I('personal', { tail: 'Separate' }),
+      { isDivider: true, isItem: false },
+      I('+ 新建 Profile…', { fg: '#3b6df0' })
+    ];
+    const ideas = [
+      { n: 1, text: '侧栏里每个 Agent 只占一行，Profile 不再占行；Profile 多少都不影响侧栏长度。' },
+      { n: 2, text: '切换器放在页面标题旁，当前是哪套配置常驻可见，回答“我现在配的是哪一套”。侧栏的 Claude Code 行右侧也用灰字显示当前 Profile 名（可选）。' },
+      { n: 3, text: '下拉里是：默认配置、各个 Profile、末尾“+ 新建 Profile…”。今天只有 Claude Code 有这个切换器；别的 Agent 以后支持 Profile，同样的切换器直接出现，不需要全局“选 Agent”。' },
+      { n: 4, text: '路由 /agent/claude_code/profile/:id 保留，旧链接和书签不失效；进入时侧栏高亮 Claude Code，切换器显示该 Profile。' },
+      { n: 5, text: '代价：从侧栏不能一步直达某个 Profile，多一次点击。' }
+    ];
+    return { rail, rows, menu, ideas };
+  }
+}
+</script>
+</body>
+</html>

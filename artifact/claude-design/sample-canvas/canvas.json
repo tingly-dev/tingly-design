@@ -1,0 +1,57 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Control.dc.html": {"h": 760, "title": "远期：管控", "w": 1200, "x": 1280, "y": 2120},
+    "Layers.dc.html": {"h": 1060, "title": "已否决：共享路由层（入口 → 映射 → 出口）", "w": 1440, "x": 3840, "y": 2120},
+    "Main.dc.html": {"h": 760, "title": "现状（实验全开 11 个入口，默认约 7 个）", "w": 1200, "x": 0, "y": 0},
+    "Observe.dc.html": {"h": 760, "title": "远期：观测", "w": 1200, "x": 2560, "y": 2120},
+    "Profile.dc.html": {"h": 760, "title": "推进①补充：Profile 放哪里（A/B，均不满意）", "w": 1200, "x": 3200, "y": 0},
+    "ProfileC.dc.html": {"h": 760, "title": "推进①补充：C 页面顶部切换器", "w": 1200, "x": 4480, "y": 0},
+    "Variants.dc.html": {"h": 2440, "title": "草稿合集：12 种侧栏思路", "w": 1600, "x": 5760, "y": 0},
+    "Proposal.dc.html": {"h": 760, "title": "远期：接入", "w": 1200, "x": 0, "y": 2120},
+    "Step1.dc.html": {"h": 760, "title": "推进①：分区标题 + 折叠 SDK", "w": 1200, "x": 1280, "y": 0},
+    "Step2.dc.html": {"h": 760, "title": "可选：页面归位", "w": 1200, "x": 0, "y": 880},
+    "Step3.dc.html": {"h": 760, "title": "暂缓：实验室", "w": 1200, "x": 1280, "y": 880}
+  },
+  "createdOnFiles": {"at": "2026-10-11T09:00:00Z", "v": 1},
+  "designSystems": [],
+  "launch": {"view": "canvas"},
+  "notes": {
+    "s1": {
+      "fill": "green",
+      "maxH": 640,
+      "size": 24,
+      "text": "接下来推进的三件事\n\n① Home 侧栏加分区标题、折叠 SDK（见左图，待你确认）。一级入口、路由、名称都不变。\n\n② Credentials 里给每个服务加“被谁引用”只读反查。规则仍留在各 Agent 下，各自独立配置，不引入共享层。\n\n③ Dashboard 加“按 Agent / 按服务”的分组切换，只是同一份数据换分组。\n\n结论：Agent 与模型是各自独立配置、模型库独立管理，不需要共享路由层（右下图已否决）。",
+      "w": 560,
+      "x": 2560,
+      "y": 0
+    },
+    "s2": {
+      "fill": "orange",
+      "maxH": 200,
+      "size": 24,
+      "text": "为什么否决：同时用很多个 Agent 的人很少，各自分开配更直观；共享层要改规则存储，为少数场景多一层概念，不划算。",
+      "w": 560,
+      "x": 3840,
+      "y": 1860
+    },
+    "t1": {"kind": "title1", "maxW": 2480, "text": "现在要做的：整理侧栏，让 Agent 不再占满导航", "w": 240, "x": 0, "y": -260},
+    "t2": {"kind": "title1", "maxW": 5280, "text": "远期方向与已否决方案（暂不推进）", "w": 240, "x": 0, "y": 1860}
+  },
+  "order": [
+    "Main.dc.html",
+    "Step1.dc.html",
+    "Profile.dc.html",
+    "ProfileC.dc.html",
+    "Variants.dc.html",
+    "Step2.dc.html",
+    "Step3.dc.html",
+    "Proposal.dc.html",
+    "Control.dc.html",
+    "Observe.dc.html",
+    "Layers.dc.html"
+  ],
+  "pages": [],
+  "title": "Tingly-Box 前端信息架构梳理"
+}

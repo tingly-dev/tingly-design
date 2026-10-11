@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>第一步 Home 侧栏</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <div style="width:76px;background:#ffffff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;box-sizing:border-box">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="7">
+      <div style="width:60px;height:54px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{r.bg}}">
+        <div style="width:20px;height:20px;border-radius:5px;border:2px solid {{r.stroke}};box-sizing:border-box"></div>
+        <div style="font-size:11px;color:{{r.fg}}">{{r.label}}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="width:252px;background:#ffffff;border-right:1px solid #e2e5ea;padding:16px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+    <sc-for list="{{rows}}" as="w" hint-placeholder-count="14">
+      <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:12px 10px 4px">{{w.label}}</div>
+      </sc-if>
+      <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+        <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{w.bg}}">
+          <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+          <div style="font-size:13px;color:#2b3140;flex:1">{{w.label}}</div>
+          <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{w.isMore}}" hint-placeholder-val="{{ false }}">
+        <div style="height:30px;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#3b6df0">{{w.label}}</div>
+      </sc-if>
+    </sc-for>
+  </div>
+  <div style="flex:1;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px">
+    <div style="font-size:20px;font-weight:700">推进① · 分区标题 + 折叠 SDK</div>
+    <div style="display:flex;gap:12px">
+      <sc-for list="{{keep}}" as="k" hint-placeholder-count="3">
+        <div style="flex:1;background:#fff;border:1px solid #e2e5ea;border-radius:12px;padding:14px 16px">
+          <div style="font-size:12px;color:#8a93a3">{{k.k}}</div>
+          <div style="font-size:14px;font-weight:700;margin-top:4px">{{k.v}}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#e9f7ee;border:1px solid #9bd5ad;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:700;color:#14532d">怎么做</div>
+      <sc-for list="{{ideas}}" as="p" hint-placeholder-count="4">
+        <div style="display:flex;gap:10px;font-size:13px;line-height:1.55;color:#1f3d2b">
+          <div style="flex:none;width:20px;height:20px;border-radius:10px;background:#15803d;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">{{p.n}}</div>
+          <div>{{p.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rail = ['Dashboard','Home','Image','Team','Remote','Credentials','System'].map((n) => {
+      const on = n === 'Home';
+      return { label: n, bg: on ? '#e8efff' : 'transparent', stroke: on ? '#3b6df0' : '#8a93a3', fg: on ? '#3b6df0' : '#4a5263' };
+    });
+    const H = (l) => ({ isHeader: true, isRow: false, isMore: false, label: l });
+    const R = (l, o) => Object.assign({ isHeader: false, isRow: true, isMore: false, label: l, bg: 'transparent', chip: '#c9ced8', tail: '' }, o || {});
+    const M = (l) => ({ isHeader: false, isRow: false, isMore: true, label: l });
+    const rows = [
+      R('Claude Code', { bg: '#e8efff', chip: '#3b6df0', tail: '默认' }),
+      R('work-profile', { tail: 'Profile' }),
+      M('+ 添加 Profile'),
+      H('编码工具'),
+      R('Claude Desktop'),
+      R('Codex'),
+      R('OpenCode'),
+      R('DeepSeek'),
+      R('Xcode'),
+      R('VS Code'),
+      H('▸ SDK · 4 项，已折叠')
+    ];
+    const keep = [
+      { k: '一级入口', v: '不变（7 个）' },
+      { k: '路由与名称', v: '不变' },
+      { k: '默认可点条目', v: '12 → 9（另有 2 个标题）' }
+    ];
+    const ideas = [
+      { n: 1, text: '用「编码工具」「SDK」两个分区标题，替换现在匿名的分割线。Claude Code 和它的 Profile 仍在最上面，不加标题。' },
+      { n: 2, text: 'SDK 默认折叠（OpenAI / Anthropic / Embedding / Decisions 共 4 项），点标题展开。当前页在 SDK 里，或用户展开过，就保持展开；状态只记在本机。' },
+      { n: 3, text: '不做“自动判断常用”。现有的眼睛图标编辑模式已经能手动隐藏；自动判断会让条目莫名消失。' },
+      { n: 4, text: '进入编辑模式时全部展开，保证每一项都能切换可见性。' }
+    ];
+    return { rail, rows, keep, ideas };
+  }
+}
+</script>
+</body>
+</html>

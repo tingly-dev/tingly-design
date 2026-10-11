@@ -1,0 +1,1 @@
+the frame: $('#Card').css({left: 80, top: 760}) moves it (canvas px, top-left corner), .css({width: 480, height: 640}) resizes it (120 to 8000), .attr('data-title', 'Pricing') renames it (one line of plain text). Artboards never overlap and each has a title row above it: keep 80 px clear. When you resize the frame, set the first element's width and height inside it too.

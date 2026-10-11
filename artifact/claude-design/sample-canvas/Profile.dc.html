@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Profile 放哪里</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;padding:40px 48px;display:flex;flex-direction:column;gap:24px;background:#f5f6f8;overflow:hidden">
+  <div style="font-size:20px;font-weight:700">Profile 放哪里：A 紧跟 Agent（缩进） vs B 单独一类</div>
+  <div style="display:flex;gap:32px;align-items:flex-start">
+    <sc-for list="{{options}}" as="o" hint-placeholder-count="2">
+      <div style="flex:1;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:15px;font-weight:700">{{o.title}}</div>
+          <div style="font-size:12px;padding:2px 8px;border-radius:10px;background:{{o.tagBg}};color:{{o.tagFg}}">{{o.tag}}</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e5ea;border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{o.rows}}" as="w" hint-placeholder-count="10">
+            <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:12px 10px 4px">{{w.label}}</div>
+            </sc-if>
+            <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+              <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px 0 {{w.pad}}px;background:{{w.bg}}">
+                <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+                <div style="font-size:13px;color:{{w.fg}};flex:1">{{w.label}}</div>
+                <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.55;color:#2b3140">
+          <sc-for list="{{o.notes}}" as="n" hint-placeholder-count="4">
+            <div style="display:flex;gap:8px"><div style="flex:none;width:16px;color:{{n.c}};font-weight:700">{{n.m}}</div><div>{{n.text}}</div></div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const H = (l) => ({ isHeader: true, isRow: false, label: l });
+    const R = (l, o) => Object.assign({ isHeader: false, isRow: true, label: l, bg: 'transparent', chip: '#c9ced8', fg: '#2b3140', pad: 10, tail: '' }, o || {});
+    const CC = { bg: '#e8efff', chip: '#3b6df0', tail: '' };
+    const rowsA = [
+      R('Claude Code', { chip: '#3b6df0', tail: '▾' }),
+      R('work-profile', { pad: 34, chip: '#9bb3f5', tail: 'Profile' }),
+      R('personal', { pad: 34, chip: '#9bb3f5', tail: 'Profile' }),
+      R('+ 添加 Profile', { pad: 34, chip: 'transparent', fg: '#3b6df0' }),
+      H('编码工具'),
+      R('Claude Desktop'), R('Codex'), R('OpenCode')
+    ];
+    const rowsB = [
+      R('Claude Code', { chip: '#3b6df0' }),
+      H('编码工具'),
+      R('Claude Desktop'), R('Codex'), R('OpenCode'),
+      H('PROFILE'),
+      R('work-profile', { chip: '#9bb3f5', tail: 'Claude Code' }),
+      R('personal', { chip: '#9bb3f5', tail: 'Claude Code' }),
+      R('+ 添加 Profile…', { chip: 'transparent', fg: '#3b6df0', tail: '选 Agent ▾' })
+    ];
+    const ok = '#15803d', no = '#b45309';
+    const options = [
+      { title: 'A · 紧跟 Agent，缩进', tag: '推荐', tagBg: '#e9f7ee', tagFg: '#15803d', rows: rowsA, notes: [
+        { m: '+', c: ok, text: 'Profile 是 Agent 的变体：“我的 Claude Code 有两套配置”，一眼看出归属。' },
+        { m: '+', c: ok, text: '缩进 + 浅色图标，不再像并列的 Agent。' },
+        { m: '+', c: ok, text: '今天只有 Claude Code 支持，不需要“选 Agent”这个选择器。以后别的 Agent 支持时，各自分组末尾加自己的“+ 添加 Profile”。' },
+        { m: '−', c: no, text: 'Profile 多了以后 Claude Code 这一组变长；可支持折叠（▾）。' }
+      ] },
+      { title: 'B · 单独一类 PROFILE', tag: '备选', tagBg: '#fff4e5', tagFg: '#8a4b00', rows: rowsB, notes: [
+        { m: '+', c: ok, text: '想看“所有 Profile”时集中在一处；多个 Agent 都支持 Profile 后最整齐。' },
+        { m: '−', c: no, text: '要给每行加“Claude Code”标签说明归属，信息变重。' },
+        { m: '−', c: no, text: '创建时要选 Agent，今天选项只有一个，是多余的一步。' },
+        { m: '−', c: no, text: '今天整个分区只装 Claude Code 的东西，多了一个分类却没有新信息。' }
+      ] }
+    ];
+    return { options };
+  }
+}
+</script>
+</body>
+</html>

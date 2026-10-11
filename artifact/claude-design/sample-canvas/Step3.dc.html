@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>第三步 实验室</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f5f6f8;overflow:hidden">
+  <div style="width:76px;background:#ffffff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;box-sizing:border-box">
+    <sc-for list="{{rail}}" as="r" hint-placeholder-count="8">
+      <div style="width:60px;height:54px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:{{r.bg}}">
+        <div style="width:20px;height:20px;border-radius:5px;border:2px solid {{r.stroke}};box-sizing:border-box"></div>
+        <div style="font-size:11px;color:{{r.fg}}">{{r.label}}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="width:252px;background:#ffffff;border-right:1px solid #e2e5ea;padding:16px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+    <sc-for list="{{rows}}" as="w" hint-placeholder-count="13">
+      <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:12px 10px 4px">{{w.label}}</div>
+      </sc-if>
+      <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+        <div style="height:32px;border-radius:7px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{w.bg}}">
+          <div style="width:16px;height:16px;border-radius:4px;background:{{w.chip}}"></div>
+          <div style="font-size:13px;color:#2b3140;flex:1">{{w.label}}</div>
+        </div>
+      </sc-if>
+    </sc-for>
+  </div>
+  <div style="flex:1;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px">
+    <div style="font-size:20px;font-weight:700">第三步 · 实验功能收进「实验室」</div>
+    <div style="display:flex;gap:12px">
+      <sc-for list="{{keep}}" as="k" hint-placeholder-count="3">
+        <div style="flex:1;background:#fff;border:1px solid #e2e5ea;border-radius:12px;padding:14px 16px">
+          <div style="font-size:12px;color:#8a93a3">{{k.k}}</div>
+          <div style="font-size:14px;font-weight:700;margin-top:4px">{{k.v}}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#e9f7ee;border:1px solid #9bd5ad;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;font-weight:700;color:#14532d">怎么做</div>
+      <sc-for list="{{ideas}}" as="p" hint-placeholder-count="4">
+        <div style="display:flex;gap:10px;font-size:13px;line-height:1.55;color:#1f3d2b">
+          <div style="flex:none;width:20px;height:20px;border-radius:10px;background:#15803d;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">{{p.n}}</div>
+          <div>{{p.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rail = ['Dashboard','Home','Image','Team','Remote','Credentials','实验室','System'].map((n) => {
+      const on = n === '实验室';
+      return { label: n, bg: on ? '#e8efff' : 'transparent', stroke: on ? '#3b6df0' : (n === 'System' ? '#8a93a3' : '#8a93a3'), fg: on ? '#3b6df0' : '#4a5263' };
+    });
+    const H = (l) => ({ isHeader: true, isRow: false, label: l });
+    const R = (l) => ({ isHeader: false, isRow: true, label: l, bg: 'transparent', chip: '#c9ced8' });
+    const rows = [
+      H('Prompt'), R('用户请求'), R('Skills'),
+      H('Tools'), R('MCP'), R('Servertool'),
+      H('Guardrails'), R('概览'), R('策略组'), R('策略'), R('Secrets'), R('历史'),
+      H('Bench'), R('Bench')
+    ];
+    const keep = [
+      { k: '关闭实验开关', v: '导航与今天完全一致' },
+      { k: '开启任一实验', v: '多出 1 个入口' },
+      { k: '实验页路由', v: '不变' }
+    ];
+    const ideas = [
+      { n: 1, text: '开关全关时，一级入口就是今天的 7 个，核心用户零变化。' },
+      { n: 2, text: '开了任意实验（Prompt / Tools / Guardrails / Bench），多出一个「实验室」入口，原来各占一格的 4 个图标并成一个。' },
+      { n: 3, text: '侧栏按原功能名分区，子页保持原样，不重新分类，不改名。用户只需要学会“实验的东西都在实验室”这一件事。' },
+      { n: 4, text: '某个实验转正时，再把它搬到正式入口（比如 Guardrails 稳定后进 Credentials 旁）。实验室是临时停靠点，不是永久分类。' }
+    ];
+    return { rail, rows, keep, ideas };
+  }
+}
+</script>
+</body>
+</html>

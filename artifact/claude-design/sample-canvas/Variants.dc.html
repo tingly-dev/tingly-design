@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>侧栏草稿合集</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",sans-serif;color:#1f2430}
+</style>
+</helmet>
+<div style="width:1600px;height:2440px;box-sizing:border-box;padding:48px;background:#f5f6f8;overflow:hidden;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:24px;font-weight:700">Home 侧栏草稿合集：12 种思路一次看完</div>
+    <div style="font-size:14px;color:#6b6a65">每张都按“默认状态”画。右上角的标签是改动量：<b style="color:#15803d">小</b> 只改侧栏渲染，<b style="color:#b45309">中</b> 涉及页面或路由，<b style="color:#b91c1c">大</b> 改变导航结构。看完告诉我编号即可，例如“2 + 4，9 不要”。</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-content:flex-start">
+    <sc-for list="{{cards}}" as="c" hint-placeholder-count="8">
+      <div style="width:480px;height:540px;box-sizing:border-box;background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:none;width:26px;height:26px;border-radius:13px;background:#1f2430;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">{{c.n}}</div>
+          <div style="font-size:15px;font-weight:700;flex:1">{{c.title}}</div>
+          <div style="font-size:12px;padding:2px 8px;border-radius:10px;background:{{c.costBg}};color:{{c.costFg}}">改动：{{c.cost}}</div>
+        </div>
+        <div style="font-size:13px;line-height:1.5;color:#4a5263;height:40px">{{c.idea}}</div>
+        <div style="flex:1;background:#f5f6f8;border:1px solid #e2e5ea;border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+          <sc-for list="{{c.rows}}" as="w" hint-placeholder-count="12">
+            <sc-if value="{{w.isDiv}}" hint-placeholder-val="{{ false }}">
+              <div style="height:1px;background:#d6dae2;margin:5px 6px"></div>
+            </sc-if>
+            <sc-if value="{{w.isHeader}}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11px;letter-spacing:.06em;color:#8a93a3;margin:8px 8px 2px">{{w.label}}</div>
+            </sc-if>
+            <sc-if value="{{w.isRow}}" hint-placeholder-val="{{ true }}">
+              <div style="height:28px;flex:none;border-radius:6px;display:flex;align-items:center;gap:8px;padding:0 8px 0 {{w.pad}}px;background:{{w.bg}}">
+                <div style="width:14px;height:14px;border-radius:4px;background:{{w.chip}}"></div>
+                <div style="font-size:12.5px;color:{{w.fg}};flex:1">{{w.label}}</div>
+                <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="width:480px;height:540px;box-sizing:border-box;background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:none;width:26px;height:26px;border-radius:13px;background:#1f2430;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">9</div>
+        <div style="font-size:15px;font-weight:700;flex:1">图标网格</div>
+        <div style="font-size:12px;padding:2px 8px;border-radius:10px;background:#fff4e5;color:#b45309">改动：中</div>
+      </div>
+      <div style="font-size:13px;line-height:1.5;color:#4a5263;height:40px">Agent 做成 4 列图标块，比一列文字行省一半高度；Profile 变成图标角标，点进页面里用切换器。</div>
+      <div style="flex:1;background:#f5f6f8;border:1px solid #e2e5ea;border-radius:10px;padding:14px 12px;display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;overflow:hidden">
+        <sc-for list="{{tiles}}" as="t" hint-placeholder-count="10">
+          <div style="width:96px;height:84px;box-sizing:border-box;border-radius:10px;background:{{t.bg}};border:1px solid {{t.bd}};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative">
+            <div style="width:30px;height:30px;border-radius:8px;background:{{t.chip}}"></div>
+            <div style="font-size:11.5px;color:#2b3140">{{t.label}}</div>
+            <div style="position:absolute;top:6px;right:8px;font-size:10.5px;color:#3b6df0">{{t.badge}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="width:480px;height:540px;box-sizing:border-box;background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:none;width:26px;height:26px;border-radius:13px;background:#1f2430;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">10</div>
+        <div style="font-size:15px;font-weight:700;flex:1">Agent 切换器 + Agent 内导航</div>
+        <div style="font-size:12px;padding:2px 8px;border-radius:10px;background:#fdecec;color:#b91c1c">改动：大</div>
+      </div>
+      <div style="font-size:13px;line-height:1.5;color:#4a5263;height:40px">侧栏顶部是“当前 Agent”下拉，下面是这个 Agent 自己的子页。切换 Agent 不再靠一长列，Profile 也是子页之一。</div>
+      <div style="flex:1;background:#f5f6f8;border:1px solid #e2e5ea;border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+        <div style="height:40px;flex:none;border-radius:8px;background:#fff;border:1px solid #d6dae2;display:flex;align-items:center;gap:8px;padding:0 10px">
+          <div style="width:20px;height:20px;border-radius:5px;background:#3b6df0"></div>
+          <div style="font-size:13.5px;font-weight:700;flex:1">Claude Code</div>
+          <div style="font-size:12px;color:#8a93a3">▾</div>
+        </div>
+        <sc-for list="{{subnav}}" as="w" hint-placeholder-count="6">
+          <div style="height:28px;flex:none;border-radius:6px;display:flex;align-items:center;gap:8px;padding:0 8px;background:{{w.bg}}">
+            <div style="width:14px;height:14px;border-radius:4px;background:{{w.chip}}"></div>
+            <div style="font-size:12.5px;color:#2b3140;flex:1">{{w.label}}</div>
+            <div style="font-size:11px;color:#8a93a3">{{w.tail}}</div>
+          </div>
+        </sc-for>
+        <div style="margin-top:10px;padding:8px;border:1px dashed #c9ced8;border-radius:8px;font-size:11.5px;line-height:1.5;color:#8a93a3">点开顶部下拉：Codex · OpenCode · DeepSeek · Xcode · VS Code · SDK…</div>
+      </div>
+    </div>
+
+    <div style="width:480px;height:540px;box-sizing:border-box;background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:none;width:26px;height:26px;border-radius:13px;background:#1f2430;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">11</div>
+        <div style="font-size:15px;font-weight:700;flex:1">页面顶部 Tab 条，去掉二级侧栏</div>
+        <div style="font-size:12px;padding:2px 8px;border-radius:10px;background:#fdecec;color:#b91c1c">改动：大</div>
+      </div>
+      <div style="font-size:13px;line-height:1.5;color:#4a5263;height:40px">Home 不再有二级侧栏，Agent 变成内容区顶部的一排 Tab，内容区更宽（路由图不再被截断）。</div>
+      <div style="flex:1;background:#f5f6f8;border:1px solid #e2e5ea;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="7">
+            <div style="padding:6px 10px;border-radius:7px;font-size:12px;background:{{t.bg}};color:{{t.fg}};border:1px solid {{t.bd}}">{{t.label}}</div>
+          </sc-for>
+        </div>
+        <div style="font-size:13px;color:#2b3140;display:flex;align-items:center;gap:8px"><b>Claude Code</b><span style="padding:3px 10px;border-radius:12px;border:1px solid #3b6df0;color:#3b6df0;background:#e8efff;font-size:12px">配置：work-profile ▾</span></div>
+        <div style="flex:1;border-radius:10px;background:#fff;border:1px dashed #c9ced8;display:flex;align-items:center;justify-content:center;color:#8a93a3;font-size:12.5px">页面内容，整行宽度可用</div>
+      </div>
+    </div>
+
+    <div style="width:480px;height:540px;box-sizing:border-box;background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:none;width:26px;height:26px;border-radius:13px;background:#1f2430;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">12</div>
+        <div style="font-size:15px;font-weight:700;flex:1">图标栏直接放 Agent</div>
+        <div style="font-size:12px;padding:2px 8px;border-radius:10px;background:#fdecec;color:#b91c1c">改动：大</div>
+      </div>
+      <div style="font-size:13px;line-height:1.5;color:#4a5263;height:40px">Home 的二级侧栏消失，Agent 以纯图标竖排接在一级图标栏后面（悬停显示名字），省出一整列宽度。</div>
+      <div style="flex:1;background:#f5f6f8;border:1px solid #e2e5ea;border-radius:10px;display:flex;overflow:hidden">
+        <div style="width:52px;background:#fff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:8px">
+          <sc-for list="{{rail1}}" as="r" hint-placeholder-count="4">
+            <div style="width:26px;height:26px;border-radius:7px;border:2px solid {{r.c}};box-sizing:border-box"></div>
+          </sc-for>
+        </div>
+        <div style="width:48px;background:#fff;border-right:1px solid #e2e5ea;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:8px;position:relative">
+          <sc-for list="{{rail2}}" as="r" hint-placeholder-count="9">
+            <div style="width:26px;height:26px;border-radius:7px;background:{{r.c}}"></div>
+          </sc-for>
+          <div style="position:absolute;left:44px;top:46px;white-space:nowrap;padding:4px 8px;border-radius:6px;background:#1f2430;color:#fff;font-size:11.5px">Codex</div>
+        </div>
+        <div style="flex:1;margin:12px;border-radius:10px;background:#fff;border:1px dashed #c9ced8;display:flex;align-items:center;justify-content:center;color:#8a93a3;font-size:12.5px">页面内容</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":2440}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const H = (l) => ({ isHeader: true, label: l });
+    const D = () => ({ isDiv: true });
+    const R = (l, o) => Object.assign({ isRow: true, label: l, bg: 'transparent', chip: '#c9ced8', fg: '#2b3140', pad: 8, tail: '' }, o || {});
+    const CC = { bg: '#e8efff', chip: '#3b6df0', fg: '#2b3140' };
+    const P = (l, tail) => R(l, { pad: 26, chip: '#9bb3f5', tail: tail || 'Profile' });
+    const M = (l) => R(l, { chip: 'transparent', fg: '#3b6df0' });
+    const MP = (l) => R(l, { pad: 26, chip: 'transparent', fg: '#3b6df0' });
+    const cost = { s: ['小', '#e9f7ee', '#15803d'], m: ['中', '#fff4e5', '#b45309'], l: ['大', '#fdecec', '#b91c1c'] };
+    const C = (n, title, idea, k, rows) => ({ n, title, idea, cost: cost[k][0], costBg: cost[k][1], costFg: cost[k][2], rows });
+    const tools = [R('Claude Desktop'), R('Codex'), R('OpenCode'), R('DeepSeek'), R('Xcode'), R('VS Code')];
+    const sdk = [R('OpenAI'), R('Anthropic'), R('Embedding'), R('Decisions')];
+    const cards = [
+      C(1, '现状（基线）', '默认可见约 12 行，匿名分割线，Profile 与 Agent 同级平铺。', 's', [
+        R('Claude Code', CC), R('work-profile', { tail: '' }), R('personal'), M('+ 添加 Profile'), D(), ...tools, D(), ...sdk ]),
+      C(2, '分区标题 + 折叠 SDK', '给“编码工具”“SDK”加标题，SDK 默认折叠；Profile 仍平铺。', 's', [
+        R('Claude Code', CC), R('work-profile'), R('personal'), M('+ 添加 Profile'), H('编码工具'), ...tools, H('▸ SDK · 4 项，已折叠') ]),
+      C(3, 'Profile 缩进跟随', 'Profile 缩进在 Claude Code 下面，浅色图标，“+ 添加”在这组末尾。', 's', [
+        R('Claude Code', Object.assign({ tail: '▾' }, CC)), P('work-profile'), P('personal'), MP('+ 添加 Profile'), H('编码工具'), ...tools, H('▸ SDK · 4 项，已折叠') ]),
+      C(4, 'Profile 折叠成计数', 'Claude Code 行右侧显示“2 个 Profile ▸”，默认收起，点开才出现；其余同 2。', 's', [
+        R('Claude Code', Object.assign({ tail: '2 Profile ▸' }, CC)), H('编码工具'), ...tools, H('▸ SDK · 4 项，已折叠') ]),
+      C(5, 'Profile 切换器（C）', '侧栏不放 Profile，页面标题旁有“配置：work-profile ▾”。侧栏行右侧灰字提示当前配置。', 'm', [
+        R('Claude Code', Object.assign({ tail: 'work-profile' }, CC)), H('编码工具'), ...tools, H('▸ SDK · 4 项，已折叠') ]),
+      C(6, '按“已接入 / 未接入”分', '已装好并有请求的在上面，没接入的收成一行；依赖“是否已接入”的信号。', 'm', [
+        H('已接入'), R('Claude Code', CC), R('Codex'), R('VS Code'), H('未接入'), R('Claude Desktop · OpenCode · DeepSeek · Xcode …  ›', { chip: 'transparent', fg: '#3b6df0' }), H('SDK'), R('OpenAI'), R('Anthropic'), M('Embedding · Decisions  ›') ]),
+      C(7, '按“怎么用”分', '终端 / 桌面与 IDE / SDK 三类，用用户的用法而不是产品名分组。', 'm', [
+        H('终端'), R('Claude Code', CC), P('work-profile'), R('Codex'), R('OpenCode'), R('DeepSeek'), H('桌面与 IDE'), R('Claude Desktop'), R('Xcode'), R('VS Code'), H('SDK'), R('OpenAI · Anthropic · Embedding …  ›', { chip: 'transparent', fg: '#3b6df0' }) ]),
+      C(8, '搜索 + 最近使用', '顶部一个“切换 Agent”搜索框，下面只列最近用的 3 个，其余收进“全部”。', 'm', [
+        R('搜索 Agent…', { chip: '#d6dae2', fg: '#8a93a3', tail: '⌘K' }), H('最近'), R('Claude Code', CC), R('Codex'), R('VS Code'), H('全部'), R('全部 Agent · 13  ›', { chip: 'transparent', fg: '#3b6df0' }) ])
+    ];
+    const tiles = [
+      { label: 'Claude Code', badge: '2 配置', bg: '#e8efff', bd: '#3b6df0', chip: '#3b6df0' },
+      { label: 'Desktop', badge: '', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: 'Codex', badge: '', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: 'OpenCode', badge: '', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: 'DeepSeek', badge: '', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: 'Xcode', badge: '', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: 'VS Code', badge: '', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: 'SDK', badge: '4', bg: '#fff', bd: '#d6dae2', chip: '#c9ced8' },
+      { label: '+ 添加', badge: '', bg: 'transparent', bd: '#c9ced8', chip: 'transparent' }
+    ];
+    const sub = (l, o) => Object.assign({ label: l, bg: 'transparent', chip: '#c9ced8', tail: '' }, o || {});
+    const subnav = [ sub('接入', { bg: '#e8efff', chip: '#3b6df0' }), sub('路由规则', { tail: '3 条' }), sub('配置', { tail: 'work-profile ▾' }), sub('Profile 管理', { tail: '2' }), sub('用量') ];
+    const tabs = ['Claude Code', 'Codex', 'OpenCode', 'DeepSeek', 'Xcode', 'VS Code', '更多 ▾'].map((l, i) => ({
+      label: l, bg: i === 0 ? '#e8efff' : '#fff', fg: i === 0 ? '#3b6df0' : '#4a5263', bd: i === 0 ? '#3b6df0' : '#d6dae2' }));
+    const rail1 = ['#3b6df0', '#8a93a3', '#8a93a3', '#8a93a3'].map((c) => ({ c }));
+    const rail2 = ['#3b6df0', '#c9ced8', '#c9ced8', '#c9ced8', '#c9ced8', '#c9ced8', '#c9ced8', '#c9ced8', '#c9ced8'].map((c) => ({ c }));
+    return { cards, tiles, subnav, tabs, rail1, rail2 };
+  }
+}
+</script>
+</body>
+</html>
