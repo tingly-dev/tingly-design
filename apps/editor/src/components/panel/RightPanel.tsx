@@ -7,6 +7,7 @@ import { LayerTree } from './LayerTree';
 import { BoardProps, ItemProps, Tweaks } from './OtherProps';
 import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
+import { BuildRow, DeckProps, SlideLayers, SlideProps } from '../slides/SlidePanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
 export function RightPanel() {
@@ -19,9 +20,30 @@ export function RightPanel() {
   const doc = source ? parsed(source) : null;
   const el = sel?.kind === 'el' && doc ? doc.elements[sel.tid] : undefined;
   const info = el && inspect?.tid === el.tid ? inspect : null;
+  const slides = useStore((s) => s.kind === 'slides');
 
   let body: React.ReactElement;
-  if (sel?.kind === 'el' && file && doc) {
+  if (slides && sel?.kind === 'el' && file && doc && el && tab !== 'code') {
+    body = (
+      <>
+        <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
+        <BuildRow file={file} tid={el.tid} />
+      </>
+    );
+  } else if (slides && sel?.kind === 'board' && file) {
+    body =
+      tab === 'code' ? (
+        <div className="sec">
+          <span className="hint">{file}</span>
+          <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="幻灯片源文件" />
+          <span className="hint">这是这一页的源文件。改文件（手改、Claude Code、git）后会实时更新。</span>
+        </div>
+      ) : (
+        <SlideProps file={file} />
+      );
+  } else if (slides && !sel) {
+    body = <DeckProps />;
+  } else if (sel?.kind === 'el' && file && doc) {
     if (!el) body = <div className="empty">这个元素已经不在设计里了。</div>;
     else if (tab === 'code') body = <CodeTab file={file} doc={doc} el={el} info={info} />;
     else if (tab === 'tweaks') body = <Tweaks file={file} doc={doc} />;
@@ -63,7 +85,7 @@ export function RightPanel() {
   const tabs: { id: typeof tab; label: string }[] = [
     { id: 'props', label: '属性' },
     { id: 'code', label: '代码' },
-    { id: 'tweaks', label: 'Tweaks' },
+    ...(slides ? [] : [{ id: 'tweaks' as const, label: 'Tweaks' }]),
   ];
   return (
     <aside className="panel" aria-label="属性面板">
@@ -77,7 +99,7 @@ export function RightPanel() {
           <Close />
         </button>
       </div>
-      <LayerTree />
+      {slides ? <SlideLayers /> : <LayerTree />}
       <div className="pbody">{body}</div>
     </aside>
   );

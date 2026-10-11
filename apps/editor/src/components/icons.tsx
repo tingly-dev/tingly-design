@@ -334,3 +334,11 @@ export const RoleIcon = ({ role }: { role: string }) => {
       return <Shapes />;
   }
 };
+
+export const Picture = () => (
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="4" width="14" height="12" rx="1.5" />
+    <circle cx="7.5" cy="8.5" r="1.3" />
+    <path d="M4 15l4.5-4.5 3 3 2-2 3 3" />
+  </svg>
+);

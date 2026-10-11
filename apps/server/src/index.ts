@@ -8,23 +8,28 @@ import { Hono } from 'hono';
 import { streamSSE, stream } from 'hono/streaming';
 import Anthropic from '@anthropic-ai/sdk';
 import chokidar from 'chokidar';
-import { FAST_EDIT_SYSTEM, type Actor } from '@dc/core';
+import { createHash } from 'node:crypto';
+import { FAST_EDIT_SYSTEM, FAST_EDIT_SLIDES, type Actor } from '@dc/core';
 import {
+  ASSET_TYPES,
   HttpError,
   PROJECTS_DIR,
   REPO_ROOT,
   createProject,
   isProjectName,
   isTracked,
+  kindOf,
   listProjects,
   ownWrites,
   projectDir,
+  readAsset,
   readOne,
   readProject,
   removeFile,
   safeRel,
   versionOf,
   withLock,
+  writeAsset,
   writeAtomic,
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
@@ -58,9 +63,9 @@ app.get('/api/health', (c) => {
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 app.post('/api/projects', async (c) => {
-  const { name, title } = await c.req.json<{ name: string; title?: string }>();
+  const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: 'design' | 'slides' }>();
   if (!isProjectName(name)) throw new HttpError(400, '项目名只能用字母、数字、- 和 _');
-  await createProject(name, title || name);
+  await createProject(name, title || name, kind === 'slides' ? 'slides' : 'design');
   return c.json({ ok: true });
 });
 
@@ -112,6 +117,44 @@ app.delete('/api/projects/:p/file', async (c) => {
   });
 });
 
+// ---------------------------------------------------------------- assets
+
+const MAX_ASSET = 20 * 1024 * 1024;
+
+/** Upload an image or font: stored under assets/ by content hash, so the same file is kept once. */
+app.post('/api/projects/:p/assets', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  const name = c.req.query('name') ?? 'file';
+  const ext = (/\.([A-Za-z0-9]+)$/.exec(name)?.[1] ?? '').toLowerCase();
+  if (!ASSET_TYPES[ext]) throw new HttpError(400, `不支持的文件类型：${ext || name}`);
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (!bytes.length) throw new HttpError(400, 'empty file');
+  if (bytes.length > MAX_ASSET) throw new HttpError(413, '文件超过 20 MB');
+  const stem = name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'file';
+  const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 8);
+  const rel = `assets/${stem}-${hash}.${ext}`;
+  await writeAsset(p, rel, bytes);
+  return c.json({ path: rel, size: bytes.length, type: ASSET_TYPES[ext] });
+});
+
+/** Serve a project's assets (to the sandboxed frames too: images, and fonts which need CORS). */
+app.get('/api/projects/:p/raw/*', async (c) => {
+  const p = c.req.param('p');
+  const rel = decodeURIComponent(c.req.path.replace(/^\/api\/projects\/[^/]+\/raw\//, ''));
+  const bytes = await readAsset(p, rel);
+  if (!bytes) return c.json({ error: 'not found' }, 404);
+  const ext = rel.slice(rel.lastIndexOf('.') + 1).toLowerCase();
+  return c.body(new Uint8Array(bytes), 200, {
+    'content-type': ASSET_TYPES[ext] ?? 'application/octet-stream',
+    'access-control-allow-origin': '*',
+    'cache-control': 'private, max-age=3600',
+    'x-content-type-options': 'nosniff',
+    // an SVG opened directly must not run scripts on this origin
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+  });
+});
+
 app.get('/api/projects/:p/journal', async (c) => c.json(await journal(c.req.param('p'))));
 
 app.get('/api/projects/:p/events', (c) => {
@@ -153,12 +196,13 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
     return c.json({ error: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用（可以改用 jQuery 模式直接写语句）。' }, 501);
   }
   anthropic ??= new Anthropic();
-  const body = await c.req.json<{ messages: { role: 'user' | 'assistant'; content: string }[] }>();
+  const body = await c.req.json<{ messages: { role: 'user' | 'assistant'; content: string }[]; kind?: string }>();
+  const system = body.kind === 'slides' ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES : FAST_EDIT_SYSTEM;
   return stream(c, async (s) => {
     const ms = anthropic!.messages.stream({
       model: FAST_MODEL,
       max_tokens: 4096,
-      system: FAST_EDIT_SYSTEM,
+      system,
       messages: body.messages,
     });
     s.onAbort(() => ms.abort());
@@ -181,7 +225,7 @@ app.post('/api/projects/:p/delegate', async (c) => {
   if (!cliChecked) return c.json({ error: '本机没有可用的 claude CLI，无法委托。' }, 501);
   const req = await c.req.json<DelegateRequest>();
   if (!req.prompt?.trim()) throw new HttpError(400, 'prompt missing');
-  return c.json({ id: startDelegate(p, req) });
+  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design') });
 });
 
 // ---------------------------------------------------------------- git

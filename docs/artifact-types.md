@@ -69,7 +69,12 @@ tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifa
 
 内容不是文件，而是带稳定 id 的块树，每个标签页一个修订号，按块 id 编辑。可以放在同一个服务端（版本、SSE、journal 都能用），但编辑器是另一套（富文本 / 块编辑器），与画布代码几乎不共享。放最后。
 
-## 建议的第一步
+## 进度
+
+- **Slides：已实现**（README“幻灯片”一节）。按上面的建议，编辑仍走 `copy.ts` 的最小补丁；`packages/core/src/slides.ts` 是子集检查（只用来提示和给快速 AI 反馈，不阻止保存），`slideArt.ts` 画形状/图标/连线（舞台和导出共用），`deck.ts` 是 deck.json 与基础样式。原版 Slides 没有页内快速 AI，这里有。
+- **Dashboard、Design System、Docs**：参考材料与 FINDINGS 已齐（`artifact/claude-*`），尚未实现。下一步按本文顺序做 Design System 的消费侧（Slides 与 Design 读 `ds/<folder>/tokens.json`）。
+
+## 当初建议的第一步（已完成）
 
 1. 服务端和 core 引入"项目类型"：按索引文件识别（`canvas.json` → design，`deck.json` → slides，`design-system.json` → design-system），`safeRel()` / `listProjects()` / 文件监听按类型取白名单。
 2. 解析器的"模板范围"可配：Design 取 `<x-dc>` 内部，Slides 取整个文件。

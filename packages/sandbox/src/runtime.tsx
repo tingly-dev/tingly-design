@@ -10,6 +10,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
+  SLIDE_BASE_CSS,
+  paintLayer,
   parseDc,
   styleObject,
   isTextEditable,
@@ -22,6 +24,7 @@ import {
   type Mode,
   type ToRuntime,
 } from '@dc/core';
+import { BUILD_CSS, XArt, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
 
@@ -97,6 +100,8 @@ interface Ctx {
   files: Record<string, string>;
   file: string;
   mode: Mode;
+  /** rendering a slide: relative image paths resolve against `base` */
+  slide?: { base: string; source: string; still?: boolean };
 }
 
 function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<string, unknown> {
@@ -145,8 +150,13 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
     }
   }
   if (ctx.tagged) p['data-dc-tid'] = el.tid;
+  if (ctx.slide) {
+    const z = paintLayer(el);
+    if (z !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), zIndex: z };
+  }
   return p;
 }
+
 
 // --------------------------------------------------------------- renderer
 
@@ -215,11 +225,32 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
       );
     }
   }
+  if (ctx.slide) {
+    const sp = (): Record<string, unknown> => toProps(el, scope, ctx, key);
+    const a = (name: string) => el.attrs.find((x) => x.name === name)?.value;
+    switch (el.tag) {
+      case 'x-shape':
+      case 'x-icon':
+      case 'x-connector':
+        return <XArt key={key} tag={el.tag} props={sp()} attrs={Object.fromEntries(el.attrs.map((x) => [x.name, String(interp(x.value, scope) ?? '')]))} />;
+      case 'x-embed':
+        return <XEmbed key={key} props={sp()} html={innerSource(ctx.slide.source, el.inner)} mode={ctx.mode} still={ctx.slide.still} />;
+      case 'img': {
+        const p = sp();
+        p.src = resolveSrc(p.src, ctx.slide.base);
+        return React.createElement('img', p);
+      }
+    }
+  }
   if (el.tag.startsWith('sc-') || el.tag === 'x-import') {
     return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment>;
   }
   const props = toProps(el, scope, ctx, key);
   if (VOID_ELEMENTS.has(el.tag) && el.ns === 'html') return React.createElement(el.tag, props);
+  if (el.tag === 'table' && el.children.some((c) => c.kind === 'el' && c.tag === 'tr')) {
+    // rows written straight into <table> (the slide subset does): the DOM wants a tbody around them
+    return React.createElement('table', props, React.createElement('tbody', null, ...renderNodes(el.children, scope, ctx, 'tbody')));
+  }
   if (el.tag === 'textarea') {
     const text = el.children.map((c) => (c.kind === 'text' ? String(interp(c.text, scope) ?? '') : '')).join('');
     if (!('value' in props)) props.defaultValue = text;
@@ -330,6 +361,9 @@ interface State {
   hover: number | null;
   editing: HTMLElement | null;
   pending: Extract<ToRuntime, { dc: 'render' }> | null;
+  slide: { head: string; base: string; still?: boolean } | null;
+  /** present mode: how far a slide's builds have played */
+  step: number;
   ctx(): Ctx;
 }
 
@@ -343,8 +377,16 @@ const current: State = {
   hover: null,
   editing: null,
   pending: null,
+  slide: null,
+  step: 0,
   ctx() {
-    return { tagged: true, files: this.files, file: this.file, mode: this.mode };
+    return {
+      tagged: true,
+      files: this.files,
+      file: this.file,
+      mode: this.mode,
+      slide: this.slide ? { base: this.slide.base, source: this.source, still: this.slide.still } : undefined,
+    };
   },
 };
 
@@ -356,16 +398,43 @@ let committedSource = '';
 function Committed({ source }: { source: string }) {
   React.useLayoutEffect(() => {
     committedSource = source;
+    if (current.slide && current.mode === 'play') post({ dc: 'steps', total: showSteps(mount, current.step) });
   }, [source]);
   return null;
+}
+
+// slides: the subset's base styles once, the deck's typefaces whenever they change
+let slideStyles: HTMLStyleElement | null = null;
+let facesHtml = '';
+function slideHead() {
+  if (!slideStyles) {
+    slideStyles = document.createElement('style');
+    slideStyles.textContent = SLIDE_BASE_CSS + BUILD_CSS + 'html,body{background:transparent;overflow:hidden}';
+    document.head.appendChild(slideStyles);
+  }
+  const html = current.slide?.head ?? '';
+  if (html !== facesHtml) {
+    facesHtml = html;
+    // only font links and @font-face rules ever come here (deck.ts faceMarkup)
+    const holder = document.createElement('template');
+    holder.innerHTML = html;
+    document.head.querySelectorAll('[data-dc-face]').forEach((n) => n.remove());
+    for (const n of Array.from(holder.content.children)) {
+      if (n.tagName !== 'LINK' && n.tagName !== 'STYLE') continue;
+      n.setAttribute('data-dc-face', '');
+      document.head.appendChild(n);
+    }
+  }
 }
 
 function render() {
   const doc = docFor(current.source);
   post({ dc: 'error', message: doc.errors.length ? doc.errors.join('\n') : null });
+  if (doc.slide) slideHead();
+  const body = <DcComponent key={current.source} source={current.source} file={current.file} props={current.props} ctx={current.ctx()} />;
   root.render(
     <Boundary key={renderKey} file={current.file}>
-      <DcComponent key={current.source} source={current.source} file={current.file} props={current.props} ctx={current.ctx()} />
+      {doc.slide ? <div className="dc-slide-host">{body}</div> : body}
       <Committed source={current.source} />
     </Boundary>,
   );
@@ -722,6 +791,10 @@ document.addEventListener(
     }
     // play mode: links between artboards
     const a = (e.target as Element).closest?.('a[href]') as HTMLAnchorElement | null;
+    if (!a && current.slide) {
+      post({ dc: 'key', key: 'ArrowRight', meta: false, shift: false, alt: false });
+      return;
+    }
     if (!a) return;
     const href = a.getAttribute('href') ?? '';
     if (/\.dc\.html(#.*)?$/.test(href)) {
@@ -849,7 +922,9 @@ document.addEventListener(
       endDrag(new PointerEvent('pointerup'), true);
       return;
     }
-    if (!inEdit() && e.key !== 'Escape') return;
+    const nav = /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|PageUp|PageDown|Home|End| |f|F)$/.test(e.key);
+    if (!inEdit() && e.key !== 'Escape' && !(current.slide && nav)) return;
+    if (!inEdit() && nav) e.preventDefault();
     const t = e.target as HTMLElement;
     if (!inEdit() && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (inEdit() && !(e.metaKey || e.ctrlKey) ) e.preventDefault();
@@ -896,12 +971,15 @@ function onMessage(m: ToRuntime) {
       current.pending = m;
       return;
     }
+    const slide = m.slide ?? null;
     const changed =
       m.source !== current.source ||
       m.files !== current.files ||
       JSON.stringify(m.props) !== JSON.stringify(current.props) ||
-      m.mode !== current.mode;
-    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected });
+      m.mode !== current.mode ||
+      JSON.stringify(slide) !== JSON.stringify(current.slide);
+    if (m.mode !== current.mode || m.source !== current.source) current.step = 0;
+    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected, slide });
     document.documentElement.dataset.mode = m.mode;
     if (changed) render();
   } else if (m.dc === 'select') {
@@ -914,6 +992,9 @@ function onMessage(m: ToRuntime) {
     document.documentElement.dataset.mode = m.mode;
     renderKey++;
     render();
+  } else if (m.dc === 'step') {
+    current.step = m.step;
+    post({ dc: 'steps', total: showSteps(mount, m.step) });
   } else if (m.dc === 'export') {
     void exportPng(m.id, m.scale);
   } else if (m.dc === 'edit') {

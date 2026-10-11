@@ -84,6 +84,13 @@ export interface DcDoc {
   /** Range of the `data-props` attribute value (without quotes), if any. */
   propsValue: { range: Range; quote: string } | null;
   errors: string[];
+  /** A slide file: the whole file is one `<section>`, with no `<x-dc>` wrapper. */
+  slide?: boolean;
+}
+
+/** Is this a slide file (a bare `<section>`, comments and whitespace allowed before it)? */
+export function isSlideSource(source: string): boolean {
+  return /^(?:\s|<!--[\s\S]*?-->)*<section[\s>]/i.test(source);
 }
 
 export const VOID_ELEMENTS = new Set([
@@ -196,14 +203,16 @@ export function parseDc(source: string): DcDoc {
   const lang = /<html[^>]*\blang=["']?([\w-]+)/i.exec(source)?.[1] ?? 'en';
 
   const elements: DcElement[] = [];
-  if (!xdc) {
+  const slide = !xdc && isSlideSource(source);
+  if (!xdc && !slide) {
     errors.push('No <x-dc> … </x-dc> block found.');
     return {
       source, children: [], inner: { start: 0, end: 0 }, elements, title, lang, script, props, propsValue, errors,
     };
   }
-  const base = xdc.open.end;
-  const fragment = source.slice(base, xdc.close.start);
+  const base = xdc ? xdc.open.end : 0;
+  const end = xdc ? xdc.close.start : source.length;
+  const fragment = source.slice(base, end);
   const frag = parseFragment(fragment, { sourceCodeLocationInfo: true }) as unknown as P5Node;
 
   const conv = (n: P5Node, parent: DcElement | null, path: number[]): DcNode | null => {
@@ -252,17 +261,19 @@ export function parseDc(source: string): DcDoc {
     return el;
   };
 
-  const convChildren = (kids: P5Node[], parent: DcElement | null, parentPath: number[]): DcNode[] => {
+  const convChildren = (kids: P5Node[], parent: DcElement | null, parentPath: number[], count = { i: 0 }): DcNode[] => {
     const out: DcNode[] = [];
-    let elIndex = 0;
     for (const k of kids) {
       if (k.tagName && (!k.sourceCodeLocation || !k.sourceCodeLocation.startTag)) {
-        errors.push(`The parser implied a <${k.tagName}> here; write it out explicitly.`);
+        // an element the parser implied (a <tbody> around rows written straight
+        // into <table>): it is not in the source, so its children belong to the parent
+        if (!slide) errors.push(`The parser implied a <${k.tagName}> here; write it out explicitly.`);
+        out.push(...convChildren(k.childNodes ?? [], parent, parentPath, count));
         continue;
       }
-      const node = conv(k, parent, k.tagName ? [...parentPath, elIndex] : parentPath);
+      const node = conv(k, parent, k.tagName ? [...parentPath, count.i] : parentPath);
       if (!node) continue;
-      if (node.kind === 'el') elIndex++;
+      if (node.kind === 'el') count.i++;
       out.push(node);
     }
     return out;
@@ -272,14 +283,15 @@ export function parseDc(source: string): DcDoc {
   return {
     source,
     children,
-    inner: { start: base, end: xdc.close.start },
+    inner: { start: base, end },
     elements,
     title,
     lang,
-    script,
+    script: slide ? null : script,
     props,
     propsValue,
     errors,
+    ...(slide ? { slide } : {}),
   };
 }
 

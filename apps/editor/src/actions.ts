@@ -25,9 +25,12 @@ import {
   getClip,
   parsed,
   setClip,
+  slideIds,
   toast,
   useStore,
 } from './store';
+import { deleteSlide, duplicateSlide, moveSlide } from './slides';
+import { slideIdOf } from '@dc/core';
 
 /**
  * Commands on the current selection, shared by the context menu, the
@@ -143,7 +146,11 @@ export function duplicateSelection(): void {
     copySelection();
     return paste();
   }
-  if (sel?.kind === 'board') duplicateBoard(sel.file);
+  if (sel?.kind === 'board') {
+    const slide = slideIdOf(sel.file);
+    if (s.kind === 'slides' && slide) duplicateSlide(slide);
+    else duplicateBoard(sel.file);
+  }
 }
 
 export function deleteSelection(confirmBoards = true): void {
@@ -158,7 +165,10 @@ export function deleteSelection(confirmBoards = true): void {
     editCanvas((c) => void delete c.notes[sel.id], `note ${sel.id} deleted`);
     set({ selection: null });
   } else if (sel?.kind === 'board') {
-    if (!confirmBoards || confirm(`删除画板 ${sel.file}？文件也会被删除（可以用 git 找回）。`)) void deleteBoard(sel.file);
+    const slide = slideIdOf(sel.file);
+    if (s.kind === 'slides' && slide) {
+      if (!confirmBoards || confirm(`删除这一页（${slide}）？文件也会被删除（可以用 git 找回）。`)) void deleteSlide(slide);
+    } else if (!confirmBoards || confirm(`删除画板 ${sel.file}？文件也会被删除（可以用 git 找回）。`)) void deleteBoard(sel.file);
   }
 }
 
@@ -174,6 +184,9 @@ export function orderSelection(to: 'first' | 'last'): void {
       const rest = Object.entries(c.notes).filter(([k]) => k !== sel.id);
       c.notes = Object.fromEntries(to === 'last' ? [...rest, [sel.id, n]] : [[sel.id, n], ...rest]);
     }, `note ${sel.id} moved to the ${to === 'last' ? 'front' : 'back'}`);
+  } else if (sel?.kind === 'board' && s.kind === 'slides') {
+    const slide = slideIdOf(sel.file);
+    if (slide) moveSlide(slide, to === 'first' ? (slideIds(s)[0] ?? null) : null);
   } else if (sel?.kind === 'board') {
     editCanvas((c) => {
       c.order = c.order.filter((f) => f !== sel.file);

@@ -12,12 +12,19 @@ class H(BaseHTTPRequestHandler):
         open(LOG, 'a').write(json.dumps({'n': len(msgs), 'last': msgs[-1]['content'][:400], 'system': body.get('system', '')[:60]}) + '\n')
         m = re.search(r"pointed at\n(#\w+)", first)
         h = m.group(1) if m else '#dc2'
-        if len(msgs) == 1:
+        if 'slide subset' in msgs[-1]['content']:
+            # told that the reply broke the slide subset: answer inside it
+            reply = (f"$('{h}').css('color', '#7c3aed')\n"
+                     f"$('{h}').after(`<ul style=\"font-size: 28px; color: #4a5263\"></ul>`)\n"
+                     f"$('{h}').next().append(`<li></li>`)\n"
+                     f"$('{h}').next().children().first().repeat(3)\n"
+                     f".text((i) => ['同步到所有 Agent', '保留每个 Agent 的覆盖', '改动写入 journal'][i])\n")
+        elif len(msgs) == 1:
             # first try: one good line, then a line that throws -> the editor must undo and retry
             reply = f"$('{h}').css('color', '#b42318')\n$('{h}').nope()\n"
         else:
             reply = (f"$('{h}').css({{'color': '#7c3aed', 'letter-spacing': '-0.01em'}})\n"
-                     f"$('{h}').after(`<ul style=\"margin: 0; padding-left: 18px; color: #4a5263\"></ul>`)\n"
+                     f"$('{h}').after(`<ul style=\"margin: 0 0 8px; padding-left: 18px; color: #4a5263\"></ul>`)\n"
                      f"$('{h}').next().append(`<li style=\"font-size: 14px\"></li>`)\n"
                      f"$('{h}').next().children().first().repeat(3)\n"
                      f".text((i) => ['同步到所有 Agent', '保留每个 Agent 的覆盖', '改动写入 journal'][i])\n")

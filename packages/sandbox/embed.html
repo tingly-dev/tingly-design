@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:">
+<style>html,body{margin:0;background:transparent}</style>
+</head>
+<body>
+<script>
+// A slide's <x-embed> runs here: the slide frame posts the embed's markup once
+// and this page replaces itself with it. The page's own CSP stays in force
+// (no network), and the frame's sandbox gives it an opaque origin.
+addEventListener('message', function (e) {
+  if (e.source !== parent || !e.data || e.data.dcEmbed !== 'html') return;
+  document.open();
+  document.write('<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style>' + String(e.data.html));
+  document.close();
+});
+parent.postMessage({ dcEmbed: 'ready' }, '*');
+</script>
+</body>
+</html>

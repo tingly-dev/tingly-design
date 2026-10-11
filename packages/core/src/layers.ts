@@ -20,7 +20,14 @@ export type Role =
   | 'Repeating group'
   | 'Condition'
   | 'Component'
-  | 'Group';
+  | 'Group'
+  | 'Slide'
+  | 'Embed'
+  | 'Shape'
+  | 'Icon'
+  | 'Connector'
+  | 'Table'
+  | 'Notes';
 
 export interface Layer {
   tid: number;
@@ -40,6 +47,15 @@ export function roleOf(el: DcElement): Role {
   if (tag === 'sc-if') return 'Condition';
   if (tag === 'dc-import' || tag === 'x-import') return 'Component';
   if (tag === 'img' || tag === 'picture' || tag === 'video') return 'Image';
+  if (tag === 'section' && !el.parent) return 'Slide';
+  if (tag === 'x-embed') return 'Embed';
+  if (tag === 'x-shape' || tag === 'hr') return 'Shape';
+  if (tag === 'x-icon') return 'Icon';
+  if (tag === 'x-connector') return 'Connector';
+  if (tag === 'table') return 'Table';
+  if (tag === 'aside') return 'Notes';
+  // a painted box with nothing in it is a rectangle, not empty text
+  if (tag === 'div' && !el.children.some((c) => c.kind === 'el' || (c.kind === 'text' && c.text.trim()))) return 'Shape';
   if (tag === 'svg' || el.ns === 'svg') return 'Vector';
   if (tag === 'button') return 'Button';
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return 'Input';
@@ -55,13 +71,15 @@ export function roleOf(el: DcElement): Role {
   return 'Group';
 }
 
+const LEAF_ROLES = new Set<Role>(['Text', 'Vector', 'Image', 'Input', 'Embed', 'Shape', 'Icon', 'Connector', 'Notes']);
+
 export function layerTree(doc: DcDoc): Layer[] {
   const build = (el: DcElement, repeated: boolean): Layer | null => {
     if (HIDDEN.has(el.tag) || RAW_TEXT_ELEMENTS.has(el.tag)) return null;
     const role = roleOf(el);
     const inner = repeated || el.tag === 'sc-for';
     const kids: Layer[] = [];
-    if (role !== 'Text' && role !== 'Vector' && role !== 'Image' && role !== 'Input') {
+    if (!LEAF_ROLES.has(role)) {
       for (const c of el.children) {
         if (c.kind !== 'el') continue;
         const l = build(c, inner);

@@ -53,6 +53,27 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 | ⌘Z ⌘⇧Z | 撤销 / 重做 |
 | ⌘= ⌘- ⌘0 ⇧1 ⇧2 | 放大、缩小、100%、适应全部、缩放到选中 |
 
+## 幻灯片
+
+除了画布，项目也可以是一套幻灯片（原版的 Slides 类型）。打开 http://localhost:5173/?p=math-deck 看演示（“数学奇遇记”，每一页都有一段会动的数学动画）；新建项目时类型选“幻灯片”。
+
+```
+projects/<name>/
+  deck.json            标题、顺序 order、分节 sections、字体 faces
+  slides/<id>.html     每页一个文件：正好一个 <section id="<id>">，1920×1080，封闭的 HTML/CSS 子集
+  assets/              上传的图片和字体
+```
+
+- **左侧缩略图条**：按节分组（双击节名改说明）；拖动排序；右键新建、复制、跳过、从这一页开始新的一节、删除。缩略图里的动态嵌入不运行，只显示占位。
+- **舞台**：当前页按比例缩放；选中、双击改字、拖动重排或拖出成自由定位、右侧面板（图层/属性/代码）和画布完全一样，走同一个最小补丁回写。下方是演讲者备注（写进 `<aside>`）。
+- **插入**：文字、图片（上传到 `assets/`）、表格、形状（矩形、圆角、椭圆、菱形、四向箭头、直线）、连线、图标。
+- **格式检查**：每一页都按原版 `format.md` 的子集检查（不认识的标签、`margin`、`z-index`、`em`、`var()`、`<x-embed>` 没有钉住……），舞台上方和缩略图上标出处数，点一条就选中对应元素。快速 AI 改完如果引入了新的越界，会被撤销并把原因告诉模型重写。
+- **放映**：F5 从头、⇧F5 从当前页；→ / 空格 / 点击 先播放这一页的出场动画（`data-build-in`），再翻页；切换效果 `fade` / `push`（`magic` 先按淡入淡出处理）；N 打开演讲者备注栏；F 全屏；Esc 退出。
+- **下载**：单个 HTML 文件（图片内联、嵌入在沙箱里照常运行、方向键翻页）、打印成 PDF、演讲者备注文本。
+- **Claude Code**：委托时会先读 `.claude/skills/slides/SKILL.md`（幻灯片格式说明）。
+
+渲染上忠实于原版的几处规则：没写 `display` 的 `<div>` 是纵向 flex；子元素按源码顺序绘制，所有流式内容作为一层画在第一个流式子元素的位置（所以写在最前面的全幅背景会在文字下面）；`<x-embed>` 跑在独立的沙箱页里（无网络、不同源）。
+
 ## 它是怎么做到双向编辑的
 
 ```
@@ -112,26 +133,32 @@ $('#dc12').next().children().first().repeat(3)
 ## 目录
 
 ```
-packages/core      格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词
+packages/core      格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词；幻灯片的 deck.json、子集检查、形状/图标/连线绘制
 packages/sandbox   画板运行时（模板 → React、选中、就地改字）和 AI 执行器，esbuild 打成 IIFE
 apps/server        Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交
-apps/editor        React + Vite + zustand 的画布编辑器
+apps/editor        React + Vite + zustand 的画布编辑器和幻灯片编辑器（components/slides）
 projects/demo      演示画布
-.claude/skills     给 Claude Code 看的格式说明（委托时也会让它先读）
+projects/math-deck 演示幻灯片
+.claude/skills     给 Claude Code 看的格式说明（dc-canvas、slides；委托时也会让它先读）
+artifact/          原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
+docs/              扩展到其他类型的方案
 e2e                Playwright 端到端测试和一个模拟的 Messages API
 ```
 
 ## 测试
 
 ```bash
-pnpm test                         # core 的单元测试：解析、回写、jQuery 会话、语句切分、撤销重定位
+pnpm test                         # core 的单元测试：解析、回写、jQuery 会话、语句切分、撤销重定位、幻灯片（deck.json、子集检查、表格、回写）
 pnpm typecheck
 
 # 端到端（需要先 pnpm dev，以及 Python 版 Playwright）
 python3 e2e/e2e.py                # 面板、图层、样式、改字、结构操作、剪贴板、拖动/拖出、画布工具、页面、导出、并发、撤销、播放（40 项）
+python3 e2e/slides.py             # 幻灯片：缩略图与分节、改字、删除与撤销、拖动钉住的元素、备注、新建/复制/排序/删除、格式检查、jQuery、放映、导出（20 项）
+# 用别的 Chromium：DC_CHROME=/path/to/chrome python3 e2e/slides.py
 python3 e2e/mock_anthropic.py &   # 模拟模型：第一次故意给一行会报错的语句
 ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 python3 e2e/fast.py               # 快速 AI：流式执行、报错撤销、重试、回写
+python3 e2e/fast_slides.py        # 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型
 python3 e2e/delegate.py           # 真的调用本机 claude CLI
 ```
 
@@ -139,4 +166,6 @@ python3 e2e/delegate.py           # 真的调用本机 claude CLI
 
 已实现：画布外壳（工具条、页面、缩放、同步记录）、右侧面板（图层/属性/代码/Tweaks）、选中与层级导航、就地改字、拖动重排与拖出自由摆放、改尺寸、编组/解组/翻转/排序、剪贴板、便签与形状/箭头/手绘、多页面、画板改名/改尺寸/全屏/导出 PNG、播放模式与画板间链接、`<dc-import>`、快速 AI 的流式执行/重试/日志/委托、Claude Code 委托、版本冲突重放、journal、撤销重做、git 提交。
 
-没有实现：设计系统的安装与组件挂载、资源上传、评论、多选、导出 PDF、快速 AI 修改画板布局（`canvas.json`）。快速 AI 一次只改一个画板，跨画板的事交给 Claude Code。原版的 agent 基础设施（托管、权限、发布）不在复刻范围内。
+幻灯片已实现：deck.json 与每页一个文件、缩略图条与分节、拖动排序、新建/复制/跳过/删除、插入文字/图片/表格/形状/连线/图标、演讲者备注、子集检查、放映（出场动画、fade/push 切换、备注栏、全屏）、HTML/PDF/备注导出、快速 AI 与 Claude Code。幻灯片没有实现：神奇移动（magic 按淡入处理）、PPTX 与 Google Slides 导出、图片裁剪、表格合并单元格的编辑、设计系统的安装。
+
+没有实现：设计系统的安装与组件挂载、评论、多选、画布导出 PDF、快速 AI 修改画板布局（`canvas.json`）。快速 AI 一次只改一个画板，跨画板的事交给 Claude Code。原版的 agent 基础设施（托管、权限、发布）不在复刻范围内。
