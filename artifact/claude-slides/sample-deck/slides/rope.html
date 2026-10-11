@@ -1,0 +1,71 @@
+<section id="rope" data-transition="fade" style="background:radial-gradient(circle at 72% 50%, #172452 0%, #0A0E1C 62%);color:#EAF2FF;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:700;letter-spacing:6px;color:#4FD1FF;width:540px">EP.01 · 圆的周长</p>
+<h2 style="font-family:'ZCOOL QingKe HuangYou', 'Noto Sans SC', sans-serif;font-size:80px;font-weight:400;line-height:1.1;color:#EAF2FF;width:560px">绕地球的绳子</h2>
+<p style="font-size:30px;line-height:1.6;color:#B7C6E0;width:520px">一根绳子紧紧绕地球赤道一圈，长约 4 万公里。现在只把它加长 1 米，再均匀撑开、离开地面。绳子下面的缝，能有多宽？</p>
+<div data-build-in="rise" style="position:absolute;left:128px;top:640px;width:500px;display:flex;flex-direction:column;gap:8px;background:rgba(79,209,255,0.06);padding:28px 32px;border:1px solid rgba(79,209,255,0.35);border-radius:16px">
+<p style="font-size:64px;font-weight:700;line-height:1.2;color:#FFD166">≈ 16 厘米</p>
+<p style="font-size:24px;line-height:1.5;color:#B7C6E0">一只猫都能钻过去。换成篮球加 1 米，缝也是 16 厘米。</p>
+</div>
+<x-embed style="position:absolute;left:680px;top:128px;width:1112px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=1112,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function begin(){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);const s=Math.min(c.width/LW,c.height/LH);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);g.globalAlpha=1;g.shadowBlur=0;g.globalCompositeOperation='source-over';g.lineCap='round';g.lineJoin='round';g.textBaseline='alphabetic';g.setLineDash([])}
+const F='"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif';
+const CY='#4FD1FF',OR='#FF8A3D',GD='#FFD166',PK='#FF5C8A',TX='#EAF2FF',MU='#9AAACB';
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2,sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function ln(a,b,c2,d){g.beginPath();g.moveTo(a,b);g.lineTo(c2,d);g.stroke()}
+function tx(s,x,y,sz,col,w,al,gl){g.font=(w||400)+' '+sz+'px '+F;g.fillStyle=col;g.textAlign=al||'left';if(gl){g.shadowColor=col;g.shadowBlur=gl}g.fillText(s,x,y);g.shadowBlur=0}
+let FA=1;function cap(s,t,a,b,y,sz,col){const k=Math.min(sm(t,a,a+.4),1-sm(t,b-.4,b));if(k<=0)return;g.globalAlpha=FA*k;tx(s,LW/2,y||64,sz||32,col||TX,700,'center',col?14:0);g.globalAlpha=FA}
+let t0s=null;function loop(f){function k(ms){if(t0s===null)t0s=ms;begin();f((ms-t0s)/1000);requestAnimationFrame(k)}requestAnimationFrame(k)}
+const stars=[];for(let i=0;i<140;i++)stars.push([Math.random()*LW,Math.random()*LH,Math.random()*1.5+.4,Math.random()*6]);
+function sky(t,a){g.fillStyle='#CFE3FF';for(const s of stars){g.globalAlpha=a*(.3+.3*Math.sin(t*1.5+s[3]));g.fillRect(s[0],s[1],s[2],s[2])}g.globalAlpha=a}
+function cat(x,y,s,ph){g.fillStyle=TX;g.strokeStyle=TX;g.shadowColor=CY;g.shadowBlur=14;const b=Math.sin(ph*12)*2;
+g.beginPath();g.ellipse(x,y-46*s+b,46*s,22*s,0,0,7);g.fill();
+g.beginPath();g.arc(x+48*s,y-70*s+b,19*s,0,7);g.fill();
+g.beginPath();g.moveTo(x+34*s,y-80*s+b);g.lineTo(x+38*s,y-104*s+b);g.lineTo(x+50*s,y-86*s+b);g.closePath();g.fill();
+g.beginPath();g.moveTo(x+50*s,y-87*s+b);g.lineTo(x+62*s,y-104*s+b);g.lineTo(x+66*s,y-80*s+b);g.closePath();g.fill();
+g.lineWidth=8*s;for(let i=0;i<4;i++){const lx=x+(-30+i*19)*s,sw=Math.sin(ph*12+i*1.6)*9*s;ln(lx,y-34*s+b,lx+sw,y-2)}
+g.lineWidth=7*s;g.beginPath();g.moveTo(x-42*s,y-52*s+b);g.quadraticCurveTo(x-82*s,y-58*s,x-72*s,y-100*s+b);g.stroke();g.shadowBlur=0}
+const T=17.5,cx=556,cy=480,R=280,GAP=4,QX=556,QY=640;
+loop(function(t0){const t=t0%T;FA=Math.min(sm(t,0,.6),1-sm(t,T-.6,T));sky(t0,FA);
+const eA=1-sm(t,11.4,12.1);
+if(eA>0){const zp=sm(t,5.2,8.4),z=Math.exp(Math.log(45)*zp),qx=cx+(QX-cx)*zp,qy=(cy-R)+(QY-(cy-R))*zp,ex=qx,ey=qy+R*z,gw=GAP*sm(t,3.4,5);
+g.globalAlpha=FA*eA;
+const gr=g.createRadialGradient(ex-R*z*.3,ey-R*z*.35,R*z*.05,ex,ey,R*z);gr.addColorStop(0,'#2A86C4');gr.addColorStop(1,'#0A2442');
+g.shadowColor=CY;g.shadowBlur=50;g.fillStyle=gr;g.beginPath();g.arc(ex,ey,R*z,0,7);g.fill();g.shadowBlur=0;
+const gl=1-cl(zp*4,0,1);
+if(gl>0){g.globalAlpha=FA*eA*gl;g.strokeStyle='rgba(79,209,255,0.22)';g.lineWidth=1.5;
+for(const la of[-1,-.5,0,.5,1]){g.beginPath();g.ellipse(ex,ey+R*Math.sin(la),R*Math.cos(la),R*Math.cos(la)*.16,0,0,7);g.stroke()}
+for(let m=0;m<4;m++){const w=Math.abs(Math.cos(t0*.5+m*Math.PI/4))*R;g.beginPath();g.ellipse(ex,ey,w,R,0,0,7);g.stroke()}
+g.globalAlpha=FA*eA}
+g.strokeStyle=CY;g.lineWidth=2;g.beginPath();g.arc(ex,ey,R*z,0,7);g.stroke();
+g.strokeStyle=OR;g.lineWidth=5;g.shadowColor=OR;g.shadowBlur=22;g.beginPath();g.arc(ex,ey,(R+gw)*z+3,0,7);g.stroke();g.shadowBlur=0;
+const pA=Math.min(sm(t,3.2,3.6),1-sm(t,5,5.4));if(pA>0){g.globalAlpha=FA*eA*pA;tx('+1 米',ex,ey-(R+gw)*z-28,36,GD,700,'center',18);g.globalAlpha=FA*eA}
+const dA=Math.min(sm(t,8.4,8.9),1-sm(t,11,11.5));
+if(dA>0){g.globalAlpha=FA*eA*dA;const ys=x=>ey-Math.sqrt(Math.pow(R*z,2)-Math.pow(x-ex,2)),yr=x=>ey-Math.sqrt(Math.pow((R+GAP)*z+3,2)-Math.pow(x-ex,2));
+const rx=ex+300;g.strokeStyle=GD;g.lineWidth=3;g.setLineDash([8,8]);ln(rx,ys(rx),rx,yr(rx));g.setLineDash([]);ln(rx-14,ys(rx),rx+14,ys(rx));ln(rx-14,yr(rx),rx+14,yr(rx));
+tx('16 厘米',rx+26,(ys(rx)+yr(rx))/2+12,36,GD,700,'left',16);
+const k=cl((t-8.4)/3,0,1),catx=ex-430+k*560;cat(catx,ys(catx),.95,t)}}
+const bA=sm(t,11.9,12.5);
+if(bA>0){g.globalAlpha=FA*bA;const bx=556,by=450,br=110;
+const gr=g.createRadialGradient(bx-35,by-40,10,bx,by,br);gr.addColorStop(0,'#FFB070');gr.addColorStop(1,'#D9581C');
+g.shadowColor=OR;g.shadowBlur=36;g.fillStyle=gr;g.beginPath();g.arc(bx,by,br,0,7);g.fill();g.shadowBlur=0;
+g.strokeStyle='#3A1606';g.lineWidth=3;ln(bx-br,by,bx+br,by);ln(bx,by-br,bx,by+br);
+g.beginPath();g.arc(bx-br*1.25,by,br*.9,-.85,.85);g.stroke();g.beginPath();g.arc(bx+br*1.25,by,br*.9,Math.PI-.85,Math.PI+.85);g.stroke();
+const r2=br+3+144*sm(t,13.3,14.3);
+g.strokeStyle=CY;g.lineWidth=5;g.shadowColor=CY;g.shadowBlur=22;g.beginPath();g.arc(bx,by,r2,0,7);g.stroke();g.shadowBlur=0;
+const mA=sm(t,14.3,14.8);if(mA>0){g.globalAlpha=FA*bA*mA;g.strokeStyle=GD;g.lineWidth=3;g.setLineDash([8,8]);ln(bx,by-br,bx,by-r2);g.setLineDash([]);
+tx('16 厘米',bx+20,by-br-(r2-br)/2+10,32,GD,700,'left',14);
+tx('缝宽 = 加长的 1 米 ÷ 2π ≈ 0.16 米，和球多大无关',556,780,30,TX,700,'center')}
+g.globalAlpha=FA}
+cap('一根绳子，紧紧绕地球一圈：约 40000 公里',t,.3,3.3);
+cap('只加长 1 米，均匀撑开……',t,3.3,5.2);
+cap('凑近看看：缝有多宽？',t,5.2,8.5);
+cap('≈ 16 厘米：一只猫都能钻过去！',t,8.5,11.5,64,36,GD);
+cap('换成一个篮球，同样加长 1 米：',t,12.3,14.3);
+cap('缝，还是 16 厘米！',t,14.3,17.2,64,36,GD);
+});
+</script></x-embed>
+<p style="position:absolute;left:128px;bottom:64px;width:520px;font-size:24px;color:#7F8FB0">数学奇遇记 · EP.01 / 07</p>
+<aside>先让全场猜：加长 1 米，缝有多宽？大多数人会说“比头发丝还细”。答案约 16 厘米。原因：周长 = 2π × 半径，所以半径的增加 = 周长的增加 ÷ 2π = 1 ÷ 6.28 ≈ 0.16 米。这个结果跟原来的圆多大完全无关，地球和篮球都一样。动画最后一幕的篮球和绳子是按真实比例画的。</aside>
+</section>

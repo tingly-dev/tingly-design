@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en" class="cds-root" data-density="comfortable" data-thumb-defer>
+<head>
+<meta charset="utf-8">
+<script>(() => {
+  // artifact.json
+  var key = "dashboard";
+  var monitoring = {
+    alertChannel: "appifacts-alerts",
+    coreActions: [
+      "render",
+      "sync"
+    ],
+    readyTimeoutS: 60
+  };
+
+  // ../../packages/appifact-health/src/vocabulary.ts
+  var CORE_ACTIONS = [
+    "save",
+    "open",
+    "render",
+    "edit",
+    "sync",
+    "export",
+    "import",
+    "present",
+    "navigate",
+    "search",
+    "submit",
+    "upload",
+    "download",
+    "generate",
+    "connect"
+  ];
+  var OUTCOMES = ["success", "failure", "aborted"];
+  var ERROR_TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
+  var ERROR_TYPES = [
+    "conflict",
+    "read_only",
+    "too_large",
+    "invalid_content",
+    "backpressure",
+    "transient",
+    "network",
+    "timeout",
+    "validation",
+    "capability_denied",
+    "capability_error",
+    "render",
+    "internal",
+    "user_error",
+    "unknown"
+  ];
+  var KNOWN_ERROR_TYPES = new Set([
+    "boot_4xx",
+    "boot_5xx",
+    "iframe_timeout",
+    "iframe_error",
+    "kernel_missing",
+    "csp_violation",
+    "cap_load_error",
+    "timeout",
+    "threw_before_ready",
+    "uncaught_error",
+    "unhandled_rejection",
+    "chunk_load",
+    "unsupported_browser",
+    ...ERROR_TYPES,
+    "malformed"
+  ]);
+  var SHELL_RESERVED_ERROR_TYPE = "malformed";
+  var RESERVED_VALUES = new Set([
+    "invalid",
+    "none",
+    "overflow"
+  ]);
+  var APP_KEY_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+  var CHANNEL_RE = /^[a-z0-9][a-z0-9_-]{0,79}$/;
+  var READY_TIMEOUT_S = { min: 5, max: 120, default: 20 };
+  var WINDOW_MS = 15000;
+  var MAX_REPORTS_PER_ACTION_PER_WINDOW = 1000;
+  var SENTINEL = "appifact-health:v2";
+  var HEALTH_GLOBAL = "__appifact_health";
+
+  // ../../packages/appifact-health/src/health.ts
+  var UNSUPPORTED_FALLBACK_MS = 8000;
+  function awaitsUnsupportedVerdict(page, fileHref) {
+    try {
+      if (!page.watched)
+        return false;
+      const ver = /^\/_f\/([^/]{1,128})\//.exec(page.pathname)?.[1];
+      if (ver === undefined)
+        return false;
+      const url = new URL(fileHref);
+      return url.origin === page.origin && url.pathname.startsWith(`/_f/${ver}/`);
+    } catch {
+      return false;
+    }
+  }
+  function createVerdictGate(crash, env, fallbackMs = UNSUPPORTED_FALLBACK_MS) {
+    let decided = null;
+    let pending = false;
+    let timer = null;
+    let stopWatching = () => {};
+    const decide = (type) => {
+      if (decided === type || decided === "unsupported_browser")
+        return;
+      decided = type;
+      pending = false;
+      try {
+        if (timer !== null)
+          env.clearTimeout(timer);
+        if (type === "unsupported_browser")
+          stopWatching();
+      } catch {}
+      timer = null;
+      crash(type);
+    };
+    const settle = () => {
+      if (pending)
+        decide(env.marked() ? "unsupported_browser" : "chunk_load");
+    };
+    try {
+      env.onHide(settle);
+    } catch {}
+    return {
+      fail(awaitsVerdict) {
+        if (!awaitsVerdict) {
+          crash("chunk_load");
+          return;
+        }
+        if (decided !== null) {
+          crash(decided);
+          return;
+        }
+        if (pending)
+          return;
+        if (env.marked()) {
+          decide("unsupported_browser");
+          return;
+        }
+        pending = true;
+        try {
+          stopWatching = env.onMark(() => {
+            if (env.marked())
+              decide("unsupported_browser");
+          });
+        } catch {}
+        timer = env.setTimeout(settle, fallbackMs);
+      }
+    };
+  }
+  var MAX_WARNINGS = 10;
+  var READY_RESUME_FLOOR_MS = 1000;
+  var APPIFACT_ERROR_TYPES = new Map([
+    ["conflict", "conflict"],
+    ["read-only", "read_only"],
+    ["too-large", "too_large"],
+    ["invalid-content", "invalid_content"],
+    ["backpressure", "backpressure"],
+    ["transient", "transient"]
+  ]);
+  function errorTypeOf(error) {
+    if (typeof error === "object" && error !== null && "code" in error) {
+      const code = error.code;
+      if (typeof code === "string") {
+        const mapped = APPIFACT_ERROR_TYPES.get(code);
+        if (mapped !== undefined)
+          return mapped;
+      }
+    }
+    return "unknown";
+  }
+  var CHUNK_LOAD_MESSAGE = /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading (CSS )?chunk|ChunkLoadError|Unable to preload/i;
+  var BENIGN_WINDOW_ERROR = /^ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)/;
+  function isBenignWindowError(message) {
+    return typeof message === "string" && BENIGN_WINDOW_ERROR.test(message);
+  }
+  function looksLikeChunkLoad(reason) {
+    if (typeof reason !== "object" || reason === null)
+      return false;
+    const r = reason;
+    return r.name === "ChunkLoadError" || typeof r.message === "string" && CHUNK_LOAD_MESSAGE.test(r.message);
+  }
+  function isCoreAction(value) {
+    return typeof value === "string" && CORE_ACTIONS.includes(value);
+  }
+  function isOutcome(value) {
+    return typeof value === "string" && OUTCOMES.includes(value);
+  }
+  function manifestProblem(manifest) {
+    if (typeof manifest !== "object" || manifest === null) {
+      return "init() takes the parsed artifact.json (an object with key and monitoring)";
+    }
+    const m = manifest;
+    if (typeof m.key !== "string" || !APP_KEY_RE.test(m.key) || RESERVED_VALUES.has(m.key)) {
+      return "artifact.json key is not a reportable app key";
+    }
+    const mon = m.monitoring;
+    if (typeof mon !== "object" || mon === null) {
+      return "artifact.json has no monitoring block";
+    }
+    if (typeof mon.alertChannel !== "string" || !CHANNEL_RE.test(mon.alertChannel) || RESERVED_VALUES.has(mon.alertChannel)) {
+      return 'monitoring.alertChannel is not a Slack channel name (no "#")';
+    }
+    if (!Array.isArray(mon.coreActions) || !mon.coreActions.every(isCoreAction)) {
+      return "monitoring.coreActions must list verbs from CORE_ACTIONS";
+    }
+    if (mon.readyTimeoutS !== undefined && !(Number.isInteger(mon.readyTimeoutS) && mon.readyTimeoutS >= READY_TIMEOUT_S.min && mon.readyTimeoutS <= READY_TIMEOUT_S.max)) {
+      return `monitoring.readyTimeoutS must be a whole number from ${READY_TIMEOUT_S.min} to ${READY_TIMEOUT_S.max}`;
+    }
+    return null;
+  }
+  function inertHealth() {
+    return {
+      version: SENTINEL,
+      ready() {},
+      report() {},
+      crash() {},
+      replay() {},
+      track: runTracked(() => {})
+    };
+  }
+  function runTracked(report) {
+    return async (action, operation, classify = errorTypeOf) => {
+      let result;
+      try {
+        result = await operation();
+      } catch (error) {
+        let errorType = "unknown";
+        try {
+          errorType = classify(error);
+        } catch {}
+        report(action, "failure", errorType);
+        throw error;
+      }
+      report(action, "success");
+      return result;
+    };
+  }
+  function createHealth(manifest, env) {
+    const appKey = manifest.key;
+    const alertChannel = manifest.monitoring.alertChannel;
+    const declared = new Set(manifest.monitoring.coreActions);
+    const readyTimeoutMs = (manifest.monitoring.readyTimeoutS ?? READY_TIMEOUT_S.default) * 1000;
+    let warnings = 0;
+    const warned = new Set;
+    const warnOnce = (key2, message) => {
+      if (warnings >= MAX_WARNINGS || warned.has(key2))
+        return;
+      warned.add(key2);
+      warnings += 1;
+      try {
+        env.warn(message);
+      } catch {}
+    };
+    let windowCounts = new Map;
+    let windowTimer = null;
+    const send = (action, outcome, errorType, replayed) => {
+      try {
+        if (action !== "load" && action !== "ready" && action !== "crash") {
+          const count = windowCounts.get(action) ?? 0;
+          if (count >= MAX_REPORTS_PER_ACTION_PER_WINDOW) {
+            warnOnce(`flood:${action}`, `"${action}" was reported more than ${MAX_REPORTS_PER_ACTION_PER_WINDOW} times in ${WINDOW_MS / 1000} s; the rest of this window's "${action}" reports are dropped — report once per user-level operation, not per element or frame`);
+            return;
+          }
+          windowCounts.set(action, count + 1);
+          if (windowTimer === null) {
+            windowTimer = env.setTimeout(() => {
+              windowTimer = null;
+              windowCounts = new Map;
+            }, WINDOW_MS);
+          }
+        }
+        env.post({
+          __frame_health: true,
+          report: {
+            appKey,
+            alertChannel,
+            action,
+            outcome,
+            ...errorType !== undefined && { errorType },
+            ...replayed && { replayed }
+          }
+        });
+      } catch {}
+    };
+    let readyOutcome = null;
+    const crashes = new Set;
+    let readyTimer = null;
+    let readyLeftMs = readyTimeoutMs;
+    let readyArmedAt = 0;
+    const settleReady = (outcome, errorType) => {
+      readyOutcome = { outcome, ...errorType !== undefined && { errorType } };
+      send("ready", outcome, errorType);
+    };
+    const onReadyTimeout = () => {
+      readyTimer = null;
+      if (readyOutcome !== null)
+        return;
+      settleReady("failure", crashes.size > 0 ? "threw_before_ready" : "timeout");
+    };
+    const armReadyTimer = () => {
+      if (readyOutcome !== null || readyTimer !== null)
+        return;
+      readyArmedAt = env.now();
+      readyTimer = env.setTimeout(onReadyTimeout, readyLeftMs);
+    };
+    const pauseReadyTimer = () => {
+      if (readyTimer === null)
+        return;
+      env.clearTimeout(readyTimer);
+      readyTimer = null;
+      readyLeftMs = Math.max(READY_RESUME_FLOOR_MS, readyLeftMs - (env.now() - readyArmedAt));
+    };
+    try {
+      env.onVisibilityChange(() => {
+        try {
+          if (env.visible())
+            armReadyTimer();
+          else
+            pauseReadyTimer();
+        } catch {}
+      });
+      if (env.visible())
+        armReadyTimer();
+    } catch {
+      try {
+        armReadyTimer();
+      } catch {}
+    }
+    const report = (action, outcome, errorType) => {
+      if (!isCoreAction(action)) {
+        warnOnce(`action:${String(action).slice(0, 32)}`, `report() dropped: "${String(action).slice(0, 32)}" is not one of the generic verbs (${CORE_ACTIONS.join(", ")})`);
+        return;
+      }
+      if (!declared.has(action)) {
+        warnOnce(`undeclared:${action}`, `report() dropped: "${action}" is not declared in artifact.json monitoring.coreActions for "${appKey}" — add it there so the schema, this module and the monitors agree`);
+        return;
+      }
+      if (!isOutcome(outcome)) {
+        warnOnce(`outcome:${action}`, `report("${action}", …) dropped: outcome must be one of ${OUTCOMES.join(", ")}`);
+        return;
+      }
+      if (outcome !== "failure") {
+        send(action, outcome);
+        return;
+      }
+      let type = errorType ?? "unknown";
+      if (typeof type !== "string" || !ERROR_TYPE_RE.test(type) || RESERVED_VALUES.has(type)) {
+        warnOnce(`errorType:${action}`, `report("${action}", "failure", …): errorType must be a short snake_case token from ERROR_TYPES (never an error message); sent as "unknown"`);
+        type = "unknown";
+      } else if (type === SHELL_RESERVED_ERROR_TYPE) {
+        warnOnce(`errorType!:${action}`, `report("${action}", "failure", "${type}"): "${type}" is the viewer shell's own label for an unusable error type, not one an app reports; sent as "unknown"`);
+        type = "unknown";
+      } else if (!KNOWN_ERROR_TYPES.has(type)) {
+        warnOnce(`errorType?:${type}`, `report("${action}", "failure", "${type}"): "${type}" is not an error type Frame's page-health route knows (choose from ERROR_TYPES: ${ERROR_TYPES.join(", ")}); it is sent and counts as a failure, but Frame files it under "invalid" until its list gains it`);
+      }
+      send(action, "failure", type);
+    };
+    send("load", "success");
+    return {
+      version: SENTINEL,
+      ready() {
+        if (readyOutcome !== null)
+          return;
+        if (readyTimer !== null) {
+          try {
+            env.clearTimeout(readyTimer);
+          } catch {}
+          readyTimer = null;
+        }
+        settleReady("success");
+      },
+      report,
+      track: runTracked(report),
+      crash(errorType) {
+        if (crashes.has(errorType))
+          return;
+        crashes.add(errorType);
+        send("crash", "failure", errorType);
+        if (errorType === "unsupported_browser" && readyOutcome === null) {
+          if (readyTimer !== null) {
+            try {
+              env.clearTimeout(readyTimer);
+            } catch {}
+            readyTimer = null;
+          }
+          settleReady("failure", "unsupported_browser");
+        }
+      },
+      replay() {
+        send("load", "success", undefined, true);
+        for (const type of crashes)
+          send("crash", "failure", type, true);
+        if (readyOutcome !== null) {
+          send("ready", readyOutcome.outcome, readyOutcome.errorType, true);
+        }
+      }
+    };
+  }
+
+  // ../../packages/appifact-health/src/index.ts
+  var installed = null;
+  var installedKey = null;
+  var warnedSecondInit = false;
+  function init(manifest) {
+    const handle = install(manifest);
+    try {
+      globalThis[HEALTH_GLOBAL] = handle;
+    } catch {}
+    return handle;
+  }
+  function install(manifest) {
+    if (installed !== null) {
+      if (installedKey !== manifest?.key && !warnedSecondInit) {
+        warnedSecondInit = true;
+        warn(`init() was already called for "${installedKey}"; the call for "${String(manifest?.key).slice(0, 32)}" returns that first handle`);
+      }
+      return installed;
+    }
+    const problem = manifestProblem(manifest);
+    if (problem !== null) {
+      warn(`not reporting — ${problem}`);
+      installed = inertHealth();
+      installedKey = typeof manifest?.key === "string" ? manifest.key : null;
+      return installed;
+    }
+    installedKey = manifest.key;
+    if (!inReportingContext()) {
+      installed = inertHealth();
+      return installed;
+    }
+    const engine = createHealth(manifest, {
+      post,
+      setTimeout: (callback, ms) => window.setTimeout(callback, ms),
+      clearTimeout: (handle) => window.clearTimeout(handle),
+      now: () => performance.now(),
+      visible: () => document.visibilityState !== "hidden",
+      onVisibilityChange: (listener) => document.addEventListener("visibilitychange", listener),
+      warn
+    });
+    wireCrashes((type) => engine.crash(type));
+    wirePoke(() => engine.replay());
+    installed = engine;
+    return installed;
+  }
+  function inReportingContext() {
+    try {
+      return typeof window !== "undefined" && typeof location !== "undefined" && window.parent !== window && location.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+  function post(message) {
+    window.parent.postMessage(message, "*");
+  }
+  function wirePoke(replay) {
+    try {
+      window.addEventListener("message", (event) => {
+        try {
+          if (event.source !== window.parent)
+            return;
+          const data = event.data;
+          if (typeof data === "object" && data !== null && data.__frame_health_poke === true) {
+            replay();
+          }
+        } catch {}
+      });
+    } catch {}
+  }
+  function warn(message) {
+    try {
+      if (typeof console !== "undefined")
+        console.warn(`[${SENTINEL}] ${message}`);
+    } catch {}
+  }
+  var WATCH_ATTR = "data-frame-refused-watch";
+  var UNSUPPORTED_ATTR = "data-frame-unsupported";
+  function wireCrashes(crash) {
+    try {
+      const html = document.documentElement;
+      const gate = createVerdictGate(crash, {
+        setTimeout: (callback, ms) => window.setTimeout(callback, ms),
+        clearTimeout: (handle) => window.clearTimeout(handle),
+        marked: () => html.hasAttribute(UNSUPPORTED_ATTR),
+        onMark: (listener) => {
+          const observer = new MutationObserver(listener);
+          observer.observe(html, { attributes: true, attributeFilter: [UNSUPPORTED_ATTR] });
+          return () => observer.disconnect();
+        },
+        onHide: (listener) => window.addEventListener("pagehide", listener)
+      });
+      const page = () => ({
+        watched: html.hasAttribute(WATCH_ATTR),
+        origin: location.origin,
+        pathname: location.pathname
+      });
+      window.addEventListener("error", (event) => {
+        try {
+          if (event instanceof ErrorEvent) {
+            if (isBenignWindowError(event.message))
+              return;
+            crash(looksLikeChunkLoad(event.error) ? "chunk_load" : "uncaught_error");
+            return;
+          }
+          const target = event.target;
+          if (target instanceof HTMLScriptElement || target instanceof HTMLLinkElement && /(^|\s)(stylesheet|modulepreload)(\s|$)/i.test(target.rel)) {
+            const href = target instanceof HTMLScriptElement ? target.src : target.href;
+            gate.fail(awaitsUnsupportedVerdict(page(), href));
+          }
+        } catch {}
+      }, true);
+      window.addEventListener("unhandledrejection", (event) => {
+        try {
+          crash(looksLikeChunkLoad(event.reason) ? "chunk_load" : "unhandled_rejection");
+        } catch {}
+      });
+    } catch {}
+  }
+
+  // ../../packages/appifact-type-entry/ready.ts
+  function onRuntimeMounted(cb, doc = document, id = "root") {
+    const mounted = (root) => Array.from(root.children).some((c) => !c.hasAttribute("data-placeholder"));
+    const watch = () => {
+      const root = doc.getElementById(id);
+      if (root === null)
+        return;
+      if (mounted(root))
+        return cb();
+      const mo = new MutationObserver(() => {
+        if (!mounted(root))
+          return;
+        mo.disconnect();
+        cb();
+      });
+      mo.observe(root, { childList: true });
+    };
+    if (doc.readyState === "loading")
+      doc.addEventListener("DOMContentLoaded", watch);
+    else
+      watch();
+  }
+
+  // src/health.ts
+  var health = init({ key, monitoring });
+  onRuntimeMounted(() => health.ready());
+})();</script>
+<title>Dashboard</title>
+<!-- README
+# Dashboard appifact — shared type
+
+This page is the Dashboard RUNTIME only: index.html + artifact-type/app.js +
+artifact-type/app.css are one published release of the type, shared by every
+dashboard built on it. Nothing about any particular dashboard is in these
+files.
+
+## Where a dashboard's data lives
+
+In the dashboard's own live store (the db capability), never in a file:
+dash/meta {title}, dash/params {name: default} for the {{name}}s its queries
+take, one datasets/<id> per dataset and one files/<name> {text}
+per file of its page (index.html, and any .css or .js it names): plain
+HTML, CSS and JS, since the type draws no components of its own. Only
+people who can edit the dashboard can write any of it (the type's db rules). A
+query dataset carries only one tool call (connector, tool, arguments) — every
+viewer runs it with their own access and its rows are never in the store (that
+viewer's own browser keeps a query's last answer for up to a day). A paused
+query is a file dataset that holds a query's rows and carries that query (its
+request), which only whoever refreshes it runs, never a reader's page. The page's files are
+code an editor wrote, and the type mounts and runs them in its own document, as
+an artifact runs what its editors publish; a script or stylesheet tag that is
+not one of those files is dropped from the markup (d3 ships with the type).
+See SKILL.md.
+-->
+<meta name="README" content="Appifact type: Dashboard. This page is the shared runtime; an instance’s content (title, document, comments) lives in its live store (the db capability), written with the ArtifactData tool — this page carries none, and an empty store is an empty document. Instances are created from this type and inherit its capabilities {&quot;downloads&quot;:{},&quot;comments&quot;:{},&quot;db&quot;:{&quot;rules&quot;:[{&quot;path&quot;:&quot;&quot;,&quot;write&quot;:&quot;admin&quot;},{&quot;path&quot;:&quot;data/users/{self}&quot;,&quot;read&quot;:&quot;view&quot;,&quot;write&quot;:&quot;interact&quot;}]},&quot;assets&quot;:{},&quot;room&quot;:{},&quot;user&quot;:{&quot;scopes&quot;:[&quot;profile&quot;]},&quot;mcp&quot;:{&quot;servers&quot;:[{&quot;server&quot;:&quot;BigQuery&quot;,&quot;tools&quot;:[&quot;bigquery_query&quot;,&quot;semantic_query&quot;,&quot;list_knowledge&quot;]}],&quot;dynamic&quot;:true}}. The README comment at the top of head has details.">
+<meta name="appifact-capabilities" content="{&quot;downloads&quot;:{},&quot;comments&quot;:{},&quot;db&quot;:{&quot;rules&quot;:[{&quot;path&quot;:&quot;&quot;,&quot;write&quot;:&quot;admin&quot;},{&quot;path&quot;:&quot;data/users/{self}&quot;,&quot;read&quot;:&quot;view&quot;,&quot;write&quot;:&quot;interact&quot;}]},&quot;assets&quot;:{},&quot;room&quot;:{},&quot;user&quot;:{&quot;scopes&quot;:[&quot;profile&quot;]},&quot;mcp&quot;:{&quot;servers&quot;:[{&quot;server&quot;:&quot;BigQuery&quot;,&quot;tools&quot;:[&quot;bigquery_query&quot;,&quot;semantic_query&quot;,&quot;list_knowledge&quot;]}],&quot;dynamic&quot;:true}}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script id="appifact-mode">(function(){var h=document.documentElement;function s(){var t=h.getAttribute('data-theme');if(t==='light'||t==='dark'){h.setAttribute('data-mode',t)}else{h.removeAttribute('data-mode')}}s();if(typeof MutationObserver==='function'){new MutationObserver(s).observe(h,{attributes:true,attributeFilter:['data-theme']})}})();</script>
+<link rel="stylesheet" href="artifact-type/app.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="artifact-type/app.js"></script>
+</body>
+</html>

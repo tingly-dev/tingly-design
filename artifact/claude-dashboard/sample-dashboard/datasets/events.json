@@ -1,0 +1,14 @@
+{
+  "description": "近一年影响腾讯股价的财报、回购、除息等节点，整理自财经新闻。",
+  "source": {
+    "format": "json",
+    "kind": "file",
+    "name": "tencent_0700_events.json",
+    "url": "/_blob/a288c907c9f04dc6758c9c7ac1c6e3dc"
+  },
+  "title": "0700 关键事件",
+  "updated": {
+    "at": "2026-10-11T14:40:00Z",
+    "by": "Claude"
+  }
+}
