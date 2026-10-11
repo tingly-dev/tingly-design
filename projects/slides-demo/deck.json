@@ -1,0 +1,18 @@
+{
+  "v": 4,
+  "createdOnFiles": { "v": 1, "at": "2026-10-11T15:00:00Z" },
+  "lists": "css",
+  "title": "幻灯片演示",
+  "cover": "cover",
+  "order": ["cover", "why", "parts", "flow", "table", "end"],
+  "sections": {
+    "s1": { "description": "开场：这是什么", "start": "cover" },
+    "s2": { "description": "格式：一张幻灯片能放什么", "start": "parts" },
+    "s3": { "description": "收尾", "start": "end" }
+  },
+  "faces": {
+    "noto-serif-sc": { "family": "Noto Serif SC", "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" },
+    "noto-sans-sc": { "family": "Noto Sans SC", "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" }
+  },
+  "designSystems": []
+}

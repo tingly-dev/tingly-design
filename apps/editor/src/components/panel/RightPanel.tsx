@@ -7,10 +7,12 @@ import { LayerTree } from './LayerTree';
 import { BoardProps, ItemProps, Tweaks } from './OtherProps';
 import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
+import { DeckProps, SlideProps } from './SlideProps';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
 export function RightPanel() {
   const tab = useStore((s) => s.panelTab);
+  const kind = useStore((s) => s.kind);
   const sel = useStore((s) => s.selection);
   const canvas = useCanvas();
   const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : null;
@@ -26,6 +28,18 @@ export function RightPanel() {
     else if (tab === 'code') body = <CodeTab file={file} doc={doc} el={el} info={info} />;
     else if (tab === 'tweaks') body = <Tweaks file={file} doc={doc} />;
     else body = <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />;
+  } else if (kind === 'slides' && sel?.kind === 'board' && file) {
+    if (tab === 'code')
+      body = (
+        <div className="sec">
+          <span className="hint">{file}</span>
+          <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="幻灯片源文件" />
+          <span className="hint">这是幻灯片的源文件。改文件（手改、Claude Code、git）后这里会实时更新。</span>
+        </div>
+      );
+    else body = <SlideProps file={file} />;
+  } else if (kind === 'slides') {
+    body = <DeckProps />;
   } else if (sel?.kind === 'board' && file && canvas.boards[file]) {
     if (tab === 'tweaks' && doc) body = <Tweaks file={file} doc={doc} />;
     else if (tab === 'code')
@@ -63,7 +77,7 @@ export function RightPanel() {
   const tabs: { id: typeof tab; label: string }[] = [
     { id: 'props', label: '属性' },
     { id: 'code', label: '代码' },
-    { id: 'tweaks', label: 'Tweaks' },
+    ...(kind === 'slides' ? [] : [{ id: 'tweaks' as const, label: 'Tweaks' }]),
   ];
   return (
     <aside className="panel" aria-label="属性面板">

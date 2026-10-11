@@ -15,6 +15,13 @@ import {
   type Inspect,
   type NoteEntry,
   noteBox,
+  DECK_FILE,
+  deckSlides,
+  parseDeck,
+  slideFile,
+  slideIdOf,
+  stringifyDeck,
+  type DeckJson,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 
@@ -87,8 +94,32 @@ export interface Toast {
   kind: 'info' | 'error';
 }
 
+export type ProjectKind = 'design' | 'slides';
+
+/** Presenting a deck: which slide (index into the shown slides) and how many builds are in. */
+export interface Presenting {
+  index: number;
+  step: number;
+  notes: boolean;
+}
+
 interface State {
   project: string | null;
+  /** a design canvas (canvas.json + artboards) or a slide deck (deck.json + slides/) */
+  kind: ProjectKind | null;
+  /** decks: the slide on stage */
+  slide: string | null;
+  /** decks: one slide, or every slide laid out by section */
+  deckView: 'edit' | 'grid';
+  presenting: Presenting | null;
+  railOpen: boolean;
+  notesOpen: boolean;
+  /** decks: stage zoom; null = fit the slide */
+  stageZoom: number | null;
+  /** decks: the zoom that fits the slide on stage right now */
+  stageFit: number;
+  /** decks: an element just inserted from the toolbar, to retype once it renders */
+  pendingSlideEdit: { file: string; tid: number } | null;
   health: Health | null;
   connected: boolean;
   loaded: boolean;
@@ -127,6 +158,21 @@ interface State {
 
 export const useStore = create<State>(() => ({
   project: null,
+  kind: null,
+  slide: null,
+  deckView: 'edit',
+  presenting: null,
+  railOpen: true,
+  notesOpen: (() => {
+    try {
+      return localStorage.getItem('dc.notesOpen') === '1';
+    } catch {
+      return false;
+    }
+  })(),
+  stageZoom: null,
+  stageFit: 0.5,
+  pendingSlideEdit: null,
   health: null,
   connected: false,
   loaded: false,
@@ -194,6 +240,41 @@ export function parsed(src: string): DcDoc {
   return d;
 }
 
+let deckCache: { text: string | undefined; deck: DeckJson } = { text: undefined, deck: parseDeck(undefined) };
+export function deckOf(s: State): DeckJson {
+  const text = display(s, DECK_FILE);
+  if (text !== deckCache.text) deckCache = { text, deck: parseDeck(text) };
+  return deckCache.deck;
+}
+
+let slidesCache: { deck: DeckJson | null; files: State['files'] | null; ids: string[] } = { deck: null, files: null, ids: [] };
+/** Slide ids in show order: the index's `order`, then slide files it leaves out. */
+export function slidesOf(s: State): string[] {
+  const deck = deckOf(s);
+  if (slidesCache.deck === deck && slidesCache.files === s.files) return slidesCache.ids;
+  const present = Object.keys(s.files).filter((f) => s.files[f].server || s.files[f].pending.length);
+  const ids = deckSlides(deck, present);
+  slidesCache = { deck, files: s.files, ids };
+  return ids;
+}
+
+export function useDeck(): DeckJson {
+  return useStore((s) => deckOf(s));
+}
+
+export function useSlides(): string[] {
+  return useStore((s) => slidesOf(s));
+}
+
+/** The file a request is about when nothing is selected: the slide on stage, or the first artboard. */
+export function currentFile(s: State): string | undefined {
+  if (s.kind === 'slides') {
+    const id = s.slide && slidesOf(s).includes(s.slide) ? s.slide : slidesOf(s)[0];
+    return id ? slideFile(id) : undefined;
+  }
+  return canvasOf(s).order[0];
+}
+
 export function useCanvas(): CanvasJson {
   return useStore((s) => canvasOf(s));
 }
@@ -221,7 +302,14 @@ export async function openProject(name: string): Promise<void> {
   const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
-  set({ files: entries, journal, loaded: true });
+  const kind: ProjectKind = entries[CANVAS_FILE] || !entries[DECK_FILE] ? 'design' : 'slides';
+  set({ files: entries, journal, loaded: true, kind });
+  if (kind === 'slides') {
+    const st = get();
+    const ids = slidesOf(st);
+    const want = new URLSearchParams(location.search).get('slide');
+    set({ slide: want && ids.includes(want) ? want : ids[0] ?? null });
+  }
   stopEvents = api.events(name, onEvent, (st) => set({ connected: st === 'open' }));
 }
 
@@ -409,6 +497,29 @@ export function editCanvas(mutate: (c: CanvasJson) => void, summary: string, und
   );
 }
 
+export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoable = true): boolean {
+  return edit(
+    DECK_FILE,
+    (src) => {
+      const d = structuredClone(parseDeck(src));
+      mutate(d);
+      return stringifyDeck(d);
+    },
+    { actor: 'human', summary, undoable },
+  );
+}
+
+/** Put a slide on stage (and select nothing on it). */
+export function goToSlide(id: string | null): void {
+  const s = get();
+  if (id === s.slide && s.selection?.kind !== 'el') return;
+  set({ slide: id, selection: id ? { kind: 'board', file: slideFile(id) } : null, inspect: null, menu: null });
+}
+
+export function slideOfFile(file: string): string | null {
+  return slideIdOf(file);
+}
+
 export function undo(): void {
   const item = get().undo.at(-1);
   if (!item) return;
@@ -534,13 +645,12 @@ export function getClip(): Clip | null {
   return clip;
 }
 
-// remember whether the panel is open, per browser
+// remember whether the panel (and a deck's notes) are open, per browser
 useStore.subscribe((st, prev) => {
-  if (st.panelOpen !== prev.panelOpen) {
-    try {
-      localStorage.setItem('dc.panelOpen', st.panelOpen ? '1' : '0');
-    } catch {
-      // storage unavailable: the default applies next time
-    }
+  try {
+    if (st.panelOpen !== prev.panelOpen) localStorage.setItem('dc.panelOpen', st.panelOpen ? '1' : '0');
+    if (st.notesOpen !== prev.notesOpen) localStorage.setItem('dc.notesOpen', st.notesOpen ? '1' : '0');
+  } catch {
+    // storage unavailable: the default applies next time
   }
 });

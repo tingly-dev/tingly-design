@@ -1,10 +1,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { elementSource, roleOf, rootElement, sandboxDoc, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
-import { display, editElement, focusBoard, parsed, toast, useStore } from '../store';
-import { insertHtml, updateBoard } from '../actions';
+import { sandboxDoc, type BoardEntry, type ToRuntime } from '@dc/core';
+import { display, focusBoard, toast, useStore } from '../store';
+import { updateBoard } from '../actions';
 import { handleWheel } from './Canvas';
-import { handleKey } from '../shortcuts';
+import { exportWaiters, useFrameMessages } from './frame';
 import { Download, Expand } from './icons';
 import { Menu, MenuItem } from './Menu';
 
@@ -14,7 +14,6 @@ const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
 /** Live artboard frames, so the panel, menus and export can talk to them. */
 export const frames = new Map<string, HTMLIFrameElement>();
-const exports = new Map<string, (r: { dataUrl?: string; error?: string }) => void>();
 
 export function post(file: string, msg: ToRuntime): void {
   frames.get(file)?.contentWindow?.postMessage(msg, '*');
@@ -23,8 +22,8 @@ export function post(file: string, msg: ToRuntime): void {
 export function exportPng(file: string, scale = 2): Promise<string> {
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => (exports.delete(id), reject(new Error('导出超时'))), 20000);
-    exports.set(id, (r) => {
+    const t = setTimeout(() => (exportWaiters.delete(id), reject(new Error('导出超时'))), 20000);
+    exportWaiters.set(id, (r) => {
       clearTimeout(t);
       if (r.dataUrl) resolve(r.dataUrl);
       else reject(new Error(r.error ?? '导出失败'));
@@ -54,14 +53,6 @@ export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source'
   } catch (e) {
     toast((e as Error).message, 'error');
   }
-}
-
-/** After a move the element's tid changes; find it again by its own source text. */
-function follow(file: string, slice: string | null, fallback: number): number {
-  const src = display(useStore.getState(), file);
-  if (!src || !slice) return fallback;
-  const doc = parsed(src);
-  return doc.elements.find((e) => src.slice(e.range.start, e.range.end) === slice)?.tid ?? fallback;
 }
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
@@ -100,96 +91,21 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   }, [file]);
 
   // messages from this frame
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      if (!frame.current || e.source !== frame.current.contentWindow) return;
-      const m = e.data as FromRuntime;
-      if (!m || typeof m !== 'object' || !('dc' in m)) return;
-      const s = useStore.getState();
-      switch (m.dc) {
-        case 'ready':
-          setReady(true);
-          break;
-        case 'select': {
-          if (s.tool === 'text') {
-            textTool(m.tid);
-            break;
-          }
-          useStore.setState({ selection: m.tid === null ? { kind: 'board', file } : { kind: 'el', file, tid: m.tid }, menu: null, editingNote: null });
-          break;
-        }
-        case 'inspect':
-          if (!m.info || (s.selection?.kind === 'el' && s.selection.file === file)) useStore.setState({ inspect: m.info });
-          break;
-        case 'counts':
-          useStore.setState((st) => ({ counts: { ...st.counts, [file]: m.counts } }));
-          break;
-        case 'contextmenu': {
-          const r = frame.current.getBoundingClientRect();
-          const z = useStore.getState().view.zoom;
-          useStore.setState({ menu: { x: r.left + m.x * z, y: r.top + m.y * z } });
-          break;
-        }
-        case 'text':
-          editElement(file, [{ kind: 'text', tid: m.tid, text: m.text }]);
-          break;
-        case 'move': {
-          const src = display(s, file);
-          const slice = src ? elementSource(parsed(src), m.tid) : null;
-          if (editElement(file, [{ kind: 'moveTo', tid: m.tid, target: m.target, where: m.where }]))
-            useStore.setState({ selection: { kind: 'el', file, tid: follow(file, slice, m.tid) } });
-          break;
-        }
-        case 'dragout': {
-          const ops = [{ kind: 'styles' as const, tid: m.tid, set: m.set }];
-          if (m.parentTid !== null && Object.keys(m.parentSet).length) ops.push({ kind: 'styles', tid: m.parentTid, set: m.parentSet });
-          editElement(file, ops);
-          break;
-        }
-        case 'exported':
-          exports.get(m.id)?.(m);
-          exports.delete(m.id);
-          break;
-        case 'wheel': {
-          const r = frame.current.getBoundingClientRect();
-          const canvasRect = document.querySelector('.canvas')!.getBoundingClientRect();
-          const z = useStore.getState().view.zoom;
-          handleWheel(m.dx, m.dy, m.ctrl, r.left - canvasRect.left + m.x * z, r.top - canvasRect.top + m.y * z);
-          break;
-        }
-        case 'key':
-          handleKey(m.key, m.meta, m.shift, m.alt);
-          break;
-        case 'error':
-          useStore.setState((st) => (st.runtimeErrors[file] === m.message ? {} : { runtimeErrors: { ...st.runtimeErrors, [file]: m.message } }));
-          break;
-        case 'navigate': {
-          const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
-          const href = m.href.split('#')[0];
-          const target = href.startsWith('/') ? href.slice(1) : dir + href;
-          if (useStore.getState().focused) useStore.setState({ focused: target });
-          else focusBoard(target);
-          break;
-        }
-      }
-    };
-    const textTool = (tid: number | null) => {
-      const src = display(useStore.getState(), file);
-      if (!src) return;
-      const doc = parsed(src);
-      const el = tid === null ? rootElement(doc) : doc.elements[tid];
-      if (!el) return;
-      const container = ['Group', 'Row', 'Column', 'Grid'].includes(roleOf(el)) && el.tag !== 'sc-for';
-      const html = '<p style="margin:0;font-size:16px;line-height:1.5">文字</p>';
-      const newTid = insertHtml(file, el.tid, container ? 'last' : 'after', html);
-      if (newTid !== null) {
-        useStore.setState({ selection: { kind: 'el', file, tid: newTid }, tool: 'select' });
-        pendingEdit.current = newTid;
-      }
-    };
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, [file]);
+  useFrameMessages(file, frame, {
+    onReady: () => setReady(true),
+    scale: () => useStore.getState().view.zoom,
+    pendingEdit,
+    onWheel: (m) => {
+      const r = frame.current!.getBoundingClientRect();
+      const canvasRect = document.querySelector('.canvas')!.getBoundingClientRect();
+      const z = useStore.getState().view.zoom;
+      handleWheel(m.dx, m.dy, m.ctrl, r.left - canvasRect.left + m.x * z, r.top - canvasRect.top + m.y * z);
+    },
+    onNavigate: (target) => {
+      if (useStore.getState().focused) useStore.setState({ focused: target });
+      else focusBoard(target);
+    },
+  });
 
   // keep the frame rendering the current source
   useEffect(() => {

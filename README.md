@@ -8,7 +8,7 @@
 
 每一次改动都只回写源码里真正变了的那几个字符，模板里的 `{{占位}}`、循环和你的排版保持原样，所以这些文件可以放进 git、交给 Claude Code，也可以手写。
 
-文件格式沿用 Claude 的 Design 画布（`.dc.html` 设计组件），这是对它的双向编辑机制的开源复刻。
+文件格式沿用 Claude 的 Design 画布（`.dc.html` 设计组件），这是对它的双向编辑机制的开源复刻。同一套机制也用在幻灯片上：Slides 类型的演示文稿（`deck.json` + 每张一个 `slides/<id>.html`）可以用同一个编辑器打开、改、演示，见下面的[幻灯片](#幻灯片)。
 
 ## 快速开始
 
@@ -17,7 +17,7 @@ pnpm install
 pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 ```
 
-打开 http://localhost:5173/?p=demo 看演示画布。
+打开 http://localhost:5173/?p=demo 看演示画布，http://localhost:5173/?p=slides-demo 看演示幻灯片。首页可以新建画布或幻灯片。
 
 | 环境变量 | 作用 |
 |---|---|
@@ -53,6 +53,32 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 | ⌘Z ⌘⇧Z | 撤销 / 重做 |
 | ⌘= ⌘- ⌘0 ⇧1 ⇧2 | 放大、缩小、100%、适应全部、缩放到选中 |
 
+## 幻灯片
+
+一个项目文件夹里是 `deck.json` 而不是 `canvas.json`，编辑器就按演示文稿打开。格式沿用 Claude 的 Slides 类型：
+
+```
+projects/<name>/
+  deck.json            标题、幻灯片顺序（order）、章节（sections）、字体（faces）、封面
+  slides/<id>.html     每张一个文件：只有一个 <section id="<id>">，1920×1080，样式全写在行内
+  assets/…             图片（工具条上的图片按钮会上传到这里）
+```
+
+幻灯片用的是一个封闭的 HTML/CSS 子集：`<h1>`–`<h3>`、`<p>`、列表、flex/grid 的 `<div>`、`<img>`、`<table>`、`<svg>`，加上自己的 `<x-shape>`（矩形、圆角、椭圆、菱形、箭头、直线）、`<x-icon>`（30 个图标）、`<x-connector>`（连线）和 `<x-embed>`（沙箱里运行的小页面，可以做动画）。`position:absolute` 把元素钉在幻灯片上；`<aside>` 是演讲者备注。完整规则见 [`.claude/skills/slides/SKILL.md`](.claude/skills/slides/SKILL.md)。
+
+- **单页视图**：左边是按章节分组的缩略图（拖动排序，右键：新建、复制、演示时跳过、设为封面、从这里开始新章节、删除），中间是当前幻灯片，下面是演讲者备注。幻灯片就是画板运行时：点选、双击改字、拖动重排、拖出自由摆放、右侧图层/属性/代码面板、快速 AI 和 Claude Code 都和设计画布一样用。什么都没选中时属性面板改的是幻灯片本身：背景、文字色、字体、切换效果、跳过、章节。
+- **插入**：文本框、图片（上传）、表格、形状、图标，放在幻灯片中央并选中。
+- **总览视图**：所有幻灯片按章节排开，可以拖动排序、改章节描述。
+- **演示**：全屏，← → / 空格 / 点击翻页；`data-build-in` 的元素一次点击进一个；`data-transition` 的淡出、推出；跳过的幻灯片不出现；N 显示备注；Esc 退出。
+
+| 快捷键（幻灯片） | 作用 |
+|---|---|
+| ↑ ↓ / PageUp PageDown | 没选中元素时切换幻灯片 |
+| ⌘↵ | 从当前幻灯片开始演示 |
+| ⌘D | 复制选中的元素；选中的是幻灯片本身时复制整张 |
+| ⌘= ⌘- ⌘0 ⇧1 | 放大、缩小、100%、适应 |
+| V / T | 选择 / 文字工具 |
+
 ## 它是怎么做到双向编辑的
 
 ```
@@ -65,6 +91,8 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 ```
 
 ### 1. 一个格式受约束的源文件
+
+（幻灯片同理：一个 `slides/<id>.html` 整个文件就是模板，解析器把唯一的 `<section>` 当作根元素，后面的回写引擎、人工操作、快速 AI 完全共用。）
 
 `.dc.html` 是一页自包含 HTML：`<x-dc>` 里是模板（`{{path}}`、`<sc-for>`、`<sc-if>`、`<dc-import>`），`<script data-dc-script>` 里是 `class Component extends DCLogic`。约定是视觉属性写内联 `style`、文案写字面量、布局用 flex/grid + `gap`。这些约束保证画布上的每个操作都能落到源码里一个确定的位置。完整规则见 [`.claude/skills/dc-canvas/SKILL.md`](.claude/skills/dc-canvas/SKILL.md)。
 
@@ -112,11 +140,12 @@ $('#dc12').next().children().first().repeat(3)
 ## 目录
 
 ```
-packages/core      格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词
-packages/sandbox   画板运行时（模板 → React、选中、就地改字）和 AI 执行器，esbuild 打成 IIFE
-apps/server        Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交
-apps/editor        React + Vite + zustand 的画布编辑器
+packages/core      格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词、deck.json 与幻灯片工具
+packages/sandbox   画板运行时（模板 → React、选中、就地改字；幻灯片的子集元素和进场动画）和 AI 执行器，esbuild 打成 IIFE
+apps/server        Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交、图片上传
+apps/editor        React + Vite + zustand 的画布编辑器；幻灯片视图在 components/slides
 projects/demo      演示画布
+projects/slides-demo 演示幻灯片
 .claude/skills     给 Claude Code 看的格式说明（委托时也会让它先读）
 e2e                Playwright 端到端测试和一个模拟的 Messages API
 ```
@@ -129,6 +158,7 @@ pnpm typecheck
 
 # 端到端（需要先 pnpm dev，以及 Python 版 Playwright）
 python3 e2e/e2e.py                # 面板、图层、样式、改字、结构操作、剪贴板、拖动/拖出、画布工具、页面、导出、并发、撤销、播放（40 项）
+python3 e2e/slides.py             # 幻灯片：选中与回写、改字、备注、插入、上传图片、增删复制排序跳过、总览、演示与进场、外部修改（22 项）
 python3 e2e/mock_anthropic.py &   # 模拟模型：第一次故意给一行会报错的语句
 ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 python3 e2e/fast.py               # 快速 AI：流式执行、报错撤销、重试、回写
@@ -139,4 +169,8 @@ python3 e2e/delegate.py           # 真的调用本机 claude CLI
 
 已实现：画布外壳（工具条、页面、缩放、同步记录）、右侧面板（图层/属性/代码/Tweaks）、选中与层级导航、就地改字、拖动重排与拖出自由摆放、改尺寸、编组/解组/翻转/排序、剪贴板、便签与形状/箭头/手绘、多页面、画板改名/改尺寸/全屏/导出 PNG、播放模式与画板间链接、`<dc-import>`、快速 AI 的流式执行/重试/日志/委托、Claude Code 委托、版本冲突重放、journal、撤销重做、git 提交。
 
-没有实现：设计系统的安装与组件挂载、资源上传、评论、多选、导出 PDF、快速 AI 修改画板布局（`canvas.json`）。快速 AI 一次只改一个画板，跨画板的事交给 Claude Code。原版的 agent 基础设施（托管、权限、发布）不在复刻范围内。
+没有实现：设计系统的安装与组件挂载、评论、多选、导出 PDF、快速 AI 修改画板布局（`canvas.json`）。快速 AI 一次只改一个画板，跨画板的事交给 Claude Code。原版的 agent 基础设施（托管、权限、发布）不在复刻范围内。
+
+幻灯片已实现：deck.json/slides 格式与章节、缩略图栏（拖动排序、右键菜单）、单页编辑（和画板同一套选中/改字/拖动/面板/AI）、幻灯片属性（背景、切换、跳过、封面、章节）、演讲者备注、插入文本框/图片/表格/形状/图标、总览视图、演示（淡出/推出、逐个进场、跳过、备注）、子集元素渲染（`x-shape`、`x-icon`、`x-connector`、`x-embed`）、导出当前页 PNG。没有实现：神奇移动（现在按淡出处理）、`data-build-out`、文字样式和主题菜单、设计系统安装、导出 PPTX/PDF、演讲者视图窗口、视频。
+
+原版还有 Docs（文档，内容存在 Claude Docs 服务里）和 Dashboard（数据看板）两种类型，还没有复刻。

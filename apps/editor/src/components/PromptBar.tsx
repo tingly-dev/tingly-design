@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { elementLabel, attr } from '@dc/core';
-import { display, parsed, useCanvas, useStore } from '../store';
+import { elementLabel, attr, slideTitle } from '@dc/core';
+import { canvasOf, currentFile, display, parsed, useStore } from '../store';
 import { cancelFastEdit, delegateToClaude, runFastEdit, runJQuery } from '../fastedit';
 import { Send, Stop } from './icons';
 
@@ -18,7 +18,6 @@ export function PromptBar() {
   const fast = useStore((s) => s.fast);
   const health = useStore((s) => s.health);
   const delegates = useStore((s) => s.delegates);
-  const canvas = useCanvas();
   const [target, setTarget] = useState<Target>('ai');
   const [text, setText] = useState('');
   const box = useRef<HTMLTextAreaElement>(null);
@@ -29,7 +28,14 @@ export function PromptBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [health]);
 
-  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : canvas.order[0];
+  const fallback = useStore((s) => currentFile(s));
+  const targetName = useStore((s) => {
+    const f = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : fallback;
+    if (!f) return '';
+    if (s.kind === 'slides') return `整张幻灯片 ${slideTitle(display(s, f) ?? '') || f}`;
+    return `整个画板 ${canvasOf(s).boards[f]?.title || f}`;
+  });
+  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : fallback;
   const tid = sel?.kind === 'el' ? sel.tid : null;
   const pointed = useStore((s) => {
     if (!file || tid === null) return null;
@@ -74,7 +80,7 @@ export function PromptBar() {
               <code>{handle}</code> &lt;{tag}&gt; {label}
             </>
           ) : file ? (
-            <>整个画板 {canvas.boards[file]?.title || file}</>
+            <>{targetName}</>
           ) : (
             '没有画板'
           )}

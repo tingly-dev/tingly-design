@@ -244,6 +244,61 @@ export const NoneI = () => (
   </Icon>
 );
 
+export const ImageI = () => (
+  <Icon>
+    <rect x="3" y="4" width="14" height="12" rx="1.5" />
+    <circle cx="7.5" cy="8" r="1.3" />
+    <path d="M3.5 14.5l4-4 3 3 2-2 4 4" />
+  </Icon>
+);
+export const TableI = () => (
+  <Icon>
+    <rect x="3" y="4" width="14" height="12" rx="1.5" />
+    <path d="M3 8h14M3 12h14M8 8v8" />
+  </Icon>
+);
+export const Star = () => (
+  <Icon>
+    <path d="M10 3l2.1 4.4 4.8.6-3.5 3.3.9 4.7L10 13.7 5.7 16l.9-4.7L3.1 8l4.8-.6z" />
+  </Icon>
+);
+export const GridI = () => (
+  <Icon>
+    <rect x="3" y="3.5" width="6" height="5" rx="1" />
+    <rect x="11" y="3.5" width="6" height="5" rx="1" />
+    <rect x="3" y="11.5" width="6" height="5" rx="1" />
+    <rect x="11" y="11.5" width="6" height="5" rx="1" />
+  </Icon>
+);
+export const SlideI = () => (
+  <Icon>
+    <rect x="2.5" y="5" width="15" height="10" rx="1.5" />
+  </Icon>
+);
+export const NotesI = () => (
+  <Icon>
+    <rect x="3" y="3.5" width="14" height="13" rx="1.5" />
+    <path d="M3 11.5h14M6 14h6" />
+  </Icon>
+);
+export const RailI = () => (
+  <Icon>
+    <rect x="3" y="3.5" width="14" height="13" rx="1.5" />
+    <path d="M7.5 3.5v13" />
+  </Icon>
+);
+export const Present = () => (
+  <Icon>
+    <rect x="2.5" y="3.5" width="15" height="10" rx="1.5" />
+    <path d="M8.5 6.5l3.5 2-3.5 2zM10 13.5v3M7 16.5h6" />
+  </Icon>
+);
+export const Upload = () => (
+  <Icon>
+    <path d="M10 13V3.5M6.5 7L10 3.5 13.5 7M4 12.5v3a1 1 0 001 1h10a1 1 0 001-1v-3" />
+  </Icon>
+);
+
 // layer roles
 export const RoleIcon = ({ role }: { role: string }) => {
   switch (role) {
@@ -316,6 +371,22 @@ export const RoleIcon = ({ role }: { role: string }) => {
       );
     case 'Artboard':
       return <Frame />;
+    case 'Slide':
+      return <SlideI />;
+    case 'Shape':
+      return <Shapes />;
+    case 'Icon':
+      return <Star />;
+    case 'Connector':
+      return <ArrowI />;
+    case 'Table':
+      return <TableI />;
+    case 'Embed':
+      return (
+        <Icon size={13}>
+          <path d="M7 6l-4 4 4 4M13 6l4 4-4 4" />
+        </Icon>
+      );
     case 'Note':
       return <Note />;
     case 'Title':

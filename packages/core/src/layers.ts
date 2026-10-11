@@ -20,6 +20,11 @@ export type Role =
   | 'Repeating group'
   | 'Condition'
   | 'Component'
+  | 'Shape'
+  | 'Icon'
+  | 'Connector'
+  | 'Embed'
+  | 'Table'
   | 'Group';
 
 export interface Layer {
@@ -32,7 +37,9 @@ export interface Layer {
   children: Layer[];
 }
 
-const HIDDEN = new Set(['helmet', 'style', 'script', 'link', 'meta', 'title', 'br', 'wbr']);
+const HIDDEN = new Set(['helmet', 'style', 'script', 'link', 'meta', 'title', 'br', 'wbr', 'aside']);
+/** Roles whose insides are not layers of their own. */
+const LEAF = new Set<Role>(['Text', 'Vector', 'Image', 'Input', 'Shape', 'Icon', 'Connector', 'Embed', 'Table']);
 
 export function roleOf(el: DcElement): Role {
   const tag = el.tag;
@@ -40,6 +47,11 @@ export function roleOf(el: DcElement): Role {
   if (tag === 'sc-if') return 'Condition';
   if (tag === 'dc-import' || tag === 'x-import') return 'Component';
   if (tag === 'img' || tag === 'picture' || tag === 'video') return 'Image';
+  if (tag === 'x-shape' || tag === 'hr') return 'Shape';
+  if (tag === 'x-icon') return 'Icon';
+  if (tag === 'x-connector') return 'Connector';
+  if (tag === 'x-embed') return 'Embed';
+  if (tag === 'table') return 'Table';
   if (tag === 'svg' || el.ns === 'svg') return 'Vector';
   if (tag === 'button') return 'Button';
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return 'Input';
@@ -61,7 +73,7 @@ export function layerTree(doc: DcDoc): Layer[] {
     const role = roleOf(el);
     const inner = repeated || el.tag === 'sc-for';
     const kids: Layer[] = [];
-    if (role !== 'Text' && role !== 'Vector' && role !== 'Image' && role !== 'Input') {
+    if (!LEAF.has(role)) {
       for (const c of el.children) {
         if (c.kind !== 'el') continue;
         const l = build(c, inner);

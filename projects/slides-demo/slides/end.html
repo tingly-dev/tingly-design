@@ -1,0 +1,13 @@
+<section id="end" data-transition="fade" style="background:#16181d;color:#f3f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">
+<h2 style="font-family:'Noto Serif SC', Georgia, serif;font-size:96px;font-weight:700;line-height:1.1;width:900px">谢谢</h2>
+<p style="font-size:32px;line-height:1.5;color:#b9b6ad;width:760px">按 ← → 翻页，N 看备注，Esc 退出。</p>
+<x-embed style="position:absolute;left:1040px;top:200px;width:752px;height:680px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d');
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+function frame(ms){const t=ms/1000,W=c.width,H=c.height,s=Math.min(W,H)/2.4;g.clearRect(0,0,W,H);g.lineWidth=Math.max(2,s/60);
+for(let k=0;k<6;k++){g.strokeStyle=['#e0703a','#2f6fed','#f3f1ea'][k%3];g.globalAlpha=.85-k*.1;g.beginPath();
+for(let i=0;i<=360;i++){const a=i/180*Math.PI,r=s*(.55+.35*Math.sin(3*a+t*.8+k*.5));const x=W/2+r*Math.cos(a),y=H/2+r*Math.sin(a);i?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()}
+requestAnimationFrame(frame)}requestAnimationFrame(frame);
+</script></x-embed>
+<aside>收尾。右边是一个嵌入的小页面，在沙箱里运行。</aside>
+</section>

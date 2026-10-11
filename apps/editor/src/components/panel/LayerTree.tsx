@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { layerTree, pathTo, type Layer, type NoteEntry } from '@dc/core';
+import { layerTree, pathTo, slideFile, slideTitle, type Layer, type NoteEntry } from '@dc/core';
 import { display, focusBoard, onPage, parsed, useCanvas, useStore } from '../../store';
 import { Chevron, RoleIcon } from '../icons';
 
@@ -16,6 +16,11 @@ const ROLE_ZH: Record<string, string> = {
   'Repeating group': '循环',
   Condition: '条件',
   Component: '组件',
+  Shape: '形状',
+  Icon: '图标',
+  Connector: '连线',
+  Embed: '嵌入页面',
+  Table: '表格',
   Group: '组',
 };
 
@@ -97,7 +102,7 @@ function ElementRows({ file, layers, depth, open, toggle, counts }: { file: stri
   );
 }
 
-function BoardRow({ file, title, open, toggle }: { file: string; title: string; open: Set<string>; toggle: (k: string) => void }) {
+function BoardRow({ file, title, open, toggle, icon = 'Artboard' }: { file: string; title: string; open: Set<string>; toggle: (k: string) => void; icon?: string }) {
   const source = useStore((s) => display(s, file));
   const counts = useStore((s) => s.counts[file]) ?? {};
   const sel = useStore((s) => s.selection?.kind === 'board' && s.selection.file === file);
@@ -116,13 +121,13 @@ function BoardRow({ file, title, open, toggle }: { file: string; title: string; 
         data-key={file}
         style={{ paddingLeft: 6 }}
         onClick={() => useStore.setState({ selection: { kind: 'board', file }, editingNote: null })}
-        onDoubleClick={() => focusBoard(file)}
+        onDoubleClick={() => useStore.getState().kind !== 'slides' && focusBoard(file)}
       >
         <button className="tw" aria-label={isOpen ? '收起' : '展开'} onClick={(e) => (e.stopPropagation(), toggle(file))}>
           <Chevron open={isOpen} />
         </button>
         <span className="ri">
-          <RoleIcon role="Artboard" />
+          <RoleIcon role={icon} />
         </span>
         <span className="rn" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {title}
@@ -167,6 +172,24 @@ export function LayerTree() {
     });
   }, [sel]);
 
+  const kind = useStore((s) => s.kind);
+  const slide = useStore((s) => s.slide);
+  const slideName = useStore((s) => (s.slide ? slideTitle(display(s, slideFile(s.slide)) ?? '') : ''));
+  useEffect(() => {
+    if (kind === 'slides' && slide) setOpen((o) => (o.has(slideFile(slide)) ? o : new Set([...o, slideFile(slide)])));
+  }, [kind, slide]);
+  if (kind === 'slides') {
+    // a deck's layers: the slide on stage
+    return (
+      <div className="layers" ref={box} role="tree" aria-label="图层">
+        {slide ? (
+          <BoardRow key={slide} file={slideFile(slide)} title={slideName || slide} open={open} toggle={toggle} icon="Slide" />
+        ) : (
+          <div className="empty">还没有幻灯片。</div>
+        )}
+      </div>
+    );
+  }
   const notes = Object.entries(canvas.notes).filter(([, n]) => typeof n.x === 'number' && onPage(canvas, n.page, page));
   const boards = canvas.order.filter((f) => canvas.boards[f] && onPage(canvas, canvas.boards[f].page, page));
   return (

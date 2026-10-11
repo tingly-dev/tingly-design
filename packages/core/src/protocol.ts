@@ -27,13 +27,28 @@ export type ToRuntime =
       props: Record<string, unknown>;
       mode: Mode;
       selected: number | null;
+      /** a deck slide: 1920×1080 canvas with the slide subset's elements and defaults */
+      slide?: SlideRender;
     }
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }
   | { dc: 'mode'; mode: Mode }
   | { dc: 'export'; id: string; scale: number }
   /** start retyping an element's text in place */
-  | { dc: 'edit'; tid: number };
+  | { dc: 'edit'; tid: number }
+  /** present mode: show builds up to this step (0 = none yet) */
+  | { dc: 'build'; step: number };
+
+export interface SlideRender {
+  /** Google Fonts stylesheets of the deck */
+  fonts: string[];
+  /** @font-face for font files inside the deck (src relative to `base`) */
+  faces: { family: string; src: string }[];
+  /** URL the slide's relative image paths resolve against */
+  base: string;
+  /** thumbnails: no live embeds, no motion */
+  still?: boolean;
+}
 
 export type FromRuntime =
   | { dc: 'ready' }
@@ -51,7 +66,9 @@ export type FromRuntime =
   | { dc: 'wheel'; dx: number; dy: number; ctrl: boolean; x: number; y: number }
   | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean }
   | { dc: 'error'; message: string | null }
-  | { dc: 'navigate'; href: string };
+  | { dc: 'navigate'; href: string }
+  /** present mode: how many build steps this slide has */
+  | { dc: 'builds'; count: number };
 
 export type ToExecutor =
   | { dc: 'begin'; id: string; source: string }
@@ -71,10 +88,12 @@ export function cspFor(origin: string, kind: 'runtime' | 'executor'): string {
   }
   return [
     `default-src 'none'`,
-    `script-src ${origin}/sandbox/ 'unsafe-eval'`,
+    // 'unsafe-inline': a slide's <x-embed> is a srcdoc frame, which runs under this same policy
+    `script-src ${origin}/sandbox/ 'unsafe-eval' 'unsafe-inline'`,
     `style-src 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src https://fonts.gstatic.com data:`,
     `img-src * data: blob:`,
+    `frame-src data: blob: about:`,
     `media-src * data: blob:`,
   ].join('; ');
 }

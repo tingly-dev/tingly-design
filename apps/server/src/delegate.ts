@@ -20,10 +20,11 @@ export function claudeAvailable(): boolean {
   }
 }
 
-const SYSTEM = `You are editing a design canvas stored as files. A canvas folder holds canvas.json (artboard layout, notes) and one *.dc.html file per artboard.
-Before you change any file, read .claude/skills/dc-canvas/SKILL.md in the repository root: it is the full format reference.
-Edit only files inside the canvas folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
-Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements inside <x-dc>.
+const SYSTEM = `You are editing a design project stored as files. It is one of two kinds:
+- a design canvas: canvas.json (artboard layout, notes) and one *.dc.html file per artboard. Before you change it, read .claude/skills/dc-canvas/SKILL.md in the repository root: it is the full format reference.
+- a slide deck: deck.json (title, slide order, sections, fonts) and one slides/<id>.html per slide, each exactly one <section id="<id>"> on a 1920×1080 canvas in a closed HTML/CSS subset. Before you change it, read .claude/skills/slides/SKILL.md in the repository root.
+Edit only files inside the project folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
+Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements of the template (inside <x-dc> for an artboard, the whole file for a slide).
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Which projects have a delegate running, so file changes can be credited to it. */
@@ -40,8 +41,8 @@ export function startDelegate(project: string, req: DelegateRequest): string {
   const id = randomUUID().slice(0, 8);
   const dir = relative(REPO_ROOT, projectDir(project));
   const lines = [
-    `Canvas folder: ${dir}/`,
-    req.file ? `The person is looking at the artboard ${dir}/${req.file}.` : '',
+    `Project folder: ${dir}/`,
+    req.file ? `The person is looking at ${req.file.startsWith('slides/') ? 'the slide' : 'the artboard'} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`
       : '',

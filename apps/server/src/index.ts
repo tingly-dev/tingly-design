@@ -19,6 +19,9 @@ import {
   listProjects,
   ownWrites,
   projectDir,
+  projectKind,
+  readAsset,
+  saveAsset,
   readOne,
   readProject,
   removeFile,
@@ -58,9 +61,9 @@ app.get('/api/health', (c) => {
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 app.post('/api/projects', async (c) => {
-  const { name, title } = await c.req.json<{ name: string; title?: string }>();
+  const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: 'design' | 'slides' }>();
   if (!isProjectName(name)) throw new HttpError(400, '项目名只能用字母、数字、- 和 _');
-  await createProject(name, title || name);
+  await createProject(name, title || name, kind === 'slides' ? 'slides' : 'design');
   return c.json({ ok: true });
 });
 
@@ -107,9 +110,30 @@ app.delete('/api/projects/:p/file', async (c) => {
     if (cur.version !== base) return c.json({ error: 'conflict', current: cur }, 409);
     await removeFile(p, rel);
     publish(p, { type: 'delete', path: rel, actor: 'human' });
-    await record(p, { actor: 'human', file: rel, summary: 'artboard file deleted' });
+    await record(p, { actor: 'human', file: rel, summary: rel.startsWith('slides/') ? 'slide file deleted' : 'artboard file deleted' });
     return c.json({ ok: true });
   });
+});
+
+// images and fonts a deck's slides reference by relative path; the artboard frames are another origin
+app.get('/api/projects/:p/raw/*', async (c) => {
+  const p = c.req.param('p');
+  const rel = decodeURIComponent(c.req.path.replace(/^\/api\/projects\/[^/]+\/raw\//, ''));
+  const a = await readAsset(p, rel);
+  if (!a) return c.json({ error: 'not found' }, 404);
+  return c.body(new Uint8Array(a.body), 200, {
+    'content-type': a.type,
+    'access-control-allow-origin': '*',
+    'cache-control': 'no-cache',
+  });
+});
+
+app.post('/api/projects/:p/assets', async (c) => {
+  const p = c.req.param('p');
+  if (!(await projectKind(p))) throw new HttpError(404, `no project ${p}`);
+  const path = await saveAsset(p, c.req.query('name') ?? 'image.png', new Uint8Array(await c.req.arrayBuffer()));
+  await record(p, { actor: 'human', file: path, summary: 'image uploaded' });
+  return c.json({ path });
 });
 
 app.get('/api/projects/:p/journal', async (c) => c.json(await journal(c.req.param('p'))));

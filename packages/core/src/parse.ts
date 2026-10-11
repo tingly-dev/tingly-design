@@ -71,6 +71,8 @@ export interface PropSpec {
 
 export interface DcDoc {
   source: string;
+  /** `design`: a `.dc.html` artboard (template inside `<x-dc>`); `slide`: a deck slide file (one bare `<section>`). */
+  kind: 'design' | 'slide';
   /** Top-level template nodes (the children of `<x-dc>`). */
   children: DcNode[];
   /** Range inside `<x-dc>` … `</x-dc>`. */
@@ -196,14 +198,17 @@ export function parseDc(source: string): DcDoc {
   const lang = /<html[^>]*\blang=["']?([\w-]+)/i.exec(source)?.[1] ?? 'en';
 
   const elements: DcElement[] = [];
-  if (!xdc) {
+  // a slide file is the template itself: the whole file is one <section>
+  const slide = !xdc && isSlideSource(source);
+  if (!xdc && !slide) {
     errors.push('No <x-dc> … </x-dc> block found.');
     return {
-      source, children: [], inner: { start: 0, end: 0 }, elements, title, lang, script, props, propsValue, errors,
+      source, kind: 'design', children: [], inner: { start: 0, end: 0 }, elements, title, lang, script, props, propsValue, errors,
     };
   }
-  const base = xdc.open.end;
-  const fragment = source.slice(base, xdc.close.start);
+  const base = xdc ? xdc.open.end : 0;
+  const end = xdc ? xdc.close.start : source.length;
+  const fragment = source.slice(base, end);
   const frag = parseFragment(fragment, { sourceCodeLocationInfo: true }) as unknown as P5Node;
 
   const conv = (n: P5Node, parent: DcElement | null, path: number[]): DcNode | null => {
@@ -255,11 +260,19 @@ export function parseDc(source: string): DcDoc {
   const convChildren = (kids: P5Node[], parent: DcElement | null, parentPath: number[]): DcNode[] => {
     const out: DcNode[] = [];
     let elIndex = 0;
-    for (const k of kids) {
-      if (k.tagName && (!k.sourceCodeLocation || !k.sourceCodeLocation.startTag)) {
-        errors.push(`The parser implied a <${k.tagName}> here; write it out explicitly.`);
-        continue;
+    // an element the parser implied (the <tbody> of a <table> written with bare <tr>s) is not in
+    // the source: its children belong to the parent, as written
+    const flat: P5Node[] = [];
+    const flatten = (list: P5Node[]) => {
+      for (const k of list) {
+        if (k.tagName && (!k.sourceCodeLocation || !k.sourceCodeLocation.startTag)) {
+          if (k.tagName !== 'tbody') errors.push(`The parser implied a <${k.tagName}> here; write it out explicitly.`);
+          flatten(k.childNodes ?? []);
+        } else flat.push(k);
       }
+    };
+    flatten(kids);
+    for (const k of flat) {
       const node = conv(k, parent, k.tagName ? [...parentPath, elIndex] : parentPath);
       if (!node) continue;
       if (node.kind === 'el') elIndex++;
@@ -269,10 +282,15 @@ export function parseDc(source: string): DcDoc {
   };
 
   const children = convChildren(frag.childNodes ?? [], null, []);
+  if (slide) {
+    const tops = children.filter((c) => c.kind === 'el');
+    if (tops.length !== 1) errors.push(`A slide file holds exactly one <section>; this one has ${tops.length} top-level elements.`);
+  }
   return {
     source,
+    kind: slide ? 'slide' : 'design',
     children,
-    inner: { start: base, end: xdc.close.start },
+    inner: { start: base, end },
     elements,
     title,
     lang,
@@ -281,6 +299,11 @@ export function parseDc(source: string): DcDoc {
     propsValue,
     errors,
   };
+}
+
+/** Is this a deck slide file: a bare `<section …>` with nothing but whitespace or comments around it? */
+export function isSlideSource(source: string): boolean {
+  return /^\uFEFF?(\s|<!--[\s\S]*?-->)*<section[\s>]/i.test(source);
 }
 
 export function attr(el: DcElement, name: string): string | undefined {

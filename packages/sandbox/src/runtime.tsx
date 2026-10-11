@@ -21,7 +21,9 @@ import {
   type Inspect,
   type Mode,
   type ToRuntime,
+  type SlideRender,
 } from '@dc/core';
+import { collectBuilds, installSlide, renderConnector, renderEmbed, renderIcon, renderShape, resolveSrc, showBuilds } from './slide';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
 
@@ -97,6 +99,10 @@ interface Ctx {
   files: Record<string, string>;
   file: string;
   mode: Mode;
+  /** a deck slide: its elements and paths */
+  slide: SlideRender | null;
+  /** the file being rendered (an <x-embed> is its own source text) */
+  source: string;
 }
 
 function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<string, unknown> {
@@ -219,11 +225,50 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
     return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment>;
   }
   const props = toProps(el, scope, ctx, key);
+  if (ctx.slide) {
+    switch (el.tag) {
+      case 'x-shape':
+        return renderShape(el, props, key);
+      case 'x-icon':
+        return renderIcon(el, props, key);
+      case 'x-connector':
+        return renderConnector(el, props, key);
+      case 'x-embed':
+        return renderEmbed(el, ctx.source, props, key, !!ctx.slide.still);
+      case 'section':
+        // a skipped slide is still shown while editing
+        delete props.hidden;
+        break;
+      case 'img':
+      case 'video':
+      case 'source':
+        if (typeof props.src === 'string') props.src = resolveSrc(props.src, ctx.slide.base);
+        if (el.tag === 'img' && !props.src) delete props.src;
+        break;
+    }
+  }
   if (VOID_ELEMENTS.has(el.tag) && el.ns === 'html') return React.createElement(el.tag, props);
   if (el.tag === 'textarea') {
     const text = el.children.map((c) => (c.kind === 'text' ? String(interp(c.text, scope) ?? '') : '')).join('');
     if (!('value' in props)) props.defaultValue = text;
     return React.createElement('textarea', props);
+  }
+  if (el.tag === 'table' && el.children.some((c) => c.kind === 'el' && c.tag === 'tr')) {
+    // <tr>s written straight into a <table> (the slide subset does): the browser's parser would
+    // put them in a <tbody>, so render one around them, untagged — selection skips it
+    const kids = renderNodes(el.children, scope, ctx, el.tag);
+    const out: React.ReactNode[] = [];
+    let rows: React.ReactNode[] = [];
+    el.children.forEach((c, i) => {
+      if (c.kind === 'el' && c.tag === 'tr') rows.push(kids[i]);
+      else {
+        if (rows.length) out.push(React.createElement('tbody', { key: `tb${i}` }, ...rows));
+        rows = [];
+        out.push(kids[i]);
+      }
+    });
+    if (rows.length) out.push(React.createElement('tbody', { key: 'tb-end' }, ...rows));
+    return React.createElement('table', props, ...out);
   }
   return React.createElement(el.tag, props, ...renderNodes(el.children, scope, ctx, el.tag));
 }
@@ -325,6 +370,7 @@ interface State {
   source: string;
   files: Record<string, string>;
   props: Record<string, unknown>;
+  slide: SlideRender | null;
   mode: Mode;
   selected: number | null;
   hover: number | null;
@@ -338,13 +384,14 @@ const current: State = {
   source: '',
   files: {},
   props: {},
+  slide: null,
   mode: 'edit',
   selected: null,
   hover: null,
   editing: null,
   pending: null,
   ctx() {
-    return { tagged: true, files: this.files, file: this.file, mode: this.mode };
+    return { tagged: true, files: this.files, file: this.file, mode: this.mode, slide: this.slide, source: this.source };
   },
 };
 
@@ -356,9 +403,14 @@ let committedSource = '';
 function Committed({ source }: { source: string }) {
   React.useLayoutEffect(() => {
     committedSource = source;
+    if (current.slide && current.mode === 'play' && !current.slide.still) {
+      post({ dc: 'builds', count: collectBuilds(mount) });
+      showBuilds(buildStep);
+    }
   }, [source]);
   return null;
 }
+let buildStep = 0;
 
 function render() {
   const doc = docFor(current.source);
@@ -849,6 +901,13 @@ document.addEventListener(
       endDrag(new PointerEvent('pointerup'), true);
       return;
     }
+    // presenting a slide: the editor drives the show with the keys
+    const showKey = current.slide && !inEdit() && /^(Arrow\w+|PageUp|PageDown|Home|End| |Enter|Backspace|n|N|Escape)$/.test(e.key);
+    if (showKey) {
+      e.preventDefault();
+      post({ dc: 'key', key: e.key, meta: e.metaKey || e.ctrlKey, shift: e.shiftKey, alt: e.altKey });
+      return;
+    }
     if (!inEdit() && e.key !== 'Escape') return;
     const t = e.target as HTMLElement;
     if (!inEdit() && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -896,13 +955,16 @@ function onMessage(m: ToRuntime) {
       current.pending = m;
       return;
     }
+    const slide = m.slide ?? null;
     const changed =
       m.source !== current.source ||
       m.files !== current.files ||
       JSON.stringify(m.props) !== JSON.stringify(current.props) ||
+      JSON.stringify(slide) !== JSON.stringify(current.slide) ||
       m.mode !== current.mode;
-    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected });
+    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected, slide });
     document.documentElement.dataset.mode = m.mode;
+    installSlide(slide);
     if (changed) render();
   } else if (m.dc === 'select') {
     current.selected = m.tid;
@@ -914,6 +976,9 @@ function onMessage(m: ToRuntime) {
     document.documentElement.dataset.mode = m.mode;
     renderKey++;
     render();
+  } else if (m.dc === 'build') {
+    buildStep = m.step;
+    showBuilds(m.step);
   } else if (m.dc === 'export') {
     void exportPng(m.id, m.scale);
   } else if (m.dc === 'edit') {

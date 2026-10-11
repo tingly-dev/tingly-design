@@ -10,7 +10,15 @@ import {
 } from '@dc/core';
 import { api } from './api';
 import { ExecSession, replay } from './executor';
-import { canvasOf, display, enqueueResult, toast, useStore, visibleBoards, type FastLine } from './store';
+import { canvasOf, deckOf, display, enqueueResult, slidesOf, toast, useStore, visibleBoards, type FastLine } from './store';
+import { slideFile, slideTitle } from '@dc/core';
+
+function overview() {
+  const s = get();
+  if (s.kind !== 'slides') return { canvas: canvasOf(s), visible: visibleBoards() };
+  const deck = { title: deckOf(s).title, slides: slidesOf(s).map((id) => ({ id, title: slideTitle(display(s, slideFile(id)) ?? '') })) };
+  return { deck, visible: s.slide ? [slideFile(s.slide)] : [] };
+}
 
 /**
  * The fast in-page editor. A request becomes jQuery statements (written by
@@ -138,12 +146,11 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         messages.push({
           role: 'user',
           content: buildFastEditPrompt({
-            canvas: canvasOf(get()),
+            ...overview(),
             file,
             markup,
             journal: get().journal,
             pointed: pointed ? { handle: pointed.handle, tag: pointed.tag, label: pointed.label } : null,
-            visible: visibleBoards(),
             prompt,
             nonce,
           }),

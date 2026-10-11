@@ -29,9 +29,9 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => fetch('/api/health').then((r) => json<Health>(r)),
-  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string }[]>(r)),
-  createProject: (name: string, title: string) =>
-    fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title }) }).then((r) =>
+  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' }[]>(r)),
+  createProject: (name: string, title: string, kind: 'design' | 'slides' = 'design') =>
+    fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),
     ),
   files: (p: string) => fetch(`/api/projects/${enc(p)}/files`).then((r) => json<{ files: Record<string, FileState> }>(r)),
@@ -57,6 +57,12 @@ export const api = {
     if (res.status === 409) return { conflict: ((await res.json()) as { current: FileState | null }).current };
     return json<{ ok: true }>(res);
   },
+
+  /** Store an image in the project folder; resolves with its path there (for <img src>). */
+  upload: (p: string, f: File) =>
+    fetch(`/api/projects/${enc(p)}/assets?name=${enc(f.name)}`, { method: 'POST', headers: { 'content-type': f.type || 'application/octet-stream' }, body: f }).then((r) =>
+      json<{ path: string }>(r),
+    ),
 
   fastEdit: (p: string, messages: { role: 'user' | 'assistant'; content: string }[], signal: AbortSignal) =>
     fetch(`/api/projects/${enc(p)}/fast-edit`, {

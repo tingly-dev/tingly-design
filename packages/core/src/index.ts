@@ -5,6 +5,7 @@ export * from './ops';
 export * from './stream';
 export * from './exec';
 export * from './canvas';
+export * from './deck';
 export * from './prompt';
 export * from './protocol';
 export * from './rebase';

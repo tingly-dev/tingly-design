@@ -25,9 +25,11 @@ import {
   getClip,
   parsed,
   setClip,
+  slideOfFile,
   toast,
   useStore,
 } from './store';
+import { duplicateSlide } from './deck';
 
 /**
  * Commands on the current selection, shared by the context menu, the
@@ -143,7 +145,11 @@ export function duplicateSelection(): void {
     copySelection();
     return paste();
   }
-  if (sel?.kind === 'board') duplicateBoard(sel.file);
+  if (sel?.kind === 'board') {
+    const slide = slideOfFile(sel.file);
+    if (s.kind === 'slides' && slide) duplicateSlide(slide);
+    else if (s.kind !== 'slides') duplicateBoard(sel.file);
+  }
 }
 
 export function deleteSelection(confirmBoards = true): void {
@@ -152,12 +158,13 @@ export function deleteSelection(confirmBoards = true): void {
   if (sel?.kind === 'el') {
     const src = display(s, sel.file);
     const el = src ? parsed(src).elements[sel.tid] : undefined;
-    if (el && !el.parent && el.tag !== 'helmet') return toast('这是画板的根元素；要删除整个画板，请选中画板再删除。');
+    if (el && !el.parent && el.tag !== 'helmet')
+      return toast(s.kind === 'slides' ? '这是幻灯片本身；要删除整张幻灯片，在左侧缩略图上右键删除。' : '这是画板的根元素；要删除整个画板，请选中画板再删除。');
     elementOp((tid) => ({ kind: 'remove', tid }), false);
   } else if (sel?.kind === 'note') {
     editCanvas((c) => void delete c.notes[sel.id], `note ${sel.id} deleted`);
     set({ selection: null });
-  } else if (sel?.kind === 'board') {
+  } else if (sel?.kind === 'board' && s.kind !== 'slides') {
     if (!confirmBoards || confirm(`删除画板 ${sel.file}？文件也会被删除（可以用 git 找回）。`)) void deleteBoard(sel.file);
   }
 }
@@ -174,7 +181,7 @@ export function orderSelection(to: 'first' | 'last'): void {
       const rest = Object.entries(c.notes).filter(([k]) => k !== sel.id);
       c.notes = Object.fromEntries(to === 'last' ? [...rest, [sel.id, n]] : [[sel.id, n], ...rest]);
     }, `note ${sel.id} moved to the ${to === 'last' ? 'front' : 'back'}`);
-  } else if (sel?.kind === 'board') {
+  } else if (sel?.kind === 'board' && s.kind !== 'slides') {
     editCanvas((c) => {
       c.order = c.order.filter((f) => f !== sel.file);
       if (to === 'last') c.order.push(sel.file);
