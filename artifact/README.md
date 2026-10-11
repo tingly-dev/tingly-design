@@ -21,8 +21,8 @@ replicates so far. The account's type listing (`Artifact list scope:types`):
 | Design | `QKN21svewxgyPb6SYRqWnd` | files: `project/canvas.json` + `*.dc.html` | `claude-design/` |
 | Slides | `8jTsAFQMFDb2oA8MsPJ2eL` (release `1791584864-97b0`) | files: `project/deck.json` + `project/slides/<id>.html` | `claude-slides/` |
 | Dashboard | `GZLZthZ2sQjn7T16skfdeF` (release `1791487385-53e8`) | the artifact's db: `dash/meta`, `datasets/<id>`, `files/index.html` | `claude-dashboard/` |
-| Docs | `Rp9naXUCj2xozpUkyQy19W` (release `1791658616-c881`) | an external Claude Docs service, via its MCP connector | `claude-docs/NOTES.md` |
-| Design System | `5M7UeXXcx16TP3vzVFNDzd` (release `1791558544-c1cf`) | files: `project/design-system.json`, `tokens.json`, components, assets | `claude-design-system/NOTES.md` |
+| Docs | `Rp9naXUCj2xozpUkyQy19W` (release `1791658616-c881`) | an external Claude Docs service, via its MCP connector; the viewer reaches it through the Frame shell (`frame-sync:` postMessage lanes) | `claude-docs/` |
+| Design System | `5M7UeXXcx16TP3vzVFNDzd` (release `1791558544-c1cf`) | files: `project/design-system.json`, `tokens.json`, components, assets | `claude-design-system/` |
 
 - `claude-slides/`: `type/` = the type's files from the user's deck
   `https://claude.ai/artifact/LJTLFf6JFqr4nf3Axzp5C2` ("数学奇遇记", version
@@ -36,11 +36,25 @@ replicates so far. The account's type listing (`Artifact list scope:types`):
   (`dash/meta`, `datasets/*`) and the page (`index.html`, from
   `files/index.html`). The two attached data files (`/_blob/…`) could not be
   read from the session that collected this, so the sample has no rows.
-- `claude-docs/`, `claude-design-system/`: the user has no instance of these, so
-  only notes from each type's `SKILL.md`; any instance makes the type's files
-  readable.
-- `FINDINGS.md` in `claude-slides/` and `claude-dashboard/`: what the editors
-  do, read from their bundles.
+- `claude-design-system/`: `type/` = the type's files, read from an empty
+  instance made for this purpose,
+  `https://claude.ai/artifact/EpexG3UkrneVrSdA4gpEYf` (instance version
+  `1791729959-7a23`, type release `1791558544-c1cf`, contract `0.2.47`):
+  `SKILL.md`, `index.html`, `app.js`/`app.css` (+ `app.pretty.js`), `run.html`
+  (the preview runner), `demo.json` (the type's worked example system) and
+  `reference/*.md` (+ `sample-seazar-tokens.json`). `NOTES.md` = the earlier
+  notes from the type's `SKILL.md`.
+- `claude-docs/`: `type/` = the type's files, read from an empty instance
+  made for this purpose, `https://claude.ai/artifact/MWUypNpk4Rp4gMT9SLwy1w`
+  (instance version `1791729961-a87b`, type release `1791658616-c881`, contract
+  `0.2.46`): `SKILL.md`, `index.html` and the viewer's ~80 Vite chunks
+  (`app-core-*.js`, `index-*.js`, `app-lazy-*.js`, `lfile-runtime.*.js` the
+  editor/widget runtime, `pm-schema-*.js`, …; every chunk over 200 KB also as
+  `*.pretty.js`), `fonts/`, `thumbnail/`. The doc content itself lives in the
+  Claude Docs service, not in these files. `NOTES.md` = the earlier notes.
+- `FINDINGS.md` in `claude-slides/`, `claude-dashboard/`,
+  `claude-design-system/` and `claude-docs/`: what the editors do, read from
+  their bundles.
 
 ## claude-design/
 

@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en" class="cds-root" data-density="comfortable" data-thumb-defer>
+<head>
+<meta charset="utf-8">
+<script>(() => {
+  // artifact.json
+  var key = "design-system";
+  var capabilities = {
+    artifact: {},
+    downloads: {},
+    user: {
+      scopes: [
+        "profile"
+      ]
+    },
+    assets: {},
+    comments: {
+      composer_only: true,
+      customAnchors: true
+    },
+    room: {},
+    db: {
+      rules: [
+        {
+          path: "",
+          write: "admin"
+        }
+      ]
+    },
+    flags: {
+      keys: [
+        "design_system_clean_up_button"
+      ]
+    }
+  };
+  var monitoring = {
+    alertChannel: "appifacts-alerts",
+    coreActions: [
+      "render",
+      "sync",
+      "download",
+      "save"
+    ],
+    readyTimeoutS: 60
+  };
+
+  // ../../packages/appifact-flags/src/vocabulary.ts
+  var VERSION = "appifact-flags:v1";
+  var FLAGS_GLOBAL = "__appifact_flags";
+  var APP_KEY_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+  var APP_FLAG_KEY_RE = /^[a-z][a-z0-9_]{0,63}$/;
+  var RESERVED_FLAG_KEY_PREFIX = "frame_";
+  var FLAG_KEYS_MAX = 16;
+  var FLAGS_CAPABILITY = "flags";
+
+  // ../../packages/appifact-flags/src/flags.ts
+  function isDeclarableKey(key2) {
+    return APP_FLAG_KEY_RE.test(key2) && !key2.startsWith(RESERVED_FLAG_KEY_PREFIX);
+  }
+  function declaredKeys(manifest) {
+    try {
+      const config = manifest?.capabilities?.[FLAGS_CAPABILITY];
+      const keys = isRecord(config) ? config.keys : undefined;
+      return Array.isArray(keys) && keys.every((k) => typeof k === "string") ? keys : [];
+    } catch {
+      return [];
+    }
+  }
+  var READY_TIMEOUT_MS = 1500;
+  var MAX_UNDECLARED_WARNINGS = 8;
+  function manifestProblem(manifest) {
+    if (!isRecord(manifest)) {
+      return "init() needs the artifact.json object ({ key, capabilities })";
+    }
+    const m = manifest;
+    if (typeof m.key !== "string" || !APP_KEY_RE.test(m.key)) {
+      return `"key" must be the artifact.json key (got ${String(JSON.stringify(m.key)).slice(0, 48)})`;
+    }
+    if (m.flags !== undefined) {
+      return 'a top-level "flags" list is the earlier schema; artifact.json declares flag keys as "capabilities": { "flags": { "keys": [...] } } now';
+    }
+    if (m.capabilities === undefined)
+      return null;
+    if (!isRecord(m.capabilities)) {
+      return '"capabilities" must be the artifact.json capabilities object, or absent';
+    }
+    const config = m.capabilities[FLAGS_CAPABILITY];
+    if (config === undefined)
+      return null;
+    if (!isRecord(config)) {
+      return `"capabilities.${FLAGS_CAPABILITY}" must be an object, { "keys": [...] }`;
+    }
+    const keys = config.keys;
+    if (!Array.isArray(keys) || !keys.every((k) => typeof k === "string")) {
+      return `"capabilities.${FLAGS_CAPABILITY}.keys" must be an array of GrowthBook key strings`;
+    }
+    if (keys.length > FLAG_KEYS_MAX) {
+      return `"capabilities.${FLAGS_CAPABILITY}.keys" lists ${keys.length} keys; at most ${FLAG_KEYS_MAX} are allowed`;
+    }
+    const bad = keys.find((k) => !isDeclarableKey(k));
+    if (bad !== undefined) {
+      return `"capabilities.${FLAGS_CAPABILITY}.keys" entry ${JSON.stringify(bad.slice(0, 72))} is not a GrowthBook feature key an appifact may declare (${APP_FLAG_KEY_RE.source}, and not Frame's own "${RESERVED_FLAG_KEY_PREFIX}…")`;
+    }
+    return null;
+  }
+  function isRecord(v) {
+    return typeof v === "object" && v !== null && !Array.isArray(v);
+  }
+  function isAnswer(data) {
+    return isRecord(data) && data.__frame_flags === true && isRecord(data.values);
+  }
+  function sameKind(v, as) {
+    if (as === null)
+      return true;
+    if (Array.isArray(as))
+      return Array.isArray(v);
+    if (typeof as === "object")
+      return isRecord(v);
+    return typeof v === typeof as;
+  }
+  function jsonValue(v) {
+    switch (typeof v) {
+      case "boolean":
+      case "string":
+        return v;
+      case "number":
+        return Number.isFinite(v) ? v : undefined;
+      case "object":
+        if (v === null)
+          return null;
+        try {
+          const text = JSON.stringify(v);
+          return text === undefined ? undefined : JSON.parse(text);
+        } catch {
+          return;
+        }
+      default:
+        return;
+    }
+  }
+  function undeclaredWarner(manifest, warn) {
+    const declared = new Set(declaredKeys(manifest));
+    const warned = new Set;
+    return (key2) => {
+      if (manifest === undefined || declared.has(key2))
+        return false;
+      try {
+        if (!warned.has(key2) && warned.size < MAX_UNDECLARED_WARNINGS) {
+          warned.add(key2);
+          warn?.(`"${String(key2).slice(0, 72)}" is not declared in ${manifest.key}'s artifact.json (capabilities.flags.keys), so it can never have a value — the read takes its default`);
+        }
+      } catch {}
+      return true;
+    };
+  }
+  function inertFlags(values = {}, manifest, warn) {
+    const answered = Object.keys(values).length > 0;
+    const undeclared = undeclaredWarner(manifest, warn);
+    function get(key2, fallback) {
+      try {
+        if (undeclared(key2))
+          return fallback;
+        if (!Object.prototype.hasOwnProperty.call(values, key2))
+          return fallback;
+        const v = jsonValue(values[key2]);
+        return v !== undefined && sameKind(v, fallback) ? v : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+    return {
+      version: VERSION,
+      ready: () => Promise.resolve(answered),
+      get,
+      all() {
+        try {
+          return jsonValue(values) ?? {};
+        } catch {
+          return {};
+        }
+      }
+    };
+  }
+  function createFlags(manifest, env) {
+    const declared = new Set(declaredKeys(manifest));
+    let values = null;
+    let answered = false;
+    let warnedLate = false;
+    const waiters = [];
+    const undeclared = undeclaredWarner(manifest, env.warn);
+    const settleAll = (taken, byAnswer) => {
+      if (values !== null)
+        return;
+      values = taken;
+      answered = byAnswer;
+      for (const settle of waiters.splice(0)) {
+        try {
+          settle(byAnswer);
+        } catch {}
+      }
+    };
+    try {
+      env.post({ __frame_flags_ask: true });
+    } catch {}
+    try {
+      env.setTimeout(() => settleAll({}, false), READY_TIMEOUT_MS);
+    } catch {}
+    function get(key2, fallback) {
+      try {
+        if (undeclared(key2))
+          return fallback;
+        if (values === null || !Object.prototype.hasOwnProperty.call(values, key2))
+          return fallback;
+        const v = values[key2];
+        if (!sameKind(v, fallback))
+          return fallback;
+        const copy = jsonValue(v);
+        return copy === undefined ? fallback : copy;
+      } catch {
+        return fallback;
+      }
+    }
+    return {
+      version: VERSION,
+      ready() {
+        if (values !== null)
+          return Promise.resolve(answered);
+        return new Promise((resolve) => {
+          waiters.push(resolve);
+        });
+      },
+      get,
+      all() {
+        try {
+          return values === null ? {} : jsonValue(values) ?? {};
+        } catch {
+          return {};
+        }
+      },
+      receive(data) {
+        try {
+          if (!isAnswer(data))
+            return false;
+          if (values !== null) {
+            if (!answered && !warnedLate) {
+              warnedLate = true;
+              try {
+                env.warn(`the viewer shell answered after READY_TIMEOUT_MS (${READY_TIMEOUT_MS} ms); this page load keeps its defaults`);
+              } catch {}
+            }
+            return true;
+          }
+          const taken = {};
+          for (const key2 of Object.keys(data.values)) {
+            if (!isDeclarableKey(key2) || !declared.has(key2))
+              continue;
+            const v = jsonValue(data.values[key2]);
+            if (v !== undefined)
+              taken[key2] = v;
+          }
+          settleAll(taken, true);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    };
+  }
+
+  // ../../packages/appifact-flags/src/index.ts
+  var FLAGS_OVERRIDE_GLOBAL = "__appifact_flags_override";
+  var installed = null;
+  var installedKey = null;
+  var warnedSecondInit = false;
+  function init(manifest) {
+    const handle = install(manifest);
+    try {
+      globalThis[FLAGS_GLOBAL] = handle;
+    } catch {}
+    return handle;
+  }
+  function install(manifest) {
+    if (installed !== null) {
+      if (installedKey !== manifest?.key && !warnedSecondInit) {
+        warnedSecondInit = true;
+        warn(`init() was already called for "${installedKey}"; the call for "${String(manifest?.key).slice(0, 32)}" returns that first handle`);
+      }
+      return installed;
+    }
+    const problem = manifestProblem(manifest);
+    if (problem !== null) {
+      warn(`every read takes its default — ${problem}`);
+      installed = inertFlags();
+      installedKey = typeof manifest?.key === "string" ? manifest.key : null;
+      return installed;
+    }
+    installedKey = manifest.key;
+    if (!inFramedContext()) {
+      installed = inertFlags(devOverride(manifest), manifest, warn);
+      return installed;
+    }
+    let engine = null;
+    wireAnswer((data) => engine?.receive(data) ?? false);
+    engine = createFlags(manifest, {
+      post: (message) => window.parent.postMessage(message, "*"),
+      setTimeout: (callback, ms) => window.setTimeout(callback, ms),
+      warn
+    });
+    installed = engine;
+    return installed;
+  }
+  function inFramedContext() {
+    try {
+      return typeof window !== "undefined" && typeof location !== "undefined" && window.parent !== window && location.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+  function devOverride(manifest) {
+    try {
+      const raw = globalThis[FLAGS_OVERRIDE_GLOBAL];
+      if (typeof raw !== "object" || raw === null || Array.isArray(raw))
+        return {};
+      const declared = new Set(declaredKeys(manifest));
+      const out = {};
+      const dropped = [];
+      for (const k of Object.keys(raw)) {
+        const v = declared.has(k) ? jsonValue(raw[k]) : undefined;
+        if (v === undefined)
+          dropped.push(k);
+        else
+          out[k] = v;
+      }
+      if (Object.keys(out).length > 0 || dropped.length > 0) {
+        warn(`developer override (not framed over https): using ${Object.keys(out).join(", ") || "nothing"}` + (dropped.length > 0 ? `; ignoring ${dropped.join(", ")} (not declared in capabilities.flags.keys, or not a JSON value)` : ""));
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  }
+  function wireAnswer(receive) {
+    try {
+      window.addEventListener("message", (event) => {
+        try {
+          if (event.source !== window.parent)
+            return;
+          receive(event.data);
+        } catch {}
+      });
+    } catch {}
+  }
+  function warn(message) {
+    try {
+      if (typeof console !== "undefined")
+        console.warn(`[${VERSION}] ${message}`);
+    } catch {}
+  }
+
+  // ../../packages/appifact-health/src/vocabulary.ts
+  var CORE_ACTIONS = [
+    "save",
+    "open",
+    "render",
+    "edit",
+    "sync",
+    "export",
+    "import",
+    "present",
+    "navigate",
+    "search",
+    "submit",
+    "upload",
+    "download",
+    "generate",
+    "connect"
+  ];
+  var OUTCOMES = ["success", "failure", "aborted"];
+  var ERROR_TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
+  var ERROR_TYPES = [
+    "conflict",
+    "read_only",
+    "too_large",
+    "invalid_content",
+    "backpressure",
+    "transient",
+    "network",
+    "timeout",
+    "validation",
+    "capability_denied",
+    "capability_error",
+    "render",
+    "internal",
+    "user_error",
+    "unknown"
+  ];
+  var KNOWN_ERROR_TYPES = new Set([
+    "boot_4xx",
+    "boot_5xx",
+    "iframe_timeout",
+    "iframe_error",
+    "kernel_missing",
+    "csp_violation",
+    "cap_load_error",
+    "timeout",
+    "threw_before_ready",
+    "uncaught_error",
+    "unhandled_rejection",
+    "chunk_load",
+    "unsupported_browser",
+    ...ERROR_TYPES,
+    "malformed"
+  ]);
+  var SHELL_RESERVED_ERROR_TYPE = "malformed";
+  var RESERVED_VALUES = new Set([
+    "invalid",
+    "none",
+    "overflow"
+  ]);
+  var APP_KEY_RE2 = /^[a-z0-9][a-z0-9-]{0,39}$/;
+  var CHANNEL_RE = /^[a-z0-9][a-z0-9_-]{0,79}$/;
+  var READY_TIMEOUT_S = { min: 5, max: 120, default: 20 };
+  var WINDOW_MS = 15000;
+  var MAX_REPORTS_PER_ACTION_PER_WINDOW = 1000;
+  var SENTINEL = "appifact-health:v2";
+  var HEALTH_GLOBAL = "__appifact_health";
+
+  // ../../packages/appifact-health/src/health.ts
+  var UNSUPPORTED_FALLBACK_MS = 8000;
+  function awaitsUnsupportedVerdict(page, fileHref) {
+    try {
+      if (!page.watched)
+        return false;
+      const ver = /^\/_f\/([^/]{1,128})\//.exec(page.pathname)?.[1];
+      if (ver === undefined)
+        return false;
+      const url = new URL(fileHref);
+      return url.origin === page.origin && url.pathname.startsWith(`/_f/${ver}/`);
+    } catch {
+      return false;
+    }
+  }
+  function createVerdictGate(crash, env, fallbackMs = UNSUPPORTED_FALLBACK_MS) {
+    let decided = null;
+    let pending = false;
+    let timer = null;
+    let stopWatching = () => {};
+    const decide = (type) => {
+      if (decided === type || decided === "unsupported_browser")
+        return;
+      decided = type;
+      pending = false;
+      try {
+        if (timer !== null)
+          env.clearTimeout(timer);
+        if (type === "unsupported_browser")
+          stopWatching();
+      } catch {}
+      timer = null;
+      crash(type);
+    };
+    const settle = () => {
+      if (pending)
+        decide(env.marked() ? "unsupported_browser" : "chunk_load");
+    };
+    try {
+      env.onHide(settle);
+    } catch {}
+    return {
+      fail(awaitsVerdict) {
+        if (!awaitsVerdict) {
+          crash("chunk_load");
+          return;
+        }
+        if (decided !== null) {
+          crash(decided);
+          return;
+        }
+        if (pending)
+          return;
+        if (env.marked()) {
+          decide("unsupported_browser");
+          return;
+        }
+        pending = true;
+        try {
+          stopWatching = env.onMark(() => {
+            if (env.marked())
+              decide("unsupported_browser");
+          });
+        } catch {}
+        timer = env.setTimeout(settle, fallbackMs);
+      }
+    };
+  }
+  var MAX_WARNINGS = 10;
+  var READY_RESUME_FLOOR_MS = 1000;
+  var APPIFACT_ERROR_TYPES = new Map([
+    ["conflict", "conflict"],
+    ["read-only", "read_only"],
+    ["too-large", "too_large"],
+    ["invalid-content", "invalid_content"],
+    ["backpressure", "backpressure"],
+    ["transient", "transient"]
+  ]);
+  function errorTypeOf(error) {
+    if (typeof error === "object" && error !== null && "code" in error) {
+      const code = error.code;
+      if (typeof code === "string") {
+        const mapped = APPIFACT_ERROR_TYPES.get(code);
+        if (mapped !== undefined)
+          return mapped;
+      }
+    }
+    return "unknown";
+  }
+  var CHUNK_LOAD_MESSAGE = /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading (CSS )?chunk|ChunkLoadError|Unable to preload/i;
+  var BENIGN_WINDOW_ERROR = /^ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)/;
+  function isBenignWindowError(message) {
+    return typeof message === "string" && BENIGN_WINDOW_ERROR.test(message);
+  }
+  function looksLikeChunkLoad(reason) {
+    if (typeof reason !== "object" || reason === null)
+      return false;
+    const r = reason;
+    return r.name === "ChunkLoadError" || typeof r.message === "string" && CHUNK_LOAD_MESSAGE.test(r.message);
+  }
+  function isCoreAction(value) {
+    return typeof value === "string" && CORE_ACTIONS.includes(value);
+  }
+  function isOutcome(value) {
+    return typeof value === "string" && OUTCOMES.includes(value);
+  }
+  function manifestProblem2(manifest) {
+    if (typeof manifest !== "object" || manifest === null) {
+      return "init() takes the parsed artifact.json (an object with key and monitoring)";
+    }
+    const m = manifest;
+    if (typeof m.key !== "string" || !APP_KEY_RE2.test(m.key) || RESERVED_VALUES.has(m.key)) {
+      return "artifact.json key is not a reportable app key";
+    }
+    const mon = m.monitoring;
+    if (typeof mon !== "object" || mon === null) {
+      return "artifact.json has no monitoring block";
+    }
+    if (typeof mon.alertChannel !== "string" || !CHANNEL_RE.test(mon.alertChannel) || RESERVED_VALUES.has(mon.alertChannel)) {
+      return 'monitoring.alertChannel is not a Slack channel name (no "#")';
+    }
+    if (!Array.isArray(mon.coreActions) || !mon.coreActions.every(isCoreAction)) {
+      return "monitoring.coreActions must list verbs from CORE_ACTIONS";
+    }
+    if (mon.readyTimeoutS !== undefined && !(Number.isInteger(mon.readyTimeoutS) && mon.readyTimeoutS >= READY_TIMEOUT_S.min && mon.readyTimeoutS <= READY_TIMEOUT_S.max)) {
+      return `monitoring.readyTimeoutS must be a whole number from ${READY_TIMEOUT_S.min} to ${READY_TIMEOUT_S.max}`;
+    }
+    return null;
+  }
+  function inertHealth() {
+    return {
+      version: SENTINEL,
+      ready() {},
+      report() {},
+      crash() {},
+      replay() {},
+      track: runTracked(() => {})
+    };
+  }
+  function runTracked(report) {
+    return async (action, operation, classify = errorTypeOf) => {
+      let result;
+      try {
+        result = await operation();
+      } catch (error) {
+        let errorType = "unknown";
+        try {
+          errorType = classify(error);
+        } catch {}
+        report(action, "failure", errorType);
+        throw error;
+      }
+      report(action, "success");
+      return result;
+    };
+  }
+  function createHealth(manifest, env) {
+    const appKey = manifest.key;
+    const alertChannel = manifest.monitoring.alertChannel;
+    const declared = new Set(manifest.monitoring.coreActions);
+    const readyTimeoutMs = (manifest.monitoring.readyTimeoutS ?? READY_TIMEOUT_S.default) * 1000;
+    let warnings = 0;
+    const warned = new Set;
+    const warnOnce = (key2, message) => {
+      if (warnings >= MAX_WARNINGS || warned.has(key2))
+        return;
+      warned.add(key2);
+      warnings += 1;
+      try {
+        env.warn(message);
+      } catch {}
+    };
+    let windowCounts = new Map;
+    let windowTimer = null;
+    const send = (action, outcome, errorType, replayed) => {
+      try {
+        if (action !== "load" && action !== "ready" && action !== "crash") {
+          const count = windowCounts.get(action) ?? 0;
+          if (count >= MAX_REPORTS_PER_ACTION_PER_WINDOW) {
+            warnOnce(`flood:${action}`, `"${action}" was reported more than ${MAX_REPORTS_PER_ACTION_PER_WINDOW} times in ${WINDOW_MS / 1000} s; the rest of this window's "${action}" reports are dropped — report once per user-level operation, not per element or frame`);
+            return;
+          }
+          windowCounts.set(action, count + 1);
+          if (windowTimer === null) {
+            windowTimer = env.setTimeout(() => {
+              windowTimer = null;
+              windowCounts = new Map;
+            }, WINDOW_MS);
+          }
+        }
+        env.post({
+          __frame_health: true,
+          report: {
+            appKey,
+            alertChannel,
+            action,
+            outcome,
+            ...errorType !== undefined && { errorType },
+            ...replayed && { replayed }
+          }
+        });
+      } catch {}
+    };
+    let readyOutcome = null;
+    const crashes = new Set;
+    let readyTimer = null;
+    let readyLeftMs = readyTimeoutMs;
+    let readyArmedAt = 0;
+    const settleReady = (outcome, errorType) => {
+      readyOutcome = { outcome, ...errorType !== undefined && { errorType } };
+      send("ready", outcome, errorType);
+    };
+    const onReadyTimeout = () => {
+      readyTimer = null;
+      if (readyOutcome !== null)
+        return;
+      settleReady("failure", crashes.size > 0 ? "threw_before_ready" : "timeout");
+    };
+    const armReadyTimer = () => {
+      if (readyOutcome !== null || readyTimer !== null)
+        return;
+      readyArmedAt = env.now();
+      readyTimer = env.setTimeout(onReadyTimeout, readyLeftMs);
+    };
+    const pauseReadyTimer = () => {
+      if (readyTimer === null)
+        return;
+      env.clearTimeout(readyTimer);
+      readyTimer = null;
+      readyLeftMs = Math.max(READY_RESUME_FLOOR_MS, readyLeftMs - (env.now() - readyArmedAt));
+    };
+    try {
+      env.onVisibilityChange(() => {
+        try {
+          if (env.visible())
+            armReadyTimer();
+          else
+            pauseReadyTimer();
+        } catch {}
+      });
+      if (env.visible())
+        armReadyTimer();
+    } catch {
+      try {
+        armReadyTimer();
+      } catch {}
+    }
+    const report = (action, outcome, errorType) => {
+      if (!isCoreAction(action)) {
+        warnOnce(`action:${String(action).slice(0, 32)}`, `report() dropped: "${String(action).slice(0, 32)}" is not one of the generic verbs (${CORE_ACTIONS.join(", ")})`);
+        return;
+      }
+      if (!declared.has(action)) {
+        warnOnce(`undeclared:${action}`, `report() dropped: "${action}" is not declared in artifact.json monitoring.coreActions for "${appKey}" — add it there so the schema, this module and the monitors agree`);
+        return;
+      }
+      if (!isOutcome(outcome)) {
+        warnOnce(`outcome:${action}`, `report("${action}", …) dropped: outcome must be one of ${OUTCOMES.join(", ")}`);
+        return;
+      }
+      if (outcome !== "failure") {
+        send(action, outcome);
+        return;
+      }
+      let type = errorType ?? "unknown";
+      if (typeof type !== "string" || !ERROR_TYPE_RE.test(type) || RESERVED_VALUES.has(type)) {
+        warnOnce(`errorType:${action}`, `report("${action}", "failure", …): errorType must be a short snake_case token from ERROR_TYPES (never an error message); sent as "unknown"`);
+        type = "unknown";
+      } else if (type === SHELL_RESERVED_ERROR_TYPE) {
+        warnOnce(`errorType!:${action}`, `report("${action}", "failure", "${type}"): "${type}" is the viewer shell's own label for an unusable error type, not one an app reports; sent as "unknown"`);
+        type = "unknown";
+      } else if (!KNOWN_ERROR_TYPES.has(type)) {
+        warnOnce(`errorType?:${type}`, `report("${action}", "failure", "${type}"): "${type}" is not an error type Frame's page-health route knows (choose from ERROR_TYPES: ${ERROR_TYPES.join(", ")}); it is sent and counts as a failure, but Frame files it under "invalid" until its list gains it`);
+      }
+      send(action, "failure", type);
+    };
+    send("load", "success");
+    return {
+      version: SENTINEL,
+      ready() {
+        if (readyOutcome !== null)
+          return;
+        if (readyTimer !== null) {
+          try {
+            env.clearTimeout(readyTimer);
+          } catch {}
+          readyTimer = null;
+        }
+        settleReady("success");
+      },
+      report,
+      track: runTracked(report),
+      crash(errorType) {
+        if (crashes.has(errorType))
+          return;
+        crashes.add(errorType);
+        send("crash", "failure", errorType);
+        if (errorType === "unsupported_browser" && readyOutcome === null) {
+          if (readyTimer !== null) {
+            try {
+              env.clearTimeout(readyTimer);
+            } catch {}
+            readyTimer = null;
+          }
+          settleReady("failure", "unsupported_browser");
+        }
+      },
+      replay() {
+        send("load", "success", undefined, true);
+        for (const type of crashes)
+          send("crash", "failure", type, true);
+        if (readyOutcome !== null) {
+          send("ready", readyOutcome.outcome, readyOutcome.errorType, true);
+        }
+      }
+    };
+  }
+
+  // ../../packages/appifact-health/src/index.ts
+  var installed2 = null;
+  var installedKey2 = null;
+  var warnedSecondInit2 = false;
+  function init2(manifest) {
+    const handle = install2(manifest);
+    try {
+      globalThis[HEALTH_GLOBAL] = handle;
+    } catch {}
+    return handle;
+  }
+  function install2(manifest) {
+    if (installed2 !== null) {
+      if (installedKey2 !== manifest?.key && !warnedSecondInit2) {
+        warnedSecondInit2 = true;
+        warn2(`init() was already called for "${installedKey2}"; the call for "${String(manifest?.key).slice(0, 32)}" returns that first handle`);
+      }
+      return installed2;
+    }
+    const problem = manifestProblem2(manifest);
+    if (problem !== null) {
+      warn2(`not reporting — ${problem}`);
+      installed2 = inertHealth();
+      installedKey2 = typeof manifest?.key === "string" ? manifest.key : null;
+      return installed2;
+    }
+    installedKey2 = manifest.key;
+    if (!inReportingContext()) {
+      installed2 = inertHealth();
+      return installed2;
+    }
+    const engine = createHealth(manifest, {
+      post,
+      setTimeout: (callback, ms) => window.setTimeout(callback, ms),
+      clearTimeout: (handle) => window.clearTimeout(handle),
+      now: () => performance.now(),
+      visible: () => document.visibilityState !== "hidden",
+      onVisibilityChange: (listener) => document.addEventListener("visibilitychange", listener),
+      warn: warn2
+    });
+    wireCrashes((type) => engine.crash(type));
+    wirePoke(() => engine.replay());
+    installed2 = engine;
+    return installed2;
+  }
+  function inReportingContext() {
+    try {
+      return typeof window !== "undefined" && typeof location !== "undefined" && window.parent !== window && location.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+  function post(message) {
+    window.parent.postMessage(message, "*");
+  }
+  function wirePoke(replay) {
+    try {
+      window.addEventListener("message", (event) => {
+        try {
+          if (event.source !== window.parent)
+            return;
+          const data = event.data;
+          if (typeof data === "object" && data !== null && data.__frame_health_poke === true) {
+            replay();
+          }
+        } catch {}
+      });
+    } catch {}
+  }
+  function warn2(message) {
+    try {
+      if (typeof console !== "undefined")
+        console.warn(`[${SENTINEL}] ${message}`);
+    } catch {}
+  }
+  var WATCH_ATTR = "data-frame-refused-watch";
+  var UNSUPPORTED_ATTR = "data-frame-unsupported";
+  function wireCrashes(crash) {
+    try {
+      const html = document.documentElement;
+      const gate = createVerdictGate(crash, {
+        setTimeout: (callback, ms) => window.setTimeout(callback, ms),
+        clearTimeout: (handle) => window.clearTimeout(handle),
+        marked: () => html.hasAttribute(UNSUPPORTED_ATTR),
+        onMark: (listener) => {
+          const observer = new MutationObserver(listener);
+          observer.observe(html, { attributes: true, attributeFilter: [UNSUPPORTED_ATTR] });
+          return () => observer.disconnect();
+        },
+        onHide: (listener) => window.addEventListener("pagehide", listener)
+      });
+      const page = () => ({
+        watched: html.hasAttribute(WATCH_ATTR),
+        origin: location.origin,
+        pathname: location.pathname
+      });
+      window.addEventListener("error", (event) => {
+        try {
+          if (event instanceof ErrorEvent) {
+            if (isBenignWindowError(event.message))
+              return;
+            crash(looksLikeChunkLoad(event.error) ? "chunk_load" : "uncaught_error");
+            return;
+          }
+          const target = event.target;
+          if (target instanceof HTMLScriptElement || target instanceof HTMLLinkElement && /(^|\s)(stylesheet|modulepreload)(\s|$)/i.test(target.rel)) {
+            const href = target instanceof HTMLScriptElement ? target.src : target.href;
+            gate.fail(awaitsUnsupportedVerdict(page(), href));
+          }
+        } catch {}
+      }, true);
+      window.addEventListener("unhandledrejection", (event) => {
+        try {
+          crash(looksLikeChunkLoad(event.reason) ? "chunk_load" : "unhandled_rejection");
+        } catch {}
+      });
+    } catch {}
+  }
+
+  // ../../packages/appifact-type-entry/ready.ts
+  function onRuntimeMounted(cb, doc = document, id = "root") {
+    const mounted = (root) => Array.from(root.children).some((c) => !c.hasAttribute("data-placeholder"));
+    const watch = () => {
+      const root = doc.getElementById(id);
+      if (root === null)
+        return;
+      if (mounted(root))
+        return cb();
+      const mo = new MutationObserver(() => {
+        if (!mounted(root))
+          return;
+        mo.disconnect();
+        cb();
+      });
+      mo.observe(root, { childList: true });
+    };
+    if (doc.readyState === "loading")
+      doc.addEventListener("DOMContentLoaded", watch);
+    else
+      watch();
+  }
+
+  // src/health.ts
+  var health = init2({ key, monitoring });
+  init({ key, capabilities });
+  onRuntimeMounted(() => health.ready());
+})();</script>
+<title>Design System</title>
+<!-- README
+# Design System — the shared type's runtime
+
+This page is the Design System appifact's runtime published as an
+artifact TYPE: a generic `index.html` that loads `artifact-type/app.js`
+and `artifact-type/app.css` and carries no document. A design system
+made from the type serves these files and keeps its content in its own
+files: everything it owns is under `project/`:
+`project/design-system.json` is its index, every file sits beside it
+(icons and images stay in the asset store, named by the index). A
+system with no index there is an empty system; this type's own page shows
+one page saying what the type is, read-only (its worked example,
+`artifact-type/demo.json`, is for agents to read and is never rendered).
+`SKILL.md` at the root says how to create or revise a system;
+`artifact-type/reference/format.md` documents every file.
+-->
+<meta name="README" content="Appifact type: Design System. This page is the shared runtime; an instance’s own state (title, content, comments) lives in design-system.json beside this file, and artifact-type/demo.json is shown when that file is absent. Publish instances with capabilities {&quot;artifact&quot;:{},&quot;downloads&quot;:{},&quot;user&quot;:{&quot;scopes&quot;:[&quot;profile&quot;]},&quot;assets&quot;:{},&quot;comments&quot;:{&quot;composer_only&quot;:true,&quot;customAnchors&quot;:true},&quot;room&quot;:{},&quot;db&quot;:{&quot;rules&quot;:[{&quot;path&quot;:&quot;&quot;,&quot;write&quot;:&quot;admin&quot;}]}} (a Save writes the instance’s own files, never this page). The README comment at the top of head has details.">
+<meta name="appifact-capabilities" content="{&quot;artifact&quot;:{},&quot;downloads&quot;:{},&quot;user&quot;:{&quot;scopes&quot;:[&quot;profile&quot;]},&quot;assets&quot;:{},&quot;comments&quot;:{&quot;composer_only&quot;:true,&quot;customAnchors&quot;:true},&quot;room&quot;:{},&quot;db&quot;:{&quot;rules&quot;:[{&quot;path&quot;:&quot;&quot;,&quot;write&quot;:&quot;admin&quot;}]}}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script id="appifact-mode">(function(){var h=document.documentElement;function s(){var t=h.getAttribute('data-theme');if(t==='light'||t==='dark'){h.setAttribute('data-mode',t)}else{h.removeAttribute('data-mode')}}s();if(typeof MutationObserver==='function'){new MutationObserver(s).observe(h,{attributes:true,attributeFilter:['data-theme']})}})();</script>
+<link rel="stylesheet" href="artifact-type/app.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="artifact-type/app.js"></script>
+</body>
+</html>
