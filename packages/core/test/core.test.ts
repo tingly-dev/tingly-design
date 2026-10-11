@@ -202,3 +202,41 @@ describe('rebaseSwap (undo after someone else edited the file)', () => {
     expect(() => rebaseSwap(after.replace('30px', '31px'), after, before)).toThrow();
   });
 });
+
+describe('structural ops', () => {
+  it('moveTo, order, wrap, unwrap and insert keep untouched source verbatim', async () => {
+    const { applyHumanOps, parseDc: p } = await import('../src');
+    const { document } = env();
+    const d = p(BOARD);
+    const lis = d.elements.filter((e) => e.tag === 'li');
+    const h1 = d.elements.find((e) => e.tag === 'h1')!;
+    const ul = d.elements.find((e) => e.tag === 'ul')!;
+    const moved = applyHumanOps(BOARD, [{ kind: 'order', tid: lis[1].tid, to: 'first' }], document).source;
+    expect(moved).toMatch(/<li>Two<\/li>\s*<li>One<\/li>/);
+    const into = applyHumanOps(BOARD, [{ kind: 'moveTo', tid: h1.tid, target: ul.tid, where: 'last' }], document).source;
+    expect(into).toContain(`<h1 style="font-size:20px;font-weight:700" class='title'>Claude Code</h1>`);
+    expect(p(into).elements.find((e) => e.tag === 'h1')!.parent!.tag).toBe('ul');
+    const wrapped = applyHumanOps(BOARD, [{ kind: 'wrap', tid: h1.tid, style: 'display:flex;gap:8px' }], document).source;
+    expect(wrapped).toMatch(/<div style="display:flex;gap:8px"><h1 style="font-size:20px;font-weight:700" class='title'>Claude Code<\/h1><\/div>/);
+    const wd = p(wrapped);
+    const box = wd.elements.find((e) => e.tag === 'h1')!.parent!;
+    const unwrapped = applyHumanOps(wrapped, [{ kind: 'unwrap', tid: box.tid }], document).source;
+    expect(unwrapped).toBe(BOARD);
+    const ins = applyHumanOps(BOARD, [{ kind: 'insert', target: h1.tid, where: 'after', html: '<p style="margin:0">New</p>' }], document).source;
+    expect(ins).toMatch(/Claude Code<\/h1>\n\s+<p style="margin:0">New<\/p>/);
+    const multi = applyHumanOps(BOARD, [{ kind: 'styles', tid: h1.tid, set: { color: 'red', 'font-size': null } }], document).source;
+    expect(multi).toContain(`<h1 style="font-weight:700;color:red" class='title'>`);
+  });
+
+  it('names layers by role', async () => {
+    const { layerTree, parseDc: p } = await import('../src');
+    const tree = layerTree(p(BOARD));
+    expect(tree[0].role).toBe('Row');
+    const right = tree[0].children[1];
+    expect(right.role).toBe('Column');
+    expect(right.children.map((c) => c.role)).toEqual(['Text', 'Text', 'Group', 'Vector']);
+    const rep = tree[0].children[0].children[0];
+    expect(rep.role).toBe('Repeating group');
+    expect(rep.children[0].repeated).toBe(true);
+  });
+});

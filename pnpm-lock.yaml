@@ -89,6 +89,9 @@ importers:
       '@dc/core':
         specifier: workspace:*
         version: link:../core
+      html-to-image:
+        specifier: ^1.11.13
+        version: 1.11.13
       jquery:
         specifier: ^4.0.0
         version: 4.0.0
@@ -567,6 +570,9 @@ packages:
   hono@4.13.13:
     resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
     engines: {node: '>=16.9.0'}
+
+  html-to-image@1.11.13:
+    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   is-fullwidth-code-point@3.0.0:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
@@ -1229,6 +1235,8 @@ snapshots:
   has-flag@4.0.0: {}
 
   hono@4.13.13: {}
+
+  html-to-image@1.11.13: {}
 
   is-fullwidth-code-point@3.0.0: {}
 
