@@ -1,17 +1,23 @@
 {
   "name": "tingly-design",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
     "dev": "pnpm --filter @dc/sandbox build && concurrently -k -n sandbox,server,editor -c magenta,blue,green \"pnpm --filter @dc/sandbox dev\" \"pnpm --filter @dc/server dev\" \"pnpm --filter @dc/editor dev\"",
     "build": "pnpm --filter @dc/sandbox build && pnpm --filter @dc/editor build",
     "start": "pnpm build && pnpm --filter @dc/server start",
     "test": "pnpm --filter @dc/core test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "bundle": "node scripts/bundle.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "esbuild": "^0.28.2"
   }
 }

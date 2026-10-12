@@ -6,16 +6,25 @@ The editor's look is a set of named tokens (colours, shadows, fonts, radii) writ
 
 ## Presets
 
-The names match Tingly Box's theme modes, so a host can pass its own mode through unchanged.
+The presets are Tingly Box's own themes, with the same names, so the editor looks like Tingly Box whether it runs alone or inside it, and a host can pass its mode through unchanged.
 
 | Name | Looks like |
 |---|---|
 | `system` | `light` or `dark`, following the operating system (the default) |
-| `light` | Paper and ink with a blue accent; the light values of the Tingly Design System sample (`projects/tingly-ds`) |
-| `dark` | The same system's dark values |
-| `claude` | Anthropic's ivory and orange, as in Tingly Box's `claude` theme |
-| `ds` | DeepSeek blue, as in Tingly Box's `ds` theme |
-| `sunlit` | Sky blue, as in Tingly Box's `sunlit` theme |
+| `light` | Tingly Box's light theme: slate on near-white with a blue accent |
+| `dark` | Tingly Box's dark theme: a near-black slate ladder with a brighter blue |
+| `claude` | Anthropic's ivory and orange, Tingly Box's `claude` theme |
+| `ds` | DeepSeek blue on a misty canvas, Tingly Box's `ds` theme |
+| `sunlit` | Sky blue, Tingly Box's `sunlit` theme |
+
+### Staying in step with Tingly Box
+
+Tingly Box's palettes and font stacks are copied, unchanged, into `apps/editor/src/tingly-box/` (`SOURCE.json` names the commit). `theme.ts` turns each palette into tokens the same way it maps a palette a host passes in (see below), with three adjustments the editor needs: translucent colours are composited over the surface they sit on, so every token is a solid colour; `ds` and `sunlit`, whose page is a gradient, take one colour from it for the canvas; and menu and dialog shadows and the 6 px / 12 px radii come from Tingly Box's component styles. When Tingly Box's theme changes:
+
+```bash
+node scripts/sync-tingly-box-theme.mjs ../tingly-box   # path to a tingly-box checkout
+pnpm typecheck && python3 e2e/theme.py
+```
 
 ## Passing a theme in
 

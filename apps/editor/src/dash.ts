@@ -26,6 +26,7 @@ import {
 import { api } from './api';
 import { display, edit, toast, useStore } from './store';
 import { currentTheme, onTheme } from './theme';
+import { at } from './base';
 
 /**
  * A dashboard's data, on the editor's side: it loads each dataset the page
@@ -185,7 +186,7 @@ async function fetchText(path: string): Promise<string> {
 /** Run a query's call with the filters as they are: the answer, or why it failed. */
 export async function runQuery(src: QuerySource, params: Params): Promise<{ ok: true; answer: unknown; ms: number } | { ok: false; state: string; message: string }> {
   const project = useStore.getState().project!;
-  const res = await fetch(`/api/projects/${encodeURIComponent(project)}/query`, {
+  const res = await fetch(at(`api/projects/${encodeURIComponent(project)}/query`), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ connector: src.connector, tool: src.tool, args: src.args, params }),
@@ -327,7 +328,7 @@ export function scheduleRuns(): void {
       datasets[id] = { status: s.status === 'ok' ? 'ok' : s.status === 'connect' ? 'absent' : 'failed', message: s.message, rows: s.rows.length || undefined, cut: s.cut, ms: s.ms, at: s.at ? new Date(s.at).toISOString() : undefined };
     }
     const runs = { at: new Date().toISOString(), params, datasets, marks: report?.marks ?? [], flagged: report?.flagged ?? 0, errors: report?.errors ?? [] };
-    void fetch(`/api/projects/${encodeURIComponent(project)}/runs`, { method: 'PUT', body: JSON.stringify(runs, null, 1) }).catch(() => {});
+    void fetch(at(`api/projects/${encodeURIComponent(project)}/runs`), { method: 'PUT', body: JSON.stringify(runs, null, 1) }).catch(() => {});
   }, 1500);
 }
 

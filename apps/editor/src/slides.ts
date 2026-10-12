@@ -12,6 +12,7 @@ import {
 import { api } from './api';
 import { insertHtml } from './actions';
 import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from './store';
+import { replaceUrl } from './host';
 
 /**
  * Deck commands: slides are files placed by deck.json `order`, so adding,
@@ -27,7 +28,7 @@ export function goToSlide(id: string | null): void {
   set({ slide: id, selection: { kind: 'board', file: slideFile(id) }, menu: null });
   const url = new URL(location.href);
   url.searchParams.set('s', id);
-  history.replaceState(null, '', url);
+  replaceUrl(url);
 }
 
 export function stepSlide(dir: 1 | -1): void {

@@ -6,10 +6,18 @@
  * picker, `window.tinglyDesign.setTheme()` and a host's postMessage wins. docs/en/theming.md
  * has the formats.
  *
- * The presets mirror Tingly Box's theme modes (light, dark, claude, ds, sunlit, system) so a
- * host can pass its own mode name through unchanged; light and dark use the Tingly Design
- * System sample's values (projects/tingly-ds), which came from the Tingly Box web UI.
+ * The presets are Tingly Box's theme modes (light, dark, claude, ds, sunlit, system), built
+ * from its own palettes and font stacks (copied into ./tingly-box), so the editor looks like
+ * Tingly Box on its own and inside it, and a host can pass its mode name through unchanged.
  */
+
+import { fontMono, fontSans } from './tingly-box/fonts';
+import { claudePalette } from './tingly-box/palettes/claude';
+import { darkPalette } from './tingly-box/palettes/dark';
+import { dsPalette } from './tingly-box/palettes/ds';
+import { lightPalette } from './tingly-box/palettes/light';
+import { sunlitBackgroundGradient, sunlitPalette } from './tingly-box/palettes/sunlit';
+import type { ThemePalette } from './tingly-box/types';
 
 export const TOKENS = [
   'canvas',
@@ -82,170 +90,84 @@ export type ThemeInput =
       palette?: PaletteInput;
     };
 
-const FONTS = {
-  ui: "'Geist', system-ui, -apple-system, 'PingFang SC', 'Noto Sans SC', sans-serif",
-  mono: "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace",
-  r: '6px',
-  'r-float': '12px',
+/**
+ * Tingly Box's look, per preset: its palette (copied into ./tingly-box by
+ * scripts/sync-tingly-box-theme.mjs) plus the few things the palette does not
+ * carry, taken from its component overrides (frontend/packages/ui/src/theme/
+ * components/*): the menu and dialog shadows, and where a gradient page
+ * background needs one solid colour for the canvas.
+ */
+const TINGLY_BOX: Record<PresetId, { label: string; palette: ThemePalette; menu: string; dialog: string; canvas?: string }> = {
+  light: { label: '浅色', palette: lightPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)' },
+  dark: { label: '深色', palette: darkPalette, menu: '0 10px 32px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5)', dialog: '0 24px 56px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5)' },
+  claude: { label: 'Claude', palette: claudePalette, menu: '0 10px 24px rgba(20, 20, 19, 0.08)', dialog: '0 20px 48px rgba(20, 20, 19, 0.16)' },
+  // the page is a near-white base under a sky-blue wash: the canvas takes a quarter of the wash
+  ds: { label: 'DeepSeek', palette: dsPalette, menu: '0 10px 24px rgba(30, 35, 44, 0.1)', dialog: '0 20px 48px rgba(30, 35, 44, 0.18)', canvas: '#e2eaf4' },
+  // the page is a sky gradient: the canvas is its top
+  sunlit: { label: 'Sunlit', palette: sunlitPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)', canvas: sunlitBackgroundGradient.start },
 };
 
-const lightShadows = (rgb: string) => ({
-  'float-shadow': `0 0 0 1px rgba(${rgb}, 0.07), 0 2px 6px rgba(${rgb}, 0.05), 0 10px 28px rgba(${rgb}, 0.07)`,
-  'lift-shadow': `0 0 0 1px rgba(${rgb}, 0.09), 0 6px 14px rgba(${rgb}, 0.08), 0 18px 40px rgba(${rgb}, 0.1)`,
-  backdrop: `rgba(${rgb}, 0.32)`,
-});
+/** A colour that may be translucent, composited over a solid one: tokens are solid, so mixes and fills stay predictable. */
+function flatten(c: string | undefined, over: string): string | undefined {
+  if (!c) return undefined;
+  const a = c.match(/^rgba\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)[\s,/]+([\d.]+)\s*\)$/i);
+  const under = hexRgb(over);
+  if (!a || !under) return c.toLowerCase();
+  const alpha = Number(a[4]);
+  const hex = [1, 2, 3].map((i) => Math.round(Number(a[i]) * alpha + under[i - 1] * (1 - alpha)).toString(16).padStart(2, '0'));
+  return '#' + hex.join('');
+}
 
-export const PRESETS: Record<PresetId, Preset> = {
-  light: {
-    id: 'light',
-    label: '浅色',
-    scheme: 'light',
-    tokens: {
-      canvas: '#eeeeea',
-      panel: '#ffffff',
-      'panel-2': '#f6f6f3',
-      hover: '#f0f0ec',
-      line: '#e5e5e0',
-      'line-2': '#d6d6cf',
-      ink: '#16181d',
-      'ink-2': '#363a43',
-      muted: '#5f636d',
-      faint: '#8b8f98',
-      accent: '#2563eb',
-      'accent-ink': '#1d4ed8',
-      'accent-soft': '#e9effd',
-      'on-accent': '#ffffff',
-      danger: '#b91c1c',
-      'danger-soft': '#fdecec',
-      ok: '#15803d',
-      'ok-soft': '#e4f4e9',
-      warn: '#b45309',
-      'warn-soft': '#fcf0df',
-      ...lightShadows('22, 24, 29'),
-      ...FONTS,
-    },
-  },
-  dark: {
-    id: 'dark',
-    label: '深色',
-    scheme: 'dark',
-    tokens: {
-      canvas: '#0f1114',
-      panel: '#1a1d23',
-      'panel-2': '#22262d',
-      hover: '#272b33',
-      line: '#2b2f37',
-      'line-2': '#3a3f49',
-      ink: '#eceef2',
-      'ink-2': '#c9cdd5',
-      muted: '#9ca2ad',
-      faint: '#727884',
-      accent: '#6d9bff',
-      'accent-ink': '#93b5ff',
-      'accent-soft': '#1d2741',
-      'on-accent': '#0b1020',
-      danger: '#f87171',
-      'danger-soft': '#3a1e21',
-      ok: '#4ade80',
-      'ok-soft': '#15301f',
-      warn: '#f5a524',
-      'warn-soft': '#3a2a12',
-      backdrop: 'rgba(0, 0, 0, 0.55)',
-      'float-shadow': '0 0 0 1px rgba(255, 255, 255, 0.07), 0 4px 12px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35)',
-      'lift-shadow': '0 0 0 1px rgba(255, 255, 255, 0.1), 0 8px 18px rgba(0, 0, 0, 0.4), 0 20px 44px rgba(0, 0, 0, 0.4)',
-      ...FONTS,
-    },
-  },
-  // Anthropic's brand colours, as Tingly Box's claude theme uses them
-  claude: {
-    id: 'claude',
-    label: 'Claude',
-    scheme: 'light',
-    tokens: {
-      canvas: '#f1efe7',
-      panel: '#fffefb',
-      'panel-2': '#f7f5ee',
-      hover: '#f2efe3',
-      line: '#e8e6dc',
-      'line-2': '#d8d5c8',
-      ink: '#141413',
-      'ink-2': '#3d3b36',
-      muted: '#6b6863',
-      faint: '#9a978e',
-      accent: '#d97757',
-      'accent-ink': '#b5543a',
-      'accent-soft': '#f8e7df',
-      'on-accent': '#ffffff',
-      danger: '#bf4434',
-      'danger-soft': '#f8e3df',
-      ok: '#5e7047',
-      'ok-soft': '#e9eedf',
-      warn: '#9a6a2a',
-      'warn-soft': '#f5ead8',
-      ...lightShadows('20, 20, 19'),
-      ...FONTS,
-    },
-  },
-  // DeepSeek blue, with Tingly Box's balanced primary (see tingly-box .design/theme.md)
-  ds: {
-    id: 'ds',
-    label: 'DeepSeek',
-    scheme: 'light',
-    tokens: {
-      canvas: '#edf1fb',
-      panel: '#ffffff',
-      'panel-2': '#f5f7fd',
-      hover: '#edf2ff',
-      line: '#e0e7f8',
-      'line-2': '#cbd6f3',
-      ink: '#1e232c',
-      'ink-2': '#343b48',
-      muted: '#565f70',
-      faint: '#8a93a3',
-      accent: '#5580fa',
-      'accent-ink': '#3f5ee8',
-      'accent-soft': '#e6edff',
-      'on-accent': '#ffffff',
-      danger: '#dc2626',
-      'danger-soft': '#fde8e8',
-      ok: '#0c7a70',
-      'ok-soft': '#ddf3f0',
-      warn: '#b45309',
-      'warn-soft': '#fcf0df',
-      ...lightShadows('30, 50, 110'),
-      ...FONTS,
-    },
-  },
-  sunlit: {
-    id: 'sunlit',
-    label: 'Sunlit',
-    scheme: 'light',
-    tokens: {
-      canvas: '#e8f4fb',
-      panel: '#ffffff',
-      'panel-2': '#f3f9fd',
-      hover: '#e9f5fd',
-      line: '#d9ebf6',
-      'line-2': '#bfdcee',
-      ink: '#0f172a',
-      'ink-2': '#283548',
-      muted: '#475569',
-      faint: '#8392a6',
-      accent: '#0ea5e9',
-      'accent-ink': '#0369a1',
-      'accent-soft': '#e0f2fe',
-      'on-accent': '#ffffff',
-      danger: '#dc2626',
-      'danger-soft': '#fde8e8',
-      ok: '#15803d',
-      'ok-soft': '#e4f4e9',
-      warn: '#b45309',
-      'warn-soft': '#fcf0df',
-      ...lightShadows('14, 60, 100'),
-      ...FONTS,
-    },
-  },
-};
+/** `color-mix(in srgb, #a p%, #b)` of two hex colours, as the hex colour it comes to; anything else as it is. */
+function mixed(v: string): string {
+  const m = v.match(/^color-mix\(in srgb, (#[0-9a-f]{6}) ([\d.]+)%, (#[0-9a-f]{6})\)$/i);
+  const a = m && hexRgb(m[1]);
+  const b = m && hexRgb(m[3]);
+  if (!m || !a || !b) return v;
+  const w = Number(m[2]) / 100;
+  return '#' + a.map((x, i) => Math.round(x * w + b[i] * (1 - w)).toString(16).padStart(2, '0')).join('');
+}
+
+/** One preset from Tingly Box's palette: what the palette names is copied, the rest derived the same way a host's palette is. */
+function fromTinglyBox(id: PresetId): Preset {
+  const { label, palette: p, menu, dialog, canvas: canvasOverride } = TINGLY_BOX[id];
+  const scheme: Scheme = p.mode === 'dark' ? 'dark' : 'light';
+  const bg = p.background?.default;
+  const canvas = canvasOverride ?? (bg && bg !== 'transparent' ? bg.toLowerCase() : scheme === 'dark' ? '#000000' : '#ffffff');
+  const panel = flatten(p.background?.paper, canvas) ?? canvas;
+  const on = (c: string | undefined) => flatten(c, panel);
+  const named: Partial<Tokens> = {
+    canvas,
+    panel,
+    ink: on(p.text?.primary),
+    muted: on(p.text?.secondary),
+    faint: on(p.text?.disabled),
+    line: on(p.divider),
+    hover: on(p.action?.hover),
+    accent: p.primary?.main?.toLowerCase(),
+    // the shade that reads as text on the panel
+    'accent-ink': (scheme === 'dark' ? p.primary?.light : p.primary?.dark)?.toLowerCase(),
+    'accent-soft': on(p.action?.selected),
+    'on-accent': p.primary?.contrastText?.toLowerCase(),
+    danger: p.error?.main?.toLowerCase(),
+    ok: p.success?.main?.toLowerCase(),
+    warn: p.warning?.main?.toLowerCase(),
+  };
+  const tokens = {
+    ...named,
+    ui: fontSans,
+    mono: fontMono,
+    // buttons, inputs and menu items are 6px in Tingly Box, cards and dialogs 12px
+    r: '6px',
+    'r-float': '12px',
+  } as Tokens;
+  // the rest derived the way a host's palette is, then worked out to plain colours
+  for (const [k, d] of Object.entries(DERIVED) as [Token, NonNullable<(typeof DERIVED)[Token]>][]) if (!tokens[k]) tokens[k] = mixed(d.make(tokens, scheme));
+  tokens['float-shadow'] = `0 0 0 1px ${tokens.line}, ${menu}`;
+  tokens['lift-shadow'] = `0 0 0 1px ${tokens.line}, ${dialog}`;
+  tokens.backdrop = scheme === 'dark' ? 'rgba(0, 0, 0, 0.6)' : `rgba(${hexRgb(tokens.ink)?.join(', ') ?? '0, 0, 0'}, 0.32)`;
+  return { id, label, scheme, tokens };
+}
 
 export interface ResolvedTheme {
   /** a preset id, or `custom` for anything with overrides */
@@ -312,6 +234,8 @@ const DERIVED: Partial<Record<Token, { from: Token[]; make: (t: Tokens, s: Schem
   canvas: { from: ['panel', 'ink'], make: (t, s) => (s === 'dark' ? mix('#000', 40, t.panel) : mix(t.ink, 6, t.panel)) },
 };
 
+export const PRESETS: Record<PresetId, Preset> = Object.fromEntries(PRESET_IDS.map((id) => [id, fromTinglyBox(id)])) as Record<PresetId, Preset>;
+
 /** Tingly Box (MUI) palette → token overrides. */
 export function fromPalette(p: PaletteInput): Partial<Tokens> {
   const o: Partial<Tokens> = {};
@@ -328,6 +252,7 @@ export function fromPalette(p: PaletteInput): Partial<Tokens> {
   put('faint', p.text?.disabled);
   put('line', p.divider);
   put('hover', p.action?.hover);
+  put('accent-soft', p.action?.selected);
   put('danger', p.error?.main);
   put('ok', p.success?.main);
   put('warn', p.warning?.main);

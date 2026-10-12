@@ -1,4 +1,4 @@
-<!-- Title: "Area: what changed, in one line", e.g. "Docs: slim the READMEs to an overview". -->
+<!-- Title: "type(scope): what changed, in one line", e.g. "feat(editor): themes passed in by URL or host", "fix(server): no crash when two writes race". type is feat, fix, refactor, docs, test or chore; scope is the area: core, server, editor, sandbox, e2e, docs, projects. -->
 
 <!-- One paragraph: what was wrong or missing before, and what this PR does about it. Add a file tree or table if it helps. -->
 

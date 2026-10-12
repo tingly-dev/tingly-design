@@ -6,16 +6,25 @@
 
 ## 预设
 
-名字与 Tingly Box 的主题模式一致，宿主可以把自己的模式名原样传进来。
+预设就是 Tingly Box 自己的主题，名字也相同：编辑器单独运行或嵌在 Tingly Box 里，看起来都和 Tingly Box 一致，宿主也可以把自己的模式名原样传进来。
 
 | 名字 | 样子 |
 |---|---|
 | `system` | 跟随操作系统，在 `light` 和 `dark` 之间切换（默认） |
-| `light` | 纸与墨加一个蓝色强调色；取自 Tingly Design System 示例（`projects/tingly-ds`）的浅色值 |
-| `dark` | 同一套设计系统的深色值 |
-| `claude` | Anthropic 的米白与橙色，同 Tingly Box 的 `claude` 主题 |
-| `ds` | DeepSeek 蓝，同 Tingly Box 的 `ds` 主题 |
-| `sunlit` | 天空蓝，同 Tingly Box 的 `sunlit` 主题 |
+| `light` | Tingly Box 的浅色主题：近白底上的石板灰，蓝色强调色 |
+| `dark` | Tingly Box 的深色主题：近黑的石板色阶，更亮的蓝 |
+| `claude` | Anthropic 的米白与橙色，即 Tingly Box 的 `claude` 主题 |
+| `ds` | 雾蓝画布上的 DeepSeek 蓝，即 Tingly Box 的 `ds` 主题 |
+| `sunlit` | 天空蓝，即 Tingly Box 的 `sunlit` 主题 |
+
+### 和 Tingly Box 保持同步
+
+Tingly Box 的调色板和字体栈原样拷贝在 `apps/editor/src/tingly-box/`（`SOURCE.json` 记着来源提交）。`theme.ts` 用映射宿主调色板的同一套规则（见下文）把它们变成 token，另有三处编辑器需要的调整：半透明颜色先叠到它所在的底色上，所以每个 token 都是实色；`ds` 和 `sunlit` 的页面背景是渐变，画布取其中一个颜色；菜单和对话框的阴影、6 px / 12 px 圆角取自 Tingly Box 的组件样式。Tingly Box 的主题变了时：
+
+```bash
+node scripts/sync-tingly-box-theme.mjs ../tingly-box   # tingly-box 检出的路径
+pnpm typecheck && python3 e2e/theme.py
+```
 
 ## 传入主题
 
