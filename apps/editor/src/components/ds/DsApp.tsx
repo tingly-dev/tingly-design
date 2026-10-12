@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DS_README, compileTokensCss, sectionFiles } from '@dc/core';
+import { DS_README, compileTokensCss, sectionFiles, type Attachment } from '@dc/core';
 import { delegateToClaude } from '../../fastedit';
-import { display, edit, isSaving, useStore } from '../../store';
+import { keepAttachments, useAttachments } from '../../attachments';
+import { AttachButton, AttachTray } from '../Attachments';
+import { display, edit, isSaving, toast, useStore } from '../../store';
 import { editDsIndex, useDsIndex, useTokens } from '../../ds';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
@@ -124,33 +126,60 @@ export function AskClaude({
   const fast = useStore((s) => s.fast);
   const delegates = useStore((s) => s.delegates);
   const health = useStore((s) => s.health);
+  const attach = useAttachments();
   const active = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
-  const send = () => {
+  const [keeping, setKeeping] = useState(false);
+  const send = async () => {
     const t = text.trim();
-    if (!t) return;
+    const project = useStore.getState().project;
+    if (!t || !project || keeping) return;
+    let files: Attachment[] = [];
+    if (attach.items.length) {
+      setKeeping(true);
+      try {
+        files = await keepAttachments(project, attach.items);
+      } catch (e) {
+        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
+        return;
+      } finally {
+        setKeeping(false);
+      }
+    }
     const ctx = context?.();
-    void delegateToClaude(file, null, ctx ? `${ctx}\n\n${t}` : t);
+    void delegateToClaude(file, null, ctx ? `${ctx}\n\n${t}` : t, files);
     setText('');
+    attach.clear();
   };
   return (
-    <div className="dsask" role="region" aria-label="交给 Claude Code">
+    <div
+      className={`dsask${attach.over ? ' dropping' : ''}`}
+      role="region"
+      aria-label="交给 Claude Code"
+      onDragOver={attach.handlers.onDragOver}
+      onDragLeave={attach.handlers.onDragLeave}
+      onDrop={attach.handlers.onDrop}
+    >
+      <AttachTray items={attach.items} onRemove={attach.remove} />
+      <AttachButton onFiles={(f) => void attach.add(f)} />
       <textarea
         rows={1}
         value={text}
         placeholder={health?.claudeCli === false ? '本机找不到 claude 命令，无法委托。' : placeholder}
         aria-label="请求"
         onChange={(e) => setText(e.target.value)}
+        onPaste={attach.handlers.onPaste}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
-            send();
+            void send();
           }
         }}
       />
-      <button className="btn primary" onClick={send} disabled={!text.trim() || health?.claudeCli === false}>
+      <button className="btn primary" onClick={() => void send()} disabled={!text.trim() || keeping || health?.claudeCli === false}>
         <Send /> 发送
       </button>
+      {attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
       {(active || fast.note) && (
         <div className="ticker">
           {active ? (

@@ -2,7 +2,7 @@
 
 # Canvas
 
-The top left holds the page menu and the tools; the top right holds play, the panel toggle, zoom and the sync log; the bottom bar is the prompt for AI; the right panel folds away with `⌘\`.
+The top left holds the page menu and the tools; the top right holds play, the panel toggle, zoom and the sync log; the bottom bar is the prompt for AI (paste, drop or pick images, PDFs and text files into it; they are kept in the project's `uploads/`); the right panel folds away with `⌘\`.
 
 - **Tools**: select V, hand H, text T, artboard A, sticky note N, pen P, rectangle R, ellipse O, line L, arrow ⇧L. Notes and shapes live in `canvas.json`, with size (s/m/l/xl/xxl), colour, fill, rotation and flips.
 - **Artboards**: rename, run full window or export PNG from the name strip; resize from the corner; several pages, each with its own artboards.

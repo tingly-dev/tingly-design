@@ -1,4 +1,4 @@
-import type { Actor, JournalEntry, ProjectCard } from '@dc/core';
+import type { Actor, JournalEntry, ModelMessage, ProjectCard } from '@dc/core';
 import { at, SERVER } from './base';
 
 export interface FileState {
@@ -89,7 +89,7 @@ export const api = {
   /** Where a project's assets are served (for slide frames). */
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
 
-  fastEdit: (p: string, messages: { role: 'user' | 'assistant'; content: string }[], signal: AbortSignal, kind?: string) =>
+  fastEdit: (p: string, messages: ModelMessage[], signal: AbortSignal, kind?: string) =>
     fetch(at(`api/projects/${enc(p)}/fast-edit`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
