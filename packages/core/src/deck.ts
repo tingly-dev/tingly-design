@@ -31,7 +31,7 @@ export interface DeckJson {
   [k: string]: unknown;
 }
 
-export type ProjectKind = 'design' | 'slides';
+export type ProjectKind = 'design' | 'slides' | 'design-system';
 
 export const SLIDE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -55,11 +55,13 @@ export function slideIdOf(path: string): string | null {
 /** Which editor a project needs, from the files it holds. */
 export function projectKind(files: Iterable<string>): ProjectKind | null {
   let design = false;
+  let ds = false;
   for (const f of files) {
     if (f === DECK_FILE) return 'slides';
     if (f === 'canvas.json') design = true;
+    if (f === 'design-system.json') ds = true;
   }
-  return design ? 'design' : null;
+  return design ? 'design' : ds ? 'design-system' : null;
 }
 
 export function parseDeck(text: string | undefined): DeckJson {

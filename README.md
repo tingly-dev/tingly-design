@@ -74,6 +74,28 @@ projects/<name>/
 
 渲染上忠实于原版的几处规则：没写 `display` 的 `<div>` 是纵向 flex；子元素按源码顺序绘制，所有流式内容作为一层画在第一个流式子元素的位置（所以写在最前面的全幅背景会在文字下面）；`<x-embed>` 跑在独立的沙箱页里（无网络、不同源）。
 
+## 设计系统
+
+第三种项目是设计系统（原版的 Design System 类型）。打开 http://localhost:5173/?p=math-ds 看演示：从“数学奇遇记”那套幻灯片里提取的颜色、字体、间距和卡片。
+
+```
+projects/<name>/
+  design-system.json      索引：标题、namespace、资源分组
+  tokens.json             颜色（按主题）、文字、间距、圆角、阴影……都是 {name, value, usage} 列表
+  tokens.css              由 tokens.json 自动生成（编辑器、Claude Code、终端改 tokens.json 都会重新生成）
+  README.md、*.md          品牌手册
+  components/<C>/         README.md（使用说明）和 preview.html（实时预览）；Cover 是封面
+  components/bundle.js    组件实现，挂在 window.<namespace>；bundle.css、index.d.ts
+  assets/<分组>/、fonts/   标志、图标、图片和字体文件
+```
+
+- **页面**：概览（封面 + 品牌手册，可直接编辑 Markdown）、颜色（按主题切换；用法里写“on surface”就显示在那个底色上的对比度；别名显示指向谁）、文字（每个样式按自己的字体和字号渲染）、间距与圆角与阴影、组件（每个预览都在沙箱里先加载 tokens.css、bundle.css、bundle.js 再运行）、资源（按分组上传、下载、删除）。
+- **原地改 token**：点一行展开，改值、改名（别名会跟着改）、写用法、增删。保存的是 tokens.json 的数据，tokens.css 随之重建，只改真正变了的那几行。
+- **检查**：tokens.json 里不符合原版语法的部分（颜色名、`var()`、不存在的别名、循环别名、DTCG 的 map 写法……）会被丢弃并在“问题”里写明原因。
+- **装进画布或幻灯片**：在画布或幻灯片的面板里（不选中任何东西时）选择“设计系统 → 装入”。tokens.json 复制到那个项目的 `ds/<folder>/`，索引的 `designSystems` 记一条；之后所有颜色输入框旁边有 ◆ 可以选它的颜色、并标出当前值是哪个 token，文字样式菜单列出它的样式；幻灯片还会拿到它的字体。幻灯片里写的是颜色值本身（子集不允许 `var()`）。
+- **托管字体**：`tokens.json` 的 `type.hosted: [{family, href}]` 是这里的扩展（原版只认字体文件），用 Google Fonts 的 css2 链接；预览和装入的幻灯片都会加载。
+- **Claude Code**：委托时先读 `.claude/skills/design-system/SKILL.md`。原版设计系统页面没有页内模型，这里也只交给 Claude Code。
+
 ## 它是怎么做到双向编辑的
 
 ```
@@ -139,7 +161,8 @@ apps/server        Hono：文件读写与版本、SSE、journal、文件监听�
 apps/editor        React + Vite + zustand 的画布编辑器和幻灯片编辑器（components/slides）
 projects/demo      演示画布
 projects/math-deck 演示幻灯片
-.claude/skills     给 Claude Code 看的格式说明（dc-canvas、slides；委托时也会让它先读）
+projects/math-ds   演示设计系统（从 math-deck 提取）
+.claude/skills     给 Claude Code 看的格式说明（dc-canvas、slides、design-system；委托时也会让它先读）
 artifact/          原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
 docs/              扩展到其他类型的方案
 e2e                Playwright 端到端测试和一个模拟的 Messages API
@@ -148,11 +171,12 @@ e2e                Playwright 端到端测试和一个模拟的 Messages API
 ## 测试
 
 ```bash
-pnpm test                         # core 的单元测试：解析、回写、jQuery 会话、语句切分、撤销重定位、幻灯片（deck.json、子集检查、表格、回写）
+pnpm test                         # core 的单元测试：解析、回写、jQuery 会话、语句切分、撤销重定位、幻灯片（deck.json、子集检查、表格、回写）、设计系统（tokens 语法、tokens.css）
 pnpm typecheck
 
 # 端到端（需要先 pnpm dev，以及 Python 版 Playwright）
 python3 e2e/e2e.py                # 面板、图层、样式、改字、结构操作、剪贴板、拖动/拖出、画布工具、页面、导出、并发、撤销、播放（40 项）
+python3 e2e/ds.py                 # 设计系统：封面与品牌手册、改颜色/改名带别名/增删、文字与圆角、组件预览、上传资源、外部改坏后的提示、新建、装进幻灯片后选 token 与文字样式、移除（22 项）
 python3 e2e/slides.py             # 幻灯片：缩略图与分节、改字、删除与撤销、拖动钉住的元素、备注、新建/复制/排序/删除、格式检查、jQuery、放映、导出（20 项）
 # 用别的 Chromium：DC_CHROME=/path/to/chrome python3 e2e/slides.py
 python3 e2e/mock_anthropic.py &   # 模拟模型：第一次故意给一行会报错的语句

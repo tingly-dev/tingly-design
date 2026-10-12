@@ -546,9 +546,17 @@ function inspect() {
     computed['offset-top'] = String(el.offsetTop);
     let backdrop = '#ffffff';
     for (let a: Element | null = el; a; a = a.parentElement) {
-      const bg = getComputedStyle(a).backgroundColor;
+      const acs = getComputedStyle(a);
+      const bg = acs.backgroundColor;
       if (opaque(bg)) {
         backdrop = bg;
+        break;
+      }
+      // a gradient backdrop (slides often have one): its last stop covers the most area
+      const stops = /gradient\(/.test(acs.backgroundImage) && acs.backgroundClip !== 'text' ? acs.backgroundImage.match(/rgba?\([^)]*\)/g) : null;
+      const last = stops?.filter(opaque).at(-1);
+      if (last) {
+        backdrop = last;
         break;
       }
     }
