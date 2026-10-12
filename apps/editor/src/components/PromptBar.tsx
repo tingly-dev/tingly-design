@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { elementLabel, attr } from '@dc/core';
-import { display, parsed, useCanvas, useStore } from '../store';
+import { elementLabel, attr, type Attachment } from '@dc/core';
+import { display, parsed, toast, useCanvas, useStore } from '../store';
 import { cancelFastEdit, delegateToClaude, runFastEdit, runJQuery } from '../fastedit';
-import { toSend, useAttachments } from '../attachments';
+import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
 import { Send, Stop } from './icons';
 
@@ -63,10 +63,23 @@ export function PromptBar() {
 
   // jQuery is typed by hand: there is no model to show a file to
   const attaching = target !== 'jquery';
-  const submit = () => {
+  const [keeping, setKeeping] = useState(false);
+  const submit = async () => {
     const t = text.trim();
-    if (!t || !file || running || disabled) return;
-    const files = attaching ? toSend(attach.items) : [];
+    const project = useStore.getState().project;
+    if (!t || !file || !project || running || disabled || keeping) return;
+    let files: Attachment[] = [];
+    if (attaching && attach.items.length) {
+      setKeeping(true);
+      try {
+        files = await keepAttachments(project, attach.items);
+      } catch (e) {
+        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
+        return;
+      } finally {
+        setKeeping(false);
+      }
+    }
     if (target === 'ai') void runFastEdit(file, tid, t, files);
     else if (target === 'claude') {
       useStore.setState({ fast: { status: 'idle', mode: 'ai', lines: [] } });
@@ -130,7 +143,7 @@ export function PromptBar() {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              submit();
+              void submit();
             }
           }}
         />
@@ -139,7 +152,7 @@ export function PromptBar() {
             <Stop /> 停止
           </button>
         ) : (
-          <button className="btn primary send" onClick={submit} disabled={disabled || !text.trim()}>
+          <button className="btn primary send" onClick={() => void submit()} disabled={disabled || keeping || !text.trim()}>
             <Send /> {target === 'jquery' ? '执行' : '发送'}
           </button>
         )}

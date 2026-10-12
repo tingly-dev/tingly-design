@@ -1,9 +1,10 @@
 """End-to-end checks for attachments: images and files added to a request by pasting, dropping or the
-file picker, then passed to the fast model as content blocks and to Claude Code as files it reads.
+file picker, kept in the project's uploads/, and passed to the fast model as content blocks and to
+Claude Code by their paths.
 Run after `pnpm build`: python3 e2e/attach.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh projects folder, with the mock model and a
 stand-in `claude` command first on PATH, so it needs neither `pnpm dev` nor an API key."""
-import os, sys, asyncio, json, subprocess, tempfile, threading, time, urllib.request, urllib.error
+import os, sys, asyncio, json, struct, subprocess, tempfile, threading, time, urllib.request, urllib.error
 from playwright.async_api import async_playwright, expect
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -133,7 +134,7 @@ async def main():
             await paste_image(pg, '.prompt textarea', 2000, 1000)
             await expect(chips).to_have_count(1)
             name = await chips.first.locator('.name').inner_text()
-            check('pasted image becomes a chip with a thumbnail', await chips.first.locator('img').count() == 1 and name.endswith('.webp'), name)
+            check('pasted image becomes a chip with a thumbnail', await chips.first.locator('img').count() == 1 and name == '粘贴的图片.png', name)
             check('the paste did not type anything', await pg.locator('.prompt textarea').input_value() == '')
 
             # plain text still pastes as text
@@ -182,12 +183,29 @@ async def main():
             csv = next((x for x in first if x['type'] == 'text' and 'q3.csv' in x['text']), {})
             check('the CSV is sent as fenced text', '⟦untrusted:' in csv.get('text', '') and 'Jul,1200' in csv.get('text', ''), csv)
             check('the request names the attachments', 'attached (shown above this message)' in first[-1]['tail'] if first else False)
+            check('each attachment is labelled with where the project keeps it', 'kept in the project as uploads/' in first[0]['text'] if first else False, first[:1])
             check('the retry keeps the same attachments', len(calls) >= 2 and calls[1]['blocks'] == calls[0]['blocks'])
             check('chips clear after sending', await chips.count() == 0)
             proj = os.path.join(projects, 'box-console')
-            check('nothing attached was written into the project', not os.path.exists(os.path.join(proj, 'assets')) and not any(f.endswith(('.png', '.webp', '.pdf', '.csv')) for f in os.listdir(proj)))
+            ups = os.path.join(proj, 'uploads')
+            kept = sorted(os.listdir(ups)) if os.path.isdir(ups) else []
+            check('the three attachments are kept in uploads/, named by content', len(kept) == 3 and any(f.startswith('pasted-') and f.endswith('.png') for f in kept) and any(f.startswith('brief-') for f in kept) and any(f.startswith('q3-') for f in kept), kept)
+            png = next((f for f in kept if f.endswith('.png')), None)
+            head = open(os.path.join(ups, png), 'rb').read(24) if png else b''
+            check('the pasted image is kept as given (2000×1000 PNG), not the scaled copy', head[:4] == b'\x89PNG' and struct.unpack('>II', head[16:24]) == (2000, 1000))
+            st, _ = 200, None
+            try:
+                r = urllib.request.urlopen(f'{base}/api/projects/box-console/raw/uploads/{png}')
+                st, ctype = r.status, r.headers['content-type']
+            except Exception as e: st, ctype = 0, str(e)
+            check('a kept image is served from the project', st == 200 and ctype == 'image/png', (st, ctype))
+            csvf = next((f for f in kept if f.endswith('.csv')), '')
+            r = urllib.request.urlopen(f'{base}/api/projects/box-console/raw/uploads/{csvf}')
+            check('a kept text file is served as plain text', r.headers['content-type'].startswith('text/plain') and b'Jul,1200' in r.read())
+            journal = os.path.join(proj, '.journal.jsonl')
+            check('keeping attachments adds nothing to the change log', not os.path.exists(journal) or 'uploads/' not in open(journal).read())
 
-            # hand to Claude Code: the files are written outside the project for it to read, then removed
+            # hand to Claude Code: it is told where the project keeps each file
             await pg.locator('.prompt .seg button', has_text='Claude Code').click()
             await pg.locator('.prompt input[type=file]').set_input_files([os.path.join(files, 'q3.csv'), os.path.join(files, 'brief.pdf')])
             await expect(chips).to_have_count(2)
@@ -197,10 +215,10 @@ async def main():
             run = lines(claude_log)[0] if ok else {}
             fs = run.get('files', {})
             check('Claude Code is told about each attachment by path', len(fs) == 2 and 'attached as "q3.csv"' in run.get('prompt', '') and 'attached as "brief.pdf"' in run.get('prompt', ''), run.get('prompt', '')[-400:])
-            check('the attached files hold what was picked', sorted(v['size'] for v in fs.values()) == sorted([os.path.getsize(os.path.join(files, 'q3.csv')), len(PDF)]) and any(v['head'].startswith('%PDF') for v in fs.values()), fs)
-            check('their folder is outside the projects and added for Claude Code', any(d for d in run.get('dirs', []) if 'tingly-design-attachments' in d and not d.startswith(projects)), run.get('dirs'))
-            gone = await wait_for(lambda: not any(os.path.exists(p) for p in fs), 6)
-            check('the attachment folder is removed when Claude Code finishes', bool(fs) and gone)
+            check('the paths are the files kept in uploads/', sorted(os.path.basename(p) for p in fs) == sorted(f for f in kept if not f.endswith('.png')) and all(p.startswith(ups) for p in fs), list(fs))
+            check('the kept files hold what was picked', sorted(v['size'] for v in fs.values()) == sorted([os.path.getsize(os.path.join(files, 'q3.csv')), len(PDF)]) and any(v['head'].startswith('%PDF') for v in fs.values()), fs)
+            await asyncio.sleep(1)
+            check('a file attached twice is kept once, and stays after Claude Code finishes', sorted(os.listdir(ups)) == kept, os.listdir(ups))
             check('chips clear after handing off', await chips.count() == 0)
 
             # a design system's, dashboard's and doc's "hand to Claude Code" bar takes them too
@@ -219,9 +237,28 @@ async def main():
             check('the doc bar hands its attachments to Claude Code', ok and len(run.get('files', {})) == 2 and 'Doc folder' in run.get('prompt', ''), run.get('prompt', '')[-300:])
             check('the doc bar clears after sending', await ask.locator('.attach-chip').count() == 0)
 
+            # a slide shows a kept image by its uploads/ path (what the fast model is told it may write)
+            req = urllib.request.Request(f'{base}/api/projects/tingly-intro/assets?name=logo.png&dir=uploads', data=open(os.path.join(ups, png), 'rb').read(), method='POST')
+            up = json.loads(urllib.request.urlopen(req).read())['path']
+            await pg.goto(base + '/?p=tingly-intro')
+            await pg.wait_for_timeout(2000)
+            await pg.locator('.prompt .seg button', has_text='jQuery').click()
+            await pg.locator('.prompt textarea').fill(f"$('section').append(`<img src=\"{up}\" alt=\"logo\" style=\"position:absolute;left:128px;top:128px;width:400px;height:200px;object-fit:cover\">`)")
+            await pg.locator('.prompt .send').click()
+            img = pg.frame_locator('.sframe.f-stage iframe').locator('img[alt="logo"]')
+            await img.wait_for(timeout=8000)
+            await pg.wait_for_timeout(500)
+            check('a slide shows a kept image by its uploads/ path', await img.evaluate('(i) => i.complete && i.naturalWidth === 2000'))
+
             # the server checks what it is sent
-            st, body = post(f'{base}/api/projects/box-console/delegate', {'prompt': 'x', 'attachments': [{'name': 'a.zip', 'kind': 'text', 'mediaType': 'application/zip', 'data': 'x'}]})
-            check('the server refuses an attachment it cannot read', st == 400 and 'cannot attach' in body, (st, body))
+            st, body = post(f'{base}/api/projects/box-console/delegate', {'prompt': 'x', 'attachments': [{'name': 'x', 'path': 'canvas.json'}]})
+            check('the server hands on only files in uploads/', st == 400 and 'not an upload' in body, (st, body))
+            st, body = post(f'{base}/api/projects/box-console/delegate', {'prompt': 'x', 'attachments': [{'name': 'x', 'path': 'uploads/../canvas.json'}]})
+            check('the server refuses a path that climbs out of uploads/', st == 400, (st, body))
+            req = urllib.request.Request(f'{base}/api/projects/box-console/assets?name=a.exe&dir=uploads', data=b'MZ', method='POST')
+            try: st = urllib.request.urlopen(req).status
+            except urllib.error.HTTPError as e: st = e.code
+            check('the server keeps only kinds that can be attached', st == 400, st)
             st, body = post(f'{base}/api/projects/box-console/fast-edit', {'messages': [{'role': 'user', 'content': [{'type': 'tool_use', 'id': 'x', 'name': 'y', 'input': {}}]}]})
             check('the server refuses blocks that are not text, image or PDF', st == 400, (st, body))
             check('no page errors', not errs, errs)

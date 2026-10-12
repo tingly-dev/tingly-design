@@ -1,11 +1,14 @@
 import { useCallback, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { ATTACH_LIMITS, attachmentKind, type Attachment } from '@dc/core';
+import { api } from './api';
 import { toast } from './store';
 
 /**
- * Files and images attached to a request, read in the browser: images are
- * scaled down to what the model looks at, text files are read as text and
- * PDFs go as they are. Nothing is uploaded to the project.
+ * Files and images attached to a request. In the browser they are read for
+ * the model (images scaled down to what it looks at, text files as text,
+ * PDFs as they are); when the request is sent, each one is kept in the
+ * project's uploads/ folder as the person gave it, so later requests and
+ * Claude Code can use it again.
  */
 
 /** An attachment on its way, with a preview for the chip. */
@@ -13,9 +16,14 @@ export interface Attached extends Attachment {
   key: string;
   /** an object URL for an image's thumbnail */
   preview?: string;
-  /** bytes as sent */
+  /** bytes as sent to the model */
   size: number;
+  /** what is kept in the project: the file itself, or the scaled copy when the file is too big to keep */
+  keep: File;
 }
+
+/** The server keeps files up to this size (MAX_ASSET). */
+const KEEP_BYTES = 20 * 1024 * 1024;
 
 function base64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -57,28 +65,43 @@ let seq = 0;
 
 /** Reads one file into an attachment, or throws with the reason in words. */
 export async function readAttachment(file: File): Promise<Attached> {
-  const name = file.name || (file.type.startsWith('image/') ? `粘贴的图片.${file.type.slice(6).replace('jpeg', 'jpg')}` : 'file');
+  const pasted = !file.name;
+  const ext = file.type.slice(file.type.indexOf('/') + 1).replace('jpeg', 'jpg');
+  const name = pasted ? (file.type.startsWith('image/') ? `粘贴的图片.${ext}` : 'file') : file.name;
+  // a pasted image has no name: it is kept as pasted-<hash>.png
   const k = attachmentKind(name, file.type);
   if (!k) throw new Error(`不支持这种文件：${name}（可以附图片、PDF 和文本文件）`);
   const key = `a${++seq}`;
   if (k.kind === 'image') {
     const { blob, mediaType } = await fitImage(file, k.mediaType);
     if (blob.size > ATTACH_LIMITS.imageBytes) throw new Error(`${name} 超过 5 MB`);
-    const sent = mediaType === k.mediaType ? name : name.replace(/\.[^.]+$/, '') + '.webp';
-    return { key, name: sent, kind: 'image', mediaType, data: base64(await blob.arrayBuffer()), size: blob.size, preview: URL.createObjectURL(blob) };
+    const keepName = pasted || !attachmentKind(name) ? `${pasted ? 'pasted' : name}.${ext}` : name;
+    const keep = file.size <= KEEP_BYTES ? new File([file], keepName, { type: file.type }) : new File([blob], keepName.replace(/\.[^.]+$/, '') + '.webp', { type: mediaType });
+    return { key, name, kind: 'image', mediaType, data: base64(await blob.arrayBuffer()), size: blob.size, preview: URL.createObjectURL(blob), keep };
   }
   if (k.kind === 'pdf') {
     if (file.size > ATTACH_LIMITS.pdfBytes) throw new Error(`${name} 超过 10 MB`);
-    return { key, name, kind: 'pdf', mediaType: k.mediaType, data: base64(await file.arrayBuffer()), size: file.size };
+    return { key, name, kind: 'pdf', mediaType: k.mediaType, data: base64(await file.arrayBuffer()), size: file.size, keep: file };
   }
   const text = await file.text();
   if (text.length > ATTACH_LIMITS.textChars) throw new Error(`${name} 太长（超过 ${ATTACH_LIMITS.textChars / 1000}k 字符）`);
-  return { key, name, kind: 'text', mediaType: k.mediaType, data: text, size: file.size };
+  // kept under a name the server knows the kind of
+  const keepName = /\.[A-Za-z0-9]+$/.test(name) && attachmentKind(name) ? name : `${name}.txt`;
+  return { key, name, kind: 'text', mediaType: k.mediaType, data: text, size: file.size, keep: new File([file], keepName, { type: file.type || 'text/plain' }) };
 }
 
-/** Just the part that travels with a request. */
-export function toSend(list: Attached[]): Attachment[] {
-  return list.map(({ name, kind, mediaType, data }) => ({ name, kind, mediaType, data }));
+/**
+ * Keeps each attachment in the project's uploads/ (named by content, so a
+ * file sent twice is kept once) and returns what travels with the request,
+ * each with the path it is kept at. Throws when one cannot be kept.
+ */
+export async function keepAttachments(project: string, list: Attached[]): Promise<Attachment[]> {
+  const out: Attachment[] = [];
+  for (const { name, kind, mediaType, data, keep } of list) {
+    const { path } = await api.upload(project, keep, 'uploads');
+    out.push({ name, kind, mediaType, data, path });
+  }
+  return out;
 }
 
 function hasFiles(e: DragEvent): boolean {

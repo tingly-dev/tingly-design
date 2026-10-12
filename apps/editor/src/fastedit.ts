@@ -143,7 +143,7 @@ export async function delegateToClaude(file: string | undefined, tid: number | n
       file,
       pointed: file ? pointedInfo(file, tid) : null,
       journal,
-      ...(attachments.length ? { attachments } : {}),
+      ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
     setFast({ status: 'delegated', note: '已交给 Claude Code，完成后画布会自动更新。' });
   } catch (e) {

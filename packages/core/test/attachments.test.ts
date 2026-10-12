@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   ATTACH_LIMITS,
   attachmentBlocks,
-  attachmentFileName,
   attachmentKind,
+  attachmentSummary,
   base64Bytes,
   buildFastEditPrompt,
-  checkAttachments,
   checkMessages,
+  checkUploads,
+  isUploadPath,
   type Attachment,
 } from '../src';
 
@@ -32,28 +33,34 @@ describe('attachments', () => {
     expect(base64Bytes(btoa('abcdef'))).toBe(6);
   });
 
-  it('accepts a good set and refuses too many, too big, unknown or mislabelled files', () => {
-    expect(checkAttachments(undefined)).toBeNull();
-    expect(checkAttachments([png, pdf, csv])).toBeNull();
-    expect(checkAttachments(Array(ATTACH_LIMITS.count + 1).fill(csv))).toMatch(/at most/);
-    expect(checkAttachments([{ ...png, data: 'A'.repeat(Math.ceil((ATTACH_LIMITS.imageBytes * 4) / 3) + 8) }])).toMatch(/5 MB/);
-    expect(checkAttachments([{ ...csv, data: 'x'.repeat(ATTACH_LIMITS.textChars + 1) }])).toMatch(/characters/);
-    expect(checkAttachments([{ ...png, name: 'a.zip', mediaType: 'application/zip' }])).toMatch(/cannot attach/);
-    expect(checkAttachments([{ ...csv, kind: 'image' }])).toMatch(/cannot attach/);
-    expect(checkAttachments([{ ...png, data: 'not base64!' }])).toMatch(/base64/);
-    expect(checkAttachments('x')).toMatch(/list/);
+  it('keeps attachments only in uploads/, of a kind that can be attached', () => {
+    expect(isUploadPath('uploads/shot-1a2b3c4d.png')).toBe(true);
+    expect(isUploadPath('uploads/q3-1a2b3c4d.csv')).toBe(true);
+    expect(isUploadPath('uploads/a.zip')).toBe(false);
+    expect(isUploadPath('uploads/../canvas.json')).toBe(false);
+    expect(isUploadPath('uploads/sub/a.png')).toBe(false);
+    expect(isUploadPath('assets/a.png')).toBe(false);
   });
 
-  it('names files safely and keeps them apart', () => {
-    expect(attachmentFileName('../../etc/passwd', 0)).toBe('1-passwd');
-    expect(attachmentFileName('截图 2026.png', 1)).toBe('2-2026.png');
-    expect(attachmentFileName('.png', 2)).toBe('3-file.png');
+  it('hands on a good list of kept attachments and refuses anything else', () => {
+    const kept = { name: 'shot.png', path: 'uploads/shot-1a2b3c4d.png' };
+    expect(checkUploads(undefined)).toBeNull();
+    expect(checkUploads([kept])).toBeNull();
+    expect(checkUploads(Array(ATTACH_LIMITS.count + 1).fill(kept))).toMatch(/at most/);
+    expect(checkUploads([{ ...kept, path: '../../etc/passwd' }])).toMatch(/not an upload/);
+    expect(checkUploads([{ name: 'x' }])).toMatch(/bad/);
+    expect(checkUploads('x')).toMatch(/list/);
   });
 
   it('becomes labelled content blocks, text fenced as untrusted', () => {
     const b = attachmentBlocks([png, pdf, csv], 'n0');
     expect(b.map((x) => x.type)).toEqual(['text', 'image', 'document', 'text']);
     expect(b[0]).toEqual({ type: 'text', text: 'attachment 1: shot.png' });
+    expect(attachmentBlocks([{ ...png, path: 'uploads/shot-1a2b3c4d.png' }], 'n0')[0]).toEqual({
+      type: 'text',
+      text: 'attachment 1: shot.png, kept in the project as uploads/shot-1a2b3c4d.png',
+    });
+    expect(attachmentSummary([{ ...csv, path: 'uploads/q3-1a2b3c4d.csv' }])).toBe('- attachment 1: q3.csv (text), kept as uploads/q3-1a2b3c4d.csv');
     expect(b[1]).toMatchObject({ source: { type: 'base64', media_type: 'image/png', data: png.data } });
     expect(b[2]).toMatchObject({ title: 'brief.pdf', source: { media_type: 'application/pdf' } });
     expect((b[3] as { text: string }).text).toBe('attachment 3: q3.csv\n⟦untrusted:n0⟧\nmonth,calls\nJul,120\n\n⟦/untrusted:n0⟧');

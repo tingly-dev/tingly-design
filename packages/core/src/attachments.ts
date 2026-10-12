@@ -1,10 +1,11 @@
 /**
- * Files and images a person attaches to a request, as references: a
- * screenshot to match, a mockup, a brand guide, a CSV of real numbers.
+ * Files and images a person attaches to a request: a screenshot to match, a
+ * mockup, a logo, a brand guide, a CSV of real numbers.
  *
- * They travel with the request and are never written into the project.
- * The fast model gets them as content blocks next to the prompt; Claude Code
- * gets them as files in a folder outside the project, which it reads.
+ * Each one is kept in the project's uploads/ folder (named by content, so the
+ * same file is kept once), where later requests, Claude Code and the person
+ * can find it again. The fast model also gets it as a content block next to
+ * the prompt; Claude Code gets its path and reads it.
  */
 
 export type AttachmentKind = 'image' | 'pdf' | 'text';
@@ -16,7 +17,12 @@ export interface Attachment {
   mediaType: string;
   /** base64 for images and PDFs, the text itself for text files */
   data: string;
+  /** where the project keeps it: uploads/<name>-<hash>.<ext> */
+  path?: string;
 }
+
+/** The project folder attachments are kept in. */
+export const UPLOADS_DIR = 'uploads';
 
 /** Images the model reads (SVG is markup, so it goes as text). */
 export const IMAGE_TYPES: Record<string, string> = {
@@ -88,32 +94,22 @@ export function base64Bytes(b64: string): number {
   return Math.floor((b64.length * 3) / 4) - pad;
 }
 
-/** Why a set of attachments cannot be sent, or null when they can. The server checks again. */
-export function checkAttachments(list: unknown): string | null {
+/** A file in the project's uploads/ folder of a kind that can be attached. */
+export function isUploadPath(rel: string): boolean {
+  const m = /^uploads\/([A-Za-z0-9_-][A-Za-z0-9_.-]{0,120})$/.exec(rel);
+  return !!m && !rel.includes('..') && attachmentKind(m[1]) !== null;
+}
+
+/** Why a list of kept attachments cannot be handed on, or null when it can. The server checks again. */
+export function checkUploads(list: unknown): string | null {
   if (list === undefined) return null;
   if (!Array.isArray(list)) return 'attachments must be a list';
   if (list.length > ATTACH_LIMITS.count) return `at most ${ATTACH_LIMITS.count} attachments`;
-  for (const a of list as Partial<Attachment>[]) {
-    if (!a || typeof a.name !== 'string' || !a.name || typeof a.data !== 'string' || typeof a.mediaType !== 'string') return 'bad attachment';
-    const k = attachmentKind(a.name, a.mediaType);
-    if (!k || k.kind !== a.kind) return `cannot attach ${a.name}`;
-    if (a.kind !== 'text' && !/^[A-Za-z0-9+/]*={0,2}$/.test(a.data)) return `${a.name} is not base64`;
-    if (a.kind === 'image' && base64Bytes(a.data) > ATTACH_LIMITS.imageBytes) return `${a.name} is over 5 MB`;
-    if (a.kind === 'pdf' && base64Bytes(a.data) > ATTACH_LIMITS.pdfBytes) return `${a.name} is over 10 MB`;
-    if (a.kind === 'text' && a.data.length > ATTACH_LIMITS.textChars) return `${a.name} is over ${ATTACH_LIMITS.textChars} characters`;
+  for (const a of list as { name?: unknown; path?: unknown }[]) {
+    if (!a || typeof a.name !== 'string' || !a.name || typeof a.path !== 'string') return 'bad attachment';
+    if (!isUploadPath(a.path)) return `not an upload: ${a.path}`;
   }
   return null;
-}
-
-/** A name safe to write as a file: letters, digits, dot, dash and underscore, the extension kept. */
-export function attachmentFileName(name: string, i: number): string {
-  const base = name.slice(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1);
-  const e = ext(base);
-  const stem = (e ? base.slice(0, -e.length - 1) : base)
-    .replace(/[^A-Za-z0-9_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
-  return `${i + 1}-${stem || 'file'}${e ? '.' + e : ''}`;
 }
 
 export type ContentBlock =
@@ -128,7 +124,7 @@ export type ContentBlock =
 export function attachmentBlocks(list: Attachment[], nonce: string): ContentBlock[] {
   const out: ContentBlock[] = [];
   list.forEach((a, i) => {
-    const label = `attachment ${i + 1}: ${a.name}`;
+    const label = `attachment ${i + 1}: ${a.name}${a.path ? `, kept in the project as ${a.path}` : ''}`;
     if (a.kind === 'image') {
       out.push({ type: 'text', text: label }, { type: 'image', source: { type: 'base64', media_type: a.mediaType, data: a.data } });
     } else if (a.kind === 'pdf') {
@@ -142,7 +138,7 @@ export function attachmentBlocks(list: Attachment[], nonce: string): ContentBloc
 
 /** One line per attachment, for prompts that only name them. */
 export function attachmentSummary(list: Attachment[]): string {
-  return list.map((a, i) => `- attachment ${i + 1}: ${a.name} (${a.kind === 'image' ? 'image' : a.kind === 'pdf' ? 'PDF' : 'text'})`).join('\n');
+  return list.map((a, i) => `- attachment ${i + 1}: ${a.name} (${a.kind === 'image' ? 'image' : a.kind === 'pdf' ? 'PDF' : 'text'})${a.path ? `, kept as ${a.path}` : ''}`).join('\n');
 }
 
 export interface ModelMessage {

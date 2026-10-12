@@ -43,7 +43,7 @@ $('#dc12').next().children().first().repeat(3)
 - **Streaming execution**: each line runs in the sandbox as soon as it is complete, and the artboard shows the draft (dashed outline) right away.
 - **Retry on error**: if any line throws, the whole reply is undone and the model is told the error and asked again, up to two retries.
 - **Tools**: `log(x)` lets the model inspect an element's current state first; `askClaude()` hands the request to Claude Code unchanged.
-- **Attachments**: images, PDFs and text files pasted, dropped or picked into the prompt go to the model as content blocks before your words (images scaled to 1568 px on the long side). They are references only and never become project files; handed to Claude Code, they are written to a temporary folder outside the project that it reads and that is removed when it finishes.
+- **Attachments**: images, PDFs and text files pasted, dropped or picked into the prompt are kept in the project's `uploads/` (named by content, so a file sent twice is kept once), and go to the model as content blocks before your words, each labelled with its path (images scaled to 1568 px on the long side for the model; the kept file is the original). Claude Code gets the paths and reads them. Later requests can use them again, and a slide can show a kept image by its path (`uploads/…`), a doc tab by `../uploads/…`.
 - **Save**: the result is saved as an ordinary edit; if the file changed meanwhile, the statements are replayed on the new version.
 
 ## 4. Collaboration: versions, replay and a journal

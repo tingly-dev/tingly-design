@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DS_README, compileTokensCss, sectionFiles } from '@dc/core';
+import { DS_README, compileTokensCss, sectionFiles, type Attachment } from '@dc/core';
 import { delegateToClaude } from '../../fastedit';
-import { toSend, useAttachments } from '../../attachments';
+import { keepAttachments, useAttachments } from '../../attachments';
 import { AttachButton, AttachTray } from '../Attachments';
-import { display, edit, isSaving, useStore } from '../../store';
+import { display, edit, isSaving, toast, useStore } from '../../store';
 import { editDsIndex, useDsIndex, useTokens } from '../../ds';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
@@ -128,11 +128,25 @@ export function AskClaude({
   const health = useStore((s) => s.health);
   const attach = useAttachments();
   const active = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
-  const send = () => {
+  const [keeping, setKeeping] = useState(false);
+  const send = async () => {
     const t = text.trim();
-    if (!t) return;
+    const project = useStore.getState().project;
+    if (!t || !project || keeping) return;
+    let files: Attachment[] = [];
+    if (attach.items.length) {
+      setKeeping(true);
+      try {
+        files = await keepAttachments(project, attach.items);
+      } catch (e) {
+        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
+        return;
+      } finally {
+        setKeeping(false);
+      }
+    }
     const ctx = context?.();
-    void delegateToClaude(file, null, ctx ? `${ctx}\n\n${t}` : t, toSend(attach.items));
+    void delegateToClaude(file, null, ctx ? `${ctx}\n\n${t}` : t, files);
     setText('');
     attach.clear();
   };
@@ -158,11 +172,11 @@ export function AskClaude({
           e.stopPropagation();
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
-            send();
+            void send();
           }
         }}
       />
-      <button className="btn primary" onClick={send} disabled={!text.trim() || health?.claudeCli === false}>
+      <button className="btn primary" onClick={() => void send()} disabled={!text.trim() || keeping || health?.claudeCli === false}>
         <Send /> 发送
       </button>
       {attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}

@@ -184,7 +184,7 @@ function docHtml(d: DocJson, only?: string): string {
   const parts = tabOrder(d)
     .filter((t) => !only || t.id === only)
     .map((t) => {
-      const md = (display(s, tabFile(t.id)) ?? '').replace(/\]\((\.\.\/)?(assets\/[^)\s]+)\)/g, (_m, _p, path) => `](${api.rawBase(project)}${path})`);
+      const md = (display(s, tabFile(t.id)) ?? '').replace(/\]\((\.\.\/)?((?:assets|uploads)\/[^)\s]+)\)/g, (_m, _p, path) => `](${api.rawBase(project)}${path})`);
       return `<section class="tab">${DOMPurify.sanitize(marked.parse(md, { gfm: true, async: false }) as string)}</section>`;
     });
   const serif = '"Source Serif 4", Georgia, "Songti SC", "Noto Serif SC", serif';
