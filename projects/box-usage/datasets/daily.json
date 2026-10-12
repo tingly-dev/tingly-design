@@ -1,0 +1,13 @@
+{
+  "title": "Daily gateway traffic",
+  "description": "Requests, tokens by kind, errors and estimated cost (USD) per day, for every provider or the one picked. Reads daily_usage.",
+  "source": {
+    "kind": "query",
+    "connector": "sqlite",
+    "tool": "query",
+    "args": {
+      "db": "data/box.db",
+      "sql": "SELECT day, SUM(requests) AS requests,\n  SUM(input_tokens) AS input_tokens, SUM(cache_tokens) AS cache_tokens, SUM(output_tokens) AS output_tokens,\n  SUM(errors) AS errors, ROUND(SUM(cost_usd), 2) AS cost_usd\nFROM daily_usage\nWHERE (CAST({{provider}} AS TEXT) IS NULL OR provider = CAST({{provider}} AS TEXT))\nGROUP BY day\nORDER BY day"
+    }
+  }
+}

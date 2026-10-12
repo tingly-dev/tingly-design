@@ -3,18 +3,18 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MAIN = os.path.join(REPO, 'projects/demo/Main.dc.html')
+MAIN = os.path.join(REPO, 'projects/box-console/Main.dc.html')
 src = lambda: open(MAIN, encoding='utf-8').read()
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['git', 'checkout', '--', 'projects/demo'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     open(OUT + 'mock.log', 'w').close()
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': os.environ['DC_CHROME']} if os.environ.get('DC_CHROME') else {}))
         pg = await b.new_page(viewport={'width': 1440, 'height': 900})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + '/?p=demo')
+        await pg.goto(BASE + '/?p=box-console')
         await pg.wait_for_timeout(2500)
         main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
         await main.locator('h1').click()
@@ -36,9 +36,9 @@ async def main():
         await expect(main.locator('li').nth(2)).to_have_text('改动写入 journal')
         print('PASS rendered on artboard')
         await pg.screenshot(path=OUT + 'fast-done.png')
-        print(subprocess.run(['git', 'diff', '--stat', '--', 'projects/demo'], cwd=REPO, capture_output=True, text=True).stdout)
+        print(subprocess.run(['git', 'diff', '--stat', '--', 'projects/box-console'], cwd=REPO, capture_output=True, text=True).stdout)
         print('errors:', errs)
         await b.close()
 asyncio.run(main())
-# leave the demo canvas as committed
-subprocess.run(['git', 'checkout', '--', 'projects/demo'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# leave the sample canvas as committed
+subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

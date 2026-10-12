@@ -14,7 +14,7 @@ A doc is a folder under `projects/<name>/`. The original Docs type keeps a doc i
 | `comments.json` | `{"threads": [{"id", "tab", "quote", "prefix"?, "suffix"?, "resolved"?, "comments": [{"id", "author", "text", "at"}]}]}` |
 | `assets/` | uploaded images, linked from a tab as `../assets/<file>`. |
 
-Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/handbook` is a full example.
+Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/design-guide` (the Tingly Design handbook) is a full example: a subtab, tables, a task list, a quote, a code block and comment threads, one of them resolved.
 
 ## A tab
 

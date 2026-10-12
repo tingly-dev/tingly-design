@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Request flow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#16181d;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="position: relative; width: 1040px; height: 520px; background: #f7f7f4">
+<svg width="56" height="8" viewBox="0 0 56 8" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 178px; width: 56px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 56 4"></path></svg>
+<svg width="56" height="8" viewBox="0 0 56 8" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 278px; width: 56px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 56 4"></path></svg>
+<svg width="56" height="8" viewBox="0 0 56 8" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 378px; width: 56px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 56 4"></path></svg>
+<svg width="8" height="200" viewBox="0 0 8 200" preserveAspectRatio="none" style="position: absolute; left: 300px; top: 182px; width: 8px; height: 200px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round"><path d="M 4 0 L 4 200"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 304px; top: 278px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#a8acb4" stroke="none" style="stroke: none; fill: #a8acb4; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="72" height="8" viewBox="0 0 72 8" preserveAspectRatio="none" style="position: absolute; left: 562px; top: 278px; width: 72px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 72 4"></path></svg>
+<svg width="8" height="200" viewBox="0 0 8 200" preserveAspectRatio="none" style="position: absolute; left: 630px; top: 182px; width: 8px; height: 200px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round"><path d="M 4 0 L 4 200"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 634px; top: 178px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#a8acb4" stroke="none" style="stroke: none; fill: #a8acb4; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 634px; top: 278px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#a8acb4" stroke="none" style="stroke: none; fill: #a8acb4; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 634px; top: 378px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #a8acb4; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#a8acb4" stroke="none" style="stroke: none; fill: #a8acb4; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<div style="position: absolute; left: 48px; top: 44px; font-size: 24px; font-weight: 700; letter-spacing: -0.3px">How a request is routed</div>
+<div style="position: absolute; left: 48px; top: 82px; width: 760px; font-size: 14px; color: #4a4f5a">Agents call one local endpoint in their own protocol. Tingly Box applies the team's rules and forwards each request to a provider.</div>
+<div style="position: absolute; left: 48px; top: 150px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e5e5e0; border-radius: 12px"><b style="font-size: 14px">Claude Code</b><span style="font-size: 12px; color: #696e79">Anthropic Messages</span></div>
+<div style="position: absolute; left: 48px; top: 250px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e5e5e0; border-radius: 12px"><b style="font-size: 14px">Codex</b><span style="font-size: 12px; color: #696e79">OpenAI Responses</span></div>
+<div style="position: absolute; left: 48px; top: 350px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e5e5e0; border-radius: 12px"><b style="font-size: 14px">OpenCode</b><span style="font-size: 12px; color: #696e79">OpenAI Chat</span></div>
+<div style="position: absolute; left: 372px; top: 250px; width: 190px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #16181d; color: #ffffff; border: 1px solid #16181d; border-radius: 12px"><b style="font-size: 14px">Tingly Box</b><span style="font-size: 12px; color: #b3b8c3">Rules · guardrails · usage</span></div>
+<div style="position: absolute; left: 702px; top: 150px; width: 230px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e5e5e0; border-radius: 12px"><b style="font-size: 14px">Anthropic</b><span style="font-size: 12px; color: #696e79">API key</span></div>
+<div style="position: absolute; left: 702px; top: 250px; width: 230px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e5e5e0; border-radius: 12px"><b style="font-size: 14px">DeepSeek</b><span style="font-size: 12px; color: #696e79">API key · default for Claude Code</span></div>
+<div style="position: absolute; left: 702px; top: 350px; width: 230px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #e9effd; border: 1px solid #c7d5fa; border-radius: 12px"><b style="font-size: 14px">Ollama</b><span style="font-size: 12px; color: #4a4f5a">Self-hosted, on the team server</span></div>
+<div style="position: absolute; left: 304px; top: 256px; width: 68px; text-align: center; font-size: 11px; line-height: 16px; color: #4a4f5a">Translated</div>
+<div style="position: absolute; left: 48px; top: 456px; font-size: 12px; color: #696e79">If a provider errors or hits its rate limit, the rule falls back to the next provider in its list.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":520}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

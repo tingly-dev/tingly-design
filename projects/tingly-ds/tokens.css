@@ -1,0 +1,94 @@
+/* Tingly Design System — generated from tokens.json */
+
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root, [data-theme="light"] {
+  --paper: #f7f7f4;
+  --surface: #ffffff;
+  --line: #e5e5e0;
+  --ink: #16181d;
+  --ink-muted: #4a4f5a;
+  --ink-faint: #696e79;
+  --brand: #2563eb;
+  --brand-soft: #e9effd;
+  --positive: #15803d;
+  --negative: #b91c1c;
+  --warning: #b45309;
+  --accent: var(--brand);
+  --raised: 0 1px 2px rgba(16, 18, 24, 0.04), 0 12px 32px -12px rgba(16, 18, 24, 0.14);
+}
+
+[data-theme="dark"] {
+  --paper: #111317;
+  --surface: #1a1d23;
+  --line: #2b2f37;
+  --ink: #eceef2;
+  --ink-muted: #b3b8c3;
+  --ink-faint: #8b919d;
+  --brand: #6d9bff;
+  --brand-soft: #1b2540;
+  --positive: #4ade80;
+  --negative: #f87171;
+  --warning: #f59e0b;
+  --accent: var(--brand);
+  --raised: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -12px rgba(0, 0, 0, 0.5);
+}
+
+:root {
+  --space-card-gap: 10px;
+  --space-stack: 28px;
+  --space-card-x: 32px;
+  --space-margin: 128px;
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Inter', Arial, sans-serif;
+}
+
+.cover-title {
+  font-family: var(--font-display);
+  font-size: 136px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: -2px;
+}
+
+.slide-title {
+  font-family: var(--font-display);
+  font-size: 76px;
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: -1px;
+}
+
+.stat {
+  font-family: var(--font-display);
+  font-size: 72px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -1px;
+}
+
+.lead {
+  font-family: var(--font-sans);
+  font-size: 30px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 3px;
+}
+
+.body {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 1.5;
+  font-weight: 400;
+}
