@@ -5,6 +5,18 @@ import { fileURLToPath } from 'node:url';
 import {
   CANVAS_FILE,
   DECK_FILE,
+  DS_INDEX,
+  DS_README,
+  DS_TOKENS,
+  DS_TOKENS_CSS,
+  compileTokensCss,
+  isDsTextFile,
+  namespaceOf,
+  newDsIndex,
+  parseDsIndex,
+  resolveTokens,
+  starterTokens,
+  stringifyDsIndex,
   isBoardFile,
   isSlideFile,
   newBoardSource,
@@ -51,7 +63,9 @@ export class HttpError extends Error {
 export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
-  throw new HttpError(400, `not a canvas or deck file: ${rel}`);
+  // a design system's text files, and a copy of one installed into a canvas or deck
+  if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/tokens\.json$/.test(r)) return r;
+  throw new HttpError(400, `not a project file: ${rel}`);
 }
 
 /** Images and fonts a project keeps beside its files (binary, never edited as text). */
@@ -71,13 +85,13 @@ export const ASSET_TYPES: Record<string, string> = {
 
 export function assetRel(rel: string): string {
   const r = rel.replace(/\\/g, '/');
-  const m = /^(assets|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_.-]{0,120})\.([a-z0-9]+)$/i.exec(r);
+  const m = /^(assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_. -]{0,120})\.([a-z0-9]+)$/i.exec(r);
   if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, `not an asset path: ${rel}`);
   return r;
 }
 
 export async function kindOf(dir: string): Promise<ProjectKind | null> {
-  for (const [file, kind] of [[DECK_FILE, 'slides'], [CANVAS_FILE, 'design']] as const) {
+  for (const [file, kind] of [[DECK_FILE, 'slides'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const) {
     try {
       await stat(join(dir, file));
       return kind;
@@ -130,8 +144,9 @@ export async function listProjects(): Promise<ProjectInfo[]> {
     const kind = await kindOf(dir);
     if (!kind) continue;
     try {
-      const text = await readFile(join(dir, kind === 'slides' ? DECK_FILE : CANVAS_FILE), 'utf8');
-      out.push({ name: e.name, title: kind === 'slides' ? parseDeck(text).title : parseCanvas(text).title, kind });
+      const text = await readFile(join(dir, kind === 'slides' ? DECK_FILE : kind === 'design-system' ? DS_INDEX : CANVAS_FILE), 'utf8');
+      const title = kind === 'slides' ? parseDeck(text).title : kind === 'design-system' ? parseDsIndex(text).title : parseCanvas(text).title;
+      out.push({ name: e.name, title, kind });
     } catch {
       // unreadable index
     }
@@ -199,6 +214,56 @@ export async function readAsset(name: string, rel: string): Promise<Buffer | nul
   }
 }
 
+/**
+ * tokens.css is generated from tokens.json (never written by hand): rebuilt
+ * whenever tokens.json changes, from the editor, Claude Code or a terminal.
+ * Returns the new content when it changed.
+ */
+export async function regenTokensCss(name: string): Promise<{ content: string; version: string } | null> {
+  const tokens = await readOne(name, DS_TOKENS);
+  if (!tokens) return null;
+  const index = await readOne(name, DS_INDEX);
+  const t = resolveTokens(tokens.content);
+  const css = compileTokensCss(t, { title: index ? parseDsIndex(index.content).title : t.name });
+  const cur = await readOne(name, DS_TOKENS_CSS);
+  if (cur?.content === css) return null;
+  return { content: css, version: await writeAtomic(name, DS_TOKENS_CSS, css) };
+}
+
+/** Binary files of a project (images, fonts), for the asset views. */
+export async function listAssets(name: string): Promise<{ path: string; size: number }[]> {
+  const dir = projectDir(name);
+  const out: { path: string; size: number }[] = [];
+  const visit = async (d: string) => {
+    let entries;
+    try {
+      entries = await readdir(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue;
+      const p = join(d, e.name);
+      if (e.isDirectory()) await visit(p);
+      else {
+        const rel = relative(dir, p).split(sep).join('/');
+        try {
+          assetRel(rel);
+          out.push({ path: rel, size: (await stat(p)).size });
+        } catch {
+          // a text file or something else
+        }
+      }
+    }
+  };
+  for (const top of ['assets', 'fonts', 'ds']) await visit(join(dir, top));
+  return out.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+export async function removeAsset(name: string, rel: string): Promise<void> {
+  await rm(join(projectDir(name), assetRel(rel)), { force: true });
+}
+
 export async function removeFile(name: string, rel: string): Promise<void> {
   ownWrites.set(`${name}/${rel}`, 'deleted');
   await rm(join(projectDir(name), safeRel(rel)), { force: true });
@@ -208,6 +273,14 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, `project ${name} exists`);
   await mkdir(dir, { recursive: true });
+  if (kind === 'design-system') {
+    const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
+    await writeAtomic(name, DS_TOKENS, starterTokens(title));
+    await writeAtomic(name, DS_README, `# ${title}\n\n${title} 的设计系统。从品牌的真实来源（代码库、设计稿、品牌手册）补全它，或者让 Claude Code 来做。\n\n## 使用\n\n颜色是语义 token（\`surface\`、\`ink\`、\`accent\`），每个 token 的说明写明它用在什么底色上。\n`);
+    await regenTokensCss(name);
+    await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
+    return;
+  }
   if (kind === 'slides') {
     const deck = parseDeck(JSON.stringify({
       v: 4,

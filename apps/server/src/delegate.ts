@@ -34,6 +34,13 @@ To add a slide, write its file and add its id to "order" in deck.json; to remove
 Ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements of the slide file; they are never in the files.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
+const DS_SYSTEM = `You are editing a design system stored as files. A system folder holds design-system.json (the index: title, namespace, asset groups), tokens.json (colours per theme, type, spacing, radius, shadow), README.md (the brand book) and other *.md sections, components/<Comp>/README.md and preview.html, components/bundle.js and bundle.css, assets/<Group>/ and fonts/.
+Before you change any file, read .claude/skills/design-system/SKILL.md in the repository root: it is the full format reference.
+Edit only files inside the system folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files a moment ago, so read each file right before you edit it.
+Never write tokens.css: the editor rebuilds it from tokens.json whenever tokens.json changes. Keep tokens.json formatted as JSON with two-space indentation.
+Build from real sources (a codebase, files the person names); copy exact values, never invent a brand.
+When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
+
 /** Which projects have a delegate running, so file changes can be credited to it. */
 export const activeDelegates = new Map<string, number>();
 
@@ -48,8 +55,9 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const id = randomUUID().slice(0, 8);
   const dir = relative(REPO_ROOT, projectDir(project));
   const slides = kind === 'slides';
+  const ds = kind === 'design-system';
   const lines = [
-    `${slides ? 'Deck' : 'Canvas'} folder: ${dir}/`,
+    `${slides ? 'Deck' : ds ? 'Design system' : 'Canvas'} folder: ${dir}/`,
     req.file ? `The person is looking at the ${slides ? 'slide' : 'artboard'} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`
@@ -69,7 +77,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--allowedTools',
     'Read,Edit,Write,Glob,Grep',
     '--append-system-prompt',
-    slides ? SLIDES_SYSTEM : SYSTEM,
+    slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : SYSTEM,
   ];
   if (process.env.DC_DELEGATE_MODEL) args.push('--model', process.env.DC_DELEGATE_MODEL);
 

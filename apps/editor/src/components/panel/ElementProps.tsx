@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
-import { attr, getStyle, isRepeated, roleOf, templateText, type DcElement, type Inspect } from '@dc/core';
+import { attr, getStyle, isRepeated, roleOf, styleDeclarations, templateText, type DcElement, type Inspect } from '@dc/core';
+import { useInstalled } from '../../ds';
 import { display, editElement, parsed, useStore } from '../../store';
 import { Menu, MenuItem } from '../Menu';
 import {
@@ -37,6 +38,9 @@ export const TEXT_STYLES = [
   { id: 'caption', label: '注释', size: 12, weight: 400, lh: '1.4' },
 ];
 
+/** What a design-system text style sets; choosing one clears the others first. */
+const DS_STYLE_PROPS = { 'font-family': 1, 'font-size': 1, 'line-height': 1, 'font-weight': 1, 'letter-spacing': 1, 'font-style': 1 };
+
 const SHADOWS: Record<string, string> = {
   sm: '0 1px 2px rgba(0,0,0,0.08)',
   md: '0 4px 12px rgba(0,0,0,0.10)',
@@ -48,6 +52,8 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
   const style = attr(el, 'style') ?? '';
   const sv = (p: string) => getStyle(style, p) ?? '';
   const cv = (p: string) => info?.computed[p] ?? '';
+  const installed = useInstalled();
+  const slides = useStore((s) => s.kind === 'slides');
   const set = (s: Set_) => editElement(file, [{ kind: 'styles', tid, set: s }]);
   const one = (p: string) => (v: string) => set({ [p]: v.trim() === '' ? null : toLength(v) });
   const parent = info?.parent;
@@ -124,6 +130,14 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
   const size = parseFloat(sv('font-size') || cv('font-size')) || 0;
   const weight = parseInt(sv('font-weight') || cv('font-weight'), 10) || 400;
   const preset = TEXT_STYLES.find((t) => t.size === Math.round(size) && t.weight === weight)?.id ?? '';
+  // a design system's type styles, as the declarations they write (px on slides: the subset has no rem)
+  const dsStyles = installed.flatMap((x) =>
+    x.tokens.groups.flatMap((g) =>
+      g.styles.map((st) => ({ id: `ds:${x.record.namespace}:${st.name}`, system: x.record.title, style: st, decl: styleDeclarations(x.tokens, st, g, slides) })),
+    ),
+  );
+  const dsPreset =
+    dsStyles.find((d) => Object.entries(d.decl).every(([k, v]) => (sv(k) || '').replace(/\s+/g, '') === v.replace(/\s+/g, '')))?.id ?? '';
   const color = sv('color') || cv('color');
   const ratio = info && color && !isTransparent(color) ? contrastRatio(color, info.backdrop) : null;
   const big = size >= 24 || (size >= 18.66 && weight >= 700);
@@ -342,9 +356,15 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
           <h3>文字</h3>
           <Row label="样式">
             <Select
-              value={preset}
-              options={[{ value: '', label: preset ? '' : '自定义' }, ...TEXT_STYLES.map((t) => ({ value: t.id, label: `${t.label} · ${t.size}` }))].filter((o) => o.label)}
+              value={dsPreset || preset}
+              options={[
+                { value: '', label: dsPreset || preset ? '' : '自定义' },
+                ...dsStyles.map((d) => ({ value: d.id, label: `${d.system} · ${d.style.name} · ${d.decl['font-size']}` })),
+                ...(dsStyles.length ? [] : TEXT_STYLES.map((t) => ({ value: t.id, label: `${t.label} · ${t.size}` }))),
+              ].filter((o) => o.label)}
               onChange={(id) => {
+                const d = dsStyles.find((x) => x.id === id);
+                if (d) return set({ ...Object.fromEntries(Object.keys(DS_STYLE_PROPS).map((k) => [k, null])), ...d.decl });
                 const t = TEXT_STYLES.find((x) => x.id === id);
                 if (t) set({ 'font-size': `${t.size}px`, 'font-weight': String(t.weight), 'line-height': t.lh });
               }}
