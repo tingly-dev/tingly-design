@@ -1,46 +1,50 @@
 # Tingly Design
 
-**人和 AI 同时编辑的开源设计工具。** 画布、幻灯片、设计系统都存成普通文件，人在界面上改、快速 AI 逐行改、Claude Code 直接改文件，三方改的是同一份源码。
+**人和 AI 同时编辑的开源设计工具。** 画布、幻灯片、设计系统、数据看板都存成普通文件，人在界面上改、快速 AI 逐行改、Claude Code 直接改文件，三方改的是同一份源码。
 
 - 🖱️ **人**：点选元素、双击改字、拖动重排或拖出自由摆放，在右侧面板改图层 / 属性 / CSS / Tweaks，还能画便签、形状、箭头和手绘线。
 - ⚡ **快速 AI**：模型逐行输出 jQuery 语句，在沙箱副本上执行，画面一行一行地变，几秒完成。
 - 🤖 **Claude Code**：适合改脚本、数据、跨画板的事。它直接编辑文件，编辑器通过文件监听实时刷新。
 
-每次改动只回写源码里真正变了的那几个字符，模板里的 `{{占位}}`、循环和你的排版都原样保留，所以这些文件可以放进 git、交给 Claude Code，也可以手写。文件格式沿用 Claude 的 Design / Slides / Design System 类型，Tingly Design 是对其双向编辑机制的开源复刻。
+每次改动只回写源码里真正变了的那几个字符，模板里的 `{{占位}}`、循环和你的排版都原样保留，所以这些文件可以放进 git、交给 Claude Code，也可以手写。文件格式沿用 Claude 的 Design / Slides / Design System / Dashboard 类型，Tingly Design 是对其双向编辑机制的开源复刻。
 
 ## 目录
 
-- [三种项目](#三种项目)
+- [四种项目](#四种项目)
 - [快速开始](#快速开始)
 - [使用指南](#使用指南)
   - [画布](#画布)
   - [幻灯片](#幻灯片)
   - [设计系统](#设计系统)
+  - [看板](#看板)
 - [工作原理](#工作原理)
 - [项目结构](#项目结构)
 - [开发与测试](#开发与测试)
 - [与原版的差别](#与原版的差别)
 
-## 三种项目
+## 四种项目
 
 | 类型 | 适合做什么 | 文件 | 演示 |
 |---|---|---|---|
 | **画布** | 界面设计、原型，多画板多页面 | `canvas.json` + 每个画板一个 `.dc.html` | [`?p=demo`](http://localhost:5173/?p=demo) |
 | **幻灯片** | 1920×1080 的演示文稿，可放映、可导出 | `deck.json` + `slides/<id>.html` | [`?p=math-deck`](http://localhost:5173/?p=math-deck)（“数学奇遇记”） |
 | **设计系统** | 颜色、文字、间距、组件与品牌资源 | `design-system.json` + `tokens.json` + `components/` | [`?p=math-ds`](http://localhost:5173/?p=math-ds) |
+| **看板** | 数据看板、指标页、周报：每个数字都标明来自哪份数据 | `dash.json` + `datasets/<id>.json` + `files/index.html` + `data/` | [`?p=cafe-dash`](http://localhost:5173/?p=cafe-dash)（示例数据） |
 
 设计系统可以“装进”画布或幻灯片，之后颜色和文字样式都能直接从 token 里选。
 
 <table>
   <tr>
-    <td width="33%"><a href="docs/images/canvas.png"><img src="docs/images/canvas.png" alt="画布"></a></td>
-    <td width="33%"><a href="docs/images/slides.png"><img src="docs/images/slides.png" alt="幻灯片"></a></td>
-    <td width="33%"><a href="docs/images/design-system.png"><img src="docs/images/design-system.png" alt="设计系统"></a></td>
+    <td width="25%"><a href="docs/images/canvas.png"><img src="docs/images/canvas.png" alt="画布"></a></td>
+    <td width="25%"><a href="docs/images/slides.png"><img src="docs/images/slides.png" alt="幻灯片"></a></td>
+    <td width="25%"><a href="docs/images/design-system.png"><img src="docs/images/design-system.png" alt="设计系统"></a></td>
+    <td width="25%"><a href="docs/images/dashboard.png"><img src="docs/images/dashboard.png" alt="看板"></a></td>
   </tr>
   <tr>
     <td align="center">画布</td>
     <td align="center">幻灯片</td>
     <td align="center">设计系统</td>
+    <td align="center">看板</td>
   </tr>
 </table>
 
@@ -149,6 +153,31 @@ projects/<name>/
 
 格式说明：[`.claude/skills/design-system/SKILL.md`](.claude/skills/design-system/SKILL.md)
 
+### 看板
+
+演示 [`?p=cafe-dash`](http://localhost:5173/?p=cafe-dash) 是一家三店咖啡连锁的三季度销售（脚本生成的示例数据）：两个 SQLite 实时查询、一份 CSV、一份 JSON，四个计算，一个门店筛选。
+
+![看板：数据模式下点了一个单元格，右侧是它的来源](docs/images/dashboard.png)
+
+```
+projects/<name>/
+  dash.json               标题和筛选的默认值
+  datasets/<id>.json      每份数据从哪来：data/ 下的文件，或一条实时查询（连接器 + 参数）
+  files/index.html        页面：普通 HTML/CSS/脚本，用 dash API 和 d3 读数据画图
+  data/                   CSV、TSV、JSON 文件和 SQLite 数据库
+  .runs.json              打开的页面写下的报告：哪份数据没加载上、哪段代码报错、哪个数字和数据对不上（不进 git）
+```
+
+- **数据**：文件型数据直接读；查询型数据交给服务端的连接器运行（现在有 `sqlite`，只读打开 `data/` 下的数据库，见 `apps/server/src/connectors.ts`，可以照着加别的）。SQL 照原版的规则检查：只能是一条 SELECT / WITH，不能有写入类关键字；`{{name}}` 筛选参数绑定成一个字面量。
+- **页面**：跑在 `sandbox="allow-scripts"`、禁网络的 iframe 里。`dash.data / onData / calc / loader / params / setParams / setLink / colors / refresh` 和原版一致，另有亮暗两套主题 token。
+- **标注核对**：页面上每个带 `data-source` / `data-field` / `data-where` 的数字都会和它指向的单元格比对（认千分位、K/M/B 和万/亿、百分比、显示的精度），表格按 `data-row-key` 逐行核对；对不上的列在“数据来源 → 问题”里，也写进 `.runs.json` 给 Claude Code 看。数字的加载、刷新、失败、空值状态会标在元素上，页面可以用 CSS 画出来。
+- **数据来源面板**：每份数据的状态、行数、更新时间、“未使用”；点开看说明、查询（`{{参数}}` 显示当前值）、结果表、计算的公式；可以改查询、试运行、保存，下载 CSV，把查询“停止自动刷新”（结果存成 `data/<id>.json`）再恢复。
+- **数据模式**：点页面上的数字、图表或表格单元格，右侧打开它的来源并高亮那一格。
+- **代码**：页面和数据说明也能直接在编辑器里改（原版只允许 Claude 写）；改完页面立即重载。
+- **AI**：交给 Claude Code。它可以用 `node scripts/dash-query.mjs` 只读地查数据库，会先读 `.runs.json`。
+
+格式说明：[`.claude/skills/dashboard/SKILL.md`](.claude/skills/dashboard/SKILL.md)
+
 ## 工作原理
 
 ```
@@ -209,12 +238,14 @@ $('#dc12').next().children().first().repeat(3)
 
 ```
 packages/core       格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词；
-                    幻灯片的 deck.json、子集检查、形状/图标/连线绘制；设计系统的 tokens 语法与 tokens.css
-packages/sandbox    画板运行时（模板 → React、选中、就地改字）和 AI 执行器，esbuild 打成 IIFE
-apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交
-apps/editor         React + Vite + zustand 的画布、幻灯片（components/slides）和设计系统编辑器
-projects/           演示项目：demo（画布）、math-deck（幻灯片）、math-ds（设计系统）
-.claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system（委托时会让它先读）
+                    幻灯片的 deck.json、子集检查、形状/图标/连线绘制；设计系统的 tokens 语法与 tokens.css；
+                    看板的数据集、CSV 解析、SQL 检查与参数绑定、标注核对
+packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
+apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交、看板的数据连接器
+apps/editor         React + Vite + zustand 的画布、幻灯片（components/slides）、设计系统（components/ds）和看板（components/dash）编辑器
+projects/           演示项目：demo（画布）、math-deck（幻灯片）、math-ds（设计系统）、cafe-dash（看板）
+scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）
+.claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard（委托时会让它先读）
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
 docs/               扩展到其他类型的方案；docs/images/ 是 README 用的截图
 e2e/                Playwright 端到端测试和一个模拟的 Messages API
@@ -223,7 +254,7 @@ e2e/                Playwright 端到端测试和一个模拟的 Messages API
 ## 开发与测试
 
 ```bash
-pnpm test           # core 单元测试：解析、回写、jQuery 会话、语句切分、撤销重定位、幻灯片、设计系统
+pnpm test           # core 单元测试：解析、回写、jQuery 会话、语句切分、撤销重定位、幻灯片、设计系统、看板
 pnpm typecheck
 ```
 
@@ -234,6 +265,7 @@ pnpm typecheck
 | `python3 e2e/e2e.py` | 画布：面板、图层、样式、改字、结构操作、剪贴板、拖动/拖出、画布工具、页面、导出、并发、撤销、播放（40 项） |
 | `python3 e2e/slides.py` | 幻灯片：缩略图与分节、改字、删除与撤销、拖动钉住的元素、备注、新建/复制/排序/删除、格式检查、jQuery、放映、导出（20 项） |
 | `python3 e2e/ds.py` | 设计系统：封面与品牌手册、改颜色/改名带别名/增删、文字与圆角、组件预览、上传资源、外部改坏后的提示、新建、装进幻灯片后选 token 与文字样式、移除（22 项） |
+| `python3 e2e/dash.py` | 看板：查询/CSV/JSON 加载、标注核对、筛选与点行筛选、数据模式、改查询（拒绝写入）、停止与恢复自动刷新、外部改数据文件与页面、失败状态、`.runs.json`、代码面板、新建（24 项） |
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
 | `python3 e2e/fast_slides.py` | 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型 |
 | `python3 e2e/delegate.py` | 真的调用本机 `claude` CLI |
@@ -252,6 +284,7 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 | **画布** | 画布外壳（工具条、页面、缩放、同步记录）、右侧面板（图层/属性/代码/Tweaks）、选中与层级导航、就地改字、拖动重排与拖出自由摆放、改尺寸、编组/解组/翻转/排序、剪贴板、便签与形状/箭头/手绘、多页面、画板改名/改尺寸/全屏/导出 PNG、播放模式与画板间链接、`<dc-import>` | 评论、多选、导出 PDF、快速 AI 修改画板布局（`canvas.json`） |
 | **幻灯片** | deck.json 与每页一个文件、缩略图条与分节、拖动排序、新建/复制/跳过/删除、插入文字/图片/表格/形状/连线/图标、演讲者备注、子集检查、放映（出场动画、fade/push 切换、备注栏、全屏）、HTML/PDF/备注导出 | 神奇移动（magic 按淡入处理）、PPTX 与 Google Slides 导出、图片裁剪、表格合并单元格的编辑 |
 | **设计系统** | tokens 浏览与原地编辑、tokens.css 生成、语法检查、组件预览、资源管理、装进画布与幻灯片 | 组件挂载到画布、页内模型 |
+| **看板** | 文件与 SQLite 查询数据源、dash API（calc、loader、筛选、链接）、d3、标注核对与状态、数据来源面板（结果、公式、改查询、试运行、CSV、停止/恢复自动刷新）、数据模式、`.runs.json`、亮暗主题 | MCP 连接器（BigQuery 等）与每个读者用自己的权限查询、查询历史、定时刷新、导出到其他工具 |
 | **AI 与协同** | 快速 AI 的流式执行/重试/日志/委托、Claude Code 委托、版本冲突重放、journal、撤销重做、git 提交 | 快速 AI 一次只改一个画板，跨画板的事交给 Claude Code |
 
 原版的 agent 基础设施（托管、权限、发布）不在复刻范围内。

@@ -313,6 +313,7 @@ function onEvent(e: ServerEvent): void {
     });
   } else if (e.type === 'assets') {
     void import('./ds').then((m) => m.assetsChanged());
+    if (get().kind === 'dashboard') void import('./dash').then((m) => m.dataChanged(e.path));
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {

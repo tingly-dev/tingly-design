@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "@dc/core": "workspace:*",
+    "d3": "7.9.0",
     "html-to-image": "^1.11.13",
     "jquery": "^4.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@types/d3": "7.4.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "esbuild": "^0.28.2"
