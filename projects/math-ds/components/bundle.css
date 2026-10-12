@@ -1,5 +1,0 @@
-.mm-eyebrow { font-family: var(--font-sans); font-size: 24px; font-weight: 700; letter-spacing: 6px; color: var(--cyan); margin: 0; }
-.mm-card { display: flex; flex-direction: column; gap: var(--space-card-gap); background: var(--card-fill); border: 1px solid var(--card-line); border-radius: var(--radius-card); padding: 28px var(--space-card-x); max-width: 500px; }
-.mm-stat { font-family: var(--font-sans); font-size: 64px; font-weight: 700; line-height: 1.2; color: var(--gold); margin: 0; }
-.mm-caption { font-family: var(--font-sans); font-size: 24px; line-height: 1.5; color: var(--ink-muted); margin: 0; }
-.mm-stage { background: radial-gradient(circle at 70% 45%, var(--night-raised) 0%, var(--night) 65%); padding: 32px; }

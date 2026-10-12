@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect an agent</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#16181d;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width:880px;height:560px;box-sizing:border-box;padding:40px 44px;display:flex;flex-direction:column;gap:22px;background:#f7f7f4">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.3px">Connect an agent</h2>
+    <div style="font-size:14px;color:#4a4f5a">Each agent gets its own scenario endpoint. Tingly Box writes the config for you where the agent allows it.</div>
+  </div>
+  <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:#ececE7;align-self:flex-start">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+      <button onClick="{{t.pick}}" style="height:32px;padding:0 16px;border:0;border-radius:9px;font-size:13px;font-weight:{{t.weight}};background:{{t.bg}};color:#16181d">{{t.label}}</button>
+    </sc-for>
+  </div>
+  <div style="display:grid;grid-template-columns:minmax(0, 1.5fr) minmax(0, 1fr);gap:14px;flex:1">
+    <div style="background:#ffffff;border:1px solid #e5e5e0;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:13px;font-weight:600;color:#4a4f5a">Configuration</div>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:12px;color:#696e79">{{r.k}}</div>
+          <div style="font-size:13px;font-family:'JetBrains Mono',ui-monospace,monospace;background:#f7f7f4;border:1px solid #e5e5e0;border-radius:8px;padding:8px 10px">{{r.v}}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#ffffff;border:1px solid #e5e5e0;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:17px;font-weight:600">{{agent}}</div>
+        <div style="font-size:11px;font-weight:600;color:{{badgeColor}};background:{{badgeBg}};padding:4px 9px;border-radius:999px">{{setup}}</div>
+      </div>
+      <div style="font-size:13px;line-height:1.5;color:#4a4f5a">{{about}}</div>
+      <div style="height:1px;background:#e5e5e0"></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px"><div style="color:#696e79">Protocol</div><div style="font-weight:500">{{protocol}}</div></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px"><div style="color:#696e79">Routed to</div><div style="font-weight:500">{{route}}</div></div>
+      <div style="flex:1"></div>
+      <div style="height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;background:#16181d;color:#ffffff">{{cta}}</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":560}}'>
+class Component extends DCLogic {
+  state = { agent: 'Claude Code' };
+  renderVals() {
+    const AGENTS = {
+      'Claude Code': ['claude_code', 'One-click', 'Anthropic', 'DeepSeek, fallback Anthropic', 'Writes ANTHROPIC_BASE_URL and the token into Claude Code settings, with a profile per task tier.'],
+      'Codex': ['codex', 'One-click', 'OpenAI Responses', 'Anthropic', 'Adds a Tingly Box provider to the Codex config, so Codex can run on Claude.'],
+      'OpenCode': ['opencode', 'One-click', 'OpenAI', 'OpenAI, fallback Gemini', 'Adds a Tingly Box provider to the OpenCode config.'],
+      'Xcode': ['xcode', 'Guided', 'OpenAI', 'Ollama, self-hosted', 'Step-by-step guide in the app: add a model provider in Xcode settings and paste the URL and key.'],
+    };
+    const agent = this.state.agent;
+    const [path, setup, protocol, route, about] = AGENTS[agent];
+    const tabs = Object.keys(AGENTS).map((label) => ({
+      label,
+      bg: label === agent ? '#ffffff' : 'transparent',
+      weight: label === agent ? 600 : 500,
+      pick: () => this.setState({ agent: label }),
+    }));
+    const rows = [
+      { k: 'Base URL', v: 'http://localhost:12580/tingly/' + path },
+      { k: 'API key', v: 'tb-team-••••a91f' },
+      { k: 'Model', v: 'tingly' },
+    ];
+    const oneClick = setup === 'One-click';
+    return {
+      tabs, rows, agent, setup, protocol, route, about,
+      cta: oneClick ? 'Apply config' : 'Open guide',
+      badgeColor: oneClick ? '#15803d' : '#4a4f5a',
+      badgeBg: oneClick ? '#e7f4ec' : '#efefea',
+    };
+  }
+}
+</script>
+</body>
+</html>

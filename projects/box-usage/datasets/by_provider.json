@@ -1,0 +1,13 @@
+{
+  "title": "Usage by provider and month",
+  "description": "Requests, tokens, cache hit rate, error rate, average time to first token and estimated cost (USD) for each provider and month. Reads daily_usage and providers.",
+  "source": {
+    "kind": "query",
+    "connector": "sqlite",
+    "tool": "query",
+    "args": {
+      "db": "data/box.db",
+      "sql": "SELECT p.provider, p.model, substr(d.day, 1, 7) AS month,\n  SUM(d.requests) AS requests,\n  SUM(d.input_tokens + d.cache_tokens + d.output_tokens) AS tokens,\n  ROUND(1.0 * SUM(d.cache_tokens) / SUM(d.input_tokens + d.cache_tokens), 4) AS cache_rate,\n  ROUND(1.0 * SUM(d.errors) / SUM(d.requests), 4) AS error_rate,\n  ROUND(1.0 * SUM(d.ttft_ms * d.requests) / SUM(d.requests)) AS ttft_ms,\n  ROUND(SUM(d.cost_usd), 2) AS cost_usd\nFROM daily_usage d JOIN providers p ON p.provider = d.provider\nGROUP BY p.provider, p.model, month\nORDER BY month, cost_usd DESC"
+    }
+  }
+}

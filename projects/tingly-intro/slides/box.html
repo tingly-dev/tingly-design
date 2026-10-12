@@ -1,0 +1,49 @@
+<section id="box" data-transition="fade" style="background:#F7F7F4;color:#16181D;font-family:'Inter', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:22px;font-weight:600;line-height:1.4;letter-spacing:3px;color:#2563EB;width:560px">TINGLY BOX · GATEWAY</p>
+<h2 style="font-family:'Instrument Serif', Georgia, serif;font-size:76px;font-weight:400;line-height:1.05;letter-spacing:-1px;color:#16181D;width:600px">Any agent, any model, one endpoint</h2>
+<p style="font-size:30px;line-height:1.55;color:#4A4F5A;width:580px">Agents keep their native protocol. Tingly Box translates Anthropic, OpenAI and Gemini formats both ways.</p>
+<div data-build-in="rise" style="position:absolute;left:128px;top:700px;width:540px;display:flex;flex-direction:column;gap:10px;background:#FFFFFF;padding:28px 32px;border:1px solid #E5E5E0;border-radius:14px">
+<p style="font-family:'Instrument Serif', Georgia, serif;font-size:72px;font-weight:400;line-height:1.1;letter-spacing:-1px;color:#2563EB">&lt; 1 ms</p>
+<p style="font-size:24px;line-height:1.5;color:#4A4F5A">Typical overhead the gateway adds to a request.</p>
+</div>
+<x-embed style="position:absolute;left:760px;top:128px;width:1032px;height:824px"><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style><canvas id="c"></canvas><script>
+const c=document.getElementById('c'),g=c.getContext('2d'),LW=1032,LH=824;
+function fit(){const D=window.devicePixelRatio||1;c.width=innerWidth*D;c.height=innerHeight*D}fit();addEventListener('resize',fit);
+const F='Inter,"Helvetica Neue",Arial,system-ui,sans-serif',M='"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace';
+const INK='#16181D',MUTED='#4A4F5A',FAINT='#696E79',LINE='#E5E5E0',BRAND='#2563EB',OK='#15803D';
+const A=[['Claude Code',214],['Codex',344],['OpenCode',474],['Xcode',604]];
+const P=[['Anthropic',176],['OpenAI',300],['DeepSeek',424],['Gemini',548],['Ollama · self-hosted',672]];
+const R=[[0,2],[1,0],[2,1],[3,3],[0,4],[2,0],[1,2]];
+const AX=36,AW=232,PX=720,PW=276,BX=404,BY=319,BW=224,BH=212,PH=64,CY=425;
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v)),ez=p=>1-Math.pow(1-p,3),sm=(t,a,b)=>ez(cl((t-a)/(b-a),0,1));
+function txt(s,x,y,sz,col,w,al,f){g.font=(w||400)+' '+sz+'px '+(f||F);g.fillStyle=col;g.textAlign=al||'left';g.fillText(s,x,y)}
+function pill(x,y,w,label,dot,a){g.globalAlpha=a;g.fillStyle='#FFFFFF';g.strokeStyle=LINE;g.lineWidth=1.5;g.beginPath();g.roundRect(x,y-PH/2,w,PH,14);g.fill();g.stroke();
+g.fillStyle=dot;g.beginPath();g.arc(x+26,y,6,0,7);g.fill();txt(label,x+46,y+8,22,INK,600);g.globalAlpha=1}
+function bez(x0,y0,x1,y1,p){const mx=(x0+x1)/2,u=1-p;return[u*u*u*x0+3*u*u*p*mx+3*u*p*p*mx+p*p*p*x1,u*u*u*y0+3*u*u*p*y0+3*u*p*p*y1+p*p*p*y1]}
+function curve(x0,y0,x1,y1,a){g.globalAlpha=a;g.strokeStyle=LINE;g.lineWidth=2;g.beginPath();g.moveTo(x0,y0);const mx=(x0+x1)/2;g.bezierCurveTo(mx,y0,mx,y1,x1,y1);g.stroke();g.globalAlpha=1}
+let t0=null;
+function frame(ms){if(t0===null)t0=ms;const t=(ms-t0)/1000;
+const s=Math.min(c.width/LW,c.height/LH);
+g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);g.setTransform(s,0,0,s,(c.width-LW*s)/2,(c.height-LH*s)/2);
+txt('One endpoint, routed by rules',AX,60,26,INK,600);
+txt('localhost:12580/tingly',PX+PW,60,20,FAINT,400,'right',M);
+txt('AGENTS',AX,112,18,FAINT,600);txt('PROVIDERS',PX,112,18,FAINT,600);
+const la=sm(t,.6,1.6);
+A.forEach(([n,y])=>curve(AX+AW,y,BX,CY,la));P.forEach(([n,y])=>curve(BX+BW,CY,PX,y,la));
+A.forEach(([n,y],i)=>pill(AX,y,AW,n,BRAND,sm(t,.1+i*.12,.6+i*.12)));
+P.forEach(([n,y],i)=>pill(PX,y,PW,n,OK,sm(t,.3+i*.12,.8+i*.12)));
+const ba=sm(t,.2,.9);g.globalAlpha=ba;g.fillStyle=INK;g.beginPath();g.roundRect(BX,BY,BW,BH,28);g.fill();
+g.fillStyle='#FFFFFF';g.beginPath();g.roundRect(BX+BW/2-11,BY+38,22,5,1.5);g.roundRect(BX+BW/2-2.5,BY+38,5,22,1.5);g.fill();
+txt('Tingly Box',BX+BW/2,BY+108,28,'#FFFFFF',600,'center');
+txt('rules · keys · usage',BX+BW/2,BY+146,19,'#B3B8C3',400,'center');
+g.globalAlpha=1;
+txt('Protocols translated both ways',BX+BW/2,BY+BH+44,20,MUTED,500,'center');
+if(t>1.8){R.forEach(([ai,pi],k)=>{const T=3.2,ph=((t-1.8)/T+k/R.length)%1,ay=A[ai][1],py=P[pi][1];
+let x,y;if(ph<.42){[x,y]=bez(AX+AW,ay,BX,CY,ph/.42)}else if(ph<.58){x=BX+BW*((ph-.42)/.16);y=CY;if(x>BX+8&&x<BX+BW-8)return}else{[x,y]=bez(BX+BW,CY,PX,py,(ph-.58)/.42)}
+const a=Math.min(1,(t-1.8)*2);g.globalAlpha=a;g.fillStyle=BRAND;g.beginPath();g.arc(x,y,6.5,0,7);g.fill();g.globalAlpha=a*.18;g.beginPath();g.arc(x,y,14,0,7);g.fill();g.globalAlpha=1})}
+requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></x-embed>
+<p style="position:absolute;left:128px;bottom:64px;width:800px;font-size:24px;color:#696E79">Tingly · Meet Tingly · 02</p>
+<aside>Claude Code, Codex, OpenCode and Xcode all point at one local endpoint, localhost:12580. Rules map a model name to providers, so Claude Code can run on DeepSeek and Codex can run on Claude. One-click setup writes the base URL and key for Claude Code, OpenCode and Codex; other agents get an in-app guide.</aside>
+</section>

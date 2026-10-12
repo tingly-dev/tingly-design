@@ -15,13 +15,13 @@ A dashboard is a page you write over **datasets** the editor loads, checks and r
 | `data/<file>` | an uploaded asset | CSV, TSV, JSON files (≤ 8 MB) and SQLite databases (`.db`, `.sqlite`). |
 | `.runs.json` | `data/users/me/runs` | written by the open page, not tracked: what failed to load, what threw, which marks disagree with the data. |
 
-Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/cafe-dash` is a full example (sample data).
+Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/box-usage` is a full example (demo data).
 
 ## Datasets
 
 `{title, description, source, updated?, schedule?, staleAfterHours?}`. `title`: two to five words that stand alone in a list of sources ("Signups vs quarter target"). `description`: one sentence on what it is; a query's ends with what it reads ("Reads daily_sales.").
 
-**A live query** — data that changes: `"source": {"kind": "query", "connector": "sqlite", "tool": "query", "args": {"db": "data/cafe.db", "sql": "SELECT …"}}`. It runs whenever the page opens, refreshes or a filter it names changes. Connectors are modules of this server (`apps/server/src/connectors.ts`); `sqlite` reads a database under `data/`, read only. Find the data first, and use only tables and columns you found:
+**A live query** — data that changes: `"source": {"kind": "query", "connector": "sqlite", "tool": "query", "args": {"db": "data/box.db", "sql": "SELECT …"}}`. It runs whenever the page opens, refreshes or a filter it names changes. Connectors are modules of this server (`apps/server/src/connectors.ts`); `sqlite` reads a database under `data/`, read only. Find the data first, and use only tables and columns you found:
 
 ```bash
 node scripts/dash-query.mjs projects/<name>/data/<db>                  # tables, columns, row counts

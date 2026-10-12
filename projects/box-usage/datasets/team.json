@@ -1,0 +1,13 @@
+{
+  "title": "Q3 usage by team member",
+  "description": "Requests and tokens per member key on the team endpoint in Q3, with each member's main agent, exported from Tingly Box.",
+  "source": {
+    "kind": "file",
+    "url": "data/team.csv",
+    "name": "team.csv"
+  },
+  "updated": {
+    "at": "2026-10-01T09:00:00Z",
+    "by": "Sample data"
+  }
+}

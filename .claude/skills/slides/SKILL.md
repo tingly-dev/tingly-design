@@ -11,7 +11,7 @@ A deck is a folder under `projects/<name>/`, laid out as the original Slides typ
 - `slides/<id>.html` — one file per slide: exactly one `<section id="<id>" …>` on a fixed 1920×1080 canvas.
 - `assets/…` — images and fonts the slides use (uploaded from the editor; served beside the deck).
 
-The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files: anything you write shows up within a second and is recorded in the deck's journal. People edit the same files from the editor, so **read a file right before you change it** and change only what was asked. `projects/math-deck` is a full example (every slide carries a live `<x-embed>` animation).
+The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files: anything you write shows up within a second and is recorded in the deck's journal. People edit the same files from the editor, so **read a file right before you change it** and change only what was asked. `projects/tingly-intro` is a full example (an intro deck; the gateway slide carries a live `<x-embed>` diagram).
 
 ## deck.json
 
