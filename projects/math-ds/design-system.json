@@ -1,0 +1,32 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-12T02:00:00.000Z"
+  },
+  "title": "数学奇遇记 视觉系统",
+  "namespace": "MathMotion",
+  "libraries": [],
+  "sections": {},
+  "groups": ["Marks"],
+  "assetGroups": {
+    "Marks": {
+      "name": "Marks",
+      "tile": "l",
+      "order": ["spiro-mark.svg"],
+      "files": {}
+    }
+  },
+  "blobs": {},
+  "docs": {
+    "readme": "project/README.md",
+    "sections": []
+  },
+  "lastChange": {
+    "by": "Claude",
+    "at": "2026-10-12T02:00:00.000Z",
+    "via": "tingly-design",
+    "note": "extracted from projects/math-deck"
+  }
+}
