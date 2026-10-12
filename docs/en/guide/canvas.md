@@ -1,4 +1,4 @@
-<p align="right"><b>English</b> · <a href="../zh-CN/guide/canvas.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../../zh/guide/canvas.md">简体中文</a></p>
 
 # Canvas
 
@@ -27,8 +27,8 @@ The top left holds the page menu and the tools; the top right holds play, the pa
 
 </details>
 
-Format reference: [`.claude/skills/dc-canvas/SKILL.md`](../../.claude/skills/dc-canvas/SKILL.md)
+Format reference: [`.claude/skills/dc-canvas/SKILL.md`](../../../.claude/skills/dc-canvas/SKILL.md)
 
 ---
 
-Back to the [README](../../README.md)
+Back to the [README](../../../README.md)

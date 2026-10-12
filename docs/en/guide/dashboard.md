@@ -1,10 +1,10 @@
-<p align="right"><b>English</b> · <a href="../zh-CN/guide/dashboard.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../../zh/guide/dashboard.md">简体中文</a></p>
 
 # Dashboard
 
 The sample [`?p=box-usage`](http://localhost:5173/?p=box-usage) is a team's Tingly Box gateway usage for Q3 (generated demo data): requests, tokens, cache hit rate, cost by provider, budgets and per-member usage, built from two live SQLite queries, a CSV and a JSON file, four calculations and a provider filter.
 
-![Dashboard in data mode: a table cell clicked, its source open on the right](../images/dashboard.png)
+![Dashboard in data mode: a table cell clicked, its source open on the right](../../images/dashboard.png)
 
 ```
 projects/<name>/
@@ -23,8 +23,8 @@ projects/<name>/
 - **Code**: the page and the dataset descriptions are editable in the editor too (the original lets only Claude write them); the page reloads on save.
 - **AI**: hand it to Claude Code. It can query the databases read-only with `node scripts/dash-query.mjs`, and reads `.runs.json` first.
 
-Format reference: [`.claude/skills/dashboard/SKILL.md`](../../.claude/skills/dashboard/SKILL.md)
+Format reference: [`.claude/skills/dashboard/SKILL.md`](../../../.claude/skills/dashboard/SKILL.md)
 
 ---
 
-Back to the [README](../../README.md)
+Back to the [README](../../../README.md)

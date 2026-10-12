@@ -19,11 +19,11 @@
 
 | 类型 | 示例 | 内容 | 文件 |
 |---|---|---|---|
-| [**画布**](docs/zh-CN/guide/canvas.md) | [`?p=box-console`](http://localhost:5173/?p=box-console) | Tingly Box 控制台的设计评审：用量面板、团队设置、可交互的“接入 Agent”面板、请求路由图 | `canvas.json` + 每个画板一个 `.dc.html` |
-| [**幻灯片**](docs/zh-CN/guide/slides.md) | [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) | “Meet Tingly”：8 页介绍 Tingly Box 和 Tingly Design，网关一页带实时动画图 | `deck.json` + `slides/<id>.html` |
-| [**设计系统**](docs/zh-CN/guide/design-system.md) | [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) | Tingly 品牌：亮暗两套主题、Instrument Serif 和 Inter、六级字号、四个组件和标志 | `design-system.json` + `tokens.json` + `components/` |
-| [**看板**](docs/zh-CN/guide/dashboard.md) | [`?p=box-usage`](http://localhost:5173/?p=box-usage) | 一个团队三季度经 Tingly Box 网关的用量（演示数据）：两条 SQLite 实时查询、一份 CSV、一份 JSON、按服务商筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
-| [**文档**](docs/zh-CN/guide/docs.md) | [`?p=design-guide`](http://localhost:5173/?p=design-guide) | Tingly Design 使用手册：四个标签页、项目类型表、上手清单、代码块和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
+| [**画布**](docs/zh/guide/canvas.md) | [`?p=box-console`](http://localhost:5173/?p=box-console) | Tingly Box 控制台的设计评审：用量面板、团队设置、可交互的“接入 Agent”面板、请求路由图 | `canvas.json` + 每个画板一个 `.dc.html` |
+| [**幻灯片**](docs/zh/guide/slides.md) | [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) | “Meet Tingly”：8 页介绍 Tingly Box 和 Tingly Design，网关一页带实时动画图 | `deck.json` + `slides/<id>.html` |
+| [**设计系统**](docs/zh/guide/design-system.md) | [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) | Tingly 品牌：亮暗两套主题、Instrument Serif 和 Inter、六级字号、四个组件和标志 | `design-system.json` + `tokens.json` + `components/` |
+| [**看板**](docs/zh/guide/dashboard.md) | [`?p=box-usage`](http://localhost:5173/?p=box-usage) | 一个团队三季度经 Tingly Box 网关的用量（演示数据）：两条 SQLite 实时查询、一份 CSV、一份 JSON、按服务商筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
+| [**文档**](docs/zh/guide/docs.md) | [`?p=design-guide`](http://localhost:5173/?p=design-guide) | Tingly Design 使用手册：四个标签页、项目类型表、上手清单、代码块和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
 
 设计系统可以装入画布或幻灯片，装入后颜色和文字样式菜单里就能直接选它的 token。
 
@@ -53,8 +53,8 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 
 | | |
 |---|---|
-| **使用指南** | [画布](docs/zh-CN/guide/canvas.md) · [幻灯片](docs/zh-CN/guide/slides.md) · [设计系统](docs/zh-CN/guide/design-system.md) · [看板](docs/zh-CN/guide/dashboard.md) · [文档](docs/zh-CN/guide/docs.md) |
-| **[工作原理](docs/zh-CN/architecture.md)** | 源文件格式、回写引擎、快速 AI、协同、沙箱和项目结构 |
-| **[开发与测试](docs/zh-CN/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |
-| **[与原版的差别](docs/zh-CN/comparison.md)** | 哪些和 Claude 的 artifact 类型一致，哪些还没有 |
-| **[从 Design 到五种类型](docs/artifact-types.md)** | 扩展到五种项目类型的设计方案 |
+| **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) |
+| **[工作原理](docs/zh/architecture.md)** | 源文件格式、回写引擎、快速 AI、协同、沙箱和项目结构 |
+| **[开发与测试](docs/zh/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |
+| **[与原版的差别](docs/zh/comparison.md)** | 哪些和 Claude 的 artifact 类型一致，哪些还没有 |
+| **[从 Design 到五种类型](docs/zh/artifact-types.md)** | 扩展到五种项目类型的设计方案 |

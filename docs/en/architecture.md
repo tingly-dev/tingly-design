@@ -1,4 +1,4 @@
-<p align="right"><b>English</b> · <a href="zh-CN/architecture.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../zh/architecture.md">简体中文</a></p>
 
 # How it works
 
@@ -69,10 +69,10 @@ projects/           sample projects: box-console (canvas), tingly-intro (slides)
 scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code)
 .claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs (read before every delegated task)
 artifact/           reference material for the original five types (Design, Slides, Dashboard, Docs, Design System), private
-docs/               guides and design notes (docs/zh-CN/ is the Chinese edition); docs/images/ holds the screenshots
+docs/               guides and design notes: docs/en/ in English, docs/zh/ in Chinese; docs/images/ holds the screenshots
 e2e/                Playwright end-to-end tests and a mock Messages API
 ```
 
 ---
 
-Back to the [README](../README.md)
+Back to the [README](../../README.md)

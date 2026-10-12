@@ -1,10 +1,10 @@
-<p align="right"><b>English</b> · <a href="../zh-CN/guide/slides.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../../zh/guide/slides.md">简体中文</a></p>
 
 # Slides
 
 Choose "幻灯片" (slides) when creating a project. The sample [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) is "Meet Tingly", an introduction to Tingly Box and Tingly Design; the gateway slide carries a live `<x-embed>` diagram.
 
-![Slide editor: thumbnails and sections on the left, the stage and speaker notes in the middle, layers and properties on the right](../images/slides.png)
+![Slide editor: thumbnails and sections on the left, the stage and speaker notes in the middle, layers and properties on the right](../../images/slides.png)
 
 ```
 projects/<name>/
@@ -22,8 +22,8 @@ projects/<name>/
 
 Rendering follows the original's rules: a `<div>` with no `display` is a flex column; children paint in source order, with all flow content painted as one layer where the first flow child sits (so a full-bleed backdrop written first stays behind the text); `<x-embed>` runs in its own sandboxed page with no network and a different origin.
 
-Format reference: [`.claude/skills/slides/SKILL.md`](../../.claude/skills/slides/SKILL.md)
+Format reference: [`.claude/skills/slides/SKILL.md`](../../../.claude/skills/slides/SKILL.md)
 
 ---
 
-Back to the [README](../../README.md)
+Back to the [README](../../../README.md)

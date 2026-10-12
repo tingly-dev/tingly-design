@@ -1,10 +1,10 @@
-<p align="right"><b>English</b> · <a href="../zh-CN/guide/docs.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../../zh/guide/docs.md">简体中文</a></p>
 
 # Docs
 
 The sample [`?p=design-guide`](http://localhost:5173/?p=design-guide) is the Tingly Design handbook: four tabs (one nested), a project-kinds table, a setup checklist, a quote, a code block and two comment threads.
 
-![Docs: the format and AI rewrite menu on a selection, comments on the right](../images/docs.png)
+![Docs: the format and AI rewrite menu on a selection, comments on the right](../../images/docs.png)
 
 ```
 projects/<name>/
@@ -20,8 +20,8 @@ projects/<name>/
 - **AI rewrite**: on a selection, "shorter", "polish", "more formal" or your own instruction; the model streams a new passage that replaces the selection or goes below it (needs `ANTHROPIC_API_KEY`). Whole-document work goes to Claude Code.
 - **Layout and export**: heading and body typefaces (serif or sans), page width; export the current tab or the whole document as Markdown or HTML, or print to PDF.
 
-Format reference: [`.claude/skills/docs/SKILL.md`](../../.claude/skills/docs/SKILL.md)
+Format reference: [`.claude/skills/docs/SKILL.md`](../../../.claude/skills/docs/SKILL.md)
 
 ---
 
-Back to the [README](../../README.md)
+Back to the [README](../../../README.md)

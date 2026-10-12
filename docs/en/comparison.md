@@ -1,4 +1,4 @@
-<p align="right"><b>English</b> · <a href="zh-CN/comparison.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../zh/comparison.md">简体中文</a></p>
 
 # Compared with the original
 
@@ -15,4 +15,4 @@ The original's agent infrastructure (hosting, permissions, publishing) is out of
 
 ---
 
-Back to the [README](../README.md)
+Back to the [README](../../README.md)

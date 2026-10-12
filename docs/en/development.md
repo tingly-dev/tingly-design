@@ -1,4 +1,4 @@
-<p align="right"><b>English</b> · <a href="zh-CN/development.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../zh/development.md">简体中文</a></p>
 
 # Development and tests
 
@@ -29,4 +29,4 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 ---
 
-Back to the [README](../README.md)
+Back to the [README](../../README.md)

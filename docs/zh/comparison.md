@@ -1,4 +1,4 @@
-<p align="right"><a href="../comparison.md">English</a> · <b>简体中文</b></p>
+<p align="right"><a href="../en/comparison.md">English</a> · <b>简体中文</b></p>
 
 # 与原版的差别
 

@@ -1,4 +1,4 @@
-<p align="right"><b>English</b> · <a href="../zh-CN/guide/design-system.md">简体中文</a></p>
+<p align="right"><b>English</b> · <a href="../../zh/guide/design-system.md">简体中文</a></p>
 
 # Design system
 
@@ -6,7 +6,7 @@ The sample [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) is the Tingly de
 
 | Overview: cover and brand book | Colours: usage and contrast |
 |---|---|
-| ![Design system overview](../images/design-system.png) | ![Design system colours](../images/design-system-colors.png) |
+| ![Design system overview](../../images/design-system.png) | ![Design system colours](../../images/design-system-colors.png) |
 
 ```
 projects/<name>/
@@ -26,8 +26,8 @@ projects/<name>/
 - **Hosted fonts**: `type.hosted: [{family, href}]` in tokens.json is an extension of this repository (the original only reads font files) that loads Google Fonts css2 links, in previews and in decks that install the system.
 - **AI**: like the original, the design system page has no in-page model; changes go to Claude Code.
 
-Format reference: [`.claude/skills/design-system/SKILL.md`](../../.claude/skills/design-system/SKILL.md)
+Format reference: [`.claude/skills/design-system/SKILL.md`](../../../.claude/skills/design-system/SKILL.md)
 
 ---
 
-Back to the [README](../../README.md)
+Back to the [README](../../../README.md)

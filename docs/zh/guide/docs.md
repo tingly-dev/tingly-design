@@ -1,4 +1,4 @@
-<p align="right"><a href="../../guide/docs.md">English</a> · <b>简体中文</b></p>
+<p align="right"><a href="../../en/guide/docs.md">English</a> · <b>简体中文</b></p>
 
 # 文档
 

@@ -1,4 +1,4 @@
-<p align="right"><a href="../architecture.md">English</a> · <b>简体中文</b></p>
+<p align="right"><a href="../en/architecture.md">English</a> · <b>简体中文</b></p>
 
 # 工作原理
 
@@ -69,7 +69,7 @@ projects/           示例项目：box-console（画布）、tingly-intro（幻�
 scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）
 .claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs（委托时会让它先读）
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
-docs/               使用指南与设计说明（docs/zh-CN/ 是中文版）；docs/images/ 是截图
+docs/               使用指南与设计说明：docs/en/ 英文，docs/zh/ 中文；docs/images/ 是截图
 e2e/                Playwright 端到端测试和一个模拟的 Messages API
 ```
 

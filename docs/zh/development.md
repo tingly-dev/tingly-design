@@ -1,4 +1,4 @@
-<p align="right"><a href="../development.md">English</a> · <b>简体中文</b></p>
+<p align="right"><a href="../en/development.md">English</a> · <b>简体中文</b></p>
 
 # 开发与测试
 
