@@ -20,7 +20,7 @@ A design system is a folder under `projects/<name>/`, laid out as the original D
 | `assets/<Group>/<file>` | logos, icons, images; `assets/<Group>/README.md` says what each is (and names a single-ink mark's ink). |
 | `fonts/<file>` | font files, listed by `tokens.json` `type.fonts[].file`. |
 
-The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/math-ds` is a full example, extracted from the slides in `projects/math-deck`.
+The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/meridian-ds` is a full example: two themes, Inter Tight and Inter, four components; the deck in `projects/q3-review` is built from it.
 
 ## tokens.json
 

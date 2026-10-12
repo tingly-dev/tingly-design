@@ -1,0 +1,28 @@
+{
+  "title": "Meridian Forecast — Launch plan",
+  "tabs": [
+    {
+      "id": "overview",
+      "title": "Overview"
+    },
+    {
+      "id": "requirements",
+      "title": "Requirements"
+    },
+    {
+      "id": "metrics",
+      "title": "Metric definitions",
+      "parent": "requirements"
+    },
+    {
+      "id": "rollout",
+      "title": "Rollout"
+    }
+  ],
+  "settings": {
+    "headingFont": "sans",
+    "bodyFont": "sans",
+    "width": "default",
+    "lang": "en"
+  }
+}

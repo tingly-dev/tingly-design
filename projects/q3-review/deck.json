@@ -1,0 +1,49 @@
+{
+  "v": 4,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-12T09:00:00Z"
+  },
+  "lists": "css",
+  "title": "Q3 2026 Business Review",
+  "cover": "cover",
+  "order": [
+    "cover",
+    "arr",
+    "retention",
+    "segments",
+    "forecast",
+    "priorities",
+    "risks",
+    "decisions"
+  ],
+  "sections": {
+    "s1": {
+      "description": "Opening: the quarter in three numbers",
+      "start": "cover"
+    },
+    "s2": {
+      "description": "Results: growth and retention",
+      "start": "arr"
+    },
+    "s3": {
+      "description": "Customers and product: regions and the Forecast launch",
+      "start": "segments"
+    },
+    "s4": {
+      "description": "Q4 plan: priorities, risks and decisions",
+      "start": "priorities"
+    }
+  },
+  "faces": {
+    "inter-tight": {
+      "family": "Inter Tight",
+      "href": "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&display=swap"
+    },
+    "inter": {
+      "family": "Inter",
+      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    }
+  },
+  "designSystems": []
+}

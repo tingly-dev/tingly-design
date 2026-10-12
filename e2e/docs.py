@@ -7,7 +7,7 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DOC = os.path.join(REPO, 'projects/handbook')
+DOC = os.path.join(REPO, 'projects/launch-plan')
 CHROME = os.environ.get('DC_CHROME')
 
 def read(path): return open(path, encoding='utf-8').read()
@@ -15,12 +15,12 @@ def write(path, text): open(path, 'w', encoding='utf-8').write(text)
 def tab(id): return read(os.path.join(DOC, f'tabs/{id}.md'))
 def index(): return json.loads(read(os.path.join(DOC, 'doc.json')))
 def threads(): return json.loads(read(os.path.join(DOC, 'comments.json')))['threads']
-def diff(path='projects/handbook'):
+def diff(path='projects/launch-plan'):
     out = subprocess.run(['git', 'diff', '--unified=0', '--', path], cwd=REPO, capture_output=True, text=True).stdout
     return [l for l in out.splitlines() if l[:1] in '+-' and l[:3] not in ('+++', '---')]
 def restore():
-    subprocess.run(['git', 'checkout', '--', 'projects/handbook'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/handbook'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/launch-plan'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/launch-plan'], cwd=REPO)
     subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects/zz-doc')])
 
 async def wait_for(pred, timeout=6.0):
@@ -51,14 +51,14 @@ async def main():
         body = pg.locator('.docbody')
 
         # --- reading ----------------------------------------------------------------
-        await pg.goto(BASE + '/?p=handbook')
-        await expect(body.locator('h1')).to_have_text('Tingly Design 上手手册')
+        await pg.goto(BASE + '/?p=launch-plan')
+        await expect(body.locator('h1')).to_have_text('Meridian Forecast — Launch plan')
         await expect(pg.locator('.tabrow')).to_have_count(4)
         check('tabs, subtabs and the outline', await pg.locator('.tabrow.sub').count() == 1 and await pg.locator('.outline button').count() == 4)
         check('a table, a task list and a quote render', await body.locator('table tr').count() == 6 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
         await expect(body.locator('.cmark')).to_have_count(1)
-        check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == '第一周能独立改一个功能')
-        for t in ['开发流程', '代码评审', '常见问题', '概览']:
+        check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'November 4, 2026')
+        for t in ['Requirements', 'Metric definitions', 'Rollout', 'Overview']:
             await pg.locator('.tabname', has_text=t).click()
             await expect(pg.locator('.tabrow.on .tabname')).to_have_text(t)
         await pg.wait_for_timeout(800)
@@ -68,23 +68,23 @@ async def main():
         # --- typing writes back only the block that changed ------------------------------
         await body.locator('p').first.click()
         await pg.keyboard.press('End')
-        await pg.keyboard.type('欢迎提问。')
-        ok = await wait_for(lambda: '第一周能独立改一个功能。欢迎提问。' in tab('overview'))
+        await pg.keyboard.type(' Comments welcome.')
+        ok = await wait_for(lambda: 'Target GA: November 4, 2026. Comments welcome.' in tab('overview'))
         d = diff()
         check('typing saves the tab', ok)
-        check('…as a one-line diff', len(d) == 2 and d[1].endswith('欢迎提问。'), '\n'.join(d))
+        check('…as a one-line diff', len(d) == 2 and d[1].endswith('Comments welcome.'), '\n'.join(d))
         await body.locator('ul[data-type=taskList] li').first.locator('input[type=checkbox]').click()
-        ok = await wait_for(lambda: '- [x] 装好 Node 22 和 pnpm 10' in tab('overview'))
+        ok = await wait_for(lambda: '- [x] Accuracy report on the beta cohort signed off by Finance' in tab('overview'))
         check('ticking a task writes [x]…', ok, tab('overview')[-300:])
         check('…changing that one line of the list', len(diff()) == 4, '\n'.join(diff()))
-        await body.locator('td', has_text='组件、资源').click()
+        await body.locator('td', has_text='Tom Becker').click()
         await pg.keyboard.press('End')
-        await pg.keyboard.type('、示例')
-        ok = await wait_for(lambda: '| 设计系统 | `design-system.json` | `tokens.json`、组件、资源、示例 |' in tab('overview'))
+        await pg.keyboard.type(', Sofia Alvarez')
+        ok = await wait_for(lambda: '| Pricing and packaging sign-off | Tom Becker, Sofia Alvarez | Oct 16, 2026 | In review |' in tab('overview'))
         check('editing a table cell changes that one row', ok and len(diff()) == 6, '\n'.join(diff()))
 
         # --- formatting, the slash menu ---------------------------------------------------
-        h = body.locator('h2', has_text='第一天')
+        h = body.locator('h2', has_text='Launch checklist')
         await h.evaluate("e => e.scrollIntoView({block: 'center'})")  # out from under the floating Claude bar
         await h.click()
         await pg.wait_for_timeout(200)  # the editor takes the new selection from the DOM a moment after the click
@@ -93,42 +93,43 @@ async def main():
         await pg.keyboard.type('/h3')
         await expect(pg.locator('.slashmenu button[aria-selected=true]')).to_have_text('标题 3')
         await pg.keyboard.press('Enter')
-        await pg.keyboard.type('准备工作')
-        ok = await wait_for(lambda: '\n### 准备工作\n' in tab('overview'))
+        await pg.keyboard.type('Before GA')
+        ok = await wait_for(lambda: '\n### Before GA\n' in tab('overview'))
         check('the / menu turns a line into a heading', ok, tab('overview')[-500:])
         await pg.keyboard.press('Enter')
-        await pg.keyboard.type('先读 ')
-        await pg.keyboard.type('README')
+        await pg.keyboard.type('See ')
+        await pg.keyboard.type('runbook')
         await pg.keyboard.press('Shift+Home')
-        for _ in range(3): await pg.keyboard.press('Shift+ArrowRight')
+        for _ in range(4): await pg.keyboard.press('Shift+ArrowRight')
         await pg.locator('.bubble button[aria-label="粗体"]').click()
-        ok = await wait_for(lambda: '先读 **README**' in tab('overview'))
-        check('the selection menu makes text bold', ok, [l for l in tab('overview').splitlines() if '先读' in l])
+        ok = await wait_for(lambda: 'See **runbook**' in tab('overview'))
+        check('the selection menu makes text bold', ok, [l for l in tab('overview').splitlines() if 'See ' in l])
 
         # --- someone else writes at the same time ------------------------------------------
         before = tab('overview')
-        write(os.path.join(DOC, 'tabs/overview.md'), before.replace('## 它是什么', '## 它是做什么的'))
-        await expect(body.locator('h2').first).to_have_text('它是做什么的')
+        write(os.path.join(DOC, 'tabs/overview.md'), before.replace('## Why we are building it', '## Why we are building Forecast'))
+        await expect(body.locator('h2').first).to_have_text('Why we are building Forecast')
         check('an outside edit arrives in the open tab', True)
-        await body.locator('h2', has_text='五种项目').click()
+        await body.locator('h2', has_text='Milestones').click()
+        await pg.wait_for_timeout(200)  # as above: let the editor take the new selection
         await pg.keyboard.press('End')
-        await pg.keyboard.type('一览')
-        ok = await wait_for(lambda: '## 五种项目一览' in tab('overview') and '## 它是做什么的' in tab('overview'))
-        check('…and my next edit keeps it', ok)
+        await pg.keyboard.type(' and owners')
+        ok = await wait_for(lambda: '## Milestones and owners' in tab('overview') and '## Why we are building Forecast' in tab('overview'))
+        check('…and my next edit keeps it', ok, [l for l in tab('overview').splitlines() if l.startswith('#')])
 
         # --- comments -------------------------------------------------------------------------
         await body.locator('.cmark').click()
-        await expect(pg.locator('.cthread.on')).to_contain_text('good first issue')
-        await pg.locator('.cthread.on textarea').fill('好主意，我来加。')
+        await expect(pg.locator('.cthread.on')).to_contain_text('order forms')
+        await pg.locator('.cthread.on textarea').fill('Noted. I added the fallback date to the milestones.')
         await pg.locator('.cthread.on button', has_text='发送').click()
-        ok = await wait_for(lambda: threads()[0]['comments'][-1]['text'] == '好主意，我来加。')
+        ok = await wait_for(lambda: threads()[0]['comments'][-1]['text'] == 'Noted. I added the fallback date to the milestones.')
         check('replying writes comments.json', ok)
         await pg.locator('.cthread.on button', has_text='解决').click()
         ok = await wait_for(lambda: threads()[0].get('resolved') is True)
         check('resolving a thread', ok and await body.locator('.cmark').count() == 0)
         await body.locator('blockquote p').dblclick()
         await pg.locator('.bubble button[aria-label="评论"]').click()
-        await pg.locator('.crail textarea').fill('这句可以放到 README 里。')
+        await pg.locator('.crail textarea').fill('Worth repeating on the launch slide.')
         await pg.locator('.crail button', has_text='发送').first.click()
         ok = await wait_for(lambda: len(threads()) == 3 and threads()[2]['tab'] == 'overview' and threads()[2]['quote'] in tab('overview'))
         check('a new comment pinned to the selected words', ok, json.dumps(threads()[-1], ensure_ascii=False)[:300])
@@ -140,9 +141,9 @@ async def main():
         check('adding a tab writes doc.json and tabs/<id>.md', ok, json.dumps(index()['tabs'], ensure_ascii=False))
         await expect(body.locator('h1')).to_have_text('新的标签页')
         await pg.locator('.tabrow.on .tabname').dblclick()
-        await pg.locator('.tabrow input').fill('术语表')
+        await pg.locator('.tabrow input').fill('Glossary')
         await pg.locator('.tabrow input').press('Enter')
-        ok = await wait_for(lambda: index()['tabs'][-1]['title'] == '术语表')
+        ok = await wait_for(lambda: index()['tabs'][-1]['title'] == 'Glossary')
         check('renaming a tab', ok)
         pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('.tabrow.on .more').click()
@@ -156,14 +157,14 @@ async def main():
 
         # --- AI rewrite -------------------------------------------------------------------------
         if health.get('fastEdit'):
-            await pg.locator('.tabname', has_text='常见问题').click()
-            await body.locator('p', has_text='委托会调用').click(click_count=3)
+            await pg.locator('.tabname', has_text='Rollout').click()
+            await body.locator('p', has_text='Do we backfill forecasts').click(click_count=3)
             await pg.locator('.bubble button.spark', has_text='改短一些').click()
             await expect(pg.locator('.sparkpanel .sparktext')).to_contain_text('（已改写）')
             await pg.locator('.sparkpanel button', has_text='替换').click()
-            ok = await wait_for(lambda: '版本。（已改写）' in tab('faq') or '再看编辑器右下角的提示。（已改写）' in tab('faq'))
-            check('AI rewrite replaces the passage', ok, tab('faq')[-400:])
-            check('…and only that block changed', len(diff('projects/handbook/tabs/faq.md')) == 2, '\n'.join(diff('projects/handbook/tabs/faq.md')))
+            ok = await wait_for(lambda: 'about 40 minutes of compute per account.（已改写）' in tab('rollout'))
+            check('AI rewrite replaces the passage', ok, tab('rollout')[-400:])
+            check('…and only that block changed', len(diff('projects/launch-plan/tabs/rollout.md')) == 2, '\n'.join(diff('projects/launch-plan/tabs/rollout.md')))
         else:
             print('SKIP AI rewrite (no ANTHROPIC_API_KEY on the server)')
 
@@ -172,7 +173,7 @@ async def main():
         async with pg.expect_download() as dl:
             await pg.locator('.popmenu button', has_text='整个文档（HTML）').click()
         html = read(await (await dl.value).path())
-        check('export the whole doc as HTML', '<h1>常见问题</h1>' in html and '<table>' in html)
+        check('export the whole doc as HTML', '<h1>Rollout</h1>' in html and '<table>' in html)
 
         # --- a new doc ----------------------------------------------------------------------------
         await pg.goto(BASE + '/')

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pricing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#14171f;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width:880px;height:560px;box-sizing:border-box;padding:40px 44px;display:flex;flex-direction:column;gap:24px;background:#f6f5f1">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.3px">Plans that grow with your team</h2>
+      <div style="font-size:14px;color:#4b5262">Per seat, per month. Every plan includes the metrics layer and unlimited dashboards.</div>
+    </div>
+    <div style="display:flex;gap:4px;padding:4px;border-radius:10px;background:#ebe9e3">
+      <sc-for list="{{periods}}" as="p" hint-placeholder-count="2">
+        <button onClick="{{p.pick}}" style="height:32px;padding:0 14px;border:0;border-radius:7px;font-size:13px;font-weight:500;background:{{p.bg}};color:#14171f">{{p.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:14px;flex:1">
+    <sc-for list="{{plans}}" as="plan" hint-placeholder-count="3">
+      <div style="background:#ffffff;border:1px solid {{plan.border}};border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:15px;font-weight:600">{{plan.name}}</div>
+          <div style="font-size:11px;font-weight:600;color:#2347d9;background:#e9edfb;padding:3px 8px;border-radius:6px;opacity:{{plan.badge}}">Most popular</div>
+        </div>
+        <div style="font-size:34px;font-weight:700;letter-spacing:-0.6px">{{plan.price}}</div>
+        <div style="font-size:13px;color:#646a77">{{plan.note}}</div>
+        <div style="height:1px;background:#e4e2dc"></div>
+        <div style="font-size:13px;line-height:1.5;color:#4b5262">{{plan.f1}}</div>
+        <div style="font-size:13px;line-height:1.5;color:#4b5262">{{plan.f2}}</div>
+        <div style="font-size:13px;line-height:1.5;color:#4b5262">{{plan.f3}}</div>
+        <div style="flex:1"></div>
+        <div style="height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;background:{{plan.ctaBg}};color:{{plan.ctaColor}};border:1px solid {{plan.border}}">{{plan.cta}}</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":560}}'>
+class Component extends DCLogic {
+  state = { yearly: false };
+  renderVals() {
+    const yearly = this.state.yearly;
+    const periods = [
+      { label: 'Monthly', on: !yearly, pick: () => this.setState({ yearly: false }) },
+      { label: 'Yearly (save 20%)', on: yearly, pick: () => this.setState({ yearly: true }) },
+    ].map((p) => ({ ...p, bg: p.on ? '#ffffff' : 'transparent' }));
+    const base = [
+      ['Starter', 0, 'Start free', ['Up to 3 seats', 'Stripe and HubSpot', 'Daily refresh']],
+      ['Growth', 20, 'Start a trial', ['Up to 50 seats', 'All connectors and alerts', 'Hourly refresh']],
+      ['Scale', 30, 'Talk to sales', ['Unlimited seats', 'Forecast included', 'SSO, audit log, SLA']],
+    ];
+    const plans = base.map(([name, m, cta, [f1, f2, f3]]) => {
+      const hot = name === 'Growth';
+      return {
+        name, cta, f1, f2, f3,
+        price: m === 0 ? 'Free' : '$' + (yearly ? Math.round(m * 0.8) : m),
+        note: m === 0 ? 'For small teams getting started' : yearly ? 'per seat / month, billed yearly' : 'per seat / month',
+        border: hot ? '#2347d9' : '#e4e2dc',
+        badge: hot ? 1 : 0,
+        ctaBg: hot ? '#2347d9' : '#ffffff',
+        ctaColor: hot ? '#ffffff' : '#14171f',
+      };
+    });
+    return { periods, plans };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+item,plan,unit,price,units_q3
+Scale seats (annual),Scale,seat-month,24,171400
+Enterprise platform,Enterprise,seat-month,36,88200
+Growth seats (annual),Growth,seat-month,16,142600
+Scale seats (monthly),Scale,seat-month,30,53800
+Growth seats (monthly),Growth,seat-month,20,49300
+Warehouse sync add-on,Add-on,seat-month,6,62400
+Additional workspaces,Add-on,workspace-month,250,1460
+Premium support,Services,account-month,1500,204
+Implementation services,Services,hour,175,1420
+Audit log add-on,Add-on,seat-month,4,26100

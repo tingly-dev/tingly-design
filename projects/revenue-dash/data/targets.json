@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "region": "North America",
+      "month": "2026-09",
+      "revenue_target": 2450000
+    },
+    {
+      "region": "EMEA",
+      "month": "2026-09",
+      "revenue_target": 1340000
+    },
+    {
+      "region": "APAC",
+      "month": "2026-09",
+      "revenue_target": 680000
+    }
+  ]
+}

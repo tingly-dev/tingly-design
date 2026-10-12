@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Data flow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#14171f;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="position: relative; width: 1040px; height: 520px; background: #f6f5f1">
+<svg width="56" height="8" viewBox="0 0 56 8" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 178px; width: 56px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 56 4"></path></svg>
+<svg width="56" height="8" viewBox="0 0 56 8" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 278px; width: 56px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 56 4"></path></svg>
+<svg width="56" height="8" viewBox="0 0 56 8" preserveAspectRatio="none" style="position: absolute; left: 248px; top: 378px; width: 56px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 56 4"></path></svg>
+<svg width="8" height="200" viewBox="0 0 8 200" preserveAspectRatio="none" style="position: absolute; left: 300px; top: 182px; width: 8px; height: 200px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round"><path d="M 4 0 L 4 200"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 304px; top: 278px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#9aa3b2" stroke="none" style="stroke: none; fill: #9aa3b2; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="72" height="8" viewBox="0 0 72 8" preserveAspectRatio="none" style="position: absolute; left: 562px; top: 278px; width: 72px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 72 4"></path></svg>
+<svg width="8" height="200" viewBox="0 0 8 200" preserveAspectRatio="none" style="position: absolute; left: 630px; top: 182px; width: 8px; height: 200px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round"><path d="M 4 0 L 4 200"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 634px; top: 178px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#9aa3b2" stroke="none" style="stroke: none; fill: #9aa3b2; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 634px; top: 278px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#9aa3b2" stroke="none" style="stroke: none; fill: #9aa3b2; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="64" height="8" viewBox="0 0 64 8" preserveAspectRatio="none" style="position: absolute; left: 634px; top: 378px; width: 64px; height: 8px; overflow: visible; fill: none; stroke: #9aa3b2; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#9aa3b2" stroke="none" style="stroke: none; fill: #9aa3b2; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 60 4" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<div style="position: absolute; left: 48px; top: 44px; font-size: 24px; font-weight: 700; letter-spacing: -0.3px">How data reaches a dashboard</div>
+<div style="position: absolute; left: 48px; top: 82px; width: 700px; font-size: 14px; color: #4b5262">Sources sync into one metrics layer; every surface reads from it, so the numbers agree everywhere.</div>
+<div style="position: absolute; left: 48px; top: 150px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e4e2dc; border-radius: 10px"><b style="font-size: 14px">Stripe</b><span style="font-size: 12px; color: #646a77">Billing, invoices</span></div>
+<div style="position: absolute; left: 48px; top: 250px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e4e2dc; border-radius: 10px"><b style="font-size: 14px">Salesforce</b><span style="font-size: 12px; color: #646a77">Accounts, pipeline</span></div>
+<div style="position: absolute; left: 48px; top: 350px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e4e2dc; border-radius: 10px"><b style="font-size: 14px">Snowflake</b><span style="font-size: 12px; color: #646a77">Product usage</span></div>
+<div style="position: absolute; left: 372px; top: 250px; width: 190px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #14171f; color: #ffffff; border: 1px solid #14171f; border-radius: 10px"><b style="font-size: 14px">Metrics layer</b><span style="font-size: 12px; color: #aeb6c6">ARR, NRR, churn, pipeline</span></div>
+<div style="position: absolute; left: 702px; top: 150px; width: 230px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e4e2dc; border-radius: 10px"><b style="font-size: 14px">Dashboards</b><span style="font-size: 12px; color: #646a77">Every number traced to a cell</span></div>
+<div style="position: absolute; left: 702px; top: 250px; width: 230px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #ffffff; border: 1px solid #e4e2dc; border-radius: 10px"><b style="font-size: 14px">Alerts</b><span style="font-size: 12px; color: #646a77">Slack and email</span></div>
+<div style="position: absolute; left: 702px; top: 350px; width: 230px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: #e9edfb; border: 1px solid #c3cdf6; border-radius: 10px"><b style="font-size: 14px">Forecast</b><span style="font-size: 12px; color: #646a77">Driver-based, 90 days</span></div>
+<div style="position: absolute; left: 304px; top: 256px; width: 68px; text-align: center; font-size: 11px; line-height: 16px; color: #4b5262">Hourly sync</div>
+<div style="position: absolute; left: 48px; top: 456px; font-size: 12px; color: #646a77">Forecast is in public beta; general availability November 4, 2026.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":520}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

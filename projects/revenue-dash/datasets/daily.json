@@ -1,0 +1,13 @@
+{
+  "title": "Daily billed revenue",
+  "description": "Paid invoices and billed revenue (USD) per day, for every region or the one picked. Reads daily_revenue.",
+  "source": {
+    "kind": "query",
+    "connector": "sqlite",
+    "tool": "query",
+    "args": {
+      "db": "data/meridian.db",
+      "sql": "SELECT day, SUM(invoices) AS invoices, ROUND(SUM(revenue), 2) AS revenue\nFROM daily_revenue\nWHERE (CAST({{region}} AS TEXT) IS NULL OR region = CAST({{region}} AS TEXT))\nGROUP BY day\nORDER BY day"
+    }
+  }
+}
