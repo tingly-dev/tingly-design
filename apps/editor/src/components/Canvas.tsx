@@ -227,9 +227,9 @@ export function Canvas() {
         {(draft?.kind === 'line' || draft?.kind === 'pen') && (
           <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }} width="1" height="1">
             {draft.kind === 'line' ? (
-              <line x1={draft.x0} y1={draft.y0} x2={draft.x1} y2={draft.y1} stroke="#2f6fed" strokeWidth={2 / z} />
+              <line x1={draft.x0} y1={draft.y0} x2={draft.x1} y2={draft.y1} style={{ stroke: 'var(--accent)' }} strokeWidth={2 / z} />
             ) : (
-              <polyline points={draft.pts.map((p) => p.join(',')).join(' ')} fill="none" stroke="#1d1d1b" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={draft.pts.map((p) => p.join(',')).join(' ')} fill="none" style={{ stroke: 'var(--ink)' }} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
             )}
           </svg>
         )}

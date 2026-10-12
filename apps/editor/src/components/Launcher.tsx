@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { IconChartBar, IconComponents, IconFileText, IconLayoutDashboard, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
 import { toast } from '../store';
+import { Appearance } from './Appearance';
 
 /** The five project kinds, in the order the launcher lists them. */
 export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string; tone: string }[] = [
@@ -55,48 +57,17 @@ function slugOf(title: string): string {
     .slice(0, 64);
 }
 
+const KIND_ICONS: Record<ProjectKind, ComponentType<IconProps>> = {
+  design: IconLayoutDashboard,
+  slides: IconPresentation,
+  'design-system': IconComponents,
+  dashboard: IconChartBar,
+  docs: IconFileText,
+};
+
 export function KindIcon({ kind, size = 16 }: { kind: ProjectKind; size?: number }) {
-  const paths: Record<ProjectKind, ReactNode> = {
-    design: (
-      <>
-        <rect x="3" y="3" width="6" height="8" rx="1" />
-        <rect x="11" y="3" width="6" height="5" rx="1" />
-        <rect x="11" y="10" width="6" height="7" rx="1" />
-        <rect x="3" y="13" width="6" height="4" rx="1" />
-      </>
-    ),
-    slides: (
-      <>
-        <rect x="2.5" y="4" width="15" height="9.5" rx="1.2" />
-        <path d="M10 13.5V16M7 16.5h6" />
-      </>
-    ),
-    'design-system': (
-      <>
-        <circle cx="7" cy="7" r="3.2" />
-        <rect x="11" y="3.8" width="6" height="6" rx="1" />
-        <path d="M3.8 16.5l3.2-5.2 3.2 5.2z" />
-        <path d="M11 14h6M11 16.5h4" />
-      </>
-    ),
-    dashboard: (
-      <>
-        <path d="M3 16.5h14" />
-        <path d="M5 14V9.5M8.5 14V5M12 14v-6M15.5 14V3.5" />
-      </>
-    ),
-    docs: (
-      <>
-        <path d="M5 2.8h6.5L15.5 7v10.2H5z" />
-        <path d="M11.5 2.8V7h4M7.5 10.5h5M7.5 13.5h5" />
-      </>
-    ),
-  };
-  return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {paths[kind]}
-    </svg>
-  );
+  const I = KIND_ICONS[kind];
+  return <I size={size} stroke={1.6} aria-hidden="true" />;
 }
 
 function Mark() {
@@ -496,10 +467,7 @@ export function Launcher() {
         </div>
         <div className="tools">
           <label className="lsearch">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" aria-hidden="true">
-              <circle cx="9" cy="9" r="5.5" />
-              <path d="M13.2 13.2L17 17" />
-            </svg>
+            <IconSearch size={15} stroke={1.7} aria-hidden="true" />
             <input
               ref={search}
               placeholder="搜索标题或文件夹"
@@ -517,8 +485,9 @@ export function Launcher() {
             <option value="recent">最近</option>
             <option value="name">名称</option>
           </select>
+          <Appearance className="btn lbtn" />
           <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
-            <span aria-hidden="true">＋</span> 新建项目
+            <IconPlus size={15} stroke={2} aria-hidden="true" /> 新建项目
           </button>
         </div>
       </header>

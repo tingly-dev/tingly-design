@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { IconTable } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, checkSlide, sectionsOf, slideFile, ICON_NAMES } from '@dc/core';
 import { deckOf, display, editDeck, isSaving, parsed, slideIds, toast, useDeck, useSlideIds, useStore } from '../../store';
 import {
@@ -230,10 +231,7 @@ function TopLeft() {
         }}
       />
       <button className="tb" aria-label="插入表格" title="插入表格" onClick={() => insertOnSlide(INSERTS.table, false)}>
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-          <rect x="3" y="4" width="14" height="12" rx="1.5" />
-          <path d="M3 8h14M3 12h14M8 4v12" />
-        </svg>
+        <IconTable size={16} stroke={1.6} aria-hidden="true" />
       </button>
       <button ref={shapesBtn} className="tb" aria-haspopup="menu" aria-label="形状、连线和图标" title="形状、连线和图标" onClick={() => setMenu('shapes')}>
         <Shapes />
