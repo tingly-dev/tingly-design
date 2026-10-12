@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@dc/core": "workspace:*",
+    "dompurify": "3.2.4",
+    "marked": "14.1.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zustand": "^5.0.15"

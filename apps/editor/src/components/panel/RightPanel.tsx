@@ -8,6 +8,7 @@ import { BoardProps, ItemProps, Tweaks } from './OtherProps';
 import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideLayers, SlideProps } from '../slides/SlidePanel';
+import { DsInstall } from './DsInstall';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
 export function RightPanel() {
@@ -75,6 +76,8 @@ export function RightPanel() {
         <p className="hint" style={{ margin: 0 }}>
           点选画板里的任意元素来编辑；双击文字直接改。拖动已选中的元素可以调整顺序，拖出父容器就变成自由定位。
         </p>
+        <DsInstall />
+        <h3>快捷键</h3>
         <p className="hint" style={{ margin: 0 }}>
           V 选择 · H 抓手 · T 文字 · A 画板 · N 便签 · P 画笔 · R 矩形 · O 椭圆 · L 直线 · ⇧1 适应全部 · ⇧2 缩放到选中 · Esc 取消选中 · ⇧↵ 选中上一级 · ↵ 选中下一级
         </p>

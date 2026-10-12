@@ -8,6 +8,7 @@ import { RightPanel } from './components/panel/RightPanel';
 import { PromptBar } from './components/PromptBar';
 import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './components/Overlays';
 import { SlidesApp } from './components/slides/SlidesApp';
+import { DsApp } from './components/ds/DsApp';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -22,10 +23,13 @@ function Toasts() {
   );
 }
 
+const KIND_ZH = { design: '画布', slides: '幻灯片', 'design-system': '设计系统' } as const;
+
 function Picker() {
-  const [list, setList] = useState<{ name: string; title: string; kind: 'design' | 'slides' }[] | null>(null);
+  type Kind = 'design' | 'slides' | 'design-system';
+  const [list, setList] = useState<{ name: string; title: string; kind: Kind }[] | null>(null);
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<'design' | 'slides'>('design');
+  const [kind, setKind] = useState<Kind>('design');
   useEffect(() => {
     api.projects().then(setList, (e) => toast(e.message, 'error'));
   }, []);
@@ -43,7 +47,7 @@ function Picker() {
             <button key={p.name} className="row" onClick={() => go(p.name)}>
               <span className="name">{p.title}</span>
               <span className="meta">
-                {p.kind === 'slides' ? '幻灯片' : '画布'} · projects/{p.name}
+                {KIND_ZH[p.kind]} · projects/{p.name}
               </span>
             </button>
           ))}
@@ -61,9 +65,10 @@ function Picker() {
             }
           }}
         >
-          <select className="input" style={{ flex: 'none', width: 'auto' }} aria-label="类型" value={kind} onChange={(e) => setKind(e.target.value as 'design' | 'slides')}>
+          <select className="input" style={{ flex: 'none', width: 'auto' }} aria-label="类型" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
             <option value="design">画布</option>
             <option value="slides">幻灯片</option>
+            <option value="design-system">设计系统</option>
           </select>
           <input className="input" placeholder="文件夹名，如 onboarding" aria-label="新项目名称" value={name} onChange={(e) => setName(e.target.value)} />
           <button className="btn primary" type="submit">
@@ -90,7 +95,7 @@ export function App() {
     openProject(project)
       .then(() => {
         requestAnimationFrame(() => {
-          if (useStore.getState().kind === 'slides') return;
+          if (useStore.getState().kind !== 'design') return;
           const c = canvasOf(useStore.getState());
           if (c.pages.length) useStore.setState({ page: c.launch.page ?? c.pages[0].id });
           if (c.launch.view === 'focused' && c.launch.file) focusBoard(c.launch.file);
@@ -102,6 +107,13 @@ export function App() {
   }, [project]);
 
   if (!project) return <Picker />;
+  if (kind === 'design-system')
+    return (
+      <>
+        <DsApp />
+        <Toasts />
+      </>
+    );
   if (kind === 'slides')
     return (
       <>

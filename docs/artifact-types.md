@@ -72,7 +72,8 @@ tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifa
 ## 进度
 
 - **Slides：已实现**（README“幻灯片”一节）。按上面的建议，编辑仍走 `copy.ts` 的最小补丁；`packages/core/src/slides.ts` 是子集检查（只用来提示和给快速 AI 反馈，不阻止保存），`slideArt.ts` 画形状/图标/连线（舞台和导出共用），`deck.ts` 是 deck.json 与基础样式。原版 Slides 没有页内快速 AI，这里有。
-- **Dashboard、Design System、Docs**：参考材料与 FINDINGS 已齐（`artifact/claude-*`），尚未实现。下一步按本文顺序做 Design System 的消费侧（Slides 与 Design 读 `ds/<folder>/tokens.json`）。
+- **Design System：已实现**（README“设计系统”一节）。文件布局、tokens.json 语法和 tokens.css 的编译照原版 `format.md`（`packages/core/src/designSystem.ts`，有单元测试）；页面有概览、颜色、文字、间距、组件、资源；消费侧在 Design 和 Slides 里都能装入、选 token、用文字样式。和原版的差别：没有 db / 单页模式的迁移、没有 api/ 卡片和 manifest.json 的生成、没有从 GitHub 或设计工具同步（交给 Claude Code）；多了 `type.hosted`（Google Fonts）。
+- **Dashboard、Docs**：参考材料与 FINDINGS 已齐（`artifact/claude-*`），尚未实现。
 
 ## 当初建议的第一步（已完成）
 

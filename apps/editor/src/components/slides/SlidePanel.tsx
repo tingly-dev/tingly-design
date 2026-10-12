@@ -4,6 +4,7 @@ import { display, editDeck, editElement, parsed, useDeck, useStore } from '../..
 import { isHidden, setSectionAttr, slideTitle, toggleHidden } from '../../slides';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { Chevron, RoleIcon } from '../icons';
+import { DsInstall } from '../panel/DsInstall';
 
 const ROLE_ZH: Record<string, string> = {
   Slide: '幻灯片',
@@ -235,6 +236,7 @@ export function DeckProps() {
       <p className="hint" style={{ margin: 0 }}>
         最多 4 种。在元素的 font-family 里写字体名即可使用。
       </p>
+      <DsInstall />
       <h3>快捷键</h3>
       <p className="hint" style={{ margin: 0 }}>
         ↑↓ / PageUp PageDown 切换幻灯片（未选中元素时）· ⌘D 复制 · ⌫ 删除 · ⇧↵ 选中上一级 · ↵ 选中下一级 · ⌘Z 撤销 · F5 放映

@@ -12,3 +12,4 @@ export * from './layers';
 export * from './deck';
 export * from './slides';
 export * from './slideArt';
+export * from './designSystem';
