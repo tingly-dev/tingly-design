@@ -30,6 +30,8 @@ export type ToRuntime =
       selected: number | null;
       /** a slide file: the deck's typefaces and where its relative image paths live */
       slide?: { head: string; base: string; still?: boolean };
+      /** a canvas board: where the project's files are served, for relative paths such as assets/logo.png */
+      base?: string;
     }
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }

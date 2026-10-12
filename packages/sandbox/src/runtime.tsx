@@ -61,6 +61,15 @@ function interp(s: string, scope: Scope): unknown {
   });
 }
 
+/** Relative url()s (assets/…, an imported page's files) point at the project's files. */
+function urlsAgainst(css: string, base: string): string {
+  if (!css.includes('url(')) return css;
+  return css.replace(/url\(\s*(['"]?)([^'")]*)\1\s*\)/g, (m, q: string, u: string) => {
+    const r = u ? resolveSrc(u, base) : u;
+    return r === u ? m : `url(${q}${r}${q})`;
+  });
+}
+
 // ------------------------------------------------------------- attributes
 
 const EVENTS: Record<string, string> = {};
@@ -102,6 +111,8 @@ interface Ctx {
   mode: Mode;
   /** rendering a slide: relative image paths resolve against `base` */
   slide?: { base: string; source: string; still?: boolean };
+  /** a canvas board: relative paths (assets/…) in src and url() resolve against this */
+  base?: string;
 }
 
 function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<string, unknown> {
@@ -124,7 +135,8 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
     }
     const v = interp(a.value, scope);
     if (name === 'style') {
-      p.style = styleObject(v === null || v === undefined ? '' : String(v));
+      const text = v === null || v === undefined ? '' : String(v);
+      p.style = styleObject(ctx.base ? urlsAgainst(text, ctx.base) : text);
       continue;
     }
     if (BOOLEAN.has(lower) && el.ns === 'html') {
@@ -136,7 +148,7 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
       p[k] = v;
       continue;
     }
-    p[HTML_ATTRS[lower] ?? name] = v;
+    p[HTML_ATTRS[lower] ?? name] = ctx.base && (lower === 'src' || lower === 'poster') ? resolveSrc(v, ctx.base) : v;
   }
   // form controls without handlers keep their initial value, as written
   if ((el.tag === 'input' || el.tag === 'textarea' || el.tag === 'select') && !handlers.has('onChange') && !handlers.has('onInput')) {
@@ -244,6 +256,10 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
   }
   if (el.tag.startsWith('sc-') || el.tag === 'x-import') {
     return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment>;
+  }
+  if (el.tag === 'style' && ctx.base) {
+    const css = el.children.map((c) => (c.kind === 'text' ? String(interp(c.text, scope) ?? '') : '')).join('');
+    return React.createElement('style', { key }, urlsAgainst(css, ctx.base));
   }
   const props = toProps(el, scope, ctx, key);
   if (VOID_ELEMENTS.has(el.tag) && el.ns === 'html') return React.createElement(el.tag, props);
@@ -362,6 +378,7 @@ interface State {
   editing: HTMLElement | null;
   pending: Extract<ToRuntime, { dc: 'render' }> | null;
   slide: { head: string; base: string; still?: boolean } | null;
+  base: string;
   /** present mode: how far a slide's builds have played */
   step: number;
   ctx(): Ctx;
@@ -378,6 +395,7 @@ const current: State = {
   editing: null,
   pending: null,
   slide: null,
+  base: '',
   step: 0,
   ctx() {
     return {
@@ -386,6 +404,7 @@ const current: State = {
       file: this.file,
       mode: this.mode,
       slide: this.slide ? { base: this.slide.base, source: this.source, still: this.slide.still } : undefined,
+      base: this.slide ? undefined : this.base || undefined,
     };
   },
 };
@@ -985,9 +1004,10 @@ function onMessage(m: ToRuntime) {
       m.files !== current.files ||
       JSON.stringify(m.props) !== JSON.stringify(current.props) ||
       m.mode !== current.mode ||
-      JSON.stringify(slide) !== JSON.stringify(current.slide);
+      JSON.stringify(slide) !== JSON.stringify(current.slide) ||
+      (m.base ?? '') !== current.base;
     if (m.mode !== current.mode || m.source !== current.source) current.step = 0;
-    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected, slide });
+    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected, slide, base: m.base ?? '' });
     document.documentElement.dataset.mode = m.mode;
     if (changed) render();
   } else if (m.dc === 'select') {

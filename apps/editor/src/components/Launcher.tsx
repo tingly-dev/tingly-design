@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { IconChartBar, IconComponents, IconFileText, IconLayoutDashboard, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
+import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
 import { toast } from '../store';
 import { Appearance } from './Appearance';
 import { goTo } from '../host';
 import { SERVER } from '../base';
+import { NAME_RE, slugOf } from '../projectName';
+import { ImportDialog } from './ImportDialog';
+import { droppedFiles, readPicked, type Picked } from '../importHtml';
 
 /** The five project kinds, in the order the launcher lists them. */
 export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string; tone: string }[] = [
@@ -17,7 +20,6 @@ export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string
 ];
 const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<ProjectKind, (typeof KINDS)[number]>;
 
-const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const RECENT_KEY = 'dc:recent-projects';
 
 function readRecent(): string[] {
@@ -47,16 +49,6 @@ function ago(iso: string | null): string {
   if (s < 86400 * 30) return `${Math.floor(s / 86400)} 天前`;
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/** A folder name from a title, when the title is plain enough to give one. */
-function slugOf(title: string): string {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-')
-    .replace(/^[-_]+|-+$/g, '')
-    .slice(0, 64);
 }
 
 const KIND_ICONS: Record<ProjectKind, ComponentType<IconProps>> = {
@@ -98,7 +90,7 @@ function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
 }
 
 /** A board or slide rendered by the sandbox runtime, read only, scaled to the card. */
-function LiveFrame({ file, source, w, h, width, slide }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string } }) {
+function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string }; base?: string }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
@@ -115,12 +107,12 @@ function LiveFrame({ file, source, w, h, width, slide }: { file: string; source:
   useEffect(() => {
     if (!ready) return;
     frame.current?.contentWindow?.postMessage(
-      { dc: 'render', file, source, files: {}, props: {}, mode: 'play', selected: null, ...(slide ? { slide: { ...slide, still: true } } : {}) },
+      { dc: 'render', file, source, files: {}, props: {}, mode: 'play', selected: null, ...(slide ? { slide: { ...slide, still: true } } : {}), ...(base ? { base } : {}) },
       '*',
     );
     const t = setTimeout(() => setShown(true), 150);
     return () => clearTimeout(t);
-  }, [ready, file, source, slide]);
+  }, [ready, file, source, slide, base]);
   const scale = width / w;
   const top = Math.max(0, ((width * 10) / 16 - h * scale) / 2);
   return (
@@ -156,7 +148,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
       near && p.board && width > 0 ? (
         <>
           <Minimap boards={p.boards} />
-          <LiveFrame file={p.board.file} source={p.board.source} w={p.board.w} h={p.board.h} width={width} />
+          <LiveFrame file={p.board.file} source={p.board.source} w={p.board.w} h={p.board.h} width={width} base={api.rawBase(project)} />
         </>
       ) : (
         <Minimap boards={p.boards} />
@@ -273,6 +265,20 @@ function NewTile({ kind, onClick }: { kind: ProjectKind; onClick: () => void }) 
       <span className="txt">
         <span className="name">新建{k.zh}</span>
         <span className="blurb">{k.blurb}</span>
+      </span>
+    </button>
+  );
+}
+
+function ImportTile({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="lcard lnew t-blue" onClick={onClick} data-new="import">
+      <span className="ic">
+        <IconFileImport size={22} stroke={1.7} />
+      </span>
+      <span className="txt">
+        <span className="name">导入 HTML</span>
+        <span className="blurb">把现成的网页变成可以编辑的画布。</span>
       </span>
     </button>
   );
@@ -414,6 +420,8 @@ export function Launcher() {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
   const [creating, setCreating] = useState<ProjectKind | null>(null);
+  const [importing, setImporting] = useState<{ picked?: Picked } | null>(null);
+  const [dropping, setDropping] = useState(false);
   const search = useRef<HTMLInputElement>(null);
   const recent = useMemo(readRecent, []);
 
@@ -426,14 +434,14 @@ export function Launcher() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const a = document.activeElement;
-      if (e.key === '/' && !(a instanceof HTMLInputElement) && !creating) {
+      if (e.key === '/' && !(a instanceof HTMLInputElement) && !creating && !importing) {
         e.preventDefault();
         search.current?.focus();
       }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [creating]);
+  }, [creating, importing]);
 
   const counts = useMemo(() => {
     const c = { all: list?.length ?? 0 } as Record<ProjectKind | 'all', number>;
@@ -458,7 +466,23 @@ export function Launcher() {
   const lastOpened = recent.find((n) => taken.has(n));
 
   return (
-    <div className="launcher">
+    <div
+      className={`launcher${dropping ? ' dropping' : ''}`}
+      onDragOver={(e) => {
+        if (creating || importing || !e.dataTransfer.types.includes('Files')) return;
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(e) => e.currentTarget.contains(e.relatedTarget as Node) || setDropping(false)}
+      onDrop={(e) => {
+        if (!dropping) return;
+        e.preventDefault();
+        setDropping(false);
+        void droppedFiles(e.dataTransfer)
+          .then(readPicked)
+          .then((picked) => (picked.entry ? setImporting({ picked }) : toast('拖进来的文件里没有 .html 页面。', 'error')));
+      }}
+    >
       <header className="lhead">
         <div className="brand">
           <Mark />
@@ -513,6 +537,7 @@ export function Launcher() {
               {KINDS.map((k) => (
                 <NewTile key={k.kind} kind={k.kind} onClick={() => setCreating(k.kind)} />
               ))}
+              <ImportTile onClick={() => setImporting({})} />
             </div>
           </section>
         )}
@@ -537,6 +562,7 @@ export function Launcher() {
           </section>
         )}
       </main>
+      {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} onClose={() => setCreating(null)} />}
     </div>
   );

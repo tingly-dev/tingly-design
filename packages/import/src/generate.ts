@@ -1,0 +1,419 @@
+import type { ExtractReport, Extracted, XElement, XNode } from './model';
+
+/**
+ * Turns an extracted page into canvas files: `canvas.json` and one
+ * `.dc.html` per artboard. Pure: no DOM, no I/O.
+ *
+ * Formatting matters as much as fidelity here. The editor's write-back keeps
+ * every untouched character, so whatever layout this writes is the layout
+ * every later diff is read in: one block per line, indented, inline runs of
+ * text kept on their line.
+ */
+
+export interface GenerateOptions {
+  /** the canvas's title (default: the page's <title>, else "Imported page") */
+  title?: string;
+  /** where the page came from, recorded in canvas.json */
+  source?: string;
+  /** an absolute url → its path inside the project (e.g. "assets/logo-1a2b3c4d.png"); unmapped urls stay absolute */
+  mapUrl?: (url: string) => string | undefined;
+  /** cut a long page into one artboard per section: 'auto' (default) splits pages taller than `splitAbove` */
+  split?: boolean | 'auto';
+  /** default 2400 px */
+  splitAbove?: number;
+  /** a section shorter than this joins the next one (default 480 px) */
+  minBoard?: number;
+  /** ISO time for canvas.json; tests pass a fixed one */
+  now?: string;
+  /** a sticky note beside the artboards saying what the import left behind (default true) */
+  note?: boolean;
+  /** files the page names that were not given to the import (listed in the report) */
+  missing?: string[];
+}
+
+export interface BoardOut {
+  file: string;
+  /** where this artboard's content starts on the original page, px */
+  top: number;
+  title: string;
+  w: number;
+  h: number;
+  elements: number;
+}
+
+export interface ImportReport extends ExtractReport {
+  boards: BoardOut[];
+  /** absolute urls left as links (not copied into the project) */
+  remoteUrls: string[];
+  /** bytes of inline style written, over all artboards */
+  styleBytes: number;
+  /** files the page names that were not given to the import */
+  missing: string[];
+}
+
+export interface Generated {
+  files: Record<string, string>;
+  report: ImportReport;
+}
+
+const INLINE_DISPLAY = /^(inline|inline-block|inline-flex|inline-grid|inline-table|contents|ruby)/;
+const LINE_PARENT = /^(flex|grid|inline-flex|inline-grid|table|table-row-group|table-header-group|table-footer-group|table-row)$/;
+const RAW_TEXT = new Set(['style', 'script', 'textarea', 'title', 'xmp']);
+const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+
+export function escapeText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/ /g, '&nbsp;').replace(/\{\{/g, "{{ '{{' }}");
+}
+
+export function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/\{\{/g, "{{ '{{' }}");
+}
+
+/** Set or remove declarations in an inline style string, keeping the rest as written. */
+export function patchStyle(style: string, set: Record<string, string | null>): string {
+  const decls: [string, string][] = [];
+  let depth = 0;
+  let quote = '';
+  let cur = '';
+  const flush = () => {
+    const i = cur.indexOf(':');
+    if (i > 0) decls.push([cur.slice(0, i).trim().toLowerCase(), cur.slice(i + 1).trim()]);
+    cur = '';
+  };
+  for (const c of style) {
+    if (quote) {
+      if (c === quote) quote = '';
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '(') depth++;
+    else if (c === ')') depth = Math.max(0, depth - 1);
+    else if (c === ';' && depth === 0) {
+      flush();
+      continue;
+    }
+    cur += c;
+  }
+  flush();
+  const out = decls.filter(([k]) => !(k in set));
+  for (const [k, v] of Object.entries(set)) if (v !== null) out.push([k, v]);
+  return out.map(([k, v]) => `${k}: ${v};`).join(' ');
+}
+
+const hasText = (n: XElement) => n.children.some((c) => c.kind === 'text' && c.text.trim());
+
+const isBlock = (c: XNode) => c.kind === 'el' && c.tag !== 'br' && !INLINE_DISPLAY.test(c.box.display) && c.ns === 'html';
+
+/**
+ * Lines for an element's children, or null to keep them on one line.
+ *
+ * A line break is only written where whitespace cannot show: between any two
+ * children of a flex or grid container, and around a block-level child
+ * (whitespace next to a block boundary collapses). Runs of inline content
+ * and text stay together, exactly as the page had them.
+ */
+function runs(n: XElement): XNode[][] | null {
+  if (RAW_TEXT.has(n.tag) || /^(pre|break-spaces)/.test(n.box.whiteSpace)) return null;
+  const kids = n.children;
+  if (n.ns === 'svg') return n.tag === 'text' || hasText(n) || !kids.some((c) => c.kind === 'el') ? null : kids.filter((c) => c.kind === 'el').map((c) => [c]);
+  if (n.ns !== 'html' || !kids.some((c) => c.kind === 'el')) return null;
+  if (LINE_PARENT.test(n.box.display)) return kids.filter((c) => c.kind === 'el' || c.text.trim()).map((c) => [c]);
+  const out: XNode[][] = [];
+  let cur: XNode[] = [];
+  for (const c of kids) {
+    if (isBlock(c)) {
+      if (cur.length) out.push(cur);
+      out.push([c]);
+      cur = [];
+    } else cur.push(c);
+  }
+  if (cur.length) out.push(cur);
+  // trim the whitespace that collapses at the block boundaries we break on; drop runs left empty
+  const lines = out
+    .map((run) => {
+      if (run.length === 1 && isBlock(run[0])) return run;
+      const r = [...run];
+      if (r[0]?.kind === 'text') r[0] = { kind: 'text', text: r[0].text.replace(/^\s+/, '') };
+      const last = r.length - 1;
+      if (r[last]?.kind === 'text') r[last] = { kind: 'text', text: (r[last] as { text: string }).text.replace(/\s+$/, '') };
+      return r.filter((c) => c.kind === 'el' || c.text);
+    })
+    .filter((r) => r.length);
+  return lines.length > 1 || (lines.length === 1 && isBlock(lines[0][0]) && lines[0].length === 1) ? lines : null;
+}
+
+interface Ctx {
+  mapUrl: (url: string) => string | undefined;
+  remote: Set<string>;
+  styleBytes: number;
+  elements: number;
+}
+
+const hex2 = (n: string) => Number(n).toString(16).padStart(2, '0');
+
+/** `rgb(47, 111, 237)` → `#2f6fed`: what people type into the properties panel and read in a diff. */
+export function hexColors(style: string): string {
+  return style.replace(/rgba?\(\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*(1|0?\.\d+|0))?\s*\)/g, (m, r: string, g: string, b: string, a?: string) => {
+    if (a === undefined || a === '1') return `#${hex2(r)}${hex2(g)}${hex2(b)}`;
+    if (a === '0') return 'transparent';
+    return m;
+  });
+}
+
+function mapUrls(value: string, ctx: Ctx): string {
+  return value.replace(/url\(\s*(['"]?)((?:https?|file|data):[^'")]+)\1\s*\)/g, (m, _q, u: string) => {
+    const local = ctx.mapUrl(u);
+    if (local) return `url("${local}")`;
+    if (!u.startsWith('data:')) ctx.remote.add(u.slice(0, 200));
+    return m;
+  });
+}
+
+function openTag(n: XElement, ctx: Ctx): string {
+  let s = `<${n.tag}`;
+  for (const [k, v] of n.attrs) {
+    let value = v;
+    if ((k === 'src' || k === 'href' || k === 'poster') && /^(https?|file|data):/i.test(v)) {
+      const local = ctx.mapUrl(v);
+      if (local) value = local;
+      else if ((k !== 'href' || n.ns !== 'html') && !v.startsWith('data:')) ctx.remote.add(v.slice(0, 200));
+    }
+    s += value === '' && (k === 'checked' || k === 'disabled' || k === 'selected' || k === 'readonly' || k === 'open' || k === 'multiple' || k === 'reversed') ? ` ${k}` : ` ${k}="${escapeAttr(value)}"`;
+  }
+  if (n.style) {
+    const style = mapUrls(hexColors(n.style), ctx);
+    ctx.styleBytes += style.length;
+    s += ` style="${escapeAttr(style)}"`;
+  }
+  return s + '>';
+}
+
+function inline(n: XNode, ctx: Ctx, raw = false): string {
+  if (n.kind === 'text') return raw ? n.text.replace(/<\//g, '<\\/') : escapeText(n.text);
+  ctx.elements++;
+  const open = openTag(n, ctx);
+  if (VOID.has(n.tag) && n.ns === 'html') return open;
+  const isRaw = RAW_TEXT.has(n.tag) && n.tag !== 'textarea';
+  return open + n.children.map((c) => inline(c, ctx, isRaw)).join('') + `</${n.tag}>`;
+}
+
+function block(n: XElement, ctx: Ctx, indent: string): string {
+  const lines = runs(n);
+  if (!lines) return indent + inline(n, ctx);
+  ctx.elements++;
+  const pad = indent + '  ';
+  const inner = lines
+    .map((run) => (run.length === 1 && run[0].kind === 'el' ? block(run[0], ctx, pad) : pad + run.map((c) => inline(c, ctx)).join('')))
+    .join('\n');
+  return `${indent}${openTag(n, ctx)}\n${inner}\n${indent}</${n.tag}>`;
+}
+
+// ------------------------------------------------------------------ split
+
+interface Part {
+  /** the wrappers from the root down to the sections' parent, root first */
+  chain: XElement[];
+  children: XNode[];
+  top: number;
+  h: number;
+  title: string;
+}
+
+function firstHeading(nodes: XNode[]): string {
+  for (const n of nodes) {
+    if (n.kind !== 'el') continue;
+    if (/^h[1-3]$/.test(n.tag)) {
+      const t = textOf(n).trim();
+      if (t) return t;
+    }
+    const deeper = firstHeading(n.children);
+    if (deeper) return deeper;
+  }
+  return '';
+}
+
+function textOf(n: XNode): string {
+  return n.kind === 'text' ? n.text : n.children.map(textOf).join('');
+}
+
+/** Cut the page at its top-level sections, when it is long and they stack vertically. */
+function splitPage(root: XElement, pageH: number, opts: GenerateOptions): Part[] {
+  const whole: Part = { chain: [root], children: root.children, top: 0, h: pageH, title: '' };
+  const want = opts.split ?? 'auto';
+  if (want === false || (want === 'auto' && pageH <= (opts.splitAbove ?? 2400))) return [whole];
+  // walk down through wrappers that hold everything (#app, main, .page)
+  const chain = [root];
+  let at = root;
+  for (;;) {
+    const els = at.children.filter((c): c is XElement => c.kind === 'el');
+    const texty = at.children.some((c) => c.kind === 'text' && c.text.trim());
+    if (els.length === 1 && !texty && els[0].box.height >= pageH * 0.8 && els[0].ns === 'html') {
+      at = els[0];
+      chain.push(at);
+    } else break;
+  }
+  const kids = at.children.filter((c): c is XElement => c.kind === 'el' && c.box.height > 0);
+  if (kids.length < 2 || at.children.some((c) => c.kind === 'text' && c.text.trim())) return [whole];
+  if (LINE_PARENT.test(at.box.display) && !/^(flex|inline-flex)$/.test(at.box.display)) return [whole];
+  for (let i = 1; i < kids.length; i++) {
+    if (kids[i].box.top < kids[i - 1].box.top + kids[i - 1].box.height - 2) return [whole];
+  }
+  // group sections so none is shorter than minBoard
+  const min = opts.minBoard ?? 480;
+  const groups: XElement[][] = [];
+  let cur: XElement[] = [];
+  const start = (g: XElement[]) => g[0].box.top - g[0].box.marginTop;
+  for (let i = 0; i < kids.length; i++) {
+    cur.push(kids[i]);
+    const next = kids[i + 1];
+    const end = next ? next.box.top - next.box.marginTop : pageH;
+    if (end - start(cur) >= min || !next) {
+      groups.push(cur);
+      cur = [];
+    }
+  }
+  if (groups.length > 1 && groups[groups.length - 1].length && pageH - start(groups[groups.length - 1]) < min) {
+    const last = groups.pop()!;
+    groups[groups.length - 1].push(...last);
+  }
+  if (groups.length < 2) return [whole];
+  // everything in `at` that is not a section (absolutely placed overlays…) rides with the first part
+  const inGroups = new Set(groups.flat());
+  const extras = at.children.filter((c) => c.kind === 'el' && !inGroups.has(c));
+  return groups.map((g, i) => {
+    const top = i === 0 ? 0 : start(g);
+    const end = i === groups.length - 1 ? pageH : start(groups[i + 1]);
+    return { chain, children: i === 0 ? [...extras, ...g] : g, top, h: Math.max(1, Math.round(end - top)), title: firstHeading(g) };
+  });
+}
+
+// ------------------------------------------------------------------ files
+
+function boardFile(i: number, title: string, used: Set<string>): string {
+  if (i === 0) return 'Main.dc.html';
+  const slug = title
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('')
+    .replace(/[^A-Za-z0-9-]/g, '');
+  let base = slug && /^[A-Za-z]/.test(slug) ? slug.slice(0, 40) : `Part${i + 1}`;
+  if (base === 'Main') base = `Part${i + 1}`;
+  let name = `${base}.dc.html`;
+  for (let k = 2; used.has(name); k++) name = `${base}${k}.dc.html`;
+  used.add(name);
+  return name;
+}
+
+function headStyle(x: Extracted): string {
+  const imports = x.fontLinks.map((h) => `@import url("${h}");`);
+  return [...imports, 'body{margin:0}', ...(x.headCss ? [x.headCss] : [])].join('\n');
+}
+
+function boardSource(x: Extracted, part: Part, i: number, n: number, ctx: Ctx): string {
+  // rebuild the wrapper chain around this part's sections
+  const chain = part.chain;
+  let body: XElement = { ...chain[chain.length - 1], children: part.children };
+  for (let k = chain.length - 2; k >= 0; k--) body = { ...chain[k], children: [body] };
+  if (n > 1) {
+    const set: Record<string, string | null> = { 'min-height': `${part.h}px` };
+    if (i > 0) set['padding-top'] = '0px';
+    if (i < n - 1) set['padding-bottom'] = '0px';
+    body = { ...body, style: patchStyle(body.style, set) };
+  }
+  const css = mapUrls(headStyle(x), ctx).replace(/<\//g, '<\\/');
+  return [
+    '<!doctype html>',
+    `<html lang="${escapeAttr(x.lang || 'en')}">`,
+    '<head>',
+    '<meta charset="utf-8">',
+    `<title>${escapeText(part.title || x.title || 'Imported page')}</title>`,
+    '<script src="./support.js"></script>',
+    '</head>',
+    '<body>',
+    '<x-dc>',
+    '<helmet>',
+    '<style>',
+    css,
+    '</style>',
+    '</helmet>',
+    block(body, ctx, ''),
+    '</x-dc>',
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n');
+}
+
+export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
+  const ctx: Ctx = { mapUrl: opts.mapUrl ?? (() => undefined), remote: new Set(), styleBytes: 0, elements: 0 };
+  const parts = splitPage(x.root, Math.round(x.height), opts);
+  const files: Record<string, string> = {};
+  const boards: BoardOut[] = [];
+  const used = new Set<string>(['Main.dc.html']);
+  const title = opts.title || x.title || 'Imported page';
+  let y = 0;
+  const index: Record<string, unknown> = {};
+  parts.forEach((part, i) => {
+    const file = boardFile(i, part.title, used);
+    const before = ctx.elements;
+    files[file] = boardSource(x, part, i, parts.length, ctx);
+    const w = Math.round(x.width);
+    const h = parts.length > 1 ? part.h : Math.max(1, Math.round(x.height));
+    const boardTitle = parts.length > 1 ? `${i + 1} · ${(part.title || (i === 0 ? title : `Part ${i + 1}`)).slice(0, 60)}` : title;
+    index[file] = { x: 0, y, w, h, title: boardTitle };
+    boards.push({ file, top: parts.length > 1 ? part.top : 0, title: boardTitle, w, h, elements: ctx.elements - before });
+    y += h + 120;
+  });
+  const report: ImportReport = { ...x.report, boards, remoteUrls: [...ctx.remote], styleBytes: ctx.styleBytes, missing: opts.missing ?? [] };
+  const notes: Record<string, unknown> = {};
+  if (opts.note !== false) {
+    const lines = describeReport(report).slice(1);
+    notes.imported = {
+      x: Math.round(x.width) + 80,
+      y: 0,
+      w: 440,
+      fill: 'orange',
+      size: 16,
+      text: [
+        `从 HTML 导入${opts.source ? `：${opts.source.split(/[\\/]/).pop()}` : ''}`,
+        '',
+        ...(lines.length ? lines.map((l) => `· ${l}`) : ['· 页面的内容和样式都带过来了']),
+        '',
+        '每个元素的样式都写在它自己的 style 里，可以直接选中修改。想要更干净的结构（flex 布局、少一些嵌套），选中画板让 AI 整理。',
+      ].join('\n'),
+    };
+  }
+  const canvas = {
+    v: 3,
+    title,
+    boards: index,
+    order: boards.map((b) => b.file),
+    notes,
+    pages: [],
+    launch: { view: 'canvas' },
+    designSystems: [],
+    imported: { from: 'html', ...(opts.source ? { source: opts.source } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) },
+  };
+  files['canvas.json'] = JSON.stringify(canvas, null, 2) + '\n';
+  return { files, report };
+}
+
+/** The import report in the editor's language, one line per finding; empty lines left out. */
+export function describeReport(r: ImportReport): string[] {
+  const lines: string[] = [];
+  lines.push(`${r.boards.length} 个画板，${r.elements} 个元素${r.truncated ? '（超过上限，后面的内容没有导入）' : ''}`);
+  if (r.scripts) lines.push(`${r.scripts} 段脚本没有带过来：导入的是页面渲染后的静态样子，交互需要另外做`);
+  if (r.stateRules) lines.push(`${r.stateRules} 条悬停、聚焦等状态样式没有带过来`);
+  if (r.otherMediaRules) lines.push(`${r.otherMediaRules} 条只在其他屏幕宽度生效的样式没有带过来`);
+  if (r.hidden) lines.push(`${r.hidden} 个隐藏元素（display:none）没有导入`);
+  if (r.transparent) lines.push(`${r.transparent} 处内容是透明的（opacity 为 0，多半是滚动时才出现的动画），选中后把不透明度改成 100% 就能看到`);
+  if (r.pseudoElements) lines.push(`${r.pseudoElements} 个 ::before / ::after 变成了真实的 <span>`);
+  const dropped = Object.entries(r.dropped);
+  if (dropped.length) lines.push(`画布放不了的元素已去掉：${dropped.map(([k, v]) => `${k} ×${v}`).join('、')}`);
+  if (r.unreadableSheets.length) lines.push(`${r.unreadableSheets.length} 个样式表读不到（跨域），对应的样式会缺失`);
+  if (r.missing.length) lines.push(`${r.missing.length} 个引用的文件不在导入的文件里：${r.missing.slice(0, 3).join('、')}${r.missing.length > 3 ? ' 等' : ''}`);
+  if (r.remoteUrls.length) lines.push(`${r.remoteUrls.length} 个资源仍是外链，没有复制进项目`);
+  return lines;
+}

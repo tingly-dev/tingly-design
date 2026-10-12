@@ -4018,3 +4018,86 @@ input.dashtitle {
   flex-wrap: wrap;
   margin-top: 6px;
 }
+
+/* import HTML */
+.launcher.dropping::after {
+  content: '松开，导入这个 HTML 页面';
+  position: fixed;
+  inset: 12px;
+  z-index: 19;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--accent);
+  border-radius: var(--r-float);
+  background: color-mix(in srgb, var(--accent) 8%, var(--backdrop));
+  color: var(--ink);
+  font-weight: 600;
+  pointer-events: none;
+}
+.ldrop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 20px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--muted);
+}
+.ldrop.over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.ldrop .what {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ldrop .why {
+  font-size: 12px;
+  max-width: 420px;
+  line-height: 1.5;
+}
+.ldrop .pick {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.limport .source {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--ink);
+}
+.limport .source code {
+  font: 12px var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.limport .source select {
+  flex: 1;
+  min-width: 0;
+}
+.limport .source .n {
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.lsteps {
+  margin: 0;
+  padding-left: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--faint);
+}
+.lsteps .done {
+  color: var(--muted);
+}
+.lsteps .on {
+  color: var(--ink);
+  font-weight: 600;
+}
