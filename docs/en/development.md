@@ -16,6 +16,7 @@ The end-to-end tests need `pnpm dev` running and Python Playwright (`pip install
 | `python3 e2e/ds.py` | Design systems: cover and brand book, editing/renaming colours with aliases, adding and removing, type and radius, component previews, asset upload, outside edits that break the grammar, a new system, installing into a deck and picking tokens and text styles, removal (22 checks) |
 | `python3 e2e/dash.py` | Dashboards: query/CSV/JSON loading, mark checking, filters and row-click filters, data mode, editing a query (writes refused), pausing and resuming, outside edits to data and page, failed states, `.runs.json`, the code panel, a new dashboard (24 checks) |
 | `python3 e2e/docs.py` | Docs: tabs and outline, reading writes nothing, typing / ticking / editing a cell each change one line, the `/` menu, the format menu, live outside edits that are kept, comments (reply/resolve/new), tab management, layout, AI rewrite (with the mock model), HTML export, a new doc (25 checks) |
+| `python3 e2e/launcher.py` | Launcher: every kind and project listed, live cover and board previews, kind tabs, search and `/`, Enter to open, continue where you left off, arrow keys, sorting, the new-project dialog (folder from title, taken and bad names refused), phone width (26 checks) |
 | `python3 e2e/fast.py` | Fast AI: streaming execution, undo on error, retry, write-back |
 | `python3 e2e/fast_slides.py` | Fast AI on a slide: retry on error, undo and explain when a reply leaves the slide subset |
 | `python3 e2e/delegate.py` | Calls the local `claude` CLI for real |
