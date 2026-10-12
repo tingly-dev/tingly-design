@@ -10,6 +10,7 @@ import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './compone
 import { SlidesApp } from './components/slides/SlidesApp';
 import { DsApp } from './components/ds/DsApp';
 import { DashApp } from './components/dash/DashApp';
+import { DocsApp } from './components/docs/DocsApp';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -24,7 +25,7 @@ function Toasts() {
   );
 }
 
-const KIND_ZH = { design: '画布', slides: '幻灯片', 'design-system': '设计系统', dashboard: '看板' } as const;
+const KIND_ZH = { design: '画布', slides: '幻灯片', 'design-system': '设计系统', dashboard: '看板', docs: '文档' } as const;
 
 function Picker() {
   type Kind = keyof typeof KIND_ZH;
@@ -71,6 +72,7 @@ function Picker() {
             <option value="slides">幻灯片</option>
             <option value="design-system">设计系统</option>
             <option value="dashboard">看板</option>
+            <option value="docs">文档</option>
           </select>
           <input className="input" placeholder="文件夹名，如 onboarding" aria-label="新项目名称" value={name} onChange={(e) => setName(e.target.value)} />
           <button className="btn primary" type="submit">
@@ -109,6 +111,13 @@ export function App() {
   }, [project]);
 
   if (!project) return <Picker />;
+  if (kind === 'docs')
+    return (
+      <>
+        <DocsApp />
+        <Toasts />
+      </>
+    );
   if (kind === 'dashboard')
     return (
       <>

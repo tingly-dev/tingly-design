@@ -12,7 +12,11 @@ class H(BaseHTTPRequestHandler):
         open(LOG, 'a').write(json.dumps({'n': len(msgs), 'last': msgs[-1]['content'][:400], 'system': body.get('system', '')[:60]}) + '\n')
         m = re.search(r"pointed at\n(#\w+)", first)
         h = m.group(1) if m else '#dc2'
-        if 'slide subset' in msgs[-1]['content']:
+        if body.get('system', '').startswith('You rewrite one passage'):
+            # a doc's writing model: the passage back, marked, so the test can see it replaced
+            m = re.search(r"<passage>\n([\s\S]*?)\n</passage>", first)
+            reply = (m.group(1).strip() if m else '') + '（已改写）'
+        elif 'slide subset' in msgs[-1]['content']:
             # told that the reply broke the slide subset: answer inside it
             reply = (f"$('{h}').css('color', '#7c3aed')\n"
                      f"$('{h}').after(`<ul style=\"font-size: 28px; color: #4a5263\"></ul>`)\n"
