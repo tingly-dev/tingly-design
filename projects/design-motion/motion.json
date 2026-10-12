@@ -1,12 +1,29 @@
 {
   "v": 1,
-  "title": "Tingly Design in 13 seconds",
+  "title": "Tingly Design: edit from both sides",
   "formats": {
-    "wide": { "size": [1920, 1080] },
-    "tall": { "size": [1080, 1920] }
+    "wide": {
+      "size": [
+        1920,
+        1080
+      ]
+    },
+    "tall": {
+      "size": [
+        1080,
+        1920
+      ]
+    }
   },
   "fps": 30,
-  "order": ["source", "editors", "diff", "kinds", "outro"],
+  "order": [
+    "intro",
+    "canvas",
+    "code",
+    "ai",
+    "diff",
+    "outro"
+  ],
   "audio": [],
   "faces": {
     "instrument-serif": {
