@@ -1,0 +1,13 @@
+{
+  "title": "9 月营业额目标",
+  "description": "每家门店 9 月的营业额目标（元），由区域经理定。",
+  "source": {
+    "kind": "file",
+    "url": "data/targets.json",
+    "name": "targets.json"
+  },
+  "updated": {
+    "at": "2026-08-25T09:00:00Z",
+    "by": "示例数据"
+  }
+}
