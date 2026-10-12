@@ -1,22 +1,31 @@
-"""Minimal Messages API mock: streams a scripted jQuery reply in small chunks."""
+"""Minimal Messages API mock: streams a scripted jQuery reply in small chunks.
+python3 e2e/mock_anthropic.py [log] [port]  (port 8790 by default)"""
 import json, re, time, sys, os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 LOG = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', 'mock.log')
+PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8790
+def text_of(content):
+    """A message's words: the string, or its text blocks joined (attachments ride along as other blocks)."""
+    return content if isinstance(content, str) else '\n'.join(b.get('text', '') for b in content if b.get('type') == 'text')
+def blocks_of(content):
+    """What an attachment-carrying message holds, for the test to check: type, media type, a peek at the data."""
+    if isinstance(content, str): return []
+    return [{'type': b['type'], 'media_type': b.get('source', {}).get('media_type'), 'bytes': len(b.get('source', {}).get('data', '')), 'title': b.get('title'), 'text': b.get('text', '')[:300], 'tail': b.get('text', '')[-800:]} for b in content]
 os.makedirs(os.path.dirname(LOG), exist_ok=True)
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers['content-length'])))
         msgs = body['messages']
-        first = msgs[0]['content']
-        open(LOG, 'a').write(json.dumps({'n': len(msgs), 'last': msgs[-1]['content'][:400], 'system': body.get('system', '')[:60]}) + '\n')
+        first = text_of(msgs[0]['content'])
+        open(LOG, 'a').write(json.dumps({'n': len(msgs), 'last': text_of(msgs[-1]['content'])[:400], 'system': body.get('system', '')[:60], 'blocks': blocks_of(msgs[0]['content'])}) + '\n')
         m = re.search(r"pointed at\n(#\w+)", first)
         h = m.group(1) if m else '#dc2'
         if body.get('system', '').startswith('You rewrite one passage'):
             # a doc's writing model: the passage back, marked, so the test can see it replaced
             m = re.search(r"<passage>\n([\s\S]*?)\n</passage>", first)
             reply = (m.group(1).strip() if m else '') + '（已改写）'
-        elif 'slide subset' in msgs[-1]['content']:
+        elif 'slide subset' in text_of(msgs[-1]['content']):
             # told that the reply broke the slide subset: answer inside it
             reply = (f"$('{h}').css('color', '#7c3aed')\n"
                      f"$('{h}').after(`<ul style=\"font-size: 28px; color: #4a5263\"></ul>`)\n"
@@ -45,4 +54,4 @@ class H(BaseHTTPRequestHandler):
         ev('content_block_stop', {'type': 'content_block_stop', 'index': 0})
         ev('message_delta', {'type': 'message_delta', 'delta': {'stop_reason': 'end_turn', 'stop_sequence': None}, 'usage': {'output_tokens': 50}})
         ev('message_stop', {'type': 'message_stop'})
-ThreadingHTTPServer(('127.0.0.1', 8790), H).serve_forever()
+ThreadingHTTPServer(('127.0.0.1', PORT), H).serve_forever()

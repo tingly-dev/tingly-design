@@ -19,8 +19,11 @@ import {
   FAST_EDIT_SLIDES,
   FAST_EDIT_DOCS,
   DASH_RUNS,
+  checkAttachments,
+  checkMessages,
   cleanParams,
   fillArgs,
+  type ModelMessage,
   isDataPath,
   dsFolderOf,
   parseDsIndex,
@@ -397,7 +400,9 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
     return c.json({ error: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用（可以改用 jQuery 模式直接写语句）。' }, 501);
   }
   anthropic ??= new Anthropic();
-  const body = await c.req.json<{ messages: { role: 'user' | 'assistant'; content: string }[]; kind?: string }>();
+  const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
+  const bad = checkMessages(body.messages);
+  if (bad) throw new HttpError(400, bad);
   if (body.kind === 'dashboard') throw new HttpError(400, '看板的页面交给 Claude Code 写');
   const system = body.kind === 'docs' ? FAST_EDIT_DOCS : body.kind === 'slides' ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES : FAST_EDIT_SYSTEM;
   return stream(c, async (s) => {
@@ -405,7 +410,7 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
       model: FAST_MODEL,
       max_tokens: 4096,
       system,
-      messages: body.messages,
+      messages: body.messages as Anthropic.MessageParam[],
     });
     s.onAbort(() => ms.abort());
     try {
@@ -427,6 +432,8 @@ app.post('/api/projects/:p/delegate', async (c) => {
   if (!cliChecked) return c.json({ error: '本机没有可用的 claude CLI，无法委托。' }, 501);
   const req = await c.req.json<DelegateRequest>();
   if (!req.prompt?.trim()) throw new HttpError(400, 'prompt missing');
+  const bad = checkAttachments(req.attachments);
+  if (bad) throw new HttpError(400, bad);
   return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design') });
 });
 

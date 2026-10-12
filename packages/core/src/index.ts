@@ -16,3 +16,4 @@ export * from './designSystem';
 export * from './dash';
 export * from './docs';
 export * from './launcher';
+export * from './attachments';

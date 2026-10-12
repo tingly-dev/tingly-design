@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { elementLabel, attr } from '@dc/core';
 import { display, parsed, useCanvas, useStore } from '../store';
 import { cancelFastEdit, delegateToClaude, runFastEdit, runJQuery } from '../fastedit';
+import { toSend, useAttachments } from '../attachments';
+import { AttachButton, AttachTray } from './Attachments';
 import { Send, Stop } from './icons';
 
 type Target = 'ai' | 'claude' | 'jquery';
@@ -22,6 +24,7 @@ export function PromptBar() {
   const [target, setTarget] = useState<Target>('ai');
   const [text, setText] = useState('');
   const box = useRef<HTMLTextAreaElement>(null);
+  const attach = useAttachments();
 
   useEffect(() => {
     if (health && !health.fastEdit && target === 'ai') setTarget(health.claudeCli ? 'claude' : 'jquery');
@@ -58,20 +61,31 @@ export function PromptBar() {
         ? '本机找不到 claude 命令，无法委托。'
         : null;
 
+  // jQuery is typed by hand: there is no model to show a file to
+  const attaching = target !== 'jquery';
   const submit = () => {
     const t = text.trim();
     if (!t || !file || running || disabled) return;
-    if (target === 'ai') void runFastEdit(file, tid, t);
+    const files = attaching ? toSend(attach.items) : [];
+    if (target === 'ai') void runFastEdit(file, tid, t, files);
     else if (target === 'claude') {
       useStore.setState({ fast: { status: 'idle', mode: 'ai', lines: [] } });
-      void delegateToClaude(file, tid, t);
+      void delegateToClaude(file, tid, t, files);
     } else void runJQuery(file, t);
-    if (target !== 'jquery') setText('');
+    if (target !== 'jquery') {
+      setText('');
+      attach.clear();
+    }
   };
 
   const showTicker = fast.status !== 'idle' || fast.note || activeDelegate || (lastDelegate && lastDelegate.state !== 'done');
   return (
-    <div className="prompt" role="region" aria-label="让 AI 修改">
+    <div
+      className={`prompt${attaching && attach.over ? ' dropping' : ''}`}
+      role="region"
+      aria-label="让 AI 修改"
+      {...(attaching ? { onDragOver: attach.handlers.onDragOver, onDragLeave: attach.handlers.onDragLeave, onDrop: attach.handlers.onDrop } : {})}
+    >
       <div className="head">
         <span className="target" title={label}>
           {handle ? (
@@ -100,7 +114,9 @@ export function PromptBar() {
           ))}
         </div>
       </div>
+      {attaching && <AttachTray items={attach.items} onRemove={attach.remove} />}
       <div className="body">
+        {attaching && <AttachButton onFiles={(f) => void attach.add(f)} />}
         <textarea
           ref={box}
           className={target === 'jquery' ? 'code' : ''}
@@ -109,6 +125,7 @@ export function PromptBar() {
           placeholder={why ?? placeholder[target]}
           aria-label="请求"
           onChange={(e) => setText(e.target.value)}
+          onPaste={attaching ? attach.handlers.onPaste : undefined}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -127,6 +144,7 @@ export function PromptBar() {
           </button>
         )}
       </div>
+      {attaching && attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
       {showTicker && (
         <div className="ticker" aria-live="polite">
           {fast.lines.map((l, i) =>
