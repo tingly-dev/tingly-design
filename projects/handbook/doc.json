@@ -1,0 +1,28 @@
+{
+  "title": "Tingly Design 上手手册",
+  "tabs": [
+    {
+      "id": "overview",
+      "title": "概览"
+    },
+    {
+      "id": "workflow",
+      "title": "开发流程"
+    },
+    {
+      "id": "review",
+      "title": "代码评审",
+      "parent": "workflow"
+    },
+    {
+      "id": "faq",
+      "title": "常见问题"
+    }
+  ],
+  "settings": {
+    "headingFont": "serif",
+    "bodyFont": "sans",
+    "width": "default",
+    "lang": "zh-CN"
+  }
+}

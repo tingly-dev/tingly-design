@@ -104,3 +104,26 @@ export function retryMessage(error: string, line: string): string {
 export function logMessage(logs: string[]): string {
   return `Your log() output:\n${logs.join('\n---\n')}\n\nNow make the change.`;
 }
+
+/**
+ * The writing model of a doc (the original's Spark menu: "Make it shorter",
+ * "Fix spelling and grammar", or a request of the person's own). It gets a
+ * passage of the tab in Markdown and streams the passage that replaces it.
+ */
+export const FAST_EDIT_DOCS = `You rewrite one passage of a document, in place. The person selected the passage in their document editor and asked for a change.
+
+You get the passage as Markdown (GitHub flavour: tables, task lists), the text around it for context, and the request.
+
+Reply with the new passage ONLY, as Markdown: no preamble, no explanation, no code fence around it. It replaces the selected passage exactly, so keep what the request does not touch: the passage's language, its headings and their levels, links, lists and tables. Write in the passage's own language unless asked otherwise. Never add content that is not supported by the passage or the request.`;
+
+export function docsUserMessage(o: { before: string; passage: string; after: string; request: string; title?: string }): string {
+  return [
+    o.title ? `Document: ${o.title}` : '',
+    o.before.trim() ? `Text before the passage (context, do not repeat):\n<before>\n${o.before.slice(-1500)}\n</before>` : '',
+    `The passage:\n<passage>\n${o.passage}\n</passage>`,
+    o.after.trim() ? `Text after the passage (context, do not repeat):\n<after>\n${o.after.slice(0, 1500)}\n</after>` : '',
+    `Request: ${o.request}`,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}

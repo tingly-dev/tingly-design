@@ -30,8 +30,8 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => fetch('/api/health').then((r) => json<Health>(r)),
-  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' | 'design-system' | 'dashboard' }[]>(r)),
-  createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' | 'dashboard' = 'design') =>
+  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' }[]>(r)),
+  createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' = 'design') =>
     fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),
     ),

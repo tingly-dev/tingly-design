@@ -10,7 +10,7 @@ async def main():
     subprocess.run(['git', 'checkout', '--', 'projects/demo'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     open(OUT + 'mock.log', 'w').close()
     async with async_playwright() as p:
-        b = await p.chromium.launch()
+        b = await p.chromium.launch(**({'executable_path': os.environ['DC_CHROME']} if os.environ.get('DC_CHROME') else {}))
         pg = await b.new_page(viewport={'width': 1440, 'height': 900})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
