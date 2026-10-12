@@ -8,8 +8,6 @@
 
 每次改动只回写源码里真正变了的那几个字符，模板里的 `{{占位}}`、循环和你的排版都原样保留，所以这些文件可以放进 git、交给 Claude Code，也可以手写。文件格式沿用 Claude 的 Design / Slides / Design System 类型，Tingly Design 是对其双向编辑机制的开源复刻。
 
-![Tingly Design 画布编辑器](docs/images/canvas.png)
-
 ## 目录
 
 - [三种项目](#三种项目)
