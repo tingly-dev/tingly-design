@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { serve } from '@hono/node-server';
@@ -17,6 +17,10 @@ import {
   DS_TOKENS_CSS,
   FAST_EDIT_SYSTEM,
   FAST_EDIT_SLIDES,
+  DASH_RUNS,
+  cleanParams,
+  fillArgs,
+  isDataPath,
   dsFolderOf,
   parseDsIndex,
   resolveTokens,
@@ -26,6 +30,7 @@ import {
 import {
   ASSET_TYPES,
   HttpError,
+  assetType,
   PROJECTS_DIR,
   REPO_ROOT,
   createProject,
@@ -50,6 +55,7 @@ import {
   writeAtomic,
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
+import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, type DelegateRequest } from './delegate';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -80,9 +86,9 @@ app.get('/api/health', (c) => {
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 app.post('/api/projects', async (c) => {
-  const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: 'design' | 'slides' | 'design-system' }>();
+  const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: string }>();
   if (!isProjectName(name)) throw new HttpError(400, '项目名只能用字母、数字、- 和 _');
-  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' ? kind : 'design');
+  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' ? kind : 'design');
   return c.json({ ok: true });
 });
 
@@ -264,13 +270,13 @@ app.post('/api/projects/:p/assets', async (c) => {
   projectDir(p);
   const name = c.req.query('name') ?? 'file';
   const ext = (/\.([A-Za-z0-9]+)$/.exec(name)?.[1] ?? '').toLowerCase();
-  if (!ASSET_TYPES[ext]) throw new HttpError(400, `不支持的文件类型：${ext || name}`);
+  const dir = c.req.query('dir');
+  if (dir === 'data' ? !isDataPath(`data/x.${ext}`) : !ASSET_TYPES[ext]) throw new HttpError(400, `不支持的文件类型：${ext || name}`);
   const bytes = new Uint8Array(await c.req.arrayBuffer());
   if (!bytes.length) throw new HttpError(400, 'empty file');
   if (bytes.length > MAX_ASSET) throw new HttpError(413, '文件超过 20 MB');
   const stem = name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'file';
-  // into a named folder (a design system's asset group, fonts/): the file keeps its name
-  const dir = c.req.query('dir');
+  // into a named folder (a design system's asset group, fonts/, a dashboard's data/): the file keeps its name
   let rel: string;
   if (dir) {
     rel = assetRel(`${dir.replace(/\/+$/, '')}/${stem}.${ext}`);
@@ -279,8 +285,8 @@ app.post('/api/projects/:p/assets', async (c) => {
     rel = `assets/${stem}-${hash}.${ext}`;
   }
   await writeAsset(p, rel, bytes);
-  publish(p, { type: 'assets' });
-  return c.json({ path: rel, size: bytes.length, type: ASSET_TYPES[ext] });
+  publish(p, { type: 'assets', path: rel });
+  return c.json({ path: rel, size: bytes.length, type: assetType(rel) });
 });
 
 /** Serve a project's assets (to the sandboxed frames too: images, and fonts which need CORS). */
@@ -289,15 +295,46 @@ app.get('/api/projects/:p/raw/*', async (c) => {
   const rel = decodeURIComponent(c.req.path.replace(/^\/api\/projects\/[^/]+\/raw\//, ''));
   const bytes = await readAsset(p, rel);
   if (!bytes) return c.json({ error: 'not found' }, 404);
-  const ext = rel.slice(rel.lastIndexOf('.') + 1).toLowerCase();
   return c.body(new Uint8Array(bytes), 200, {
-    'content-type': ASSET_TYPES[ext] ?? 'application/octet-stream',
+    'content-type': assetType(rel),
     'access-control-allow-origin': '*',
     'cache-control': 'private, max-age=3600',
     'x-content-type-options': 'nosniff',
     // an SVG opened directly must not run scripts on this origin
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
   });
+});
+
+// -------------------------------------------------------------- dashboards
+
+app.get('/api/connectors', (c) => c.json(Object.fromEntries(Object.entries(CONNECTORS).map(([k, v]) => [k, { description: v.description, tools: Object.keys(v.tools) }]))));
+
+/** Run one dataset's call, as the original's page does on each reader's connection. */
+app.post('/api/projects/:p/query', async (c) => {
+  const p = c.req.param('p');
+  if ((await kindOf(projectDir(p))) !== 'dashboard') throw new HttpError(400, 'not a dashboard');
+  const body = await c.req.json<{ connector: string; tool: string; args: Record<string, unknown>; params?: unknown }>();
+  if (!body.args || typeof body.args !== 'object' || Array.isArray(body.args)) throw new HttpError(400, 'args missing');
+  const params = cleanParams(body.params) ?? {};
+  const t0 = Date.now();
+  try {
+    const answer = await callTool(p, String(body.connector), String(body.tool), fillArgs(body.args, params), params);
+    return c.json({ ok: true, answer, ms: Date.now() - t0 });
+  } catch (e) {
+    if (e instanceof ConnectorError) return c.json({ ok: false, state: e.state, message: e.message, ms: Date.now() - t0 });
+    if (e instanceof HttpError) throw e;
+    return c.json({ ok: false, state: 'failed', message: (e as Error).message, ms: Date.now() - t0 });
+  }
+});
+
+/** The latest report of an open page (the original's runs document): for Claude Code to read. Not tracked. */
+app.put('/api/projects/:p/runs', async (c) => {
+  const p = c.req.param('p');
+  const text = await c.req.text();
+  if (text.length > 256 * 1024) throw new HttpError(413, 'runs over 256 KB');
+  JSON.parse(text);
+  await writeFile(join(projectDir(p), DASH_RUNS), text, 'utf8');
+  return c.json({ ok: true });
 });
 
 app.get('/api/projects/:p/journal', async (c) => c.json(await journal(c.req.param('p'))));
@@ -342,6 +379,7 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
   }
   anthropic ??= new Anthropic();
   const body = await c.req.json<{ messages: { role: 'user' | 'assistant'; content: string }[]; kind?: string }>();
+  if (body.kind === 'dashboard') throw new HttpError(400, '看板的页面交给 Claude Code 写');
   const system = body.kind === 'slides' ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES : FAST_EDIT_SYSTEM;
   return stream(c, async (s) => {
     const ms = anthropic!.messages.stream({
@@ -424,7 +462,7 @@ function split(abs: string): { project: string; rel: string } | null {
   const r = relative(PROJECTS_DIR, abs).split(sep);
   if (r.length < 2 || !isProjectName(r[0])) return null;
   const rel = r.slice(1).join('/');
-  return isTracked(rel) ? { project: r[0], rel } : null;
+  return isTracked(rel) || isDataPath(rel) ? { project: r[0], rel } : null;
 }
 
 let ready = false;
@@ -435,6 +473,11 @@ watcher.on('all', async (event, abs) => {
   const at = split(abs);
   if (!at) return;
   const key = `${at.project}/${at.rel}`;
+  // a dashboard's data file changed: pages re-read the datasets on it
+  if (isDataPath(at.rel)) {
+    if (ready && (event === 'add' || event === 'change' || event === 'unlink')) publish(at.project, { type: 'assets', path: at.rel });
+    return;
+  }
   if (event === 'unlink') {
     if (ownWrites.get(key) === 'deleted') return;
     seen.delete(key);

@@ -1,0 +1,315 @@
+<style>
+.cf { font-family: var(--font-anthropic-sans); color: var(--color-fg); max-width: 1180px; margin-inline: auto; }
+.cf-head { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); align-items: flex-end; justify-content: space-between; margin-bottom: var(--cds-gap-lg); }
+.cf-head h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0 0 var(--cds-gap-xs); }
+.cf-sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); line-height: 1.6; margin: 0; max-width: 46rem; }
+.cf-sub b { color: var(--color-fg); font-weight: 600; }
+.cf-filter { display: flex; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cf-filter select { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 4px 8px; }
+.cf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--cds-gap-md); margin-bottom: var(--cds-gap-md); }
+.cf-kpi, .cf-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.cf-kpi { padding: var(--cds-pad-md) var(--cds-pad-lg); }
+.cf-kpi .lb { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cf-kpi .v { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; margin: var(--cds-gap-xs) 0 2px; min-height: 1.3em; }
+.cf-kpi .n { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.cf .up { color: var(--color-ok); } .cf .dn { color: var(--color-bad); }
+.cf-card { padding: var(--cds-pad-lg); position: relative; min-width: 0; }
+.cf-card h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.cf-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 4px 0 var(--cds-gap-md); }
+.cf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: var(--cds-gap-md); margin-top: var(--cds-gap-md); }
+.cf-chart { position: relative; min-height: 260px; }
+.cf-goal { position: relative; min-height: 150px; }
+.cf svg text { font-family: var(--font-anthropic-sans); }
+.cf-tip { position: absolute; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); pointer-events: none; white-space: nowrap; opacity: 0; font-variant-numeric: tabular-nums; z-index: 2; }
+.cf-tip .d { color: var(--cds-text-secondary); }
+.cf table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+.cf th { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-weight: 400; text-align: left; padding: 6px 6px 6px 0; border-bottom: 1px solid var(--color-border-line); }
+.cf td { padding: 8px 6px 8px 0; border-bottom: 1px solid var(--color-border-line); }
+.cf .r { text-align: right; }
+.cf-stores tbody tr { cursor: pointer; }
+.cf-stores tbody tr:hover td { background: var(--color-bg); }
+.cf-stores tr.picked td { font-weight: 600; }
+.cf-bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--cds-chart-categorical-1); vertical-align: middle; margin-right: 6px; }
+.cf-items td:last-child { width: 40%; }
+.cf-picked { font: inherit; font-size: var(--cds-font-size-caption); border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.cf-foot { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: var(--cds-gap-lg); }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.cf-fail { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cf-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+</style>
+
+<div class="cf">
+  <header class="cf-head" id="top">
+    <div>
+      <h1>门店销售 · 2026 年三季度</h1>
+      <p class="cf-sub" id="takeaway">
+        三季度三家店营业额 <b data-source="q3" data-field="revenue" data-row="0" class="dash-skeleton">—</b> 元。9 月陆家嘴完成目标的 <b data-source="goal" data-field="attain" data-where="store=%E9%99%86%E5%AE%B6%E5%98%B4">—</b>；静安寺只完成 <b data-source="goal" data-field="attain" data-where="store=%E9%9D%99%E5%AE%89%E5%AF%BA">—</b>，是唯一没达标的店，订单从 7 月起逐月下降。
+      </p>
+    </div>
+    <div class="cf-filter">
+      <label for="cfStore">门店</label>
+      <select id="cfStore" aria-label="门店" data-source="by_store"></select>
+      <button class="cf-picked" id="cfPicked" hidden></button>
+    </div>
+  </header>
+
+  <section class="cf-kpis" id="kpis">
+    <div class="cf-kpi"><div class="lb">营业额（元）</div><div class="v" data-source="kpi" data-field="revenue" data-row="0">—</div><div class="n"><span id="cfScope">三家店</span> · 三季度</div></div>
+    <div class="cf-kpi"><div class="lb">订单</div><div class="v" data-source="kpi" data-field="orders" data-row="0">—</div><div class="n">7 月 1 日至 9 月 30 日</div></div>
+    <div class="cf-kpi"><div class="lb">客单价（元）</div><div class="v" data-source="kpi" data-field="ticket" data-row="0">—</div><div class="n">营业额 ÷ 订单</div></div>
+    <div class="cf-kpi"><div class="lb">9 月对比 7 月</div><div class="v" data-source="kpi" data-field="change" data-row="0">—</div><div class="n">月营业额</div></div>
+  </section>
+
+  <section class="cf-card" id="daily">
+    <h2>每日营业额</h2>
+    <p class="cf-note">柱为当天营业额（元），线为 7 日平均。<span id="dailyScope"></span></p>
+    <div class="cf-chart" id="dailyChart" data-source="daily"></div>
+    <div class="cf-tip" id="tip"></div>
+  </section>
+
+  <div class="cf-grid">
+    <section class="cf-card" id="goals">
+      <h2>9 月目标完成</h2>
+      <p class="cf-note">营业额占目标的比例；竖线为 100%。</p>
+      <div class="cf-goal" id="goalChart" data-source="goal"></div>
+    </section>
+    <section class="cf-card" id="stores">
+      <h2>门店 · 9 月</h2>
+      <p class="cf-note">点一行只看这家店的每日营业额。</p>
+      <table class="cf-stores" data-source="by_store" data-row-key="store,month">
+        <thead><tr><th data-field="store">门店</th><th data-field="district">区</th><th data-field="orders" class="r">订单</th><th data-field="revenue" class="r">营业额</th><th data-field="ticket" class="r">客单价</th></tr></thead>
+        <tbody id="storeBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <section class="cf-card" id="items" style="margin-top: var(--cds-gap-md)">
+    <h2>单品销售额</h2>
+    <p class="cf-note">三季度销量 × 售价，从高到低。</p>
+    <table class="cf-items" data-source="items" data-row-key="item">
+      <thead><tr><th data-field="item">单品</th><th data-field="category">类别</th><th data-field="units" class="r">销量</th><th data-field="sales" class="r">销售额（元）</th><th></th></tr></thead>
+      <tbody id="itemBody"></tbody>
+    </table>
+  </section>
+
+  <p class="cf-foot">示例数据，由脚本生成，仅用于演示看板的写法。</p>
+</div>
+
+<script>
+  dash.calc('kpi', {
+    inputs: ['daily'],
+    title: '营业额与订单合计',
+    description: '每日销售（按当前门店筛选）加总；客单价是营业额除以订单；9 月对比 7 月是两个月营业额之比减一。',
+    fn: (daily) => {
+      const rows = daily.map((r) => ({ month: String(r.day).slice(0, 7), orders: Number(r.orders), revenue: Number(r.revenue) }));
+      const sum = (xs, k) => xs.reduce((a, r) => a + r[k], 0);
+      const revenue = sum(rows, 'revenue');
+      const orders = sum(rows, 'orders');
+      const jul = sum(rows.filter((r) => r.month === '2026-07'), 'revenue');
+      const sep = sum(rows.filter((r) => r.month === '2026-09'), 'revenue');
+      return [{ revenue, orders, ticket: revenue / orders, change: sep / jul - 1 }];
+    },
+  });
+
+  dash.calc('q3', {
+    inputs: ['by_store'],
+    title: '三季度营业额（三家店）',
+    description: '各门店按月汇总的营业额加总，不受门店筛选影响。',
+    fn: (by_store) => [{ revenue: by_store.reduce((a, r) => a + Number(r.revenue), 0) }],
+  });
+
+  dash.calc('goal', {
+    inputs: ['by_store', 'targets'],
+    title: '9 月目标完成率',
+    description: '每家店 9 月营业额除以它的 9 月目标。',
+    fn: (by_store, targets) =>
+      targets.map((t) => {
+        const r = by_store.find((x) => x.store === t.store && x.month === t.month);
+        const revenue = r ? Number(r.revenue) : null;
+        return { store: t.store, revenue, target: Number(t.revenue_target), attain: revenue === null ? null : revenue / Number(t.revenue_target) };
+      }),
+  });
+
+  dash.calc('items', {
+    inputs: ['menu'],
+    title: '单品销售额',
+    description: '每个单品的销量乘以售价。',
+    fn: (menu) =>
+      menu
+        .map((m) => ({ item: m.item, category: m.category, units: Number(m.units_q3), sales: Number(m.units_q3) * Number(m.price) }))
+        .sort((a, b) => b.sales - a.sales),
+  });
+</script>
+
+<script>
+  const fmtInt = d3.format(',');
+  const fmtWan = (v) => d3.format(',.1f')(v / 1e4) + ' 万';
+  const fmtPct = d3.format('.1%');
+  const fmtSigned = d3.format('+.1%');
+  const fmtYuan = d3.format(',.2f');
+  const sign = (el, v) => { el.classList.remove('up', 'dn'); if (v > 0) el.classList.add('up'); if (v < 0) el.classList.add('dn'); };
+  const fail = (el) => { el.replaceChildren(); const d = document.createElement('div'); d.className = 'cf-fail'; d.textContent = '没加载上'; el.appendChild(d); };
+
+  // the store filter: choices come from the data
+  const sel = document.getElementById('cfStore');
+  const picked = document.getElementById('cfPicked');
+  sel.addEventListener('change', () => dash.setParams({ store: sel.value || null }));
+  picked.addEventListener('click', () => dash.setParams({ store: null }));
+  document.querySelector('.cf-stores').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-key]');
+    if (tr) dash.setParams({ store: tr.dataset.store });
+  });
+
+  function fillValues() {
+    for (const el of document.querySelectorAll('#takeaway [data-source], #kpis [data-source]')) {
+      const s = dash.data(el.dataset.source);
+      el.classList.toggle('dash-skeleton', s.status === 'loading');
+      if (s.status !== 'ok') { el.textContent = '—'; continue; }
+      const row = el.dataset.where
+        ? s.data.find((r) => el.dataset.where.split('&').every((p) => { const [k, v] = p.split('=').map(decodeURIComponent); return String(r[k]) === v; }))
+        : s.data[Number(el.dataset.row || 0)];
+      const v = row ? row[el.dataset.field] : null;
+      const f = el.dataset.field;
+      if (v === null || v === undefined) el.textContent = '—';
+      else if (f === 'change') { el.textContent = fmtSigned(v); sign(el, v); }
+      else if (f === 'attain') el.textContent = fmtPct(v);
+      else if (f === 'ticket') el.textContent = fmtYuan(v);
+      else if (f === 'revenue') el.textContent = fmtWan(v);
+      else el.textContent = fmtInt(v);
+    }
+  }
+
+  function fillFilter() {
+    const s = dash.data('by_store');
+    const stores = s.status === 'ok' ? [...new Set(s.data.map((r) => r.store))] : [];
+    const cur = dash.params().store ?? '';
+    sel.replaceChildren(new Option('三家店', ''), ...stores.map((x) => new Option(x, x)));
+    sel.value = cur;
+    picked.hidden = !cur;
+    picked.textContent = cur ? cur + ' ×' : '';
+    document.getElementById('cfScope').textContent = cur || '三家店';
+    document.getElementById('dailyScope').textContent = cur ? `只看${cur}。` : '三家店合计。';
+  }
+
+  function fillStores() {
+    const s = dash.data('by_store');
+    const body = document.getElementById('storeBody');
+    body.replaceChildren();
+    if (s.status !== 'ok') return;
+    const cur = dash.params().store;
+    for (const r of s.data.filter((x) => x.month === '2026-09')) {
+      const tr = document.createElement('tr');
+      tr.dataset.key = [r.store, r.month].map(encodeURIComponent).join(',');
+      tr.dataset.store = r.store;
+      if (r.store === cur) tr.className = 'picked';
+      for (const [v, cls] of [[r.store], [r.district], [fmtInt(r.orders), 'r'], [fmtYuan(r.revenue), 'r'], [fmtYuan(r.ticket), 'r']]) {
+        const td = document.createElement('td');
+        td.textContent = v;
+        if (cls) td.className = cls;
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+  }
+
+  function fillItems() {
+    const s = dash.data('items');
+    const body = document.getElementById('itemBody');
+    body.replaceChildren();
+    if (s.status !== 'ok') return;
+    const max = d3.max(s.data, (r) => r.sales);
+    for (const r of s.data) {
+      const tr = document.createElement('tr');
+      for (const [v, cls] of [[r.item], [r.category], [fmtInt(r.units), 'r'], [fmtInt(r.sales), 'r']]) {
+        const td = document.createElement('td');
+        td.textContent = v;
+        if (cls) td.className = cls;
+        tr.appendChild(td);
+      }
+      const bar = document.createElement('td');
+      const b = document.createElement('span');
+      b.className = 'cf-bar';
+      b.style.width = (r.sales / max) * 100 + '%';
+      bar.appendChild(b);
+      tr.appendChild(bar);
+      body.appendChild(tr);
+    }
+  }
+
+  function drawDaily() {
+    const box = document.getElementById('dailyChart');
+    const s = dash.data('daily');
+    box.replaceChildren();
+    box.classList.toggle('dash-skeleton', s.status === 'loading');
+    if (s.status === 'error' || s.status === 'connect') return fail(box);
+    if (s.status !== 'ok') return;
+    const rows = s.data.map((r) => ({ day: r.day, d: new Date(r.day), revenue: Number(r.revenue), orders: Number(r.orders) }));
+    rows.forEach((r, i) => { const w = rows.slice(Math.max(0, i - 6), i + 1); r.avg = d3.mean(w, (x) => x.revenue); });
+    const W = box.clientWidth, H = 260, mb = 22, mt = 8, mr = 8;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.revenue) * 1.05], [H - mb, mt]).nice();
+    const fmtTick = (v) => d3.format(',')(v / 1e4) + ' 万';
+    const probe = svg.append('text').style('font-size', '12px');
+    const ml = d3.max(y.ticks(5), (t) => probe.text(fmtTick(t)).node().getComputedTextLength()) + 10;
+    probe.remove();
+    const x = d3.scaleBand(rows.map((r) => r.day), [ml, W - mr]).padding(0.2);
+    svg.selectAll('line.g').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - mr).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+    svg.selectAll('text.y').data(y.ticks(5)).join('text').attr('x', ml - 8).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(fmtTick);
+    const months = rows.filter((r) => r.day.endsWith('-01'));
+    svg.selectAll('text.x').data(months).join('text').attr('x', (r) => x(r.day)).attr('y', H - 6).attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text((r) => Number(r.day.slice(5, 7)) + ' 月');
+    svg.selectAll('rect.b').data(rows).join('rect').attr('x', (r) => x(r.day)).attr('width', x.bandwidth()).attr('y', (r) => y(r.revenue)).attr('height', (r) => y(0) - y(r.revenue)).attr('rx', Math.min(2, x.bandwidth() / 2)).attr('fill', 'var(--cds-chart-muted)');
+    svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('d', d3.line().x((r) => x(r.day) + x.bandwidth() / 2).y((r) => y(r.avg)));
+    const tip = document.getElementById('tip');
+    const card = document.getElementById('daily');
+    svg.append('rect').attr('x', ml).attr('width', W - ml - mr).attr('height', H).attr('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const [mx] = d3.pointer(ev);
+        const r = rows[Math.max(0, Math.min(rows.length - 1, Math.floor((mx - ml) / x.step())))];
+        tip.replaceChildren();
+        const d = document.createElement('div'); d.className = 'd'; d.textContent = r.day;
+        const a = document.createElement('div'); a.textContent = `营业额 ${fmtYuan(r.revenue)}`;
+        const b = document.createElement('div'); b.textContent = `订单 ${fmtInt(r.orders)} · 7 日平均 ${fmtYuan(r.avg)}`;
+        tip.append(d, a, b);
+        const cr = card.getBoundingClientRect(), br = box.getBoundingClientRect();
+        let left = br.left - cr.left + (x(r.day) * br.width) / W + 14;
+        tip.style.opacity = 1;
+        if (left + tip.offsetWidth > cr.width - 8) left -= tip.offsetWidth + 28;
+        tip.style.left = left + 'px';
+        tip.style.top = br.top - cr.top + 8 + 'px';
+      })
+      .on('pointerleave', () => { tip.style.opacity = 0; });
+  }
+
+  function drawGoals() {
+    const box = document.getElementById('goalChart');
+    const s = dash.data('goal');
+    box.replaceChildren();
+    box.classList.toggle('dash-skeleton', s.status === 'loading');
+    if (s.status === 'error') return fail(box);
+    if (s.status !== 'ok') return;
+    const rows = s.data.filter((r) => r.attain !== null);
+    const W = box.clientWidth, rowH = 40, H = rows.length * rowH + 10;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const ml = 72, mr = 64;
+    const x = d3.scaleLinear([0, Math.max(1.2, d3.max(rows, (r) => r.attain))], [ml, W - mr]);
+    rows.forEach((r, i) => {
+      const yy = i * rowH + 10;
+      svg.append('text').attr('x', 0).attr('y', yy + 14).attr('fill', 'var(--color-fg)').style('font-size', '13px').text(r.store);
+      svg.append('rect').attr('x', ml).attr('y', yy + 4).attr('height', 16).attr('rx', 4).attr('width', x(r.attain) - ml)
+        .attr('fill', r.attain < 1 ? 'var(--cds-chart-status-critical)' : dash.colors[1]);
+      svg.append('text').attr('x', x(r.attain) + 6).attr('y', yy + 16).attr('fill', 'var(--color-fg-muted)').style('font-size', '12px').text(fmtPct(r.attain));
+    });
+    svg.append('line').attr('x1', x(1)).attr('x2', x(1)).attr('y1', 4).attr('y2', H).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 3');
+  }
+
+  dash.onData(() => {
+    fillFilter();
+    fillValues();
+    fillStores();
+    fillItems();
+    drawDaily();
+    drawGoals();
+  });
+</script>

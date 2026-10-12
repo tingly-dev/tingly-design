@@ -2305,3 +2305,357 @@ textarea.dsin {
 .dsi-a a.btn {
   text-decoration: none;
 }
+
+/* ------------------------------------------------------------- dashboard */
+
+.app.dash {
+  grid-template-columns: 1fr;
+  grid-template-rows: 48px 1fr;
+  background: var(--panel-2);
+}
+.app.dash.with-side {
+  grid-template-columns: 1fr 400px;
+}
+.dashbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.dashbar .grow {
+  flex: 1;
+}
+.dashbar .back {
+  text-decoration: none;
+  color: var(--ink-2);
+}
+.dashbar .btn.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+.dashbar .badge {
+  margin-left: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 16px;
+}
+.dashbar .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.dashbar .dot.on {
+  background: var(--ok);
+}
+.dashbar .dot.off {
+  background: var(--danger);
+}
+.dashtitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 32vw;
+}
+input.dashtitle {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.dashfilters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+.dashfilters .chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  white-space: nowrap;
+}
+.dashmain {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+.dashframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
+}
+.dashhint {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.app.dash .dsask {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: min(640px, calc(100% - 32px));
+}
+.dashside {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  padding: 12px 14px 80px;
+  min-height: 0;
+}
+.dashside h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 6px 0 6px;
+}
+.dashside h2 {
+  font-size: 17px;
+  margin: 10px 0 4px;
+}
+.dashside .row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 6px 0;
+}
+.dashside details {
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.dashside summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.dashside pre.code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 12px/1.55 var(--mono);
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 4px 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.dashside.code {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 12px;
+}
+.dashside.code .input {
+  flex: 1;
+  min-width: 0;
+}
+.dashcode {
+  flex: 1;
+  resize: none !important;
+  white-space: pre;
+}
+.slist {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.srow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.srow:hover {
+  background: var(--hover);
+}
+.srow .sname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.srow .meta {
+  font-size: 11.5px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.srow .tag {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.srow .tag.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.sdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--line-2);
+}
+.sdot.ok {
+  background: var(--ok);
+}
+.sdot.loading {
+  background: var(--faint);
+  animation: dash-blink 1s ease-in-out infinite;
+}
+.sdot.error,
+.sdot.missing {
+  background: var(--danger);
+}
+.sdot.connect,
+.sdot.declined {
+  background: var(--warn);
+}
+@keyframes dash-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.sdesc {
+  color: var(--ink-2);
+  line-height: 1.55;
+  margin: 0 0 8px;
+}
+.scard {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  background: var(--accent-soft);
+}
+.scard .big {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+.sarg {
+  margin-bottom: 6px;
+}
+.pchip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.stable {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.stable table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  width: max-content;
+  min-width: 100%;
+}
+.stable th,
+.stable td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stable th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+  font-weight: 600;
+}
+.stable .n {
+  color: var(--faint);
+}
+.stable tr.lit td {
+  background: var(--accent-soft);
+}
+.stable th.lit {
+  color: var(--accent-ink);
+}
+.stable td.cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.stable .null {
+  color: var(--faint);
+}
+.smeta dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.smeta dd {
+  margin: 0 0 6px;
+}
+.seditq label {
+  display: block;
+  margin-bottom: 6px;
+}
+.seditq label span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.okline {
+  color: var(--ok);
+}
+.badline {
+  color: var(--danger);
+}
+.warnline {
+  color: var(--warn);
+}
+.linkish {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-left: 6px;
+  color: var(--accent-ink);
+  cursor: pointer;
+  font: inherit;
+}
+.sproblems li {
+  cursor: default;
+}

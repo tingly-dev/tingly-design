@@ -15,7 +15,7 @@ export type HubEvent =
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error'; text?: string }
   /** images or fonts were added or removed (binary files carry no content in events) */
-  | { type: 'assets' };
+  | { type: 'assets'; path?: string };
 
 type Listener = (e: HubEvent) => void;
 const listeners = new Map<string, Set<Listener>>();

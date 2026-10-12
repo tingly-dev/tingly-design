@@ -1,4 +1,5 @@
 import type { StatementResult } from './exec';
+import type { DashReport, DataState, Params } from './dash';
 
 /** Messages between the editor and its sandboxed iframes. Every message carries `dc`. */
 
@@ -71,7 +72,45 @@ export type FromExecutor =
   | { dc: 'markup'; id: string; markup: string }
   | { dc: 'fail'; id: string; error: string };
 
-export function cspFor(origin: string, kind: 'runtime' | 'executor'): string {
+/** Messages between the dashboard editor and the frame its page runs in. */
+export type ToDash =
+  | { dc: 'dash-page'; files: Record<string, string>; datasets: string[]; params: Params; theme: 'light' | 'dark'; link: string; mode: 'page' | 'data' }
+  /** datasets' data; a query with a loader comes as `raw` for the page's loader to turn into rows */
+  | { dc: 'dash-data'; states: Record<string, DataState>; raw?: Record<string, { answer: unknown; args: Record<string, unknown> }> }
+  | { dc: 'dash-params'; params: Params }
+  | { dc: 'dash-theme'; theme: 'light' | 'dark' }
+  | { dc: 'dash-mode'; mode: 'page' | 'data' }
+  /** light up the marks of these sources (Sources hovered or opened) */
+  | { dc: 'dash-spot'; ids: string[] }
+  | { dc: 'dash-call-result'; call: number; answer?: unknown; error?: string };
+
+export interface DashPick {
+  sources: string[];
+  field?: string;
+  where?: string;
+  row?: number;
+  /** the nearest id around what was clicked */
+  at?: string;
+  shown?: string;
+}
+
+export type FromDash =
+  | { dc: 'ready' }
+  | { dc: 'dash-declared'; loaders: string[] }
+  | { dc: 'dash-want'; ids: string[] }
+  | { dc: 'dash-set-params'; params: Params | null }
+  | { dc: 'dash-refresh'; id?: string }
+  | { dc: 'dash-link'; name: string }
+  | { dc: 'dash-report'; report: DashReport; derived: Record<string, DataState> }
+  | { dc: 'dash-call'; call: number; id: string; tool: string; args: Record<string, unknown> }
+  | { dc: 'dash-pick'; pick: DashPick }
+  | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean };
+
+export function cspFor(origin: string, kind: 'runtime' | 'executor' | 'dash'): string {
+  if (kind === 'dash') {
+    // the page: scripts only from its own files (run through Function), no network at all
+    return `default-src 'none'; script-src ${origin}/sandbox/ 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:`;
+  }
   if (kind === 'executor') {
     return `default-src 'none'; script-src ${origin}/sandbox/ 'unsafe-eval'; style-src 'unsafe-inline'`;
   }
@@ -89,8 +128,8 @@ export function cspFor(origin: string, kind: 'runtime' | 'executor'): string {
 /** The page a slide's <x-embed> runs in: its own opaque origin, no network, inline scripts allowed. */
 export const EMBED_CSP = `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:`;
 
-export function sandboxDoc(origin: string, kind: 'runtime' | 'executor'): string {
-  const script = kind === 'runtime' ? 'runtime.js' : 'executor.js';
+export function sandboxDoc(origin: string, kind: 'runtime' | 'executor' | 'dash'): string {
+  const script = kind === 'runtime' ? 'runtime.js' : kind === 'dash' ? 'dash.js' : 'executor.js';
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${cspFor(origin, kind)}">
 <style>html,body{margin:0}</style></head><body><div id="dc-app"></div>

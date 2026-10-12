@@ -18,7 +18,7 @@ export type ServerEvent =
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error'; text?: string }
-  | { type: 'assets' };
+  | { type: 'assets'; path?: string };
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -30,8 +30,8 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => fetch('/api/health').then((r) => json<Health>(r)),
-  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' | 'design-system' }[]>(r)),
-  createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' = 'design') =>
+  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' | 'design-system' | 'dashboard' }[]>(r)),
+  createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' | 'dashboard' = 'design') =>
     fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),
     ),

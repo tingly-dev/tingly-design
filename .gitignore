@@ -6,3 +6,4 @@ dist/
 projects/*/.journal.jsonl
 test-results/
 e2e/out/
+projects/*/.runs.json
