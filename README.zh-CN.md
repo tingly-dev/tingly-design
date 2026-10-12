@@ -54,6 +54,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 | | |
 |---|---|
 | **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) |
+| **[主题](docs/zh/theming.md)** | 浅色、深色和 Tingly Box 的预设主题，以及通过 URL、脚本、宿主页面或 `DC_THEME` 传入主题 |
 | **[工作原理](docs/zh/architecture.md)** | 源文件格式、回写引擎、快速 AI、协同、沙箱和项目结构 |
 | **[开发与测试](docs/zh/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |
 | **[与原版的差别](docs/zh/comparison.md)** | 哪些和 Claude 的 artifact 类型一致，哪些还没有 |

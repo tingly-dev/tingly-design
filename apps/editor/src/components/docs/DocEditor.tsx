@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { IconBold, IconCode, IconHighlight, IconItalic, IconStrikethrough } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -317,19 +318,19 @@ export function DocEditor({ tab }: { tab: string }) {
       <BubbleMenu editor={editor} options={{ placement: 'top' }} shouldShow={({ editor: e, state }) => !state.selection.empty && e.isEditable && !e.isActive('codeBlock')}>
         <div className="bubble" role="toolbar" aria-label="文字格式">
           <button className={editor.isActive('bold') ? 'on' : ''} onClick={() => editor.chain().focus().toggleBold().run()} aria-label="粗体">
-            <b>B</b>
+            <IconBold size={16} stroke={1.7} aria-hidden="true" />
           </button>
           <button className={editor.isActive('italic') ? 'on' : ''} onClick={() => editor.chain().focus().toggleItalic().run()} aria-label="斜体">
-            <i>I</i>
+            <IconItalic size={16} stroke={1.7} aria-hidden="true" />
           </button>
           <button className={editor.isActive('strike') ? 'on' : ''} onClick={() => editor.chain().focus().toggleStrike().run()} aria-label="删除线">
-            <s>S</s>
+            <IconStrikethrough size={16} stroke={1.7} aria-hidden="true" />
           </button>
           <button className={editor.isActive('code') ? 'on' : ''} onClick={() => editor.chain().focus().toggleCode().run()} aria-label="行内代码">
-            {'</>'}
+            <IconCode size={16} stroke={1.7} aria-hidden="true" />
           </button>
           <button className={editor.isActive('highlight') ? 'on' : ''} onClick={() => editor.chain().focus().toggleHighlight().run()} aria-label="高亮">
-            <mark>H</mark>
+            <IconHighlight size={16} stroke={1.7} aria-hidden="true" />
           </button>
           <button
             className={editor.isActive('link') ? 'on' : ''}

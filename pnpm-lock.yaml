@@ -23,6 +23,9 @@ importers:
       '@floating-ui/dom':
         specifier: 1.8.0
         version: 1.8.0
+      '@tabler/icons-react':
+        specifier: 3.49.0
+        version: 3.49.0(react@19.3.0)
       '@tiptap/core':
         specifier: 3.31.3
         version: 3.31.3(@tiptap/pm@3.31.3)
@@ -454,6 +457,14 @@ packages:
 
   '@stablelib/base64@1.0.1':
     resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
+
+  '@tabler/icons-react@3.49.0':
+    resolution: {integrity: sha512-Um59pm5RVNUaQjFUtG0r4oYJbZuBS3tGugAA2tgBg0WufMk34Eio3nsO30RUkLuL2giYPQUNdY9HvqltLLYyNA==}
+    peerDependencies:
+      react: '>= 16'
+
+  '@tabler/icons@3.49.0':
+    resolution: {integrity: sha512-l+GnSkFETx0U26icxv1VUFnxxiTqXfCcVRiRAnyMwibupM2S2L/hSaZ9gmSgz01rkrsH/93NvLsxykqdanc6lw==}
 
   '@tiptap/core@3.31.3':
     resolution: {integrity: sha512-Cz50pvciQrxdSxgTkHOVz0uD0Yl/8Xt0QatGD6ILm47jW8EzyHR9RkUGs/D5IqzXKuVPntfw1ttaT926vXfiRg==}
@@ -1632,6 +1643,13 @@ snapshots:
   '@rolldown/pluginutils@1.0.1': {}
 
   '@stablelib/base64@1.0.1': {}
+
+  '@tabler/icons-react@3.49.0(react@19.3.0)':
+    dependencies:
+      '@tabler/icons': 3.49.0
+      react: 19.3.0
+
+  '@tabler/icons@3.49.0': {}
 
   '@tiptap/core@3.31.3(@tiptap/pm@3.31.3)':
     dependencies:
