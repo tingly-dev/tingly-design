@@ -1,0 +1,13 @@
+{
+  "repo": "tingly-dev/tingly-box",
+  "path": "frontend/packages/ui/src/theme",
+  "commit": "a3a00b3",
+  "files": [
+    "fonts.ts",
+    "palettes/light.ts",
+    "palettes/dark.ts",
+    "palettes/claude.ts",
+    "palettes/ds.ts",
+    "palettes/sunlit.ts"
+  ]
+}

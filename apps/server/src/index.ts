@@ -491,7 +491,7 @@ let ready = false;
 watcher.on('ready', () => {
   ready = true;
 });
-watcher.on('all', async (event, abs) => {
+async function onChange(event: string, abs: string): Promise<void> {
   const at = split(abs);
   if (!at) return;
   const key = `${at.project}/${at.rel}`;
@@ -523,7 +523,9 @@ watcher.on('all', async (event, abs) => {
   publish(at.project, { type: 'file', path: at.rel, content, version, actor });
   await record(at.project, { actor, file: at.rel, summary: lineDiffSummary(before, content), version });
   if (at.rel === DS_TOKENS) await afterTokens(at.project, actor);
-});
+}
+// one failed event (a file gone mid-read, a race on tokens.css) must not take the server down
+watcher.on('all', (event, abs) => void onChange(event, abs).catch((e) => console.error(`watcher: ${abs}:`, e)));
 
 // ---------------------------------------------------------------- serve
 
