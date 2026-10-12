@@ -7,7 +7,11 @@ import {
   retryMessage,
   splitStatements,
   attr,
+  attachmentBlocks,
+  attachmentSummary,
   checkSlide,
+  type Attachment,
+  type ModelMessage,
   sectionsOf,
   slideFile,
   slideIdOf,
@@ -127,7 +131,7 @@ export async function runJQuery(file: string, code: string): Promise<void> {
   }
 }
 
-export async function delegateToClaude(file: string | undefined, tid: number | null, prompt: string): Promise<void> {
+export async function delegateToClaude(file: string | undefined, tid: number | null, prompt: string, attachments: Attachment[] = []): Promise<void> {
   const project = get().project;
   if (!project) return;
   try {
@@ -139,6 +143,7 @@ export async function delegateToClaude(file: string | undefined, tid: number | n
       file,
       pointed: file ? pointedInfo(file, tid) : null,
       journal,
+      ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
     setFast({ status: 'delegated', note: '已交给 Claude Code，完成后画布会自动更新。' });
   } catch (e) {
@@ -146,7 +151,7 @@ export async function delegateToClaude(file: string | undefined, tid: number | n
   }
 }
 
-export async function runFastEdit(file: string, tid: number | null, prompt: string): Promise<void> {
+export async function runFastEdit(file: string, tid: number | null, prompt: string, attachments: Attachment[] = []): Promise<void> {
   const s0 = get();
   const project = s0.project;
   const base = display(s0, file);
@@ -158,7 +163,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
   const pointed = pointedInfo(file, tid);
   const nonce = Math.random().toString(36).slice(2, 8);
   let markupOnce: string | null = null;
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [];
+  const messages: ModelMessage[] = [];
   let retries = 0;
   let logRounds = 0;
 
@@ -167,19 +172,19 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
       const { session, markup } = await ExecSession.begin(base);
       if (markupOnce === null) {
         markupOnce = markup;
-        messages.push({
-          role: 'user',
-          content: buildFastEditPrompt({
-            ...(get().kind === 'slides' ? { outline: deckOutline(file) } : { canvas: canvasOf(get()) }),
-            file,
-            markup,
-            journal: get().journal,
-            pointed: pointed ? { handle: pointed.handle, tag: pointed.tag, label: pointed.label } : null,
-            visible: visibleBoards(),
-            prompt,
-            nonce,
-          }),
+        const text = buildFastEditPrompt({
+          ...(get().kind === 'slides' ? { outline: deckOutline(file) } : { canvas: canvasOf(get()) }),
+          file,
+          markup,
+          journal: get().journal,
+          pointed: pointed ? { handle: pointed.handle, tag: pointed.tag, label: pointed.label } : null,
+          visible: visibleBoards(),
+          prompt,
+          nonce,
+          attachments: attachments.length ? attachmentSummary(attachments) : undefined,
         });
+        // the files come first, the request that refers to them last
+        messages.push({ role: 'user', content: attachments.length ? [...attachmentBlocks(attachments, nonce), { type: 'text', text }] : text });
       }
       const res = await api.fastEdit(project, messages, signal, get().kind ?? undefined);
       if (!res.ok || !res.body) {
@@ -233,7 +238,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
 
       if (delegate) {
         setDraft(file, undefined);
-        await delegateToClaude(file, tid, prompt);
+        await delegateToClaude(file, tid, prompt, attachments);
         return;
       }
       const f = failed as { line: string; error: string } | null;

@@ -22,6 +22,8 @@ import {
   IconDiamond,
   IconDownload,
   IconForms,
+  IconFileText,
+  IconFileTypePdf,
   IconFrame,
   IconHandStop,
   IconLayoutAlignBottom,
@@ -38,6 +40,7 @@ import {
   IconMinus,
   IconNote,
   IconOval,
+  IconPaperclip,
   IconPencil,
   IconPhoto,
   IconPlayerPlay,
@@ -111,6 +114,9 @@ export const TextRight = tabler(IconAlignRight, 14);
 export const TextJustify = tabler(IconAlignJustified, 14);
 export const NoneI = tabler(IconBan, 14);
 export const Picture = tabler(IconPhoto);
+export const Clip = tabler(IconPaperclip);
+export const FileText = tabler(IconFileText, 14);
+export const FilePdf = tabler(IconFileTypePdf, 14);
 
 // layer roles
 const ROLES: Record<string, ComponentType<IconProps>> = {
