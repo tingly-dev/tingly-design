@@ -15,6 +15,10 @@ export const TEXT_COLORS: Record<string, string> = {
   pink: '#b4236c',
 };
 
+/** The default near-black of pens, lines and titles reads as the theme's ink, so it stays visible on a dark canvas. */
+const INKS = new Set(['#1d1d1b', '#2a2924', '#000', '#000000', 'black']);
+export const inkOf = (c: string | undefined) => (!c || INKS.has(c.trim().toLowerCase()) ? 'var(--ink)' : c);
+
 export function sizeOf(n: NoteEntry): number {
   if (typeof n.size === 'number') return n.size;
   if (typeof n.size === 'string' && n.size in NOTE_SIZES) return NOTE_SIZES[n.size as keyof typeof NOTE_SIZES];
@@ -40,14 +44,14 @@ function ArrowSvg({ n }: { n: NoteEntry }) {
   const minY = Math.min(n.y, y2) - pad;
   const w = Math.abs(x2 - n.x) + pad * 2;
   const h = Math.abs(y2 - n.y) + pad * 2;
-  const stroke = n.css?.stroke ?? '#1d1d1b';
+  const stroke = inkOf(n.css?.stroke);
   const sw = Number(n.css?.['stroke-width'] ?? 2);
   const end = n.kind === 'arrow' ? (n.headEnd ?? 'filled') : 'none';
   const start = n.headStart ?? 'none';
   const head = (id: string, kind: string) =>
     kind === 'none' ? null : (
       <marker id={id} orient="auto-start-reverse" markerWidth="10" markerHeight="10" refX="8" refY="5" markerUnits="userSpaceOnUse" overflow="visible">
-        {kind === 'open' ? <path d="M1 1 L8 5 L1 9" fill="none" stroke={stroke} strokeWidth={sw} /> : <path d="M0 0 L10 5 L0 10 Z" fill={stroke} />}
+        {kind === 'open' ? <path d="M1 1 L8 5 L1 9" fill="none" style={{ stroke }} strokeWidth={sw} /> : <path d="M0 0 L10 5 L0 10 Z" style={{ fill: stroke }} />}
       </marker>
     );
   const key = `${n.x}-${n.y}-${x2}-${y2}`.replace(/\./g, '_');
@@ -62,7 +66,7 @@ function ArrowSvg({ n }: { n: NoteEntry }) {
         y1={n.y - minY}
         x2={x2 - minX}
         y2={y2 - minY}
-        stroke={stroke}
+        style={{ stroke }}
         strokeWidth={sw}
         strokeLinecap="round"
         markerStart={start === 'none' ? undefined : `url(#hs-${key})`}
@@ -203,7 +207,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
     style = { ...style, width: n.w, height: n.h, ...shapeStyle(n) };
     body = (
       <svg width={n.w} height={n.h} viewBox={`0 0 ${n.w} ${n.h}`} aria-hidden="true">
-        <path d={n.d} fill="none" stroke={n.css?.stroke ?? '#1d1d1b'} strokeWidth={Number(n.css?.['stroke-width'] ?? 3)} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={n.d} fill="none" style={{ stroke: inkOf(n.css?.stroke) }} strokeWidth={Number(n.css?.['stroke-width'] ?? 3)} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   } else if (n.kind === 'image') {
@@ -220,7 +224,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
       fontSize: size,
       fontWeight: n.bold === false ? 400 : 700,
       fontStyle: n.italic ? 'italic' : undefined,
-      color: TEXT_COLORS[n.color ?? 'default'],
+      color: !n.color || n.color === 'default' ? 'var(--ink)' : TEXT_COLORS[n.color],
       minWidth: editing ? 120 : undefined,
     };
     body = editing ? (
@@ -272,7 +276,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
         handles.map((h) => <div key={h} className="handle" style={handleAt(h)} onPointerDown={(e) => drag(e, h)} />)}
       {selected && line && (
         <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }} width="1" height="1">
-          <line x1={0} y1={0} x2={(n.x2 ?? n.x) - n.x} y2={(n.y2 ?? n.y) - n.y} stroke="#2f6fed" strokeWidth={1.5 * inv} />
+          <line x1={0} y1={0} x2={(n.x2 ?? n.x) - n.x} y2={(n.y2 ?? n.y) - n.y} style={{ stroke: 'var(--accent)' }} strokeWidth={1.5 * inv} />
         </svg>
       )}
     </div>

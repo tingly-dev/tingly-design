@@ -56,6 +56,7 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 | | |
 |---|---|
 | **Guides** | [Canvas](docs/en/guide/canvas.md) · [Slides](docs/en/guide/slides.md) · [Design system](docs/en/guide/design-system.md) · [Dashboard](docs/en/guide/dashboard.md) · [Docs](docs/en/guide/docs.md) |
+| **[Themes](docs/en/theming.md)** | Light, dark and Tingly Box's presets, and passing a theme in by URL, script, a host page or `DC_THEME` |
 | **[How it works](docs/en/architecture.md)** | The source format, the write-back engine, fast AI, collaboration, sandboxing and the repository layout |
 | **[Development and tests](docs/en/development.md)** | Unit tests, typecheck and the Playwright end-to-end suites |
 | **[Compared with the original](docs/en/comparison.md)** | What matches Claude's artifact types and what is not there yet |

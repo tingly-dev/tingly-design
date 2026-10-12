@@ -11,6 +11,8 @@ export interface Health {
   fastModel: string;
   claudeCli: boolean;
   projectsDir: string;
+  /** the server's DC_THEME: a mode name, inline JSON or a parsed .json file */
+  theme?: unknown;
 }
 
 export type ServerEvent =

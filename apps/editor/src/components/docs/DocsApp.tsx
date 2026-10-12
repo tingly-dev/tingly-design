@@ -1,4 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import {
+  IconArrowBackUp,
+  IconArrowForwardUp,
+  IconBold,
+  IconColumnInsertRight,
+  IconColumnRemove,
+  IconItalic,
+  IconList,
+  IconListCheck,
+  IconListNumbers,
+  IconPhoto,
+  IconQuote,
+  IconRowInsertBottom,
+  IconRowRemove,
+  IconSeparatorHorizontal,
+  IconStrikethrough,
+  IconTable,
+  type IconProps,
+} from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
@@ -96,15 +115,16 @@ function Toolbar() {
   const e = docEditor.current;
   if (!e) return <div className="doctools" />;
   const block = e.isActive('heading', { level: 1 }) ? 'h1' : e.isActive('heading', { level: 2 }) ? 'h2' : e.isActive('heading', { level: 3 }) ? 'h3' : e.isActive('codeBlock') ? 'code' : 'p';
-  const b = (label: string, active: boolean, run: () => void, aria = label) => (
-    <button className={active ? 'on' : ''} aria-pressed={active} aria-label={aria} onMouseDown={(ev) => ev.preventDefault()} onClick={run}>
+  const b = (label: ReactNode, active: boolean, run: () => void, aria = String(label)) => (
+    <button className={active ? 'on' : ''} aria-pressed={active} aria-label={aria} title={aria} onMouseDown={(ev) => ev.preventDefault()} onClick={run}>
       {label}
     </button>
   );
+  const i = (I: ComponentType<IconProps>) => <I size={16} stroke={1.7} aria-hidden="true" />;
   return (
     <div className="doctools" role="toolbar" aria-label="格式">
-      {b('↶', false, () => e.chain().focus().undo().run(), '撤销')}
-      {b('↷', false, () => e.chain().focus().redo().run(), '重做')}
+      {b(i(IconArrowBackUp), false, () => e.chain().focus().undo().run(), '撤销')}
+      {b(i(IconArrowForwardUp), false, () => e.chain().focus().redo().run(), '重做')}
       <span className="sep" />
       <select
         aria-label="段落样式"
@@ -124,26 +144,26 @@ function Toolbar() {
         <option value="code">代码块</option>
       </select>
       <span className="sep" />
-      {b('B', e.isActive('bold'), () => e.chain().focus().toggleBold().run(), '粗体')}
-      {b('I', e.isActive('italic'), () => e.chain().focus().toggleItalic().run(), '斜体')}
-      {b('S', e.isActive('strike'), () => e.chain().focus().toggleStrike().run(), '删除线')}
+      {b(i(IconBold), e.isActive('bold'), () => e.chain().focus().toggleBold().run(), '粗体')}
+      {b(i(IconItalic), e.isActive('italic'), () => e.chain().focus().toggleItalic().run(), '斜体')}
+      {b(i(IconStrikethrough), e.isActive('strike'), () => e.chain().focus().toggleStrike().run(), '删除线')}
       <span className="sep" />
-      {b('•', e.isActive('bulletList'), () => e.chain().focus().toggleBulletList().run(), '项目列表')}
-      {b('1.', e.isActive('orderedList'), () => e.chain().focus().toggleOrderedList().run(), '编号列表')}
-      {b('☑', e.isActive('taskList'), () => e.chain().focus().toggleTaskList().run(), '待办清单')}
-      {b('❝', e.isActive('blockquote'), () => e.chain().focus().toggleBlockquote().run(), '引用')}
+      {b(i(IconList), e.isActive('bulletList'), () => e.chain().focus().toggleBulletList().run(), '项目列表')}
+      {b(i(IconListNumbers), e.isActive('orderedList'), () => e.chain().focus().toggleOrderedList().run(), '编号列表')}
+      {b(i(IconListCheck), e.isActive('taskList'), () => e.chain().focus().toggleTaskList().run(), '待办清单')}
+      {b(i(IconQuote), e.isActive('blockquote'), () => e.chain().focus().toggleBlockquote().run(), '引用')}
       <span className="sep" />
-      {b('表格', false, () => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+      {b(i(IconTable), false, () => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), '表格')}
       {e.isActive('table') && (
         <>
-          {b('+行', false, () => e.chain().focus().addRowAfter().run(), '在下方加一行')}
-          {b('+列', false, () => e.chain().focus().addColumnAfter().run(), '在右侧加一列')}
-          {b('−行', false, () => e.chain().focus().deleteRow().run(), '删除这一行')}
-          {b('−列', false, () => e.chain().focus().deleteColumn().run(), '删除这一列')}
+          {b(i(IconRowInsertBottom), false, () => e.chain().focus().addRowAfter().run(), '在下方加一行')}
+          {b(i(IconColumnInsertRight), false, () => e.chain().focus().addColumnAfter().run(), '在右侧加一列')}
+          {b(i(IconRowRemove), false, () => e.chain().focus().deleteRow().run(), '删除这一行')}
+          {b(i(IconColumnRemove), false, () => e.chain().focus().deleteColumn().run(), '删除这一列')}
         </>
       )}
-      {b('图片', false, () => pickImage(e))}
-      {b('—', false, () => e.chain().focus().setHorizontalRule().run(), '分割线')}
+      {b(i(IconPhoto), false, () => pickImage(e), '图片')}
+      {b(i(IconSeparatorHorizontal), false, () => e.chain().focus().setHorizontalRule().run(), '分割线')}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Check } from './icons';
 
 /** A popover menu at a screen point; closes on outside click or Escape. */
 export function Menu({
@@ -91,7 +92,7 @@ export function MenuItem({
       disabled={disabled}
       onClick={onSelect}
     >
-      {(icon || checked !== undefined) && <span className="ic">{checked ? '✓' : icon}</span>}
+      {(icon || checked !== undefined) && <span className="ic">{checked ? <Check /> : icon}</span>}
       {label}
       {keys && <span className="k">{keys}</span>}
     </button>

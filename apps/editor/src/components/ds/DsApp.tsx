@@ -7,6 +7,7 @@ import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
 import { Send } from '../icons';
+import { currentTheme } from '../../theme';
 
 type View = 'overview' | 'colors' | 'type' | 'space' | 'components' | 'assets' | 'issues';
 
@@ -176,7 +177,8 @@ export function DsApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('v') as View) || 'overview');
-  const [theme, setTheme] = useState(t.themes[0].id);
+  // previews open in the system's dark theme when the editor itself is dark
+  const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|暗|深/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
   const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     if (!t.themes.some((x) => x.id === theme)) setTheme(t.themes[0].id);
