@@ -8,6 +8,8 @@
 
 每次改动只回写源码里真正变了的那几个字符，模板里的 `{{占位}}`、循环和你的排版都原样保留，所以这些文件可以放进 git、交给 Claude Code，也可以手写。文件格式沿用 Claude 的 Design / Slides / Design System 类型，Tingly Design 是对其双向编辑机制的开源复刻。
 
+![Tingly Design 画布编辑器](docs/images/canvas.png)
+
 ## 目录
 
 - [三种项目](#三种项目)
@@ -30,6 +32,19 @@
 | **设计系统** | 颜色、文字、间距、组件与品牌资源 | `design-system.json` + `tokens.json` + `components/` | [`?p=math-ds`](http://localhost:5173/?p=math-ds) |
 
 设计系统可以“装进”画布或幻灯片，之后颜色和文字样式都能直接从 token 里选。
+
+<table>
+  <tr>
+    <td width="33%"><a href="docs/images/canvas.png"><img src="docs/images/canvas.png" alt="画布"></a></td>
+    <td width="33%"><a href="docs/images/slides.png"><img src="docs/images/slides.png" alt="幻灯片"></a></td>
+    <td width="33%"><a href="docs/images/design-system.png"><img src="docs/images/design-system.png" alt="设计系统"></a></td>
+  </tr>
+  <tr>
+    <td align="center">画布</td>
+    <td align="center">幻灯片</td>
+    <td align="center">设计系统</td>
+  </tr>
+</table>
 
 ## 快速开始
 
@@ -88,6 +103,8 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 
 新建项目时类型选“幻灯片”。演示 [`?p=math-deck`](http://localhost:5173/?p=math-deck) 的每一页都有一段会动的数学动画。
 
+![幻灯片编辑器：左侧缩略图与分节，中间舞台和演讲者备注，右侧图层与属性](docs/images/slides.png)
+
 ```
 projects/<name>/
   deck.json            标题、顺序 order、分节 sections、字体 faces
@@ -109,6 +126,10 @@ projects/<name>/
 ### 设计系统
 
 演示 [`?p=math-ds`](http://localhost:5173/?p=math-ds) 是从“数学奇遇记”幻灯片里提取的颜色、字体、间距和卡片。
+
+| 概览：封面 + 品牌手册 | 颜色：用法与对比度 |
+|---|---|
+| ![设计系统概览](docs/images/design-system.png) | ![设计系统颜色页](docs/images/design-system-colors.png) |
 
 ```
 projects/<name>/
@@ -197,7 +218,7 @@ apps/editor         React + Vite + zustand 的画布、幻灯片（components/sl
 projects/           演示项目：demo（画布）、math-deck（幻灯片）、math-ds（设计系统）
 .claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system（委托时会让它先读）
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
-docs/               扩展到其他类型的方案
+docs/               扩展到其他类型的方案；docs/images/ 是 README 用的截图
 e2e/                Playwright 端到端测试和一个模拟的 Messages API
 ```
 
