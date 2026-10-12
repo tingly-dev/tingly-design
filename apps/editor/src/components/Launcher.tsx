@@ -461,8 +461,8 @@ export function Launcher() {
         <div className="brand">
           <Mark />
           <div>
-            <h1>选择项目</h1>
-            <div className="sub">Tingly Design · {list ? `${list.length} 个项目` : '读取中…'}</div>
+            <h1>Tingly Design</h1>
+            <div className="sub">本地设计工作区 · {list ? `${list.length} 个项目` : '读取中…'}</div>
           </div>
         </div>
         <div className="tools">
