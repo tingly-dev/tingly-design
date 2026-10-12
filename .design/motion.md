@@ -1,6 +1,8 @@
-# Motion: a sixth project kind for animated promo videos
+# Motion: a sixth project kind for promo videos and animated assets
 
-Status: **research, nothing implemented**. This note looks at whether Tingly Design should have a "motion" kind (short animated videos such as a product launch, a feature explainer or an animated title), how it differs from slides, what comparable tools do, which source format fits our two-way editing, how export and AI would work, and what it would cost. It ends with a recommendation and a phased plan.
+Status: **research, nothing implemented**. This note looks at whether Tingly Design should have a "motion" kind (short animated videos such as a product launch or a feature explainer, and animated assets such as a title card, a looping hero or a UI animation), how it differs from slides, what comparable tools do, which source format fits our two-way editing, how export and AI would work, and what it would cost. It ends with a recommendation and a phased plan.
+
+Decisions from the owner so far (§10): both promo videos and animated assets are in scope; render on the server first, in the browser if it can be done; several sizes of the same piece live in one project.
 
 Facts about this repository are from `5efd911`. Facts about other tools come from their public docs and READMEs as of October 2026, linked in §3; anything inferred rather than read is marked as such.
 
@@ -8,15 +10,15 @@ Facts about this repository are from `5efd911`. Facts about other tools come fro
 
 "Motion" covers three different deliverables. They share a timeline but almost nothing else:
 
-| | Promo / explainer video | Animated asset | Interactive UI motion |
+| | Promo / explainer video | Animated asset and UI motion | Interactive (stateful) UI motion |
 |---|---|---|---|
-| Example | "Tingly Box in 30 seconds", a release video, a feature walkthrough for social | An animated title card, a looping hero for a website, a chart that builds, a logo sting | A button with hover and pressed states, an onboarding illustration that reacts |
+| Example | "Tingly Box in 30 seconds", a release video, a feature walkthrough for social | An animated title card, a looping hero for a website, a chart that builds, a logo sting, a loading or success animation, an onboarding illustration | A button with hover and pressed states, an onboarding illustration that reacts |
 | Length | 15 to 90 s, several scenes | 2 to 10 s, one scene, often looping | No fixed length; driven by state |
 | Audio | Usually music, often a voiceover and captions | Rarely | No |
-| Delivered as | MP4 (16:9, 9:16, 1:1) | MP4, WebM with alpha, GIF, or embedded in a page or deck | Lottie / dotLottie, Rive, code |
+| Delivered as | MP4 (16:9, 9:16, 1:1) | Lottie / dotLottie, WebM with alpha, animated SVG, GIF, MP4, or embedded in a page or deck | Rive, Lottie with state machines, code |
 | Typical tools | After Effects, Canva, Jitter, Remotion, HyperFrames | Jitter, Figma Motion, Lottie Creator | Rive, Lottie Creator |
 
-The request that started this note is the first column. The second column comes almost for free if the first is designed well (it is a one-scene video). The third is a different product (a state machine plus a runtime in someone else's app), and it should stay out of scope.
+The first two columns are in scope. They share one format: an animated asset is a one-scene piece that loops, and what differs is mainly the export (Lottie and transparent video rather than MP4). The third column is a different product (a state machine plus a runtime in someone else's app) and stays out of scope; a linear or looping UI animation belongs to the second column.
 
 ## 2. How motion differs from slides
 
@@ -107,7 +109,7 @@ A sketch to make the recommendation concrete. Names are provisional.
 
 ```
 projects/<name>/
-  motion.json            title, size, fps, scene order, audio, design system
+  motion.json            title, formats, fps, scene order, audio, design system
   scenes/<id>.html       one file per scene: exactly one <section>, the slides subset plus timing attributes
   audio/                 music, voiceover
   assets/                images, video clips, fonts
@@ -120,22 +122,25 @@ projects/<name>/
 {
   "v": 1,
   "title": "Tingly Box in 30 seconds",
-  "size": [1920, 1080],
+  "formats": {
+    "wide":   { "size": [1920, 1080] },
+    "tall":   { "size": [1080, 1920] },
+    "square": { "size": [1080, 1080] }
+  },
   "fps": 30,
   "order": ["hook", "problem", "gateway", "teams", "cta"],
   "audio": [
     { "src": "audio/track.mp3", "start": 0, "gain": -6, "beats": "auto" },
     { "src": "audio/voice.mp3", "start": 0.5, "captions": "audio/voice.srt" }
-  ],
-  "variants": { "vertical": { "size": [1080, 1920] } }
+  ]
 }
 ```
 
 `scenes/gateway.html`:
 
 ```html
-<section id="gateway" data-duration="6s" data-transition="magic 500ms" style="display:flex;…;background:#0B0D12">
-  <h2 data-in="rise 500ms @0.2s" data-out="fade 300ms @5.4s" style="…">One endpoint for every agent</h2>
+<section id="gateway" data-duration="6s" data-transition="magic 500ms" style="display:flex;flex-direction:row;…;background:#0B0D12" data-tall="flex-direction:column">
+  <h2 data-in="rise 500ms @0.2s" data-out="fade 300ms @5.4s" style="font-size:96px;…" data-tall="font-size:120px">One endpoint for every agent</h2>
   <x-icon id="logo" name="tingly" data-in="pop 400ms @0.8s" style="position:absolute;…"></x-icon>
   <p data-in="type 1.2s @1.4s" style="…">localhost:12580</p>
   <x-embed data-seek style="position:absolute;…"><!-- routing diagram, exposes seek(t) --></x-embed>
@@ -151,6 +156,16 @@ The rules:
 - **Scene transitions** reuse slides' `fade`, `push` and `magic` (same `id` on both scenes), with a duration.
 - **`<x-embed data-seek>`** is the escape hatch: arbitrary HTML/JS in the existing sandbox, which must export `seek(t)` (or register a GSAP timeline, HyperFrames-style). An embed without it plays in preview but is flagged by the checker as "not exportable", with the reason.
 - **Video and audio layers**: `<video src="assets/clip.mp4" data-start="1s" data-trim="2s 6s">`, seeked like everything else.
+- **Assets are one-scene projects.** `motion.json` takes `"loop": true` and `"background": "transparent"`; nothing else changes. A loop's last frame must equal its first, which the checker verifies by comparing the two.
+
+### Several formats, one project
+
+The same piece often ships as 16:9, 9:16 and 1:1 at once, with one style and one timing. HTML layout is already responsive, so the formats live in one project rather than as copies that drift apart:
+
+- **`formats` in `motion.json`** lists the sizes; the first is the primary. Scenes, timing, audio and transitions are shared, so all formats have the same length and hit the same beats.
+- **Flex and grid do most of the work.** A row of three cards in 16:9 becomes a column in 9:16 by overriding one property on the parent. Pinned offsets and sizes may be written in `%` (an addition to the slides subset), so a pinned logo stays in its corner at every size.
+- **Exceptions are one attribute per format**: `data-tall="flex-direction:column"` holds only the declarations that differ in that format, merged over `style`. `data-only="wide square"` drops an element from the other formats. Timing can be overridden the same way (`data-in-tall`), but rarely needs to be.
+- *Why attributes and not media queries:* a `<style>` block with `@media` rules is outside the subset and puts a property in two places the write-back engine would have to reconcile. One override attribute next to `style` keeps every change a one-attribute patch and keeps the difference visible where the element is.
 
 The runtime compiles the attributes to Web Animations API animations created paused, and drives one clock: play, scrub and render all set `currentTime`. The same compiler serves the editor stage, the HTML player export and the renderer, so preview and output cannot drift.
 
@@ -164,7 +179,7 @@ The slides editor is the starting point: thumbnails become the scene strip, the 
 - **Playhead and play.** Space plays, J/K/L shuttle, ←/→ step one frame. Clicking an element selects it at the current time; elements not on screen at the playhead are dimmed in the layers panel rather than hidden.
 - **Animation section in properties.** Preset, duration, delay and easing as concrete values ("rise · 500 ms · @0.2 s · ease-out"), never an alias (UX principle 5). A keyframe toggle per property records a key at the playhead.
 - **Audio lane.** Waveform, beat markers when `beats` is set, caption blocks from the SRT; bars snap to beats and caption starts.
-- **Aspect variants.** A switch between 16:9 and 9:16 that shows the same scenes reflowed. Layout is flex and grid in the subset, so most scenes reflow on their own; pinned elements may need a per-variant override (open question, §10).
+- **Formats.** A switcher above the stage (16:9 · 9:16 · 1:1) and an "all formats" view that shows them side by side at the playhead, like artboards on the canvas. Where an edit lands follows the surface you are on (UX principle 12): in the primary format or the all-formats view it changes the shared `style`; in another format it goes to that format's override. Overridden properties carry a marker in the properties panel with "use shared value", so a divergence is always visible and reversible.
 
 Smart defaults over options (principle 6): a new motion project opens on a 1920×1080, 30 fps, five-scene skeleton with a music slot, not a settings dialog (principle 2).
 
@@ -173,7 +188,7 @@ Smart defaults over options (principle 6): a new motion project opens on a 1920�
 The three editing speeds map onto motion naturally:
 
 - **Claude Code (minutes)** does the authoring that needs a plan: brief to script, script to storyboard (one line per scene: what is on screen, what is said, how long), storyboard to `scenes/*.html`, then a timing pass against the voiceover's SRT or the music's beats. A `motion` skill in `.claude/skills/` documents the format, the presets and the rules for pacing (text on screen at least ~1.5 s, one idea per scene, 2 to 6 s per scene). It can also convert: an existing deck into a motion piece (slides are already the subset), or a GitHub PR or release notes into a launch video, which is HyperFrames' `/pr-to-video` idea applied to our files.
-- **Fast AI (seconds)** gets the playhead time and the scene's timing table in its context, and edits with the same jQuery statements: `$('#dc7').attr('data-in', 'rise 400ms @1.2s')`. "Make this land on the beat", "slower", "stagger these" become attribute patches. The checker gains timing rules (an element that never appears, text on screen for under 0.8 s, an out before its in), and a violation is fed back to the model exactly as slide subset errors are today.
+- **Fast AI (seconds)** gets the playhead time, the current format and the scene's timing table in its context (so "bigger title in the vertical one" becomes a `data-tall` patch), and edits with the same jQuery statements: `$('#dc7').attr('data-in', 'rise 400ms @1.2s')`. "Make this land on the beat", "slower", "stagger these" become attribute patches. The checker gains timing rules (an element that never appears, text on screen for under 0.8 s, an out before its in), and a violation is fed back to the model exactly as slide subset errors are today.
 - **Direct manipulation** is the timeline above.
 
 Generative footage and music (Veo, Seedance, Suno…) stay out of this repository's scope. A person or Claude Code can add the files they produce to `assets/` and `audio/`, and they become ordinary layers.
@@ -186,15 +201,25 @@ Generative footage and music (Veo, Seedance, Suno…) stay out of this repositor
 | **MP4 (H.264 + AAC)** | Server-side: headless Chromium opens the scene with the runtime in render mode, seeks frame by frame, screenshots, pipes to FFmpeg; audio mixed by FFmpeg. Rendered at 2× and downsampled for crisp type | 1 |
 | **GIF** | From the same frames, FFmpeg `palettegen` / `paletteuse`, capped at 720 px and 15 fps by default | 1 |
 | **PNG poster / frame at t** | One seek, one screenshot; also used for thumbnails | 1 |
-| **WebM with alpha, PNG sequence, ProRes** | Transparent background; for overlaying on footage in an NLE | 2 |
-| **Vertical / square variants** | Same render, other `size` | 2 |
+| **All formats at once** | One render job per entry in `formats`, same frames timeline, files named `<title>-wide.mp4`, `-tall`, `-square` | 1 |
+| **WebM with alpha, PNG sequence, ProRes** | Transparent background; for overlaying on footage in an NLE or on a web page | 2 |
+| **Lottie / dotLottie** | For animated assets and UI motion. Format E is what makes this tractable: presets and `data-keys` are already keyframes on transform, opacity and a few properties, which is what Lottie layers hold. Shapes and SVG paths map to shape layers, images to image layers, text to glyph outlines (opentype.js) so no font is needed at playback. Anything in an `<x-embed>`, video, CSS filters and blend modes cannot go; the checker lists them before export, and "Lottie-safe" can be a project setting that warns as you edit | 2 |
+| **Animated SVG** | Same mapping as Lottie, written as CSS animations inside one SVG; no runtime needed | 2 |
 | **HyperFrames composition** | Compile scenes to one HyperFrames HTML (clips with `data-start` / `data-duration`, presets as GSAP tweens), for people who want its Lambda renders or Studio | 3 |
-| **Lottie** | Only for a subset: shapes, SVG paths, images and text converted to glyph outlines, with transforms and opacity. Anything in an `<x-embed>`, video, blur or masks cannot go. Useful for the "animated asset" column of §1; not worth doing for promo videos | 3, maybe never |
 
 Dependencies are the real cost of export:
 
 - The server has neither Chromium nor FFmpeg today (PDF is the browser's print). Playwright with its Chromium is ~150 MB; FFmpeg is a static binary or `ffmpeg-static`.
-- For Tingly Box hosting (`.design/tingly-box-integration.md`), the bundle already needs Node, but shipping Chromium and FFmpeg inside a single-binary product is heavy. Two ways out: download them on first render (like Playwright's own installer), or render in the browser that is already open, with WebCodecs `VideoEncoder` and an MP4 muxer, capturing frames by drawing the scene into a canvas. The browser path has no install but loses fidelity on `<x-embed>` content and fonts in SVG `foreignObject`. *Recommendation:* server render as the reference path; browser render as a later fallback for hosts without the binaries.
+- For Tingly Box hosting (`.design/tingly-box-integration.md`), the bundle already needs Node, but shipping Chromium and FFmpeg inside a single-binary product is heavy. Phase 1 downloads them on first render, the way Playwright's own installer does, with progress shown in the export dialog.
+
+### Rendering in the browser
+
+The owner would prefer browser rendering where it works. It is feasible for most of what format E produces, and worth doing in phase 2:
+
+- **Frames**: the runtime seeks the scene, serializes it into an SVG `foreignObject` and draws that onto a canvas, the same technique Claude's Slides uses for its PDF export (`artifact/claude-slides/FINDINGS.md`). Fonts and images must be inlined as data URLs first, or they are missing from the frame.
+- **Encoding**: WebCodecs `VideoEncoder` (H.264, or VP9 with alpha for WebM) and an MP4/WebM muxer in JavaScript; audio mixed with `OfflineAudioContext` and encoded with `AudioEncoder`. GIF from the same frames with a JS quantizer. No server, no install.
+- **Limits**: an `<x-embed>` is a separate sandboxed iframe that `foreignObject` cannot capture. A canvas-based embed can hand its frame over (`seek(t)` returns an `ImageBitmap` through postMessage); a DOM-based one cannot. `<video>` layers need `requestVideoFrameCallback` seeking, which is slow. Some CSS (backdrop filters, a few blend modes) renders differently in `foreignObject`.
+- **How the two fit**: the export dialog renders in the browser when the scene uses only what the browser path supports, and otherwise on the server, saying why ("the routing diagram embed needs the server renderer"). A test renders every sample project both ways and compares frames, so the browser path cannot quietly drift from the reference.
 - Render time: at 2× supersampling, expect roughly real time to a few times real time for a 30 s video on a laptop (*inferred* from the Playwright screenshot cost; to measure in phase 0).
 
 ## 9. Effort
@@ -209,10 +234,13 @@ Rough, for one person who knows this codebase. Most of the cost is in the runtim
 | Timeline editor | Write-back queue, undo, properties panel | Timeline component, playhead, drag-to-retime, animation section | 2 weeks |
 | Render service (MP4, GIF, poster) | Server job handling, SSE for progress | Playwright seek-and-capture, FFmpeg, audio mixing | 1 week |
 | Audio lane (waveform, beats, SRT captions) | | Decoding, beat detection, caption layer | 1 week |
+| Formats (overrides, `%` pins, switcher, all-formats view) | Canvas artboard view | Override merge in the runtime and write-back, per-format edit routing | 1 week |
+| Lottie and animated SVG export | `slideArt.ts` shapes | Layer mapping, glyph outlines, "Lottie-safe" checks | 1.5 to 2 weeks |
+| Browser renderer | The timing runtime | `foreignObject` capture, inlining, WebCodecs, muxing, frame comparison test | 1.5 weeks |
 | `motion` skill, fast AI prompt and timing checks, sample project | Slides skill and prompts | Pacing rules, examples | 3 to 4 days |
 | e2e tests | Playwright e2e harness | Timing write-back, render smoke test | 3 days |
 
-About **7 to 9 weeks** for phases 0 to 2 below; phase 3 is open-ended.
+About **10 to 12 weeks** for phases 0 to 2 below; phase 3 is open-ended.
 
 ## 10. Recommendation
 
@@ -223,20 +251,22 @@ Why not the alternatives:
 - **Not a slides option** ("autoplay with timings"): the primary axis, the output and the editor are all different (§2). Sharing the format and renderer gets the reuse without forcing the slides UI to grow a timeline it doesn't need. A "turn this deck into a video" action covers the overlap.
 - **Not GSAP or React as the source**: they are what HyperFrames and Claude Design already do well, and both lose the thing that makes Tingly Design worth using, that a person, fast AI and Claude Code all edit the same characters. Keeping GSAP available inside a seekable embed means we lose none of its power where it matters.
 - **Not wrapping HyperFrames as the editor's format**: its timing beyond clip boundaries is in script. But we should stay compatible where it is cheap, and treat it as an export target and a source of ideas for skills.
-- **Not Lottie or Rive**: different deliverable (§1); revisit only if people ask for UI animations.
+- **Not Lottie or Rive as the source**: Lottie is an export of format E (§8), which serves animated assets and UI motion without a second editor. Stateful, interactive UI motion (Rive's territory) stays out of scope (§1).
+
+### Decisions so far
+
+| Question | Owner's answer | Consequence in this plan |
+|---|---|---|
+| Promo videos only, or UI motion too? | Both | Animated assets are one-scene, looping, optionally transparent projects; Lottie, dotLottie and animated SVG export move into phase 2 |
+| Where does rendering happen? | Server for now; browser if possible | Server render is the reference in phase 1; a browser renderer for the supported subset follows in phase 2, with the server as fallback (§8) |
+| A new size: new project or same project? | A new size is usually a new piece, but one style often ships in several sizes at once, and HTML is good at adapting | One project holds several formats with shared scenes and timing and per-format override attributes (§5); formats are in the MVP |
 
 ### Phased plan
 
-**Phase 0, spike (about 1 week).** One hand-written scene with `data-in`, `data-keys` and a seekable embed; the runtime compiling it to WAAPI; a script that renders it to MP4 through Playwright and FFmpeg. Measure render time and check that preview and render match frame for frame. Exit: the format holds up, or we learn which part of E needs to change before building UI on it.
+**Phase 0, spike (about 1 week).** One hand-written scene with `data-in`, `data-keys`, a `data-tall` override and a seekable embed; the runtime compiling it to WAAPI; a script that renders it to MP4 in two formats through Playwright and FFmpeg. Measure render time and check that preview and render match frame for frame. Exit: the format holds up, or we learn which part of E needs to change before building UI on it.
 
-**Phase 1, MVP (about 3 to 4 weeks).** The kind, files and launcher card; the slides editor reused for scenes; the timeline with drag-to-retime; preset animations, keyframes, transitions and magic move; music track (no beats yet); export to HTML player, MP4, GIF and poster; the `motion` skill; a sample project, "Tingly Box in 30 seconds", built from the `tingly-intro` deck. Exit: someone can go from a brief to a rendered MP4 with Claude Code, then change a word and a timing by hand and re-render.
+**Phase 1, MVP (about 4 to 5 weeks).** The kind, files and launcher card; the slides editor reused for scenes; the timeline with drag-to-retime; preset animations, keyframes, transitions and magic move; formats with the switcher, the all-formats view and override routing; music track (no beats yet); server export to HTML player, MP4, GIF and poster, for all formats in one go; the `motion` skill; a sample project, "Tingly Box in 30 seconds" in 16:9 and 9:16, built from the `tingly-intro` deck. Exit: someone can go from a brief to rendered MP4s with Claude Code, then change a word and a timing by hand and re-render every format.
 
-**Phase 2, sound and formats (about 2 to 3 weeks).** Voiceover with SRT captions, beat detection and snapping, fast AI timing edits and timing checks, vertical and square variants, WebM with alpha, deck-to-motion conversion.
+**Phase 2, assets, sound and the browser (about 4 to 5 weeks).** Loops and transparent backgrounds; Lottie, dotLottie, animated SVG and WebM with alpha; a second sample, an animated asset such as a looping Tingly logo or a "request routed" UI animation; voiceover with SRT captions, beat detection and snapping; fast AI timing edits and timing checks; the browser renderer with server fallback; deck-to-motion conversion.
 
-**Phase 3, as asked for.** HyperFrames export, browser-side rendering for Tingly Box, a Lottie subset, generated clips as layers.
-
-### Open questions for the owner
-
-1. Is the target the promo video (§1, first column), as assumed here, or also UI animations? The answer decides whether Lottie matters at all.
-2. Should rendering need the server, or must it work inside Tingly Box without extra downloads from day one? This moves browser rendering from phase 3 to phase 1.
-3. For aspect variants, are per-variant overrides in the scene file acceptable, or should vertical be a separate project generated from the horizontal one?
+**Phase 3, as asked for.** HyperFrames export, generated clips as layers, and interactive states if UI motion turns out to need them.
