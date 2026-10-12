@@ -4,8 +4,6 @@
 
 The editor's look is a set of named tokens (colours, shadows, fonts, radii) written as CSS custom properties on `<html>`. Pick one in the launcher's **Appearance** menu, or pass one in from outside. Themes change the editor around your work; canvases, slides, dashboards and design-system previews keep their own colours, since those are the files you are designing.
 
-![Appearance menu with a theme passed in by a host, above the presets](../images/theme-appearance-menu.png)
-
 ## Presets
 
 The names match Tingly Box's theme modes, so a host can pass its own mode through unchanged.
