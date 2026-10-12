@@ -14,3 +14,4 @@ export * from './slides';
 export * from './slideArt';
 export * from './designSystem';
 export * from './dash';
+export * from './docs';
