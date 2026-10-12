@@ -138,9 +138,9 @@ async def main():
 
         # --- a new system from the picker ---------------------------------------------------
         await pg.goto(BASE + '/')
-        await pg.locator('.picker select').select_option('design-system')
-        await pg.locator('.picker input').fill('zz-ds')
-        await pg.locator('.picker button[type="submit"]').click()
+        await pg.locator('.lstrip [data-new="design-system"]').click()
+        await pg.locator('[role=dialog] input[aria-label=\"新项目名称\"]').fill('zz-ds')
+        await pg.locator('[role=dialog] button[type="submit"]').click()
         await expect(pg.locator('.dsnav h1')).to_have_text('zz-ds')
         check('a new system starts small and clean', await pg.locator('.navi.warn').count() == 0 and os.path.exists(os.path.join(REPO, 'projects/zz-ds/tokens.css')))
 

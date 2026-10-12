@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { api } from './api';
 import { canvasOf, fitAll, focusBoard, openProject, toast, useStore } from './store';
 import { installShortcuts } from './shortcuts';
@@ -11,6 +11,7 @@ import { SlidesApp } from './components/slides/SlidesApp';
 import { DsApp } from './components/ds/DsApp';
 import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
+import { Launcher } from './components/Launcher';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -21,66 +22,6 @@ function Toasts() {
           {t.text}
         </div>
       ))}
-    </div>
-  );
-}
-
-const KIND_ZH = { design: '画布', slides: '幻灯片', 'design-system': '设计系统', dashboard: '看板', docs: '文档' } as const;
-
-function Picker() {
-  type Kind = keyof typeof KIND_ZH;
-  const [list, setList] = useState<{ name: string; title: string; kind: Kind }[] | null>(null);
-  const [name, setName] = useState('');
-  const [kind, setKind] = useState<Kind>('design');
-  useEffect(() => {
-    api.projects().then(setList, (e) => toast(e.message, 'error'));
-  }, []);
-  const go = (p: string) => {
-    location.search = '?p=' + encodeURIComponent(p);
-  };
-  return (
-    <div className="picker">
-      <div className="card">
-        <h1>选择项目</h1>
-        <div className="list">
-          {list === null && <div className="hint">读取中…</div>}
-          {list?.length === 0 && <div className="hint">还没有项目，在下面新建一个。</div>}
-          {list?.map((p) => (
-            <button key={p.name} className="row" onClick={() => go(p.name)}>
-              <span className="name">{p.title}</span>
-              <span className="meta">
-                {KIND_ZH[p.kind]} · projects/{p.name}
-              </span>
-            </button>
-          ))}
-        </div>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const n = name.trim();
-            if (!n) return;
-            try {
-              await api.createProject(n, n, kind);
-              go(n);
-            } catch (err) {
-              toast((err as Error).message, 'error');
-            }
-          }}
-        >
-          <select className="input" style={{ flex: 'none', width: 'auto' }} aria-label="类型" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-            <option value="design">画布</option>
-            <option value="slides">幻灯片</option>
-            <option value="design-system">设计系统</option>
-            <option value="dashboard">看板</option>
-            <option value="docs">文档</option>
-          </select>
-          <input className="input" placeholder="文件夹名，如 onboarding" aria-label="新项目名称" value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="btn primary" type="submit">
-            新建
-          </button>
-        </form>
-      </div>
-      <Toasts />
     </div>
   );
 }
@@ -110,7 +51,13 @@ export function App() {
     return installShortcuts();
   }, [project]);
 
-  if (!project) return <Picker />;
+  if (!project)
+    return (
+      <>
+        <Launcher />
+        <Toasts />
+      </>
+    );
   if (kind === 'docs')
     return (
       <>

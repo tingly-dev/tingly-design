@@ -1,4 +1,4 @@
-import type { Actor, JournalEntry } from '@dc/core';
+import type { Actor, JournalEntry, ProjectCard } from '@dc/core';
 
 export interface FileState {
   content: string;
@@ -30,7 +30,7 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => fetch('/api/health').then((r) => json<Health>(r)),
-  projects: () => fetch('/api/projects').then((r) => json<{ name: string; title: string; kind: 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' }[]>(r)),
+  projects: () => fetch('/api/projects').then((r) => json<ProjectCard[]>(r)),
   createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' = 'design') =>
     fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),

@@ -177,9 +177,9 @@ async def main():
 
         # --- a new doc ----------------------------------------------------------------------------
         await pg.goto(BASE + '/')
-        await pg.locator('.picker select').select_option('docs')
-        await pg.locator('.picker input').fill('zz-doc')
-        await pg.locator('.picker button[type="submit"]').click()
+        await pg.locator('.lstrip [data-new="docs"]').click()
+        await pg.locator('[role=dialog] input[aria-label=\"新项目名称\"]').fill('zz-doc')
+        await pg.locator('[role=dialog] button[type="submit"]').click()
         await expect(body.locator('h1')).to_have_text('zz-doc')
         check('a new doc starts with one tab', os.path.exists(os.path.join(REPO, 'projects/zz-doc/tabs/main.md')))
 
