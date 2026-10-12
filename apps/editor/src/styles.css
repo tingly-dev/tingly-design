@@ -1,33 +1,57 @@
 :root {
-  --ink: #1d1d1b;
-  --ink-2: #3d3d3a;
-  --muted: #6b6a65;
-  --faint: #9a9892;
-  --line: #e4e3df;
-  --line-2: #d6d4ce;
+  /* The themeable tokens. These are the light preset, for the first paint; theme.ts writes the
+     active theme over them on <html> (presets, ?theme=, DC_THEME, a host's postMessage). */
+  --canvas: #eeeeea;
   --panel: #ffffff;
-  --panel-2: #f5f5f3;
-  --hover: #f0efec;
-  --canvas: #ededeb;
-  --accent: #2f6fed;
-  --accent-ink: #1f55c4;
-  --accent-soft: #e7eefd;
-  --danger: #b42318;
-  --danger-soft: #fdecea;
-  --ok: #1f7a43;
-  --ok-soft: #e4f4ea;
-  --warn: #9a5b00;
-  --warn-soft: #fbf0dc;
+  --panel-2: #f6f6f3;
+  --hover: #f0f0ec;
+  --line: #e5e5e0;
+  --line-2: #d6d6cf;
+  --ink: #16181d;
+  --ink-2: #363a43;
+  --muted: #5f636d;
+  --faint: #8b8f98;
+  --accent: #2563eb;
+  --accent-ink: #1d4ed8;
+  --accent-soft: #e9effd;
+  --on-accent: #ffffff;
+  --danger: #b91c1c;
+  --danger-soft: #fdecec;
+  --ok: #15803d;
+  --ok-soft: #e4f4e9;
+  --warn: #b45309;
+  --warn-soft: #fcf0df;
+  --backdrop: rgba(22, 24, 29, 0.32);
+  --float-shadow: 0 0 0 1px rgba(22, 24, 29, 0.07), 0 2px 6px rgba(22, 24, 29, 0.05), 0 10px 28px rgba(22, 24, 29, 0.07);
+  --lift-shadow: 0 0 0 1px rgba(22, 24, 29, 0.09), 0 6px 14px rgba(22, 24, 29, 0.08), 0 18px 40px rgba(22, 24, 29, 0.1);
+  --ui: 'Geist', system-ui, -apple-system, 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --r: 6px;
+  --r-float: 12px;
+
+  /* follow the tokens above, so a theme that sets only a few still holds together */
+  --hairline: color-mix(in srgb, var(--ink) 12%, transparent);
+  --tint: color-mix(in srgb, var(--ink) 6%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  --scrim-ink: color-mix(in srgb, var(--ink) 78%, transparent);
+  --mark: color-mix(in srgb, #ffc400 30%, var(--panel));
+  --comment: rgba(255, 196, 0, 0.22);
+  --comment-on: rgba(255, 196, 0, 0.45);
+  --comment-line: rgba(230, 160, 0, 0.7);
+  --check-a: #e4e4e0;
+  --check-b: #ffffff;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 
   /* who made a change: shared by the journal and the prompt bar */
-  --actor-human: #1d1d1b;
+  --actor-human: var(--ink);
   --actor-jquery: #0e7c7b;
-  --actor-fast-edit: #2f6fed;
+  --actor-fast-edit: var(--accent);
   --actor-claude: #6d4fd8;
   --actor-external: #b45309;
-  --actor-undo: #9a9892;
+  --actor-undo: var(--faint);
 
-  /* sticky-note fills (default is yellow, as in the original) */
+  /* sticky-note fills (default is yellow, as in the original). Notes are content on the board,
+     so they keep their colours in every theme. */
   --note-default: #fbefa2;
   --note-gray: #e8e8e5;
   --note-red: #fbd9d6;
@@ -38,13 +62,31 @@
   --note-purple: #e6dcfb;
   --note-pink: #fbdbe9;
 
-  --ui: 'Geist', system-ui, -apple-system, 'PingFang SC', 'Noto Sans SC', sans-serif;
-  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --r: 6px;
-  --r-float: 12px;
-  --float-shadow: 0 0 0 1px rgba(29, 29, 27, 0.08), 0 2px 6px rgba(29, 29, 27, 0.06), 0 8px 24px rgba(29, 29, 27, 0.06);
+  /* the five project kinds */
+  --t-blue: #2f6fed;
+  --t-purple: #6d4fd8;
+  --t-teal: #0e7c7b;
+  --t-orange: #b45309;
+  --t-green: #1f7a43;
+
   --panel-w: 312px;
   color-scheme: light;
+}
+:root[data-scheme='dark'] {
+  --actor-jquery: #2dd4bf;
+  --actor-claude: #a78bfa;
+  --actor-external: #fbbf24;
+  --t-blue: #7aa5ff;
+  --t-purple: #a78bfa;
+  --t-teal: #2dd4bf;
+  --t-orange: #fb9a4b;
+  --t-green: #4ade80;
+  --mark: color-mix(in srgb, #ffc400 28%, var(--panel));
+  --comment: rgba(255, 196, 0, 0.16);
+  --comment-on: rgba(255, 196, 0, 0.32);
+  --check-a: #2b2f37;
+  --check-b: #1a1d23;
+  color-scheme: dark;
 }
 
 * {
@@ -80,6 +122,49 @@ textarea {
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+::selection {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent;
+}
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'],
+progress {
+  accent-color: var(--accent);
+}
+
+/* plain form controls: themed, whatever class they carry (rules with a class still win) */
+:where(input:not([type='checkbox'], [type='radio'], [type='color'], [type='range'], [type='file']), textarea, select) {
+  background-color: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+}
+:where(input, textarea)::placeholder {
+  color: var(--faint);
+}
+select:not([multiple]) {
+  appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238b8f98' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+.input {
+  height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+}
+:where(.input, .dsin, .sel-inp, .lsort, select, .snotes, .ccompose textarea, textarea.code):focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 /* ------------------------------------------------------------- shell */
@@ -139,6 +224,7 @@ textarea {
   color: var(--ink-2);
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.12s var(--ease), color 0.12s var(--ease);
 }
 .tb:hover {
   background: var(--hover);
@@ -176,7 +262,8 @@ textarea {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #2e9b5a;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
 }
 .sync .dot.off {
   background: var(--danger);
@@ -193,7 +280,14 @@ textarea {
   padding: 5px;
   background: var(--panel);
   border-radius: 10px;
-  box-shadow: var(--float-shadow);
+  box-shadow: var(--lift-shadow);
+  animation: pop-in 0.12s var(--ease);
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.98);
+  }
 }
 .menu .mi {
   display: flex;
@@ -280,7 +374,7 @@ textarea {
 .rubber {
   position: absolute;
   border: 1px solid var(--accent);
-  background: rgba(47, 111, 237, 0.06);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
   pointer-events: none;
 }
 
@@ -345,7 +439,7 @@ textarea {
   border-radius: 4px;
   padding: 0 4px;
   font-size: 13px;
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
 }
 .board .strip .sb {
@@ -361,7 +455,7 @@ textarea {
   cursor: pointer;
 }
 .board .strip .sb:hover {
-  background: rgba(29, 29, 27, 0.06);
+  background: var(--tint);
   color: var(--ink);
 }
 .badge {
@@ -371,18 +465,18 @@ textarea {
   padding: 0 6px;
   border-radius: 9px;
   font-size: 11px;
-  background: #fff;
+  background: var(--panel);
   color: var(--muted);
   border: 1px solid var(--line);
 }
 .badge.err {
   color: var(--danger);
-  border-color: #f3c3bd;
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--panel));
   background: var(--danger-soft);
 }
 .badge.ai {
   color: var(--accent);
-  border-color: #c7d7fb;
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--panel));
   background: var(--accent-soft);
 }
 .board .outline {
@@ -398,7 +492,7 @@ textarea {
   position: absolute;
   width: 8px;
   height: 8px;
-  background: #fff;
+  background: var(--panel);
   border: 1.5px solid var(--accent);
   border-radius: 1.5px;
   transform-origin: center;
@@ -466,15 +560,15 @@ textarea {
 .fmt select {
   height: 26px;
   border: 0;
-  background: var(--panel-2);
+  background-color: var(--panel-2);
   border-radius: 6px;
-  padding: 0 6px;
+  padding: 0 22px 0 6px;
 }
 .fmt .sw {
   width: 18px;
   height: 18px;
   border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--hairline);
 }
 
 /* ------------------------------------------------------------- panel */
@@ -666,7 +760,7 @@ textarea {
   height: 30px;
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: var(--panel);
+  background-color: var(--panel);
   padding: 0 6px;
 }
 .sel-inp.narrow {
@@ -697,7 +791,7 @@ textarea {
 .seg button[aria-pressed='true'] {
   background: var(--panel);
   color: var(--ink);
-  box-shadow: 0 0 0 1px var(--line), 0 1px 1px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px var(--tint);
 }
 .seg button:disabled {
   opacity: 0.35;
@@ -780,13 +874,13 @@ textarea {
   border-radius: 4px;
   margin-left: 5px;
   flex: none;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--hairline);
   position: relative;
   overflow: hidden;
   cursor: pointer;
 }
 .swatch.none {
-  background: repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 8px 8px;
+  background: repeating-conic-gradient(var(--check-a) 0 25%, var(--check-b) 0 50%) 0 0 / 8px 8px;
 }
 .swatch input {
   position: absolute;
@@ -854,30 +948,46 @@ textarea {
   border: 1px solid var(--line-2);
   border-radius: var(--r);
   background: var(--panel);
+  color: var(--ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   cursor: pointer;
   white-space: nowrap;
+  font-weight: 500;
+  transition: background-color 0.12s var(--ease), border-color 0.12s var(--ease), color 0.12s var(--ease), box-shadow 0.12s var(--ease);
 }
 .btn:hover {
   background: var(--hover);
 }
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
 .btn.primary {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .btn.primary:hover {
-  background: var(--ink-2);
+  background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+  border-color: color-mix(in srgb, var(--accent) 86%, var(--ink));
 }
 .btn.danger {
   color: var(--danger);
 }
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: default;
+}
+/* a disabled primary stays legible: no faded brand fill (tingly-box .design/theme.md) */
+.btn.primary:disabled {
+  opacity: 1;
+  background: var(--panel-2);
+  border-color: var(--line);
+  color: var(--faint);
+  box-shadow: none;
 }
 .check {
   display: flex;
@@ -894,7 +1004,7 @@ textarea {
   height: 22px;
   border-radius: 50%;
   border: 2px solid var(--panel);
-  box-shadow: 0 0 0 1px var(--line-2);
+  box-shadow: 0 0 0 1px var(--hairline);
   cursor: pointer;
 }
 .swatches button[aria-pressed='true'] {
@@ -944,7 +1054,7 @@ textarea.code:focus {
   height: 12px;
   border-radius: 3px;
   flex: none;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--hairline);
 }
 .decl input {
   width: 100%;
@@ -993,7 +1103,8 @@ textarea.code:focus {
   width: min(640px, calc(100% - 32px));
   background: var(--panel);
   border-radius: 14px;
-  box-shadow: var(--float-shadow);
+  box-shadow: var(--lift-shadow);
+  transition: box-shadow 0.15s var(--ease);
   display: flex;
   flex-direction: column;
   z-index: 25;
@@ -1035,6 +1146,10 @@ textarea.code:focus {
   align-items: flex-end;
   gap: 8px;
   padding: 4px 10px 10px;
+}
+.prompt:focus-within,
+.dsask:focus-within {
+  box-shadow: var(--lift-shadow), 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .prompt textarea {
   flex: 1;
@@ -1218,7 +1333,8 @@ textarea.code:focus {
 }
 .toast {
   background: var(--ink);
-  color: #fff;
+  color: var(--panel);
+  animation: pop-in 0.16s var(--ease);
   padding: 9px 12px;
   border-radius: 10px;
   box-shadow: var(--float-shadow);
@@ -1226,20 +1342,48 @@ textarea.code:focus {
 }
 .toast.error {
   background: var(--danger);
+  color: var(--on-accent);
 }
+/* appearance menu */
+.menu .amode {
+  height: 34px;
+}
+.menu .amode[aria-checked='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+.menu .amode .al {
+  flex: 1;
+}
+.aswatch {
+  position: relative;
+  display: inline-flex;
+  width: 30px;
+  height: 20px;
+  border-radius: 5px;
+  overflow: hidden;
+  flex: none;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.aswatch i {
+  flex: 1;
+}
+.aswatch b {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  opacity: 0.92;
+}
+
 /* ------------------------------------------------------------- launcher */
 
 .launcher {
-  --t-blue: #2f6fed;
-  --t-blue-soft: #e7eefd;
-  --t-purple: #6d4fd8;
-  --t-purple-soft: #eee9fc;
-  --t-teal: #0e7c7b;
-  --t-teal-soft: #e0f2f1;
-  --t-orange: #b45309;
-  --t-orange-soft: #fbeedd;
-  --t-green: #1f7a43;
-  --t-green-soft: #e4f4ea;
+  --t-blue-soft: color-mix(in srgb, var(--t-blue) 13%, var(--panel));
+  --t-purple-soft: color-mix(in srgb, var(--t-purple) 13%, var(--panel));
+  --t-teal-soft: color-mix(in srgb, var(--t-teal) 13%, var(--panel));
+  --t-orange-soft: color-mix(in srgb, var(--t-orange) 13%, var(--panel));
+  --t-green-soft: color-mix(in srgb, var(--t-green) 13%, var(--panel));
   height: 100%;
   overflow: auto;
   background: var(--canvas);
@@ -1322,13 +1466,20 @@ textarea.code:focus {
   height: 32px;
   border: 1px solid var(--line-2);
   border-radius: 8px;
-  background: var(--panel);
-  padding: 0 6px;
+  background-color: var(--panel);
+  padding: 0 26px 0 10px;
   font: inherit;
 }
 .lnewbtn {
   height: 32px;
   padding: 0 12px;
+}
+.lbtn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--ink-2);
 }
 .ltabs {
   display: flex;
@@ -1369,7 +1520,7 @@ textarea.code:focus {
   border-color: var(--line-2);
   color: var(--ink);
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(29, 29, 27, 0.06);
+  box-shadow: 0 1px 2px var(--tint);
 }
 .lmain {
   padding: 12px max(24px, calc((100% - 1200px) / 2)) 48px;
@@ -1430,12 +1581,12 @@ textarea.code:focus {
   color: inherit;
   cursor: pointer;
   overflow: hidden;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: transform 0.16s var(--ease), box-shadow 0.16s var(--ease);
 }
 .lcard:hover,
 .lcard:focus-visible {
   transform: translateY(-2px);
-  box-shadow: 0 0 0 1px rgba(29, 29, 27, 0.1), 0 4px 10px rgba(29, 29, 27, 0.08), 0 14px 32px rgba(29, 29, 27, 0.1);
+  box-shadow: var(--lift-shadow);
 }
 .lcard:focus-visible {
   outline: 2px solid var(--accent);
@@ -1449,7 +1600,7 @@ textarea.code:focus {
   border-bottom: 1px solid var(--line);
 }
 .lpreview.k-slides {
-  background: #1d1d1b;
+  background: #16181d;
 }
 .lframe {
   position: absolute;
@@ -1467,7 +1618,7 @@ textarea.code:focus {
   width: 100%;
   height: 100%;
   border: 0;
-  background: #fff;
+  background: var(--panel);
 }
 .lp-empty {
   position: absolute;
@@ -1505,7 +1656,7 @@ textarea.code:focus {
 .lp-ds .sw span {
   height: 22px;
   border-radius: 5px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .lp-ds .aa {
   font-size: 18px;
@@ -1725,7 +1876,8 @@ textarea.code:focus {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(29, 29, 27, 0.28);
+  background: var(--backdrop);
+  backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -1736,7 +1888,8 @@ textarea.code:focus {
   overflow: auto;
   background: var(--panel);
   border-radius: var(--r-float);
-  box-shadow: var(--float-shadow), 0 24px 64px rgba(29, 29, 27, 0.2);
+  box-shadow: var(--lift-shadow);
+  animation: pop-in 0.16s var(--ease);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -1794,6 +1947,9 @@ textarea.code:focus {
   padding: 0 8px;
   font: inherit;
 }
+.ldialog .folder .input:focus-visible {
+  box-shadow: none;
+}
 .ldialog .folder {
   display: flex;
   align-items: center;
@@ -1815,6 +1971,7 @@ textarea.code:focus {
 }
 .ldialog .folder:focus-within {
   border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 .ldialog .problem {
   min-height: 18px;
@@ -1984,8 +2141,8 @@ textarea.code:focus {
   font-size: 10px;
   padding: 0 5px;
   border-radius: 4px;
-  background: rgba(29, 29, 27, 0.75);
-  color: #fff;
+  background: var(--scrim-ink);
+  color: var(--panel);
 }
 .thumb .tag.err {
   left: 4px;
@@ -2020,7 +2177,7 @@ textarea.code:focus {
   pointer-events: none;
 }
 .sframe.f-stage {
-  box-shadow: 0 1px 3px rgba(29, 29, 27, 0.08), 0 8px 32px rgba(29, 29, 27, 0.1);
+  box-shadow: var(--float-shadow);
   background: #fff;
 }
 .slides .sarea {
@@ -2434,7 +2591,7 @@ textarea.code:focus {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .dshead .nm {
   font-weight: 500;
@@ -2593,7 +2750,7 @@ textarea.dsin {
 .famrow .shd {
   width: 48px;
   height: 28px;
-  background: #fff;
+  background: var(--panel);
   border-radius: 6px;
 }
 .famrow .nm {
@@ -2661,6 +2818,9 @@ textarea.dsin {
 }
 .md img {
   max-width: 100%;
+}
+.md a {
+  color: var(--accent-ink);
 }
 .cover {
   margin-bottom: 16px;
@@ -2731,7 +2891,7 @@ textarea.dsin {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: repeating-conic-gradient(#f3f2ef 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+  background: repeating-conic-gradient(var(--check-a) 0% 25%, var(--check-b) 0% 50%) 50% / 16px 16px;
 }
 .tile img {
   max-width: 85%;
@@ -2860,7 +3020,7 @@ textarea.dsin {
   width: 18px;
   height: 18px;
   border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .tokgrid .nm {
   font: 11.5px var(--mono);
@@ -2889,7 +3049,7 @@ textarea.dsin {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .dsi-a {
   display: flex;
@@ -2939,7 +3099,7 @@ textarea.dsin {
   padding: 0 4px;
   border-radius: 8px;
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 10.5px;
   line-height: 16px;
 }
@@ -3003,7 +3163,7 @@ input.dashtitle {
   transform: translateX(-50%);
   z-index: 5;
   background: var(--ink);
-  color: #fff;
+  color: var(--panel);
   font-size: 12px;
   padding: 5px 12px;
   border-radius: 999px;
@@ -3425,13 +3585,13 @@ input.dashtitle {
 .addtab {
   margin: 6px 4px 14px;
 }
-.outline {
+.doctabs .outline {
   border-top: 1px solid var(--line);
   padding-top: 10px;
   display: flex;
   flex-direction: column;
 }
-.outline button {
+.doctabs .outline button {
   border: 0;
   background: none;
   text-align: left;
@@ -3444,7 +3604,7 @@ input.dashtitle {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.outline button:hover {
+.doctabs .outline button:hover {
   background: var(--hover);
   color: var(--ink);
 }
@@ -3491,8 +3651,19 @@ input.dashtitle {
   height: 28px;
   border: 1px solid var(--line-2);
   border-radius: 6px;
-  background: var(--panel);
-  padding: 0 6px;
+  background-color: var(--panel);
+  padding: 0 24px 0 8px;
+}
+.doctools button svg,
+.bubble button svg {
+  display: block;
+}
+.doctools button,
+.bubble button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s var(--ease), color 0.12s var(--ease);
 }
 .doctools .sep,
 .bubble .sep {
@@ -3644,7 +3815,8 @@ input.dashtitle {
   color: var(--accent-ink);
 }
 .docbody mark {
-  background: #fdf0a8;
+  background: var(--mark);
+  color: inherit;
   padding: 0 1px;
 }
 .docbody p.is-empty::before,
@@ -3658,12 +3830,12 @@ input.dashtitle {
   pointer-events: none;
 }
 .docbody .cmark {
-  background: rgba(255, 196, 0, 0.22);
-  border-bottom: 2px solid rgba(230, 160, 0, 0.7);
+  background: var(--comment);
+  border-bottom: 2px solid var(--comment-line);
   cursor: pointer;
 }
 .docbody .cmark.on {
-  background: rgba(255, 196, 0, 0.45);
+  background: var(--comment-on);
 }
 .docbody .cmark.done {
   background: none;
@@ -3679,7 +3851,7 @@ input.dashtitle {
   padding: 4px;
 }
 .bubble .spark {
-  color: #6d4fd8;
+  color: var(--actor-claude);
 }
 .bubble .askin {
   width: 140px;
@@ -3773,7 +3945,7 @@ input.dashtitle {
 .cquote {
   margin: 0 0 6px;
   padding-left: 8px;
-  border-left: 3px solid rgba(230, 160, 0, 0.7);
+  border-left: 3px solid var(--comment-line);
   color: var(--muted);
   font-size: 12.5px;
   max-height: 3.2em;

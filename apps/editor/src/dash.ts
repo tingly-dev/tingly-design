@@ -25,6 +25,7 @@ import {
 } from '@dc/core';
 import { api } from './api';
 import { display, edit, toast, useStore } from './store';
+import { currentTheme, onTheme } from './theme';
 
 /**
  * A dashboard's data, on the editor's side: it loads each dataset the page
@@ -66,13 +67,7 @@ export const useDash = create<DashState>(() => ({
   report: null,
   derived: {},
   mode: 'page',
-  theme: (() => {
-    try {
-      return (localStorage.getItem('dc.dashTheme') as 'light' | 'dark') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    } catch {
-      return 'light';
-    }
-  })(),
+  theme: savedDashTheme() ?? currentTheme()?.theme.scheme ?? 'light',
   open: null,
   pick: null,
   side: 'sources',
@@ -357,6 +352,23 @@ export function ago(at: number | string | undefined): string {
 export function staleOf(d: DatasetJson | null): boolean {
   return !!d && isStale(d);
 }
+
+function savedDashTheme(): 'light' | 'dark' | null {
+  try {
+    const v = localStorage.getItem('dc.dashTheme');
+    return v === 'light' || v === 'dark' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// until someone flips the dashboard's own switch, its page follows the editor's light or dark
+onTheme(() => {
+  const scheme = currentTheme()?.theme.scheme;
+  if (!scheme || savedDashTheme() || useDash.getState().theme === scheme) return;
+  dset({ theme: scheme });
+  postFrame({ dc: 'dash-theme', theme: scheme });
+});
 
 export function setTheme(theme: 'light' | 'dark'): void {
   dset({ theme });

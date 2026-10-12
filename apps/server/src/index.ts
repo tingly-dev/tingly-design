@@ -63,6 +63,18 @@ const PORT = Number(process.env.PORT ?? 8787);
 const FAST_MODEL = process.env.DC_FAST_MODEL ?? 'claude-haiku-5-5';
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
 const run = promisify(execFile);
+/** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, sunlit, system), inline JSON, or a .json file */
+const DC_THEME: unknown = await (async () => {
+  const v = process.env.DC_THEME?.trim();
+  if (!v) return null;
+  if (!v.endsWith('.json')) return v;
+  try {
+    return JSON.parse(await readFile(v, 'utf8'));
+  } catch (e) {
+    console.warn(`DC_THEME: cannot read ${v}: ${(e as Error).message}`);
+    return null;
+  }
+})();
 
 const app = new Hono();
 
@@ -81,6 +93,7 @@ app.get('/api/health', (c) => {
     fastModel: FAST_MODEL,
     claudeCli: cliChecked,
     projectsDir: relative(REPO_ROOT, PROJECTS_DIR) || '.',
+    theme: DC_THEME,
   });
 });
 
