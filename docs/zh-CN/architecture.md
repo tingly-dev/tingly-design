@@ -1,0 +1,78 @@
+<p align="right"><a href="../architecture.md">English</a> · <b>简体中文</b></p>
+
+# 工作原理
+
+```
+            ┌──────────── 唯一真相：projects/<name>/ 下的源文件（每个文件有版本号）─────────────┐
+            │                                                                               │
+  界面手改（秒）          快速 AI（秒）                     Claude Code（分钟）         终端 / git
+  DOM 操作 → 回写      jQuery 在沙箱副本上执行 → 回写         直接改文件                  直接改文件
+            │                   └── askClaude() 委托 ──→           │                         │
+            └──────────── 共享 journal：谁、什么时候、改了什么 ←── 文件监听 ──────────────────┘
+```
+
+## 1. 一个格式受约束的源文件
+
+`.dc.html` 是一页自包含 HTML：`<x-dc>` 里是模板（`{{path}}`、`<sc-for>`、`<sc-if>`、`<dc-import>`），`<script data-dc-script>` 里是 `class Component extends DCLogic`。约定是视觉属性写内联 `style`、文案写字面量、布局用 flex/grid + `gap`。这些约束保证界面上的每个操作都能落到源码里一个确定的位置。幻灯片页面同理，用的是更严格的 HTML/CSS 子集。
+
+## 2. 统一的回写引擎（`packages/core/src/copy.ts`）
+
+所有编辑者都在同一种东西上工作：用 parse5 带源码位置解析模板，再建一份 DOM 副本，每个元素记得自己来自源码的哪一段，并带一个临时句柄 id（`#dc12`，按深度优先编号，从不落盘）。
+
+编辑完成后，比较副本和原始语法树，生成**最小文本补丁**：
+
+- 只改了属性：只替换那一个属性；
+- 只改了文字：只替换那段文字；
+- 子元素增删或重排：才重写父元素的内部，而且没动过的子元素直接拷贝原文，不重新序列化；
+- 样式按文本编辑而不是走 CSSOM，所以 `background:{{r.bg}}` 这类带占位的声明不会丢。
+
+人的操作（`applyHumanOps`）、快速 AI 的 jQuery（`FastEditSession`）、冲突后的重放，全都走这一个引擎。
+
+## 3. 快速 AI：输出的是“编辑操作”，不是新文件
+
+模型拿到的上下文依次是：画布概览、你正在看的画板、目标画板带句柄的标记、journal、你指着的元素、你的话。它的回复只能是 jQuery 语句，一行一条：
+
+```js
+$('#dc12').css('color', '#7c3aed')
+$('#dc12').after(`<ul style="margin: 0; padding-left: 18px"></ul>`)
+$('#dc12').next().append(`<li style="font-size: 14px"></li>`)
+$('#dc12').next().children().first().repeat(3)
+.text((i) => ['计划', '构建', '发布'][i])
+```
+
+- **流式执行**：每写完一行就在沙箱里执行，画板马上显示草稿（虚线框）。
+- **出错重写**：任何一行报错，整次回复撤销，把错误告诉模型重写，最多重试两次。
+- **工具**：`log(x)` 让模型先看看某个元素的当前状态；`askClaude()` 把请求原样委托给 Claude Code。
+- **保存**：改完后作为一次普通编辑保存；如果期间文件被别人改了，就把这些语句在新版本上重放一遍。
+
+## 4. 协同：版本号 + 重放，加一份 journal
+
+- 每个文件的版本号是内容哈希。保存时带上基于的版本，不一致就返回 409 和当前内容。
+- 编辑器里每次编辑都以“源码 → 新源码”的函数入队，乐观地先显示；遇到 409 就在新版本上重新执行这个函数再保存。两个人同时改同一个文件，两边的改动都会保留。
+- 撤销按上下文定位自己的那处改动，所以别人改了同一文件的其他地方，你照样能撤销自己的。
+- journal 记录所有编辑者的改动（手改、jQuery、快速 AI、Claude、外部、撤销），实时推送到所有打开的编辑器，也作为快速 AI 的上下文，所以“再来一个”“少一点”这类话它能听懂。
+
+## 5. 沙箱
+
+画板和 AI 代码都运行在 `sandbox="allow-scripts"` 的 iframe 里（不同源，拿不到编辑器的 cookie 和存储），并用 CSP 禁止网络请求（画板只允许 Google Fonts 和图片）。编辑器与它们只通过 `postMessage` 通信，协议定义在 `packages/core/src/protocol.ts`。
+
+## 项目结构
+
+```
+packages/core       格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词；
+                    幻灯片的 deck.json、子集检查、形状/图标/连线绘制；设计系统的 tokens 语法与 tokens.css；
+                    看板的数据集、CSV 解析、SQL 检查与参数绑定、标注核对；文档的按块合并与重放、评论定位
+packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
+apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交、看板的数据连接器
+apps/editor         React + Vite + zustand 的画布、幻灯片（components/slides）、设计系统（components/ds）、看板（components/dash）和文档（components/docs）编辑器
+projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档）
+scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）
+.claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs（委托时会让它先读）
+artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
+docs/               使用指南与设计说明（docs/zh-CN/ 是中文版）；docs/images/ 是截图
+e2e/                Playwright 端到端测试和一个模拟的 Messages API
+```
+
+---
+
+返回 [README](../../README.zh-CN.md)
