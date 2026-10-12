@@ -9,6 +9,7 @@ import { PromptBar } from './components/PromptBar';
 import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './components/Overlays';
 import { SlidesApp } from './components/slides/SlidesApp';
 import { DsApp } from './components/ds/DsApp';
+import { DashApp } from './components/dash/DashApp';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -23,10 +24,10 @@ function Toasts() {
   );
 }
 
-const KIND_ZH = { design: '画布', slides: '幻灯片', 'design-system': '设计系统' } as const;
+const KIND_ZH = { design: '画布', slides: '幻灯片', 'design-system': '设计系统', dashboard: '看板' } as const;
 
 function Picker() {
-  type Kind = 'design' | 'slides' | 'design-system';
+  type Kind = keyof typeof KIND_ZH;
   const [list, setList] = useState<{ name: string; title: string; kind: Kind }[] | null>(null);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<Kind>('design');
@@ -69,6 +70,7 @@ function Picker() {
             <option value="design">画布</option>
             <option value="slides">幻灯片</option>
             <option value="design-system">设计系统</option>
+            <option value="dashboard">看板</option>
           </select>
           <input className="input" placeholder="文件夹名，如 onboarding" aria-label="新项目名称" value={name} onChange={(e) => setName(e.target.value)} />
           <button className="btn primary" type="submit">
@@ -107,6 +109,13 @@ export function App() {
   }, [project]);
 
   if (!project) return <Picker />;
+  if (kind === 'dashboard')
+    return (
+      <>
+        <DashApp />
+        <Toasts />
+      </>
+    );
   if (kind === 'design-system')
     return (
       <>

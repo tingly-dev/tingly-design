@@ -108,7 +108,16 @@ function Issues() {
   );
 }
 
-function AskClaude() {
+export function AskClaude({
+  placeholder = '交给 Claude Code：从代码库补全 token 和组件、写品牌手册、做封面…',
+  file,
+  context,
+}: {
+  placeholder?: string;
+  file?: string;
+  /** what the person is looking at, said before the request */
+  context?: () => string;
+}) {
   const [text, setText] = useState('');
   const fast = useStore((s) => s.fast);
   const delegates = useStore((s) => s.delegates);
@@ -117,7 +126,8 @@ function AskClaude() {
   const send = () => {
     const t = text.trim();
     if (!t) return;
-    void delegateToClaude(undefined, null, t);
+    const ctx = context?.();
+    void delegateToClaude(file, null, ctx ? `${ctx}\n\n${t}` : t);
     setText('');
   };
   return (
@@ -125,7 +135,7 @@ function AskClaude() {
       <textarea
         rows={1}
         value={text}
-        placeholder={health?.claudeCli === false ? '本机找不到 claude 命令，无法委托。' : '交给 Claude Code：从代码库补全 token 和组件、写品牌手册、做封面…'}
+        placeholder={health?.claudeCli === false ? '本机找不到 claude 命令，无法委托。' : placeholder}
         aria-label="请求"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

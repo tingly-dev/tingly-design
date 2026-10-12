@@ -4,6 +4,15 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CANVAS_FILE,
+  DASH_DATA_TYPES,
+  DASH_INDEX,
+  DASH_PAGE,
+  DASH_STARTER_PAGE,
+  isDashFile,
+  isDataPath,
+  newDash,
+  parseDash,
+  stringifyDash,
   DECK_FILE,
   DS_INDEX,
   DS_README,
@@ -63,6 +72,7 @@ export class HttpError extends Error {
 export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
+  if (isDashFile(r)) return r;
   // a design system's text files, and a copy of one installed into a canvas or deck
   if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/tokens\.json$/.test(r)) return r;
   throw new HttpError(400, `not a project file: ${rel}`);
@@ -83,15 +93,23 @@ export const ASSET_TYPES: Record<string, string> = {
   otf: 'font/otf',
 };
 
+/** The media type a project's binary file is served with. */
+export function assetType(rel: string): string {
+  const ext = rel.slice(rel.lastIndexOf('.') + 1).toLowerCase();
+  return (rel.startsWith('data/') ? DASH_DATA_TYPES[ext] : ASSET_TYPES[ext]) ?? 'application/octet-stream';
+}
+
 export function assetRel(rel: string): string {
   const r = rel.replace(/\\/g, '/');
+  // a dashboard's data files: csv, tsv, json, SQLite
+  if (isDataPath(r)) return r;
   const m = /^(assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_. -]{0,120})\.([a-z0-9]+)$/i.exec(r);
   if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, `not an asset path: ${rel}`);
   return r;
 }
 
 export async function kindOf(dir: string): Promise<ProjectKind | null> {
-  for (const [file, kind] of [[DECK_FILE, 'slides'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const) {
+  for (const [file, kind] of [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const) {
     try {
       await stat(join(dir, file));
       return kind;
@@ -144,8 +162,10 @@ export async function listProjects(): Promise<ProjectInfo[]> {
     const kind = await kindOf(dir);
     if (!kind) continue;
     try {
-      const text = await readFile(join(dir, kind === 'slides' ? DECK_FILE : kind === 'design-system' ? DS_INDEX : CANVAS_FILE), 'utf8');
-      const title = kind === 'slides' ? parseDeck(text).title : kind === 'design-system' ? parseDsIndex(text).title : parseCanvas(text).title;
+      const index = { slides: DECK_FILE, 'design-system': DS_INDEX, dashboard: DASH_INDEX, design: CANVAS_FILE }[kind];
+      const text = await readFile(join(dir, index), 'utf8');
+      const title =
+        kind === 'slides' ? parseDeck(text).title : kind === 'design-system' ? parseDsIndex(text).title : kind === 'dashboard' ? parseDash(text).title : parseCanvas(text).title;
       out.push({ name: e.name, title, kind });
     } catch {
       // unreadable index
@@ -256,7 +276,7 @@ export async function listAssets(name: string): Promise<{ path: string; size: nu
       }
     }
   };
-  for (const top of ['assets', 'fonts', 'ds']) await visit(join(dir, top));
+  for (const top of ['assets', 'fonts', 'ds', 'data']) await visit(join(dir, top));
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
@@ -279,6 +299,11 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     await writeAtomic(name, DS_README, `# ${title}\n\n${title} 的设计系统。从品牌的真实来源（代码库、设计稿、品牌手册）补全它，或者让 Claude Code 来做。\n\n## 使用\n\n颜色是语义 token（\`surface\`、\`ink\`、\`accent\`），每个 token 的说明写明它用在什么底色上。\n`);
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
+    return;
+  }
+  if (kind === 'dashboard') {
+    await writeAtomic(name, DASH_PAGE, DASH_STARTER_PAGE.replace('TITLE', title.replace(/[<&>]/g, '')));
+    await writeAtomic(name, DASH_INDEX, stringifyDash(newDash(title)));
     return;
   }
   if (kind === 'slides') {

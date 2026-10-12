@@ -1,0 +1,13 @@
+{
+  "title": "各门店按月汇总",
+  "description": "每家门店每月的订单数、营业额和客单价（元）。读 data/cafe.db 的 daily_sales 和 stores。",
+  "source": {
+    "kind": "query",
+    "connector": "sqlite",
+    "tool": "query",
+    "args": {
+      "db": "data/cafe.db",
+      "sql": "SELECT s.store, s.district, substr(d.day, 1, 7) AS month,\n  SUM(d.orders) AS orders,\n  ROUND(SUM(d.revenue), 2) AS revenue,\n  ROUND(SUM(d.revenue) / SUM(d.orders), 2) AS ticket\nFROM daily_sales d JOIN stores s ON s.store = d.store\nGROUP BY s.store, s.district, month\nORDER BY month, revenue DESC"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "store": "人民广场",
+      "month": "2026-09",
+      "revenue_target": 560000
+    },
+    {
+      "store": "静安寺",
+      "month": "2026-09",
+      "revenue_target": 470000
+    },
+    {
+      "store": "陆家嘴",
+      "month": "2026-09",
+      "revenue_target": 400000
+    }
+  ]
+}

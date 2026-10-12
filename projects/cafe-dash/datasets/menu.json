@@ -1,0 +1,13 @@
+{
+  "title": "三季度单品销量",
+  "description": "菜单上每个单品三季度卖出的杯数（份数）和售价，来自收银系统导出。",
+  "source": {
+    "kind": "file",
+    "url": "data/menu.csv",
+    "name": "menu.csv"
+  },
+  "updated": {
+    "at": "2026-10-08T09:00:00Z",
+    "by": "示例数据"
+  }
+}
