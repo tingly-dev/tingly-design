@@ -154,9 +154,9 @@ async def main():
         # --- upload and a new dashboard -----------------------------------------------------------------
         restore()
         await pg.goto(BASE + '/')
-        await pg.locator('.picker select').select_option('dashboard')
-        await pg.locator('.picker input').fill('zz-dash')
-        await pg.locator('.picker button[type="submit"]').click()
+        await pg.locator('.lstrip [data-new="dashboard"]').click()
+        await pg.locator('[role=dialog] input[aria-label=\"新项目名称\"]').fill('zz-dash')
+        await pg.locator('[role=dialog] button[type="submit"]').click()
         await expect(pg.locator('.dashtitle')).to_have_text('zz-dash')
         await expect(fr.locator('h1')).to_have_text('zz-dash')
         check('a new dashboard starts with a page and no data', os.path.exists(os.path.join(REPO, 'projects/zz-dash/dash.json')) and await pg.locator('.srow').count() == 0)

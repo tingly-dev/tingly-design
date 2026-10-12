@@ -41,6 +41,8 @@ import {
   slideFile,
   stringifyCanvas,
   stringifyDeck,
+  projectCard,
+  type ProjectCard,
   type ProjectKind,
 } from '@dc/core';
 
@@ -153,26 +155,27 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
   }
 }
 
-export interface ProjectInfo {
-  name: string;
-  title: string;
-  kind: ProjectKind;
-}
-
-export async function listProjects(): Promise<ProjectInfo[]> {
+export async function listProjects(): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
-  const out: ProjectInfo[] = [];
+  const out: ProjectCard[] = [];
   for (const e of await readdir(PROJECTS_DIR, { withFileTypes: true })) {
     if (!e.isDirectory() || !isProjectName(e.name)) continue;
     const dir = join(PROJECTS_DIR, e.name);
     const kind = await kindOf(dir);
     if (!kind) continue;
     try {
-      const index = { slides: DECK_FILE, 'design-system': DS_INDEX, dashboard: DASH_INDEX, docs: DOC_INDEX, design: CANVAS_FILE }[kind];
-      const text = await readFile(join(dir, index), 'utf8');
-      const title =
-        kind === 'slides' ? parseDeck(text).title : kind === 'design-system' ? parseDsIndex(text).title : kind === 'dashboard' ? parseDash(text).title : kind === 'docs' ? parseDoc(text).title : parseCanvas(text).title;
-      out.push({ name: e.name, title, kind });
+      const files: string[] = [];
+      await walk(dir, dir, files);
+      let newest = 0;
+      for (const f of files) {
+        try {
+          newest = Math.max(newest, (await stat(join(dir, f))).mtimeMs);
+        } catch {
+          // gone meanwhile
+        }
+      }
+      const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
+      out.push(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null));
     } catch {
       // unreadable index
     }
