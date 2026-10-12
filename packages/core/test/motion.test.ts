@@ -27,6 +27,7 @@ describe('motion: time and timing words', () => {
     expect(parseAnim('rise 600ms @0.4s ease-in-out', 'in')).toEqual({ preset: 'rise', duration: 600, start: 400, easing: 'ease-in-out' });
     expect(parseAnim('fade @1s 300ms', 'out')).toEqual({ preset: 'fade', duration: 300, start: 1000, easing: 'ease-in' });
     expect(parseAnim('pop', 'in')).toMatchObject({ duration: 500, start: null, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+    expect(parseAnim('slam', 'in')).toMatchObject({ duration: 350, easing: 'cubic-bezier(.3,1.6,.5,1)' });
     expect(parseAnim('wobble', 'in')).toEqual({ error: 'unknown preset "wobble"' });
     expect(parseAnim('fade later', 'in')).toEqual({ error: 'unknown word "later"' });
     expect(parseAnim('', 'in')).toBeNull();

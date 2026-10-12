@@ -1,12 +1,12 @@
 {
   "v": 1,
-  "title": "Tingly Box in 12 seconds",
+  "title": "Tingly Design in 13 seconds",
   "formats": {
     "wide": { "size": [1920, 1080] },
     "tall": { "size": [1080, 1920] }
   },
   "fps": 30,
-  "order": ["hook", "gateway", "cta"],
+  "order": ["source", "editors", "diff", "kinds", "outro"],
   "audio": [],
   "faces": {
     "instrument-serif": {
@@ -15,11 +15,11 @@
     },
     "inter": {
       "family": "Inter",
-      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap"
     },
     "jetbrains-mono": {
       "family": "JetBrains Mono",
-      "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&display=swap"
+      "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap"
     }
   }
 }

@@ -126,7 +126,7 @@ export function easingOf(token: string): string | null {
 
 // ------------------------------------------------------------------ presets
 
-export const MOTION_PRESETS = ['fade', 'rise', 'drop', 'left', 'right', 'scale', 'pop', 'zoom', 'blur', 'wipe', 'type', 'count'] as const;
+export const MOTION_PRESETS = ['fade', 'rise', 'drop', 'left', 'right', 'scale', 'pop', 'zoom', 'slam', 'spin', 'blur', 'wipe', 'type', 'count'] as const;
 export type MotionPreset = (typeof MOTION_PRESETS)[number];
 
 export const DEFAULT_ANIM_MS = 500;
@@ -151,8 +151,10 @@ export function parseAnim(v: string | undefined, dir: 'in' | 'out'): AnimSpec | 
     preset: preset as MotionPreset,
     duration: DEFAULT_ANIM_MS,
     start: null,
-    easing: preset === 'pop' ? EASINGS.spring : dir === 'in' ? 'ease-out' : 'ease-in',
+    easing: preset === 'pop' || preset === 'slam' || preset === 'spin' ? EASINGS.spring : dir === 'in' ? 'ease-out' : 'ease-in',
   };
+  // a slam lands on the beat, so it is short by default
+  if (preset === 'slam') spec.duration = 350;
   if (preset === 'type' || preset === 'count') spec.duration = 1000;
   for (const tok of rest) {
     if (tok.startsWith('@')) {
@@ -191,6 +193,10 @@ function presetHidden(preset: MotionPreset): Record<string, string> {
       return { opacity: '0', scale: '0.4' };
     case 'zoom':
       return { opacity: '0', scale: '1.3' };
+    case 'slam':
+      return { opacity: '0', scale: '2.4' };
+    case 'spin':
+      return { opacity: '0', scale: '0.5', rotate: '-20deg' };
     case 'blur':
       return { opacity: '0', filter: 'blur(24px)' };
     case 'wipe':
@@ -205,7 +211,7 @@ function presetShown(preset: MotionPreset): Record<string, string> {
   const hidden = presetHidden(preset);
   const shown: Record<string, string> = {};
   for (const k of Object.keys(hidden)) {
-    shown[k] = k === 'opacity' ? '1' : k === 'translate' ? '0px 0px' : k === 'scale' ? '1' : k === 'filter' ? 'blur(0px)' : 'inset(0px 0% 0px 0px)';
+    shown[k] = k === 'opacity' ? '1' : k === 'translate' ? '0px 0px' : k === 'scale' ? '1' : k === 'rotate' ? '0deg' : k === 'filter' ? 'blur(0px)' : 'inset(0px 0% 0px 0px)';
   }
   return shown;
 }
