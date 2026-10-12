@@ -1,15 +1,17 @@
-import { packPage, toCanvas, type InFile, type ImportReport } from '@dc/import';
+import { embeddedAssets, packPage, parseSvg, readSvg, toCanvas, type Extracted, type InFile, type ImportReport } from '@dc/import';
 import { extractPage } from '@dc/import/extract';
 import { api } from './api';
 
 /**
- * Import an HTML page (and the files beside it) as a new canvas.
+ * Import an HTML page or an SVG drawing (and the files beside it) as a new
+ * canvas, through @dc/import's sources and its one generator.
  *
- * The page is laid out in a hidden frame with scripts off and no network
- * except Google Fonts and web images, then read back with @dc/import's
- * extractor: every element keeps the style its author gave it, inline.
- * Pages that need JavaScript to show anything import from a terminal
- * instead (`dc-import html`, which runs them in a headless browser).
+ * An HTML page is laid out in a hidden frame with scripts off and no network
+ * except Google Fonts and web images, then read back with the extractor:
+ * every element keeps the style its author gave it, inline. Pages that need
+ * JavaScript to show anything import from a terminal instead (`dc-import
+ * html`, which runs them in a headless browser). An SVG needs no layout: it
+ * is parsed and goes onto one artboard as a drawing.
  */
 
 export type ImportStep = 'layout' | 'assets' | 'write';
@@ -23,7 +25,7 @@ const WIDTH = 1280;
 
 export interface Picked {
   files: InFile[];
-  /** the page to import: index.html when there is one, else the first .html */
+  /** the file to import: index.html when there is one, else the first .html, else the first .svg */
   entry: string;
   pages: string[];
   title: string;
@@ -43,10 +45,27 @@ export async function readPicked(list: { file: File; path: string }[]): Promise<
       return { path, type: file.type || MIME[ext] || 'application/octet-stream', bytes: new Uint8Array(await file.arrayBuffer()) };
     }),
   );
-  const pages = files.map((f) => f.path).filter((p) => /\.html?$/i.test(p)).sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
+  return pick(files);
+}
+
+/** SVG markup pasted from a design tool (Figma's "Copy as SVG") → a picked file; null when it is not SVG. */
+export function pickedFromText(text: string): Picked | null {
+  if (!/<svg[\s>]/i.test(text)) return null;
+  return pick([{ path: 'pasted.svg', type: 'image/svg+xml', bytes: new TextEncoder().encode(text) }]);
+}
+
+const depth = (p: string) => p.split('/').length;
+const isSvg = (p: string) => /\.svg$/i.test(p);
+
+function pick(files: InFile[]): Picked {
+  const html = files.map((f) => f.path).filter((p) => /\.html?$/i.test(p));
+  const svg = files.map((f) => f.path).filter(isSvg);
+  const order = (a: string, b: string) => depth(a) - depth(b) || a.localeCompare(b);
+  // a folder with a page in it imports the page; its .svg files are just its images
+  const pages = (html.length ? html : svg).sort(order);
   const entry = pages.find((p) => /(^|\/)index\.html?$/i.test(p)) ?? pages[0] ?? '';
-  const html = entry ? new TextDecoder().decode(files.find((f) => f.path === entry)!.bytes) : '';
-  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1].replace(/\s+/g, ' ').trim() ?? '';
+  const text = entry ? new TextDecoder().decode(files.find((f) => f.path === entry)!.bytes) : '';
+  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text)?.[1].replace(/\s+/g, ' ').trim() ?? '';
   return { files, entry, pages, title };
 }
 
@@ -101,24 +120,28 @@ export interface ImportResult {
   report: ImportReport;
 }
 
-export async function importHtml(picked: Picked, name: string, title: string, onStep: (s: ImportStep) => void): Promise<ImportResult> {
+export async function importPicked(picked: Picked, name: string, title: string, onStep: (s: ImportStep) => void): Promise<ImportResult> {
   onStep('layout');
   const packed = packPage(picked.files, picked.entry);
-  const { frame, win } = await layOut(packed.html);
-  let extracted;
-  try {
-    extracted = extractPage(win);
-  } finally {
-    frame.remove();
+  let extracted: Extracted;
+  if (isSvg(picked.entry)) {
+    extracted = readSvg(parseSvg(packed.html));
+  } else {
+    const { frame, win } = await layOut(packed.html);
+    try {
+      extracted = extractPage(win);
+    } finally {
+      frame.remove();
+    }
+    extracted.report.unreadableSheets.push(...packed.remoteCss);
+    if (extracted.report.elements < 4 && extracted.report.scripts > 0)
+      throw new Error('这个页面要运行脚本才会显示内容，编辑器里不运行导入页面的脚本。请在终端用 `pnpm dc-import html <文件>` 导入。');
   }
-  extracted.report.unreadableSheets.push(...packed.remoteCss);
-  if (extracted.report.elements < 4 && extracted.report.scripts > 0)
-    throw new Error('这个页面要运行脚本才会显示内容，编辑器里不运行导入页面的脚本。请在终端用 `pnpm dc-import html <文件>` 导入。');
 
   await api.createProject(name, title || extracted.title || name, 'design');
   onStep('assets');
-  // the files the page used, uploaded once each; their data: urls point at the copies
   const local = new Map<string, string>();
+  // the files the page used, uploaded once each; their data: urls point at the copies
   const byPath = new Map(picked.files.map((f) => [f.path, f]));
   for (const [dataUrl, path] of packed.paths) {
     if (!ASSET_EXT.test(path)) continue;
@@ -126,9 +149,17 @@ export async function importHtml(picked: Picked, name: string, title: string, on
     const up = await api.upload(name, new File([f.bytes as Uint8Array<ArrayBuffer>], path.split('/').pop()!, { type: f.type }));
     local.set(dataUrl, up.path);
   }
+  // images the file carried inside itself (Figma's SVGs embed screenshots this way)
+  for (const a of embeddedAssets(extracted.urls)) {
+    if (local.has(a.url)) continue;
+    // the server names uploads by their content, so each embedded file lands once
+    const up = await api.upload(name, new File([a.bytes as Uint8Array<ArrayBuffer>], `embedded.${a.ext}`, { type: a.type }));
+    local.set(a.url, up.path);
+  }
 
   onStep('write');
-  const out = toCanvas(extracted, { title: title || undefined, source: picked.entry, mapUrl: (u) => local.get(u), missing: packed.missing });
+  const source = picked.entry === 'pasted.svg' && picked.files.length === 1 ? undefined : picked.entry;
+  const out = toCanvas(extracted, { title: title || extracted.title || name, source, mapUrl: (u) => local.get(u), missing: packed.missing });
   const { files } = await api.files(name);
   // artboards first, the index last, so the canvas never lists a file that is not there yet
   const order = [...Object.keys(out.files).filter((f) => f !== 'canvas.json'), 'canvas.json'];

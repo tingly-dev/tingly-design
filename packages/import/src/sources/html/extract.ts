@@ -1,4 +1,4 @@
-import type { ExtractReport, Extracted, XElement, XNode } from './model';
+import type { ExtractReport, Extracted, XElement, XNode } from '../../model';
 
 /**
  * Reads a page that a browser has laid out and returns it as plain data.
@@ -184,7 +184,7 @@ export function extractPage(win: Window, opts: ExtractOptions = {}): Extracted {
   const urls: string[] = [];
   const seen = new Set<string>();
   const useUrl = (u: string) => {
-    if (/^(https?|file):/i.test(u) && !seen.has(u)) {
+    if (/^(https?|file|data):/i.test(u) && !seen.has(u)) {
       seen.add(u);
       urls.push(u);
     }
@@ -578,6 +578,7 @@ export function extractPage(win: Window, opts: ExtractOptions = {}): Extracted {
   report.stateRules = reaching(stateSelectors);
   report.otherMediaRules = reaching(mediaSelectors);
   return {
+    from: 'html',
     title: doc.title.trim(),
     lang: html.lang || '',
     width,

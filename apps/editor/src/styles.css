@@ -4021,7 +4021,7 @@ input.dashtitle {
 
 /* import HTML */
 .launcher.dropping::after {
-  content: '松开，导入这个 HTML 页面';
+  content: '松开，导入这个页面或 SVG';
   position: fixed;
   inset: 12px;
   z-index: 19;

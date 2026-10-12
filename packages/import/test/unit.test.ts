@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeReport, escapeAttr, escapeText, hexColors, joinPath, packPage, patchStyle, toCanvas, type Extracted, type XElement, type XNode } from '../src';
-import { resolveVars, specificity, splitSelectors } from '../src/extract';
+import { resolveVars, specificity, splitSelectors } from '../src/sources/html/extract';
 
 const enc = new TextEncoder();
 
@@ -39,6 +39,7 @@ const box = (top = 0, height = 100, display = 'block') => ({ top, height, margin
 const el = (tag: string, children: XNode[] = [], style = '', b = box(), attrs: [string, string][] = []): XElement => ({ kind: 'el', tag, ns: 'html', attrs, style, children, box: b });
 const text = (t: string): XNode => ({ kind: 'text', text: t });
 const page = (root: XElement, height = root.box.height): Extracted => ({
+  from: 'html',
   title: 'Acme',
   lang: 'en',
   width: 1280,

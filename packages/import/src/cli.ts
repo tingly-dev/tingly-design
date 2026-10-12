@@ -12,17 +12,20 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { sandboxDoc } from '@dc/core';
 import type { Extracted } from './model';
 import { describeReport, toCanvas, type BoardOut } from './generate';
+import { embeddedAssets } from './assets';
 
 /**
  * dc-import: the import pipeline from a terminal.
  *
  *   dc-import html <file.html | url> [--name n] [--title t] [--width 1280] [--split auto|on|off]
  *                                   [--projects dir] [--force] [--check] [--out dir] [--insecure]
+ *   dc-import svg <file.svg | url> [--name n] [--title t] [--projects dir] [--force] [--check] [--out dir]
  *   dc-import check <project> --against <file.html | url> [--width 1280] [--out dir] [--insecure]
  *
  * `html` lays the page out in headless Chromium (scripts run, so pages built
  * by JavaScript work here), extracts it, copies its images and fonts into
- * assets/ and writes a canvas project. `check` renders a project's artboards
+ * assets/ and writes a canvas project. `svg` reads an SVG drawing onto one
+ * artboard, moving embedded images out into assets/. `check` renders a project's artboards
  * through the editor's own runtime and compares them, pixel by pixel, with
  * the original page: the number every import is judged by.
  */
@@ -119,7 +122,7 @@ async function loadPage(context: BrowserContext, input: string, width: number): 
 let extractorSource: string | undefined;
 async function extractor(): Promise<string> {
   if (!extractorSource) {
-    const r = await build({ entryPoints: [join(here, 'extract-entry.ts')], bundle: true, format: 'iife', target: 'es2020', write: false });
+    const r = await build({ entryPoints: [join(here, 'browser-entry.ts')], bundle: true, format: 'iife', target: 'es2020', write: false });
     extractorSource = r.outputFiles[0].text;
   }
   return extractorSource;
@@ -134,7 +137,13 @@ async function extract(page: Page): Promise<Extracted> {
 async function copyAssets(context: BrowserContext, urls: string[], dir: string): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   mkdirSync(join(dir, 'assets'), { recursive: true });
+  for (const embedded of embeddedAssets(urls)) {
+    const rel = `assets/embedded-${createHash('sha256').update(embedded.bytes).digest('hex').slice(0, 8)}.${embedded.ext}`;
+    writeFileSync(join(dir, rel), embedded.bytes);
+    map.set(embedded.url, rel);
+  }
   for (const url of urls) {
+    if (url.startsWith('data:')) continue;
     try {
       let bytes: Buffer;
       let type = '';
@@ -313,6 +322,25 @@ async function shootOriginal(context: BrowserContext, input: string, width: numb
   return PNG.sync.read(png);
 }
 
+/** The original drawing as the browser paints an SVG image, at the size the import gave it. */
+async function shootSvg(context: BrowserContext, text: string, x: Extracted, out?: string): Promise<PNG> {
+  const w = Math.ceil(x.width);
+  const h = Math.ceil(x.height);
+  const svg = text.slice(Math.max(0, text.search(/<\?xml|<svg[\s>]/i)), text.lastIndexOf('</svg>') + 6);
+  const page = await context.newPage();
+  await page.setViewportSize({ width: w, height: h });
+  const src = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+  await page.setContent(`<body style="margin:0;background:#fff"><img src="${src}" width="${x.width}" height="${x.height}" style="display:block"></body>`);
+  await page.waitForFunction(() => document.images[0]?.complete);
+  const png = await page.screenshot();
+  await page.close();
+  if (out) {
+    mkdirSync(out, { recursive: true });
+    writeFileSync(join(out, 'original.png'), png);
+  }
+  return PNG.sync.read(png);
+}
+
 function boardsOf(projectDir: string): BoardOut[] {
   const canvas = JSON.parse(readFileSync(join(projectDir, 'canvas.json'), 'utf8')) as { order: string[]; boards: Record<string, { w: number; h: number; title?: string; importTop?: number }> };
   let top = 0;
@@ -381,6 +409,38 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     }
     return;
   }
+  if (cmd === 'svg' && input) {
+    const name = String(args.name ?? (basenameOf(input) || 'imported'));
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) throw new Error('--name: letters, digits, - and _ only');
+    const dir = join(projectsDir, name);
+    if (existsSync(dir) && !args.force) throw new Error(`${dir} exists (pass --force to write into it)`);
+    const { browser, context } = await open(insecure);
+    try {
+      const t0 = Date.now();
+      const url = pageUrl(input);
+      const text = url.startsWith('file:') ? readFileSync(fileURLToPath(url), 'utf8') : await (await context.request.get(url, { timeout: 30_000 })).text();
+      const page = await context.newPage();
+      await page.addScriptTag({ content: await extractor() });
+      const x = (await page.evaluate((t) => (window as unknown as { dcReadSvg(t: string): Extracted }).dcReadSvg(t), text)) as Extracted;
+      await page.close();
+      mkdirSync(dir, { recursive: true });
+      const assets = await copyAssets(context, x.urls, dir);
+      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u) });
+      for (const [rel, file] of Object.entries(out.files)) writeFileSync(join(dir, rel), file);
+      console.log(`imported ${input} → ${dir} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+      console.log(`  ${assets.size} assets copied`);
+      for (const line of describeReport(out.report)) console.log(`  ${line}`);
+      if (args.check) {
+        const shotDir = typeof args.out === 'string' ? args.out : undefined;
+        const original = await shootSvg(context, text, x, shotDir);
+        printCheck(await checkProject(context, dir, original, out.report.boards, shotDir), out.report.boards);
+      }
+      if (args.json) writeFileSync(String(args.json), JSON.stringify(out.report, null, 2));
+    } finally {
+      await browser.close();
+    }
+    return;
+  }
   if (cmd === 'check' && input && typeof args.against === 'string') {
     const dir = existsSync(input) ? resolve(input) : join(projectsDir, input);
     const { browser, context } = await open(insecure);
@@ -397,11 +457,12 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   }
   console.log(`usage:
   dc-import html <file.html | url> [--name n] [--title t] [--width 1280] [--split auto|on|off] [--projects dir] [--force] [--check] [--out dir]
+  dc-import svg <file.svg | url> [--name n] [--title t] [--projects dir] [--force] [--check] [--out dir]
   dc-import check <project> --against <file.html | url> [--width 1280] [--out dir]`);
   process.exitCode = 2;
 }
 
 function basenameOf(input: string): string {
   const last = input.replace(/[?#].*$/, '').replace(/\/+$/, '').split(/[\\/]/).pop() ?? '';
-  return last.replace(/\.html?$/i, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+  return last.replace(/\.(html?|svg)$/i, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
 }

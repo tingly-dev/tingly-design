@@ -1,10 +1,9 @@
 import * as esbuild from 'esbuild';
 
-// The extractor runs inside the page being imported (a sandboxed frame in the
-// editor, a headless browser in the CLI), so it ships as one IIFE that sets
-// `window.dcExtract`.
+// What needs a live DOM (the HTML extractor, the SVG reader) ships as one IIFE
+// a page can load: it sets `window.dcExtract` and `window.dcReadSvg`.
 await esbuild.build({
-  entryPoints: { extract: 'src/extract-entry.ts' },
+  entryPoints: { browser: 'src/browser-entry.ts' },
   outdir: 'dist',
   bundle: true,
   format: 'iife',

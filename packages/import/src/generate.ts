@@ -100,7 +100,7 @@ export function patchStyle(style: string, set: Record<string, string | null>): s
 
 const hasText = (n: XElement) => n.children.some((c) => c.kind === 'text' && c.text.trim());
 
-const isBlock = (c: XNode) => c.kind === 'el' && c.tag !== 'br' && !INLINE_DISPLAY.test(c.box.display) && c.ns === 'html';
+const isBlock = (c: XNode) => c.kind === 'el' && c.tag !== 'br' && !INLINE_DISPLAY.test(c.box.display) && (c.ns === 'html' || c.tag === 'svg');
 
 /**
  * Lines for an element's children, or null to keep them on one line.
@@ -311,7 +311,7 @@ function headStyle(x: Extracted): string {
   return [...imports, 'body{margin:0}', ...(x.headCss ? [x.headCss] : [])].join('\n');
 }
 
-function boardSource(x: Extracted, part: Part, i: number, n: number, ctx: Ctx): string {
+function boardSource(x: Extracted, part: Part, i: number, n: number, ctx: Ctx, title: string): string {
   // rebuild the wrapper chain around this part's sections
   const chain = part.chain;
   let body: XElement = { ...chain[chain.length - 1], children: part.children };
@@ -328,7 +328,7 @@ function boardSource(x: Extracted, part: Part, i: number, n: number, ctx: Ctx): 
     `<html lang="${escapeAttr(x.lang || 'en')}">`,
     '<head>',
     '<meta charset="utf-8">',
-    `<title>${escapeText(part.title || x.title || 'Imported page')}</title>`,
+    `<title>${escapeText(part.title || title)}</title>`,
     '<script src="./support.js"></script>',
     '</head>',
     '<body>',
@@ -348,17 +348,19 @@ function boardSource(x: Extracted, part: Part, i: number, n: number, ctx: Ctx): 
 
 export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
   const ctx: Ctx = { mapUrl: opts.mapUrl ?? (() => undefined), remote: new Set(), styleBytes: 0, elements: 0 };
-  const parts = splitPage(x.root, Math.round(x.height), opts);
+  // an SVG is one picture: never cut it into parts
+  const parts = splitPage(x.root, Math.round(x.height), x.from === 'svg' ? { ...opts, split: false } : opts);
   const files: Record<string, string> = {};
   const boards: BoardOut[] = [];
   const used = new Set<string>(['Main.dc.html']);
-  const title = opts.title || x.title || 'Imported page';
+  const stem = opts.source?.replace(/[?#].*$/, '').split(/[\\/]/).pop()?.replace(/\.[a-z0-9]+$/i, '');
+  const title = opts.title || x.title || stem || 'Imported page';
   let y = 0;
   const index: Record<string, unknown> = {};
   parts.forEach((part, i) => {
     const file = boardFile(i, part.title, used);
     const before = ctx.elements;
-    files[file] = boardSource(x, part, i, parts.length, ctx);
+    files[file] = boardSource(x, part, i, parts.length, ctx, title);
     const w = Math.round(x.width);
     const h = parts.length > 1 ? part.h : Math.max(1, Math.round(x.height));
     const boardTitle = parts.length > 1 ? `${i + 1} · ${(part.title || (i === 0 ? title : `Part ${i + 1}`)).slice(0, 60)}` : title;
@@ -377,11 +379,13 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
       fill: 'orange',
       size: 16,
       text: [
-        `从 HTML 导入${opts.source ? `：${opts.source.split(/[\\/]/).pop()}` : ''}`,
+        `从 ${x.from === 'svg' ? 'SVG' : 'HTML'} 导入${opts.source ? `：${opts.source.split(/[\\/]/).pop()}` : ''}`,
         '',
-        ...(lines.length ? lines.map((l) => `· ${l}`) : ['· 页面的内容和样式都带过来了']),
+        ...(lines.length ? lines.map((l) => `· ${l}`) : [x.from === 'svg' ? '· 图形完整带过来了' : '· 页面的内容和样式都带过来了']),
         '',
-        '每个元素的样式都写在它自己的 style 里，可以直接选中修改。想要更干净的结构（flex 布局、少一些嵌套），选中画板让 AI 整理。',
+        x.from === 'svg'
+          ? '图形保持为 SVG：选中形状可以改颜色、描边和位置，文字（如果还是文字）可以直接改。想把它变成普通的布局元素（flex、可改的文字），选中画板让 AI 重建。'
+          : '每个元素的样式都写在它自己的 style 里，可以直接选中修改。想要更干净的结构（flex 布局、少一些嵌套），选中画板让 AI 整理。',
       ].join('\n'),
     };
   }
@@ -394,7 +398,7 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
     pages: [],
     launch: { view: 'canvas' },
     designSystems: [],
-    imported: { from: 'html', ...(opts.source ? { source: opts.source } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) },
+    imported: { from: x.from, ...(opts.source ? { source: opts.source } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) },
   };
   files['canvas.json'] = JSON.stringify(canvas, null, 2) + '\n';
   return { files, report };
@@ -414,6 +418,7 @@ export function describeReport(r: ImportReport): string[] {
   if (dropped.length) lines.push(`画布放不了的元素已去掉：${dropped.map(([k, v]) => `${k} ×${v}`).join('、')}`);
   if (r.unreadableSheets.length) lines.push(`${r.unreadableSheets.length} 个样式表读不到（跨域），对应的样式会缺失`);
   if (r.missing.length) lines.push(`${r.missing.length} 个引用的文件不在导入的文件里：${r.missing.slice(0, 3).join('、')}${r.missing.length > 3 ? ' 等' : ''}`);
+  for (const n of r.notes ?? []) lines.push(n);
   if (r.remoteUrls.length) lines.push(`${r.remoteUrls.length} 个资源仍是外链，没有复制进项目`);
   return lines;
 }

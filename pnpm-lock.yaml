@@ -146,6 +146,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      happy-dom:
+        specifier: ^20.9.0
+        version: 20.14.6
       pixelmatch:
         specifier: 7.1.0
         version: 7.1.0

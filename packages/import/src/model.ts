@@ -1,10 +1,10 @@
 /**
- * What the extractor reads off a rendered page, as plain JSON.
+ * The page model every source is read into, as plain JSON.
  *
- * The extractor runs in a browser (it needs layout and the cascade); the
- * generator that turns this into project files is pure and runs anywhere.
- * Keeping the boundary as data means either side can change, be tested or
- * be replaced on its own.
+ * Each source (sources/html, sources/svg, later Figma…) only has to produce
+ * this; the generator that turns it into project files is shared, pure and
+ * runs anywhere. Keeping the boundary as data means a source can change, be
+ * tested or be added without touching the others.
  */
 
 export interface XElement {
@@ -48,9 +48,13 @@ export interface ExtractReport {
   dropped: Record<string, number>;
   /** stopped early at the element limit */
   truncated: boolean;
+  /** source-specific findings, already in the editor's language */
+  notes?: string[];
 }
 
 export interface Extracted {
+  /** which source produced it: names the import in canvas.json and the report */
+  from: 'html' | 'svg';
   title: string;
   lang: string;
   /** the viewport width the page was laid out at */
@@ -63,7 +67,7 @@ export interface Extracted {
   headCss: string;
   /** Google Fonts stylesheets the page links */
   fontLinks: string[];
-  /** every absolute url the page uses (images, fonts, backgrounds), in first-seen order */
+  /** every absolute or data: url the page uses (images, fonts, backgrounds), in first-seen order */
   urls: string[];
   report: ExtractReport;
 }
