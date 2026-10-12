@@ -9,9 +9,10 @@ import { connectorArt, iconArt, parseStyle, shapeArt, styleObject } from '@dc/co
 
 type Props = Record<string, unknown> & { style?: Record<string, string> };
 
-const RUNTIME_ORIGIN = (() => {
+/** The folder runtime.js was loaded from (…/sandbox/), under whatever base the server has. */
+const RUNTIME_DIR = (() => {
   try {
-    return new URL((document.currentScript as HTMLScriptElement | null)?.src ?? location.href).origin;
+    return new URL('.', (document.currentScript as HTMLScriptElement | null)?.src ?? location.href).href;
   } catch {
     return '';
   }
@@ -65,7 +66,7 @@ export function XEmbed({ props, html, mode, still }: { props: Props; html: strin
     <iframe
       key={html}
       ref={ref}
-      src={`${RUNTIME_ORIGIN}/sandbox/embed.html`}
+      src={`${RUNTIME_DIR}embed.html`}
       sandbox="allow-scripts"
       referrerPolicy="no-referrer"
       tabIndex={-1}

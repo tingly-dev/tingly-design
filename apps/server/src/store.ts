@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, sep } from 'node:path';
 import {
   CANVAS_FILE,
   DASH_DATA_TYPES,
@@ -45,9 +44,9 @@ import {
   type ProjectCard,
   type ProjectKind,
 } from '@dc/core';
+import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
 
-export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-export const PROJECTS_DIR = resolve(process.env.DC_PROJECTS ?? join(REPO_ROOT, 'projects'));
+export { PROJECTS_DIR, ROOT as REPO_ROOT } from './layout';
 
 export interface FileState {
   content: string;
@@ -153,6 +152,22 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
       if (isTracked(rel)) out.push(rel);
     }
   }
+}
+
+/**
+ * A projects folder that does not exist yet starts with the samples, so a
+ * host's first visit opens on five working projects instead of an empty
+ * launcher. An existing folder, even an empty one, is left alone: someone
+ * who deleted every project does not get the samples back. DC_SAMPLES=0
+ * turns this off.
+ */
+export async function seedSamples(): Promise<boolean> {
+  if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return false;
+  if (await stat(PROJECTS_DIR).catch(() => null)) return false;
+  if (!(await stat(SAMPLES_DIR).catch(() => null))) return false;
+  // journals and dashboard run reports belong to whoever used the samples before
+  await cp(SAMPLES_DIR, PROJECTS_DIR, { recursive: true, filter: (src) => !/[/\\]\.(journal\.jsonl|runs\.json)$/.test(src) });
+  return true;
 }
 
 export async function listProjects(): Promise<ProjectCard[]> {

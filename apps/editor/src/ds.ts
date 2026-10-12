@@ -14,6 +14,7 @@ import {
 } from '@dc/core';
 import { api } from './api';
 import { display, edit, toast, useStore } from './store';
+import { SERVER } from './base';
 
 /**
  * Design-system helpers: tokens as the page reads them, edits of tokens.json
@@ -163,7 +164,7 @@ export function previewDoc(opts: {
 }): string {
   const project = get().project ?? '';
   const raw = api.rawBase(project);
-  const origin = location.origin;
+  const origin = SERVER;
   const css = compileTokensCss(opts.tokens, { title: opts.title, fontBase: raw });
   const libs = opts.libraries
     .map((l) => {

@@ -7,6 +7,7 @@ import { handleWheel } from './Canvas';
 import { handleKey } from '../shortcuts';
 import { Download, Expand } from './icons';
 import { Menu, MenuItem } from './Menu';
+import { SERVER } from '../base';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -89,7 +90,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
       return out;
     }),
   );
-  const srcdoc = useMemo(() => sandboxDoc(location.origin, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
 
   useEffect(() => {
     const el = frame.current;

@@ -66,7 +66,7 @@ packages/sandbox    the artboard runtime (template → React, selection, in-plac
 apps/server         Hono: file reads and writes with versions, SSE, journal, file watching, fast AI streaming proxy, delegation to the claude CLI, git commits, dashboard connectors
 apps/editor         React + Vite + zustand editors for canvas, slides (components/slides), design systems (components/ds), dashboards (components/dash) and docs (components/docs)
 projects/           sample projects: box-console (canvas), tingly-intro (slides), tingly-ds (design system), box-usage (dashboard), design-guide (docs)
-scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code)
+scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code); bundle.mjs: the folder a host ships (docs/en/embedding.md)
 .claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs (read before every delegated task)
 artifact/           reference material for the original five types (Design, Slides, Dashboard, Docs, Design System), private
 docs/               guides and design notes: docs/en/ in English, docs/zh/ in Chinese; docs/images/ holds the screenshots
