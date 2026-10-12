@@ -6,7 +6,7 @@ copyFileSync('embed.html', 'dist/embed.html');
 
 const watch = process.argv.includes('--watch');
 const ctx = await esbuild.context({
-  entryPoints: { runtime: 'src/runtime.tsx', executor: 'src/executor.ts', dash: 'src/dash.ts' },
+  entryPoints: { runtime: 'src/runtime.tsx', executor: 'src/executor.ts', dash: 'src/dash.ts', motion: 'src/motion.ts' },
   outdir: 'dist',
   bundle: true,
   format: 'iife',

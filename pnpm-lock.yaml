@@ -14,6 +14,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      playwright-core:
+        specifier: 1.56.1
+        version: 1.56.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -1226,6 +1229,11 @@ packages:
 
   playwright-core@1.56.0:
     resolution: {integrity: sha512-1SXl7pMfemAMSDn5rkPeZljxOCYAmQnYLBTExuh6E8USHXGSX3dx6lYZN/xPpTz1vimXmPA9CDnILvmJaB8aSQ==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright-core@1.56.1:
+    resolution: {integrity: sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -2448,6 +2456,8 @@ snapshots:
       pngjs: 7.0.0
 
   playwright-core@1.56.0: {}
+
+  playwright-core@1.56.1: {}
 
   pngjs@7.0.0: {}
 
