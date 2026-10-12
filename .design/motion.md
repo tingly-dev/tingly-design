@@ -1,6 +1,6 @@
 # Motion: a sixth project kind for promo videos and animated assets
 
-Status: **research, nothing implemented**. This note looks at whether Tingly Design should have a "motion" kind (short animated videos such as a product launch or a feature explainer, and animated assets such as a title card, a looping hero or a UI animation), how it differs from slides, what comparable tools do, which source format fits our two-way editing, how export and AI would work, and what it would cost. It ends with a recommendation and a phased plan.
+Status: **research; phase 0 spike done** (§11). This note looks at whether Tingly Design should have a "motion" kind (short animated videos such as a product launch or a feature explainer, and animated assets such as a title card, a looping hero or a UI animation), how it differs from slides, what comparable tools do, which source format fits our two-way editing, how export and AI would work, and what it would cost. It ends with a recommendation and a phased plan.
 
 Decisions from the owner so far (§10): both promo videos and animated assets are in scope; render on the server first, in the browser if it can be done; several sizes of the same piece live in one project.
 
@@ -270,3 +270,29 @@ Why not the alternatives:
 **Phase 2, assets, sound and the browser (about 4 to 5 weeks).** Loops and transparent backgrounds; Lottie, dotLottie, animated SVG and WebM with alpha; a second sample, an animated asset such as a looping Tingly logo or a "request routed" UI animation; voiceover with SRT captions, beat detection and snapping; fast AI timing edits and timing checks; the browser renderer with server fallback; deck-to-motion conversion.
 
 **Phase 3, as asked for.** HyperFrames export, generated clips as layers, and interactive states if UI motion turns out to need them.
+
+## 11. Phase 0 results
+
+The spike is in this branch. It has no editor UI; it proves the format, the runtime and the render path.
+
+| Piece | Where |
+|---|---|
+| Timing grammar, format overrides, scene timeline, checks | `packages/core/src/motion.ts`, 16 unit tests in `packages/core/test/motion.test.ts` |
+| Runtime: lays out one format, compiles attributes to paused Web Animations on one clock, `seek(t)`, `play()` | `packages/sandbox/src/motion.ts` → `dist/motion.js` |
+| Renderer: MP4 per format, GIF, poster, single-file HTML player, `--verify` | `scripts/motion-render.mjs` (Playwright's Chromium + ffmpeg) |
+| Sample: "Tingly Box in 12 seconds", three scenes, 16:9 and 9:16 from the same files | `projects/tingly-motion/` (not listed in the launcher yet: no editor for the kind) |
+
+```bash
+pnpm --filter @dc/sandbox build
+node scripts/motion-render.mjs tingly-motion --verify --gif --poster 6 --player
+```
+
+What the sample exercises: presets `pop`, `fade`, `rise`, `left`, `right`, `type`, `wipe`, `count`; auto-staggered entrances; a camera push-in (`data-keys` on the section); `fade` and `push` scene transitions; per-format overrides (`data-tall` turns the gateway's agent and provider columns into rows and resizes the embed); `data-only="wide"` on a subtitle; a seekable canvas `<x-embed>` drawn purely from `t`.
+
+**Findings:**
+
+- **The format holds.** Every animation in the sample is one attribute, and the tall version needed six override attributes and no copied scene. Nothing pushed us toward a script.
+- **Determinism needs two things the first version lacked.** (1) Fonts: `document.fonts.ready` resolves before a hidden scene's faces are requested, so early frames were drawn in the fallback face; the runtime now loads every face/weight the scenes use before the first frame. (2) Paint: after setting `currentTime`, the next animation frame can still be the old one on composited layers; `seek` now waits two frames. With both, 16 of 16 frames seeked in reverse are byte-identical to forward in 16:9. In 9:16, 11 of 16 are, and the rest differ on at most 68 pixels by at most 4/255 around one line of text: Chromium's raster cache, invisible, and `--verify` treats it as antialiasing.
+- **Speed: about 6 frames per second**, so a 10.9 s, 30 fps video takes 53 to 57 s per format on a 4-core container (5.8 fps in 16:9, 6.2 in 9:16, ffmpeg encoding in parallel). Rendering at 2× took the same 56 s, so the cost is per frame (a page round trip, two animation frames, PNG encoding), not per pixel. Ways to go faster, in order of effort: render several time ranges in parallel pages and concatenate; JPEG frames; drive frames with `HeadlessExperimental.beginFrame` instead of waiting on animation frames.
+- **Sizes**: MP4 1.0 MB (16:9) and 0.9 MB (9:16); GIF at 720 px, 15 fps: 3.0 MB and 6.5 MB, so GIF is for short loops, not promos.
+- **Not covered yet**: magic move falls back to a fade; audio mixing is wired in the renderer but untested with a real file; `count` and `type` assume one text node; the editor, the timeline UI and fast AI are phase 1.
