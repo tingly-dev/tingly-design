@@ -1,4 +1,5 @@
 import type { Actor, JournalEntry, ProjectCard } from '@dc/core';
+import { at, SERVER } from './base';
 
 export interface FileState {
   content: string;
@@ -11,6 +12,10 @@ export interface Health {
   fastModel: string;
   claudeCli: boolean;
   projectsDir: string;
+  version?: string;
+  /** the host contract's version (docs/en/embedding.md) */
+  protocol?: number;
+  basePath?: string;
   /** the server's DC_THEME: a mode name, inline JSON or a parsed .json file */
   theme?: unknown;
 }
@@ -31,14 +36,14 @@ async function json<T>(res: Response): Promise<T> {
 const enc = encodeURIComponent;
 
 export const api = {
-  health: () => fetch('/api/health').then((r) => json<Health>(r)),
-  projects: () => fetch('/api/projects').then((r) => json<ProjectCard[]>(r)),
+  health: () => fetch(at('api/health')).then((r) => json<Health>(r)),
+  projects: () => fetch(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
   createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' = 'design') =>
-    fetch('/api/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
+    fetch(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),
     ),
-  files: (p: string) => fetch(`/api/projects/${enc(p)}/files`).then((r) => json<{ files: Record<string, FileState> }>(r)),
-  journal: (p: string) => fetch(`/api/projects/${enc(p)}/journal`).then((r) => json<JournalEntry[]>(r)),
+  files: (p: string) => fetch(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
+  journal: (p: string) => fetch(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 
   /** Resolves with the new version, or with `{ conflict }` carrying the file as it is now. */
   async put(
@@ -46,7 +51,7 @@ export const api = {
     path: string,
     body: { content: string; baseVersion: string | null; actor: Actor; summary?: string; prompt?: string },
   ): Promise<{ version: string } | { conflict: FileState | null }> {
-    const res = await fetch(`/api/projects/${enc(p)}/file?path=${enc(path)}`, {
+    const res = await fetch(at(`api/projects/${enc(p)}/file?path=${enc(path)}`), {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -56,36 +61,36 @@ export const api = {
   },
 
   async remove(p: string, path: string, baseVersion: string): Promise<{ ok: true } | { conflict: FileState | null }> {
-    const res = await fetch(`/api/projects/${enc(p)}/file?path=${enc(path)}&baseVersion=${enc(baseVersion)}`, { method: 'DELETE' });
+    const res = await fetch(at(`api/projects/${enc(p)}/file?path=${enc(path)}&baseVersion=${enc(baseVersion)}`), { method: 'DELETE' });
     if (res.status === 409) return { conflict: ((await res.json()) as { current: FileState | null }).current };
     return json<{ ok: true }>(res);
   },
 
   upload: (p: string, file: File, dir?: string) =>
-    fetch(`/api/projects/${enc(p)}/assets?name=${enc(file.name)}${dir ? `&dir=${enc(dir)}` : ''}`, { method: 'POST', body: file }).then((r) =>
+    fetch(at(`api/projects/${enc(p)}/assets?name=${enc(file.name)}${dir ? `&dir=${enc(dir)}` : ''}`), { method: 'POST', body: file }).then((r) =>
       json<{ path: string; size: number; type: string }>(r),
     ),
 
-  assets: (p: string) => fetch(`/api/projects/${enc(p)}/assets`).then((r) => json<{ path: string; size: number }[]>(r)),
+  assets: (p: string) => fetch(at(`api/projects/${enc(p)}/assets`)).then((r) => json<{ path: string; size: number }[]>(r)),
 
   removeAsset: (p: string, path: string) =>
-    fetch(`/api/projects/${enc(p)}/assets?path=${enc(path)}`, { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+    fetch(at(`api/projects/${enc(p)}/assets?path=${enc(path)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
 
   installDs: (p: string, from: string) =>
-    fetch(`/api/projects/${enc(p)}/design-systems`, {
+    fetch(at(`api/projects/${enc(p)}/design-systems`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ from }),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
 
   uninstallDs: (p: string, namespace: string) =>
-    fetch(`/api/projects/${enc(p)}/design-systems?namespace=${enc(namespace)}`, { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+    fetch(at(`api/projects/${enc(p)}/design-systems?namespace=${enc(namespace)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
 
   /** Where a project's assets are served (for slide frames). */
-  rawBase: (p: string) => `${location.origin}/api/projects/${enc(p)}/raw/`,
+  rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
 
   fastEdit: (p: string, messages: { role: 'user' | 'assistant'; content: string }[], signal: AbortSignal, kind?: string) =>
-    fetch(`/api/projects/${enc(p)}/fast-edit`, {
+    fetch(at(`api/projects/${enc(p)}/fast-edit`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ messages, kind }),
@@ -93,21 +98,21 @@ export const api = {
     }),
 
   delegate: (p: string, body: unknown) =>
-    fetch(`/api/projects/${enc(p)}/delegate`, {
+    fetch(at(`api/projects/${enc(p)}/delegate`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then((r) => json<{ id: string }>(r)),
 
   commit: (p: string, message: string) =>
-    fetch(`/api/projects/${enc(p)}/commit`, {
+    fetch(at(`api/projects/${enc(p)}/commit`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ message }),
     }).then((r) => r.json() as Promise<{ ok: boolean; output: string }>),
 
   events(p: string, on: (e: ServerEvent) => void, onStatus: (s: 'open' | 'closed') => void): () => void {
-    const es = new EventSource(`/api/projects/${enc(p)}/events`);
+    const es = new EventSource(at(`api/projects/${enc(p)}/events`));
     es.onopen = () => onStatus('open');
     es.onerror = () => onStatus('closed');
     es.onmessage = (m) => {

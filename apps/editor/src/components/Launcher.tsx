@@ -4,6 +4,8 @@ import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type ProjectCard, type 
 import { api } from '../api';
 import { toast } from '../store';
 import { Appearance } from './Appearance';
+import { goTo } from '../host';
+import { SERVER } from '../base';
 
 /** The five project kinds, in the order the launcher lists them. */
 export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string; tone: string }[] = [
@@ -33,7 +35,7 @@ function open(name: string) {
   } catch {
     // private mode: nothing to remember
   }
-  location.search = '?p=' + encodeURIComponent(name);
+  goTo(name);
 }
 
 function ago(iso: string | null): string {
@@ -100,7 +102,7 @@ function LiveFrame({ file, source, w, h, width, slide }: { file: string; source:
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
-  const srcdoc = useMemo(() => sandboxDoc(location.origin, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== frame.current?.contentWindow) return;

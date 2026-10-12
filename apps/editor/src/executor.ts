@@ -1,4 +1,5 @@
 import { sandboxDoc, type FromExecutor, type StatementResult, type ToExecutor } from '@dc/core';
+import { SERVER } from './base';
 
 /**
  * The hidden, sandboxed iframe that runs model-written jQuery. Requests are
@@ -19,7 +20,7 @@ function boot(): Promise<void> {
     frame.setAttribute('aria-hidden', 'true');
     frame.tabIndex = -1;
     frame.style.cssText = 'position:fixed;width:1px;height:1px;left:-10px;top:-10px;border:0;opacity:0;pointer-events:none';
-    frame.srcdoc = sandboxDoc(location.origin, 'executor');
+    frame.srcdoc = sandboxDoc(SERVER, 'executor');
     window.addEventListener('message', (e) => {
       if (!frame || e.source !== frame.contentWindow) return;
       const m = e.data as FromExecutor;

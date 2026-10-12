@@ -26,12 +26,14 @@ import { AskClaude } from '../ds/DsApp';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
+import { replaceUrl } from '../../host';
+import { BASE, SERVER } from '../../base';
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
 function PageFrame() {
   const ref = useRef<HTMLIFrameElement>(null);
   const pageKey = useDash((s) => s.pageKey);
-  const srcdoc = useMemo(() => sandboxDoc(location.origin, 'dash'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'dash'), []);
   const datasets = useDatasets();
   const ids = useRef<string[]>([]);
   ids.current = datasets.map((d) => d.id);
@@ -75,7 +77,7 @@ function PageFrame() {
         case 'dash-link': {
           const url = new URL(location.href);
           url.hash = m.name ? encodeURIComponent(m.name) : '';
-          history.replaceState(null, '', url);
+          replaceUrl(url);
           break;
         }
         case 'dash-report':
@@ -220,7 +222,7 @@ export function DashApp() {
   return (
     <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
       <header className="dashbar">
-        <a className="btn ghost back" href="/" title="所有项目">
+        <a className="btn ghost back" href={BASE} title="所有项目">
           ←
         </a>
         <Title />

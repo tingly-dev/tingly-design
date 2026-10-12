@@ -8,6 +8,7 @@ import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews'
 import { JournalPopover } from '../Overlays';
 import { Send } from '../icons';
 import { currentTheme } from '../../theme';
+import { replaceUrl } from '../../host';
 
 type View = 'overview' | 'colors' | 'type' | 'space' | 'components' | 'assets' | 'issues';
 
@@ -186,7 +187,7 @@ export function DsApp() {
   useEffect(() => {
     const url = new URL(location.href);
     url.searchParams.set('v', view);
-    history.replaceState(null, '', url);
+    replaceUrl(url);
   }, [view]);
   useEffect(() => {
     document.title = `${index.title} · 设计系统`;

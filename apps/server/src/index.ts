@@ -32,8 +32,6 @@ import {
   ASSET_TYPES,
   HttpError,
   assetType,
-  PROJECTS_DIR,
-  REPO_ROOT,
   createProject,
   isProjectName,
   isTracked,
@@ -50,6 +48,7 @@ import {
   readProject,
   removeFile,
   safeRel,
+  seedSamples,
   versionOf,
   withLock,
   writeAsset,
@@ -57,9 +56,12 @@ import {
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
-import { activeDelegates, claudeAvailable, startDelegate, type DelegateRequest } from './delegate';
+import { activeDelegates, claudeAvailable, startDelegate, stopDelegates, type DelegateRequest } from './delegate';
+import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 
 const PORT = Number(process.env.PORT ?? 8787);
+/** DC_HOST: the address to listen on; loopback unless you mean to share the editor on your network */
+const HOST = process.env.DC_HOST?.trim() || '127.0.0.1';
 const FAST_MODEL = process.env.DC_FAST_MODEL ?? 'claude-haiku-5-5';
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
 const run = promisify(execFile);
@@ -92,8 +94,11 @@ app.get('/api/health', (c) => {
     fastEdit: Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN),
     fastModel: FAST_MODEL,
     claudeCli: cliChecked,
-    projectsDir: relative(REPO_ROOT, PROJECTS_DIR) || '.',
+    projectsDir: fromRoot(PROJECTS_DIR),
     theme: DC_THEME,
+    version: VERSION,
+    protocol: PROTOCOL,
+    basePath: BASE_PATH,
   });
 });
 
@@ -429,16 +434,18 @@ app.post('/api/projects/:p/delegate', async (c) => {
 
 app.post('/api/projects/:p/commit', async (c) => {
   const p = c.req.param('p');
-  const dir = relative(REPO_ROOT, projectDir(p));
+  // git finds the repository the projects folder is in: this one, or a host's
+  const dir = projectDir(p);
   const { message } = await c.req.json<{ message?: string }>().catch(() => ({ message: undefined }));
   try {
-    await run('git', ['add', '-A', '--', dir], { cwd: REPO_ROOT });
-    const st = await run('git', ['diff', '--cached', '--stat', '--', dir], { cwd: REPO_ROOT });
+    await run('git', ['add', '-A', '--', dir], { cwd: PROJECTS_DIR });
+    const st = await run('git', ['diff', '--cached', '--stat', '--', dir], { cwd: PROJECTS_DIR });
     if (!st.stdout.trim()) return c.json({ ok: false, output: '没有需要提交的改动。' });
-    const out = await run('git', ['commit', '-m', message?.trim() || `canvas(${p}): update`, '--', dir], { cwd: REPO_ROOT });
+    const out = await run('git', ['commit', '-m', message?.trim() || `canvas(${p}): update`, '--', dir], { cwd: PROJECTS_DIR });
     return c.json({ ok: true, output: out.stdout.trim().split('\n')[0] });
   } catch (e) {
     const err = e as { stderr?: string; message: string };
+    if (/not a git repository/i.test(err.stderr ?? '')) return c.json({ ok: false, output: `项目文件夹 ${fromRoot(PROJECTS_DIR)} 不在 git 仓库里，没有可提交的地方。` });
     return c.json({ ok: false, output: (err.stderr || err.message).trim() }, 500);
   }
 });
@@ -452,16 +459,17 @@ app.use(
     c.header('Access-Control-Allow-Origin', '*');
     c.header('Cache-Control', 'no-store');
   },
-  serveStatic({ root: relative(process.cwd(), join(REPO_ROOT, 'packages/sandbox/dist')), rewriteRequestPath: (path) => path.replace(/^\/sandbox/, '') }),
+  serveStatic({ root: relative(process.cwd(), SANDBOX_DIST), rewriteRequestPath: (path) => path.replace(/^\/sandbox/, '') }),
 );
 
-if (process.env.NODE_ENV === 'production') {
-  const dist = relative(process.cwd(), join(REPO_ROOT, 'apps/editor/dist'));
-  app.use('/*', serveStatic({ root: dist }));
-  app.get('*', async (c) => c.html(await readFile(join(REPO_ROOT, 'apps/editor/dist/index.html'), 'utf8')));
+if (process.env.NODE_ENV === 'production' || BUNDLED) {
+  app.use('/*', serveStatic({ root: relative(process.cwd(), EDITOR_DIST) }));
+  app.get('*', async (c) => c.html(await readFile(join(EDITOR_DIST, 'index.html'), 'utf8')));
 }
 
 // ---------------------------------------------------------------- watcher
+
+if (await seedSamples()) console.log(`copied the sample projects into ${PROJECTS_DIR}`);
 
 /** Last content seen per file, for diff summaries of outside edits. */
 const seen = new Map<string, string>();
@@ -483,7 +491,7 @@ let ready = false;
 watcher.on('ready', () => {
   ready = true;
 });
-watcher.on('all', async (event, abs) => {
+async function onChange(event: string, abs: string): Promise<void> {
   const at = split(abs);
   if (!at) return;
   const key = `${at.project}/${at.rel}`;
@@ -515,8 +523,49 @@ watcher.on('all', async (event, abs) => {
   publish(at.project, { type: 'file', path: at.rel, content, version, actor });
   await record(at.project, { actor, file: at.rel, summary: lineDiffSummary(before, content), version });
   if (at.rel === DS_TOKENS) await afterTokens(at.project, actor);
+}
+// one failed event (a file gone mid-read, a race on tokens.css) must not take the server down
+watcher.on('all', (event, abs) => void onChange(event, abs).catch((e) => console.error(`watcher: ${abs}:`, e)));
+
+// ---------------------------------------------------------------- serve
+
+/**
+ * Under DC_BASE_PATH every route moves below the prefix: the bare prefix
+ * redirects to prefix/ (the editor's assets are relative to it) and anything
+ * outside it is not ours.
+ */
+function underBase(req: Request): Request | Response {
+  const url = new URL(req.url);
+  if (url.pathname === BASE_PATH) return new Response(null, { status: 308, headers: { location: `${BASE_PATH}/${url.search}` } });
+  if (!url.pathname.startsWith(BASE_PATH + '/')) return new Response('not found', { status: 404 });
+  url.pathname = url.pathname.slice(BASE_PATH.length);
+  return new Request(url, req);
+}
+const fetch: typeof app.fetch = BASE_PATH
+  ? (req, ...rest) => {
+      const r = underBase(req);
+      return r instanceof Response ? r : app.fetch(r, ...rest);
+    }
+  : app.fetch;
+
+const server = serve({ fetch, port: PORT, hostname: HOST }, (info) => {
+  console.log(`tingly-design ${VERSION} on http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${info.port}${BASE_PATH}/  (projects: ${PROJECTS_DIR})`);
+  // one machine-readable line for a host that launched us with PORT=0 (docs/en/embedding.md)
+  console.log(`TINGLY_DESIGN_READY ${JSON.stringify({ port: info.port, basePath: BASE_PATH, version: VERSION, protocol: PROTOCOL })}`);
 });
 
-serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`dc-canvas server on http://localhost:${info.port}  (projects: ${PROJECTS_DIR})`);
-});
+let stopping = false;
+function shutdown(): void {
+  if (stopping) return;
+  stopping = true;
+  stopDelegates();
+  void watcher.close();
+  server.close(() => process.exit(0));
+  // open event streams would otherwise hold close() until they time out
+  (server as { closeAllConnections?: () => void }).closeAllConnections?.();
+  setTimeout(() => process.exit(0), 2000).unref();
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+// a host holds our stdin open and closes it by exiting, however it exits
+if (process.env.DC_EXIT_WITH_STDIN === '1') process.stdin.on('end', shutdown).on('error', shutdown).resume();

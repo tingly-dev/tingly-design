@@ -13,6 +13,7 @@ import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
 import { Launcher } from './components/Launcher';
 import { serverDefault } from './theme';
+import { announceReady } from './host';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -36,10 +37,17 @@ export function App() {
   const kind = useStore((s) => s.kind);
 
   useEffect(() => {
-    api.health().then((health) => {
-      useStore.setState({ health });
-      serverDefault(health.theme);
-    }, () => toast('连不上服务端，确认 pnpm dev 在运行。', 'error'));
+    api.health().then(
+      (health) => {
+        useStore.setState({ health });
+        serverDefault(health.theme);
+        announceReady(health);
+      },
+      () => {
+        toast('连不上服务端，确认 pnpm dev 在运行。', 'error');
+        announceReady(null);
+      },
+    );
     if (!project) return;
     openProject(project)
       .then(() => {

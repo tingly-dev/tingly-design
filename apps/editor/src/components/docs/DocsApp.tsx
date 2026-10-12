@@ -28,6 +28,7 @@ import { AskClaude } from '../ds/DsApp';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
+import { BASE } from '../../base';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
   const [renaming, setRenaming] = useState(false);
@@ -321,7 +322,7 @@ export function DocsApp() {
   return (
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
       <header className="dashbar">
-        <a className="btn ghost back" href="/" title="所有项目">
+        <a className="btn ghost back" href={BASE} title="所有项目">
           ←
         </a>
         <Title />
