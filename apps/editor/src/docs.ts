@@ -18,6 +18,7 @@ import {
   type DocThread,
 } from '@dc/core';
 import { deleteFile, display, edit, enqueueResult, toast, useStore } from './store';
+import { replaceUrl } from './host';
 
 /** A doc in the editor: which tab is open, the comment rail, and writing tabs back block by block. */
 interface DocsState {
@@ -69,7 +70,7 @@ export function openTab(id: string): void {
   useDocs.setState({ tab: id, thread: null, draft: null });
   const url = new URL(location.href);
   url.searchParams.set('t', id);
-  history.replaceState(null, '', url);
+  replaceUrl(url);
 }
 
 export function editDoc(mutate: (d: DocJson) => void, summary: string): void {

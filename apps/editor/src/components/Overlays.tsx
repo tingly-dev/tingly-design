@@ -18,6 +18,7 @@ import { canvasOf, display, getClip, toast, useCanvas, useStore } from '../store
 import { TEXT_COLORS, sizeOf } from './Item';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
+import { SERVER } from '../base';
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
@@ -136,7 +137,7 @@ export function FocusView() {
   const box = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const srcdoc = useMemo(() => sandboxDoc(location.origin, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
   const order = canvas.order;
   const b = file ? canvas.boards[file] : undefined;
 

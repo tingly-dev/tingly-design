@@ -45,6 +45,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 | `DC_DELEGATE_MODEL` | 交给 Claude Code 时用的模型（不设则用 CLI 默认）。 |
 | `DC_PROJECTS` | 项目目录，默认仓库里的 `projects/`。 |
 | `PORT` | 服务端端口，默认 8787。 |
+| `DC_HOST` | 监听地址，默认 `127.0.0.1`；要让别的机器访问就设成 `0.0.0.0`。 |
 
 - 没有 API key 也能用：jQuery 模式可以手写语句，走的是和快速 AI 完全相同的执行与回写链路。
 - “交给 Claude Code” 需要本机能运行 `claude` 命令。
@@ -55,6 +56,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 |---|---|
 | **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) |
 | **[主题](docs/zh/theming.md)** | 浅色、深色和 Tingly Box 的预设主题，以及通过 URL、脚本、宿主页面或 `DC_THEME` 传入主题 |
+| **[嵌入](docs/zh/embedding.md)** | 跑在 Tingly Box 等其他应用里：打包（`pnpm bundle`）、挂在路径前缀下启动、宿主和编辑器之间的消息 |
 | **[工作原理](docs/zh/architecture.md)** | 源文件格式、回写引擎、快速 AI、协同、沙箱和项目结构 |
 | **[开发与测试](docs/zh/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |
 | **[与原版的差别](docs/zh/comparison.md)** | 哪些和 Claude 的 artifact 类型一致，哪些还没有 |

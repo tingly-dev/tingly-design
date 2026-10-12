@@ -19,6 +19,7 @@ import {
   Shapes,
   TextT,
 } from './icons';
+import { goTo } from '../host';
 
 const SHAPES: { tool: Tool; label: string; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', label: '矩形', keys: 'R', icon: <Rect /> },
@@ -95,7 +96,7 @@ function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: numbe
           onClose();
         }}
       />
-      <MenuItem label="所有画布…" onSelect={() => (location.href = '/')} />
+      <MenuItem label="所有画布…" onSelect={() => goTo(null)} />
     </Menu>
   );
 }
