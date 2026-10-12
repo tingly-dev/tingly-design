@@ -1,0 +1,452 @@
+<style>
+.tb {
+  --tb-paper: #f7f7f4; --tb-surface: #ffffff; --tb-ink: #16181d; --tb-ink-2: #4a4f5a; --tb-muted: #6b707b;
+  --tb-line: rgba(22, 24, 29, 0.09); --tb-line-2: rgba(22, 24, 29, 0.16); --tb-hover: #f7f7f4;
+  --tb-accent: #2563eb; --tb-accent-soft: rgba(37, 99, 235, 0.08); --tb-good: #15803d; --tb-bad: #c2410c; --tb-crit: #dc2626;
+  --tb-bar: #d9dbe0; --tb-bar-hi: #a9adb7; --tb-grid: rgba(22, 24, 29, 0.06); --tb-track: #f0f0ec;
+  --tb-sans: "Inter", var(--font-anthropic-sans);
+  --tb-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --tb-label: 500 12px/1.3 var(--tb-sans);
+  --tb-radius: 14px;
+  font-family: var(--tb-sans); color: var(--tb-ink); max-width: 1200px; margin-inline: auto;
+  font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased;
+}
+:root[data-theme="dark"] .tb {
+  --tb-surface: var(--color-panel); --tb-ink: var(--color-fg); --tb-ink-2: #c3c6cd; --tb-muted: var(--color-fg-muted);
+  --tb-line: var(--color-border-line); --tb-line-2: rgba(255, 255, 255, 0.18); --tb-hover: rgba(255, 255, 255, 0.04);
+  --tb-accent: #6b9bff; --tb-accent-soft: rgba(107, 155, 255, 0.14); --tb-good: #4cc38a; --tb-bad: #f0915a; --tb-crit: #f2847a;
+  --tb-bar: #464a52; --tb-bar-hi: #6c717c; --tb-grid: rgba(255, 255, 255, 0.06); --tb-track: rgba(255, 255, 255, 0.07);
+}
+.tb-head { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
+.tb-brand { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 13px; font-weight: 500; color: var(--tb-ink-2); }
+.tb-logo { width: 24px; height: 24px; border-radius: 7px; background: var(--tb-ink); color: var(--tb-surface); display: inline-grid; place-items: center; font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
+.tb-brand .sep { color: var(--tb-line-2); }
+.tb-brand .mut { color: var(--tb-muted); font-weight: 400; }
+.tb-head h1 { font-family: var(--tb-sans); font-weight: 650; font-size: 30px; letter-spacing: -0.025em; line-height: 1.15; margin: 0 0 10px; }
+.tb-sub { color: var(--tb-ink-2); font-size: 15px; line-height: 1.6; margin: 0; max-width: 46rem; }
+.tb-sub b { color: var(--tb-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tb-sub b.crit { color: var(--tb-crit); }
+.tb-filter { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--tb-ink-2); }
+.tb-filter label { font: var(--tb-label); color: var(--tb-muted); }
+.tb-filter select { font: inherit; font-size: 13px; font-weight: 500; color: var(--tb-ink); background-color: var(--tb-surface); border: 1px solid var(--tb-line-2); border-radius: 10px; padding: 8px 32px 8px 12px; appearance: none; cursor: pointer; min-width: 11rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tb-muted) 50%), linear-gradient(135deg, var(--tb-muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 12px) 52%; background-size: 4px 4px; background-repeat: no-repeat; }
+.tb-filter select:focus-visible, .tb-picked:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.tb-picked { font: inherit; font-size: 12px; font-weight: 500; border: 0; background: var(--tb-accent-soft); color: var(--tb-accent); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.tb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr)); gap: 12px; margin-bottom: 12px; }
+.tb-kpi, .tb-card { background: var(--tb-surface); border: 1px solid var(--tb-line); border-radius: var(--tb-radius); }
+.tb-kpi { padding: 16px 18px 15px; display: flex; flex-direction: column; }
+.tb-lb { font: var(--tb-label); color: var(--tb-muted); }
+.tb-kpi .v { font-size: 28px; font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; margin: 10px 0 8px; min-height: 1.2em; line-height: 1.2; }
+.tb-kpi .n { font-size: 12px; color: var(--tb-muted); line-height: 1.5; font-variant-numeric: tabular-nums; }
+.tb-kpi .d { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--tb-line); font-size: 12px; color: var(--tb-muted); font-variant-numeric: tabular-nums; }
+.tb-kpi .d span { font-weight: 600; margin-right: 4px; }
+.tb .up { color: var(--tb-good); } .tb .dn { color: var(--tb-bad); }
+.tb-card { padding: 20px 22px; position: relative; min-width: 0; }
+.tb-card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; margin-bottom: 16px; }
+.tb-card h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
+.tb-note { font-size: 12.5px; color: var(--tb-muted); margin: 0; line-height: 1.5; }
+.tb-legend { display: flex; gap: 14px; font-size: 12px; color: var(--tb-ink-2); padding-top: 2px; }
+.tb-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tb-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--tb-bar); }
+.tb-legend i.ln { height: 2px; width: 14px; border-radius: 1px; background: var(--tb-accent); }
+.tb-legend i.crit { background: var(--tb-crit); }
+.tb-legend i.acc { background: var(--tb-accent); }
+.tb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: 12px; margin-top: 12px; }
+.tb-chart { position: relative; min-height: 260px; }
+.tb-goal { position: relative; min-height: 200px; }
+.tb svg text { font-family: var(--tb-sans); font-variant-numeric: tabular-nums; }
+.tb-tip { position: absolute; background: var(--tb-surface); border: 1px solid var(--tb-line-2); border-radius: 10px; box-shadow: 0 8px 24px rgba(22, 24, 29, .10); padding: 9px 11px; font-size: 12px; line-height: 1.55; pointer-events: none; white-space: nowrap; opacity: 0; font-variant-numeric: tabular-nums; z-index: 2; transition: opacity .12s; }
+.tb-tip .d { color: var(--tb-muted); font-size: 11.5px; margin-bottom: 2px; }
+.tb-tip .m { color: var(--tb-ink-2); }
+.tb-tip b { font-weight: 600; }
+.tb-scroll { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.tb table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.tb th { font: var(--tb-label); color: var(--tb-muted); text-align: left; padding: 0 14px 10px 0; border-bottom: 1px solid var(--tb-line); white-space: nowrap; }
+.tb td { white-space: nowrap; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--tb-line); }
+.tb tbody tr:last-child td { border-bottom: 0; }
+.tb th:last-child, .tb td:last-child { padding-right: 0; }
+.tb .r { text-align: right; }
+.tb .mut { color: var(--tb-ink-2); }
+.tb .mono { font-family: var(--tb-mono); font-size: 12px; color: var(--tb-ink-2); }
+.tb-providers tbody tr { cursor: pointer; }
+.tb-providers tbody tr:hover td { background: var(--tb-hover); }
+.tb-providers tr.picked td { background: var(--tb-accent-soft); }
+.tb-providers tr.picked td:first-child { box-shadow: inset 2px 0 0 var(--tb-accent); }
+.tb-providers td:first-child, .tb-providers th:first-child { padding-left: 10px; }
+.tb-providers td:first-child { font-weight: 500; }
+.tb-providers .warn { color: var(--tb-bad); }
+.tb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 9px; vertical-align: 1px; background: var(--tb-bar-hi); }
+.tb-dot.self { background: transparent; box-shadow: inset 0 0 0 1.5px var(--tb-bar-hi); }
+.tb-bar { display: block; height: 6px; border-radius: 3px; background: var(--tb-accent); opacity: .85; }
+.tb-members td:first-child { font-weight: 500; }
+.tb-members td { padding-top: 9px; padding-bottom: 9px; }
+.tb-share { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 9rem; }
+.tb-share .tb-bar-track { flex: 1; height: 6px; border-radius: 3px; background: var(--tb-track); overflow: hidden; }
+@media (min-width: 960px) { .tb-grid.split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+.tb-tag { display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: var(--tb-track); color: var(--tb-ink-2); }
+.tb-foot { font-size: 12px; color: var(--tb-muted); margin: 20px 0 0; line-height: 1.6; max-width: 56rem; }
+.tb-foot b { font-weight: 600; color: var(--tb-ink-2); }
+.tb [data-dash-source-state=empty] { color: transparent; }
+.tb [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.tb-fail { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: inherit; color: var(--tb-muted); font-size: 12px; }
+.tb-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--tb-crit); }
+</style>
+
+<div class="tb">
+  <header class="tb-head" id="top">
+    <div>
+      <p class="tb-brand"><span class="tb-logo" aria-hidden="true">T</span>Tingly Box<span class="sep">/</span><span class="mut">Team endpoint · Usage</span></p>
+      <h1>Gateway usage · Q3 2026</h1>
+      <p class="tb-sub" id="takeaway">
+        The team sent <b data-source="q3" data-field="requests" data-row="0" class="dash-skeleton">—</b> requests and <b data-source="q3" data-field="tokens" data-row="0">—</b> tokens through Tingly Box in Q3, an estimated <b data-source="q3" data-field="cost" data-row="0">—</b> at list prices. In September Anthropic used <b data-source="goal" data-field="used" data-where="provider=Anthropic">—</b> of its budget and Gemini <b data-source="goal" data-field="used" data-where="provider=Gemini">—</b>; OpenAI reached <b class="crit" data-source="goal" data-field="used" data-where="provider=OpenAI">—</b>, the only provider over budget, as gpt-5-codex requests grew every month since July.
+      </p>
+    </div>
+    <div class="tb-filter">
+      <label for="tbProvider">Provider</label>
+      <select id="tbProvider" aria-label="Provider" data-source="by_provider"></select>
+      <button class="tb-picked" id="tbPicked" hidden></button>
+    </div>
+  </header>
+
+  <section class="tb-kpis" id="kpis">
+    <div class="tb-kpi"><div class="tb-lb">Requests</div><div class="v" data-source="kpi" data-field="requests" data-row="0">—</div><div class="n"><span id="tbScope">All providers</span>, Q3</div><div class="d"><span data-source="kpi" data-field="requests_change" data-row="0">—</span>Sep vs Aug</div></div>
+    <div class="tb-kpi"><div class="tb-lb">Total tokens</div><div class="v" data-source="kpi" data-field="tokens" data-row="0">—</div><div class="n">Cache <span data-source="kpi" data-field="cache_tokens" data-row="0">—</span> · input <span data-source="kpi" data-field="input_tokens" data-row="0">—</span><br>Output <span data-source="kpi" data-field="output_tokens" data-row="0">—</span></div><div class="d"><span data-source="kpi" data-field="tokens_change" data-row="0">—</span>Sep vs Aug</div></div>
+    <div class="tb-kpi"><div class="tb-lb">Cache hit rate</div><div class="v" data-source="kpi" data-field="cache_rate" data-row="0">—</div><div class="n">Cache reads ÷ all input</div><div class="d"><span data-source="kpi" data-field="cache_pp" data-row="0">—</span>Sep vs Aug</div></div>
+    <div class="tb-kpi"><div class="tb-lb">Error rate</div><div class="v" data-source="kpi" data-field="error_rate" data-row="0">—</div><div class="n">Failed after fallback</div><div class="d"><span data-source="kpi" data-field="error_pp" data-row="0">—</span>Sep vs Aug</div></div>
+    <div class="tb-kpi"><div class="tb-lb">Estimated cost</div><div class="v" data-source="kpi" data-field="cost" data-row="0">—</div><div class="n">USD, at list prices</div><div class="d"><span data-source="kpi" data-field="cost_change" data-row="0">—</span>Sep vs Aug</div></div>
+  </section>
+
+  <section class="tb-card" id="daily">
+    <div class="tb-card-head">
+      <div>
+        <h2>Requests per day</h2>
+        <p class="tb-note">Jul 1 – Sep 30, 2026. <span id="dailyScope"></span> The low bars are weekends and the Jul 3 and Sep 7 holidays; the average starts Jul 7, the first day with a full week behind it.</p>
+      </div>
+      <div class="tb-legend" aria-hidden="true"><span><i></i>Requests</span><span><i class="ln"></i>7-day average</span></div>
+    </div>
+    <div class="tb-chart" id="dailyChart" data-source="daily"></div>
+    <div class="tb-tip" id="tip"></div>
+  </section>
+
+  <section class="tb-card" id="providers" style="margin-top: 12px">
+    <div class="tb-card-head"><div>
+      <h2>Providers · September</h2>
+      <p class="tb-note">Every upstream the team endpoint routes to. Select a row to filter the dashboard to that provider.</p>
+    </div></div>
+    <div class="tb-scroll">
+      <table class="tb-providers" data-source="by_provider" data-row-key="provider,month">
+        <thead><tr><th data-field="provider">Provider</th><th data-field="model">Model</th><th data-field="requests" class="r">Requests</th><th data-field="tokens" class="r">Tokens</th><th data-field="cache_rate" class="r">Cache hit</th><th data-field="error_rate" class="r">Error rate</th><th data-field="ttft_ms" class="r">Avg TTFT</th><th data-field="cost_usd" class="r">Est. cost</th></tr></thead>
+        <tbody id="providerBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="tb-grid split">
+    <section class="tb-card" id="budgets">
+      <div class="tb-card-head">
+        <div>
+          <h2>September budget use</h2>
+          <p class="tb-note">Estimated spend as a share of each paid provider's monthly budget. The dashed line is 100%.</p>
+        </div>
+        <div class="tb-legend" aria-hidden="true"><span><i class="acc"></i>Within</span><span><i class="crit"></i>Over</span></div>
+      </div>
+      <div class="tb-goal" id="goalChart" data-source="goal"></div>
+    </section>
+    <section class="tb-card" id="team">
+      <div class="tb-card-head"><div>
+        <h2>Team members · Q3</h2>
+        <p class="tb-note">Usage per member key, most tokens first. All providers; the provider filter does not apply.</p>
+      </div></div>
+      <div class="tb-scroll">
+        <table class="tb-members" data-source="members" data-row-key="member">
+          <thead><tr><th data-field="member">Member</th><th data-field="agent">Agent</th><th data-field="requests" class="r">Requests</th><th data-field="tokens" class="r">Tokens</th><th data-field="cache_rate" class="r">Cache hit</th><th data-field="share" class="r">Share of tokens</th></tr></thead>
+          <tbody id="memberBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <p class="tb-foot"><b>Demo data, generated for this sample.</b> The team, its traffic and its budgets are made up to show what a Tingly Box usage dashboard can look like; they are not real measurements. Cost is estimated from token counts at each provider's public list price. The self-hosted vLLM runs on the team's own GPUs, so it has no token cost and no budget.</p>
+</div>
+
+<script>
+  dash.calc('kpi', {
+    inputs: ['daily'],
+    title: 'Usage totals',
+    description: 'Daily traffic (for the provider picked) summed over Q3; cache hit rate is cache reads over input plus cache reads; error rate is errors over requests; changes compare September with August (rates in percentage points).',
+    fn: (daily) => {
+      const rows = daily.map((r) => ({ month: String(r.day).slice(0, 7), requests: +r.requests, input: +r.input_tokens, cache: +r.cache_tokens, output: +r.output_tokens, errors: +r.errors, cost: +r.cost_usd }));
+      const tot = (xs) => {
+        const s = (k) => xs.reduce((a, r) => a + r[k], 0);
+        return { requests: s('requests'), input: s('input'), cache: s('cache'), output: s('output'), errors: s('errors'), cost: s('cost'),
+          tokens: s('input') + s('cache') + s('output'), cache_rate: s('cache') / (s('input') + s('cache')), error_rate: s('errors') / s('requests') };
+      };
+      const q = tot(rows), aug = tot(rows.filter((r) => r.month === '2026-08')), sep = tot(rows.filter((r) => r.month === '2026-09'));
+      const ch = (k) => (aug[k] ? sep[k] / aug[k] - 1 : null);
+      return [{
+        requests: q.requests, tokens: q.tokens, input_tokens: q.input, cache_tokens: q.cache, output_tokens: q.output,
+        cache_rate: q.cache_rate, error_rate: q.error_rate, cost: q.cost,
+        requests_change: ch('requests'), tokens_change: ch('tokens'), cost_change: ch('cost'),
+        cache_pp: (sep.cache_rate - aug.cache_rate) * 100, error_pp: (sep.error_rate - aug.error_rate) * 100,
+      }];
+    },
+  });
+
+  dash.calc('q3', {
+    inputs: ['by_provider'],
+    title: 'Q3 totals, all providers',
+    description: 'Monthly requests, tokens and estimated cost of every provider summed; the provider filter does not apply.',
+    fn: (by_provider) => {
+      const s = (k) => by_provider.reduce((a, r) => a + Number(r[k]), 0);
+      return [{ requests: s('requests'), tokens: s('tokens'), cost: s('cost_usd') }];
+    },
+  });
+
+  dash.calc('goal', {
+    inputs: ['by_provider', 'budgets'],
+    title: 'September budget use',
+    description: "Each paid provider's September estimated cost divided by its September budget.",
+    fn: (by_provider, budgets) =>
+      budgets.map((b) => {
+        const r = by_provider.find((x) => x.provider === b.provider && x.month === b.month);
+        const spend = r ? Number(r.cost_usd) : null;
+        return { provider: b.provider, spend, budget: Number(b.budget_usd), used: spend === null ? null : spend / Number(b.budget_usd) };
+      }),
+  });
+
+  dash.calc('members', {
+    inputs: ['team'],
+    title: 'Tokens by team member',
+    description: "Each member's input, cache and output tokens summed, their cache hit rate, and their share of the team's tokens.",
+    fn: (team) => {
+      const rows = team.map((m) => {
+        const input = Number(m.input_tokens), cache = Number(m.cache_tokens), output = Number(m.output_tokens);
+        return { member: m.member, agent: m.agent, requests: Number(m.requests), tokens: input + cache + output, cache_rate: cache / (input + cache) };
+      });
+      const all = rows.reduce((a, r) => a + r.tokens, 0);
+      return rows.map((r) => ({ ...r, share: r.tokens / all })).sort((a, b) => b.tokens - a.tokens);
+    },
+  });
+</script>
+
+<script>
+  const fmtInt = d3.format(',');
+  const fmtUsd = d3.format('$,.0f');
+  const fmtUsd2 = d3.format('$,.2f');
+  const fmtTok = (v) => (v >= 1e9 ? d3.format('.2f')(v / 1e9) + 'B' : v >= 1e6 ? d3.format('.1f')(v / 1e6) + 'M' : v >= 1e3 ? d3.format('.1f')(v / 1e3) + 'K' : fmtInt(v));
+  const fmtTokShort = (v) => (v >= 1e9 ? d3.format('.1f')(v / 1e9) + 'B' : v >= 1e6 ? d3.format('.0f')(v / 1e6) + 'M' : fmtTok(v));
+  const fmtPct1 = d3.format('.1%');
+  const fmtPct2 = d3.format('.2%');
+  const fmtSigned = d3.format('+.1%');
+  const fmtPts = (v) => d3.format('+.2f')(v) + ' pts';
+  const fmtMs = (v) => (v >= 1000 ? d3.format('.2f')(v / 1000) + ' s' : fmtInt(v) + ' ms');
+  const fmtTick = (v) => (v === 0 ? '0' : v >= 1e3 ? d3.format('~')(v / 1e3) + 'K' : d3.format('~')(v));
+  // whether a rise is good: more requests and cache hits are, more errors and spend are not
+  const goodWhenUp = { requests_change: true, tokens_change: true, cache_pp: true, error_pp: false, cost_change: false };
+  const sign = (el, v, upGood) => { el.classList.remove('up', 'dn'); if (!v) return; el.classList.add((v > 0) === upGood ? 'up' : 'dn'); };
+  const fail = (el) => { el.replaceChildren(); const d = document.createElement('div'); d.className = 'tb-fail'; d.textContent = 'Could not load this source'; el.appendChild(d); };
+  const cell = (tr, v, cls) => { const td = document.createElement('td'); if (typeof v === 'string') td.textContent = v; else td.appendChild(v); if (cls) td.className = cls; tr.appendChild(td); return td; };
+
+  // the provider filter: choices come from the data
+  const sel = document.getElementById('tbProvider');
+  const picked = document.getElementById('tbPicked');
+  sel.addEventListener('change', () => dash.setParams({ provider: sel.value || null }));
+  picked.addEventListener('click', () => dash.setParams({ provider: null }));
+  document.querySelector('.tb-providers').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-key]');
+    if (tr) dash.setParams({ provider: tr.dataset.provider });
+  });
+
+  function fillValues() {
+    for (const el of document.querySelectorAll('#takeaway [data-source], #kpis [data-source]')) {
+      const s = dash.data(el.dataset.source);
+      el.classList.toggle('dash-skeleton', s.status === 'loading');
+      el.classList.remove('up', 'dn');
+      if (s.status !== 'ok') { el.textContent = '—'; continue; }
+      const row = el.dataset.where
+        ? s.data.find((r) => el.dataset.where.split('&').every((p) => { const [k, v] = p.split('=').map(decodeURIComponent); return String(r[k]) === v; }))
+        : s.data[Number(el.dataset.row || 0)];
+      const v = row ? row[el.dataset.field] : null;
+      const f = el.dataset.field;
+      if (v === null || v === undefined || Number.isNaN(v)) el.textContent = '—';
+      else if (f.endsWith('_change')) { el.textContent = fmtSigned(v); sign(el, v, goodWhenUp[f]); }
+      else if (f.endsWith('_pp')) { el.textContent = fmtPts(v); sign(el, v, goodWhenUp[f]); }
+      else if (f === 'used' || f === 'cache_rate') el.textContent = fmtPct1(v);
+      else if (f === 'error_rate') el.textContent = fmtPct2(v);
+      else if (f === 'cost') el.textContent = fmtUsd(v);
+      else if (f === 'tokens') el.textContent = fmtTok(v);
+      else if (f.endsWith('_tokens')) el.textContent = fmtTokShort(v);
+      else el.textContent = fmtInt(v);
+    }
+  }
+
+  function fillFilter() {
+    const s = dash.data('by_provider');
+    const providers = s.status === 'ok' ? [...new Set(s.data.map((r) => r.provider))].sort() : [];
+    const cur = dash.params().provider ?? '';
+    sel.replaceChildren(new Option('All providers', ''), ...providers.map((x) => new Option(x, x)));
+    sel.value = cur;
+    picked.hidden = !cur;
+    picked.textContent = cur ? cur + ' ×' : '';
+    picked.setAttribute('aria-label', cur ? `Clear provider filter (${cur})` : '');
+    document.getElementById('tbScope').textContent = cur || 'All providers';
+    document.getElementById('dailyScope').textContent = cur ? `${cur} only.` : 'All providers.';
+  }
+
+  function fillProviders() {
+    const s = dash.data('by_provider');
+    const body = document.getElementById('providerBody');
+    body.replaceChildren();
+    if (s.status !== 'ok') return;
+    const cur = dash.params().provider;
+    for (const r of s.data.filter((x) => x.month === '2026-09')) {
+      const tr = document.createElement('tr');
+      tr.dataset.key = [r.provider, r.month].map(encodeURIComponent).join(',');
+      tr.dataset.provider = r.provider;
+      if (r.provider === cur) tr.className = 'picked';
+      const name = document.createElement('span');
+      const dot = document.createElement('i');
+      dot.className = 'tb-dot' + (Number(r.cost_usd) === 0 ? ' self' : '');
+      name.append(dot, r.provider);
+      cell(tr, name);
+      cell(tr, r.model, 'mono');
+      cell(tr, fmtInt(r.requests), 'r');
+      cell(tr, fmtTok(r.tokens), 'r');
+      cell(tr, fmtPct1(r.cache_rate), 'r');
+      cell(tr, fmtPct2(r.error_rate), 'r' + (r.error_rate >= 0.01 ? ' warn' : ''));
+      cell(tr, fmtMs(r.ttft_ms), 'r mut');
+      cell(tr, fmtUsd2(r.cost_usd), 'r');
+      body.appendChild(tr);
+    }
+  }
+
+  function fillMembers() {
+    const s = dash.data('members');
+    const body = document.getElementById('memberBody');
+    body.replaceChildren();
+    if (s.status !== 'ok') return;
+    const max = d3.max(s.data, (r) => r.share);
+    for (const r of s.data) {
+      const tr = document.createElement('tr');
+      const tag = document.createElement('span');
+      tag.className = 'tb-tag';
+      tag.textContent = r.agent;
+      cell(tr, r.member);
+      cell(tr, tag);
+      cell(tr, fmtInt(r.requests), 'r');
+      cell(tr, fmtTok(r.tokens), 'r');
+      cell(tr, fmtPct1(r.cache_rate), 'r mut');
+      const share = document.createElement('div');
+      share.className = 'tb-share';
+      const track = document.createElement('span');
+      track.className = 'tb-bar-track';
+      const b = document.createElement('span');
+      b.className = 'tb-bar';
+      b.style.width = Math.max(1, (r.share / max) * 100) + '%';
+      track.appendChild(b);
+      const pct = document.createElement('span');
+      pct.textContent = fmtPct1(r.share);
+      share.append(track, pct);
+      cell(tr, share, 'r mut');
+      body.appendChild(tr);
+    }
+  }
+
+  function drawDaily() {
+    const box = document.getElementById('dailyChart');
+    const s = dash.data('daily');
+    box.replaceChildren();
+    box.classList.toggle('dash-skeleton', s.status === 'loading');
+    if (s.status === 'error' || s.status === 'connect') return fail(box);
+    if (s.status !== 'ok') return;
+    const rows = s.data.map((r) => ({ day: r.day, requests: +r.requests, tokens: +r.input_tokens + +r.cache_tokens + +r.output_tokens, errors: +r.errors, cost: +r.cost_usd }));
+    rows.forEach((r, i) => { r.avg = i < 6 ? null : d3.mean(rows.slice(i - 6, i + 1), (x) => x.requests); });
+    const W = box.clientWidth, H = 260, mb = 26, mt = 10, mr = 4;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.requests) * 1.05], [H - mb, mt]).nice();
+    const ticks = y.ticks(5);
+    const probe = svg.append('text').style('font-size', '11.5px');
+    const ml = d3.max(ticks, (t) => probe.text(fmtTick(t)).node().getComputedTextLength()) + 12;
+    probe.remove();
+    const x = d3.scaleBand(rows.map((r) => r.day), [ml, W - mr]).padding(0.28);
+    svg.selectAll('line.g').data(ticks).join('line').attr('x1', ml).attr('x2', W - mr).attr('y1', y).attr('y2', y)
+      .attr('stroke', (t) => (t === 0 ? 'var(--tb-line-2)' : 'var(--tb-grid)'));
+    svg.selectAll('text.y').data(ticks).join('text').attr('x', ml - 10).attr('y', y).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--tb-muted)').style('font-size', '11.5px').text(fmtTick);
+    const months = rows.filter((r) => r.day.endsWith('-01'));
+    const mon = (d) => new Date(d + 'T00:00:00').toLocaleString('en-US', { month: 'short' });
+    svg.selectAll('line.m').data(months.slice(1)).join('line').attr('x1', (r) => x(r.day) - (x.step() - x.bandwidth()) / 2).attr('x2', (r) => x(r.day) - (x.step() - x.bandwidth()) / 2)
+      .attr('y1', mt).attr('y2', H - mb + 6).attr('stroke', 'var(--tb-line)');
+    svg.selectAll('text.x').data(months).join('text').attr('x', (r) => x(r.day)).attr('y', H - 6).attr('fill', 'var(--tb-muted)').style('font-size', '11.5px').text((r) => mon(r.day) + ' 1');
+    const bars = svg.selectAll('rect.b').data(rows).join('rect').attr('x', (r) => x(r.day)).attr('width', x.bandwidth()).attr('y', (r) => y(r.requests)).attr('height', (r) => y(0) - y(r.requests))
+      .attr('rx', Math.min(2, x.bandwidth() / 2)).attr('fill', 'var(--tb-bar)');
+    svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', 'var(--tb-accent)').attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('d', d3.line().defined((r) => r.avg !== null).curve(d3.curveMonotoneX).x((r) => x(r.day) + x.bandwidth() / 2).y((r) => y(r.avg)));
+    const dot = svg.append('circle').attr('r', 3.5).attr('fill', 'var(--tb-surface)').attr('stroke', 'var(--tb-accent)').attr('stroke-width', 2).style('opacity', 0);
+    const tip = document.getElementById('tip');
+    const card = document.getElementById('daily');
+    const longDay = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    svg.append('rect').attr('x', ml).attr('y', 0).attr('width', W - ml - mr).attr('height', H).attr('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const [mx] = d3.pointer(ev);
+        const r = rows[Math.max(0, Math.min(rows.length - 1, Math.floor((mx - ml - x.step() * x.paddingOuter()) / x.step())))];
+        bars.attr('fill', (b) => (b === r ? 'var(--tb-bar-hi)' : 'var(--tb-bar)'));
+        dot.attr('cx', x(r.day) + x.bandwidth() / 2).attr('cy', y(r.avg ?? 0)).style('opacity', r.avg === null ? 0 : 1);
+        tip.replaceChildren();
+        const line = (...parts) => { const d = document.createElement('div'); d.append(...parts); return d; };
+        const strong = (t) => { const b = document.createElement('b'); b.textContent = t; return b; };
+        const head = line(longDay(r.day)); head.className = 'd';
+        const a = line(strong(fmtInt(r.requests)), ' requests');
+        const b = line(`${fmtTok(r.tokens)} tokens · ${fmtInt(r.errors)} errors`); b.className = 'm';
+        const c = line(`${fmtUsd2(r.cost)} est. cost` + (r.avg === null ? '' : ` · 7-day avg ${fmtInt(Math.round(r.avg))}`)); c.className = 'm';
+        tip.append(head, a, b, c);
+        const cr = card.getBoundingClientRect(), br = box.getBoundingClientRect();
+        let left = br.left - cr.left + ((x(r.day) + x.bandwidth()) * br.width) / W + 12;
+        tip.style.opacity = 1;
+        if (left + tip.offsetWidth > cr.width - 8) left -= tip.offsetWidth + x.bandwidth() + 24;
+        tip.style.left = left + 'px';
+        tip.style.top = br.top - cr.top + 4 + 'px';
+      })
+      .on('pointerleave', () => { tip.style.opacity = 0; dot.style('opacity', 0); bars.attr('fill', 'var(--tb-bar)'); });
+  }
+
+  function drawGoals() {
+    const box = document.getElementById('goalChart');
+    const s = dash.data('goal');
+    box.replaceChildren();
+    box.classList.toggle('dash-skeleton', s.status === 'loading');
+    if (s.status === 'error') return fail(box);
+    if (s.status !== 'ok') return;
+    const rows = s.data.filter((r) => r.used !== null).sort((a, b) => b.used - a.used);
+    const W = box.clientWidth, rowH = 76, top = 34, H = rows.length * rowH + top;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const probe = svg.append('text').style('font-size', '13px').style('font-weight', 500);
+    const ml = Math.max(d3.max(rows, (r) => probe.text(r.provider).node().getComputedTextLength()), 0) + 20;
+    probe.text('000.0%');
+    const mr = probe.node().getComputedTextLength() + 14;
+    probe.remove();
+    const x = d3.scaleLinear([0, Math.max(1.25, d3.max(rows, (r) => r.used))], [ml, W - mr]);
+    const bh = 14;
+    rows.forEach((r, i) => {
+      const yy = top + i * rowH;
+      const over = r.used > 1;
+      svg.append('text').attr('x', 0).attr('y', yy + bh / 2).attr('dy', '0.35em').attr('fill', 'var(--tb-ink)').style('font-size', '13px').style('font-weight', 500).text(r.provider);
+      svg.append('text').attr('x', ml).attr('y', yy + bh + 17).attr('fill', 'var(--tb-muted)').style('font-size', '11.5px').text(`${fmtUsd(r.spend)} of ${fmtUsd(r.budget)}` + (r.spend > r.budget ? ` · ${fmtUsd(r.spend - r.budget)} over` : ''));
+      svg.append('path').attr('d', `M${ml},${yy}h${x.range()[1] - ml}v${bh}h${-(x.range()[1] - ml)}z`).attr('fill', 'var(--tb-track)');
+      svg.append('rect').attr('x', ml).attr('y', yy).attr('height', bh).attr('rx', 3).attr('width', Math.max(0, x(r.used) - ml))
+        .attr('fill', over ? 'var(--tb-crit)' : 'var(--tb-accent)');
+      svg.append('text').attr('x', W).attr('text-anchor', 'end').attr('y', yy + bh / 2).attr('dy', '0.35em').attr('fill', over ? 'var(--tb-crit)' : 'var(--tb-ink)').style('font-size', '12.5px').style('font-weight', 600).text(fmtPct1(r.used));
+    });
+    svg.append('line').attr('x1', x(1)).attr('x2', x(1)).attr('y1', top - 6).attr('y2', H - 10).attr('stroke', 'var(--tb-ink-2)').attr('stroke-dasharray', '3 3');
+    svg.append('text').attr('x', x(1)).attr('y', 10).attr('text-anchor', 'middle').attr('fill', 'var(--tb-muted)').style('font-size', '11px').text('Budget');
+  }
+
+  dash.onData(() => {
+    fillFilter();
+    fillValues();
+    fillProviders();
+    fillMembers();
+    drawDaily();
+    drawGoals();
+  });
+</script>

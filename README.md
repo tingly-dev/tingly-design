@@ -6,7 +6,7 @@
 
 Canvases, slide decks, design systems, dashboards and documents are plain files under `projects/`. You click, drag and retype on screen; a fast model rewrites what you point at in a few seconds, line by line; Claude Code edits the files directly. All three work on the same source, and every edit writes back only the characters that changed, so the files stay reviewable in git and pleasant to write by hand.
 
-![Canvas: four artboards of the Meridian product UI, with the layers and properties panel on the right](docs/images/canvas.png)
+![Canvas: four artboards of the Tingly Box console, with the layers and properties panel on the right](docs/images/canvas.png)
 
 - **One source, three editors.** Direct manipulation (instant), fast AI (seconds; jQuery statements that run as they stream in) and Claude Code (minutes; whole files, several at once). Every open editor sees every change live, and all of them write to one shared change log.
 - **Minimal write-back.** Template holes like `{{price}}`, loops and your own formatting survive every edit. Tick a checkbox or change a colour, and the git diff is one line.
@@ -32,15 +32,15 @@ Canvases, slide decks, design systems, dashboards and documents are plain files 
 
 ## Sample workspace
 
-The five sample projects belong to one fictional company, **Meridian**, a revenue analytics product for finance and RevOps teams, and they quote the same numbers: the Q3 revenue the dashboard computes is the one on the board deck, and the deck's colours and type sizes are tokens of the design system. Every company, person and figure in them is sample data.
+The five sample projects introduce our own two projects: **Tingly Design** (this repository) and [**Tingly Box**](https://github.com/tingly-dev/tingly-box), the open-source AI gateway that connects any agent to any model. They share one look, the Tingly design system taken from the Tingly Box homepage and web UI, and every fact in them is checked against the two code bases. The usage figures in the dashboard and the console mockups are demo data and say so.
 
 | Kind | Sample | What it shows | Files |
 |---|---|---|---|
-| **Canvas** | [`?p=product-ui`](http://localhost:5173/?p=product-ui) | A product UI review: revenue overview, workspace settings, an interactive pricing page and a data-flow diagram | `canvas.json` + one `.dc.html` per artboard |
-| **Slides** | [`?p=q3-review`](http://localhost:5173/?p=q3-review) | An eight-slide quarterly board review; the ARR slide carries a live chart | `deck.json` + `slides/<id>.html` |
-| **Design system** | [`?p=meridian-ds`](http://localhost:5173/?p=meridian-ds) | Light and dark themes, two typefaces, a six-step type scale, four components and the brand marks | `design-system.json` + `tokens.json` + `components/` |
-| **Dashboard** | [`?p=revenue-dash`](http://localhost:5173/?p=revenue-dash) | Q3 revenue: two live SQLite queries, a CSV, a JSON file and a region filter | `dash.json` + `datasets/` + `files/index.html` + `data/` |
-| **Docs** | [`?p=launch-plan`](http://localhost:5173/?p=launch-plan) | The launch plan for Meridian Forecast: four tabs, a milestone table, a launch checklist and comments | `doc.json` + `tabs/<id>.md` + `comments.json` |
+| **Canvas** | [`?p=box-console`](http://localhost:5173/?p=box-console) | A design review of the Tingly Box console: usage dashboard, team settings, an interactive "connect an agent" panel and the request-routing diagram | `canvas.json` + one `.dc.html` per artboard |
+| **Slides** | [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) | "Meet Tingly": eight slides on Tingly Box and Tingly Design; the gateway slide carries a live animated diagram | `deck.json` + `slides/<id>.html` |
+| **Design system** | [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) | The Tingly brand: light and dark themes, Instrument Serif and Inter, a six-step type scale, four components and the marks | `design-system.json` + `tokens.json` + `components/` |
+| **Dashboard** | [`?p=box-usage`](http://localhost:5173/?p=box-usage) | A team's Tingly Box gateway usage for Q3 (demo data): two live SQLite queries, a CSV, a JSON file and a provider filter | `dash.json` + `datasets/` + `files/index.html` + `data/` |
+| **Docs** | [`?p=design-guide`](http://localhost:5173/?p=design-guide) | The Tingly Design handbook: four tabs, a project-kinds table, a setup checklist, a code block and comments | `doc.json` + `tabs/<id>.md` + `comments.json` |
 
 <table>
   <tr>
@@ -70,7 +70,7 @@ pnpm install
 pnpm dev            # editor at http://localhost:5173, server on :8787
 ```
 
-Open http://localhost:5173 to pick a project, or go straight to http://localhost:5173/?p=product-ui for the sample canvas. For a production-style run, `pnpm start` builds the editor and serves it together with the API on port 8787.
+Open http://localhost:5173 to pick a project, or go straight to http://localhost:5173/?p=box-console for the sample canvas. For a production-style run, `pnpm start` builds the editor and serves it together with the API on port 8787.
 
 ### Configuration
 
@@ -118,7 +118,7 @@ Format reference: [`.claude/skills/dc-canvas/SKILL.md`](.claude/skills/dc-canvas
 
 ### Slides
 
-Choose "幻灯片" (slides) when creating a project. The sample [`?p=q3-review`](http://localhost:5173/?p=q3-review) is a quarterly board review; the ARR slide carries a live `<x-embed>` chart.
+Choose "幻灯片" (slides) when creating a project. The sample [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) is "Meet Tingly", an introduction to Tingly Box and Tingly Design; the gateway slide carries a live `<x-embed>` diagram.
 
 ![Slide editor: thumbnails and sections on the left, the stage and speaker notes in the middle, layers and properties on the right](docs/images/slides.png)
 
@@ -142,7 +142,7 @@ Format reference: [`.claude/skills/slides/SKILL.md`](.claude/skills/slides/SKILL
 
 ### Design system
 
-The sample [`?p=meridian-ds`](http://localhost:5173/?p=meridian-ds) is Meridian's design system: the colours (light and dark), typefaces, type sizes, spacing and components the product UI and the board deck share.
+The sample [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) is the Tingly design system: the colours (light and dark), typefaces, type sizes, spacing and components the console mockups, the deck and the dashboard share, taken from the Tingly Box homepage and web UI.
 
 | Overview: cover and brand book | Colours: usage and contrast |
 |---|---|
@@ -170,7 +170,7 @@ Format reference: [`.claude/skills/design-system/SKILL.md`](.claude/skills/desig
 
 ### Dashboard
 
-The sample [`?p=revenue-dash`](http://localhost:5173/?p=revenue-dash) is Meridian's Q3 revenue (generated sample data): two live SQLite queries, a CSV and a JSON file, four calculations and a region filter.
+The sample [`?p=box-usage`](http://localhost:5173/?p=box-usage) is a team's Tingly Box gateway usage for Q3 (generated demo data): requests, tokens, cache hit rate, cost by provider, budgets and per-member usage, built from two live SQLite queries, a CSV and a JSON file, four calculations and a provider filter.
 
 ![Dashboard in data mode: a table cell clicked, its source open on the right](docs/images/dashboard.png)
 
@@ -195,7 +195,7 @@ Format reference: [`.claude/skills/dashboard/SKILL.md`](.claude/skills/dashboard
 
 ### Docs
 
-The sample [`?p=launch-plan`](http://localhost:5173/?p=launch-plan) is the launch plan for Meridian Forecast: four tabs (one nested), a milestone table, a launch checklist, a quote and two comment threads.
+The sample [`?p=design-guide`](http://localhost:5173/?p=design-guide) is the Tingly Design handbook: four tabs (one nested), a project-kinds table, a setup checklist, a quote, a code block and two comment threads.
 
 ![Docs: the format and AI rewrite menu on a selection, comments on the right](docs/images/docs.png)
 
@@ -280,7 +280,7 @@ packages/core       format parsing, the DOM copy, minimal write-back, human oper
 packages/sandbox    the artboard runtime (template → React, selection, in-place text), the dashboard runtime (dash API + d3) and the AI executor, bundled as IIFEs with esbuild
 apps/server         Hono: file reads and writes with versions, SSE, journal, file watching, fast AI streaming proxy, delegation to the claude CLI, git commits, dashboard connectors
 apps/editor         React + Vite + zustand editors for canvas, slides (components/slides), design systems (components/ds), dashboards (components/dash) and docs (components/docs)
-projects/           sample projects: product-ui (canvas), q3-review (slides), meridian-ds (design system), revenue-dash (dashboard), launch-plan (docs)
+projects/           sample projects: box-console (canvas), tingly-intro (slides), tingly-ds (design system), box-usage (dashboard), design-guide (docs)
 scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code)
 .claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs (read before every delegated task)
 artifact/           reference material for the original five types (Design, Slides, Dashboard, Docs, Design System), private

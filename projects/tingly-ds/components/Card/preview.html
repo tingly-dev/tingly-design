@@ -1,0 +1,14 @@
+<!-- @dsCard group="Data" height=150 subtitle="A metric with its comparison" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<div id="root" class="tg-stage"></div>
+<script>
+  var root = document.getElementById('root');
+  root.appendChild(Tingly.Card({ label: 'Gateway overhead', value: '< 1 ms', caption: 'Typical, per request' }));
+  root.appendChild(Tingly.Card({ label: 'Cache hit rate', value: '90.7%', caption: 'Up 4.2 points this week', trend: 'up' }));
+  root.appendChild(Tingly.Card({ label: 'Error rate', value: '0.53%', caption: 'Up from 0.31% yesterday', trend: 'down' }));
+</script>
+</body>
+</html>

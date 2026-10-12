@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Usage dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#16181d;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width:1200px;height:760px;box-sizing:border-box;display:flex;background:#f7f7f4;overflow:hidden">
+  <nav style="width:220px;background:#ffffff;border-right:1px solid #e5e5e0;padding:20px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px" aria-label="Main">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 10px 6px">
+      <div style="width:26px;height:26px;border-radius:8px;background:#16181d;position:relative"><div style="position:absolute;left:7px;top:7px;width:12px;height:3px;border-radius:1px;background:#ffffff"></div><div style="position:absolute;left:11.5px;top:7px;width:3px;height:12px;border-radius:1px;background:#ffffff"></div></div>
+      <div style="font-size:16px;font-weight:700;letter-spacing:-0.2px">Tingly Box</div>
+    </div>
+    <div style="font-size:11px;font-weight:500;color:#696e79;margin:0 10px 16px;font-family:'JetBrains Mono',ui-monospace,monospace">localhost:12580</div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="7">
+      <div style="height:{{rowHeight}};border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 10px;background:{{n.bg}};color:{{n.color}};font-weight:{{n.weight}}">
+        <div style="width:14px;height:14px;border-radius:4px;border:1.5px solid {{n.color}};box-sizing:border-box"></div>
+        <div style="font-size:14px;flex:1">{{n.name}}</div>
+      </div>
+    </sc-for>
+  </nav>
+  <main style="flex:1;padding:28px 36px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px;min-width:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-0.3px">Usage dashboard</h1>
+        <div style="font-size:13px;color:#696e79">Today · all providers · all models</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="height:34px;box-sizing:border-box;padding:0 12px;border:1px solid #e5e5e0;border-radius:10px;background:#ffffff;font-size:13px;display:flex;align-items:center">Today</div>
+        <div style="height:34px;box-sizing:border-box;padding:0 14px;border-radius:10px;background:{{accent}};color:#ffffff;font-size:13px;font-weight:600;display:flex;align-items:center">Refresh</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:14px">
+      <sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+        <div style="background:#ffffff;border:1px solid #e5e5e0;border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:12px;font-weight:500;color:#4a4f5a">{{k.label}}</div>
+          <div style="font-size:26px;font-weight:700;letter-spacing:-0.4px">{{k.value}}</div>
+          <div style="font-size:12px;font-weight:500;color:#696e79">{{k.note}}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0, 1.35fr) minmax(0, 1fr);gap:14px;flex:1;min-height:0">
+      <div style="background:#ffffff;border:1px solid #e5e5e0;border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-size:14px;font-weight:600">Requests by hour</div>
+          <div style="font-size:12px;color:#696e79">two-hour buckets</div>
+        </div>
+        <div style="flex:1;display:flex;align-items:flex-end;gap:10px;border-bottom:1px solid #e5e5e0;padding:0 4px">
+          <sc-for list="{{bars}}" as="b" hint-placeholder-count="12">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="font-size:11px;font-weight:600;color:{{b.labelColor}}">{{b.value}}</div>
+              <div style="width:100%;height:{{b.h}};background:{{b.color}};border-radius:4px 4px 0 0"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;padding:0 4px">
+          <sc-for list="{{bars}}" as="b" hint-placeholder-count="12">
+            <div style="flex:1;text-align:center;font-size:11px;color:#696e79">{{b.t}}</div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#ffffff;border:1px solid #e5e5e0;border-radius:14px;display:flex;flex-direction:column">
+        <div style="padding:16px 20px;font-size:14px;font-weight:600;border-bottom:1px solid #e5e5e0">Requests by provider</div>
+        <sc-for list="{{providers}}" as="r" hint-placeholder-count="5">
+          <div style="padding:12px 20px;border-bottom:1px solid #efefea;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <div style="font-weight:500">{{r.name}}</div>
+              <div style="font-weight:600;color:#4a4f5a">{{r.pct}}</div>
+            </div>
+            <div style="height:6px;border-radius:3px;background:#efefea;display:flex">
+              <div style="width:{{r.w}};border-radius:3px;background:{{r.tone}}"></div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="padding:12px 20px;font-size:12px;line-height:1.5;color:#696e79">Figures from Tingly Box's mock data, for this mockup.</div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2563eb","options":["#2563eb","#15803d","#b45309","#7c3aed"]},"density":{"editor":"enum","default":"comfortable","options":["compact","comfortable"]},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#2563eb';
+    const ACTIVE = 'Dashboard';
+    const items = ["Agent", "Team", "Image", "Dashboard", "Remote", "Credential", "System"];
+    const nav = items.map((name) => ({
+      name,
+      bg: name === ACTIVE ? "#e9effd" : "transparent",
+      color: name === ACTIVE ? accent : "#4a4f5a",
+      weight: name === ACTIVE ? 600 : 400,
+    }));
+    const kpis = [
+      ['Total requests', '5,662', 'Today'],
+      ['Total tokens', '46.5M', 'Input 4.09M · cache 40M'],
+      ['Cache hit rate', '90.7%', '40M read · 4.8M written'],
+      ['Error rate', '0.53%', '30 errors'],
+    ].map(([label, value, note]) => ({ label, value, note }));
+    const h = [['00', 212], ['02', 96], ['04', 58], ['06', 141], ['08', 486], ['10', 742], ['12', 618], ['14', 811], ['16', 904], ['18', 702], ['20', 551], ['22', 341]];
+    const peak = Math.max(...h.map(([, v]) => v));
+    const bars = h.map(([t, v]) => ({
+      t,
+      value: String(v),
+      h: Math.round((v / 960) * 300) + 'px',
+      color: v === peak ? accent : '#d4d6db',
+      labelColor: v === peak ? accent : '#696e79',
+    }));
+    const providers = [['Anthropic', 38], ['DeepSeek', 27], ['OpenAI', 19], ['Gemini', 11], ['Ollama, self-hosted', 5]].map(([name, p], i) => ({
+      name,
+      pct: p + '%',
+      w: p / 0.4 + '%',
+      tone: i === 0 ? accent : '#9a9fa9',
+    }));
+    return { accent, nav, kpis, bars, providers, rowHeight: this.props.density === 'compact' ? '30px' : '36px' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "rows": [
+    {
+      "provider": "Anthropic",
+      "month": "2026-09",
+      "budget_usd": 2100
+    },
+    {
+      "provider": "OpenAI",
+      "month": "2026-09",
+      "budget_usd": 450
+    },
+    {
+      "provider": "DeepSeek",
+      "month": "2026-09",
+      "budget_usd": 100
+    },
+    {
+      "provider": "Gemini",
+      "month": "2026-09",
+      "budget_usd": 350
+    }
+  ]
+}

@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DECK = os.path.join(REPO, 'projects/q3-review')
+DECK = os.path.join(REPO, 'projects/tingly-intro')
 CHROME = os.environ.get('DC_CHROME')  # e.g. /opt/pw-browsers/chromium-1194/chrome-linux/chrome
 
 def src(name): return open(os.path.join(DECK, name), encoding='utf-8').read()
@@ -15,8 +15,8 @@ def diff(path):
 def changed_lines(path):
     return [l for l in diff(path).splitlines() if l.startswith(('+', '-')) and not l.startswith(('+++', '---'))]
 def restore():
-    subprocess.run(['git', 'checkout', '--', 'projects/q3-review'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/q3-review'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-intro'], cwd=REPO)
 
 async def wait_for(pred, timeout=6.0):
     t = time.time()
@@ -62,75 +62,75 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
-        await pg.goto(BASE + '/?p=q3-review&s=arr')
-        await stage_ready(pg, 'arr')
+        await pg.goto(BASE + '/?p=tingly-intro&s=box')
+        await stage_ready(pg, 'box')
 
         # --- the deck -------------------------------------------------------------
         check('strip lists every slide', await pg.locator('.thumb').count() == 8)
         check('strip shows the sections', await pg.locator('.shead .d').count() == 4)
-        check('the stage shows the slide in the URL', await pg.locator('.thumb.on').get_attribute('data-slide') == 'arr')
+        check('the stage shows the slide in the URL', await pg.locator('.thumb.on').get_attribute('data-slide') == 'box')
         check('embeds run on the stage', await pg.frame_locator(f'{STAGE} iframe').locator('x-embed iframe').count() == 1)
-        check('thumbnails keep embeds still', await pg.frame_locator('.thumb[data-slide="arr"] iframe').locator('x-embed iframe').count() == 0)
+        check('thumbnails keep embeds still', await pg.frame_locator('.thumb[data-slide="box"] iframe').locator('x-embed iframe').count() == 0)
         await pg.screenshot(path=OUT + 's1-deck.png')
 
         # --- selection and text ------------------------------------------------------
         await click_in(pg, 'h2')
-        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('ARR grew')
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('Any agent')
         await expect(pg.locator('.prompt .target')).to_contain_text('<h2>')
         await click_in(pg, 'h2', count=2)
         await pg.wait_for_timeout(200)
         await pg.keyboard.press('Control+a')
-        await pg.keyboard.type('ARR rose 7.8% in Q3')
+        await pg.keyboard.type('One endpoint for every agent')
         await pg.keyboard.press('Enter')
-        ok = await wait_for(lambda: 'ARR rose 7.8% in Q3</h2>' in src('slides/arr.html'))
-        lines = changed_lines('projects/q3-review/slides/arr.html')
+        ok = await wait_for(lambda: 'One endpoint for every agent</h2>' in src('slides/box.html'))
+        lines = changed_lines('projects/tingly-intro/slides/box.html')
         check('double-click retypes text, minimal write-back', ok and len(lines) == 2, '\n'.join(lines))
         await pg.wait_for_timeout(400)
 
         # --- panel: a style edit -------------------------------------------------------
         await click_in(pg, 'h2')
         await pg.keyboard.press('Delete')
-        ok = await wait_for(lambda: 'ARR rose 7.8% in Q3' not in src('slides/arr.html'))
+        ok = await wait_for(lambda: 'One endpoint for every agent' not in src('slides/box.html'))
         check('Delete removes the selected element', ok)
         await pg.keyboard.press('Control+z')
-        ok = await wait_for(lambda: 'ARR rose 7.8% in Q3</h2>' in src('slides/arr.html'))
+        ok = await wait_for(lambda: 'One endpoint for every agent</h2>' in src('slides/box.html'))
         check('undo brings it back', ok)
 
         # --- dragging a pinned element ------------------------------------------------
         restore()
         await pg.reload()
-        await stage_ready(pg, 'arr')
+        await stage_ready(pg, 'box')
         x, y = await point(pg, 'p', 4)  # the pinned footer
         await pg.mouse.click(x, y)
         await pg.mouse.move(x, y)
         await pg.mouse.down()
         await pg.mouse.move(x + 40, y - 30, steps=6)
         await pg.mouse.up()
-        ok = await wait_for(lambda: 'bottom:64px' in src('slides/arr.html') and 'top:' in src('slides/arr.html').split('Q3 2026 Business Review · 02')[0].split('<p ')[-1])
-        footer = src('slides/arr.html').split('Q3 2026 Business Review · 02')[0].split('<p ')[-1]
+        ok = await wait_for(lambda: 'bottom:64px' in src('slides/box.html') and 'top:' in src('slides/box.html').split('Meet Tingly · 02')[0].split('<p ')[-1])
+        footer = src('slides/box.html').split('Meet Tingly · 02')[0].split('<p ')[-1]
         check('dragging a pinned element moves it by its offsets', ok and 'margin' not in footer, footer)
 
         # --- notes -----------------------------------------------------------------
         notes = pg.locator('.snotes')
         await notes.fill('新的备注')
         await click_in(pg, 'h2')
-        ok = await wait_for(lambda: '<aside>新的备注</aside>' in src('slides/arr.html'))
+        ok = await wait_for(lambda: '<aside>新的备注</aside>' in src('slides/box.html'))
         check('speaker notes write the <aside>', ok)
 
         # --- paging ---------------------------------------------------------------
         await pg.keyboard.press('Escape')
         await pg.keyboard.press('Escape')
         await pg.keyboard.press('PageDown')
-        await expect(pg.locator('.thumb.on')).to_have_attribute('data-slide', 'retention')
+        await expect(pg.locator('.thumb.on')).to_have_attribute('data-slide', 'team')
         await pg.keyboard.press('PageUp')
-        await expect(pg.locator('.thumb.on')).to_have_attribute('data-slide', 'arr')
+        await expect(pg.locator('.thumb.on')).to_have_attribute('data-slide', 'box')
 
         # --- adding, duplicating, reordering and removing slides -----------------------
         await pg.locator('.addslide').click()
         ok = await wait_for(lambda: 'slide-9' in deck()['order'] and os.path.exists(os.path.join(DECK, 'slides/slide-9.html')))
-        check('new slide: file written and placed after the current one', ok and deck()['order'].index('slide-9') == deck()['order'].index('arr') + 1)
+        check('new slide: file written and placed after the current one', ok and deck()['order'].index('slide-9') == deck()['order'].index('box') + 1)
         new_src = src('slides/slide-9.html')
-        check('new slide copies its neighbour\'s look', 'background:#F6F5F1' in new_src, new_src[:200])
+        check('new slide copies its neighbour\'s look', 'background:#F7F7F4' in new_src, new_src[:200])
         await stage_ready(pg, 'slide-9')
         await pg.locator('.bar.left [aria-label="插入文字"]').click()
         ok = await wait_for(lambda: '新的文字' in src('slides/slide-9.html'))
@@ -145,24 +145,24 @@ async def main():
         check('sections survive add/move/delete', len(deck()['sections']) == 4 and deck()['sections']['s1']['start'] == 'cover', json.dumps(deck()['sections']))
 
         # --- the subset check shows edits made outside -----------------------------------
-        with open(os.path.join(DECK, 'slides/segments.html'), 'r+', encoding='utf-8') as f:
+        with open(os.path.join(DECK, 'slides/powerups.html'), 'r+', encoding='utf-8') as f:
             s = f.read().replace('<h2 style="', '<h2 style="margin:12px;', 1)
             f.seek(0); f.write(s); f.truncate()
-        await pg.locator('.thumb[data-slide="segments"]').click()
+        await pg.locator('.thumb[data-slide="powerups"]').click()
         await expect(pg.locator('.issues.err')).to_contain_text('1 处')
-        await expect(pg.locator('.thumb[data-slide="segments"] .tag.err')).to_have_text('1')
-        subprocess.run(['git', 'checkout', '--', 'projects/q3-review/slides/segments.html'], cwd=REPO)
+        await expect(pg.locator('.thumb[data-slide="powerups"] .tag.err')).to_have_text('1')
+        subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro/slides/powerups.html'], cwd=REPO)
         await expect(pg.locator('.issues')).to_have_count(0)
 
         # --- jQuery runs on a slide too ---------------------------------------------------
         await pg.locator('.prompt .seg button', has_text='jQuery').click()
         await pg.locator('.prompt textarea').fill("$('h2').css('color', '#ff5c8a')")
         await pg.locator('.prompt .send').click()
-        ok = await wait_for(lambda: '#ff5c8a' in src('slides/segments.html'))
+        ok = await wait_for(lambda: '#ff5c8a' in src('slides/powerups.html'))
         check('jQuery statements edit the slide', ok)
 
         # --- presenting -----------------------------------------------------------------
-        await pg.locator('.thumb[data-slide="arr"]').click()
+        await pg.locator('.thumb[data-slide="box"]').click()
         await pg.keyboard.press('F5')
         await expect(pg.locator('.present')).to_be_visible()
         await pg.wait_for_timeout(800)

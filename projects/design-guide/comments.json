@@ -1,0 +1,47 @@
+{
+  "threads": [
+    {
+      "id": "t-audience",
+      "tab": "overview",
+      "quote": "the agents working beside them",
+      "prefix": "to Tingly Design and ",
+      "suffix": ".",
+      "comments": [
+        {
+          "id": "t-audience-1",
+          "author": "Lena",
+          "text": "Do we mean Claude Code specifically? Today the editor only hands work to the claude command, and readers may expect other agents to plug in the same way.",
+          "at": "2026-10-08T14:20:00Z"
+        },
+        {
+          "id": "t-audience-2",
+          "author": "Wei",
+          "text": "Claude Code is the one the editor calls, but any agent that writes files is picked up by the watcher. I'd keep it general here and name Claude Code in Workflow.",
+          "at": "2026-10-08T15:05:00Z"
+        }
+      ]
+    },
+    {
+      "id": "t-table-rows",
+      "tab": "write-back",
+      "quote": "unchanged lines such as list items and table rows are kept too",
+      "prefix": "Inside a changed block, ",
+      "suffix": ". Tick a task",
+      "resolved": true,
+      "comments": [
+        {
+          "id": "t-table-rows-1",
+          "author": "Marco",
+          "text": "Is this per line or per block? If I edit one cell, does the whole table get re-padded?",
+          "at": "2026-10-06T10:42:00Z"
+        },
+        {
+          "id": "t-table-rows-2",
+          "author": "Wei",
+          "text": "Per line inside the changed block: only the row you edited is rewritten. I made that explicit in this paragraph.",
+          "at": "2026-10-06T11:15:00Z"
+        }
+      ]
+    }
+  ]
+}

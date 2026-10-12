@@ -5,16 +5,16 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEMO = os.path.join(REPO, 'projects/product-ui')
+DEMO = os.path.join(REPO, 'projects/box-console')
 MAIN = os.path.join(DEMO, 'Main.dc.html')
 CANVAS = os.path.join(DEMO, 'canvas.json')
 CHROME = os.environ.get('DC_CHROME')  # a Chromium to use instead of Playwright's own
 
 def src(path=MAIN): return open(path, encoding='utf-8').read()
 def canvas(): return json.loads(src(CANVAS))
-def diff(path='projects/product-ui/Main.dc.html'):
+def diff(path='projects/box-console/Main.dc.html'):
     return subprocess.run(['git', 'diff', '--unified=0', '--', path], cwd=REPO, capture_output=True, text=True).stdout
-def restore(): subprocess.run(['git', 'checkout', '--', 'projects/product-ui'], cwd=REPO); subprocess.run(['git', 'clean', '-fdq', '--', 'projects/product-ui'], cwd=REPO)
+def restore(): subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=REPO); subprocess.run(['git', 'clean', '-fdq', '--', 'projects/box-console'], cwd=REPO)
 
 async def wait_for(pred, timeout=5.0):
     t = time.time()
@@ -51,18 +51,18 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
-        await pg.goto(BASE + '/?p=product-ui')
+        await pg.goto(BASE + '/?p=box-console')
         await pg.wait_for_timeout(2500)
         main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
         target = pg.locator('.prompt .target')
 
         # --- selection, layer tree, properties --------------------------------
         await main.locator('h1').click()
-        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('Workspace settings')
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('Team settings')
         check('click selects element and the layer tree follows', True)
         await pg.locator('input[aria-label="文字颜色"]').fill('#15803d')
         await pg.locator('input[aria-label="文字颜色"]').press('Enter')
-        ok = await wait_for(lambda: 'font-weight:700;color:#15803d">Workspace settings</h1>' in src())
+        ok = await wait_for(lambda: 'font-weight:700;color:#15803d">Team settings</h1>' in src())
         changed = [l for l in diff().splitlines() if l.startswith('+') and not l.startswith('+++')]
         check('panel colour edit writes a one-line patch', ok and len(changed) == 1, diff())
         await expect(pg.locator('.contrast')).to_be_visible()
@@ -118,14 +118,14 @@ async def main():
         check('ungroup restores the element', ok)
 
         # --- clipboard ---------------------------------------------------------
-        before = src().count('>Workspace settings</h1>')
+        before = src().count('>Team settings</h1>')
         await main.locator('h1').click()
         await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('文字')
         await main.locator('body').press('Control+c')
         await main.locator('body').press('Control+v')
-        check('copy + paste an element', await wait_for(lambda: src().count('>Workspace settings</h1>') == before + 1))
+        check('copy + paste an element', await wait_for(lambda: src().count('>Team settings</h1>') == before + 1))
         await main.locator('body').press('Control+z')
-        check('undo the paste', await wait_for(lambda: src().count('>Workspace settings</h1>') == before))
+        check('undo the paste', await wait_for(lambda: src().count('>Team settings</h1>') == before))
 
         # --- drag to reorder inside a flex row ---------------------------------
         save = main.locator('button', has_text='Save changes')
@@ -143,10 +143,10 @@ async def main():
         check('selection follows the moved element', True)
 
         # --- drag out of the flow ---------------------------------------------
-        card = main.locator('text=6 connected')
+        card = main.locator('text=5 connected')
         await card.click(); await pg.wait_for_timeout(300)  # let the selection land before walking up from it
         await main.locator('body').press('Shift+Enter')
-        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('Data sources')
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_contain_text('Providers')
         await pg.wait_for_timeout(300)
         cb = await card.bounding_box()
         await pg.mouse.move(cb['x'] + 20, cb['y'] + 4)
@@ -154,7 +154,7 @@ async def main():
         await pg.mouse.move(cb['x'] + 20, cb['y'] + 260, steps=15)
         await pg.mouse.up()
         def card_abs():
-            m = re.search(r'<div style="([^"]*)">\s*<div[^>]*>Data sources', src())
+            m = re.search(r'<div style="([^"]*)">\s*<div[^>]*>Providers', src())
             return m and all(k in m.group(1) for k in ('position:absolute', 'left:', 'top:', 'width:', 'margin:0'))
         ok = await wait_for(card_abs)
         check('drag out of a grid makes the element absolute', ok)
@@ -206,9 +206,9 @@ async def main():
         await pg.keyboard.press('Escape')
         strip = pg.locator('[data-board="Main.dc.html"] .strip .t')
         await strip.dblclick()
-        await pg.locator('[data-board="Main.dc.html"] .strip input').fill('Workspace settings v2')
+        await pg.locator('[data-board="Main.dc.html"] .strip input').fill('Team settings v2')
         await pg.keyboard.press('Enter')
-        check('rename artboard from its name strip', await wait_for(lambda: canvas()['boards']['Main.dc.html'].get('title') == 'Workspace settings v2'))
+        check('rename artboard from its name strip', await wait_for(lambda: canvas()['boards']['Main.dc.html'].get('title') == 'Team settings v2'))
         await pg.locator('.panel [role="tab"]', has_text='Tweaks').click()
         await pg.locator('.swatches button[aria-label="#15803d"]').click()
         check('tweak swatch rewrites data-props', await wait_for(lambda: '"accent":{"editor":"color","default":"#15803d"' in src()))
@@ -234,14 +234,14 @@ async def main():
         check('switch back to the first page', True)
 
         # --- full window and export ------------------------------------------
-        await pg.locator('[data-board="Pricing.dc.html"] .strip button[aria-label^="全屏打开"]').click()
+        await pg.locator('[data-board="Agents.dc.html"] .strip button[aria-label^="全屏打开"]').click()
         focus = pg.frame_locator('.focus iframe')
-        await focus.locator('button', has_text='Yearly').click()
-        await expect(focus.locator('text=$16')).to_be_visible()
+        await focus.locator('button', has_text='Codex').click()
+        await expect(focus.locator('text=OpenAI Responses')).to_be_visible()
         check('full window runs the artboard', True)
         await pg.keyboard.press('Escape')
         await expect(pg.locator('.focus')).to_have_count(0)
-        await pg.locator('[data-board="Pricing.dc.html"] .strip button[aria-label^="导出"]').click()
+        await pg.locator('[data-board="Agents.dc.html"] .strip button[aria-label^="导出"]').click()
         async with pg.expect_download() as dl:
             await pg.locator('.menu .mi', has_text='PNG @2x').click()
         d = await dl.value
@@ -253,7 +253,7 @@ async def main():
         restore()
         await pg.reload(); await pg.wait_for_timeout(2500)
         pg2 = await ctx.new_page()
-        await pg2.goto(BASE + '/?p=product-ui'); await pg2.wait_for_timeout(2500)
+        await pg2.goto(BASE + '/?p=box-console'); await pg2.wait_for_timeout(2500)
         main2 = pg2.frame_locator('[data-board="Main.dc.html"] iframe')
         await main.locator('h1').click()
         await main2.locator('button', has_text='Discard').click()
@@ -277,10 +277,10 @@ async def main():
 
         # play mode
         await pg.locator('button[aria-label="播放"]').click()
-        pricing = pg.frame_locator('[data-board="Pricing.dc.html"] iframe')
-        await pricing.locator('button', has_text='Yearly').click()
+        pricing = pg.frame_locator('[data-board="Agents.dc.html"] iframe')
+        await pricing.locator('button', has_text='Codex').click()
         try:
-            await expect(pricing.locator('text=$16')).to_be_visible(timeout=2000); ok = True
+            await expect(pricing.locator('text=OpenAI Responses')).to_be_visible(timeout=2000); ok = True
         except Exception: ok = False
         check('play mode runs artboard logic', ok)
         await pg.keyboard.press('Escape')

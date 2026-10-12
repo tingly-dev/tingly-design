@@ -6,7 +6,7 @@
 
 画布、幻灯片、设计系统、数据看板和文档，全部存成 `projects/` 下的普通文件。你在界面上点选、拖动、改字；快速 AI 在几秒内逐行改出结果；Claude Code 直接编辑文件。三方改的是同一份源码，每次只回写真正变了的那几个字符，所以这些文件可以放进 git、做 code review，也可以手写。
 
-![画布：Meridian 产品界面的四个画板，右侧是图层与属性面板](docs/images/canvas.png)
+![画布：Tingly Box 控制台的四个画板，右侧是图层与属性面板](docs/images/canvas.png)
 
 - **一份源码，三种编辑者**：界面手改（秒级）、快速 AI（秒级，逐行 jQuery，边写边显示）、Claude Code（分钟级，改文件、跨文件）。改动实时同步到所有打开的编辑器，并记进同一份改动记录。
 - **最小补丁回写**：模板里的 `{{占位}}`、循环和你的排版原样保留；勾一个待办、改一个颜色，git diff 只有一行。
@@ -30,15 +30,15 @@
 
 ## 示例工作区
 
-仓库自带的五个示例项目属于同一家虚构公司 **Meridian**（一款给财务和 RevOps 团队用的收入分析产品），彼此引用同一组数字：看板算出的三季度收入，就是幻灯片里的那一页；幻灯片的颜色和字号，就是设计系统里的 token。所有公司、人名和数字都是示例数据。
+仓库自带的五个示例项目介绍的是我们自己的两个项目：**Tingly Design**（就是本仓库）和 [**Tingly Box**](https://github.com/tingly-dev/tingly-box)（开源 AI 网关，让任意 Agent 接任意模型）。它们共用一套取自 Tingly Box 官网和控制台的 Tingly 设计系统，内容都对照两边的代码核实过。看板和控制台界面稿里的用量数字是演示数据，页面上也写明了。
 
 | 类型 | 示例 | 内容 | 文件 |
 |---|---|---|---|
-| **画布** | [`?p=product-ui`](http://localhost:5173/?p=product-ui) | 产品界面评审：收入概览、工作区设置、可交互的定价页、数据流图 | `canvas.json` + 每个画板一个 `.dc.html` |
-| **幻灯片** | [`?p=q3-review`](http://localhost:5173/?p=q3-review) | 8 页的季度董事会汇报，ARR 一页带实时图表 | `deck.json` + `slides/<id>.html` |
-| **设计系统** | [`?p=meridian-ds`](http://localhost:5173/?p=meridian-ds) | 亮暗两套主题、两种字体、六级字号、四个组件和品牌标志 | `design-system.json` + `tokens.json` + `components/` |
-| **看板** | [`?p=revenue-dash`](http://localhost:5173/?p=revenue-dash) | 三季度收入：两条 SQLite 实时查询、一份 CSV、一份 JSON、按区域筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
-| **文档** | [`?p=launch-plan`](http://localhost:5173/?p=launch-plan) | Meridian Forecast 上线计划：四个标签页、里程碑表、上线清单和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
+| **画布** | [`?p=box-console`](http://localhost:5173/?p=box-console) | Tingly Box 控制台的设计评审：用量面板、团队设置、可交互的“接入 Agent”面板、请求路由图 | `canvas.json` + 每个画板一个 `.dc.html` |
+| **幻灯片** | [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) | “Meet Tingly”：8 页介绍 Tingly Box 和 Tingly Design，网关一页带实时动画图 | `deck.json` + `slides/<id>.html` |
+| **设计系统** | [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) | Tingly 品牌：亮暗两套主题、Instrument Serif 和 Inter、六级字号、四个组件和标志 | `design-system.json` + `tokens.json` + `components/` |
+| **看板** | [`?p=box-usage`](http://localhost:5173/?p=box-usage) | 一个团队三季度经 Tingly Box 网关的用量（演示数据）：两条 SQLite 实时查询、一份 CSV、一份 JSON、按服务商筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
+| **文档** | [`?p=design-guide`](http://localhost:5173/?p=design-guide) | Tingly Design 使用手册：四个标签页、项目类型表、上手清单、代码块和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
 
 <table>
   <tr>
@@ -68,7 +68,7 @@ pnpm install
 pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 ```
 
-打开 http://localhost:5173 选一个项目，或直接打开 http://localhost:5173/?p=product-ui 看示例画布。生产方式运行：`pnpm start`（先构建，再由服务端在 8787 端口同时提供 API 和编辑器）。
+打开 http://localhost:5173 选一个项目，或直接打开 http://localhost:5173/?p=box-console 看示例画布。生产方式运行：`pnpm start`（先构建，再由服务端在 8787 端口同时提供 API 和编辑器）。
 
 ### 配置
 
@@ -116,7 +116,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 
 ### 幻灯片
 
-新建项目时类型选“幻灯片”。示例 [`?p=q3-review`](http://localhost:5173/?p=q3-review) 是一份季度董事会汇报，ARR 一页右侧是一段 `<x-embed>` 实时图表。
+新建项目时类型选“幻灯片”。示例 [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) 是“Meet Tingly”，介绍 Tingly Box 和 Tingly Design；网关一页右侧是一段 `<x-embed>` 实时动画图。
 
 ![幻灯片编辑器：左侧缩略图与分节，中间舞台和演讲者备注，右侧图层与属性](docs/images/slides.png)
 
@@ -140,7 +140,7 @@ projects/<name>/
 
 ### 设计系统
 
-示例 [`?p=meridian-ds`](http://localhost:5173/?p=meridian-ds) 是 Meridian 的设计系统：产品界面和董事会汇报共用的颜色（亮暗两套）、字体、字号、间距和组件。
+示例 [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) 是 Tingly 设计系统：控制台界面稿、幻灯片和看板共用的颜色（亮暗两套）、字体、字号、间距和组件，取自 Tingly Box 官网和控制台。
 
 | 概览：封面 + 品牌手册 | 颜色：用法与对比度 |
 |---|---|
@@ -168,7 +168,7 @@ projects/<name>/
 
 ### 看板
 
-示例 [`?p=revenue-dash`](http://localhost:5173/?p=revenue-dash) 是 Meridian 三季度的收入看板（脚本生成的示例数据）：两个 SQLite 实时查询、一份 CSV、一份 JSON，四个计算，一个区域筛选。
+示例 [`?p=box-usage`](http://localhost:5173/?p=box-usage) 是一个团队三季度经 Tingly Box 网关的用量看板（脚本生成的演示数据）：按服务商的请求、token、缓存命中率、费用、预算和成员用量；两个 SQLite 实时查询、一份 CSV、一份 JSON，四个计算，一个服务商筛选。
 
 ![看板：数据模式下点了一个单元格，右侧是它的来源](docs/images/dashboard.png)
 
@@ -193,7 +193,7 @@ projects/<name>/
 
 ### 文档
 
-示例 [`?p=launch-plan`](http://localhost:5173/?p=launch-plan) 是 Meridian Forecast 的上线计划：四个标签页（一个子页）、里程碑表、上线清单、引用和两条评论。
+示例 [`?p=design-guide`](http://localhost:5173/?p=design-guide) 是 Tingly Design 使用手册：四个标签页（一个子页）、项目类型表、上手清单、引用、代码块和两条评论。
 
 ![文档：选中文字时的格式与 AI 改写菜单，右侧是评论](docs/images/docs.png)
 
@@ -278,7 +278,7 @@ packages/core       格式解析、DOM 副本、最小补丁回写、人工操�
 packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
 apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交、看板的数据连接器
 apps/editor         React + Vite + zustand 的画布、幻灯片（components/slides）、设计系统（components/ds）、看板（components/dash）和文档（components/docs）编辑器
-projects/           示例项目：product-ui（画布）、q3-review（幻灯片）、meridian-ds（设计系统）、revenue-dash（看板）、launch-plan（文档）
+projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档）
 scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）
 .claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs（委托时会让它先读）
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有

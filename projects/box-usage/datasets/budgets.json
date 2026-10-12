@@ -1,0 +1,13 @@
+{
+  "title": "September provider budgets",
+  "description": "Each paid provider's spend budget (USD) for September, set by the team lead.",
+  "source": {
+    "kind": "file",
+    "url": "data/budgets.json",
+    "name": "budgets.json"
+  },
+  "updated": {
+    "at": "2026-08-25T09:00:00Z",
+    "by": "Sample data"
+  }
+}

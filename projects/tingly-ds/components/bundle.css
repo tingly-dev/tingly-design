@@ -1,0 +1,20 @@
+body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); }
+.tg-stage { padding: 24px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.tg-button { font-family: var(--font-sans); font-size: 15px; font-weight: 600; height: 40px; padding: 0 18px; border-radius: var(--radius-control); border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.tg-button--primary { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.tg-button--brand { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+.tg-button--danger { color: var(--negative); }
+.tg-button:disabled { opacity: 0.45; cursor: default; }
+.tg-badge { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; background: var(--surface); color: var(--ink-muted); border: 1px solid var(--line); }
+.tg-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.9; }
+.tg-badge--brand { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+.tg-badge--positive { color: var(--positive); }
+.tg-badge--negative { color: var(--negative); }
+.tg-badge--warning { color: var(--warning); }
+.tg-card { display: flex; flex-direction: column; gap: var(--space-card-gap); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 20px 24px; min-width: 220px; }
+.tg-label { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-muted); }
+.tg-stat { margin: 0; font-family: var(--font-display); font-size: 44px; font-weight: 400; line-height: 1.05; letter-spacing: -0.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tg-caption { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-faint); }
+.tg-caption--up { color: var(--positive); }
+.tg-caption--down { color: var(--negative); }
+.tg-eyebrow { margin: 0; font-family: var(--font-sans); font-size: 13px; font-weight: 600; letter-spacing: 2px; color: var(--brand); }
