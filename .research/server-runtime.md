@@ -126,4 +126,4 @@ tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单�
 - **要做移动端**：手机上跑不了 Node、Claude Code、无头 Chromium。两条路：
   - 有一台远程主机（自己的电脑或服务器）做重活，手机是 WebView 里的瘦客户端；这时 TB 正好是现成的主机，融合的理由变强。
   - 不要云端，App 内直接调模型、读写本地文件，自己跑一个工具调用循环充当 agent（Claude Code 给的工具只有 Read、Edit、Write、Glob、Grep 五个）。服务端的职责变成 App 里的一层，按平台接 Node 文件系统、Capacitor 文件接口或浏览器 OPFS。这一层只能是 JS/TS，Go 在手机上基本用不上。
-- **团队就是要统一到 Go**：界面和运行时仍然只能是 JS（画布、幻灯片、动效本身是 HTML），"全平台 Go"指界面以外的逻辑。格式逻辑改写成 Go，原生编进服务端，或编成 WASM 给浏览器。文档类型的实测见 [docs-go.md](./docs-go.md)，画布和幻灯片回写依赖的源码位置见 [parse5.md](./parse5.md)。
+- **团队就是要统一到 Go**：界面和运行时仍然只能是 JS（画布、幻灯片、动效本身是 HTML），"全平台 Go"指界面以外的逻辑。格式逻辑改写成 Go，原生编进服务端，或编成 WASM 给浏览器。文档类型的实测见 [docs-go.md](./docs-go.md)，画布和幻灯片回写依赖的源码位置见 [parse5.md](./parse5.md)。动效的时间轴和画面留在浏览器，能换成 Go 的只有存文件和导出调度，见 [motion-go.md](./motion-go.md)。
