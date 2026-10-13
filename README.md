@@ -27,6 +27,8 @@ Five sample projects introduce our own two projects, **Tingly Design** (this rep
 | [**Dashboard**](docs/en/guide/dashboard.md) | [`?p=box-usage`](http://localhost:5173/?p=box-usage) | A team's Tingly Box gateway usage for Q3 (demo data): two live SQLite queries, a CSV, a JSON file and a provider filter | `dash.json` + `datasets/` + `files/index.html` + `data/` |
 | [**Docs**](docs/en/guide/docs.md) | [`?p=design-guide`](http://localhost:5173/?p=design-guide) | The Tingly Design handbook: four tabs, a project-kinds table, a setup checklist, a code block and comments | `doc.json` + `tabs/<id>.md` + `comments.json` |
 
+**Motion** (in development, no editor yet): [`projects/design-motion`](projects/design-motion) is a 36 s promo for Tingly Design in 16:9 and 9:16 from the same scenes, with its own cover image. Render it with `pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs design-motion --player` (needs Chromium and ffmpeg); see [`.design/motion.md`](.design/motion.md).
+
 A design system can be installed into a canvas or a deck; after that, colour fields and the text-style menu offer its tokens.
 
 ## Quick start
