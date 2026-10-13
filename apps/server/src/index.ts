@@ -20,6 +20,7 @@ import {
   FAST_EDIT_DOCS,
   DASH_RUNS,
   checkUploads,
+  isKeptPath,
   isUploadPath,
   checkMessages,
   cleanParams,
@@ -311,6 +312,23 @@ app.post('/api/projects/:p/assets', async (c) => {
   await writeAsset(p, rel, bytes);
   publish(p, { type: 'assets', path: rel });
   return c.json({ path: rel, size: bytes.length, type: assetType(rel) });
+});
+
+/**
+ * Keep one file of a folder a person imported, at its own path under uploads/
+ * (uploads/<folder>-<hash>/…), so the page's relative links still hold.
+ * Single files go through POST /assets?dir=uploads instead, named by content.
+ */
+app.put('/api/projects/:p/uploads', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  const rel = c.req.query('path') ?? '';
+  if (!isKeptPath(rel)) throw new HttpError(400, `不能保存这个文件：${rel}`);
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (bytes.length > MAX_ASSET) throw new HttpError(413, '文件超过 20 MB');
+  await writeAsset(p, rel, bytes);
+  publish(p, { type: 'assets', path: rel });
+  return c.json({ path: rel, size: bytes.length });
 });
 
 /** Serve a project's assets (to the sandboxed frames too: images, and fonts which need CORS). */
