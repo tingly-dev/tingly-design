@@ -14,6 +14,7 @@ import { insertHtml } from './actions';
 import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from './store';
 import { replaceUrl } from './host';
 import { filesOf, type ImportTarget } from './components/ImportHere';
+import { t } from './i18n';
 
 /**
  * Deck commands: slides are files placed by deck.json `order`, so adding,
@@ -52,9 +53,9 @@ export function addSlide(after: string | null = get().slide): string {
   const s = get();
   const ids = slideIds(s);
   const id = uniqueSlideId(ids, 'slide-' + (ids.length + 1));
-  edit(slideFile(id), () => newSlideSource(id, { like: sectionStyle(after ?? ids.at(-1) ?? null) }), {
+  edit(slideFile(id), () => newSlideSource(id, { like: sectionStyle(after ?? ids.at(-1) ?? null), title: t('starter.slideTitle'), body: t('starter.slideHint') }), {
     actor: 'human',
-    summary: 'slide created',
+    summary: t('slides.journal.slideCreated'),
     undoable: false,
   });
   editDeck((d) => {
@@ -63,7 +64,7 @@ export function addSlide(after: string | null = get().slide): string {
     const at = after ? order.indexOf(after) + 1 : order.length;
     order.splice(at > 0 ? at : order.length, 0, id);
     d.order = order;
-  }, `slide ${id} added`);
+  }, t('slides.journal.slideAdded', { id }));
   goToSlide(id);
   return id;
 }
@@ -74,13 +75,13 @@ export function duplicateSlide(id: string): string | null {
   if (src === undefined) return null;
   const ids = slideIds(s);
   const copy = uniqueSlideId(ids, id + '-copy');
-  edit(slideFile(copy), () => withSlideId(src, copy), { actor: 'human', summary: `slide duplicated from ${id}`, undoable: false });
+  edit(slideFile(copy), () => withSlideId(src, copy), { actor: 'human', summary: t('slides.journal.slideDuplicated', { id }), undoable: false });
   editDeck((d) => {
     const order = d.order.filter((x) => ids.includes(x));
     for (const x of ids) if (!order.includes(x)) order.push(x);
     order.splice(order.indexOf(id) + 1, 0, copy);
     d.order = order;
-  }, `slide ${copy} added`);
+  }, t('slides.journal.slideAdded', { id: copy }));
   goToSlide(copy);
   return copy;
 }
@@ -88,7 +89,7 @@ export function duplicateSlide(id: string): string | null {
 export async function deleteSlide(id: string): Promise<void> {
   const s = get();
   const ids = slideIds(s);
-  if (ids.length <= 1) return toast('一套幻灯片至少要有一页。');
+  if (ids.length <= 1) return toast(t('slides.toast.lastSlide'));
   const i = ids.indexOf(id);
   const next = ids[i + 1] ?? ids[i - 1] ?? null;
   editDeck((d) => {
@@ -101,7 +102,7 @@ export async function deleteSlide(id: string): Promise<void> {
       if (seen.has(sec.start) || sec.start === id) delete d.sections[k];
       else seen.add(sec.start);
     }
-  }, `slide ${id} removed`, false);
+  }, t('slides.journal.slideRemoved', { id }), false);
   goToSlide(next);
   await deleteFile(slideFile(id));
 }
@@ -118,7 +119,7 @@ export function moveSlide(id: string, before: string | null): void {
     const old = ids.indexOf(id);
     for (const sec of Object.values(d.sections)) if (sec.start === id && ids[old + 1]) sec.start = ids[old + 1];
     d.order = order;
-  }, `slide ${id} moved`);
+  }, t('slides.journal.slideMoved', { id }));
 }
 
 function sectionEl(id: string): DcElement | undefined {
@@ -143,25 +144,25 @@ export function setSectionAttr(id: string, name: string, value: string | null): 
   if (el) editElement(slideFile(id), [{ kind: 'attr', tid: el.tid, name, value }]);
 }
 
-export function addSection(start: string, description = '新的一节'): void {
+export function addSection(start: string, description = t('slides.section.defaultName')): void {
   editDeck((d) => {
     if (Object.values(d.sections).some((s) => s.start === start)) return;
     // the slides before the first section form one too, so the outline stays whole
     const ids = slideIds(get());
     const starts = new Set(Object.values(d.sections).map((s) => s.start));
-    if (!starts.size && ids[0] && ids[0] !== start) d.sections[uniqueSectionKey(d)] = { description: '开场', start: ids[0] };
+    if (!starts.size && ids[0] && ids[0] !== start) d.sections[uniqueSectionKey(d)] = { description: t('slides.section.opening'), start: ids[0] };
     d.sections[uniqueSectionKey(d)] = { description, start };
-  }, `section added at ${start}`);
+  }, t('slides.journal.sectionAdded', { id: start }));
 }
 
 export function renameSection(key: string, description: string): void {
   editDeck((d) => {
     if (d.sections[key]) d.sections[key].description = description.trim().slice(0, 200);
-  }, `section ${key} renamed`);
+  }, t('slides.journal.sectionRenamed', { key }));
 }
 
 export function removeSection(key: string): void {
-  editDeck((d) => void delete d.sections[key], `section ${key} removed`);
+  editDeck((d) => void delete d.sections[key], t('slides.journal.sectionRemoved', { key }));
 }
 
 // ---------------------------------------------------------------- notes
@@ -188,12 +189,12 @@ export function setNotes(id: string, text: string): void {
   const root = rootElement(parsed(src));
   if (!root) return;
   const aside = root.children.find((c): c is DcElement => c.kind === 'el' && c.tag === 'aside');
-  const t = text.slice(0, 4000);
+  const body = text.slice(0, 4000);
   if (aside) {
-    if (!t.trim()) editElement(file, [{ kind: 'remove', tid: aside.tid }]);
-    else editElement(file, [{ kind: 'text', tid: aside.tid, text: t }]);
-  } else if (t.trim()) {
-    const esc = t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    if (!body.trim()) editElement(file, [{ kind: 'remove', tid: aside.tid }]);
+    else editElement(file, [{ kind: 'text', tid: aside.tid, text: body }]);
+  } else if (body.trim()) {
+    const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     editElement(file, [{ kind: 'insert', target: root.tid, where: 'last', html: `<aside>${esc}</aside>` }]);
   }
 }
@@ -220,13 +221,20 @@ export function insertOnSlide(html: string, pinned: boolean): number | null {
   return tid;
 }
 
+const escText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+/** Markup the insert buttons put on a slide; its words are in the language the editor shows. */
 export const INSERTS = {
-  text: '<p style="position:absolute;left:128px;top:840px;width:960px;font-size:40px;line-height:1.3">新的文字</p>',
-  table: `<table style="font-size:28px;width:1200px">
-<tr><th style="width:40%">项目</th><th style="width:30%">数值</th><th style="width:30%">备注</th></tr>
-<tr><td>第一行</td><td>—</td><td>—</td></tr>
-<tr><td>第二行</td><td>—</td><td>—</td></tr>
-</table>`,
+  get text() {
+    return `<p style="position:absolute;left:128px;top:840px;width:960px;font-size:40px;line-height:1.3">${escText(t('slides.insert.text'))}</p>`;
+  },
+  get table() {
+    return `<table style="font-size:28px;width:1200px">
+<tr><th style="width:40%">${escText(t('slides.insert.tableItem'))}</th><th style="width:30%">${escText(t('slides.insert.tableValue'))}</th><th style="width:30%">${escText(t('slides.insert.tableNote'))}</th></tr>
+<tr><td>${escText(t('slides.insert.tableRow1'))}</td><td>—</td><td>—</td></tr>
+<tr><td>${escText(t('slides.insert.tableRow2'))}</td><td>—</td><td>—</td></tr>
+</table>`;
+  },
   shape: (kind: string) =>
     kind === 'line'
       ? '<x-shape kind="line" style="position:absolute;left:760px;top:540px;width:400px;border:4px solid #2f6fed"></x-shape>'
@@ -271,11 +279,13 @@ async function placeImage(file: File, nth = 0): Promise<void> {
  */
 export const slidesImport: ImportTarget = {
   accepts: ['image', 'drawing'],
-  what: '图片和 SVG 放到当前这张幻灯片上，原文件留在项目的 uploads/ 里。',
+  get what() {
+    return t('slides.import.what');
+  },
   run: async (picked) => {
     const files = filesOf(picked, 'image', 'drawing');
     for (const [i, f] of files.entries()) await placeImage(new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), i);
-    return files.length === 1 ? `已放上 ${files[0].path.split('/').pop()}。` : `已放上 ${files.length} 张图片。`;
+    return files.length === 1 ? t('slides.import.placedOne', { name: files[0].path.split('/').pop() }) : t('slides.import.placedMany', { count: files.length });
   },
 };
 
@@ -285,12 +295,12 @@ export function slideTitle(source: string | undefined, id: string): string {
   const doc = parsed(source);
   const h = doc.elements.find((e) => /^h[1-3]$/.test(e.tag)) ?? doc.elements.find((e) => e.tag === 'p');
   if (!h?.inner) return id;
-  const t = source
+  const words = source
     .slice(h.inner.start, h.inner.end)
     .replace(/<[^>]+>/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return t || id;
+  return words || id;
 }
 
 export { parseDc, deckOf };

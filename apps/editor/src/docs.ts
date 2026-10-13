@@ -22,6 +22,7 @@ import { replaceUrl } from './host';
 import { joinPath } from '@dc/import';
 import { keepPicked } from './importer';
 import { filesOf, type ImportTarget } from './components/ImportHere';
+import { currentLanguage, t } from './i18n';
 
 /** A doc in the editor: which tab is open, the comment rail, and writing tabs back block by block. */
 interface DocsState {
@@ -128,7 +129,7 @@ export function renameTab(id: string, title: string): void {
 
 export async function deleteTab(id: string): Promise<void> {
   const d = parseDoc(display(useStore.getState(), DOC_INDEX));
-  if (d.tabs.filter((t) => !t.parent).length <= 1 && !d.tabs.find((t) => t.id === id)?.parent) return void toast('一个文档至少要有一个标签页。', 'error');
+  if (d.tabs.filter((t) => !t.parent).length <= 1 && !d.tabs.find((t) => t.id === id)?.parent) return void toast(t('docs.tab.needOne'), 'error');
   const gone = [id, ...d.tabs.filter((t) => t.parent === id).map((t) => t.id)];
   editDoc((x) => {
     x.tabs = x.tabs.filter((t) => !gone.includes(t.id));
@@ -208,10 +209,15 @@ export function deleteThread(thread: string): void {
 
 export function author(): string {
   try {
-    return localStorage.getItem('dc.author') || '我';
+    return localStorage.getItem('dc.author') || t('docs.comments.me');
   } catch {
-    return '我';
+    return t('docs.comments.me');
   }
+}
+
+/** The locale dates are shown and written in, following the UI language. */
+export function dateLocale(): string {
+  return currentLanguage() === 'zh' ? 'zh-CN' : 'en-US';
 }
 
 export function threadsOf(c: DocComments, tab: string | null, resolved: boolean): DocThread[] {
@@ -231,7 +237,9 @@ const MD_REF = /(!\[[^\]]*\]\()([^)\s]+)((?:\s+"[^"]*")?\))|(<img\b[^>]*?\ssrc="
  */
 export const docsImport: ImportTarget = {
   accepts: ['markdown'],
-  what: '每个 Markdown 文件变成一个新的标签页，标题取自它的第一个标题。原文件留在项目的 uploads/ 里；连同文件夹导入，它引用的图片也一起留下。',
+  get what() {
+    return t('docs.import.what');
+  },
   run: async (picked) => {
     const project = useStore.getState().project!;
     const docs = filesOf(picked, 'markdown');
@@ -257,6 +265,6 @@ export const docsImport: ImportTarget = {
       last = addTab(title.slice(0, 80), undefined, md.endsWith('\n') ? md : md + '\n');
     }
     if (last) openTab(last);
-    return docs.length === 1 ? `已把 ${docs[0].path.split('/').pop()} 加成新的标签页。` : `已加了 ${docs.length} 个标签页。`;
+    return docs.length === 1 ? t('docs.import.addedOne', { name: docs[0].path.split('/').pop() }) : t('docs.import.addedMany', { count: docs.length });
   },
 };

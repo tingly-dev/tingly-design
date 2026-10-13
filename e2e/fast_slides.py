@@ -17,7 +17,7 @@ async def main():
     ok = True
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-        pg = await b.new_page(viewport={'width': 1440, 'height': 900})
+        pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.goto(BASE + '/?p=tingly-intro&s=box')
@@ -33,7 +33,7 @@ async def main():
         await pg.locator('.seg button', has_text='快速 AI').click()
         await pg.locator('.prompt textarea').fill('标题换成紫色，下面加三条要点')
         await pg.locator('.prompt .send').click()
-        await expect(pg.locator('.ticker')).to_contain_text('已保存', timeout=15000)
+        await expect(pg.locator('.runfeed')).to_contain_text('已保存', timeout=15000)
         await pg.wait_for_timeout(500)
         s = src()
         log = [json.loads(l) for l in open(OUT + 'mock.log')]

@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { elementLabel, attr, type Attachment } from '@dc/core';
-import { display, parsed, toast, useCanvas, useStore } from '../store';
-import { cancelFastEdit, delegateToClaude, runFastEdit, runJQuery } from '../fastedit';
+import { display, focusBoard, parsed, toast, useCanvas, useStore, type LastRun } from '../store';
+import { delegateToClaude, runFastEdit, stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
+import { RunFeed, useAutoGrow } from './RunFeed';
 import { Send, Stop } from './icons';
+import { slideIdOf } from '@dc/core';
 
-type Target = 'ai' | 'claude' | 'jquery';
+type Target = 'ai' | 'claude';
 
-const PLACEHOLDER: Record<Target, string> = {
-  ai: '描述要改什么，比如“把按钮改成圆角、颜色更深一些”',
-  claude: '交给 Claude Code：适合改脚本、数据、跨画板或新建画板',
-  jquery: "$('#dc12').css('color', '#15803d')",
-};
-
-/** Where requests go: the fast in-page model, Claude Code, or jQuery typed by hand. */
-export function PromptBar() {
+/** Where requests go: the fast in-page model or Claude Code. jQuery typed by hand lives in the Code tab (panel/JQueryBox.tsx). */
+/** `onOpen` shows a file a Claude Code run changed, for kinds whose own view knows how (motion seeks to the scene). */
+export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) {
+  const { t } = useTranslation();
   const sel = useStore((s) => s.selection);
   const fast = useStore((s) => s.fast);
   const health = useStore((s) => s.health);
@@ -27,18 +26,18 @@ export function PromptBar() {
   const attach = useAttachments();
 
   useEffect(() => {
-    if (health && !health.fastEdit && target === 'ai') setTarget(health.claudeCli ? 'claude' : 'jquery');
+    if (health && !health.fastEdit && health.claudeCli && target === 'ai') setTarget('claude');
     // only when health first arrives
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [health]);
 
   const slides = useStore((s) => s.kind === 'slides');
   const motion = useStore((s) => s.kind === 'motion');
-  const placeholder = slides
-    ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题再大一点、换成深色背景”', claude: '交给 Claude Code：适合整页重写、跨页修改、新建一组幻灯片' }
+  const placeholder: Record<Target, string> = slides
+    ? { ai: t('prompt.placeholder.slides.ai'), claude: t('prompt.placeholder.slides.claude') }
     : motion
-      ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题晚半秒进来”“竖版里字再大一点”', claude: '交给 Claude Code：改一个场景、加一段动画、调整节奏、做一张封面…' }
-      : PLACEHOLDER;
+      ? { ai: t('prompt.placeholder.motion.ai'), claude: t('prompt.placeholder.motion.claude') }
+      : { ai: t('prompt.placeholder.canvas.ai'), claude: t('prompt.placeholder.canvas.claude') };
   const stageSlide = useStore((s) => s.slide);
   const stageScene = useStore((s) => s.motionView?.scene ?? null);
   const file =
@@ -65,55 +64,84 @@ export function PromptBar() {
   const [handle, tag, label] = pointed?.split('|') ?? [];
   const running = fast.status === 'running';
   const activeDelegate = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
-  const lastDelegate = delegates.at(-1);
+  // the button stops what this bar would otherwise start again: one run per agent at a time
+  const busyRun: LastRun =
+    (target === 'claude' || (target === 'ai' && fast.status === 'delegated')) && activeDelegate
+      ? { kind: 'delegate', id: activeDelegate.id }
+      : target !== 'claude' && running
+        ? { kind: 'fast' }
+        : null;
+  const busy = !!busyRun;
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    if (!blocked) return;
+    const t = setTimeout(() => setBlocked(false), 4000);
+    return () => clearTimeout(t);
+  }, [blocked]);
+  useEffect(() => {
+    if (!busy) setBlocked(false);
+  }, [busy]);
+  useAutoGrow(box, text);
 
   const disabled =
     !file || (target === 'ai' && health?.fastEdit === false) || (target === 'claude' && health?.claudeCli === false);
   const why =
     target === 'ai' && health?.fastEdit === false
-      ? '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用。'
+      ? t('prompt.bar.noFastModel')
       : target === 'claude' && health?.claudeCli === false
-        ? '本机找不到 claude 命令，无法委托。'
+        ? t('prompt.bar.noClaudeCli')
         : null;
 
-  // jQuery is typed by hand: there is no model to show a file to
-  const attaching = target !== 'jquery';
   const [keeping, setKeeping] = useState(false);
   const submit = async () => {
-    const t = text.trim();
+    const req = text.trim();
     const project = useStore.getState().project;
-    if (!t || !file || !project || running || disabled || keeping) return;
+    if (!req || !file || !project || disabled || keeping) return;
+    if (busy) return setBlocked(true);
     let files: Attachment[] = [];
-    if (attaching && attach.items.length) {
+    if (attach.items.length) {
       setKeeping(true);
       try {
         files = await keepAttachments(project, attach.items);
       } catch (e) {
-        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
+        toast(t('prompt.attach.keepFailed', { error: (e as Error).message }), 'error');
         return;
       } finally {
         setKeeping(false);
       }
     }
-    if (target === 'ai') void runFastEdit(file, tid, t, files);
-    else if (target === 'claude') {
-      useStore.setState({ fast: { status: 'idle', mode: 'ai', lines: [] } });
-      void delegateToClaude(file, tid, t, files);
-    } else void runJQuery(file, t);
-    if (target !== 'jquery') {
+    if (target === 'claude') {
+      // the request moves into the feed at once; it comes back if Claude Code could not start
       setText('');
-      attach.clear();
+      if (await delegateToClaude(file, tid, req, files)) attach.clear();
+      else setText((cur) => cur || req);
+      return;
     }
+    void runFastEdit(file, tid, req, files);
+    setText('');
+    attach.clear();
+  };
+  const reuse = (p: string) => {
+    setText(p);
+    requestAnimationFrame(() => box.current?.focus());
+  };
+  const open = (f: string) => {
+    if (onOpen) return onOpen(f);
+    const slide = slideIdOf(f);
+    if (slides && slide) useStore.setState({ slide });
+    else if (canvas.boards[f]) focusBoard(f);
   };
 
-  const showTicker = fast.status !== 'idle' || fast.note || activeDelegate || (lastDelegate && lastDelegate.state !== 'done');
   return (
     <div
-      className={`prompt${attaching && attach.over ? ' dropping' : ''}`}
+      className={`prompt${attach.over ? ' dropping' : ''}`}
       role="region"
-      aria-label="让 AI 修改"
-      {...(attaching ? { onDragOver: attach.handlers.onDragOver, onDragLeave: attach.handlers.onDragLeave, onDrop: attach.handlers.onDrop } : {})}
+      aria-label={t('prompt.bar.label')}
+      onDragOver={attach.handlers.onDragOver}
+      onDragLeave={attach.handlers.onDragLeave}
+      onDrop={attach.handlers.onDrop}
     >
+      <RunFeed onReuse={reuse} onOpen={open} />
       <div className="head">
         <span className="target" title={label}>
           {handle ? (
@@ -122,26 +150,25 @@ export function PromptBar() {
             </>
           ) : file ? (
             slides ? (
-              <>整页 {file.replace(/^slides\/|\.html$/g, '')}</>
+              <>{t('prompt.target.slide', { name: file.replace(/^slides\/|\.html$/g, '') })}</>
             ) : motion ? (
-              <>整个场景 {file.replace(/^scenes\/|\.html$/g, '')}</>
+              <>{t('prompt.target.scene', { name: file.replace(/^scenes\/|\.html$/g, '') })}</>
             ) : (
-              <>整个画板 {canvas.boards[file]?.title || file}</>
+              <>{t('prompt.target.board', { name: canvas.boards[file]?.title || file })}</>
             )
           ) : slides ? (
-            '没有幻灯片'
+            t('prompt.target.noSlides')
           ) : motion ? (
-            '没有场景'
+            t('prompt.target.noScenes')
           ) : (
-            '没有画板'
+            t('prompt.target.noBoards')
           )}
         </span>
-        <div className="seg" role="group" aria-label="交给谁">
+        <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
           {(
             [
-              ['ai', '快速 AI'],
+              ['ai', t('prompt.bar.fastAi')],
               ['claude', 'Claude Code'],
-              ['jquery', 'jQuery'],
             ] as const
           ).map(([k, l]) => (
             <button key={k} aria-pressed={target === k} onClick={() => setTarget(k)}>
@@ -150,18 +177,17 @@ export function PromptBar() {
           ))}
         </div>
       </div>
-      {attaching && <AttachTray items={attach.items} onRemove={attach.remove} />}
+      <AttachTray items={attach.items} onRemove={attach.remove} />
       <div className="body">
-        {attaching && <AttachButton onFiles={(f) => void attach.add(f)} />}
+        <AttachButton onFiles={(f) => void attach.add(f)} />
         <textarea
           ref={box}
-          className={target === 'jquery' ? 'code' : ''}
-          rows={target === 'jquery' ? 3 : 1}
+          rows={1}
           value={text}
           placeholder={why ?? placeholder[target]}
-          aria-label="请求"
+          aria-label={t('prompt.bar.request')}
           onChange={(e) => setText(e.target.value)}
-          onPaste={attaching ? attach.handlers.onPaste : undefined}
+          onPaste={attach.handlers.onPaste}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -170,51 +196,23 @@ export function PromptBar() {
             }
           }}
         />
-        {running ? (
-          <button className="btn outline send" onClick={cancelFastEdit}>
-            <Stop /> 停止
+        {busy ? (
+          <button className="btn outline send" onClick={() => stopRun(busyRun)}>
+            <Stop /> {t('common.stop')}
           </button>
         ) : (
           <button className="btn primary send" onClick={() => void submit()} disabled={disabled || keeping || !text.trim()}>
-            <Send /> {target === 'jquery' ? '执行' : '发送'}
+            <Send /> {t('common.send')}
           </button>
         )}
       </div>
-      {attaching && attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
-      {showTicker && (
-        <div className="ticker" aria-live="polite">
-          {fast.lines.map((l, i) =>
-            l.divider ? (
-              <div key={i} className="note-line">
-                {l.code}
-              </div>
-            ) : (
-            <div key={i} className={`st ${l.ok ? '' : 'bad'}`}>
-              <i>{l.ok ? '✓' : '✕'}</i>
-              <span>
-                {l.code}
-                {l.error ? `\n${l.error}` : ''}
-              </span>
-            </div>
-            ),
-          )}
-          {running && !fast.lines.length && <div className="note-line">{fast.mode === 'ai' ? '正在读设计并写第一行…' : '正在执行…'}</div>}
-          {fast.note && <div className="note-line">{fast.note}</div>}
-          {fast.status === 'done' && fast.lines.length > 0 && <div className="note-line">已保存。</div>}
-          {(activeDelegate ?? (lastDelegate?.state === 'error' ? lastDelegate : null)) && (
-            <>
-              <div className="note-line claude">
-                Claude Code {activeDelegate ? '正在处理' : '没能完成'}：{(activeDelegate ?? lastDelegate)!.prompt}
-              </div>
-              {(activeDelegate ?? lastDelegate)!.lines.slice(-6).map((l, i) => (
-                <div key={i} className="claude-line">
-                  {l}
-                </div>
-              ))}
-              {lastDelegate?.state === 'error' && !activeDelegate && <div className="note-line">{lastDelegate.result}</div>}
-            </>
-          )}
+      {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
+      {blocked ? (
+        <div className="prompt-hint warn" role="status">
+          {target === 'claude' ? t('prompt.bar.busyClaude') : t('prompt.bar.busyFast')}
         </div>
+      ) : (
+        text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
       )}
     </div>
   );

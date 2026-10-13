@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, setPropDefault, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
 import { duplicateBoard, updateBoard, updateNote } from '../../actions';
 import { deleteBoard, display, edit, useStore } from '../../store';
@@ -8,32 +9,33 @@ import { ColorField, Field, Row, Seg, Select, px, toLength } from './fields';
 // ---------------------------------------------------------------- artboard
 
 export function BoardProps({ file, entry }: { file: string; entry: BoardEntry }) {
+  const { t } = useTranslation();
   const n = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
   return (
     <>
       <div className="sec">
-        <h3>画板</h3>
-        <Row label="名称">
-          <Field value={entry.title ?? ''} placeholder={file} numeric={false} onCommit={(v) => updateBoard(file, { title: v.trim() || undefined }, 'renamed')} label="画板名称" />
+        <h3>{t('panel.board.title')}</h3>
+        <Row label={t('panel.field.name')}>
+          <Field value={entry.title ?? ''} placeholder={file} numeric={false} onCommit={(v) => updateBoard(file, { title: v.trim() || undefined }, 'renamed')} label={t('panel.board.nameLabel')} />
         </Row>
-        <Row label="位置">
+        <Row label={t('panel.field.position')}>
           <Field value={String(entry.x)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { x: n(v) }, 'moved')} label="X" pre="X" />
           <Field value={String(entry.y)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { y: n(v) }, 'moved')} label="Y" pre="Y" />
         </Row>
-        <Row label="尺寸">
-          <Field value={String(entry.w)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { w: Math.max(40, n(v)!) }, 'resized')} label="宽" pre="W" />
-          <Field value={String(entry.h)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { h: Math.max(40, n(v)!) }, 'resized')} label="高" pre="H" />
+        <Row label={t('panel.field.size')}>
+          <Field value={String(entry.w)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { w: Math.max(40, n(v)!) }, 'resized')} label={t('panel.field.w')} pre="W" />
+          <Field value={String(entry.h)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { h: Math.max(40, n(v)!) }, 'resized')} label={t('panel.field.h')} pre="H" />
         </Row>
-        <Row label="预设">
+        <Row label={t('panel.board.preset')}>
           <Select
             value=""
             options={[
-              { value: '', label: '选择尺寸…' },
-              { value: '390x844', label: '手机 390 × 844' },
-              { value: '1280x800', label: '桌面 1280 × 800' },
-              { value: '1440x900', label: '桌面 1440 × 900' },
-              { value: '1200x760', label: '画板 1200 × 760' },
-              { value: '1080x1080', label: '社交方图 1080 × 1080' },
+              { value: '', label: t('panel.board.presetPlaceholder') },
+              { value: '390x844', label: t('panel.board.presetPhone', { w: 390, h: 844 }) },
+              { value: '1280x800', label: t('panel.board.presetDesktop', { w: 1280, h: 800 }) },
+              { value: '1440x900', label: t('panel.board.presetDesktop', { w: 1440, h: 900 }) },
+              { value: '1200x760', label: t('panel.board.presetArtboard', { w: 1200, h: 760 }) },
+              { value: '1080x1080', label: t('panel.board.presetSocial', { w: 1080, h: 1080 }) },
               { value: '816x1056', label: 'Letter 816 × 1056' },
               { value: '794x1123', label: 'A4 794 × 1123' },
             ]}
@@ -41,28 +43,28 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
               const [w, h] = v.split('x').map(Number);
               if (w && h) updateBoard(file, { w, h }, 'resized');
             }}
-            label="尺寸预设"
+            label={t('panel.board.presetLabel')}
           />
         </Row>
         <label className="check">
           <input type="checkbox" checked={!!entry.is_interactive} onChange={(e) => updateBoard(file, { is_interactive: e.currentTarget.checked || undefined }, 'interactive')} />
-          可交互（播放时按钮可点）
+          {t('panel.board.interactive')}
         </label>
         <label className="check">
           <input type="checkbox" checked={entry.expand === 'fill'} onChange={(e) => updateBoard(file, { expand: e.currentTarget.checked ? 'fill' : undefined }, 'expand')} />
-          网页：全屏时铺满窗口
+          {t('panel.board.fill')}
         </label>
       </div>
       <div className="sec">
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" onClick={() => duplicateBoard(file)}>
-            复制画板
+            {t('panel.board.duplicate')}
           </button>
-          <button className="btn danger" onClick={() => confirm(`删除画板 ${file}？文件也会被删除（可以用 git 找回）。`) && void deleteBoard(file)}>
-            删除画板
+          <button className="btn danger" onClick={() => confirm(t('panel.board.deleteConfirm', { file })) && void deleteBoard(file)}>
+            {t('panel.board.delete')}
           </button>
         </div>
-        <span className="hint">文件：{file}</span>
+        <span className="hint">{t('panel.board.file', { file })}</span>
       </div>
     </>
   );
@@ -71,6 +73,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
 // ---------------------------------------------------------------- tweaks
 
 function TweakField({ file, name, spec }: { file: string; name: string; spec: PropSpec }) {
+  const { t } = useTranslation();
   const setV = (value: unknown) => edit(file, (src) => setPropDefault(src, name, value).source, { actor: 'human', summary: `tweak ${name} → ${JSON.stringify(value)}` });
   const v = spec.default;
   let control: React.ReactElement;
@@ -97,7 +100,7 @@ function TweakField({ file, name, spec }: { file: string; name: string; spec: Pr
     case 'boolean':
       control = (
         <label className="check">
-          <input type="checkbox" checked={Boolean(v)} onChange={(e) => setV(e.currentTarget.checked)} /> {v ? '开' : '关'}
+          <input type="checkbox" checked={Boolean(v)} onChange={(e) => setV(e.currentTarget.checked)} /> {v ? t('panel.tweaks.on') : t('panel.tweaks.off')}
         </label>
       );
       break;
@@ -120,13 +123,14 @@ function TweakField({ file, name, spec }: { file: string; name: string; spec: Pr
 }
 
 export function Tweaks({ file, doc }: { file: string; doc: DcDoc }) {
+  const { t } = useTranslation();
   const tweaks = Object.entries(doc.props).filter(([k, s]) => !k.startsWith('$') && s && s.editor);
   return (
     <div className="sec">
       {tweaks.length ? (
         tweaks.map(([k, s]) => <TweakField key={k} file={file} name={k} spec={s} />)
       ) : (
-        <span className="hint">这个画板没有声明可调参数。参数写在画板脚本的 data-props 里，比如一个强调色或密度开关。</span>
+        <span className="hint">{t('panel.tweaks.empty')}</span>
       )}
     </div>
   );
@@ -137,6 +141,7 @@ export function Tweaks({ file, doc }: { file: string; doc: DcDoc }) {
 const FILLS: (NoteFill | 'default')[] = ['default', 'gray', 'red', 'orange', 'green', 'teal', 'blue', 'purple', 'pink'];
 
 export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
+  const { t } = useTranslation();
   const up = (p: Partial<NoteEntry>, what = 'changed') => updateNote(id, p, what);
   const css = (k: string, v: string) =>
     updateNote(id, (n) => {
@@ -152,41 +157,41 @@ export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
     <>
       {isText && (
         <div className="sec">
-          <h3>{note.kind === 'title1' ? '标题' : '便签'}</h3>
-          <Row label="字号">
+          <h3>{note.kind === 'title1' ? t('panel.item.title') : t('panel.item.note')}</h3>
+          <Row label={t('panel.field.fontSize')}>
             <Seg
               value={(Object.entries(NOTE_SIZES).find(([, s]) => s === sizeOf(note))?.[0] ?? '') as 's'}
-              label="字号"
+              label={t('panel.field.fontSize')}
               options={(Object.keys(NOTE_SIZES) as (keyof typeof NOTE_SIZES)[]).map((k) => ({ value: k, label: k.toUpperCase(), title: `${NOTE_SIZES[k]}px` }))}
               onChange={(k) => up({ size: NOTE_SIZES[k] }, 'size')}
             />
           </Row>
-          <Row label="字形">
-            <button className="ib" aria-pressed={note.kind === 'title1' ? note.bold !== false : !!note.bold} aria-label="粗体" title="粗体" onClick={() => up({ bold: note.kind === 'title1' ? note.bold === false : !note.bold }, 'bold')}>
+          <Row label={t('panel.field.fontStyle')}>
+            <button className="ib" aria-pressed={note.kind === 'title1' ? note.bold !== false : !!note.bold} aria-label={t('panel.field.bold')} title={t('panel.field.bold')} onClick={() => up({ bold: note.kind === 'title1' ? note.bold === false : !note.bold }, 'bold')}>
               <b>B</b>
             </button>
-            <button className="ib" aria-pressed={!!note.italic} aria-label="斜体" title="斜体" onClick={() => up({ italic: !note.italic }, 'italic')}>
+            <button className="ib" aria-pressed={!!note.italic} aria-label={t('panel.field.italic')} title={t('panel.field.italic')} onClick={() => up({ italic: !note.italic }, 'italic')}>
               <i>I</i>
             </button>
           </Row>
-          <Row label="文字色">
+          <Row label={t('panel.field.textColorRow')}>
             <div className="swatches">
               {Object.entries(TEXT_COLORS).map(([k, c]) => (
-                <button key={k} style={{ background: c }} aria-label={`文字颜色 ${k}`} aria-pressed={(note.color ?? 'default') === k} onClick={() => up({ color: k === 'default' ? undefined : (k as NoteFill) }, 'color')} />
+                <button key={k} style={{ background: c }} aria-label={t('panel.field.textColorOf', { color: k })} aria-pressed={(note.color ?? 'default') === k} onClick={() => up({ color: k === 'default' ? undefined : (k as NoteFill) }, 'color')} />
               ))}
             </div>
           </Row>
           {!note.kind && (
             <>
-              <Row label="底色">
+              <Row label={t('panel.field.noteFill')}>
                 <div className="swatches">
                   {FILLS.map((f) => (
-                    <button key={f} style={{ background: `var(--note-${f})` }} aria-label={`底色 ${f}`} aria-pressed={(note.fill ?? 'default') === f} onClick={() => up({ fill: f === 'default' ? undefined : f }, 'fill')} />
+                    <button key={f} style={{ background: `var(--note-${f})` }} aria-label={t('panel.field.noteFillOf', { color: f })} aria-pressed={(note.fill ?? 'default') === f} onClick={() => up({ fill: f === 'default' ? undefined : f }, 'fill')} />
                   ))}
                 </div>
               </Row>
-              <Row label="宽">
-                <Field value={String(note.w ?? 240)} onCommit={(v) => up({ w: Math.max(80, num(v) ?? 240) }, 'width')} label="宽" unit="px" />
+              <Row label={t('panel.field.w')}>
+                <Field value={String(note.w ?? 240)} onCommit={(v) => up({ w: Math.max(80, num(v) ?? 240) }, 'width')} label={t('panel.field.w')} unit="px" />
               </Row>
             </>
           )}
@@ -194,36 +199,36 @@ export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
       )}
       {!isText && (
         <div className="sec">
-          <h3>{line ? '线条' : '形状'}</h3>
-          <Row label="位置">
+          <h3>{line ? t('panel.item.lineSection') : t('panel.item.shapeSection')}</h3>
+          <Row label={t('panel.field.position')}>
             <Field value={String(note.x)} onCommit={(v) => num(v) !== undefined && up({ x: num(v) }, 'moved')} label="X" pre="X" />
             <Field value={String(note.y)} onCommit={(v) => num(v) !== undefined && up({ y: num(v) }, 'moved')} label="Y" pre="Y" />
           </Row>
           {line ? (
             <>
-              <Row label="终点">
+              <Row label={t('panel.item.endPoint')}>
                 <Field value={String(note.x2 ?? note.x)} onCommit={(v) => num(v) !== undefined && up({ x2: num(v) }, 'moved')} label="X2" pre="X" />
                 <Field value={String(note.y2 ?? note.y)} onCommit={(v) => num(v) !== undefined && up({ y2: num(v) }, 'moved')} label="Y2" pre="Y" />
               </Row>
-              <Row label="起点端">
+              <Row label={t('panel.item.startCap')}>
                 <Select
                   value={note.headStart ?? 'none'}
                   options={[
-                    { value: 'none', label: '无' },
-                    { value: 'open', label: '开放箭头' },
-                    { value: 'filled', label: '实心箭头' },
+                    { value: 'none', label: t('common.none') },
+                    { value: 'open', label: t('panel.item.openArrow') },
+                    { value: 'filled', label: t('panel.item.filledArrow') },
                   ]}
                   onChange={(v) => up({ headStart: v === 'none' ? undefined : (v as 'open') }, 'head')}
-                  label="起点端"
+                  label={t('panel.item.startCap')}
                 />
               </Row>
-              <Row label="终点端">
+              <Row label={t('panel.item.endCap')}>
                 <Select
                   value={note.kind === 'arrow' ? (note.headEnd ?? 'filled') : 'none'}
                   options={[
-                    { value: 'none', label: '无' },
-                    { value: 'open', label: '开放箭头' },
-                    { value: 'filled', label: '实心箭头' },
+                    { value: 'none', label: t('common.none') },
+                    { value: 'open', label: t('panel.item.openArrow') },
+                    { value: 'filled', label: t('panel.item.filledArrow') },
                   ]}
                   onChange={(v) =>
                     updateNote(id, (n) => {
@@ -232,34 +237,34 @@ export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
                       else delete n.headEnd;
                     }, 'head')
                   }
-                  label="终点端"
+                  label={t('panel.item.endCap')}
                 />
               </Row>
             </>
           ) : (
-            <Row label="尺寸">
-              <Field value={String(note.w ?? 0)} onCommit={(v) => num(v) !== undefined && up({ w: Math.max(4, num(v)!) }, 'resized')} label="宽" pre="W" />
-              <Field value={String(note.h ?? 0)} onCommit={(v) => num(v) !== undefined && up({ h: Math.max(4, num(v)!) }, 'resized')} label="高" pre="H" />
+            <Row label={t('panel.field.size')}>
+              <Field value={String(note.w ?? 0)} onCommit={(v) => num(v) !== undefined && up({ w: Math.max(4, num(v)!) }, 'resized')} label={t('panel.field.w')} pre="W" />
+              <Field value={String(note.h ?? 0)} onCommit={(v) => num(v) !== undefined && up({ h: Math.max(4, num(v)!) }, 'resized')} label={t('panel.field.h')} pre="H" />
             </Row>
           )}
           {!line && note.kind !== 'pen' && (
-            <Row label="填充">
-              <ColorField value={note.css?.background ?? ''} onCommit={(v) => css('background', v)} label="填充色" />
+            <Row label={t('panel.field.fill')}>
+              <ColorField value={note.css?.background ?? ''} onCommit={(v) => css('background', v)} label={t('panel.field.fillColor')} />
             </Row>
           )}
           {(line || note.kind === 'pen') && (
-            <Row label="线条">
-              <ColorField value={note.css?.stroke ?? '#1d1d1b'} onCommit={(v) => css('stroke', v)} label="线条颜色" allowNone={false} />
-              <Field value={note.css?.['stroke-width'] ?? (line ? '2' : '3')} onCommit={(v) => css('stroke-width', v)} label="线条粗细" width={64} />
+            <Row label={t('panel.field.line')}>
+              <ColorField value={note.css?.stroke ?? '#1d1d1b'} onCommit={(v) => css('stroke', v)} label={t('panel.field.lineColor')} allowNone={false} />
+              <Field value={note.css?.['stroke-width'] ?? (line ? '2' : '3')} onCommit={(v) => css('stroke-width', v)} label={t('panel.field.lineWidth')} width={64} />
             </Row>
           )}
           {(note.kind === 'rect' || note.kind === 'image') && (
-            <Row label="圆角">
-              <Field value={px(note.css?.['border-radius'])} onCommit={(v) => css('border-radius', toLength(v))} label="圆角" unit="px" />
+            <Row label={t('panel.field.radius')}>
+              <Field value={px(note.css?.['border-radius'])} onCommit={(v) => css('border-radius', toLength(v))} label={t('panel.field.radius')} unit="px" />
             </Row>
           )}
           {!line && note.kind !== 'pen' && (
-            <Row label="描边">
+            <Row label={t('panel.field.border')}>
               <Field value={px(note.css?.['border-width'])} placeholder="0" onCommit={(v) => updateNote(id, (n) => {
                 const c = { ...(n.css ?? {}) };
                 if (v.trim() && v.trim() !== '0') {
@@ -271,16 +276,16 @@ export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
                   delete c['border-style'];
                 }
                 n.css = c;
-              }, 'border')} label="描边粗细" width={64} unit="px" />
-              <ColorField value={note.css?.['border-color'] ?? ''} onCommit={(v) => css('border-color', v)} label="描边颜色" />
+              }, 'border')} label={t('panel.field.borderWidth')} width={64} unit="px" />
+              <ColorField value={note.css?.['border-color'] ?? ''} onCommit={(v) => css('border-color', v)} label={t('panel.field.borderColor')} />
             </Row>
           )}
-          <Row label="不透明度">
-            <Field value={note.css?.opacity ?? ''} placeholder="1" onCommit={(v) => css('opacity', v)} label="不透明度" />
+          <Row label={t('panel.field.opacity')}>
+            <Field value={note.css?.opacity ?? ''} placeholder="1" onCommit={(v) => css('opacity', v)} label={t('panel.field.opacity')} />
           </Row>
           {!line && (
-            <Row label="旋转">
-              <Field value={note.rotate ? String(note.rotate) : ''} placeholder="0" onCommit={(v) => up({ rotate: num(v) || undefined }, 'rotated')} label="旋转角度" unit="°" />
+            <Row label={t('panel.field.rotation')}>
+              <Field value={note.rotate ? String(note.rotate) : ''} placeholder="0" onCommit={(v) => up({ rotate: num(v) || undefined }, 'rotated')} label={t('panel.field.rotationLabel')} unit="°" />
             </Row>
           )}
         </div>

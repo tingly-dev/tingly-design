@@ -28,6 +28,7 @@ import { api } from './api';
 import { display, edit, toast, useStore } from './store';
 import { currentTheme, onTheme } from './theme';
 import { at } from './base';
+import { t } from './i18n';
 import { filesOf, type ImportTarget } from './components/ImportHere';
 
 /**
@@ -341,15 +342,16 @@ export function stateFor(id: string): DataState {
   return s.derived[id] ?? s.states[id] ?? { ...EMPTY_STATE, status: 'loading' };
 }
 
-export function ago(at: number | string | undefined): string {
+/** How long ago, in the language showing. Components pass their own `t` so it follows a language change. */
+export function ago(at: number | string | undefined, tr: typeof t = t): string {
   if (!at) return '';
-  const t = typeof at === 'number' ? at : Date.parse(at);
-  if (!Number.isFinite(t)) return '';
-  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
-  if (s < 60) return '刚刚';
-  if (s < 3600) return `${Math.round(s / 60)} 分钟前`;
-  if (s < 86400) return `${Math.round(s / 3600)} 小时前`;
-  return `${Math.round(s / 86400)} 天前`;
+  const when = typeof at === 'number' ? at : Date.parse(at);
+  if (!Number.isFinite(when)) return '';
+  const s = Math.max(0, Math.round((Date.now() - when) / 1000));
+  if (s < 60) return tr('dash.ago.justNow');
+  if (s < 3600) return tr('dash.ago.minutes', { count: Math.round(s / 60) });
+  if (s < 86400) return tr('dash.ago.hours', { count: Math.round(s / 3600) });
+  return tr('dash.ago.days', { count: Math.round(s / 86400) });
 }
 
 export function staleOf(d: DatasetJson | null): boolean {
@@ -394,22 +396,23 @@ export async function pauseQuery(id: string): Promise<void> {
   const d = datasetsOf().find((x) => x.id === id)?.dataset;
   if (!d || d.source.kind !== 'query') return;
   const q = d.source as QuerySource;
-  if (paramsIn(q.args).length) return void toast('这个查询随筛选变化，保存下来的结果没法跟着筛选走：它得保持实时。', 'error');
+  if (paramsIn(q.args).length) return void toast(t('dash.toast.pauseFollowsFilters'), 'error');
   const st = dget().derived[id] ?? dget().states[id];
-  if (!st || st.status !== 'ok' || !st.rows.length) return void toast('先让查询成功跑出结果，才能保存。', 'error');
-  if (st.cut) return void toast('结果被截断了，不能保存成文件。', 'error');
+  if (!st || st.status !== 'ok' || !st.rows.length) return void toast(t('dash.toast.pauseNeedsResult'), 'error');
+  if (st.cut) return void toast(t('dash.toast.pauseCut'), 'error');
   const file = new File([JSON.stringify({ columns: st.columns, rows: st.rows, meta: st.meta }, null, 1) + '\n'], `${id}.json`, { type: 'application/json' });
   const up = await api.upload(project, file, 'data');
   const now = new Date().toISOString();
+  const by = t('dash.actor.editor');
   editDataset(
     id,
     (cur) => ({
       ...cur,
       source: { kind: 'file', url: up.path, name: `${id}.json`, format: 'json' },
       request: { connector: q.connector, tool: q.tool, args: q.args },
-      updated: { at: now, by: '编辑器' },
-      lastAttempt: { at: now, ok: true, by: '编辑器' },
-      pausedBy: '编辑器',
+      updated: { at: now, by },
+      lastAttempt: { at: now, ok: true, by },
+      pausedBy: by,
     }),
     `${id}: saved results, not refreshing`,
   );
@@ -441,7 +444,9 @@ export function rawUrl(path: string): string {
  */
 export const dashImport: ImportTarget = {
   accepts: ['data'],
-  what: '每个 CSV、TSV 或 JSON 表格变成一个新的数据集，文件存进 data/，在"数据来源"里打开。',
+  get what() {
+    return t('dash.import.what');
+  },
   run: async (picked) => {
     const project = useStore.getState().project!;
     const files = filesOf(picked, 'data');
@@ -451,13 +456,13 @@ export const dashImport: ImportTarget = {
       const name = f.path.split('/').pop()!;
       const ext = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
       const format = ext === 'json' ? 'json' : ext === 'csv' ? 'csv' : 'tsv';
-      if (f.bytes.length > DASH_DATA_MAX) throw new Error(`${name} 超过 8 MB，看板读不了这么大的文件，没有导入任何文件。`);
+      if (f.bytes.length > DASH_DATA_MAX) throw new Error(t('dash.import.tooLarge', { name }));
       try {
         const { table } = parseDataFile(new TextDecoder().decode(f.bytes), format);
         if (!table) throw new Error();
         return { f, name, ext, format, rows: table.rows.length };
       } catch {
-        throw new Error(`${name} 读不出表格（JSON 需要是一组对象，或 {columns, rows}），没有导入任何文件。`);
+        throw new Error(t('dash.import.notTable', { name }));
       }
     });
     const added: string[] = [];
@@ -470,11 +475,11 @@ export const dashImport: ImportTarget = {
       taken.add(id);
       const up = await api.upload(project, new File([f.bytes as Uint8Array<ArrayBuffer>], `${id}.${ext}`, { type: f.type }), 'data');
       const now = new Date().toISOString();
-      const dataset: DatasetJson = { title: stem, description: `从 ${name} 导入，${rows} 行。`, source: { kind: 'file', url: up.path, name, format }, updated: { at: now, by: '编辑器' } };
+      const dataset: DatasetJson = { title: stem, description: t('dash.import.description', { name, count: rows }), source: { kind: 'file', url: up.path, name, format }, updated: { at: now, by: t('dash.actor.editor') } };
       edit(datasetFile(id), () => JSON.stringify(dataset, null, 2) + '\n', { actor: 'human', summary: `dataset ${id} imported from ${name}`, undoable: false });
       added.push(id);
     }
     dset({ side: 'sources', open: added[0] ?? null });
-    return added.length === 1 ? `已把 ${files[0].path.split('/').pop()} 加成数据集 ${added[0]}。` : `已加了 ${added.length} 个数据集。`;
+    return added.length === 1 ? t('dash.import.addedOne', { file: files[0].path.split('/').pop(), id: added[0] }) : t('dash.import.addedMany', { count: added.length });
   },
 };

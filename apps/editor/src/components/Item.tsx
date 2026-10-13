@@ -1,4 +1,5 @@
 import { memo, useState, type CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, isShape, noteBox, type NoteEntry } from '@dc/core';
 import { editCanvas, useStore } from '../store';
 import { updateNote } from '../actions';
@@ -83,6 +84,7 @@ type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'e' | 'p1' | 'p2';
 
 /** A note, title or shape from canvas.json `notes`. */
 export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; note: NoteEntry }) {
+  const { t } = useTranslation();
   const selected = useStore((s) => s.selection?.kind === 'note' && s.selection.id === id);
   const editing = useStore((s) => s.editingNote === id);
   const zoom = useStore((s) => s.view.zoom);
@@ -230,12 +232,12 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
       minWidth: editing ? 120 : undefined,
     };
     body = editing ? (
-      <textarea autoFocus defaultValue={n.text} aria-label="标题" rows={Math.max(1, (n.text ?? '').split('\n').length)} onBlur={(e) => commitText(e.currentTarget.value)} onKeyDown={(e) => {
+      <textarea autoFocus defaultValue={n.text} aria-label={t('canvas.note.titleLabel')} rows={Math.max(1, (n.text ?? '').split('\n').length)} onBlur={(e) => commitText(e.currentTarget.value)} onKeyDown={(e) => {
         e.stopPropagation();
         if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) e.currentTarget.blur();
       }} style={{ width: Math.max(160, (n.text?.length ?? 4) * size * 0.95) }} />
     ) : (
-      n.text || <span style={{ opacity: 0.35 }}>文字</span>
+      n.text || <span style={{ opacity: 0.35 }}>{t('canvas.text.placeholder')}</span>
     );
   } else {
     cls += ' note';
@@ -252,7 +254,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
       background: `var(--note-${n.fill ?? 'default'}, var(--note-default))`,
     };
     body = editing ? (
-      <textarea autoFocus defaultValue={n.text} aria-label="便签内容" style={{ minHeight: Math.max(24, size * 1.45 * 3) }} onBlur={(e) => commitText(e.currentTarget.value)} onKeyDown={(e) => {
+      <textarea autoFocus defaultValue={n.text} aria-label={t('canvas.note.contentLabel')} style={{ minHeight: Math.max(24, size * 1.45 * 3) }} onBlur={(e) => commitText(e.currentTarget.value)} onKeyDown={(e) => {
         e.stopPropagation();
         if (e.key === 'Escape') e.currentTarget.blur();
       }} />

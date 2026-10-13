@@ -1,0 +1,23 @@
+{
+  "name": "@dc/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The editor's UI strings in every language it ships, and the one translator the editor, server and importer share.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "i18next": "^26.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "vitest": "^5.0.3"
+  }
+}

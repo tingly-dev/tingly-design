@@ -10,6 +10,7 @@ import {
   stringifyCanvas,
   CANVAS_FILE,
   type Actor,
+  type AgentStep,
   type CanvasJson,
   type HumanOp,
   type JournalEntry,
@@ -27,6 +28,13 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
+import { t } from './i18n';
+
+/** What a failed edit says to the person: a rebase conflict in the editor's own words, anything else as thrown. */
+function errorText(e: unknown): string {
+  if ((e as { code?: unknown } | null)?.code === 'rebase-conflict') return t('errors.rebaseConflict');
+  return (e as Error).message;
+}
 
 /**
  * Editor state. Each file has the last version the server confirmed and a
@@ -73,15 +81,35 @@ export interface FastState {
   prompt?: string;
   lines: FastLine[];
   note?: string;
+  startedAt?: number;
+  endedAt?: number;
+  /** the run saved a change, so it can be undone */
+  changed?: boolean;
 }
+
+/** One line of a Claude Code run: a step it took, or something it said. */
+export type DelegateEntry = { step: AgentStep; at: number } | { say: string; at: number };
 
 export interface DelegateState {
   id: string;
   prompt: string;
-  state: 'start' | 'progress' | 'done' | 'error';
-  lines: string[];
+  state: 'start' | 'progress' | 'done' | 'error' | 'stopped';
+  log: DelegateEntry[];
+  startedAt: number;
+  endedAt?: number;
   result?: string;
+  /** set when the fast model handed the request over */
+  via?: 'fast';
+  /** project files the run changed, in the order it first touched them */
+  files: string[];
+  /** each changed file before the run touched it (null: the run created it) and as the run left it, to undo the run */
+  before: Record<string, string | null>;
+  after: Record<string, string>;
+  undone?: boolean;
 }
+
+/** Which run the prompt bar's feed shows: the fast model's, or a Claude Code run by id. */
+export type LastRun = { kind: 'fast' } | { kind: 'delegate'; id: string } | null;
 
 interface UndoItem {
   file: string;
@@ -150,6 +178,13 @@ interface State {
   runtimeErrors: Record<string, string | null>;
   fast: FastState;
   delegates: DelegateState[];
+  /** jQuery typed by hand in the Code tab (also filled from the run feed) */
+  jqDraft: string;
+  /** the run the feed above the prompt shows, and whether the person closed it */
+  lastRun: LastRun;
+  runHidden: boolean;
+  /** how many run feeds are on screen: when none is, a finished run is announced by a toast instead */
+  feeds: number;
   toasts: Toast[];
   undo: UndoItem[];
   redo: UndoItem[];
@@ -191,6 +226,10 @@ export const useStore = create<State>(() => ({
   runtimeErrors: {},
   fast: { status: 'idle', mode: 'ai', lines: [] },
   delegates: [],
+  jqDraft: '',
+  lastRun: null,
+  runHidden: false,
+  feeds: 0,
   toasts: [],
   undo: [],
   redo: [],
@@ -292,7 +331,7 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], slide: null, present: null, motionView: null });
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], lastRun: null, runHidden: false, slide: null, present: null, motionView: null });
   const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
@@ -311,7 +350,17 @@ function onEvent(e: ServerEvent): void {
     set((s) => {
       const cur = s.files[e.path];
       if (cur?.server?.version === e.version) return {};
-      return { files: { ...s.files, [e.path]: { server: { content: e.content, version: e.version }, pending: cur?.pending ?? [] } } };
+      const files = { ...s.files, [e.path]: { server: { content: e.content, version: e.version }, pending: cur?.pending ?? [] } };
+      const run = e.actor === 'claude' ? creditedRun(s.delegates) : -1;
+      if (run < 0) return { files };
+      // remember the file as it was before this run first touched it, so the run can be undone
+      const delegates = [...s.delegates];
+      const d = { ...delegates[run] };
+      if (!(e.path in d.before)) d.before = { ...d.before, [e.path]: cur?.server?.content ?? null };
+      d.after = { ...d.after, [e.path]: e.content };
+      if (!d.files.includes(e.path)) d.files = [...d.files, e.path];
+      delegates[run] = d;
+      return { files, delegates };
     });
   } else if (e.type === 'delete') {
     set((s) => {
@@ -325,29 +374,68 @@ function onEvent(e: ServerEvent): void {
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {
+    const now = Date.now();
     set((s) => {
       const list = [...s.delegates];
-      let d = list.find((x) => x.id === e.id);
-      if (!d) {
-        d = { id: e.id, prompt: e.text ?? '', state: 'start', lines: [] };
-        list.push(d);
-      } else {
-        d = { ...d };
-        list[list.indexOf(list.find((x) => x.id === e.id)!)] = d;
+      const i = list.findIndex((x) => x.id === e.id);
+      const d: DelegateState =
+        i >= 0
+          ? { ...list[i] }
+          : { id: e.id, prompt: e.text ?? '', state: 'start', log: [], startedAt: e.at ?? now, files: [], before: {}, after: {}, ...(s.fast.status === 'delegated' && s.lastRun?.kind === 'fast' ? { via: 'fast' as const } : {}) };
+      if (i >= 0) list[i] = d;
+      else list.push(d);
+      if (e.state === 'start') {
+        d.prompt = e.text ?? d.prompt;
+        if (e.at) d.startedAt = e.at;
       }
-      if (e.state === 'progress' && e.text) d.lines = [...d.lines, e.text].slice(-30);
-      if (e.state === 'done' || e.state === 'error') d.result = e.text;
+      if (e.state === 'progress') {
+        if (e.step) {
+          d.log = [...d.log, { step: e.step, at: now }].slice(-60);
+          if (e.step.changed && !d.files.includes(e.step.changed)) d.files = [...d.files, e.step.changed];
+        } else if (e.text) d.log = [...d.log, { say: e.text, at: now }].slice(-60);
+      }
+      if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') {
+        // a stopped run says so in the feed's own words (prompt.run.stoppedNote); the server sends no text for it
+        d.result = e.state === 'stopped' ? undefined : e.text;
+        d.endedAt = now;
+      }
       if (e.state !== 'start') d.state = e.state;
-      return { delegates: list.slice(-5) };
+      // a new run takes over the feed; a later event of an older run does not
+      const fresh = i < 0;
+      return { delegates: list.slice(-5), ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
     });
     if (e.state === 'done' || e.state === 'error') {
       const ok = e.state === 'done';
-      if (get().fast.status === 'delegated') {
-        set((s) => ({ fast: { ...s.fast, status: ok ? 'done' : 'error', note: ok ? `Claude Code 完成：${e.text ?? ''}` : undefined } }));
-      }
-      toast(ok ? 'Claude Code 完成：' + (e.text ?? '').slice(0, 120) : 'Claude Code 没能完成：' + (e.text ?? '').slice(0, 200), ok ? 'info' : 'error');
+      if (get().fast.status === 'delegated') setFastDone(ok);
+      // the feed above the prompt already says so; a toast is for when no feed is on screen
+      if (!get().feeds) toast(ok ? t('app.delegate.done', { text: (e.text ?? '').slice(0, 120) }) : t('app.delegate.failed', { text: (e.text ?? '').slice(0, 200) }), ok ? 'info' : 'error');
     }
   }
+}
+
+function setFastDone(ok: boolean): void {
+  set((s) => ({ fast: { ...s.fast, status: ok ? 'done' : 'error', endedAt: Date.now() } }));
+}
+
+/** The run a Claude write belongs to: the newest one running, or one that ended a moment ago (its last writes arrive late). */
+function creditedRun(list: DelegateState[]): number {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const d = list[i];
+    if (d.state === 'start' || d.state === 'progress' || (d.endedAt && Date.now() - d.endedAt < 2000)) return i;
+  }
+  return -1;
+}
+
+/** Put back every file a Claude Code run changed, as it was before the run; files it created are removed. */
+export function undoDelegate(id: string): void {
+  const d = get().delegates.find((x) => x.id === id);
+  if (!d || d.undone) return;
+  for (const [file, after] of Object.entries(d.after)) {
+    const before = d.before[file];
+    if (before === null) void deleteFile(file);
+    else if (before !== undefined) edit(file, (src) => rebaseSwap(src, after, before), { actor: 'undo', summary: t('app.journal.undoClaude'), undoable: false });
+  }
+  set((s) => ({ delegates: s.delegates.map((x) => (x.id === id ? { ...x, undone: true } : x)) }));
 }
 
 // ----------------------------------------------------------------- saving
@@ -389,7 +477,7 @@ export function edit(file: string, apply: (src: string) => string, opts: EditOpt
   try {
     next = apply(cur);
   } catch (e) {
-    toast((e as Error).message, 'error');
+    toast(errorText(e), 'error');
     return false;
   }
   return enqueueResult(file, cur, next, apply, opts);
@@ -412,7 +500,7 @@ async function pump(file: string): Promise<void> {
         try {
           next = base === item.basis ? item.optimistic : await item.apply(base);
         } catch (e) {
-          toast(`${file}：${(e as Error).message}`, 'error');
+          toast(t('app.save.editFailed', { file, error: errorText(e) }), 'error');
           dropFirst(file);
           break;
         }
@@ -426,7 +514,7 @@ async function pump(file: string): Promise<void> {
             prompt: item.prompt,
           });
         } catch (e) {
-          toast(`保存 ${file} 失败：${(e as Error).message}`, 'error');
+          toast(t('app.save.failed', { file, error: (e as Error).message }), 'error');
           dropFirst(file);
           break;
         }
@@ -437,7 +525,7 @@ async function pump(file: string): Promise<void> {
         // someone saved in between: take their version and replay this edit on it
         patchEntry(file, (e) => ({ ...e, server: r.conflict }));
         if (++attempts >= 3) {
-          toast(`${file} 一直在被其他人修改，这次编辑没有保存。`, 'error');
+          toast(t('app.save.keptChanging', { file }), 'error');
           dropFirst(file);
           break;
         }
@@ -473,7 +561,7 @@ export function editElement(file: string, ops: HumanOp[], actor: Actor = 'human'
   try {
     first = applyHumanOps(cur, ops, inertDocument());
   } catch (e) {
-    toast((e as Error).message, 'error');
+    toast(errorText(e), 'error');
     return false;
   }
   if (!first.changed) return false;
@@ -517,7 +605,7 @@ export async function deleteFile(file: string): Promise<void> {
   const v = get().files[file]?.server?.version;
   if (v) {
     const r = await api.remove(project, file, v);
-    if ('conflict' in r) return toast(`${file} 刚被别人改过，没有删除。`, 'error');
+    if ('conflict' in r) return toast(t('app.save.deleteConflict', { file }), 'error');
   }
   set((s) => {
     const files = { ...s.files };

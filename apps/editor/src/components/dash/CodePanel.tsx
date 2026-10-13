@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DASH_INDEX, datasetIdOf } from '@dc/core';
 import { display, edit, toast, useStore } from '../../store';
 
@@ -7,6 +8,7 @@ import { display, edit, toast, useStore } from '../../store';
  * page; here a person can edit it too (it is a file in a repository).
  */
 export function CodePanel() {
+  const { t } = useTranslation();
   const names = useStore((s) =>
     Object.keys(s.files)
       .filter((p) => p.startsWith('files/') || p === DASH_INDEX || datasetIdOf(p))
@@ -31,15 +33,15 @@ export function CodePanel() {
       try {
         JSON.parse(draft);
       } catch (e) {
-        return toast(`${path} 不是合法的 JSON：${(e as Error).message}`, 'error');
+        return toast(t('dash.code.badJson', { path, message: (e as Error).message }), 'error');
       }
     }
     edit(path, () => draft, { actor: 'human', summary: `${path} edited` });
   };
   return (
-    <aside className="dashside code" aria-label="代码">
+    <aside className="dashside code" aria-label={t('dash.code.label')}>
       <div className="row">
-        <select className="input" value={path} aria-label="文件" onChange={(e) => setPath(e.target.value)}>
+        <select className="input" value={path} aria-label={t('dash.code.file')} onChange={(e) => setPath(e.target.value)}>
           {list.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -47,15 +49,15 @@ export function CodePanel() {
           ))}
         </select>
         <button className="btn primary" disabled={!dirty} onClick={save}>
-          保存
+          {t('common.save')}
         </button>
       </div>
-      {dirty && <p className="hint">未保存。⌘S 保存。</p>}
+      {dirty && <p className="hint">{t('dash.code.unsaved')}</p>}
       <textarea
         className="code dashcode"
         spellCheck={false}
         value={draft}
-        aria-label={`编辑 ${path}`}
+        aria-label={t('dash.code.edit', { path })}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           e.stopPropagation();

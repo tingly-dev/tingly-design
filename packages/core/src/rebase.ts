@@ -3,6 +3,14 @@
  * since (by another editor, an agent, a terminal). The edit is located by the
  * text around it, so a change somewhere else in the file doesn't block it.
  */
+/** The edit could not be located any more: the text around it changed too. The editor says so in its own words (`errors.rebaseConflict`). */
+export class RebaseConflict extends Error {
+  readonly code = 'rebase-conflict';
+  constructor() {
+    super('rebase-conflict');
+  }
+}
+
 export function rebaseSwap(current: string, from: string, to: string): string {
   if (current === from) return to;
   let p = 0;
@@ -20,5 +28,5 @@ export function rebaseSwap(current: string, from: string, to: string): string {
     const start = at + before.length;
     return current.slice(0, start) + repl + current.slice(start + mid.length);
   }
-  throw new Error('这段内容之后又被改过，没法自动撤销。');
+  throw new RebaseConflict();
 }

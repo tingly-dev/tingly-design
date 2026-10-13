@@ -2,7 +2,7 @@
 
 # Canvas
 
-The top left holds the page menu and the tools; the top right holds play, the panel toggle, zoom and the sync log; the bottom bar is the prompt for AI (paste, drop or pick images, PDFs and text files into it; they are kept in the project's `uploads/`); the right panel folds away with `⌘\`.
+The top left holds the page menu and the tools; the top right holds play, the panel toggle, zoom and the sync log; the bottom bar is the prompt for AI (paste, drop or pick images, PDFs and text files into it; they are kept in the project's `uploads/`; the request you sent stays above the box with each step the AI is taking, how long it has run and which files it changed, and you can stop it, undo the whole run, or put a failed request back in the box; this works the same in every kind); the right panel folds away with `⌘\`. If you know jQuery, its **Code** tab has a box under the source where you can type statements yourself (no API key needed); a fast AI run's statements can be taken there with "在 jQuery 里改" to adjust by hand.
 
 - **Tools**: select V, hand H, text T, artboard A, sticky note N, pen P, rectangle R, ellipse O, line L, arrow ⇧L. Notes and shapes live in `canvas.json`, with size (s/m/l/xl/xxl), colour, fill, rotation and flips.
 - **Artboards**: rename, run full window or export PNG from the name strip; resize from the corner; several pages, each with its own artboards.

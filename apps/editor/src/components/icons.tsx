@@ -58,6 +58,17 @@ import {
   IconTypography,
   IconVector,
   IconX,
+  IconBook,
+  IconSearch,
+  IconEdit,
+  IconTerminal2,
+  IconListCheck,
+  IconLoader2,
+  IconMessageCircle,
+  IconAlertCircle,
+  IconCircleCheck,
+  IconArrowBackUpDouble,
+  IconCornerLeftUp,
   type IconProps,
 } from '@tabler/icons-react';
 
@@ -119,6 +130,23 @@ export const Clip = tabler(IconPaperclip);
 export const FileText = tabler(IconFileText, 14);
 export const ImportI = tabler(IconFileImport);
 export const FilePdf = tabler(IconFileTypePdf, 14);
+
+// what an agent is doing (RunFeed)
+export const StepRead = tabler(IconBook, 14);
+export const StepSearch = tabler(IconSearch, 14);
+export const StepEdit = tabler(IconEdit, 14);
+export const StepRun = tabler(IconTerminal2, 14);
+export const StepPlan = tabler(IconListCheck, 14);
+export const StepSay = tabler(IconMessageCircle, 14);
+export const Spinner = ({ size = 14 }: { size?: number }) => (
+  <span className="spin" aria-hidden="true">
+    <IconLoader2 size={size} stroke={1.8} />
+  </span>
+);
+export const Done = tabler(IconCircleCheck, 16);
+export const Failed = tabler(IconAlertCircle, 16);
+export const UndoAll = tabler(IconArrowBackUpDouble, 14);
+export const Reuse = tabler(IconCornerLeftUp, 14);
 
 // layer roles
 const ROLES: Record<string, ComponentType<IconProps>> = {

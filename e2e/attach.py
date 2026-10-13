@@ -115,19 +115,17 @@ async def main():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-            pg = await b.new_page(viewport={'width': 1440, 'height': 900})
+            pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(base + '/?p=box-console')
             await pg.wait_for_timeout(2500)
             chips = pg.locator('.prompt .attach-chip')
 
-            # where the paperclip is: on the requests that go to a model, not jQuery typed by hand
+            # the paperclip is on every request to a model; jQuery typed by hand lives in the Code tab, not here
             await pg.locator('.prompt .seg button', has_text='快速 AI').click()
             check('paperclip on the fast AI bar', await pg.locator('.prompt .attach').is_visible())
-            await pg.locator('.prompt .seg button', has_text='jQuery').click()
-            check('no paperclip in jQuery mode', await pg.locator('.prompt .attach').count() == 0)
-            await pg.locator('.prompt .seg button', has_text='快速 AI').click()
+            check('no jQuery choice in the prompt bar', await pg.locator('.prompt .seg button', has_text='jQuery').count() == 0)
 
             # paste a screenshot: a chip with a thumbnail, scaled down for the model
             await pg.locator('.prompt textarea').focus()
@@ -172,7 +170,7 @@ async def main():
             await main.locator('h1').click()
             await pg.locator('.prompt textarea').fill('标题换成截图里的紫色，下面加一个三条的要点列表')
             await pg.locator('.prompt .send').click()
-            await expect(pg.locator('.ticker')).to_contain_text('已保存', timeout=15000)
+            await expect(pg.locator('.runfeed')).to_contain_text('已保存', timeout=15000)
             calls = lines(mock_log)
             first = calls[0]['blocks'] if calls else []
             kinds = [x['type'] for x in first]
@@ -242,9 +240,9 @@ async def main():
             up = json.loads(urllib.request.urlopen(req).read())['path']
             await pg.goto(base + '/?p=tingly-intro')
             await pg.wait_for_timeout(2000)
-            await pg.locator('.prompt .seg button', has_text='jQuery').click()
-            await pg.locator('.prompt textarea').fill(f"$('section').append(`<img src=\"{up}\" alt=\"logo\" style=\"position:absolute;left:128px;top:128px;width:400px;height:200px;object-fit:cover\">`)")
-            await pg.locator('.prompt .send').click()
+            await pg.locator('.panel [role="tab"]', has_text='代码').click()
+            await pg.locator('.jqbox textarea').fill(f"$('section').append(`<img src=\"{up}\" alt=\"logo\" style=\"position:absolute;left:128px;top:128px;width:400px;height:200px;object-fit:cover\">`)")
+            await pg.locator('.jqbox button', has_text='执行').click()
             img = pg.frame_locator('.sframe.f-stage iframe').locator('img[alt="logo"]')
             await img.wait_for(timeout=8000)
             await pg.wait_for_timeout(500)

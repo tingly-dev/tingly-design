@@ -15,6 +15,7 @@ import { MotionApp } from './components/motion/MotionApp';
 import { Launcher } from './components/Launcher';
 import { serverDefault } from './theme';
 import { announceReady } from './host';
+import { serverLanguage, t } from './i18n';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -42,10 +43,11 @@ export function App() {
       (health) => {
         useStore.setState({ health });
         serverDefault(health.theme);
+        serverLanguage(health.lang);
         announceReady(health);
       },
       () => {
-        toast('连不上服务端，确认 pnpm dev 在运行。', 'error');
+        toast(t('errors.serverUnreachable'), 'error');
         announceReady(null);
       },
     );
