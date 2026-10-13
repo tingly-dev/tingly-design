@@ -41,7 +41,6 @@ Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind
 - Follow the maintenance rules at the top of `.design/README.md` (the same as Tingly Box's): current contract, implementation status, history and proposals kept apart; diagrams in a separate `<topic>.pencil.md`; renames update every reference.
 - A note describes the design and the reasoning: the problem, the options weighed, what was decided and why, what is still open. It is not a changelog: no PR numbers, commit hashes or "in this PR we…"; that belongs in git history and the PR description. When the design changes, rewrite the note to the current design instead of appending an entry.
 - A note says its status on the first line after the title (`方案` / `研究` / `已实施` …). Keep implemented facts, proposals and history apart.
-- Research that comes before a decision (comparing libraries or approaches, measurements, spike code) goes in `.research/`, not `.design/`; when the decision lands, its conclusion goes into the relevant `.design/` note. Follow the rules at the top of `.research/README.md` and add a row to its index.
 - `docs/` is the other half: user guides (`docs/*/guide/`) and how-it-works pages (`architecture`, `theming`, `embedding`, `development`). Those are written in both `docs/en/` and `docs/zh/`; change both. `.design/` notes are written once, in either language.
 
 ## 3. Features that span project kinds
@@ -69,7 +68,6 @@ apps/editor       React editors, one app per kind under components/<kind>/, the 
 projects/         sample projects, one per kind
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind
 .design/          design notes (index in .design/README.md)
-.research/        research before a decision: library and option surveys, measurements, spikes (index in .research/README.md)
 docs/en, docs/zh  guides and how-it-works pages, both languages
 e2e/              Playwright suites per kind and per cross-kind feature, a mock model
 artifact/         private reference material; never publish
