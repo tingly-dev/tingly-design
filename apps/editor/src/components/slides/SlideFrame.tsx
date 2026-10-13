@@ -54,6 +54,7 @@ export const SlideFrame = memo(function SlideFrame({
   const [W, H] = scene?.info.size ?? [SLIDE_W, SLIDE_H];
   const drawn = scene ? JSON.stringify([scene.info.format, scene.info.formats, scene.info.size]) : '';
   const t = scene?.info.t ?? 0;
+  const landed = !!scene?.info.landed;
   const info = useRef(scene?.info);
   info.current = scene?.info;
   const selected = useStore((s) => (use === 'stage' && s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
@@ -150,8 +151,8 @@ export const SlideFrame = memo(function SlideFrame({
 
   // moving the playhead only seeks: the scene is not drawn again
   useEffect(() => {
-    if (ready && drawn) frame.current?.contentWindow?.postMessage({ dc: 'seek', t }, '*');
-  }, [ready, t, drawn]);
+    if (ready && drawn) frame.current?.contentWindow?.postMessage({ dc: 'seek', t, landed }, '*');
+  }, [ready, t, landed, drawn]);
 
   useEffect(() => {
     if (ready && use === 'present') frame.current?.contentWindow?.postMessage({ dc: 'step', step }, '*');

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, sceneVisibility, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
-import { display, isSaving, parsed, useStore } from '../../store';
+import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
+import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
@@ -113,8 +113,10 @@ export function MotionApp() {
       ? Math.max(0, Math.min(current.duration, authored - current.start))
       : 0;
   // while playing, the stage keeps what it showed when paused (it is hidden, and re-rendering it every frame would cost)
-  const held = useRef({ id: stageId, at: stageAt });
-  if (!playing) held.current = { id: stageId, at: stageAt };
+  // on a scene's first moment the stage draws the scene landed, as a page: at 0 s most of it hasn't come in yet
+  const stageLanded = !cover && !!current && stageAt < 0.5;
+  const held = useRef({ id: stageId, at: stageAt, landed: stageLanded });
+  if (!playing) held.current = { id: stageId, at: stageAt, landed: stageLanded };
   const stage = held.current;
 
   useEffect(() => {
@@ -131,8 +133,8 @@ export function MotionApp() {
     if (viewFormat && viewFormat !== format && viewFormat in motion.formats) setFormat(viewFormat);
   }, [viewFormat]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    useStore.setState({ motionView: { format: fmt, primary, scene: stage.id ?? null, at: stage.at } });
-  }, [fmt, primary, stage.id, stage.at]);
+    useStore.setState({ motionView: { format: fmt, primary, scene: stage.id ?? null, at: stage.at, landed: stage.landed } });
+  }, [fmt, primary, stage.id, stage.at, stage.landed]);
   useEffect(() => () => useStore.setState({ motionView: null }), []);
   // a selection belongs to the scene it was made in
   useEffect(() => {
@@ -140,8 +142,6 @@ export function MotionApp() {
     if (sel && (sel.kind === 'el' || sel.kind === 'board') && stage.id && sel.file !== sceneFile(stage.id)) useStore.setState({ selection: null });
   }, [stage.id]);
 
-  /** Where clicking a scene lands: everything in it has arrived, nothing has left. */
-  const settledAt = (id: string) => (scenes[id] ? sceneVisibility(parsed(scenes[id]), fmt, formats).settled : 0);
 
   const play = () => {
     if (!info) return;
@@ -275,7 +275,7 @@ export function MotionApp() {
                     id={stage.id}
                     scale={scale}
                     use="stage"
-                    scene={{ file: sceneFile(stage.id), faces: motion.faces, info: { format: fmt, formats, size: [W, H], t: stage.at } }}
+                    scene={{ file: sceneFile(stage.id), faces: motion.faces, info: { format: fmt, formats, size: [W, H], t: stage.at, landed: stage.landed } }}
                   />
                 </div>
               )}
@@ -291,8 +291,8 @@ export function MotionApp() {
             {secs(t)} / {secs(duration)} s
           </span>
           <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(t)} onChange={(e) => seek(Number(e.target.value))} aria-label="时间" />
-          <span className="mwhere" title={cover ? '封面' : '播放头所在的场景和场景里的时间'}>
-            {cover ? '封面' : current ? `${current.id} · ${secs(stageAt)} s` : ''}
+          <span className="mwhere" title={cover ? '封面' : stageLanded ? '场景开头：所有元素按落定的样子画出，方便编辑；往后拖一帧看真实画面' : '播放头所在的场景和场景里的时间'}>
+            {cover ? '封面' : current ? `${current.id} · ${secs(stageAt)} s${stageLanded ? ' · 落定' : ''}` : ''}
           </span>
         </div>
         <div className="mscenes" aria-label="场景">
@@ -301,7 +301,7 @@ export function MotionApp() {
               key={w.id}
               className={`mscene${!cover && current?.id === w.id ? ' on' : ''}`}
               style={{ flexGrow: w.duration }}
-              onClick={() => seek((w.start + settledAt(w.id)) / rate)}
+              onClick={() => seek(w.start / rate)}
               title={`${w.id}：${secs(w.duration / rate)} s${w.transition.kind !== 'cut' ? `，${w.transition.kind} 转场` : ''}`}
             >
               {w.id}

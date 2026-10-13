@@ -44,7 +44,7 @@ export type ToRuntime =
   /** presenting a slide: show its builds up to this step */
   | { dc: 'step'; step: number }
   /** a motion scene: show this time (ms from the scene's start) without rendering again */
-  | { dc: 'seek'; t: number };
+  | { dc: 'seek'; t: number; landed?: boolean };
 
 /** How a motion scene is drawn on the editor stage. */
 export interface MotionStageInfo {
@@ -54,6 +54,8 @@ export interface MotionStageInfo {
   size: [number, number];
   /** ms from the scene's start */
   t: number;
+  /** draw every element landed, the scene read as a page: the playhead sits on the scene's first moment */
+  landed?: boolean;
 }
 
 export type FromRuntime =

@@ -117,7 +117,7 @@ interface State {
    * motion: the format the stage shows. Style edits in any format but the
    * primary one go to that format's `data-<format>` override.
    */
-  motionView: { format: string; primary: string; scene: string | null; at: number } | null;
+  motionView: { format: string; primary: string; scene: string | null; at: number; landed: boolean } | null;
   present: Present | null;
   health: Health | null;
   connected: boolean;

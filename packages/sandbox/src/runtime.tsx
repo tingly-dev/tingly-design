@@ -515,6 +515,7 @@ const MOTION_CSS = '[data-dc-off]{pointer-events:none}[data-dc-rest]{pointer-eve
 
 let sceneAnim: SceneAnim | null = null;
 let sceneVisible: { el: Element; from: number; to: number }[] = [];
+let sceneEls: Element[] = [];
 
 /** Attach the scene's animations to what React just committed, then show the playhead's time. */
 function animate() {
@@ -523,19 +524,26 @@ function animate() {
   if (!section) return;
   const els = [section, ...Array.from(section.querySelectorAll('*'))];
   const duration = parseTime(section.getAttribute('data-duration') ?? undefined) ?? DEFAULT_SCENE_MS;
+  sceneEls = els;
   sceneAnim = animateScene(els, 0, duration);
   sceneVisible = sceneAnim.visible;
   showTime();
 }
 
-/** Stop the scene at the playhead; the selected element is drawn landed so what you drag is what is written. */
+/**
+ * Stop the scene at the playhead; the selected element is drawn landed so what
+ * you drag is what is written. On the scene's first moment every element is
+ * landed, so the scene reads as a page to edit rather than an empty frame.
+ */
 function showTime() {
   const m = current.motion;
   if (!m || !sceneAnim) return;
-  const rest = new Set<Element>(current.mode === 'edit' && current.selected !== null ? instances(current.selected) : []);
+  const rest = new Set<Element>(
+    m.landed ? sceneEls : current.mode === 'edit' && current.selected !== null ? instances(current.selected) : [],
+  );
   sceneAnim.setTime(m.t, rest);
   for (const { el, from, to } of sceneVisible) {
-    const off = m.t < from || m.t > to;
+    const off = !m.landed && (m.t < from || m.t > to);
     if (off) el.setAttribute('data-dc-off', '');
     else el.removeAttribute('data-dc-off');
     if (rest.has(el)) el.setAttribute('data-dc-rest', '');
@@ -1333,7 +1341,7 @@ function onMessage(m: ToRuntime) {
     showTime();
     inspect();
   } else if (m.dc === 'seek') {
-    if (current.motion) current.motion = { ...current.motion, t: m.t };
+    if (current.motion) current.motion = { ...current.motion, t: m.t, landed: m.landed };
     showTime();
   } else if (m.dc === 'hover') {
     externalHover = m.tid;

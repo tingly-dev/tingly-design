@@ -62,7 +62,7 @@ function motionOutline(file: string): string {
   const view = s.motionView;
   const fmts = Object.entries(m.formats).map(([n, f], i) => `${n} ${f.size.join('×')}${i === 0 ? ' (primary: style is its look)' : ''}`);
   const lines = [`"${m.title}", a motion piece. Formats: ${fmts.join(', ')}.`];
-  if (view) lines.push(`The person is looking at the ${view.format} format${view.scene ? `, ${(view.at / 1000).toFixed(2)}s into scene ${view.scene}` : ''}.`);
+  if (view) lines.push(`The person is looking at the ${view.format} format${view.scene ? (view.landed ? `, at the start of scene ${view.scene}, with every element drawn where it lands` : `, ${(view.at / 1000).toFixed(2)}s into scene ${view.scene}`) : ''}.`);
   lines.push('Scenes in order:');
   m.order.forEach((id, i) => {
     const t = sceneTiming(display(s, sceneFile(id)) ?? '');
@@ -163,7 +163,7 @@ export async function delegateToClaude(file: string | undefined, tid: number | n
       .map((j) => `- [${j.actor}] ${j.file}: ${j.summary}`);
     // a motion piece: where the person stopped, so "this" and "here" mean something
     const view = get().kind === 'motion' ? get().motionView : null;
-    const where = view?.scene ? `停在场景 ${view.scene} 的 ${(view.at / 1000).toFixed(1)} s，看的是 ${view.format} 尺寸。` : '';
+    const where = view?.scene ? view.landed ? `停在场景 ${view.scene} 的开头（按落定的样子看整页），看的是 ${view.format} 尺寸。` : `停在场景 ${view.scene} 的 ${(view.at / 1000).toFixed(1)} s，看的是 ${view.format} 尺寸。` : '';
     await api.delegate(project, {
       prompt: where ? `${where}\n\n${prompt}` : prompt,
       file,

@@ -31,7 +31,8 @@ const sizeLabel = (size: [number, number]) => `${size[0]}×${size[1]}`;
  * Elements of a scene that are off screen at a time, with when they are on
  * (an element is off while any of its ancestors is).
  */
-export function awayAt(doc: DcDoc, format: string, formats: string[], at: number): Map<number, string> {
+/** What is off screen at `at` ms into the scene; `null` is the landed first moment, where only other formats' elements are away. */
+export function awayAt(doc: DcDoc, format: string, formats: string[], at: number | null): Map<number, string> {
   const { windows } = sceneVisibility(doc, format, formats);
   const out = new Map<number, string>();
   for (const el of doc.elements) {
@@ -50,6 +51,7 @@ export function awayAt(doc: DcDoc, format: string, formats: string[], at: number
       if (attr(el, 'data-only') !== undefined || el.parent) out.set(el.tid, `不在 ${format}`);
       continue;
     }
+    if (at === null) continue;
     if (at < from) out.set(el.tid, `${formatTime(Math.round(from))} 入场`);
     else if (at > to) out.set(el.tid, `${formatTime(Math.round(to))} 已离场`);
   }
@@ -288,7 +290,7 @@ export function MotionLayers() {
   const source = useStore((s) => (file ? display(s, file) : undefined));
   const m = useMotion();
   const away = useMemo(
-    () => (source && view ? awayAt(parsed(source), view.format, Object.keys(m.formats), view.at) : new Map<number, string>()),
+    () => (source && view ? awayAt(parsed(source), view.format, Object.keys(m.formats), view.landed ? null : view.at) : new Map<number, string>()),
     [source, view, m],
   );
   if (!file) return <div className="layers" />;

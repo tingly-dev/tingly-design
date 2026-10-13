@@ -63,10 +63,13 @@ async def main():
         h2 = stage.locator('section#kind-slides h2')
         await expect(h2).to_be_visible()
         await expect(h2).not_to_have_attribute('data-dc-off', '')
+        await expect(h2).to_have_attribute('data-dc-rest', '')
+        await expect(pg.locator('.mwhere')).to_have_text('kind-slides · 0.0 s · 落定')
+        check('a scene opens on its first moment, drawn landed like a page', True)
         await h2.click()
         await expect(pg.locator('.mfmt-where')).to_contain_text('所有尺寸')
         await expect(pg.locator('.prompt .target')).to_contain_text('Slides')
-        check('a scene, landed after its entrances, takes clicks like a slide', True)
+        check('a scene takes clicks like a slide', True)
 
         await h2.dblclick()
         await pg.keyboard.press('ControlOrMeta+a')
@@ -109,8 +112,8 @@ async def main():
         # at a time: off-screen elements take no clicks; a selected one is drawn landed
         await pg.locator('.mscene', has_text='kind-slides').click()
         scrub = pg.locator('.mscrub')
-        # the scene lands where everything has arrived: its last entrance ends at 2.3 s (played at 1.5×)
-        start = int(await scrub.get_attribute('value')) * 1.5 - 2300
+        # the scene opens on its start (played at 1.5×)
+        start = int(await scrub.get_attribute('value')) * 1.5
         at = lambda ms: str(round((start + ms) / 1.5))
         await pg.keyboard.press('Escape')
         await scrub.fill(at(100))
