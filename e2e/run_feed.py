@@ -198,7 +198,7 @@ async def main():
                 check(f'{kind}: the feed shows the run and the file it changed', any(c.startswith(unit) for c in chips), chips)
                 if kind == 'motion':
                     sent = lines(claude_log)[n]['prompt']
-                    check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', '停在场景' in sent and '停在场景' not in await feed.locator('.run-ask').inner_text(), sent[:300])
+                    check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', 'into scene' in sent and 'scene' not in await feed.locator('.run-ask').inner_text(), sent[:300])
             check('no page errors', not errs, errs)
             await b.close()
     finally:
