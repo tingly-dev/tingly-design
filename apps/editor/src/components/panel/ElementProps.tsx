@@ -410,93 +410,133 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
         </div>
       )}
 
-      <div className="sec">
-        <h3>外观</h3>
-        <Row label="填充">
-          <ColorField value={bg} computed={cv('background-color')} onCommit={(v) => set({ background: v.trim() || null, 'background-color': null })} label="填充色" />
-          {bg && (
-            <button className="ib" title="去掉填充" aria-label="去掉填充" onClick={() => set({ background: null, 'background-color': null })}>
-              <NoneI />
-            </button>
-          )}
-        </Row>
-        <Row label="不透明度">
-          <Field value={sv('opacity')} placeholder={cv('opacity') || '1'} onCommit={(v) => set({ opacity: v.trim() || null })} label="不透明度" />
-        </Row>
-        <Row label="圆角">
-          {perCorner || radii.some(Boolean) ? (
-            <span className="hint" style={{ flex: 1 }}>
-              分别设置
-            </span>
-          ) : (
-            <Field value={px(sv('border-radius'))} placeholder={px(cv('border-radius'))} onCommit={one('border-radius')} label="圆角" unit="px" />
-          )}
-          <button className="ib" aria-pressed={perCorner || radii.some(Boolean)} title="分别设置四角" aria-label="分别设置四角" onClick={() => setPerCorner(!perCorner)}>
-            <Corners />
-          </button>
-        </Row>
-        {(perCorner || radii.some(Boolean)) && (
-          <div className="four">
-            {(['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).map((c) => (
-              <Field key={c} value={px(sv(`border-${c}-radius`))} placeholder={px(sv('border-radius')) || '0'} onCommit={one(`border-${c}-radius`)} label={`圆角 ${c}`} pre={{ 'top-left': '↖', 'top-right': '↗', 'bottom-left': '↙', 'bottom-right': '↘' }[c]} />
-            ))}
-          </div>
-        )}
-        <Row label="描边">
-          <Seg
-            value={borderStyle}
-            label="描边样式"
-            options={[
-              { value: 'none', label: <NoneI />, title: '无' },
-              { value: 'solid', label: '——', title: '实线' },
-              { value: 'dashed', label: '- - -', title: '虚线' },
-              { value: 'dotted', label: '···', title: '点线' },
-            ]}
-            onChange={(v) =>
-              v === 'none'
-                ? set({ border: null, 'border-style': null, 'border-width': null, 'border-color': null })
-                : borderStyle === 'none'
-                  ? set({ border: `1px ${v} #d0d4dc` })
-                  : set({ 'border-style': v })
-            }
-          />
-        </Row>
-        {borderStyle !== 'none' && (
-          <Row label="">
-            <Field value={px(sv('border-width'))} placeholder={px(cv('border-top-width'))} onCommit={one('border-width')} label="描边粗细" unit="px" width={80} />
-            <ColorField value={sv('border-color')} computed={cv('border-top-color')} onCommit={(v) => set({ 'border-color': v.trim() || null })} label="描边颜色" />
+      {el.ns === 'svg' ? (
+        <SvgLook file={file} el={el} />
+      ) : (
+        <div className="sec">
+          <h3>外观</h3>
+          <Row label="填充">
+            <ColorField value={bg} computed={cv('background-color')} onCommit={(v) => set({ background: v.trim() || null, 'background-color': null })} label="填充色" />
+            {bg && (
+              <button className="ib" title="去掉填充" aria-label="去掉填充" onClick={() => set({ background: null, 'background-color': null })}>
+                <NoneI />
+              </button>
+            )}
           </Row>
-        )}
-      </div>
+          <Row label="不透明度">
+            <Field value={sv('opacity')} placeholder={cv('opacity') || '1'} onCommit={(v) => set({ opacity: v.trim() || null })} label="不透明度" />
+          </Row>
+          <Row label="圆角">
+            {perCorner || radii.some(Boolean) ? (
+              <span className="hint" style={{ flex: 1 }}>
+                分别设置
+              </span>
+            ) : (
+              <Field value={px(sv('border-radius'))} placeholder={px(cv('border-radius'))} onCommit={one('border-radius')} label="圆角" unit="px" />
+            )}
+            <button className="ib" aria-pressed={perCorner || radii.some(Boolean)} title="分别设置四角" aria-label="分别设置四角" onClick={() => setPerCorner(!perCorner)}>
+              <Corners />
+            </button>
+          </Row>
+          {(perCorner || radii.some(Boolean)) && (
+            <div className="four">
+              {(['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).map((c) => (
+                <Field key={c} value={px(sv(`border-${c}-radius`))} placeholder={px(sv('border-radius')) || '0'} onCommit={one(`border-${c}-radius`)} label={`圆角 ${c}`} pre={{ 'top-left': '↖', 'top-right': '↗', 'bottom-left': '↙', 'bottom-right': '↘' }[c]} />
+              ))}
+            </div>
+          )}
+          <Row label="描边">
+            <Seg
+              value={borderStyle}
+              label="描边样式"
+              options={[
+                { value: 'none', label: <NoneI />, title: '无' },
+                { value: 'solid', label: '——', title: '实线' },
+                { value: 'dashed', label: '- - -', title: '虚线' },
+                { value: 'dotted', label: '···', title: '点线' },
+              ]}
+              onChange={(v) =>
+                v === 'none'
+                  ? set({ border: null, 'border-style': null, 'border-width': null, 'border-color': null })
+                  : borderStyle === 'none'
+                    ? set({ border: `1px ${v} #d0d4dc` })
+                    : set({ 'border-style': v })
+              }
+            />
+          </Row>
+          {borderStyle !== 'none' && (
+            <Row label="">
+              <Field value={px(sv('border-width'))} placeholder={px(cv('border-top-width'))} onCommit={one('border-width')} label="描边粗细" unit="px" width={80} />
+              <ColorField value={sv('border-color')} computed={cv('border-top-color')} onCommit={(v) => set({ 'border-color': v.trim() || null })} label="描边颜色" />
+            </Row>
+          )}
+        </div>
+      )}
 
-      <div className="sec">
-        <h3>效果</h3>
-        <Row label="阴影">
-          <Select
-            value={shadowKey}
-            options={[
-              { value: 'none', label: '无' },
-              { value: 'sm', label: '轻' },
-              { value: 'md', label: '中' },
-              { value: 'lg', label: '重' },
-              ...(shadowKey === 'custom' ? [{ value: 'custom', label: '自定义' }] : []),
-            ]}
-            onChange={(v) => set({ 'box-shadow': v === 'none' ? null : (SHADOWS[v] ?? shadow) })}
-            label="阴影"
-          />
-        </Row>
-        <Row label="溢出">
-          <Seg
-            value={(sv('overflow') || cv('overflow')) === 'hidden' ? 'hidden' : 'visible'}
-            label="溢出"
-            options={[
-              { value: 'visible', label: '显示' },
-              { value: 'hidden', label: '裁切' },
-            ]}
-            onChange={(v) => set({ overflow: v === 'hidden' ? 'hidden' : null })}
-          />
-        </Row>
-      </div>
+      {el.ns !== 'svg' && (
+        <div className="sec">
+          <h3>效果</h3>
+          <Row label="阴影">
+            <Select
+              value={shadowKey}
+              options={[
+                { value: 'none', label: '无' },
+                { value: 'sm', label: '轻' },
+                { value: 'md', label: '中' },
+                { value: 'lg', label: '重' },
+                ...(shadowKey === 'custom' ? [{ value: 'custom', label: '自定义' }] : []),
+              ]}
+              onChange={(v) => set({ 'box-shadow': v === 'none' ? null : (SHADOWS[v] ?? shadow) })}
+              label="阴影"
+            />
+          </Row>
+          <Row label="溢出">
+            <Seg
+              value={(sv('overflow') || cv('overflow')) === 'hidden' ? 'hidden' : 'visible'}
+              label="溢出"
+              options={[
+                { value: 'visible', label: '显示' },
+                { value: 'hidden', label: '裁切' },
+              ]}
+              onChange={(v) => set({ overflow: v === 'hidden' ? 'hidden' : null })}
+            />
+          </Row>
+        </div>
+      )}
     </>
+  );
+}
+
+/**
+ * A shape inside an SVG (an imported drawing): its paint lives in the fill,
+ * stroke and stroke-width attributes, so that is what is edited, in place.
+ * Empty means "inherit from the group", as in SVG itself.
+ */
+function SvgLook({ file, el }: { file: string; el: DcElement }) {
+  const tid = el.tid;
+  const put = (name: string) => (v: string) => editElement(file, [{ kind: 'attr', tid, name, value: v.trim() || null }]);
+  const own = (name: string) => attr(el, name) ?? '';
+  // the nearest group that sets it, shown as the placeholder
+  const inherited = (name: string) => {
+    for (let p = el.parent; p && p.ns === 'svg'; p = p.parent) {
+      const v = attr(p, name);
+      if (v) return v;
+    }
+    return '';
+  };
+  return (
+    <div className="sec">
+      <h3>外观</h3>
+      <Row label="填充">
+        <ColorField value={own('fill')} computed={inherited('fill') || '#000000'} onCommit={put('fill')} label="填充色" />
+      </Row>
+      <Row label="描边">
+        <ColorField value={own('stroke')} computed={inherited('stroke')} onCommit={put('stroke')} label="描边颜色" />
+        <Field value={own('stroke-width')} placeholder={inherited('stroke-width') || '1'} onCommit={put('stroke-width')} label="描边粗细" width={64} />
+      </Row>
+      <Row label="不透明度">
+        <Field value={own('opacity')} placeholder={inherited('opacity') || '1'} onCommit={put('opacity')} label="不透明度" />
+      </Row>
+    </div>
   );
 }

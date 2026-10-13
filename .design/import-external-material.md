@@ -1,6 +1,6 @@
 # 导入外部素材（HTML、Markdown、PPT）：调研与评估
 
-状态：**HTML → 画布已实施**（`packages/import`，见 §10～§12），SVG、Figma、HTML 幻灯片、Markdown 和 PPT 仍是评估。本文回答一个问题：用户手里已经有别处做好的素材（一个 HTML 页面、一份 Markdown、一套 PPT），怎样把它变成 tingly-design 里可以双向编辑的项目，值不值得做，先做什么。代码事实取自 tingly-design `c726adc`，路径相对本仓库。
+状态：**HTML、SVG → 画布已实施**（`packages/import`，见 §10、§11），Figma、HTML 幻灯片、Markdown 和 PPT 仍是评估。本文回答一个问题：用户手里已经有别处做好的素材（一个 HTML 页面、一份 Markdown、一套 PPT），怎样把它变成 tingly-design 里可以双向编辑的项目，值不值得做，先做什么。代码事实取自 tingly-design `c726adc`，路径相对本仓库。
 
 ## 0. 结论先说
 
@@ -250,9 +250,19 @@ HTML 导入做成了独立的包 `packages/import`（`@dc/import`），编辑器
 - **确定性导入的已知短板**：滚动时才出现的内容会以透明状态导入（首页 24 处，报告里会提示）；终端导入会先慢速滚动一遍并结束 CSS 过渡来减少这种情况，编辑器里不运行脚本则无法补救。
 - 实验输入、输出和截图不在仓库里；复现方法是对同一批页面运行 `dc-import html <url> --check --split off`。
 
-## 11. 模块的分层
+## 11. SVG → 画布，以及模块的分层
 
-模块按"来源 → 页面模型 → 生成器"分三层：`src/sources/<来源>` 只负责把一种素材读成 `model.ts` 里的页面模型；生成画板、导入报告、资源搬运、像素比对都是共用的。加一种来源（SVG、Figma、HTML 幻灯片）就是在 `sources/` 下加一个目录，不碰其他来源。页面里以 `data:` 内嵌的大文件（超过 2 KB）存成 `assets/` 下的文件。
+模块按"来源 → 页面模型 → 生成器"分三层：`src/sources/<来源>` 只负责把一种素材读成 `model.ts` 里的页面模型；生成画板、导入报告、资源搬运、像素比对都是共用的。加一种来源（Figma、HTML 幻灯片）就是在 `sources/` 下加一个目录，不碰其他来源。
+
+SVG 是第二个来源（`sources/svg/read.ts`）：
+- **不排版、不拍平**：SVG 本身就是带坐标的图形树，原样作为内联 SVG 放进一个画板，尺寸取自它的 width/height 或 viewBox。文字保持为 `<text>`，颜色和描边保持为属性；属性面板对 SVG 形状改的就是 `fill`、`stroke`、`stroke-width`、`opacity` 这几个属性，回写只动一处。
+- **去掉画布接不住的**：脚本、`<foreignObject>`、Inkscape/Illustrator 的私有命名空间和 metadata，计数写进报告。
+- **嵌入的位图搬出来**：Figma 导出的 SVG 会把截图以 base64 嵌在里面，超过 2 KB 的 `data:` 文件都存成 `assets/` 下的文件（HTML 也一样）。原文件本身放 `uploads/`，见 §12。
+- **入口**：编辑器里"导入 HTML 或 SVG"可以选文件、拖文件，或者直接 ⌘V 粘贴从 Figma "复制为 SVG"得到的代码；终端是 `dc-import svg`。
+
+用 YZ 给的一份 Figma 复制的 SVG（830×400，2.1 MB）实测：
+- 像素差异 0.00%，画板文件 45 KB，两张截图搬进 `assets/`。
+- **Figma 复制或导出的 SVG 默认把文字转成了路径**，所以导入后能改颜色和位置，但改不了字。报告会提示：导出时取消勾选 "Outline text" 就能保留文字。要拿到 Frame、自动布局、文字样式这些真正的结构，还是要走 Figma 的 API（§0 之后讨论的 Figma 导入）。
 
 ## 12. 导入的原文件放哪：统一进 `uploads/`
 
@@ -260,9 +270,9 @@ HTML 导入做成了独立的包 `packages/import`（`@dc/import`），编辑器
 
 | 带进来的是 | 放在 | 说明 |
 | --- | --- | --- |
-| 单个文件（一个 .html） | `uploads/<名字>-<内容哈希8位>.<扩展名>` | 和对话附件的命名一样，同样的内容只存一份 |
+| 单个文件（一个 .svg、一个 .html、粘贴的 SVG） | `uploads/<名字>-<内容哈希8位>.<扩展名>` | 和对话附件的命名一样，同样的内容只存一份 |
 | 一个文件夹（网页连同 css、图片、字体） | `uploads/<文件夹名>-<哈希8位>/…` | 保留原来的目录结构，相对路径不变；页面目录以外的文件（字体 CDN、外链图片）放 `_ext/<域名>/…` |
-| 从文件里抠出来的（HTML 里内嵌的 base64 图片） | `assets/embedded-<哈希>.<扩展名>` | 原文件里没有单独的这份文件，是导入时派生出来的 |
+| 从文件里抠出来的（SVG/HTML 里内嵌的 base64 图片） | `assets/embedded-<哈希>.<扩展名>` | 原文件里没有单独的这份文件，是导入时派生出来的 |
 
 - 画板里的图片、字体直接指向 `uploads/…` 下的原文件；`canvas.json` 的 `imported.original` 记着入口文件，以后要重新导入或对照原样都从这里取。
 - 服务器端：`isKeptPath`（`packages/core/src/attachments.ts`）定义 `uploads/` 下允许的路径（最多 12 层，扩展名是可附加的类型或字体）；`PUT /api/projects/:p/uploads?path=` 按路径写入，单个文件经 `POST …/assets?dir=uploads` 按内容命名。
