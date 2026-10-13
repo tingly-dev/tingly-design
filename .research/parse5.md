@@ -1,6 +1,6 @@
 # parse5：仓库怎么用它，换成别的（包括 Go）行不行
 
-状态：**研究**，不改产品代码。和 [server-runtime.md](../.design/server-runtime.md)（服务端换 Go）、[Go 移植验证：文档类型](./go-core-spike/README.md)（把 core 移植成 Go）配套。验证代码在 [parse5-go-spike/](./parse5-go-spike/README.md)。
+状态：**研究**，不改产品代码。和 [server-runtime.md](./server-runtime.md)（服务端换 Go）、[docs-go.md](./docs-go.md)（代码在 [docs-go-spike/](./docs-go-spike/README.md)）（把 core 移植成 Go）配套。验证代码在 [parse5-go-spike/](./parse5-go-spike/README.md)。
 
 **一句话**：parse5 现在只在浏览器里跑，服务端从不解析画布和幻灯片；按 server-runtime.md 的"服务端不懂格式"方案，Go 服务端根本不需要它的替代品。如果以后真要在 Go 里解析，给 `x/net/html` 改约 55 行、再加一个 90 行的新文件，就能得到和 parse5 一样的源码位置：仓库里的全部模板逐项一致，html5lib 的 1791 个用例里有 1496 个连位置都一致，剩下的差异全在错误恢复的角落里。所以"Go 没有源码位置，画布和幻灯片最难迁"这个判断要改：难点不在解析器。
 
