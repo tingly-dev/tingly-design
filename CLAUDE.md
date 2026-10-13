@@ -58,7 +58,8 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
-packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs
+packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
+                  scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
@@ -80,7 +81,7 @@ pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships
 ```
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `import_here`, `fast`, `fast_slides`, `delegate`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `import_here`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
 
 # Pull requests
 

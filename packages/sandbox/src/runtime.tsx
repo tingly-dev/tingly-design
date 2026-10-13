@@ -8,9 +8,14 @@
  */
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
+  DEFAULT_SCENE_MS,
   SLIDE_BASE_CSS,
+  attrsForFormat,
+  parseTime,
+  sceneBaseCss,
   paintLayer,
   parseDc,
   styleObject,
@@ -22,9 +27,12 @@ import {
   type FromRuntime,
   type Inspect,
   type Mode,
+  type MotionStageInfo,
   type ToRuntime,
 } from '@dc/core';
 import { BUILD_CSS, XArt, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
+import { urlsAgainst } from './urls';
+import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
 
@@ -61,14 +69,6 @@ function interp(s: string, scope: Scope): unknown {
   });
 }
 
-/** Relative url()s (assets/…, an imported page's files) point at the project's files. */
-function urlsAgainst(css: string, base: string): string {
-  if (!css.includes('url(')) return css;
-  return css.replace(/url\(\s*(['"]?)([^'")]*)\1\s*\)/g, (m, q: string, u: string) => {
-    const r = u ? resolveSrc(u, base) : u;
-    return r === u ? m : `url(${q}${r}${q})`;
-  });
-}
 
 // ------------------------------------------------------------- attributes
 
@@ -113,6 +113,20 @@ interface Ctx {
   slide?: { base: string; source: string; still?: boolean };
   /** a canvas board: relative paths (assets/…) in src and url() resolve against this */
   base?: string;
+  /** a motion scene: the format it is drawn in */
+  motion?: { format: string; formats: string[] };
+}
+
+// a motion scene in one format: each element with that format's overrides merged in (tids unchanged)
+const formatted = new WeakMap<DcElement, { key: string; el: DcElement | null }>();
+function inFormat(el: DcElement, m: { format: string; formats: string[] }): DcElement | null {
+  const key = m.format + '\0' + m.formats.join(' ');
+  const hit = formatted.get(el);
+  if (hit && hit.key === key) return hit.el;
+  const attrs = attrsForFormat(Object.fromEntries(el.attrs.map((a) => [a.name, a.value])), m.format, m.formats);
+  const out = attrs ? { ...el, attrs: Object.entries(attrs).map(([name, value]) => ({ ...(el.attrs.find((a) => a.name === name) ?? el.attrs[0]), name, value })) } : null;
+  formatted.set(el, { key, el: out });
+  return out;
 }
 
 function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<string, unknown> {
@@ -188,7 +202,12 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
     if (v === null || v === undefined || typeof v === 'boolean') return null;
     return typeof v === 'object' ? JSON.stringify(v) : String(v);
   }
-  const el = n;
+  let el = n;
+  if (ctx.motion && ctx.tagged) {
+    const f = inFormat(n, ctx.motion);
+    if (!f) return null;
+    el = f;
+  }
   switch (el.tag) {
     case 'sc-for': {
       const listAttr = el.attrs.find((a) => a.name === 'list');
@@ -247,7 +266,15 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
       case 'x-connector':
         return <XArt key={key} tag={el.tag} props={sp()} attrs={Object.fromEntries(el.attrs.map((x) => [x.name, String(interp(x.value, scope) ?? '')]))} />;
       case 'x-embed':
-        return <XEmbed key={key} props={sp()} html={innerSource(ctx.slide.source, el.inner)} mode={ctx.mode} still={ctx.slide.still} />;
+        return (
+          <XEmbed
+            key={key}
+            props={sp()}
+            html={innerSource(ctx.slide.source, el.inner) + (ctx.motion && el.attrs.some((x) => x.name === 'data-seek') ? SEEK_BRIDGE : '')}
+            mode={ctx.mode}
+            still={ctx.slide.still}
+          />
+        );
       case 'img': {
         const p = sp();
         p.src = resolveSrc(p.src, ctx.slide.base);
@@ -382,6 +409,8 @@ interface State {
   base: string;
   /** present mode: how far a slide's builds have played */
   step: number;
+  /** a motion scene on the editor stage */
+  motion: MotionStageInfo | null;
   ctx(): Ctx;
 }
 
@@ -398,6 +427,7 @@ const current: State = {
   slide: null,
   base: '',
   step: 0,
+  motion: null,
   ctx() {
     return {
       tagged: true,
@@ -406,6 +436,7 @@ const current: State = {
       mode: this.mode,
       slide: this.slide ? { base: this.slide.base, source: this.source, still: this.slide.still } : undefined,
       base: this.slide ? undefined : this.base || undefined,
+      motion: this.slide && this.motion ? { format: this.motion.format, formats: this.motion.formats } : undefined,
     };
   },
 };
@@ -429,9 +460,12 @@ let facesHtml = '';
 function slideHead() {
   if (!slideStyles) {
     slideStyles = document.createElement('style');
-    slideStyles.textContent = SLIDE_BASE_CSS + BUILD_CSS + 'html,body{background:transparent;overflow:hidden}';
     document.head.appendChild(slideStyles);
   }
+  const size = current.motion?.size;
+  const css =
+    (size ? sceneBaseCss(size[0], size[1], SLIDE_BASE_CSS) + MOTION_CSS : SLIDE_BASE_CSS + BUILD_CSS) + 'html,body{background:transparent;overflow:hidden}';
+  if (slideStyles.textContent !== css) slideStyles.textContent = css;
   const html = current.slide?.head ?? '';
   if (html !== facesHtml) {
     facesHtml = html;
@@ -452,13 +486,72 @@ function render() {
   post({ dc: 'error', message: doc.errors.length ? doc.errors.join('\n') : null });
   if (doc.slide) slideHead();
   const body = <DcComponent key={current.source} source={current.source} file={current.file} props={current.props} ctx={current.ctx()} />;
-  root.render(
+  const tree = (
     <Boundary key={renderKey} file={current.file}>
       {doc.slide ? <div className="dc-slide-host">{body}</div> : body}
       <Committed source={current.source} />
-    </Boundary>,
+    </Boundary>
   );
+  if (!current.motion) return root.render(tree);
+  // a scene's animations hold the page in a state React didn't write: put it back first,
+  // and commit at once so no frame shows the scene without its timing
+  sceneAnim?.clear();
+  sceneAnim = null;
+  flushSync(() => root.render(tree));
+  animate();
 }
+
+// ----------------------------------------------------------------- motion
+
+/** Pointer events follow what is on screen at the playhead; a landed (selected) element always takes them. */
+const MOTION_CSS = '[data-dc-off]{pointer-events:none}[data-dc-rest]{pointer-events:auto}';
+
+let sceneAnim: SceneAnim | null = null;
+let sceneVisible: { el: Element; from: number; to: number }[] = [];
+let sceneEls: Element[] = [];
+
+/** Attach the scene's animations to what React just committed, then show the playhead's time. */
+function animate() {
+  sceneAnim?.clear();
+  const section = mount.querySelector('.dc-slide-host > section');
+  if (!section) return;
+  const els = [section, ...Array.from(section.querySelectorAll('*'))];
+  const duration = parseTime(section.getAttribute('data-duration') ?? undefined) ?? DEFAULT_SCENE_MS;
+  sceneEls = els;
+  sceneAnim = animateScene(els, 0, duration);
+  sceneVisible = sceneAnim.visible;
+  showTime();
+}
+
+/**
+ * Stop the scene at the playhead; the selected element is drawn landed so what
+ * you drag is what is written. On the scene's first moment every element is
+ * landed, so the scene reads as a page to edit rather than an empty frame.
+ */
+function showTime() {
+  const m = current.motion;
+  if (!m || !sceneAnim) return;
+  const rest = new Set<Element>(
+    m.landed ? sceneEls : current.mode === 'edit' && current.selected !== null ? instances(current.selected) : [],
+  );
+  sceneAnim.setTime(m.t, rest);
+  for (const { el, from, to } of sceneVisible) {
+    const off = !m.landed && (m.t < from || m.t > to);
+    if (off) el.setAttribute('data-dc-off', '');
+    else el.removeAttribute('data-dc-off');
+    if (rest.has(el)) el.setAttribute('data-dc-rest', '');
+    else el.removeAttribute('data-dc-rest');
+  }
+  for (const f of Array.from(mount.querySelectorAll('x-embed[data-seek] > iframe')) as HTMLIFrameElement[]) {
+    f.contentWindow?.postMessage({ dcMotion: 'seek', t: m.t, n: -1 }, '*');
+  }
+}
+
+// a seekable embed that just loaded draws the playhead's time
+window.addEventListener('message', (e) => {
+  if (e.data?.dcMotion !== 'embed-ready' || !current.motion) return;
+  (e.source as Window | null)?.postMessage({ dcMotion: 'seek', t: current.motion.t, n: -1 }, '*');
+});
 
 // ---------------------------------------------------------------- overlay
 
@@ -497,6 +590,7 @@ function box(r: { left: number; top: number; width: number; height: number }, cs
 
 function drawBoxes() {
   const out: string[] = [];
+  if (!resize) spots = [];
   if (current.mode === 'edit' && !current.editing) {
     const hover = externalHover ?? current.hover;
     if (hover !== null && hover !== current.selected) {
@@ -512,13 +606,23 @@ function drawBoxes() {
         if (!r) continue;
         out.push(box(r, `border:1.5px solid ${BLUE}`));
         if (els.length === 1 && !drag?.active) {
-          for (const [x, y] of [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]]) {
+          const can = resizable(current.selected);
+          if (can && !resize) spots = handleSpots(r);
+          const corners = can ? handleSpots(r) : handleSpots(r).filter((h) => h.at.length === 2);
+          for (const { x, y } of corners) {
             out.push(box({ left: x - 3.5, top: y - 3.5, width: 7, height: 7 }, `background:#fff;border:1.5px solid ${BLUE}`));
           }
         }
       }
     }
     if (indicator) out.push(box({ left: indicator.x, top: indicator.y, width: indicator.w, height: indicator.h }, `background:${BLUE};border-radius:1px`));
+    if (resize?.active) {
+      const r = resize.el.getBoundingClientRect();
+      for (const g of resize.guides) out.push(box(g.axis === 'x' ? { left: g.at, top: 0, width: 1, height: innerHeight } : { left: 0, top: g.at, width: innerWidth, height: 1 }, `background:#e5484d`));
+      out.push(
+        `<div style="position:fixed;left:${r.left + r.width / 2}px;top:${r.bottom + 8}px;transform:translateX(-50%);padding:2px 6px;border-radius:4px;background:${BLUE};color:#fff;font:600 12px/1.4 system-ui;white-space:nowrap">${resize.w} × ${resize.h}</div>`,
+      );
+    }
   }
   const html = out.join('');
   if (overlay.innerHTML !== html) overlay.innerHTML = html;
@@ -622,7 +726,7 @@ function postCounts() {
 
 // layout settles over a few frames (fonts, images): keep the inspection fresh
 setInterval(() => {
-  if (current.mode === 'edit' && !drag?.active) {
+  if (current.mode === 'edit' && !drag?.active && !resize?.active) {
     inspect();
     postCounts();
   }
@@ -772,6 +876,208 @@ function endDrag(e: PointerEvent, cancel = false) {
   post({ dc: 'dragout', tid: d.tid, set, parentTid: Number.isFinite(parentTid) ? parentTid : null, parentSet });
 }
 
+// ------------------------------------------------------------- resizing
+
+type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+const CURSORS: Record<Handle, string> = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', ne: 'nesw-resize', sw: 'nesw-resize', nw: 'nwse-resize', se: 'nwse-resize' };
+/** Where the selected element's handles are drawn now. */
+let spots: { at: Handle; x: number; y: number }[] = [];
+
+function handleSpots(r: DOMRect): { at: Handle; x: number; y: number }[] {
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  return [
+    { at: 'nw', x: r.left, y: r.top },
+    { at: 'n', x: cx, y: r.top },
+    { at: 'ne', x: r.right, y: r.top },
+    { at: 'e', x: r.right, y: cy },
+    { at: 'se', x: r.right, y: r.bottom },
+    { at: 's', x: cx, y: r.bottom },
+    { at: 'sw', x: r.left, y: r.bottom },
+    { at: 'w', x: r.left, y: cy },
+  ];
+}
+
+/** Elements with a size of their own: not the board or slide itself, not repeated, not drawn by a component. */
+function resizable(tid: number | null): boolean {
+  if (tid === null || !draggable(tid)) return false;
+  const el = docFor(current.source).elements[tid];
+  return !!el && !/^(sc-|dc-import$|helmet$|x-import$|br$|tr$|td$|th$|li$|option$)/.test(el.tag);
+}
+
+function spotAt(x: number, y: number): Handle | null {
+  for (const h of spots) if (Math.abs(x - h.x) <= 6 && Math.abs(y - h.y) <= 6) return h.at;
+  return null;
+}
+
+interface Resize {
+  tid: number;
+  el: HTMLElement;
+  at: Handle;
+  start: { x: number; y: number };
+  rect: DOMRect;
+  /** border + padding, when the element's width is its content box */
+  extra: { w: number; h: number };
+  abs: boolean;
+  left: number;
+  top: number;
+  saved: { width: string; height: string; left: string; top: string; transition: string };
+  active: boolean;
+  w: number;
+  h: number;
+  guides: { axis: 'x' | 'y'; at: number }[];
+}
+let resize: Resize | null = null;
+
+function startResize(tid: number, at: Handle, e: PointerEvent) {
+  const el = instances(tid)[0] as HTMLElement | undefined;
+  if (!el) return;
+  const cs = getComputedStyle(el);
+  const content = cs.boxSizing === 'content-box';
+  const sum = (...ps: string[]) => ps.reduce((n, p) => n + (parseFloat(cs.getPropertyValue(p)) || 0), 0);
+  const r = el.getBoundingClientRect();
+  resize = {
+    tid,
+    el,
+    at,
+    start: { x: e.clientX, y: e.clientY },
+    rect: r,
+    extra: content
+      ? { w: sum('padding-left', 'padding-right', 'border-left-width', 'border-right-width'), h: sum('padding-top', 'padding-bottom', 'border-top-width', 'border-bottom-width') }
+      : { w: 0, h: 0 },
+    abs: cs.position === 'absolute',
+    left: parseFloat(cs.left) || 0,
+    top: parseFloat(cs.top) || 0,
+    saved: { width: el.style.width, height: el.style.height, left: el.style.left, top: el.style.top, transition: el.style.transition },
+    active: false,
+    w: Math.round(r.width),
+    h: Math.round(r.height),
+    guides: [],
+  };
+}
+
+/** Edges and centre lines of everything else on the page, to snap a moving edge to. */
+function snapLines(self: Element): { x: number[]; y: number[] } {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const o of Array.from(mount.querySelectorAll('[data-dc-tid]'))) {
+    if (o === self || self.contains(o) || o.hasAttribute('data-dc-off')) continue;
+    const r = o.getBoundingClientRect();
+    if (!r.width && !r.height) continue;
+    xs.push(r.left, r.right, r.left + r.width / 2);
+    ys.push(r.top, r.bottom, r.top + r.height / 2);
+  }
+  return { x: xs, y: ys };
+}
+
+function moveResize(e: PointerEvent) {
+  const d = resize;
+  if (!d) return;
+  let dx = e.clientX - d.start.x;
+  let dy = e.clientY - d.start.y;
+  if (!d.active && Math.hypot(dx, dy) < 2) return;
+  d.active = true;
+  d.guides = [];
+  const east = d.at.includes('e');
+  const west = d.at.includes('w');
+  const south = d.at.includes('s');
+  const north = d.at.includes('n');
+  const k = e.altKey ? 2 : 1;
+  // snap the moving edge to another element's edge or centre (not with Shift: the ratio wins)
+  if (!e.shiftKey) {
+    const lines = snapLines(d.el);
+    const snap = (edge: number, list: number[]) => {
+      let best: number | null = null;
+      for (const v of list) if (Math.abs(v - edge) <= 8 && (best === null || Math.abs(v - edge) < Math.abs(best - edge))) best = v;
+      return best;
+    };
+    if (east || west) {
+      const edge = east ? d.rect.right + dx : d.rect.left + dx;
+      const v = snap(edge, lines.x);
+      if (v !== null) {
+        dx += v - edge;
+        d.guides.push({ axis: 'x', at: v });
+      }
+    }
+    if (north || south) {
+      const edge = south ? d.rect.bottom + dy : d.rect.top + dy;
+      const v = snap(edge, lines.y);
+      if (v !== null) {
+        dy += v - edge;
+        d.guides.push({ axis: 'y', at: v });
+      }
+    }
+  }
+  let w = d.rect.width + (east ? dx : west ? -dx : 0) * k;
+  let h = d.rect.height + (south ? dy : north ? -dy : 0) * k;
+  if (e.shiftKey && d.rect.width && d.rect.height) {
+    const ratio = d.rect.width / d.rect.height;
+    if (d.at.length === 2) {
+      if (Math.abs(w / d.rect.width) > Math.abs(h / d.rect.height)) h = w / ratio;
+      else w = h * ratio;
+    } else if (east || west) h = w / ratio;
+    else w = h * ratio;
+  }
+  w = Math.max(8, Math.round(w));
+  h = Math.max(8, Math.round(h));
+  d.w = w;
+  d.h = h;
+  const el = d.el;
+  el.style.transition = 'none';
+  if (east || west || e.shiftKey) el.style.width = `${w - d.extra.w}px`;
+  if (north || south || e.shiftKey) el.style.height = `${h - d.extra.h}px`;
+  if (d.abs) {
+    const gw = w - d.rect.width;
+    const gh = h - d.rect.height;
+    // the edge that moves is the one dragged (both, from the centre with Alt); the other stays
+    if (west || (e.altKey && east)) el.style.left = `${Math.round(d.left - (e.altKey ? gw / 2 : gw))}px`;
+    if (north || (e.altKey && south)) el.style.top = `${Math.round(d.top - (e.altKey ? gh / 2 : gh))}px`;
+  }
+}
+
+function endResize(cancel = false) {
+  const d = resize;
+  resize = null;
+  if (!d) return;
+  const restore = () => {
+    if (!d.el.isConnected) return;
+    Object.assign(d.el.style, d.saved);
+  };
+  if (!d.active || cancel) return restore();
+  suppressClick = true;
+  const set: Record<string, string | null> = {};
+  const sized = { w: d.el.style.width !== d.saved.width, h: d.el.style.height !== d.saved.height };
+  if (sized.w) set.width = d.el.style.width;
+  if (sized.h) set.height = d.el.style.height;
+  if (d.abs) {
+    if (d.el.style.left !== d.saved.left) set.left = d.el.style.left;
+    if (d.el.style.top !== d.saved.top) set.top = d.el.style.top;
+  }
+  // a size that grows with its parent ("fill") would ignore the new value: it becomes fixed
+  const parent = d.el.parentElement?.closest('[data-dc-tid]') as HTMLElement | null;
+  const pcs = parent ? getComputedStyle(parent) : null;
+  if (pcs?.display.includes('flex')) {
+    const row = !pcs.flexDirection.startsWith('column');
+    const style = docFor(current.source).elements[d.tid]?.attrs.find((a) => a.name === 'style')?.value ?? '';
+    const has = (p: string) => new RegExp(`(^|;)\\s*${p}\\s*:`).test(style);
+    if ((row ? sized.w : sized.h) && (has('flex') || has('flex-grow'))) Object.assign(set, { flex: null, 'flex-grow': null });
+    if ((row ? sized.h : sized.w) && has('align-self')) set['align-self'] = null;
+  }
+  post({ dc: 'resize', tid: d.tid, set });
+  // a change re-renders the page; if nothing was written, put the element back as it was
+  setTimeout(restore, 1500);
+}
+
+document.addEventListener(
+  'mousemove',
+  (e) => {
+    if (!inEdit() || drag || resize) return;
+    const at = spotAt(e.clientX, e.clientY);
+    document.documentElement.style.cursor = at ? CURSORS[at] : '';
+  },
+  true,
+);
+
 document.addEventListener(
   'pointerdown',
   (e) => {
@@ -780,6 +1086,8 @@ document.addEventListener(
     e.preventDefault();
     if (current.editing) commitText();
     if (e.button !== 0) return;
+    const at = spotAt(e.clientX, e.clientY);
+    if (at && current.selected !== null) return startResize(current.selected, at, e);
     // grabbing anything inside the selected element drags the selected element
     const sel = current.selected;
     const selEl = sel === null ? null : instances(sel)[0];
@@ -787,9 +1095,9 @@ document.addEventListener(
   },
   true,
 );
-document.addEventListener('pointermove', (e) => drag && moveDrag(e), true);
-document.addEventListener('pointerup', (e) => drag && endDrag(e), true);
-window.addEventListener('blur', () => drag && endDrag(new PointerEvent('pointerup'), true));
+document.addEventListener('pointermove', (e) => (resize ? moveResize(e) : drag && moveDrag(e)), true);
+document.addEventListener('pointerup', (e) => (resize ? endResize() : drag && endDrag(e)), true);
+window.addEventListener('blur', () => (resize ? endResize(true) : drag && endDrag(new PointerEvent('pointerup'), true)));
 
 for (const type of ['mousedown', 'mouseup', 'submit', 'auxclick']) {
   document.addEventListener(
@@ -814,6 +1122,7 @@ document.addEventListener(
       }
       const tid = tidOf(e.target);
       current.selected = tid;
+      showTime();
       post({ dc: 'select', tid, shift: e.shiftKey, x: e.clientX, y: e.clientY });
       return;
     }
@@ -847,6 +1156,7 @@ document.addEventListener(
     const tid = tidOf(e.target);
     if (tid !== current.selected) {
       current.selected = tid;
+      showTime();
       post({ dc: 'select', tid, shift: false, x: e.clientX, y: e.clientY });
     }
     post({ dc: 'contextmenu', tid, x: e.clientX, y: e.clientY });
@@ -857,7 +1167,7 @@ document.addEventListener(
 document.addEventListener(
   'mousemove',
   (e) => {
-    if (!inEdit() || drag?.active) return;
+    if (!inEdit() || drag?.active || resize?.active) return;
     const tid = tidOf(e.target);
     if (tid !== current.hover) {
       current.hover = tid;
@@ -950,6 +1260,10 @@ document.addEventListener(
       endDrag(new PointerEvent('pointerup'), true);
       return;
     }
+    if (resize && e.key === 'Escape') {
+      endResize(true);
+      return;
+    }
     const nav = /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|PageUp|PageDown|Home|End| |f|F)$/.test(e.key);
     if (!inEdit() && e.key !== 'Escape' && !(current.slide && nav)) return;
     if (!inEdit() && nav) e.preventDefault();
@@ -1000,20 +1314,28 @@ function onMessage(m: ToRuntime) {
       return;
     }
     const slide = m.slide ?? null;
+    const motion = m.motion ?? null;
+    const drawn = (x: MotionStageInfo | null) => (x ? JSON.stringify([x.format, x.formats, x.size]) : '');
     const changed =
       m.source !== current.source ||
       m.files !== current.files ||
       JSON.stringify(m.props) !== JSON.stringify(current.props) ||
       m.mode !== current.mode ||
       JSON.stringify(slide) !== JSON.stringify(current.slide) ||
-      (m.base ?? '') !== current.base;
+      (m.base ?? '') !== current.base ||
+      drawn(motion) !== drawn(current.motion);
     if (m.mode !== current.mode || m.source !== current.source) current.step = 0;
-    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected, slide, base: m.base ?? '' });
+    Object.assign(current, { file: m.file, source: m.source, files: m.files, props: m.props, mode: m.mode, selected: m.selected, slide, base: m.base ?? '', motion });
     document.documentElement.dataset.mode = m.mode;
     if (changed) render();
+    else showTime();
   } else if (m.dc === 'select') {
     current.selected = m.tid;
+    showTime();
     inspect();
+  } else if (m.dc === 'seek') {
+    if (current.motion) current.motion = { ...current.motion, t: m.t, landed: m.landed };
+    showTime();
   } else if (m.dc === 'hover') {
     externalHover = m.tid;
   } else if (m.dc === 'mode') {
@@ -1035,6 +1357,7 @@ function onMessage(m: ToRuntime) {
       const el = committedSource === current.source ? (instances(tid)[0] as HTMLElement | undefined) : undefined;
       if (el && editableTids().has(tid)) {
         current.selected = tid;
+        showTime();
         beginText(el);
       } else if (tries++ < 20) setTimeout(attempt, 50);
     };

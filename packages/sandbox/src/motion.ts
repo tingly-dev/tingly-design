@@ -6,22 +6,9 @@
  *
  * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
  */
-import {
-  attrsForFormat,
-  countText,
-  drawSlideArt,
-  easeProgress,
-  faceMarkup,
-  motionTimeline,
-  planScene,
-  sceneBaseCss,
-  speedOf,
-  SLIDE_BASE_CSS,
-  type DeckJson,
-  type MotionJson,
-  type SceneElement,
-  type SceneWindow,
-} from '@dc/core';
+import { resolveSrc, urlsAgainst } from './urls';
+import { attrsForFormat, drawSlideArt, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
+import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 
 export interface MountOptions {
   motion: MotionJson;
@@ -31,6 +18,8 @@ export interface MountOptions {
   root: HTMLElement;
   /** Overrides motion.json's speed (a preview at 2×, a render at another pace). */
   speed?: number;
+  /** Where the project's files are served: relative src and url() (uploads/…) resolve against it. */
+  base?: string;
 }
 
 export interface MotionStage {
@@ -50,35 +39,11 @@ export interface MotionStage {
   destroy(): void;
 }
 
-interface Counter {
-  el: Element;
-  text: string;
-  start: number;
-  duration: number;
-  easing: string;
-}
-
 interface Embed {
   frame: HTMLIFrameElement;
   sceneStart: number;
   ready: Promise<void>;
 }
-
-/** Appended to a seekable embed: answers `seek` once the embed has drawn that time. */
-const SEEK_BRIDGE = `<script>
-addEventListener('message', function (e) {
-  var d = e.data;
-  if (!d || d.dcMotion !== 'seek') return;
-  var done = function () { requestAnimationFrame(function () { parent.postMessage({ dcMotion: 'seeked', n: d.n }, '*'); }); };
-  try {
-    var r;
-    if (typeof window.seek === 'function') r = window.seek(d.t);
-    else if (window.__timelines) for (var k in window.__timelines) window.__timelines[k].seek(d.t / 1000);
-    Promise.resolve(r).then(done, done);
-  } catch (err) { done(); }
-});
-parent.postMessage({ dcMotion: 'embed-ready' }, '*');
-</script>`;
 
 const EMBED_HEAD = '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style>';
 
@@ -120,6 +85,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       const section = tpl.content.querySelector('section') ?? document.createElement('section');
       section.querySelectorAll('aside').forEach((a) => a.remove());
       applyFormat(section, format, formats);
+      if (opts.base) resolveUrls(section, opts.base);
       return { id, section };
     });
   const timeline = motionTimeline(
@@ -127,7 +93,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
   );
 
   const hosts: { host: HTMLElement; win: SceneWindow }[] = [];
-  const counters: Counter[] = [];
+  const anims: SceneAnim[] = [];
   const embeds: Embed[] = [];
   const issues: MotionStage['issues'] = [];
 
@@ -146,29 +112,9 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     host.appendChild(section);
 
     const els = [section, ...Array.from(section.querySelectorAll('*'))];
-    const elements: SceneElement[] = els.map((el) => ({
-      tag: el.tagName.toLowerCase(),
-      attrs: Object.fromEntries(Array.from(el.attributes).map((a) => [a.name, a.value])),
-      text: el.children.length ? undefined : el.textContent ?? '',
-    }));
-    const plan = planScene(elements, win.duration);
-    for (const is of plan.issues) issues.push({ scene: id, level: is.level, message: `<${elements[is.index].tag}> ${is.message}` });
-    for (const p of plan.plans) {
-      const el = els[p.index];
-      if (p.kind === 'count') {
-        counters.push({ el, text: el.textContent ?? '', start: win.start + p.delay, duration: p.duration, easing: p.easing });
-        continue;
-      }
-      const anim = el.animate(p.keyframes as Keyframe[], {
-        delay: win.start + p.delay,
-        duration: p.duration,
-        easing: p.easing,
-        // an exit must not hold its first frame over the entrance before it
-        fill: p.kind === 'out' || (p.kind === 'keys' && p.composite === 'replace') ? 'forwards' : 'both',
-        composite: p.composite,
-      });
-      anim.pause();
-    }
+    const anim = animateScene(els, win.start, win.duration);
+    for (const is of anim.issues) issues.push({ scene: id, level: is.level, message: `<${els[is.index].tagName.toLowerCase()}> ${is.message}` });
+    anims.push(anim);
     for (const [x, html] of embedHtml) {
       const frame = document.createElement('iframe');
       frame.setAttribute('sandbox', 'allow-scripts');
@@ -262,15 +208,14 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
   };
 
   function setTime(t: number) {
-    for (const a of root.getAnimations({ subtree: true })) {
-      a.currentTime = t;
-    }
+    for (const a of anims) a.setTime(t);
+    // scene transitions are on the hosts
+    for (const { host } of hosts) for (const a of host.getAnimations()) a.currentTime = t;
     for (const { host, win } of hosts) {
       const last = win === timeline.scenes[timeline.scenes.length - 1];
       const on = t >= win.start && (t < win.start + win.duration || (last && t <= win.start + win.duration));
       host.style.visibility = on ? 'visible' : 'hidden';
     }
-    for (const c of counters) c.el.textContent = countText(c.text, easeProgress(c.easing, (t - c.start) / c.duration));
   }
 
   await stage.seek(0);
@@ -314,6 +259,23 @@ function applyFormat(section: Element, format: string, formats: string[]) {
   }
 }
 
+/** Point relative image paths and url()s at the project's files, as the editing stage does. */
+function resolveUrls(section: Element, base: string) {
+  for (const el of [section, ...Array.from(section.querySelectorAll('*'))]) {
+    for (const name of ['src', 'poster', 'href']) {
+      const v = el.getAttribute(name);
+      if (v === null || (name === 'href' && el.tagName.toLowerCase() !== 'image')) continue;
+      const r = resolveSrc(v, base) as string;
+      if (r !== v) el.setAttribute(name, r);
+    }
+    const style = el.getAttribute('style');
+    if (style) {
+      const r = urlsAgainst(style, base);
+      if (r !== style) el.setAttribute('style', r);
+    }
+  }
+}
+
 function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
   const n = ++seekCounter;
   return new Promise((resolve) => {
@@ -338,7 +300,7 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
  * and the editor drives it over postMessage: load a project, seek, play, pause.
  */
 type HostMsg =
-  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still' }
+  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' };
@@ -357,7 +319,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       stage?.destroy();
       stage = null;
       try {
-        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root });
+        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root, base: m.base });
         if (n !== loading) return s.destroy();
         stage = s;
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));

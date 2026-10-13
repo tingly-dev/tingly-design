@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MOTION_FILE, parseMotion, primaryFormat, sceneFile, speedOf } from '@dc/core';
+import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
+import { api } from '../../api';
+import { motionImport } from '../../motion';
+import { ImportHere } from '../ImportHere';
 import { display, isSaving, useStore } from '../../store';
-import { AskClaude } from '../ds/DsApp';
-import { JournalPopover } from '../Overlays';
+import { ContextMenu, JournalPopover } from '../Overlays';
+import { RightPanel } from '../panel/RightPanel';
+import { PromptBar } from '../PromptBar';
+import { Panel } from '../icons';
 import { replaceUrl } from '../../host';
 import { BASE } from '../../base';
+import { motionKeys } from '../../shortcuts';
+import { SlideFrame } from '../slides/SlideFrame';
 import { MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -27,6 +34,16 @@ function useSources(): { motionText: string; scenes: Record<string, string> } {
   }, [key]);
 }
 
+/** A value that follows `v` once it has stopped changing for `ms`. */
+function useSettled<T>(v: T, ms: number): T {
+  const [out, setOut] = useState(v);
+  useEffect(() => {
+    const t = setTimeout(() => setOut(v), ms);
+    return () => clearTimeout(t);
+  }, [v, ms]);
+  return out;
+}
+
 function useBox(): [React.RefObject<HTMLDivElement | null>, { w: number; h: number }] {
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -42,56 +59,99 @@ function useBox(): [React.RefObject<HTMLDivElement | null>, { w: number; h: numb
   return [ref, box];
 }
 
+/**
+ * A motion piece: one screen for watching and editing. While it plays, the
+ * player draws the whole timeline; paused, the stage is the scene under the
+ * playhead, stopped at that time and editable like a slide.
+ */
 export function MotionApp() {
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
+  const panelOpen = useStore((s) => s.panelOpen);
+  const project = useStore((s) => s.project);
+  const base = project ? api.rawBase(project) : '';
   const { motionText, scenes } = useSources();
   const motion = useMemo(() => parseMotion(motionText), [motionText]);
   const playScenes = useMemo(() => Object.fromEntries(motion.order.filter((id) => id in scenes).map((id) => [id, scenes[id]])), [motion, scenes]);
   const formats = Object.keys(motion.formats);
+  const primary = primaryFormat(motion);
   const [format, setFormat] = useState(() => {
     const f = new URLSearchParams(location.search).get('f');
-    return f && f in motion.formats ? f : primaryFormat(motion);
+    return f && f in motion.formats ? f : primary;
   });
-  const fmt = format in motion.formats ? format : primaryFormat(motion);
+  const viewFormat = useStore((s) => s.motionView?.format);
+  const fmt = format in motion.formats ? format : primary;
   const [speed, setSpeed] = useState<number | null>(null);
   const projectSpeed = speedOf(motion.speed);
   const rate = speed ?? projectSpeed;
 
+  // the timeline, from the files themselves: the stage needs it before (and without) the player
+  const timeline = useMemo(() => motionTimeline(motion.order.filter((id) => id in scenes).map((id) => ({ id, ...sceneTiming(scenes[id]) }))), [motion, scenes]);
+  const duration = timeline.duration / rate;
+
   const coverScene = motion.cover && 'scene' in motion.cover && scenes[motion.cover.scene] !== undefined ? motion.cover.scene : null;
   const coverAt = motion.cover && 'at' in motion.cover ? motion.cover.at : null;
   const [showCover, setShowCover] = useState(true);
-  const cover = coverScene && showCover;
-  const coverScenes = useMemo(() => (coverScene ? { [coverScene]: scenes[coverScene] } : {}), [coverScene, scenes]);
-  const coverMotion = useMemo(() => ({ ...motion, order: coverScene ? [coverScene] : [] }), [motion, coverScene]);
+  const cover = !!coverScene && showCover;
 
   const control = useRef<MotionControl | null>(null);
   const [info, setInfo] = useState<MotionInfo | null>(null);
-  const [t, setT] = useState(0);
-  const tRef = useRef(0);
+  const [t, setT] = useState(() => (coverAt !== null ? coverAt / rate : 0));
+  const tRef = useRef(t);
   tRef.current = t;
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const [stageRef, box] = useBox();
-  const started = useRef(false);
+
+  // the player reloads in the background once edits settle, so typing never waits on it
+  const player = useSettled(useMemo(() => ({ motion, scenes: playScenes }), [motion, playScenes]), 600);
+
+  // the scene under the playhead; in a transition, the one coming in
+  const authored = t * rate;
+  const current = timeline.scenes.findLast((w) => authored >= w.start) ?? timeline.scenes[0];
+  const stageId = cover ? coverScene! : current?.id;
+  const stageAt = cover
+    ? (parseTime(sceneTiming(scenes[coverScene!] ?? '').duration) ?? DEFAULT_SCENE_MS)
+    : current
+      ? Math.max(0, Math.min(current.duration, authored - current.start))
+      : 0;
+  // while playing, the stage keeps what it showed when paused (it is hidden, and re-rendering it every frame would cost)
+  // on a scene's first moment the stage draws the scene landed, as a page: at 0 s most of it hasn't come in yet
+  const stageLanded = !cover && !!current && stageAt < 0.5;
+  const held = useRef({ id: stageId, at: stageAt, landed: stageLanded });
+  if (!playing) held.current = { id: stageId, at: stageAt, landed: stageLanded };
+  const stage = held.current;
 
   useEffect(() => {
     document.title = `${motion.title} · 动效`;
   }, [motion.title]);
   useEffect(() => {
     const u = new URL(location.href);
-    if (fmt === primaryFormat(motion)) u.searchParams.delete('f');
+    if (fmt === primary) u.searchParams.delete('f');
     else u.searchParams.set('f', fmt);
     if (u.href !== location.href) replaceUrl(u);
-  }, [fmt, motion]);
+  }, [fmt, primary]);
+  // a format picked elsewhere (the panel added one)
+  useEffect(() => {
+    if (viewFormat && viewFormat !== format && viewFormat in motion.formats) setFormat(viewFormat);
+  }, [viewFormat]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    useStore.setState({ motionView: { format: fmt, primary, scene: stage.id ?? null, at: stage.at, landed: stage.landed } });
+  }, [fmt, primary, stage.id, stage.at, stage.landed]);
+  useEffect(() => () => useStore.setState({ motionView: null }), []);
+  // a selection belongs to the scene it was made in
+  useEffect(() => {
+    const sel = useStore.getState().selection;
+    if (sel && (sel.kind === 'el' || sel.kind === 'board') && stage.id && sel.file !== sceneFile(stage.id)) useStore.setState({ selection: null });
+  }, [stage.id]);
 
-  const duration = info?.duration ?? 0;
+
   const play = () => {
     if (!info) return;
-    started.current = true;
     setShowCover(false);
+    useStore.setState({ menu: null });
     const from = t >= duration - 1 ? 0 : t;
     control.current?.play(from);
     setPlaying(true);
@@ -101,40 +161,44 @@ export function MotionApp() {
     setPlaying(false);
   };
   const seek = (ms: number) => {
-    started.current = true;
     setShowCover(false);
     control.current?.seek(ms);
     setPlaying(false);
-    setT(ms);
+    setT(Math.max(0, Math.min(duration, ms)));
   };
 
+  // space plays; arrows step a frame (a second with Shift)
+  const keys = useRef({ play, pause, seek, playing, fps: motion.fps, duration });
+  keys.current = { play, pause, seek, playing, fps: motion.fps, duration };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable) return;
-      if (e.key === ' ') {
-        e.preventDefault();
-        (playing ? pause : play)();
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        const step = e.shiftKey ? 1000 : 1000 / (info?.fps ?? 30);
-        seek(Math.max(0, Math.min(duration, tRef.current + (e.key === 'ArrowLeft' ? -step : step))));
+    motionKeys.handle = (key, meta, shift) => {
+      const k = keys.current;
+      if (meta) return false;
+      if (key === ' ') {
+        (k.playing ? k.pause : k.play)();
+        return true;
       }
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        const step = shift ? 1000 : 1000 / (k.fps || 30);
+        k.seek(tRef.current + (key === 'ArrowLeft' ? -step : step));
+        return true;
+      }
+      return false;
     };
-    addEventListener('keydown', onKey);
-    return () => removeEventListener('keydown', onKey);
-  });
+    return () => {
+      motionKeys.handle = null;
+    };
+  }, []);
 
-  // a reload (a file changed, another format or speed) keeps the place, in authored time
-  const authoredAt = info ? tRef.current * info.speed : 0;
-  const at = !started.current && coverAt !== null ? coverAt / rate : started.current ? authoredAt / rate : 0;
+  // a player reload (a file changed, another format or speed) keeps the place, in authored time
+  const playerAt = !info && coverAt !== null ? coverAt / rate : tRef.current;
 
-  const windows = info?.scenes ?? [];
-  const current = windows.findLast?.((w) => t * (info?.speed ?? 1) >= w.start) ?? windows[0];
   const errors = info?.issues.filter((i) => i.level === 'error').length ?? 0;
+  const [W, H] = motion.formats[fmt]?.size ?? [1920, 1080];
+  const scale = Math.max(0.01, Math.min(box.w / W, box.h / H));
 
   return (
-    <div className="app dash motion">
+    <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
       <header className="dashbar">
         <a className="btn ghost back" href={BASE} title="所有项目">
           ←
@@ -164,43 +228,62 @@ export function MotionApp() {
           </select>
         </label>
         {coverScene && (
-          <button className={`btn ghost${cover ? ' on' : ''}`} aria-pressed={!!cover} onClick={() => (cover ? setShowCover(false) : (pause(), setShowCover(true)))} title="封面：缩略图、视频第一帧和播放前显示的那一页">
+          <button
+            className={`btn ghost${cover ? ' on' : ''}`}
+            aria-pressed={cover}
+            onClick={() => (cover ? setShowCover(false) : (pause(), setShowCover(true)))}
+            title="封面：缩略图、视频第一帧和播放前显示的那一页。打开时可以直接改它"
+          >
             封面
           </button>
         )}
+        <ImportHere target={motionImport} label="动效" />
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title="时间上的问题">
           检查{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
         <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
           记录
         </button>
+        <button className="tb" aria-pressed={panelOpen} aria-label="属性面板" title="属性面板（⌘\）" onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
+          <Panel />
+        </button>
       </header>
       <main className="mmain">
-        <div ref={stageRef} className="mstage">
+        <div ref={stageRef} className="mstage" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
           {!motion.order.length && <div className="lhint">motion.json 的 order 里还没有场景。</div>}
           {box.w > 0 && motion.order.length > 0 && (
-            <div className="mstack">
-              <MotionFrame
-                motion={motion}
-                scenes={playScenes}
-                format={fmt}
-                speed={rate}
-                at={at}
-                box={box}
-                title="动效"
-                control={control}
-                onLoaded={(i) => {
-                  setInfo(i);
-                  setError(null);
-                  setPlaying(false);
-                }}
-                onTime={setT}
-                onEnded={() => setPlaying(false)}
-                onError={setError}
-              />
-              {cover && (
-                <div className="mcover">
-                  <MotionFrame motion={coverMotion} scenes={coverScenes} format={fmt} at="end" box={box} title="封面" />
+            <div className="mstack" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
+              <div className={`mlayer${playing ? ' on' : ''}`} aria-hidden={!playing}>
+                <MotionFrame
+                  motion={player.motion}
+                  scenes={player.scenes}
+                  format={fmt}
+                  speed={rate}
+                  at={playerAt}
+                  base={base}
+                  box={box}
+                  title="动效"
+                  control={control}
+                  onLoaded={(i) => {
+                    setInfo(i);
+                    setError(null);
+                    setPlaying(false);
+                  }}
+                  onTime={(v) => keys.current.playing && setT(v)}
+                  onEnded={() => setPlaying(false)}
+                  onError={setError}
+                />
+              </div>
+              {/* the player is a frame, so clicks on it never reach here: a clear layer pauses instead */}
+              {playing && <button className="mcatch" aria-label="暂停并回到编辑" title="点一下暂停，回到编辑" onClick={pause} />}
+              {stage.id && scenes[stage.id] !== undefined && (
+                <div className={`mlayer medit${playing ? '' : ' on'}`} aria-hidden={playing}>
+                  <SlideFrame
+                    id={stage.id}
+                    scale={scale}
+                    use="stage"
+                    scene={{ file: sceneFile(stage.id), faces: motion.faces, info: { format: fmt, formats, size: [W, H], t: stage.at, landed: stage.landed } }}
+                  />
                 </div>
               )}
             </div>
@@ -215,15 +298,18 @@ export function MotionApp() {
             {secs(t)} / {secs(duration)} s
           </span>
           <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(t)} onChange={(e) => seek(Number(e.target.value))} aria-label="时间" />
+          <span className="mwhere" title={cover ? '封面' : stageLanded ? '场景开头：所有元素按落定的样子画出，方便编辑；往后拖一帧看真实画面' : '播放头所在的场景和场景里的时间'}>
+            {cover ? '封面' : current ? `${current.id} · ${secs(stageAt)} s${stageLanded ? ' · 落定' : ''}` : ''}
+          </span>
         </div>
         <div className="mscenes" aria-label="场景">
-          {windows.map((w) => (
+          {timeline.scenes.map((w) => (
             <button
               key={w.id}
-              className={`mscene${current?.id === w.id ? ' on' : ''}`}
+              className={`mscene${!cover && current?.id === w.id ? ' on' : ''}`}
               style={{ flexGrow: w.duration }}
-              onClick={() => seek(w.start / (info?.speed ?? 1) + 1)}
-              title={`${w.id}：${secs(w.duration / (info?.speed ?? 1))} s${w.transition.kind !== 'cut' ? `，${w.transition.kind} 转场` : ''}`}
+              onClick={() => seek(w.start / rate)}
+              title={`${w.id}：${secs(w.duration / rate)} s${w.transition.kind !== 'cut' ? `，${w.transition.kind} 转场` : ''}`}
             >
               {w.id}
             </button>
@@ -244,12 +330,12 @@ export function MotionApp() {
             )}
           </div>
         )}
-        <AskClaude
-          file={current ? sceneFile(current.id) : MOTION_FILE}
-          placeholder="交给 Claude Code：改一个场景、加一段动画、调整节奏、做一张封面…"
-          context={() => (current ? `播放到 ${secs(tRef.current)} s，场景 ${current.id}，尺寸 ${fmt}。` : '')}
-        />
+        <div className="mprompt">
+          <PromptBar />
+        </div>
       </main>
+      {panelOpen && <RightPanel />}
+      <ContextMenu />
       {journalOpen && <JournalPopover />}
     </div>
   );

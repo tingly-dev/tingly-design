@@ -9,6 +9,7 @@ import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideLayers, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
+import { FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
 export function RightPanel() {
@@ -23,8 +24,30 @@ export function RightPanel() {
   const info = el && inspect?.tid === el.tid ? inspect : null;
   const slides = useStore((s) => s.kind === 'slides');
 
+  const motion = useStore((s) => s.kind === 'motion');
+
   let body: React.ReactElement;
-  if (slides && sel?.kind === 'el' && file && doc && el && tab !== 'code') {
+  if (motion) {
+    if ((sel?.kind === 'el' || sel?.kind === 'board') && file && tab === 'code') {
+      body = (
+        <div className="sec">
+          <span className="hint">{file}</span>
+          <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="场景源文件" />
+          <span className="hint">这是这个场景的源文件。改文件（手改、Claude Code、git）后会实时更新。</span>
+        </div>
+      );
+    } else if (sel?.kind === 'board' && file) body = <SceneProps file={file} />;
+    else if (sel?.kind === 'el' && file && doc && el && !el.parent) body = <SceneProps file={file} />;
+    else if (sel?.kind === 'el' && file && doc && el)
+      body = (
+        <>
+          <FormatNote file={file} el={el} />
+          <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
+        </>
+      );
+    else if (sel?.kind === 'el') body = <div className="empty">这个元素已经不在场景里了。</div>;
+    else body = <MotionProps />;
+  } else if (slides && sel?.kind === 'el' && file && doc && el && tab !== 'code') {
     body = (
       <>
         <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
@@ -88,7 +111,7 @@ export function RightPanel() {
   const tabs: { id: typeof tab; label: string }[] = [
     { id: 'props', label: '属性' },
     { id: 'code', label: '代码' },
-    ...(slides ? [] : [{ id: 'tweaks' as const, label: 'Tweaks' }]),
+    ...(slides || motion ? [] : [{ id: 'tweaks' as const, label: 'Tweaks' }]),
   ];
   return (
     <aside className="panel" aria-label="属性面板">
@@ -102,7 +125,7 @@ export function RightPanel() {
           <Close />
         </button>
       </div>
-      {slides ? <SlideLayers /> : <LayerTree />}
+      {motion ? <MotionLayers /> : slides ? <SlideLayers /> : <LayerTree />}
       <div className="pbody">{body}</div>
     </aside>
   );

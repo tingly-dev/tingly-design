@@ -49,6 +49,10 @@ On any element:
 
 The editor lists problems it finds: an exit before the entry, text on screen under 0.8 s, an `<x-embed>` without `data-seek` (it cannot be exported).
 
+## Pictures and files people brought in
+
+Files people brought in (attachments, imported pictures) live under `uploads/`. A scene shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; the editor, the player and the renderer all resolve it. Don't move or rename them.
+
 ## Several formats
 
 Scenes are shared by all formats; elements that need a different layout carry overrides named after the format:
