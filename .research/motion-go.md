@@ -73,7 +73,7 @@
 
 ## 6. vgpu
 
-`vgpu/node`（Dawn 的 Node 绑定）是唯一的 Node 原生依赖，它目前只出现在研究笔记里，仓库代码没有引用（实测，全仓 grep）。如果以后用 GPU 离屏渲染替代"截图 + ffmpeg"，Go 侧对应的是 Dawn 的 C API 经 cgo，或 wgpu-native；这会带来 cgo 和逐平台构建，和"Go 单文件"的初衷相冲。在它从研究变成需要之前，不值得为它定方向。（推断）
+`vgpu/node`（Dawn 的 Node 绑定）会是唯一的 Node 原生依赖。主干代码还没有引用它（实测，全仓 grep）；动效的着色器效果正在另一个尚未合并的改动里试，用 vgpu 离屏渲染、浏览器里用 WebGL2。如果以后用 GPU 离屏渲染替代"截图 + ffmpeg"，Go 侧对应的是 Dawn 的 C API 经 cgo，或 wgpu-native；这会带来 cgo 和逐平台构建，和"Go 单文件"的初衷相冲。在它从研究变成需要之前，不值得为它定方向。（推断）
 
 ## 7. 拆开看：动效哪些跟着服务端语言走
 
