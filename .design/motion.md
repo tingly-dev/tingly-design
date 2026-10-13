@@ -335,3 +335,19 @@ What `<x-embed data-seek>` was for (§5): the things attributes can't do, here a
 **Results (4-core container, no GPU):** `--verify` 16/16 frames byte-identical when seeked in reverse. 12 s at 30 fps in 106 to 111 s per format (3.2 to 3.4 fps), against 6 to 14 fps without effects: each frame pays about 35 ms of software shading and about 60 ms to move the pixels into the page. A GPU would remove most of the first; JPEG or a smaller `data-quality` the second.
 
 **Open:** the browser path is unverified here (no WebGPU in the container) and loads vgpu from jsDelivr, which the editor would bundle instead; the runtime is copied into each effect until the runtime or the editor injects it from `data-fx`; shader parameters (colours, speed) are constants in the WGSL, not attributes yet; `vgpu check` could join the motion checker so a model's broken shader comes back as an error.
+
+### 12.1 The same sample in WebGL2
+
+`projects/webgl-motion/` is the sample above with each shader ported to GLSL ES 3.0 (`uniform float time, aspect; in vec2 uv;`, top-left origin, premultiplied alpha) and a runtime that draws with WebGL2 inside the embed. Headless Chromium has WebGL2 (ANGLE on SwiftShader), so nothing leaves the page: no renderer host, no vgpu dependency, and the player and editor take the same path as export.
+
+| | vgpu (WGSL, frames from vgpu/node) | WebGL2 (GLSL, in the page) |
+|---|---|---|
+| 12 s at 30 fps, per format | 106 to 111 s (3.3 fps) | 78 to 84 s (4.5 fps) |
+| `--verify` | 16/16 | 16/16 |
+| Moving parts | embed runtime, probe, `page.route` host, Dawn + llvmpipe | embed runtime only |
+| Browser preview | WebGPU, unverified here | the same WebGL2 path as export |
+
+- **One race to know.** A WebGL canvas that is first drawn when its scene comes into view (here the second scene, fading in over the first) was sometimes captured before its layer was on screen: 1 frame of 16 differed in about half the early runs. Drawing once when the embed loads, and resolving `seek` two frames after the draw, made it 16/16 in every run since (8 runs).
+- **Same shader, different noise.** The orbit (only `sin`/`cos` of small values) matches pixel for pixel in shape; the aurora's pattern differs because its hash, `fract(sin(x) * 43758.5)`, depends on how each implementation computes `sin` of large values (llvmpipe vs SwiftShader). Within one renderer it is deterministic; across renderers, use an integer hash (PCG) if the picture must match.
+- **What WebGL2 can't do**: compute shaders, so simulations (fluid, many-particle physics) stay with WebGPU/vgpu.
+
