@@ -1,4 +1,5 @@
 import type React from 'react';
+import { attr } from '@dc/core';
 import { display, parsed, useCanvas, useStore } from '../../store';
 import { Close } from '../icons';
 import { CodeTab } from './CodeTab';
@@ -9,6 +10,7 @@ import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideLayers, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
+import { JQueryBox } from './JQueryBox';
 import { FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
@@ -16,25 +18,33 @@ export function RightPanel() {
   const tab = useStore((s) => s.panelTab);
   const sel = useStore((s) => s.selection);
   const canvas = useCanvas();
-  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : null;
+  const slides = useStore((s) => s.kind === 'slides');
+  const motion = useStore((s) => s.kind === 'motion');
+  // with nothing selected, the Code tab of a deck or a motion piece shows the slide or scene on stage
+  const onStage = useStore((s) =>
+    s.kind === 'slides' && s.slide ? `slides/${s.slide}.html` : s.kind === 'motion' && s.motionView?.scene ? `scenes/${s.motionView.scene}.html` : null,
+  );
+  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : !sel && tab === 'code' ? onStage : null;
   const source = useStore((s) => (file ? display(s, file) : undefined));
   const inspect = useStore((s) => s.inspect);
   const doc = source ? parsed(source) : null;
   const el = sel?.kind === 'el' && doc ? doc.elements[sel.tid] : undefined;
   const info = el && inspect?.tid === el.tid ? inspect : null;
-  const slides = useStore((s) => s.kind === 'slides');
-
-  const motion = useStore((s) => s.kind === 'motion');
+  // how jQuery addresses the selected element: its own id, else the handle the editor numbers
+  const handle = el ? (attr(el, 'id') ? `#${attr(el, 'id')}` : `#dc${el.tid}`) : undefined;
 
   let body: React.ReactElement;
   if (motion) {
-    if ((sel?.kind === 'el' || sel?.kind === 'board') && file && tab === 'code') {
+    if (file && tab === 'code') {
       body = (
-        <div className="sec">
-          <span className="hint">{file}</span>
-          <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="场景源文件" />
-          <span className="hint">这是这个场景的源文件。改文件（手改、Claude Code、git）后会实时更新。</span>
-        </div>
+        <>
+          <div className="sec">
+            <span className="hint">{file}</span>
+            <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="场景源文件" />
+            <span className="hint">这是这个场景的源文件。改文件（手改、Claude Code、git）后会实时更新。</span>
+          </div>
+          <JQueryBox file={file} handle={handle} />
+        </>
       );
     } else if (sel?.kind === 'board' && file) body = <SceneProps file={file} />;
     else if (sel?.kind === 'el' && file && doc && el && !el.parent) body = <SceneProps file={file} />;
@@ -54,14 +64,17 @@ export function RightPanel() {
         <BuildRow file={file} tid={el.tid} />
       </>
     );
-  } else if (slides && sel?.kind === 'board' && file) {
+  } else if (slides && file && (sel?.kind === 'board' || !sel)) {
     body =
       tab === 'code' ? (
-        <div className="sec">
-          <span className="hint">{file}</span>
-          <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="幻灯片源文件" />
-          <span className="hint">这是这一页的源文件。改文件（手改、Claude Code、git）后会实时更新。</span>
-        </div>
+        <>
+          <div className="sec">
+            <span className="hint">{file}</span>
+            <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="幻灯片源文件" />
+            <span className="hint">这是这一页的源文件。改文件（手改、Claude Code、git）后会实时更新。</span>
+          </div>
+          <JQueryBox file={file} />
+        </>
       ) : (
         <SlideProps file={file} />
       );
@@ -69,18 +82,27 @@ export function RightPanel() {
     body = <DeckProps />;
   } else if (sel?.kind === 'el' && file && doc) {
     if (!el) body = <div className="empty">这个元素已经不在设计里了。</div>;
-    else if (tab === 'code') body = <CodeTab file={file} doc={doc} el={el} info={info} />;
+    else if (tab === 'code')
+      body = (
+        <>
+          <CodeTab file={file} doc={doc} el={el} info={info} />
+          <JQueryBox file={file} handle={handle} />
+        </>
+      );
     else if (tab === 'tweaks') body = <Tweaks file={file} doc={doc} />;
     else body = <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />;
   } else if (sel?.kind === 'board' && file && canvas.boards[file]) {
     if (tab === 'tweaks' && doc) body = <Tweaks file={file} doc={doc} />;
     else if (tab === 'code')
       body = (
-        <div className="sec">
-          <span className="hint">{file}</span>
-          <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="画板源文件" />
-          <span className="hint">这是画板的源文件。改文件（手改、Claude Code、git）后画布会实时更新。</span>
-        </div>
+        <>
+          <div className="sec">
+            <span className="hint">{file}</span>
+            <textarea className="code" readOnly value={source ?? ''} style={{ minHeight: 360 }} aria-label="画板源文件" />
+            <span className="hint">这是画板的源文件。改文件（手改、Claude Code、git）后画布会实时更新。</span>
+          </div>
+          <JQueryBox file={file} />
+        </>
       );
     else body = <BoardProps file={file} entry={canvas.boards[file]} />;
   } else if (sel?.kind === 'note' && canvas.notes[sel.id]) {

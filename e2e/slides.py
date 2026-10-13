@@ -1,5 +1,5 @@
 """End-to-end checks for the slide editor. Run with `pnpm dev` up: python3 e2e/slides.py"""
-import os, asyncio, subprocess, time, json
+import os, re, asyncio, subprocess, time, json
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -154,12 +154,15 @@ async def main():
         subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro/slides/powerups.html'], cwd=REPO)
         await expect(pg.locator('.issues')).to_have_count(0)
 
-        # --- jQuery runs on a slide too ---------------------------------------------------
-        await pg.locator('.prompt .seg button', has_text='jQuery').click()
-        await pg.locator('.prompt textarea').fill("$('h2').css('color', '#ff5c8a')")
-        await pg.locator('.prompt .send').click()
+        # --- jQuery runs on a slide too, from the Code tab ---------------------------------
+        await pg.keyboard.press('Escape')
+        await pg.locator('.panel [role="tab"]', has_text='代码').click()
+        await expect(pg.locator('.panel textarea[aria-label="幻灯片源文件"]')).to_have_value(re.compile('<h2'))
+        await pg.locator('.jqbox textarea').fill("$('h2').css('color', '#ff5c8a')")
+        await pg.locator('.jqbox button', has_text='执行').click()
         ok = await wait_for(lambda: '#ff5c8a' in src('slides/powerups.html'))
         check('jQuery statements edit the slide', ok)
+        await pg.locator('.panel [role="tab"]', has_text='属性').click()
 
         # --- presenting -----------------------------------------------------------------
         await pg.locator('.thumb[data-slide="box"]').click()

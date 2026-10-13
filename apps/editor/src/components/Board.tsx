@@ -77,6 +77,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   const pendingEdit = useRef<number | null>(null);
   const source = useStore((s) => display(s, file));
   const drafting = useStore((s) => s.drafts[file] !== undefined);
+  const claudeOn = useStore((s) => s.delegates.some((d) => (d.state === 'start' || d.state === 'progress') && d.files.includes(file)));
   const mode = useStore((s) => s.mode);
   const project = useStore((s) => s.project);
   const zoom = useStore((s) => s.view.zoom);
@@ -300,7 +301,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             {title}
           </span>
         )}
-        {drafting && <span className="badge ai">AI 正在改</span>}
+        {drafting ? <span className="badge ai">快速 AI 正在改</span> : claudeOn && <span className="badge claude">Claude Code 正在改</span>}
         {error && (
           <span className="badge err" title={error}>
             出错

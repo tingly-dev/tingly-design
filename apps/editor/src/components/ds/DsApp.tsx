@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DS_README, compileTokensCss, sectionFiles, type Attachment } from '@dc/core';
-import { delegateToClaude } from '../../fastedit';
-import { keepAttachments, useAttachments } from '../../attachments';
-import { AttachButton, AttachTray } from '../Attachments';
+import { DS_README, compileTokensCss, sectionFiles } from '@dc/core';
+import { AskClaude } from '../AskClaude';
 import { display, edit, isSaving, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
 import { ImportHere } from '../ImportHere';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
-import { Send } from '../icons';
 import { currentTheme } from '../../theme';
 import { replaceUrl } from '../../host';
 
@@ -110,94 +107,6 @@ function Issues() {
         <p className="hint">没有问题：每个 token 都能读。</p>
       )}
     </section>
-  );
-}
-
-export function AskClaude({
-  placeholder = '交给 Claude Code：从代码库补全 token 和组件、写品牌手册、做封面…',
-  file,
-  context,
-}: {
-  placeholder?: string;
-  file?: string;
-  /** what the person is looking at, said before the request */
-  context?: () => string;
-}) {
-  const [text, setText] = useState('');
-  const fast = useStore((s) => s.fast);
-  const delegates = useStore((s) => s.delegates);
-  const health = useStore((s) => s.health);
-  const attach = useAttachments();
-  const active = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
-  const [keeping, setKeeping] = useState(false);
-  const send = async () => {
-    const t = text.trim();
-    const project = useStore.getState().project;
-    if (!t || !project || keeping) return;
-    let files: Attachment[] = [];
-    if (attach.items.length) {
-      setKeeping(true);
-      try {
-        files = await keepAttachments(project, attach.items);
-      } catch (e) {
-        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
-        return;
-      } finally {
-        setKeeping(false);
-      }
-    }
-    const ctx = context?.();
-    void delegateToClaude(file, null, ctx ? `${ctx}\n\n${t}` : t, files);
-    setText('');
-    attach.clear();
-  };
-  return (
-    <div
-      className={`dsask${attach.over ? ' dropping' : ''}`}
-      role="region"
-      aria-label="交给 Claude Code"
-      onDragOver={attach.handlers.onDragOver}
-      onDragLeave={attach.handlers.onDragLeave}
-      onDrop={attach.handlers.onDrop}
-    >
-      <AttachTray items={attach.items} onRemove={attach.remove} />
-      <AttachButton onFiles={(f) => void attach.add(f)} />
-      <textarea
-        rows={1}
-        value={text}
-        placeholder={health?.claudeCli === false ? '本机找不到 claude 命令，无法委托。' : placeholder}
-        aria-label="请求"
-        onChange={(e) => setText(e.target.value)}
-        onPaste={attach.handlers.onPaste}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            void send();
-          }
-        }}
-      />
-      <button className="btn primary" onClick={() => void send()} disabled={!text.trim() || keeping || health?.claudeCli === false}>
-        <Send /> 发送
-      </button>
-      {attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
-      {(active || fast.note) && (
-        <div className="ticker">
-          {active ? (
-            <>
-              <div className="note-line claude">Claude Code 正在处理：{active.prompt}</div>
-              {active.lines.slice(-4).map((l, i) => (
-                <div key={i} className="claude-line">
-                  {l}
-                </div>
-              ))}
-            </>
-          ) : (
-            <div className="note-line">{fast.note}</div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 

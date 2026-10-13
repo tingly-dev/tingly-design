@@ -48,7 +48,9 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 功能 | 共用部件 | 画布 | 幻灯片 | 设计系统 | 看板 | 文档 | 动效 | 备注 |
 |---|---|---|---|---|---|---|---|--- |
 | 快速 AI（jQuery 写回） | `PromptBar`、`fastedit.ts`、`/fast-edit` | ✓ | ✓（越出幻灯片子集会撤回并说明） | ✗ | ✗（页面交给 Claude Code 写，服务端拒绝） | ✓ 选中段落改写，走 `FAST_EDIT_DOCS` | ✓ 播放头所在场景，走 `FAST_EDIT_MOTION`，用 `checkScene` 检查；非主尺寸里的样式写成覆盖 | |
-| 交给 Claude Code | `AskClaude`（`ds/DsApp.tsx`）、`PromptBar` 的 `askClaude()`、`delegate.ts` | ✓ | ✓ | ✓ | ✓（可跑 `scripts/dash-query.mjs`） | ✓ | ✓ | |
+| 交给 Claude Code | `AskClaude`（`AskClaude.tsx`）、`PromptBar` 的 `askClaude()`、`delegate.ts` | ✓ | ✓ | ✓ | ✓（可跑 `scripts/dash-query.mjs`） | ✓ | ✓ | |
+| 运行反馈（[agent-feedback.md](./agent-feedback.md)） | `RunFeed`（挂在 `PromptBar` 和 `AskClaude` 里）、core 的 `describeTool`、`DELETE …/delegate/:id` | ✓ 改动文件可定位画板；运行中画板有徽标 | ✓ 定位到那一页 | ✓ 文件只列不跳（没有单一视图可定位） | ✓ 打开数据来源或代码面板 | ✓ 切到那个标签页 | ✓ 跳到那个场景 | |
+| 手写 jQuery（“代码”面板，[agent-feedback.md](./agent-feedback.md) §4） | `panel/JQueryBox.tsx`、`runJQuery`，运行卡片的“在 jQuery 里改” | ✓ 元素或画板 | ✓ 没选中时用舞台上那一页 | ✗ 没有 jQuery 执行器 | ✗ 同左 | ✗ 快速 AI 改的是段落文字，不是语句 | ✓ 没选中时用舞台上那个场景 | 高级入口，不在请求栏上 |
 | 附件（[attachments.md](./attachments.md)） | `attachments.ts`、`Attachments.tsx` | ✓ 发给模型；画板可用 `src="uploads/…"` 显示，画布图片项 `src: "uploads/…"` | ✓ 可用 `src="uploads/…"` 显示 | ✓ | ✓ | ✓ Claude Code 栏可附；段落改写不带附件；标签页用 `../uploads/…` | ✓ 发给模型；场景可用 `src="uploads/…"` 显示 | `design-system`、`dashboard` 技能还没写 `uploads/` |
 | 版本、409 重放、协作 | `apps/server`、编辑队列 | ✓ | ✓ | ✓ | ✓ | ✓ 按块合并（`docs.ts` `mergeBlocks`） | ✓ | |
 | 日志（journal） | `JournalPopover`、`Journal` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
