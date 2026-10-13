@@ -628,13 +628,17 @@ let clip: Clip | null = null;
 export function setClip(c: Clip): void {
   clip = c;
   try {
-    navigator.clipboard?.writeText(c.kind === 'el' ? c.html : JSON.stringify(c.items, null, 2)).catch(() => {});
+    navigator.clipboard?.writeText(clipText()).catch(() => {});
   } catch {
     // clipboard permission is optional: the in-app clipboard still works
   }
 }
 export function getClip(): Clip | null {
   return clip;
+}
+/** The text the in-app clipboard put on the system clipboard: pasting it back is a paste, not an import. */
+export function clipText(): string {
+  return !clip ? '' : clip.kind === 'el' ? clip.html : JSON.stringify(clip.items, null, 2);
 }
 
 // remember whether the panel is open, per browser

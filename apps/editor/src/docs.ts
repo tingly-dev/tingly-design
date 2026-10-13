@@ -19,6 +19,9 @@ import {
 } from '@dc/core';
 import { deleteFile, display, edit, enqueueResult, toast, useStore } from './store';
 import { replaceUrl } from './host';
+import { joinPath } from '@dc/import';
+import { keepPicked } from './importer';
+import { filesOf, type ImportTarget } from './components/ImportHere';
 
 /** A doc in the editor: which tab is open, the comment rail, and writing tabs back block by block. */
 interface DocsState {
@@ -99,10 +102,10 @@ export function editComments(mutate: (c: DocComments) => void, summary: string):
 
 // ------------------------------------------------------------------ tabs
 
-export function addTab(title: string, parent?: string): string {
+export function addTab(title: string, parent?: string, markdown?: string): string {
   const d = parseDoc(display(useStore.getState(), DOC_INDEX));
   const id = uniqueTabId(d, /^[\x20-\x7e]+$/.test(title) ? title : 'tab');
-  edit(tabFile(id), () => newDocTab(title), { actor: 'human', summary: `tab ${id} added`, undoable: false });
+  edit(tabFile(id), () => markdown ?? newDocTab(title), { actor: 'human', summary: `tab ${id} added`, undoable: false });
   editDoc((x) => {
     const tab = parent ? { id, title, parent } : { id, title };
     if (parent) {
@@ -214,3 +217,46 @@ export function author(): string {
 export function threadsOf(c: DocComments, tab: string | null, resolved: boolean): DocThread[] {
   return c.threads.filter((t) => t.tab === tab && (resolved || !t.resolved));
 }
+
+// ------------------------------------------------------------------ import
+
+/** `![a](img/x.png)`, `<img src="img/x.png">`: the relative references in a Markdown file. */
+const MD_REF = /(!\[[^\]]*\]\()([^)\s]+)((?:\s+"[^"]*")?\))|(<img\b[^>]*?\ssrc=")([^"]+)(")/g;
+
+/**
+ * What a doc takes: each Markdown file becomes a tab after the others, titled
+ * by its first heading. The originals are kept in uploads/ like anything
+ * brought in; with its folder, the pictures it shows keep the folder's tree
+ * there and the tab's links point at them.
+ */
+export const docsImport: ImportTarget = {
+  accepts: ['markdown'],
+  what: '每个 Markdown 文件变成一个新的标签页，标题取自它的第一个标题。原文件留在项目的 uploads/ 里；连同文件夹导入，它引用的图片也一起留下。',
+  run: async (picked) => {
+    const project = useStore.getState().project!;
+    const docs = filesOf(picked, 'markdown');
+    // what was brought in is kept as it was (a folder with its tree, so the pictures' links hold); the tabs are copies to edit
+    const { at } = await keepPicked(project, picked, docs[0].path.replace(/\.[a-z]+$/i, ''));
+    let last = '';
+    for (const f of docs) {
+      const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '';
+      const text = new TextDecoder().decode(f.bytes).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+      const md = text.replace(MD_REF, (m, a1, p1, z1, a2, p2, z2) => {
+        const ref = p1 ?? p2;
+        if (/^([a-z]+:|\/|#)/i.test(ref)) return m;
+        let path = ref.split(/[?#]/)[0];
+        try {
+          path = decodeURI(path);
+        } catch {
+          // a stray % in a link: look it up as written
+        }
+        const kept = at.get(joinPath(dir, path));
+        return kept ? `${a1 ?? a2}../${kept}${z1 ?? z2}` : m;
+      });
+      const title = /^#\s+(.+)$/m.exec(md)?.[1].trim() || f.path.split('/').pop()!.replace(/\.[^.]+$/, '');
+      last = addTab(title.slice(0, 80), undefined, md.endsWith('\n') ? md : md + '\n');
+    }
+    if (last) openTab(last);
+    return docs.length === 1 ? `已把 ${docs[0].path.split('/').pop()} 加成新的标签页。` : `已加了 ${docs.length} 个标签页。`;
+  },
+};

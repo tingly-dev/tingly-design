@@ -21,7 +21,9 @@ import {
   useDashIndex,
   useDatasets,
   want,
+  dashImport,
 } from '../../dash';
+import { ImportHere } from '../ImportHere';
 import { AskClaude } from '../ds/DsApp';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
@@ -229,6 +231,7 @@ export function DashApp() {
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? '保存中…' : '已连接') : '连不上服务端'} />
         <Filters />
         <div className="grow" />
+        <ImportHere target={dashImport} label="看板" button="text" />
         <button className="btn ghost" onClick={refreshAll} title="重新读取所有数据">
           刷新
         </button>

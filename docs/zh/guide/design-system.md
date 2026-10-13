@@ -25,6 +25,7 @@ projects/<name>/
 - **装进画布或幻灯片**：在画布或幻灯片的面板里（不选中任何东西时）选择“设计系统 → 装入”。tokens.json 复制到那个项目的 `ds/<folder>/`，索引的 `designSystems` 记一条；之后所有颜色输入框旁边有 ◆ 可以选它的颜色、并标出当前值是哪个 token，文字样式菜单列出它的样式；幻灯片还会拿到它的字体。幻灯片里写的是颜色值本身（子集不允许 `var()`）。
 - **托管字体**：`tokens.json` 的 `type.hosted: [{family, href}]` 是这里的扩展（原版只认字体文件），用 Google Fonts 的 css2 链接；预览和装入的幻灯片都会加载。
 - **AI**：原版设计系统页面没有页内模型，这里也只交给 Claude Code。
+- **导入**：左栏底部的导入按钮，或把文件拖进来。字体文件加进字体（写进 `tokens.json`），图片和 SVG 加进素材的 Other 分组。
 
 格式说明：[`.claude/skills/design-system/SKILL.md`](../../../.claude/skills/design-system/SKILL.md)
 

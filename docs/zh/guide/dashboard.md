@@ -22,6 +22,7 @@ projects/<name>/
 - **数据模式**：点页面上的数字、图表或表格单元格，右侧打开它的来源并高亮那一格。
 - **代码**：页面和数据说明也能直接在编辑器里改（原版只允许 Claude 写）；改完页面立即重载。
 - **AI**：交给 Claude Code。它可以用 `node scripts/dash-query.mjs` 只读地查数据库，会先读 `.runs.json`。
+- **导入数据**：顶栏的"导入"，或把 CSV、TSV、JSON 表格拖进来。每个文件变成一个数据集，文件存进 `data/`，在"数据来源"里打开；读不出表格的文件会直接说明原因。
 
 格式说明：[`.claude/skills/dashboard/SKILL.md`](../../../.claude/skills/dashboard/SKILL.md)
 

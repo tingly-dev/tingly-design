@@ -21,6 +21,7 @@ pnpm typecheck
 | `python3 e2e/theme.py` | 主题：跟随系统、外观菜单与记住选择、深色画布和看板、`?theme=` 传预设或 JSON、派生 token、`tinglyDesign` 脚本接口、Tingly Box palette、丢弃不安全的值、宿主页面用 postMessage 设主题并收到回报（25 项） |
 | `python3 e2e/embed.py` | 嵌入，先跑 `pnpm bundle`；它自己启动打包好的服务端：清单和就绪行、新项目文件夹放入示例、一切都在 `/design` 之下、编辑写进宿主的文件夹、另一个源上的宿主页面打开项目并收到 `ready` 和 `location`、宿主传主题、stdin 关闭和 SIGTERM 时退出（27 项） |
 | `python3 e2e/attach.py` | 附件，先跑 `pnpm build`；它自己启动带模拟模型和替身 `claude` 的服务端：粘贴、选择、拖入文件，拒收和最多 6 个的限制，模型收到的内容块，重试时保留附件，存进 `uploads/`（原图、同一文件只存一份、能读回来），Claude Code 读到的路径，文档页的输入框，幻灯片显示存下的图片，服务端的校验（36 项） |
+| `python3 e2e/import_here.py` | 往打开的项目里导入，先跑 `pnpm build`；它自己在示例项目的副本上启动服务端：每种类型的导入按钮、拖到任何地方、粘贴，网页文件夹变成画布上已有内容旁边的新画板（原文件留在 `uploads/`），粘贴 SVG，图片放到画布和幻灯片上，带图片的 Markdown 变成文档标签页，CSV 变成看板数据集，字体和 SVG 进设计系统，拒收，动效不收（29 项） |
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
 | `python3 e2e/fast_slides.py` | 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型 |
 | `python3 e2e/fast_motion.py` | 动效场景上的快速 AI：模型看到作品尺寸和播放头所在的场景、报错重试、越出格式时撤销并说明、保留时间属性 |

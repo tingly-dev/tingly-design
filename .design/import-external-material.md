@@ -274,7 +274,7 @@ SVG 是第二个来源（`sources/svg/read.ts`）：
 | 一个文件夹（网页连同 css、图片、字体） | `uploads/<文件夹名>-<哈希8位>/…` | 保留原来的目录结构，相对路径不变；页面目录以外的文件（字体 CDN、外链图片）放 `_ext/<域名>/…` |
 | 从文件里抠出来的（SVG/HTML 里内嵌的 base64 图片） | `assets/embedded-<哈希>.<扩展名>` | 原文件里没有单独的这份文件，是导入时派生出来的 |
 
-- 画板里的图片、字体直接指向 `uploads/…` 下的原文件；`canvas.json` 的 `imported.original` 记着入口文件，以后要重新导入或对照原样都从这里取。
+- 画板里的图片、字体直接指向 `uploads/…` 下的原文件；每个导入的画板在 `canvas.json` 里的条目带 `imported`（`original` 是入口文件），以后要重新导入或对照原样都从这里取。往已有项目里导入也走同一条规则，见 [import-into-project.md](./import-into-project.md)。
 - 服务器端：`isKeptPath`（`packages/core/src/attachments.ts`）定义 `uploads/` 下允许的路径（最多 12 层，扩展名是可附加的类型或字体）；`PUT /api/projects/:p/uploads?path=` 按路径写入，单个文件经 `POST …/assets?dir=uploads` 按内容命名。
 - 编辑器和 `dc-import` 结果一致：五个对照页面重新导入后像素差异不变（0.00%～0.30%），图片和字体都从 `uploads/` 加载。
 - 导入失败会留下一个空项目，还没有删除项目的接口，后面补。

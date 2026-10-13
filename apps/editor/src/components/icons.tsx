@@ -22,6 +22,7 @@ import {
   IconDiamond,
   IconDownload,
   IconForms,
+  IconFileImport,
   IconFileText,
   IconFileTypePdf,
   IconFrame,
@@ -116,6 +117,7 @@ export const NoneI = tabler(IconBan, 14);
 export const Picture = tabler(IconPhoto);
 export const Clip = tabler(IconPaperclip);
 export const FileText = tabler(IconFileText, 14);
+export const ImportI = tabler(IconFileImport);
 export const FilePdf = tabler(IconFileTypePdf, 14);
 
 // layer roles
