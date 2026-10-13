@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ACTOR_LABEL, NOTE_SIZES, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
+import { NOTE_SIZES, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
 import {
   copySelection,
   cutSelection,
@@ -19,6 +19,7 @@ import { TEXT_COLORS, sizeOf } from './Item';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';
+import { t } from '../i18n';
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
@@ -257,7 +258,7 @@ export function JournalPopover() {
             <div className="bar2" style={{ background: `var(--actor-${j.actor})` }} />
             <div>
               <div className="who">
-                <b style={{ color: `var(--actor-${j.actor})` }}>{ACTOR_LABEL[j.actor] ?? j.actor}</b>
+                <b style={{ color: `var(--actor-${j.actor})` }}>{t(`app.actor.${j.actor}`)}</b>
                 <span>{j.file}</span>
                 <span style={{ marginLeft: 'auto' }}>{time(j.at)}</span>
               </div>

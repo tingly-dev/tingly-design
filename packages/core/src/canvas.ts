@@ -129,8 +129,8 @@ export function isBoardFile(path: string): boolean {
 }
 
 /** A new, empty artboard file. */
-export function newBoardSource(opts: { title: string; w: number; h: number; lang?: string }): string {
-  const { title, w, h, lang = 'zh' } = opts;
+export function newBoardSource(opts: { title: string; w: number; h: number; lang?: string; hint?: string }): string {
+  const { title, w, h, lang = 'en', hint = 'Double-click to edit text, or ask AI below to change it.' } = opts;
   return `<!doctype html>
 <html lang="${lang}">
 <head>
@@ -147,7 +147,7 @@ body{margin:0;font-family:system-ui,-apple-system,"PingFang SC","Noto Sans SC",s
 </helmet>
 <div style="width:${w}px;height:${h}px;box-sizing:border-box;padding:48px;display:flex;flex-direction:column;gap:16px;background:#ffffff">
   <h1 style="margin:0;font-size:32px">${title.replace(/</g, '&lt;')}</h1>
-  <p style="margin:0;color:#5b6475;font-size:16px">双击改字，或在下方让 AI 修改。</p>
+  <p style="margin:0;color:#5b6475;font-size:16px">${hint.replace(/</g, '&lt;')}</p>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":${w},"height":${h}}}'>
@@ -191,11 +191,12 @@ export interface JournalEntry {
   version?: string;
 }
 
-export const ACTOR_LABEL: Record<Actor, string> = {
-  human: '手改',
+/** Who made a change, as a model reads it in a prompt. The editor shows `app.actor.<actor>` from @dc/i18n. */
+export const ACTOR_NAME: Record<Actor, string> = {
+  human: 'by hand',
   jquery: 'jQuery',
-  'fast-edit': '快速 AI',
-  claude: 'Claude',
-  external: '外部',
-  undo: '撤销',
+  'fast-edit': 'fast AI',
+  claude: 'Claude Code',
+  external: 'outside the editor',
+  undo: 'undo',
 };

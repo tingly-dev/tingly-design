@@ -388,11 +388,11 @@ export function initTheme(): void {
     if (d?.type === 'tingly-design:set-theme' && d.theme) setTheme(d.theme);
   });
 
-  (window as unknown as { tinglyDesign: object }).tinglyDesign = {
+  Object.assign(((window as unknown as { tinglyDesign?: object }).tinglyDesign ??= {}), {
     setTheme,
     getTheme: () => current && { ...current.theme, source: current.source },
     presets: () => PRESET_IDS.map((id) => ({ id, label: PRESETS[id].label, scheme: PRESETS[id].scheme })),
-  };
+  });
 }
 
 /** The server's DC_THEME, used only when neither the URL nor the person chose. */

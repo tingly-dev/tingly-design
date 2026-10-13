@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { elapsedLabel, type AgentStep } from '@dc/core';
+import { elapsed, type AgentStep } from '@dc/core';
+import { t } from '../i18n';
 import { undo, undoDelegate, useStore, type DelegateEntry, type DelegateState, type FastState } from '../store';
 import {
   Chevron,
@@ -25,6 +26,12 @@ import {
  * same answers everywhere: what did I ask, is it still working and on what,
  * what changed, and how do I take it back. See .design/agent-feedback.md.
  */
+/** "12s", "1m 05s" in the language showing. */
+function elapsedLabel(ms: number): string {
+  const { m, s } = elapsed(ms);
+  return m ? t('prompt.elapsed.minutes', { m, ss: String(s).padStart(2, '0') }) : t('prompt.elapsed.seconds', { s });
+}
+
 export function RunFeed({ onReuse, onOpen }: { onReuse?: (prompt: string) => void; onOpen?: (file: string) => void }) {
   const lastRun = useStore((s) => s.lastRun);
   const hidden = useStore((s) => s.runHidden);
@@ -111,7 +118,7 @@ function Entry({ e, current }: { e: DelegateEntry; current: boolean }) {
   return (
     <li className={`run-step ${e.step.kind}${current ? ' current' : ''}`}>
       <i>{current ? <Spinner /> : <StepIcon step={e.step} />}</i>
-      <span>{e.step.text}</span>
+      <span>{t(`prompt.step.${e.step.op}`, { target: e.step.target ?? '', within: e.step.within ?? '' })}</span>
     </li>
   );
 }

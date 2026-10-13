@@ -18,6 +18,8 @@ export interface Health {
   basePath?: string;
   /** the server's DC_THEME: a mode name, inline JSON or a parsed .json file */
   theme?: unknown;
+  /** the server's DC_LANG: the language when neither the URL nor the person chose */
+  lang?: string;
 }
 
 export type ServerEvent =
