@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { importErrorText } from '@dc/import';
 import { IconFile, IconFileImport, IconFolder } from '@tabler/icons-react';
 import { toast } from '../store';
 import { NAME_RE, freeName, slugOf } from '../projectName';
 import { droppedFiles, importPicked, pickedFromText, readPicked, type ImportStep, type Picked } from '../importer';
 
-const STEPS: { step: ImportStep; zh: string }[] = [
-  { step: 'layout', zh: '读出每个元素和它的样式' },
-  { step: 'assets', zh: '保存原文件，把图片和字体放进项目' },
-  { step: 'write', zh: '写入画板' },
-];
+/** in order; each one's words are importer.dialog.step.<step> */
+const STEPS: ImportStep[] = ['layout', 'assets', 'write'];
 
 /**
  * Turn an HTML page (one file, or its folder with the css and images beside
@@ -27,6 +26,7 @@ export function ImportDialog({
   onClose: () => void;
   onDone: (name: string) => void;
 }) {
+  const { t } = useTranslation();
   const [picked, setPicked] = useState<Picked | null>(initial ?? null);
   const [entry, setEntry] = useState(initial?.entry ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -62,7 +62,7 @@ export function ImportDialog({
     if (!list.length) return;
     const p = await readPicked(list);
     if (!p.entry) {
-      toast('这些文件里没有 .html 页面或 .svg 图形。', 'error');
+      toast(t('importer.dialog.noEntry'), 'error');
       return;
     }
     setPicked(p);
@@ -80,11 +80,11 @@ export function ImportDialog({
   const problem = !picked
     ? ''
     : !name
-      ? '请填写文件夹名。'
+      ? t('importer.dialog.folderMissing')
       : !NAME_RE.test(name)
-        ? '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。'
+        ? t('importer.dialog.folderInvalid')
         : taken.has(name)
-          ? `projects/${name} 已经存在。`
+          ? t('importer.dialog.folderTaken', { name })
           : '';
   const submit = async () => {
     if (!picked || problem || step) return;
@@ -94,25 +94,25 @@ export function ImportDialog({
       onDone(name);
     } catch (err) {
       setStep(null);
-      toast((err as Error).message, 'error');
+      toast(importErrorText(err, t), 'error');
     }
   };
-  const at = step ? STEPS.findIndex((s) => s.step === step) : -1;
+  const at = step ? STEPS.indexOf(step) : -1;
 
   return (
     <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && !step && onClose()}>
       <form
         className="ldialog limport"
         role="dialog"
-        aria-label="导入 HTML 或 SVG"
+        aria-label={t('importer.dialog.title')}
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
         <header>
-          <h2>导入 HTML 或 SVG</h2>
-          <button type="button" className="tb" aria-label="关闭" onClick={onClose} disabled={!!step}>
+          <h2>{t('importer.dialog.title')}</h2>
+          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose} disabled={!!step}>
             ×
           </button>
         </header>
@@ -131,14 +131,14 @@ export function ImportDialog({
             }}
           >
             <IconFileImport size={28} stroke={1.5} aria-hidden="true" />
-            <div className="what">把 HTML 或 SVG 文件，或它所在的文件夹拖到这里</div>
-            <div className="why">网页连同旁边的 CSS、图片和字体一起选，样式和图片才完整。从 Figma 复制的 SVG 可以直接粘贴（⌘V）。</div>
+            <div className="what">{t('importer.dialog.dropWhat')}</div>
+            <div className="why">{t('importer.dialog.dropWhy')}</div>
             <div className="pick">
               <button type="button" className="btn" onClick={() => dirRef.current?.click()}>
-                <IconFolder size={15} stroke={1.7} aria-hidden="true" /> 选择文件夹
+                <IconFolder size={15} stroke={1.7} aria-hidden="true" /> {t('importer.dialog.chooseFolder')}
               </button>
               <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
-                <IconFile size={15} stroke={1.7} aria-hidden="true" /> 选择文件
+                <IconFile size={15} stroke={1.7} aria-hidden="true" /> {t('importer.dialog.chooseFiles')}
               </button>
             </div>
             <input ref={fileRef} type="file" multiple accept=".html,.htm,.svg,.css,image/*,font/*,.woff,.woff2,.ttf,.otf" hidden onChange={(e) => fromInput(e.currentTarget)} />
@@ -147,36 +147,36 @@ export function ImportDialog({
         ) : (
           <>
             <label className="field">
-              <span>页面</span>
+              <span>{t('importer.dialog.page')}</span>
               <span className="source">
                 {picked.pages.length > 1 ? (
-                  <select className="input" aria-label="要导入的页面" value={entry} disabled={!!step} onChange={(e) => setEntry(e.target.value)}>
+                  <select className="input" aria-label={t('importer.dialog.pageLabel')} value={entry} disabled={!!step} onChange={(e) => setEntry(e.target.value)}>
                     {picked.pages.map((p) => (
                       <option key={p}>{p}</option>
                     ))}
                   </select>
                 ) : (
-                  <code>{entry === 'pasted.svg' ? '粘贴的 SVG' : entry}</code>
+                  <code>{entry === 'pasted.svg' ? t('importer.dialog.pastedSvg') : entry}</code>
                 )}
-                {entry !== 'pasted.svg' && <span className="n">{picked.files.length} 个文件</span>}
+                {entry !== 'pasted.svg' && <span className="n">{t('importer.here.files', { count: picked.files.length })}</span>}
                 {!step && (
                   <button type="button" className="linkish" onClick={() => setPicked(null)}>
-                    换一个
+                    {t('importer.dialog.change')}
                   </button>
                 )}
               </span>
             </label>
             <label className="field">
-              <span>标题</span>
-              <input className="input" aria-label="标题" value={title} disabled={!!step} onChange={(e) => setTitle(e.target.value)} placeholder="导入的页面" />
+              <span>{t('importer.dialog.titleField')}</span>
+              <input className="input" aria-label={t('importer.dialog.titleField')} value={title} disabled={!!step} onChange={(e) => setTitle(e.target.value)} placeholder={t('importer.dialog.titlePlaceholder')} />
             </label>
             <label className="field">
-              <span>文件夹</span>
+              <span>{t('importer.dialog.folder')}</span>
               <span className="folder">
                 <span className="pre">projects/</span>
                 <input
                   className="input"
-                  aria-label="新项目名称"
+                  aria-label={t('importer.dialog.folderLabel')}
                   value={name}
                   disabled={!!step}
                   onChange={(e) => {
@@ -189,8 +189,8 @@ export function ImportDialog({
             {step ? (
               <ol className="lsteps" aria-live="polite">
                 {STEPS.map((s, i) => (
-                  <li key={s.step} className={i < at ? 'done' : i === at ? 'on' : ''}>
-                    {s.zh}
+                  <li key={s} className={i < at ? 'done' : i === at ? 'on' : ''}>
+                    {t(`importer.dialog.step.${s}`)}
                   </li>
                 ))}
               </ol>
@@ -203,10 +203,10 @@ export function ImportDialog({
         )}
         <footer>
           <button type="button" className="btn" onClick={onClose} disabled={!!step}>
-            取消
+            {t('common.cancel')}
           </button>
           <button className="btn primary" type="submit" disabled={!picked || !!problem || !!step}>
-            {step ? '导入中…' : '导入为画布'}
+            {step ? t('importer.dialog.importing') : t('importer.dialog.submit')}
           </button>
         </footer>
       </form>

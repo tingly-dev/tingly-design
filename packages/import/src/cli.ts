@@ -11,8 +11,12 @@ import pixelmatch from 'pixelmatch';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 import { UPLOADS_DIR, isKeptPath, sandboxDoc } from '@dc/core';
 import type { Extracted } from './model';
+import { pickLanguage, translator } from '@dc/i18n';
 import { describeReport, toCanvas, type BoardOut } from './generate';
 import { embeddedAssets } from './assets';
+
+// the report and the note on the canvas follow DC_LANG (as the server does), else the locale, else English
+const t = translator(pickLanguage([process.env.DC_LANG, process.env.LC_ALL, process.env.LC_MESSAGES, process.env.LANG]) ?? undefined);
 
 /**
  * dc-import: the import pipeline from a terminal.
@@ -446,7 +450,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       for (const [u, rel] of kept) assets.set(u, rel);
       const split = args.split === 'on' ? true : args.split === 'off' ? false : 'auto';
       const original = kept.get(pageUrl(input).split('#')[0]);
-      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), split, kept: original });
+      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), split, kept: original, t });
       // the check needs to know where each artboard came from on the page
       const canvas = JSON.parse(out.files['canvas.json']);
       for (const b of out.report.boards) canvas.boards[b.file].importTop = Math.round(b.top);
@@ -454,7 +458,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       for (const [rel, text] of Object.entries(out.files)) writeFileSync(join(dir, rel), text);
       console.log(`imported ${input} → ${dir} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
       console.log(`  ${kept.size} original files kept under uploads/, ${assets.size - kept.size} assets copied, ${(out.report.styleBytes / 1024).toFixed(1)} KB of inline style`);
-      for (const line of describeReport(out.report)) console.log(`  ${line}`);
+      for (const line of describeReport(out.report, t)) console.log(`  ${line}`);
       if (args.check) {
         const shotDir = typeof args.out === 'string' ? args.out : undefined;
         const original = await shootOriginal(context, input, width, shotDir);
@@ -487,11 +491,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       mkdirSync(join(dir, UPLOADS_DIR), { recursive: true });
       writeFileSync(join(dir, original), text);
       const assets = await copyAssets(context, x.urls, dir);
-      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), kept: original });
+      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), kept: original, t });
       for (const [rel, file] of Object.entries(out.files)) writeFileSync(join(dir, rel), file);
       console.log(`imported ${input} → ${dir} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
       console.log(`  ${assets.size} assets copied`);
-      for (const line of describeReport(out.report)) console.log(`  ${line}`);
+      for (const line of describeReport(out.report, t)) console.log(`  ${line}`);
       if (args.check) {
         const shotDir = typeof args.out === 'string' ? args.out : undefined;
         const original = await shootSvg(context, text, x, shotDir);

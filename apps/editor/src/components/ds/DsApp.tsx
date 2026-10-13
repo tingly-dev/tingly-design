@@ -9,20 +9,15 @@ import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews'
 import { JournalPopover } from '../Overlays';
 import { currentTheme } from '../../theme';
 import { replaceUrl } from '../../host';
+import { useTranslation } from 'react-i18next';
 
 type View = 'overview' | 'colors' | 'type' | 'space' | 'components' | 'assets' | 'issues';
 
-const VIEWS: [View, string][] = [
-  ['overview', '概览'],
-  ['colors', '颜色'],
-  ['type', '文字'],
-  ['space', '间距与圆角'],
-  ['components', '组件'],
-  ['assets', '资源'],
-];
+const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
 
 /** One brand-book section: rendered, or edited as markdown. */
 function Section({ path }: { path: string }) {
+  const { t: tr } = useTranslation();
   const text = useStore((s) => display(s, path)) ?? '';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
@@ -36,7 +31,7 @@ function Section({ path }: { path: string }) {
         {editing ? (
           <>
             <button className="btn ghost" onClick={() => setEditing(false)}>
-              取消
+              {tr('common.cancel')}
             </button>
             <button
               className="btn primary"
@@ -45,27 +40,28 @@ function Section({ path }: { path: string }) {
                 setEditing(false);
               }}
             >
-              保存
+              {tr('common.save')}
             </button>
           </>
         ) : (
           <button className="btn ghost" onClick={() => setEditing(true)}>
-            编辑
+            {tr('common.edit')}
           </button>
         )}
       </div>
       {editing ? (
-        <textarea className="code mdedit" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label={`编辑 ${path}`} spellCheck={false} />
+        <textarea className="code mdedit" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label={tr('ds.section.editLabel', { path })} spellCheck={false} />
       ) : text.trim() ? (
         <Markdown text={text} />
       ) : (
-        <p className="hint">在这里写品牌手册：内容原则、视觉基础、图标，配上真实的例子；用法规则要点名 token。</p>
+        <p className="hint">{tr('ds.section.empty')}</p>
       )}
     </div>
   );
 }
 
 function Overview({ theme }: { theme: string }) {
+  const { t: tr } = useTranslation();
   const t = useTokens();
   const index = useDsIndex();
   const files = useStore((s) => s.files);
@@ -75,7 +71,7 @@ function Overview({ theme }: { theme: string }) {
     return list.includes(DS_README) ? list : [DS_README, ...list];
   }, [files]);
   return (
-    <section className="dsview" aria-label="概览">
+    <section className="dsview" aria-label={tr('ds.nav.overview')}>
       {cover && (
         <div className="cover">
           <Preview comp="Cover" html={cover} t={t} index={index} theme={theme} minHeight={320} />
@@ -89,11 +85,12 @@ function Overview({ theme }: { theme: string }) {
 }
 
 function Issues() {
+  const { t: tr } = useTranslation();
   const t = useTokens();
   return (
-    <section className="dsview" aria-label="问题">
+    <section className="dsview" aria-label={tr('ds.nav.issues')}>
       <header>
-        <h2>tokens.json 里读不懂的部分</h2>
+        <h2>{tr('ds.issues.title')}</h2>
       </header>
       {t.issues.length ? (
         <ul className="issue-list">
@@ -104,13 +101,14 @@ function Issues() {
           ))}
         </ul>
       ) : (
-        <p className="hint">没有问题：每个 token 都能读。</p>
+        <p className="hint">{tr('ds.issues.none')}</p>
       )}
     </section>
   );
 }
 
 export function DsApp() {
+  const { t: tr } = useTranslation();
   const t = useTokens();
   const index = useDsIndex();
   const connected = useStore((s) => s.connected);
@@ -118,7 +116,7 @@ export function DsApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('v') as View) || 'overview');
   // previews open in the system's dark theme when the editor itself is dark
-  const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|暗|深/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
+  const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|\u6697|\u6df1/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
   const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     if (!t.themes.some((x) => x.id === theme)) setTheme(t.themes[0].id);
@@ -129,20 +127,20 @@ export function DsApp() {
     replaceUrl(url);
   }, [view]);
   useEffect(() => {
-    document.title = `${index.title} · 设计系统`;
-  }, [index.title]);
+    document.title = tr('ds.app.docTitle', { title: index.title });
+  }, [index.title, tr]);
   // the system's own faces and tokens, for samples on this page
   const pageCss = useMemo(() => compileTokensCss({ ...t, colors: [], others: [], groups: [] }), [t]);
   return (
     <div className="app ds" data-theme={theme}>
       <style>{pageCss}</style>
-      <nav className="dsnav" aria-label="设计系统">
+      <nav className="dsnav" aria-label={tr('ds.app.label')}>
         {renaming ? (
           <input
             className="dstitle"
             autoFocus
             defaultValue={index.title}
-            aria-label="设计系统名称"
+            aria-label={tr('ds.app.nameLabel')}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === 'Enter') e.currentTarget.blur();
@@ -155,14 +153,14 @@ export function DsApp() {
             }}
           />
         ) : (
-          <h1 className="dstitle" title="双击改名" onDoubleClick={() => setRenaming(true)}>
+          <h1 className="dstitle" title={tr('ds.app.renameHint')} onDoubleClick={() => setRenaming(true)}>
             {index.title}
           </h1>
         )}
         <div className="hint ns">window.{index.namespace}</div>
-        {VIEWS.map(([v, label]) => (
+        {VIEWS.map((v) => (
           <button key={v} className="navi" aria-current={view === v ? 'page' : undefined} onClick={() => setView(v)}>
-            {label}
+            {tr(`ds.nav.${v}`)}
             <span className="cnt">
               {v === 'colors' ? t.colors.length : v === 'type' ? t.groups.reduce((n, g) => n + g.styles.length, 0) : v === 'space' ? t.others.reduce((n, f) => n + f.tokens.length, 0) : ''}
             </span>
@@ -170,14 +168,14 @@ export function DsApp() {
         ))}
         {t.issues.length > 0 && (
           <button className="navi warn" aria-current={view === 'issues' ? 'page' : undefined} onClick={() => setView('issues')}>
-            问题 <span className="cnt">{t.issues.length}</span>
+            {tr('ds.nav.issues')} <span className="cnt">{t.issues.length}</span>
           </button>
         )}
         <div className="navfoot">
           {t.themes.length > 1 && (
             <label className="themes">
-              主题
-              <select value={theme} onChange={(e) => setTheme(e.target.value)} aria-label="主题">
+              {tr('ds.app.theme')}
+              <select value={theme} onChange={(e) => setTheme(e.target.value)} aria-label={tr('ds.app.theme')}>
                 {t.themes.map((x) => (
                   <option key={x.id} value={x.id}>
                     {x.name}
@@ -186,11 +184,11 @@ export function DsApp() {
               </select>
             </label>
           )}
-          <ImportHere target={dsImport} label="设计系统" />
-          <button className="tb" aria-pressed={journalOpen} aria-label="同步状态和改动记录" onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
+          <ImportHere target={dsImport} label={tr('ds.app.label')} />
+          <button className="tb" aria-pressed={journalOpen} aria-label={tr('ds.app.journal')} onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
             <span className="sync">
               <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-              {!connected ? '未连接' : saving ? '保存中' : '已同步'}
+              {!connected ? tr('ds.app.offline') : saving ? tr('ds.app.saving') : tr('ds.app.synced')}
             </span>
           </button>
         </div>

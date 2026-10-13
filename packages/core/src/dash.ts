@@ -673,6 +673,7 @@ export interface DashReport {
 
 export const EMPTY_STATE: DataState = { status: 'missing', data: [], columns: [], rows: [], refreshing: false, meta: [] };
 
+/** A new dashboard's page; TITLE and HINT are filled in by whoever creates it. */
 export const DASH_STARTER_PAGE = `<style>
 .st { font-family: var(--font-anthropic-sans); color: var(--color-fg); }
 .st h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0 0 var(--cds-gap-xs); }
@@ -680,6 +681,6 @@ export const DASH_STARTER_PAGE = `<style>
 </style>
 <div class="st">
   <h1>TITLE</h1>
-  <p>还没有数据。把 CSV / JSON 放进 data/，或者让 Claude Code 连上数据、写这个看板。</p>
+  <p>HINT</p>
 </div>
 `;

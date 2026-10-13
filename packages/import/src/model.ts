@@ -48,7 +48,11 @@ export interface ExtractReport {
   dropped: Record<string, number>;
   /** stopped early at the element limit */
   truncated: boolean;
-  /** source-specific findings, already in the editor's language */
+  /** SVG: no <text> but paths, so the text was most likely outlined on export */
+  outlinedText?: boolean;
+  /** SVG: embedded bitmaps, imported as images whose content can't be edited */
+  bitmaps?: number;
+  /** other findings a caller adds, already in the language it shows */
   notes?: string[];
 }
 

@@ -7,6 +7,7 @@ import { api } from './api';
 import { insertHtml } from './actions';
 import { filesOf, type ImportTarget } from './components/ImportHere';
 import { display, edit, editElement, parsed, toast, useStore } from './store';
+import { t } from './i18n';
 
 const get = useStore.getState;
 
@@ -26,7 +27,7 @@ export function editMotion(mutate: (raw: Record<string, unknown>) => void, summa
       try {
         raw = JSON.parse(src || '{}');
       } catch {
-        throw new Error('motion.json 不是合法的 JSON，先修好它再改');
+        throw new Error(t('motion.toast.badJson'));
       }
       mutate(raw);
       return JSON.stringify(raw, null, 2) + '\n';
@@ -35,37 +36,37 @@ export function editMotion(mutate: (raw: Record<string, unknown>) => void, summa
   );
 }
 
-/** Common sizes, named the way motion.json names formats. */
-export const FORMAT_PRESETS: { name: string; label: string; size: [number, number] }[] = [
-  { name: 'wide', label: '横版 16:9', size: [1920, 1080] },
-  { name: 'tall', label: '竖版 9:16', size: [1080, 1920] },
-  { name: 'square', label: '方形 1:1', size: [1080, 1080] },
-  { name: 'portrait', label: '竖图 4:5', size: [1080, 1350] },
+/** Common sizes, named the way motion.json names formats; each is labelled by `motion.preset.<name>`. */
+export const FORMAT_PRESETS: { name: 'wide' | 'tall' | 'square' | 'portrait'; size: [number, number] }[] = [
+  { name: 'wide', size: [1920, 1080] },
+  { name: 'tall', size: [1080, 1920] },
+  { name: 'square', size: [1080, 1080] },
+  { name: 'portrait', size: [1080, 1350] },
 ];
 
 const formatsOf = (raw: Record<string, unknown>) => ((raw.formats ??= {}) as Record<string, { size: [number, number] }>);
 
 export function setFormatSize(name: string, size: [number, number]): void {
   const [w, h] = size.map((v) => Math.round(v));
-  if (!(w > 0 && h > 0 && w <= 7680 && h <= 7680)) return void toast('尺寸要在 1 到 7680 像素之间。', 'error');
+  if (!(w > 0 && h > 0 && w <= 7680 && h <= 7680)) return void toast(t('motion.toast.sizeRange'), 'error');
   editMotion((raw) => {
     const f = formatsOf(raw);
     f[name] = { ...(f[name] ?? {}), size: [w, h] };
-  }, `format ${name} → ${w}×${h}`);
+  }, t('motion.journal.formatSize', { name, size: `${w}×${h}` }));
 }
 
 /** Add a format (a new size of the same piece); it starts with no overrides. */
 export function addFormat(name: string, size: [number, number]): boolean {
   const m = motionOf();
   if (!FORMAT_NAME_RE.test(name)) {
-    toast('尺寸的名字用小写字母开头，只含小写字母和数字，最多 16 个字符。', 'error');
+    toast(t('motion.toast.badName'), 'error');
     return false;
   }
   if (m.formats[name]) {
-    toast(`已经有叫 ${name} 的尺寸了。`, 'error');
+    toast(t('motion.toast.nameTaken', { name }), 'error');
     return false;
   }
-  return editMotion((raw) => void (formatsOf(raw)[name] = { size }), `format ${name} added`);
+  return editMotion((raw) => void (formatsOf(raw)[name] = { size }), t('motion.journal.formatAdded', { name }));
 }
 
 /** Attributes in a scene that belong to one format. */
@@ -109,7 +110,7 @@ export function removeFormat(name: string): void {
     }
     if (ops.length) editElement(f, ops);
   }
-  editMotion((raw) => void delete formatsOf(raw)[name], `format ${name} removed`);
+  editMotion((raw) => void delete formatsOf(raw)[name], t('motion.journal.formatRemoved', { name }));
   const view = get().motionView;
   if (view?.format === name) useStore.setState({ motionView: { ...view, format: names[0] } });
 }
@@ -161,12 +162,14 @@ async function placeOnScene(file: File, nth: number): Promise<boolean> {
 /** What a motion piece takes: pictures and SVGs onto the scene under the playhead, like a slide. */
 export const motionImport: ImportTarget = {
   accepts: ['image', 'drawing'],
-  what: '图片和 SVG 放到播放头所在的场景上，从播放头这一刻淡入；原文件留在项目的 uploads/ 里。',
+  get what() {
+    return t('motion.import.what');
+  },
   run: async (picked) => {
     const files = filesOf(picked, 'image', 'drawing');
     let n = 0;
     for (const [i, f] of files.entries()) if (await placeOnScene(new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), i)) n++;
-    if (!n) return '先停在一个场景上再导入。';
-    return n === 1 ? `已放上 ${files[0].path.split('/').pop()}。` : `已放上 ${n} 张图片。`;
+    if (!n) return t('motion.import.noScene');
+    return n === 1 ? t('motion.import.placedOne', { name: files[0].path.split('/').pop() }) : t('motion.import.placedMany', { count: n });
   },
 };

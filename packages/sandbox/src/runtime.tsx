@@ -33,6 +33,7 @@ import {
 import { BUILD_CSS, XArt, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
 import { urlsAgainst } from './urls';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
+import { msg } from './msg';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
 
@@ -364,7 +365,8 @@ class Boundary extends React.Component<{ children: React.ReactNode; file: string
     if (this.state.error) {
       return (
         <div style={{ padding: 24, font: '13px/1.5 ui-monospace,monospace', color: '#b42318', background: '#fff5f5', whiteSpace: 'pre-wrap' }}>
-          {this.props.file} 出错了{'\n'}
+          {msg('fileFailed', { file: this.props.file })}
+          {'\n'}
           {this.state.error.message}
         </div>
       );

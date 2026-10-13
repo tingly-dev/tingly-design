@@ -88,7 +88,7 @@ async def main():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-            pg = await b.new_page(viewport={'width': 1280, 'height': 800})
+            pg = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             feed = pg.locator('.runfeed')
@@ -170,7 +170,7 @@ async def main():
             await box.fill('SLOW 改标题')
             await box.press('Enter')
             await expect(feed.locator('.run-step', has_text='搜索')).to_have_count(1, timeout=8000)
-            pg2 = await b.new_page(viewport={'width': 1280, 'height': 800})
+            pg2 = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
             await pg2.goto(f'{base}/?p=box-console')
             await expect(pg2.locator('.runfeed .run-ask')).to_have_text('SLOW 改标题', timeout=8000)
             check('an editor opened mid-run sees the steps so far', await pg2.locator('.runfeed .run-step').count() >= 3)
@@ -198,7 +198,7 @@ async def main():
                 check(f'{kind}: the feed shows the run and the file it changed', any(c.startswith(unit) for c in chips), chips)
                 if kind == 'motion':
                     sent = lines(claude_log)[n]['prompt']
-                    check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', '停在场景' in sent and '停在场景' not in await feed.locator('.run-ask').inner_text(), sent[:300])
+                    check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', 'into scene' in sent and 'scene' not in await feed.locator('.run-ask').inner_text(), sent[:300])
             check('no page errors', not errs, errs)
             await b.close()
     finally:

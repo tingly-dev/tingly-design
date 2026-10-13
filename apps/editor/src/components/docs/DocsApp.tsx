@@ -30,8 +30,10 @@ import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
 import { BASE } from '../../base';
 import { ImportHere } from '../ImportHere';
+import { useTranslation } from 'react-i18next';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
+  const { t } = useTranslation();
   const [renaming, setRenaming] = useState(false);
   const [menu, setMenu] = useState(false);
   return (
@@ -40,7 +42,7 @@ function TabRow({ id, title, sub, current }: { id: string; title: string; sub: b
         <input
           autoFocus
           defaultValue={title}
-          aria-label="标签页名称"
+          aria-label={t('docs.tab.nameLabel')}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter') e.currentTarget.blur();
@@ -57,23 +59,23 @@ function TabRow({ id, title, sub, current }: { id: string; title: string; sub: b
           {title}
         </button>
       )}
-      <button className="ib more" aria-label={`${title} 的操作`} onClick={() => setMenu(!menu)}>
+      <button className="ib more" aria-label={t('docs.tab.actions', { title })} onClick={() => setMenu(!menu)}>
         ⋯
       </button>
       {menu && (
         <div className="tabmenu" onMouseLeave={() => setMenu(false)}>
-          <button onClick={() => (setMenu(false), setRenaming(true))}>改名</button>
-          {!sub && <button onClick={() => (setMenu(false), addTab('新的子页', id))}>添加子页</button>}
-          <button onClick={() => (setMenu(false), moveTab(id, -1))}>上移</button>
-          <button onClick={() => (setMenu(false), moveTab(id, 1))}>下移</button>
+          <button onClick={() => (setMenu(false), setRenaming(true))}>{t('docs.tab.rename')}</button>
+          {!sub && <button onClick={() => (setMenu(false), addTab(t('docs.tab.newSubTitle'), id))}>{t('docs.tab.addSub')}</button>}
+          <button onClick={() => (setMenu(false), moveTab(id, -1))}>{t('docs.tab.moveUp')}</button>
+          <button onClick={() => (setMenu(false), moveTab(id, 1))}>{t('docs.tab.moveDown')}</button>
           <button
             className="danger"
             onClick={() => {
               setMenu(false);
-              if (confirm(`删除标签页“${title}”${sub ? '' : '和它的子页'}？`)) void deleteTab(id);
+              if (confirm(sub ? t('docs.tab.confirmDeleteSub', { title }) : t('docs.tab.confirmDelete', { title }))) void deleteTab(id);
             }}
           >
-            删除
+            {t('common.delete')}
           </button>
         </div>
       )}
@@ -82,6 +84,7 @@ function TabRow({ id, title, sub, current }: { id: string; title: string; sub: b
 }
 
 function Outline({ tab }: { tab: string }) {
+  const { t } = useTranslation();
   const source = useStore((s) => display(s, tabFile(tab))) ?? '';
   const heads = useMemo(() => outlineOf(source), [source]);
   if (heads.length < 2) return null;
@@ -92,11 +95,11 @@ function Outline({ tab }: { tab: string }) {
     top?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
   return (
-    <nav className="outline" aria-label="大纲">
-      <h3>大纲</h3>
+    <nav className="outline" aria-label={t('docs.outline.label')}>
+      <h3>{t('docs.outline.label')}</h3>
       {heads.map((h, i) => (
         <button key={i} style={{ paddingLeft: 8 + (h.level - 1) * 12 }} onClick={() => go(i)}>
-          {h.text || '（无标题）'}
+          {h.text || t('docs.outline.untitled')}
         </button>
       ))}
     </nav>
@@ -104,6 +107,7 @@ function Outline({ tab }: { tab: string }) {
 }
 
 function Toolbar() {
+  const { t } = useTranslation();
   const [, force] = useState(0);
   useEffect(() => {
     const e = docEditor.current;
@@ -124,12 +128,12 @@ function Toolbar() {
   );
   const i = (I: ComponentType<IconProps>) => <I size={16} stroke={1.7} aria-hidden="true" />;
   return (
-    <div className="doctools" role="toolbar" aria-label="格式">
-      {b(i(IconArrowBackUp), false, () => e.chain().focus().undo().run(), '撤销')}
-      {b(i(IconArrowForwardUp), false, () => e.chain().focus().redo().run(), '重做')}
+    <div className="doctools" role="toolbar" aria-label={t('docs.toolbar.label')}>
+      {b(i(IconArrowBackUp), false, () => e.chain().focus().undo().run(), t('common.undo'))}
+      {b(i(IconArrowForwardUp), false, () => e.chain().focus().redo().run(), t('common.redo'))}
       <span className="sep" />
       <select
-        aria-label="段落样式"
+        aria-label={t('docs.toolbar.blockStyle')}
         value={block}
         onChange={(ev) => {
           const v = ev.target.value;
@@ -139,33 +143,33 @@ function Toolbar() {
           else c.setHeading({ level: Number(v[1]) as 1 | 2 | 3 }).run();
         }}
       >
-        <option value="p">正文</option>
-        <option value="h1">标题 1</option>
-        <option value="h2">标题 2</option>
-        <option value="h3">标题 3</option>
-        <option value="code">代码块</option>
+        <option value="p">{t('docs.block.p')}</option>
+        <option value="h1">{t('docs.block.h1')}</option>
+        <option value="h2">{t('docs.block.h2')}</option>
+        <option value="h3">{t('docs.block.h3')}</option>
+        <option value="code">{t('docs.block.code')}</option>
       </select>
       <span className="sep" />
-      {b(i(IconBold), e.isActive('bold'), () => e.chain().focus().toggleBold().run(), '粗体')}
-      {b(i(IconItalic), e.isActive('italic'), () => e.chain().focus().toggleItalic().run(), '斜体')}
-      {b(i(IconStrikethrough), e.isActive('strike'), () => e.chain().focus().toggleStrike().run(), '删除线')}
+      {b(i(IconBold), e.isActive('bold'), () => e.chain().focus().toggleBold().run(), t('docs.format.bold'))}
+      {b(i(IconItalic), e.isActive('italic'), () => e.chain().focus().toggleItalic().run(), t('docs.format.italic'))}
+      {b(i(IconStrikethrough), e.isActive('strike'), () => e.chain().focus().toggleStrike().run(), t('docs.format.strike'))}
       <span className="sep" />
-      {b(i(IconList), e.isActive('bulletList'), () => e.chain().focus().toggleBulletList().run(), '项目列表')}
-      {b(i(IconListNumbers), e.isActive('orderedList'), () => e.chain().focus().toggleOrderedList().run(), '编号列表')}
-      {b(i(IconListCheck), e.isActive('taskList'), () => e.chain().focus().toggleTaskList().run(), '待办清单')}
-      {b(i(IconQuote), e.isActive('blockquote'), () => e.chain().focus().toggleBlockquote().run(), '引用')}
+      {b(i(IconList), e.isActive('bulletList'), () => e.chain().focus().toggleBulletList().run(), t('docs.block.ul'))}
+      {b(i(IconListNumbers), e.isActive('orderedList'), () => e.chain().focus().toggleOrderedList().run(), t('docs.block.ol'))}
+      {b(i(IconListCheck), e.isActive('taskList'), () => e.chain().focus().toggleTaskList().run(), t('docs.block.todo'))}
+      {b(i(IconQuote), e.isActive('blockquote'), () => e.chain().focus().toggleBlockquote().run(), t('docs.block.quote'))}
       <span className="sep" />
-      {b(i(IconTable), false, () => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), '表格')}
+      {b(i(IconTable), false, () => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), t('docs.block.table'))}
       {e.isActive('table') && (
         <>
-          {b(i(IconRowInsertBottom), false, () => e.chain().focus().addRowAfter().run(), '在下方加一行')}
-          {b(i(IconColumnInsertRight), false, () => e.chain().focus().addColumnAfter().run(), '在右侧加一列')}
-          {b(i(IconRowRemove), false, () => e.chain().focus().deleteRow().run(), '删除这一行')}
-          {b(i(IconColumnRemove), false, () => e.chain().focus().deleteColumn().run(), '删除这一列')}
+          {b(i(IconRowInsertBottom), false, () => e.chain().focus().addRowAfter().run(), t('docs.toolbar.rowBelow'))}
+          {b(i(IconColumnInsertRight), false, () => e.chain().focus().addColumnAfter().run(), t('docs.toolbar.colRight'))}
+          {b(i(IconRowRemove), false, () => e.chain().focus().deleteRow().run(), t('docs.toolbar.deleteRow'))}
+          {b(i(IconColumnRemove), false, () => e.chain().focus().deleteColumn().run(), t('docs.toolbar.deleteCol'))}
         </>
       )}
-      {b(i(IconPhoto), false, () => pickImage(e), '图片')}
-      {b(i(IconSeparatorHorizontal), false, () => e.chain().focus().setHorizontalRule().run(), '分割线')}
+      {b(i(IconPhoto), false, () => pickImage(e), t('docs.block.image'))}
+      {b(i(IconSeparatorHorizontal), false, () => e.chain().focus().setHorizontalRule().run(), t('docs.block.hr'))}
     </div>
   );
 }
@@ -200,25 +204,26 @@ img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;paddin
 }
 
 function ExportMenu({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const d = useDocIndex();
   const tab = useCurrentTab();
   const s = useStore.getState();
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
   return (
     <div className="popmenu" onMouseLeave={onClose}>
-      <button onClick={() => (onClose(), download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'))}>这个标签页（Markdown）</button>
+      <button onClick={() => (onClose(), download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'))}>{t('docs.export.tabMarkdown')}</button>
       <button
         onClick={() => {
           onClose();
           const all = tabOrder(d)
-            .map((t) => display(s, tabFile(t.id)) ?? '')
+            .map((x) => display(s, tabFile(x.id)) ?? '')
             .join('\n\n---\n\n');
           download(`${name}.md`, all, 'text/markdown');
         }}
       >
-        整个文档（Markdown）
+        {t('docs.export.docMarkdown')}
       </button>
-      <button onClick={() => (onClose(), download(`${name}.html`, docHtml(d), 'text/html'))}>整个文档（HTML）</button>
+      <button onClick={() => (onClose(), download(`${name}.html`, docHtml(d), 'text/html'))}>{t('docs.export.docHtml')}</button>
       <button
         onClick={() => {
           onClose();
@@ -230,13 +235,14 @@ function ExportMenu({ onClose }: { onClose: () => void }) {
           setTimeout(() => w.print(), 600);
         }}
       >
-        打印 / 存为 PDF
+        {t('docs.export.print')}
       </button>
     </div>
   );
 }
 
 function Settings({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const d = useDocIndex();
   const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
   const seg = (k: 'headingFont' | 'bodyFont' | 'width', opts: [string, string][]) => (
@@ -250,26 +256,27 @@ function Settings({ onClose }: { onClose: () => void }) {
   );
   return (
     <div className="popmenu settings" onMouseLeave={onClose}>
-      <label>标题字体</label>
+      <label>{t('docs.settings.headingFont')}</label>
       {seg('headingFont', [
-        ['sans', '无衬线'],
-        ['serif', '衬线'],
+        ['sans', t('docs.settings.sans')],
+        ['serif', t('docs.settings.serif')],
       ])}
-      <label>正文字体</label>
+      <label>{t('docs.settings.bodyFont')}</label>
       {seg('bodyFont', [
-        ['sans', '无衬线'],
-        ['serif', '衬线'],
+        ['sans', t('docs.settings.sans')],
+        ['serif', t('docs.settings.serif')],
       ])}
-      <label>版面宽度</label>
+      <label>{t('docs.settings.width')}</label>
       {seg('width', [
-        ['default', '标准'],
-        ['wide', '宽'],
+        ['default', t('docs.settings.standard')],
+        ['wide', t('docs.settings.wide')],
       ])}
     </div>
   );
 }
 
 function Title() {
+  const { t } = useTranslation();
   const d = useDocIndex();
   const [renaming, setRenaming] = useState(false);
   if (renaming)
@@ -278,7 +285,7 @@ function Title() {
         className="dashtitle"
         autoFocus
         defaultValue={d.title}
-        aria-label="文档标题"
+        aria-label={t('docs.title.label')}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === 'Enter') e.currentTarget.blur();
@@ -292,13 +299,14 @@ function Title() {
       />
     );
   return (
-    <h1 className="dashtitle" title="双击改名" onDoubleClick={() => setRenaming(true)}>
+    <h1 className="dashtitle" title={t('docs.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
       {d.title}
     </h1>
   );
 }
 
 export function DocsApp() {
+  const { t } = useTranslation();
   const d = useDocIndex();
   const tab = useCurrentTab();
   const connected = useStore((s) => s.connected);
@@ -309,11 +317,11 @@ export function DocsApp() {
   const [pop, setPop] = useState<'export' | 'settings' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
-  const open = comments.threads.filter((t) => t.tab === tab && !t.resolved).length;
+  const open = comments.threads.filter((x) => x.tab === tab && !x.resolved).length;
 
   useEffect(() => {
-    const t = new URLSearchParams(location.search).get('t');
-    if (t) useDocs.setState({ tab: t });
+    const id = new URLSearchParams(location.search).get('t');
+    if (id) useDocs.setState({ tab: id });
   }, []);
   useEffect(() => {
     document.title = d.title;
@@ -323,43 +331,43 @@ export function DocsApp() {
   return (
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title="所有项目">
+        <a className="btn ghost back" href={BASE} title={t('docs.app.allProjects')}>
           ←
         </a>
         <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? '保存中…' : '已保存') : '连不上服务端'} />
-        <span className="hint">{saving ? '保存中…' : '已保存'}</span>
+        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('docs.app.saving') : t('docs.app.saved')) : t('docs.app.offline')} />
+        <span className="hint">{saving ? t('docs.app.saving') : t('docs.app.saved')}</span>
         <div className="grow" />
-        <span className="hint">{words} 字</span>
-        <ImportHere target={docsImport} label="文档" button="text" />
+        <span className="hint">{t('docs.app.words', { count: words })}</span>
+        <ImportHere target={docsImport} label={t('docs.app.importLabel')} button="text" />
         <div className="popwrap">
           <button className={`btn ghost${pop === 'settings' ? ' on' : ''}`} onClick={() => setPop(pop === 'settings' ? null : 'settings')}>
-            版式
+            {t('docs.app.layout')}
           </button>
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
         </div>
         <div className="popwrap">
           <button className={`btn ghost${pop === 'export' ? ' on' : ''}`} onClick={() => setPop(pop === 'export' ? null : 'export')}>
-            导出
+            {t('docs.app.export')}
           </button>
           {pop === 'export' && tab && <ExportMenu onClose={() => setPop(null)} />}
         </div>
         <button className={`btn ghost${rail ? ' on' : ''}`} aria-pressed={rail} onClick={() => useDocs.setState({ rail: !rail })}>
-          评论{open ? <span className="badge blue">{open}</span> : null}
+          {t('docs.app.comments')}{open ? <span className="badge blue">{open}</span> : null}
         </button>
         <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          记录
+          {t('docs.app.journal')}
         </button>
       </header>
-      <aside className="doctabs" aria-label="标签页">
-        <h3>标签页</h3>
+      <aside className="doctabs" aria-label={t('docs.app.tabs')}>
+        <h3>{t('docs.app.tabs')}</h3>
         <ul>
-          {order.map((t) => (
-            <TabRow key={t.id} id={t.id} title={t.title} sub={!!t.parent} current={t.id === tab} />
+          {order.map((x) => (
+            <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
           ))}
         </ul>
-        <button className="btn ghost addtab" onClick={() => addTab('新的标签页')}>
-          ＋ 标签页
+        <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
+          {t('docs.app.addTab')}
         </button>
         {tab && <Outline tab={tab} />}
       </aside>
@@ -372,9 +380,9 @@ export function DocsApp() {
           file={tab ? tabFile(tab) : undefined}
           onOpen={(f) => {
             const id = /^tabs\/(.+)\.md$/.exec(f)?.[1];
-            if (id && order.some((t) => t.id === id)) openTab(id);
+            if (id && order.some((x) => x.id === id)) openTab(id);
           }}
-          placeholder="交给 Claude Code：写一节、按评论改、加一张表、整理全文…"
+          placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;
             if (!e || e.state.selection.empty) return '';

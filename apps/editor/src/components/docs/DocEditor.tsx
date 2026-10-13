@@ -12,33 +12,36 @@ import { Markdown } from '@tiptap/markdown';
 import { docsUserMessage, quoteAt, tabFile } from '@dc/core';
 import { api } from '../../api';
 import { display, toast, useStore } from '../../store';
-import { saveTab, useComments, useDocs, threadsOf } from '../../docs';
+import { dateLocale, saveTab, useComments, useDocs, threadsOf } from '../../docs';
+import { useTranslation } from 'react-i18next';
+import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
 
+type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'table' | 'hr' | 'date' | 'image';
+
 interface SlashItem {
-  key: string;
-  label: string;
+  key: BlockKey;
   hint: string;
   run: (e: Editor) => void;
 }
 
 const SLASH: SlashItem[] = [
-  { key: 'p', label: '正文', hint: 'text paragraph', run: (e) => e.chain().focus().setParagraph().run() },
-  { key: 'h1', label: '标题 1', hint: 'heading h1', run: (e) => e.chain().focus().setHeading({ level: 1 }).run() },
-  { key: 'h2', label: '标题 2', hint: 'heading h2', run: (e) => e.chain().focus().setHeading({ level: 2 }).run() },
-  { key: 'h3', label: '标题 3', hint: 'heading h3', run: (e) => e.chain().focus().setHeading({ level: 3 }).run() },
-  { key: 'ul', label: '项目列表', hint: 'bullet list', run: (e) => e.chain().focus().toggleBulletList().run() },
-  { key: 'ol', label: '编号列表', hint: 'numbered ordered list', run: (e) => e.chain().focus().toggleOrderedList().run() },
-  { key: 'todo', label: '待办清单', hint: 'task checklist todo', run: (e) => e.chain().focus().toggleTaskList().run() },
-  { key: 'quote', label: '引用', hint: 'quote blockquote', run: (e) => e.chain().focus().toggleBlockquote().run() },
-  { key: 'code', label: '代码块', hint: 'code block', run: (e) => e.chain().focus().toggleCodeBlock().run() },
-  { key: 'table', label: '表格', hint: 'table', run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-  { key: 'hr', label: '分割线', hint: 'divider rule hr', run: (e) => e.chain().focus().setHorizontalRule().run() },
-  { key: 'date', label: '今天的日期', hint: 'date today', run: (e) => e.chain().focus().insertContent(new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })).run() },
-  { key: 'image', label: '图片', hint: 'image picture upload', run: (e) => pickImage(e) },
+  { key: 'p', hint: 'text paragraph', run: (e) => e.chain().focus().setParagraph().run() },
+  { key: 'h1', hint: 'heading h1', run: (e) => e.chain().focus().setHeading({ level: 1 }).run() },
+  { key: 'h2', hint: 'heading h2', run: (e) => e.chain().focus().setHeading({ level: 2 }).run() },
+  { key: 'h3', hint: 'heading h3', run: (e) => e.chain().focus().setHeading({ level: 3 }).run() },
+  { key: 'ul', hint: 'bullet list', run: (e) => e.chain().focus().toggleBulletList().run() },
+  { key: 'ol', hint: 'numbered ordered list', run: (e) => e.chain().focus().toggleOrderedList().run() },
+  { key: 'todo', hint: 'task checklist todo', run: (e) => e.chain().focus().toggleTaskList().run() },
+  { key: 'quote', hint: 'quote blockquote', run: (e) => e.chain().focus().toggleBlockquote().run() },
+  { key: 'code', hint: 'code block', run: (e) => e.chain().focus().toggleCodeBlock().run() },
+  { key: 'table', hint: 'table', run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  { key: 'hr', hint: 'divider rule hr', run: (e) => e.chain().focus().setHorizontalRule().run() },
+  { key: 'date', hint: 'date today', run: (e) => e.chain().focus().insertContent(new Date().toLocaleDateString(dateLocale(), { year: 'numeric', month: 'long', day: 'numeric' })).run() },
+  { key: 'image', hint: 'image picture upload', run: (e) => pickImage(e) },
 ];
 
 export function pickImage(e: Editor): void {
@@ -96,12 +99,13 @@ interface Spark {
 }
 
 const SPARKS = [
-  ['改短一些', 'Make it shorter: keep every point, cut the words.'],
-  ['润色', 'Fix spelling, grammar and awkward phrasing. Change nothing else.'],
-  ['写得更正式', 'Make it more formal.'],
+  ['shorter', 'Make it shorter: keep every point, cut the words.'],
+  ['polish', 'Fix spelling, grammar and awkward phrasing. Change nothing else.'],
+  ['formal', 'Make it more formal.'],
 ] as const;
 
 export function DocEditor({ tab }: { tab: string }) {
+  const { t } = useTranslation();
   const file = tabFile(tab);
   const source = useStore((s) => display(s, file));
   const comments = useComments();
@@ -136,7 +140,7 @@ export function DocEditor({ tab }: { tab: string }) {
         TableKit.configure({ table: { resizable: false } }),
         Highlight,
         ProjectImage,
-        Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? '标题' : '输入 / 插入内容，或直接开始写…') }),
+        Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? tModule('docs.editor.headingPlaceholder') : tModule('docs.editor.placeholder')) }),
         Markdown.configure({ markedOptions: { gfm: true } }),
         CommentMarks,
       ],
@@ -184,7 +188,7 @@ export function DocEditor({ tab }: { tab: string }) {
 
   function matches(q: string): SlashItem[] {
     const s = q.trim().toLowerCase();
-    return s ? SLASH.filter((i) => i.label.includes(s) || i.hint.includes(s) || i.key.startsWith(s)) : SLASH;
+    return s ? SLASH.filter((i) => tModule(`docs.block.${i.key}`).toLowerCase().includes(s) || i.hint.includes(s) || i.key.startsWith(s)) : SLASH;
   }
 
   function updateSlash(e: Editor) {
@@ -316,47 +320,47 @@ export function DocEditor({ tab }: { tab: string }) {
   return (
     <>
       <BubbleMenu editor={editor} options={{ placement: 'top' }} shouldShow={({ editor: e, state }) => !state.selection.empty && e.isEditable && !e.isActive('codeBlock')}>
-        <div className="bubble" role="toolbar" aria-label="文字格式">
-          <button className={editor.isActive('bold') ? 'on' : ''} onClick={() => editor.chain().focus().toggleBold().run()} aria-label="粗体">
+        <div className="bubble" role="toolbar" aria-label={t('docs.format.label')}>
+          <button className={editor.isActive('bold') ? 'on' : ''} onClick={() => editor.chain().focus().toggleBold().run()} aria-label={t('docs.format.bold')}>
             <IconBold size={16} stroke={1.7} aria-hidden="true" />
           </button>
-          <button className={editor.isActive('italic') ? 'on' : ''} onClick={() => editor.chain().focus().toggleItalic().run()} aria-label="斜体">
+          <button className={editor.isActive('italic') ? 'on' : ''} onClick={() => editor.chain().focus().toggleItalic().run()} aria-label={t('docs.format.italic')}>
             <IconItalic size={16} stroke={1.7} aria-hidden="true" />
           </button>
-          <button className={editor.isActive('strike') ? 'on' : ''} onClick={() => editor.chain().focus().toggleStrike().run()} aria-label="删除线">
+          <button className={editor.isActive('strike') ? 'on' : ''} onClick={() => editor.chain().focus().toggleStrike().run()} aria-label={t('docs.format.strike')}>
             <IconStrikethrough size={16} stroke={1.7} aria-hidden="true" />
           </button>
-          <button className={editor.isActive('code') ? 'on' : ''} onClick={() => editor.chain().focus().toggleCode().run()} aria-label="行内代码">
+          <button className={editor.isActive('code') ? 'on' : ''} onClick={() => editor.chain().focus().toggleCode().run()} aria-label={t('docs.format.inlineCode')}>
             <IconCode size={16} stroke={1.7} aria-hidden="true" />
           </button>
-          <button className={editor.isActive('highlight') ? 'on' : ''} onClick={() => editor.chain().focus().toggleHighlight().run()} aria-label="高亮">
+          <button className={editor.isActive('highlight') ? 'on' : ''} onClick={() => editor.chain().focus().toggleHighlight().run()} aria-label={t('docs.format.highlight')}>
             <IconHighlight size={16} stroke={1.7} aria-hidden="true" />
           </button>
           <button
             className={editor.isActive('link') ? 'on' : ''}
-            aria-label="链接"
+            aria-label={t('docs.format.link')}
             onClick={() => {
               if (editor.isActive('link')) return void editor.chain().focus().unsetLink().run();
-              const href = prompt('链接地址', 'https://');
+              const href = prompt(t('docs.format.linkPrompt'), 'https://');
               if (href && /^(https?:|mailto:|\/|#|\.)/.test(href)) editor.chain().focus().setLink({ href }).run();
             }}
           >
-            链接
+            {t('docs.format.link')}
           </button>
           <span className="sep" />
-          <button onClick={comment} aria-label="评论">
-            评论
+          <button onClick={comment} aria-label={t('docs.format.comment')}>
+            {t('docs.format.comment')}
           </button>
           <span className="sep" />
-          {SPARKS.map(([label, req]) => (
-            <button key={label} className="spark" onClick={() => void runSpark(req)}>
-              ✦ {label}
+          {SPARKS.map(([key, req]) => (
+            <button key={key} className="spark" onClick={() => void runSpark(req)}>
+              ✦ {t(`docs.spark.${key}`)}
             </button>
           ))}
           <input
             className="askin"
-            placeholder="✦ 让 AI 改写…"
-            aria-label="让 AI 改写选中的内容"
+            placeholder={t('docs.spark.askPlaceholder')}
+            aria-label={t('docs.spark.askLabel')}
             value={ask}
             onChange={(ev) => setAsk(ev.target.value)}
             onKeyDown={(ev) => {
@@ -371,7 +375,7 @@ export function DocEditor({ tab }: { tab: string }) {
       </BubbleMenu>
       <EditorContent editor={editor} />
       {slash && list.length > 0 && (
-        <div className="slashmenu" role="listbox" aria-label="插入" style={{ left: slash.x, top: slash.y }}>
+        <div className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={{ left: slash.x, top: slash.y }}>
           {list.map((i, n) => (
             <button
               key={i.key}
@@ -382,15 +386,19 @@ export function DocEditor({ tab }: { tab: string }) {
                 choose(i);
               }}
             >
-              {i.label}
+              {t(`docs.block.${i.key}`)}
             </button>
           ))}
         </div>
       )}
       {spark && (
-        <div className="sparkpanel" role="dialog" aria-label="AI 改写">
+        <div className="sparkpanel" role="dialog" aria-label={t('docs.spark.panelLabel')}>
           <div className="hint">
-            ✦ {spark.state === 'running' ? '正在改写…' : spark.state === 'error' ? `没能改写：${spark.error}` : '改写好了'}（{SPARKS.find((s) => s[1] === spark.request)?.[0] ?? spark.request}）
+            ✦{' '}
+            {t('docs.spark.status', {
+              status: spark.state === 'running' ? t('docs.spark.running') : spark.state === 'error' ? t('docs.spark.failed', { error: spark.error }) : t('docs.spark.done'),
+              request: ((k) => (k ? t(`docs.spark.${k}`) : spark.request))(SPARKS.find((s) => s[1] === spark.request)?.[0]),
+            })}
           </div>
           {spark.text && <pre className="sparktext">{spark.text}</pre>}
           <div className="row">
@@ -401,13 +409,13 @@ export function DocEditor({ tab }: { tab: string }) {
                 setSpark(null);
               }}
             >
-              放弃
+              {t('docs.spark.discard')}
             </button>
             <button className="btn ghost" disabled={spark.state !== 'done'} onClick={() => applySpark('below')}>
-              插入到下方
+              {t('docs.spark.insertBelow')}
             </button>
             <button className="btn primary" disabled={spark.state !== 'done'} onClick={() => applySpark('replace')}>
-              替换
+              {t('docs.spark.replace')}
             </button>
           </div>
         </div>

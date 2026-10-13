@@ -28,6 +28,13 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
+import { t } from './i18n';
+
+/** What a failed edit says to the person: a rebase conflict in the editor's own words, anything else as thrown. */
+function errorText(e: unknown): string {
+  if ((e as { code?: unknown } | null)?.code === 'rebase-conflict') return t('errors.rebaseConflict');
+  return (e as Error).message;
+}
 
 /**
  * Editor state. Each file has the last version the server confirmed and a
@@ -388,7 +395,8 @@ function onEvent(e: ServerEvent): void {
         } else if (e.text) d.log = [...d.log, { say: e.text, at: now }].slice(-60);
       }
       if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') {
-        d.result = e.text;
+        // a stopped run says so in the feed's own words (prompt.run.stoppedNote); the server sends no text for it
+        d.result = e.state === 'stopped' ? undefined : e.text;
         d.endedAt = now;
       }
       if (e.state !== 'start') d.state = e.state;
@@ -400,7 +408,7 @@ function onEvent(e: ServerEvent): void {
       const ok = e.state === 'done';
       if (get().fast.status === 'delegated') setFastDone(ok);
       // the feed above the prompt already says so; a toast is for when no feed is on screen
-      if (!get().feeds) toast(ok ? 'Claude Code 完成：' + (e.text ?? '').slice(0, 120) : 'Claude Code 没能完成：' + (e.text ?? '').slice(0, 200), ok ? 'info' : 'error');
+      if (!get().feeds) toast(ok ? t('app.delegate.done', { text: (e.text ?? '').slice(0, 120) }) : t('app.delegate.failed', { text: (e.text ?? '').slice(0, 200) }), ok ? 'info' : 'error');
     }
   }
 }
@@ -425,7 +433,7 @@ export function undoDelegate(id: string): void {
   for (const [file, after] of Object.entries(d.after)) {
     const before = d.before[file];
     if (before === null) void deleteFile(file);
-    else if (before !== undefined) edit(file, (src) => rebaseSwap(src, after, before), { actor: 'undo', summary: '撤销 Claude Code 的改动', undoable: false });
+    else if (before !== undefined) edit(file, (src) => rebaseSwap(src, after, before), { actor: 'undo', summary: t('app.journal.undoClaude'), undoable: false });
   }
   set((s) => ({ delegates: s.delegates.map((x) => (x.id === id ? { ...x, undone: true } : x)) }));
 }
@@ -469,7 +477,7 @@ export function edit(file: string, apply: (src: string) => string, opts: EditOpt
   try {
     next = apply(cur);
   } catch (e) {
-    toast((e as Error).message, 'error');
+    toast(errorText(e), 'error');
     return false;
   }
   return enqueueResult(file, cur, next, apply, opts);
@@ -492,7 +500,7 @@ async function pump(file: string): Promise<void> {
         try {
           next = base === item.basis ? item.optimistic : await item.apply(base);
         } catch (e) {
-          toast(`${file}：${(e as Error).message}`, 'error');
+          toast(t('app.save.editFailed', { file, error: errorText(e) }), 'error');
           dropFirst(file);
           break;
         }
@@ -506,7 +514,7 @@ async function pump(file: string): Promise<void> {
             prompt: item.prompt,
           });
         } catch (e) {
-          toast(`保存 ${file} 失败：${(e as Error).message}`, 'error');
+          toast(t('app.save.failed', { file, error: (e as Error).message }), 'error');
           dropFirst(file);
           break;
         }
@@ -517,7 +525,7 @@ async function pump(file: string): Promise<void> {
         // someone saved in between: take their version and replay this edit on it
         patchEntry(file, (e) => ({ ...e, server: r.conflict }));
         if (++attempts >= 3) {
-          toast(`${file} 一直在被其他人修改，这次编辑没有保存。`, 'error');
+          toast(t('app.save.keptChanging', { file }), 'error');
           dropFirst(file);
           break;
         }
@@ -553,7 +561,7 @@ export function editElement(file: string, ops: HumanOp[], actor: Actor = 'human'
   try {
     first = applyHumanOps(cur, ops, inertDocument());
   } catch (e) {
-    toast((e as Error).message, 'error');
+    toast(errorText(e), 'error');
     return false;
   }
   if (!first.changed) return false;
@@ -597,7 +605,7 @@ export async function deleteFile(file: string): Promise<void> {
   const v = get().files[file]?.server?.version;
   if (v) {
     const r = await api.remove(project, file, v);
-    if ('conflict' in r) return toast(`${file} 刚被别人改过，没有删除。`, 'error');
+    if ('conflict' in r) return toast(t('app.save.deleteConflict', { file }), 'error');
   }
   set((s) => {
     const files = { ...s.files };

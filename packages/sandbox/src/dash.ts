@@ -28,6 +28,7 @@ import {
   type Table,
   type ToDash,
 } from '@dc/core';
+import { msg } from './msg';
 
 (window as unknown as { d3: typeof d3 }).d3 = d3;
 
@@ -117,7 +118,7 @@ function noteError(kind: PageError['kind'], e: unknown, file?: string): void {
   else errors.set(key, { kind, name: err.name || 'Error', message: String(err.message).slice(0, 300), file, count: 1 });
   if (kind === 'stopped') {
     banner.hidden = false;
-    banner.textContent = `这个页面的代码停止了（${file ?? '脚本'}）：${err.message}`;
+    banner.textContent = msg('pageStopped', { file: file ?? msg('script'), message: err.message });
   }
   console.error(err);
   scheduleReport();

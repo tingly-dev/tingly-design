@@ -46,7 +46,7 @@ async def main():
     restore()
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-        ctx = await b.new_context(viewport={'width': 1440, 'height': 900}, accept_downloads=True)
+        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 900}, accept_downloads=True)
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -209,7 +209,7 @@ async def main():
         await pg.locator('[data-board="Main.dc.html"] .strip input').fill('Team settings v2')
         await pg.keyboard.press('Enter')
         check('rename artboard from its name strip', await wait_for(lambda: canvas()['boards']['Main.dc.html'].get('title') == 'Team settings v2'))
-        await pg.locator('.panel [role="tab"]', has_text='Tweaks').click()
+        await pg.locator('.panel [role="tab"]', has_text='微调').click()
         await pg.locator('.swatches button[aria-label="#15803d"]').click()
         check('tweak swatch rewrites data-props', await wait_for(lambda: '"accent":{"editor":"color","default":"#15803d"' in src()))
         await main.locator('h1').click()
