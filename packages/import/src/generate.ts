@@ -1,3 +1,4 @@
+import { noteBox, parseCanvas, stringifyCanvas, uniqueNoteId, type BoardEntry } from '@dc/core';
 import type { ExtractReport, Extracted, XElement, XNode } from './model';
 
 /**
@@ -291,16 +292,7 @@ function splitPage(root: XElement, pageH: number, opts: GenerateOptions): Part[]
 
 function boardFile(i: number, title: string, used: Set<string>): string {
   if (i === 0) return 'Main.dc.html';
-  const slug = title
-    .normalize('NFKD')
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 4)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join('')
-    .replace(/[^A-Za-z0-9-]/g, '');
-  let base = slug && /^[A-Za-z]/.test(slug) ? slug.slice(0, 40) : `Part${i + 1}`;
+  let base = slugName(title) || `Part${i + 1}`;
   if (base === 'Main') base = `Part${i + 1}`;
   let name = `${base}.dc.html`;
   for (let k = 2; used.has(name); k++) name = `${base}${k}.dc.html`;
@@ -359,6 +351,8 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
   const title = opts.title || x.title || stem || 'Imported page';
   let y = 0;
   const index: Record<string, unknown> = {};
+  // where each artboard came from travels with the artboard, so it survives being added to another canvas
+  const imported = { from: x.from, ...(opts.source ? { source: opts.source } : {}), ...(opts.kept ? { original: opts.kept } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) };
   parts.forEach((part, i) => {
     const file = boardFile(i, part.title, used);
     const before = ctx.elements;
@@ -366,7 +360,7 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
     const w = Math.round(x.width);
     const h = parts.length > 1 ? part.h : Math.max(1, Math.round(x.height));
     const boardTitle = parts.length > 1 ? `${i + 1} · ${(part.title || (i === 0 ? title : `Part ${i + 1}`)).slice(0, 60)}` : title;
-    index[file] = { x: 0, y, w, h, title: boardTitle };
+    index[file] = { x: 0, y, w, h, title: boardTitle, imported };
     boards.push({ file, top: parts.length > 1 ? part.top : 0, title: boardTitle, w, h, elements: ctx.elements - before });
     y += h + 120;
   });
@@ -400,10 +394,85 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
     pages: [],
     launch: { view: 'canvas' },
     designSystems: [],
-    imported: { from: x.from, ...(opts.source ? { source: opts.source } : {}), ...(opts.kept ? { original: opts.kept } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) },
   };
   files['canvas.json'] = JSON.stringify(canvas, null, 2) + '\n';
   return { files, report };
+}
+
+/** Space left between what is already on a canvas and what an import adds. */
+const ADD_GAP = 240;
+
+export interface Added {
+  /** the new artboards, and canvas.json with them added */
+  files: Record<string, string>;
+  /** the new artboards' files, in order */
+  boards: string[];
+  /** the area the import now covers on the canvas, to bring into view */
+  area: { x: number; y: number; w: number; h: number };
+  /** add the same artboards and note to a canvas.json (a newer one, when someone changed it meanwhile) */
+  merge: (canvasJson: string | undefined) => string;
+}
+
+/**
+ * Put a generated import onto an existing canvas: its artboards (and its
+ * sticky note) go to the right of everything already there, top-aligned with
+ * it, under file names nothing in the project uses yet. Nothing already on
+ * the canvas moves or changes. With `page`, only that page's items are
+ * measured and the new ones go onto it.
+ */
+export function addToCanvas(existing: string | undefined, gen: Generated, opts: { taken?: Iterable<string>; page?: string } = {}): Added {
+  const canvas = parseCanvas(existing);
+  const incoming = parseCanvas(gen.files['canvas.json']);
+  const used = new Set<string>([...(opts.taken ?? []), ...Object.keys(canvas.boards)]);
+  // items without a page sit on the first one
+  const first = canvas.pages[0]?.id ?? '';
+  const here = (item: { page?: string }) => opts.page === undefined || (item.page ?? first) === (opts.page || first);
+  const page = opts.page && opts.page !== first ? { page: opts.page } : {};
+  const boxes = [...Object.values(canvas.boards).filter(here).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h })), ...Object.values(canvas.notes).filter(here).map(noteBox)];
+  const dx = boxes.length ? Math.max(...boxes.map((b) => b.x + b.w)) + ADD_GAP : 0;
+  const dy = boxes.length ? Math.min(...boxes.map((b) => b.y)) : 0;
+  const files: Record<string, string> = {};
+  const entries: [string, BoardEntry][] = [];
+  const lead = slugName((incoming.order[0] && incoming.boards[incoming.order[0]].title) || '') || 'Imported';
+  for (const file of incoming.order) {
+    const b = incoming.boards[file];
+    const base = file === 'Main.dc.html' ? lead : file.replace(/\.dc\.html$/, '');
+    let name = `${base}.dc.html`;
+    for (let k = 2; used.has(name); k++) name = `${base}${k}.dc.html`;
+    used.add(name);
+    files[name] = gen.files[file];
+    entries.push([name, { ...b, x: b.x + dx, y: b.y + dy, ...page }]);
+  }
+  const notes = Object.values(incoming.notes).map((n) => ({ ...n, x: n.x + dx, y: n.y + dy, ...page }));
+  const merge = (json: string | undefined): string => {
+    const c = parseCanvas(json);
+    for (const [name, b] of entries) {
+      c.boards[name] = b;
+      if (!c.order.includes(name)) c.order.push(name);
+    }
+    for (const n of notes) c.notes[uniqueNoteId(c, 'imported')] = n;
+    return stringifyCanvas(c);
+  };
+  const placed = [...entries.map(([, b]) => b), ...notes.map(noteBox)];
+  const x0 = Math.min(...placed.map((b) => b.x));
+  const y0 = Math.min(...placed.map((b) => b.y));
+  const area = { x: x0, y: y0, w: Math.max(...placed.map((b) => b.x + b.w)) - x0, h: Math.max(...placed.map((b) => b.y + b.h)) - y0 };
+  files['canvas.json'] = merge(existing);
+  return { files, boards: entries.map(([n]) => n), area, merge };
+}
+
+/** "Landing page — Acme" → "LandingPageAcme": an artboard file name. */
+function slugName(title: string): string {
+  const s = title
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 4)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('')
+    .replace(/[^A-Za-z0-9-]/g, '');
+  return /^[A-Za-z]/.test(s) ? s.slice(0, 40) : '';
 }
 
 /** The import report in the editor's language, one line per finding; empty lines left out. */

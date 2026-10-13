@@ -19,6 +19,10 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 - Icons are Tabler (`@tabler/icons-react`); prefer the shared set in `apps/editor/src/components/icons.tsx` and add new ones there when they are reused.
 - The editor's look is theme tokens (`apps/editor/src/theme.ts`, synced from Tingly Box's `@tingly/ui` palettes by `scripts/sync-tingly-box-theme.mjs`); use tokens, not raw colours, in editor chrome. Work inside canvases, slides and dashboards keeps its own colours.
 
+## Files people bring in
+
+What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.
+
 # Keep these in sync (read this before every change)
 
 Three things drift silently when a session forgets them. Each PR that touches one of them updates it in the same PR, not in a follow-up.
@@ -46,7 +50,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `attachments.ts`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `attachments.ts`, `ImportHere`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -55,7 +59,7 @@ Rules of thumb:
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs
-packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md)
+packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
 projects/         sample projects, one per kind
@@ -76,7 +80,7 @@ pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships
 ```
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `fast`, `fast_slides`, `delegate`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `import_here`, `fast`, `fast_slides`, `delegate`); add new suites to both language versions of that table.
 
 # Pull requests
 

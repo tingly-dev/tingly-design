@@ -15,6 +15,7 @@ import {
 import { api } from './api';
 import { display, edit, toast, useStore } from './store';
 import { SERVER } from './base';
+import { filesOf, type ImportTarget } from './components/ImportHere';
 
 /**
  * Design-system helpers: tokens as the page reads them, edits of tokens.json
@@ -233,3 +234,38 @@ export function installedOf(s: ReturnType<typeof get>): Installed[] {
 export function useInstalled(): Installed[] {
   return useStore((s) => installedOf(s));
 }
+
+/** Font files into fonts/, each registered in tokens.json with a family and weight read from its name. */
+export async function addFonts(files: FileList | File[]): Promise<string[]> {
+  const paths = await uploadTo('fonts', files);
+  if (paths.length)
+    editTokens((json) => {
+      const ty = (json.type ??= { fonts: [], families: {}, groups: [] }) as { fonts?: unknown[] };
+      ty.fonts ??= [];
+      for (const p of paths) {
+        const stem = p.replace(/^fonts\//, '').replace(/\.[^.]+$/, '');
+        const family = stem.replace(/[-_](regular|bold|medium|light|semibold|black|italic|\d+)$/i, '').replace(/[-_]+/g, ' ');
+        const weight = /bold/i.test(stem) ? '700' : /semibold/i.test(stem) ? '600' : /medium/i.test(stem) ? '500' : /light/i.test(stem) ? '300' : '400';
+        ty.fonts.push({ family, file: p, weight });
+      }
+    }, 'fonts added');
+  return paths;
+}
+
+/**
+ * What a design system takes: font files become its fonts (registered in
+ * tokens.json, as the 字体 view's upload does), pictures and SVGs its assets
+ * (assets/Other, as the 素材 view's drop zone does). These are the system's
+ * own files, not material kept for reference, so they go where the system
+ * keeps them rather than to uploads/.
+ */
+export const dsImport: ImportTarget = {
+  accepts: ['font', 'image', 'drawing'],
+  what: '字体文件加进字体（写进 tokens.json），图片和 SVG 加进素材的"Other"分组。',
+  run: async (picked) => {
+    const asFile = (f: { path: string; type: string; bytes: Uint8Array }) => new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type });
+    const fonts = await addFonts(filesOf(picked, 'font').map(asFile));
+    const pics = await uploadTo('assets/Other', filesOf(picked, 'image', 'drawing').map(asFile));
+    return [fonts.length ? `${fonts.length} 个字体` : '', pics.length ? `${pics.length} 个素材` : ''].filter(Boolean).join('、').replace(/^/, '已加入 ') + '。';
+  },
+};

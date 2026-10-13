@@ -9,6 +9,7 @@ The top left holds the page menu and the tools; the top right holds play, the pa
 - **Right panel**: the layer tree, named by role (row, column, grid, text, image…, with loops marked); properties (text style, hug/fixed/fill sizing, direction and gap, fill, stroke, radius, shadow, opacity); code (the element's own declarations are editable, inherited values listed read-only); Tweaks (edits the `data-props` defaults).
 - **Direct manipulation**: drag a selected element to reorder it among its siblings; drag it out of its parent to position it freely (the parent becomes `position:relative` and keeps its height); resize from the handles; double-click to retype; right-click for the context menu.
 - **Play mode**: artboards run their own logic, and links between artboards navigate.
+- **Import**: the import button in the toolbar, or drop files on the canvas, or paste SVG. A page (with its folder) or an SVG becomes new artboards to the right of what the page already has; pictures land where you drop them. Originals are kept in `uploads/`.
 
 <details>
 <summary><b>Shortcuts</b></summary>

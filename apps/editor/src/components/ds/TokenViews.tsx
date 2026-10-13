@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { styleDeclarations, type DsColor, type DsTokens, type DsTypeGroup, type DsTypeStyle } from '@dc/core';
-import { editTokens, familyList, uploadTo } from '../../ds';
+import { addFonts, editTokens, familyList } from '../../ds';
 import { contrastRatio, toHex } from '../panel/fields';
 
 /**
@@ -353,16 +353,7 @@ export function TypeView({ t }: { t: DsTokens }) {
           onChange={async (e) => {
             const files = e.currentTarget.files;
             if (!files?.length) return;
-            const paths = await uploadTo('fonts', files);
-            editTokens((json) => {
-              const ty = typeOf(json);
-              for (const p of paths) {
-                const stem = p.replace(/^fonts\//, '').replace(/\.[^.]+$/, '');
-                const family = stem.replace(/[-_](regular|bold|medium|light|semibold|black|italic|\d+)$/i, '').replace(/[-_]+/g, ' ');
-                const weight = /bold/i.test(stem) ? '700' : /semibold/i.test(stem) ? '600' : /medium/i.test(stem) ? '500' : /light/i.test(stem) ? '300' : '400';
-                ty.fonts!.push({ family, file: p, weight });
-              }
-            }, 'fonts added');
+            await addFonts(files);
             e.currentTarget.value = '';
           }}
         />

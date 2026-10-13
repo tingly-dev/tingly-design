@@ -51,7 +51,7 @@ pasted note after the drawing`;
     expect(html).toContain('fill="rgb(47, 111, 237)"');
     expect(html).not.toMatch(/onload|inkscape|alert|metadata/);
     const canvas = JSON.parse(out.files['canvas.json']);
-    expect(canvas.imported.from).toBe('svg');
+    expect(canvas.boards['Main.dc.html'].imported.from).toBe('svg');
     expect(canvas.boards['Main.dc.html']).toMatchObject({ w: 300, h: 200, title: 'Card' });
     expect(canvas.notes.imported.text).toContain('从 SVG 导入');
   });

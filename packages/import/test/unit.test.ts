@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeReport, escapeAttr, escapeText, hexColors, joinPath, packPage, patchStyle, toCanvas, type Extracted, type XElement, type XNode } from '../src';
+import { addToCanvas, describeReport, escapeAttr, escapeText, hexColors, joinPath, packPage, patchStyle, toCanvas, type Extracted, type XElement, type XNode } from '../src';
 import { resolveVars, specificity, splitSelectors } from '../src/sources/html/extract';
 
 const enc = new TextEncoder();
@@ -64,9 +64,37 @@ describe('toCanvas', () => {
     expect(html).toContain('<h1 style="color: #ff0000;">Hi <b>there</b></h1>');
     expect(html).toContain('src="assets/a-1.png"');
     const canvas = JSON.parse(out.files['canvas.json']);
-    expect(canvas.imported).toMatchObject({ from: 'html', width: 1280 });
+    expect(canvas.boards['Main.dc.html'].imported).toMatchObject({ from: 'html', width: 1280 });
     expect(canvas.notes.imported.text).toContain('b.css');
     expect(describeReport(out.report)[0]).toMatch(/^1 个画板/);
+  });
+
+  it('adds an import beside what a canvas already has, without touching it', () => {
+    const existing = JSON.stringify({
+      v: 3, title: 'Mine', order: ['Main.dc.html'], pages: [], launch: { view: 'canvas' }, designSystems: [],
+      boards: { 'Main.dc.html': { x: 0, y: 100, w: 800, h: 600, title: 'Home' } },
+      notes: { n1: { x: 900, y: 120, text: 'hi', w: 200 } },
+    });
+    const out = toCanvas(page(el('body', [el('h1', [text('Hi')], '', box(0, 40))], '', box(0, 100))), { now: 'x' });
+    const added = addToCanvas(existing, out, { taken: ['Acme.dc.html'] });
+    expect(added.boards).toEqual(['Acme2.dc.html']);
+    expect(Object.keys(added.files).sort()).toEqual(['Acme2.dc.html', 'canvas.json']);
+    const c = JSON.parse(added.files['canvas.json']);
+    expect(c.title).toBe('Mine');
+    expect(c.boards['Main.dc.html']).toEqual({ x: 0, y: 100, w: 800, h: 600, title: 'Home' });
+    expect(c.boards['Acme2.dc.html']).toMatchObject({ x: 1340, y: 100, w: 1280, title: 'Acme', imported: { from: 'html' } });
+    expect(c.order).toEqual(['Main.dc.html', 'Acme2.dc.html']);
+    expect(c.notes.n1.text).toBe('hi');
+    const note = Object.entries(c.notes).find(([k]) => k !== 'n1')!;
+    expect(note[1]).toMatchObject({ x: 1340 + 1280 + 80, y: 100 });
+    expect(added.area).toMatchObject({ x: 1340, y: 100 });
+  });
+
+  it('adds an import to an empty canvas at the origin', () => {
+    const out = toCanvas(page(el('body', [], '', box(0, 100))), { now: 'x', note: false });
+    const added = addToCanvas(undefined, out);
+    expect(added.boards).toEqual(['Acme.dc.html']);
+    expect(JSON.parse(added.files['canvas.json']).boards['Acme.dc.html']).toMatchObject({ x: 0, y: 0 });
   });
 
   it('splits a long page into one artboard per section', () => {

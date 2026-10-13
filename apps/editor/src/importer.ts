@@ -1,4 +1,4 @@
-import { embeddedAssets, packPage, parseSvg, readSvg, toCanvas, type Extracted, type InFile, type ImportReport } from '@dc/import';
+import { embeddedAssets, packPage, parseSvg, readSvg, toCanvas, type Extracted, type Generated, type InFile, type ImportReport } from '@dc/import';
 import { extractPage } from '@dc/import/extract';
 import { isKeptPath } from '@dc/core';
 import { api } from './api';
@@ -133,8 +133,36 @@ export interface ImportResult {
   report: ImportReport;
 }
 
-export async function importPicked(picked: Picked, name: string, title: string, onStep: (s: ImportStep) => void): Promise<ImportResult> {
-  onStep('layout');
+/**
+ * Keep what the person picked under the project's uploads/, as it was: one
+ * file named by its content (as chat attachments are), a folder with its own
+ * tree so the links between its files hold. Returns picked path → kept path,
+ * and the files uploads/ cannot hold.
+ */
+export async function keepPicked(project: string, picked: Picked, name: string): Promise<{ at: Map<string, string>; skipped: string[] }> {
+  const at = new Map<string, string>();
+  const skipped: string[] = [];
+  if (picked.files.length === 1) {
+    const f = picked.files[0];
+    const up = await api.upload(project, new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), 'uploads');
+    at.set(f.path, up.path);
+    return { at, skipped };
+  }
+  const root = `uploads/${slugOf(picked.folder || name) || 'import'}-${fnv1a(picked.files)}`;
+  for (const f of picked.files) {
+    const path = `${root}/${f.path}`;
+    if (!isKeptPath(path)) {
+      skipped.push(f.path);
+      continue;
+    }
+    await api.keepUpload(project, path, f.bytes);
+    at.set(f.path, path);
+  }
+  return { at, skipped };
+}
+
+/** Lay the picked page out (or parse the drawing) and read it back as the page model. */
+export async function readPage(picked: Picked): Promise<{ extracted: Extracted; packed: ReturnType<typeof packPage> }> {
   const packed = packPage(picked.files, picked.entry);
   let extracted: Extracted;
   if (isSvg(picked.entry)) {
@@ -150,36 +178,30 @@ export async function importPicked(picked: Picked, name: string, title: string, 
     if (extracted.report.elements < 4 && extracted.report.scripts > 0)
       throw new Error('这个页面要运行脚本才会显示内容，编辑器里不运行导入页面的脚本。请在终端用 `pnpm dc-import html <文件>` 导入。');
   }
+  return { extracted, packed };
+}
 
-  await api.createProject(name, title || extracted.title || name, 'design');
-  onStep('assets');
-  // what the person brought in is kept in uploads/, as it was, and the artboards point at it there:
-  // one file named by its content (as chat attachments are), a folder with its own tree so its links hold
+/**
+ * Keep what the person brought in under the project's uploads/, as it was,
+ * and generate the artboards pointing at it there: one file named by its
+ * content (as chat attachments are), a folder with its own tree so its links
+ * hold. Images cut out of the file itself (data: urls) go to assets/.
+ */
+export async function writePage(
+  project: string,
+  picked: Picked,
+  page: Awaited<ReturnType<typeof readPage>>,
+  title: string,
+): Promise<Generated> {
+  const { extracted, packed } = page;
   const local = new Map<string, string>();
-  const at = new Map<string, string>(); // picked path → kept path
-  const skipped: string[] = [];
-  if (picked.files.length === 1) {
-    const f = picked.files[0];
-    const up = await api.upload(name, new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), 'uploads');
-    at.set(f.path, up.path);
-  } else {
-    const root = `uploads/${slugOf(picked.folder || picked.entry.replace(/\.[a-z]+$/i, '')) || 'import'}-${fnv1a(picked.files)}`;
-    for (const f of picked.files) {
-      const path = `${root}/${f.path}`;
-      if (!isKeptPath(path)) {
-        skipped.push(f.path);
-        continue;
-      }
-      await api.keepUpload(name, path, f.bytes);
-      at.set(f.path, path);
-    }
-  }
+  const { at, skipped } = await keepPicked(project, picked, picked.entry.replace(/\.[a-z]+$/i, ''));
   for (const [dataUrl, path] of packed.paths) {
     const kept = at.get(path);
     if (kept) local.set(dataUrl, kept);
     else if (ASSET_EXT.test(path)) {
       const f = picked.files.find((x) => x.path === path)!;
-      const up = await api.upload(name, new File([f.bytes as Uint8Array<ArrayBuffer>], path.split('/').pop()!, { type: f.type }));
+      const up = await api.upload(project, new File([f.bytes as Uint8Array<ArrayBuffer>], path.split('/').pop()!, { type: f.type }));
       local.set(dataUrl, up.path);
     }
   }
@@ -187,14 +209,22 @@ export async function importPicked(picked: Picked, name: string, title: string, 
   for (const a of embeddedAssets(extracted.urls)) {
     if (local.has(a.url)) continue;
     // the server names uploads by their content, so each embedded file lands once
-    const up = await api.upload(name, new File([a.bytes as Uint8Array<ArrayBuffer>], `embedded.${a.ext}`, { type: a.type }));
+    const up = await api.upload(project, new File([a.bytes as Uint8Array<ArrayBuffer>], `embedded.${a.ext}`, { type: a.type }));
     local.set(a.url, up.path);
   }
   if (skipped.length) (extracted.report.notes ??= []).push(`${skipped.length} 个文件类型不能保存在项目里，没有留存：${skipped.slice(0, 3).join('、')}${skipped.length > 3 ? ' 等' : ''}`);
-
-  onStep('write');
   const source = picked.entry === 'pasted.svg' && picked.files.length === 1 ? undefined : picked.entry;
-  const out = toCanvas(extracted, { title: title || extracted.title || name, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
+  return toCanvas(extracted, { title: title || extracted.title || undefined, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
+}
+
+/** A page or drawing as a new canvas project. */
+export async function importPicked(picked: Picked, name: string, title: string, onStep: (s: ImportStep) => void): Promise<ImportResult> {
+  onStep('layout');
+  const page = await readPage(picked);
+  await api.createProject(name, title || page.extracted.title || name, 'design');
+  onStep('assets');
+  const out = await writePage(name, picked, page, title || name);
+  onStep('write');
   const { files } = await api.files(name);
   // artboards first, the index last, so the canvas never lists a file that is not there yet
   const order = [...Object.keys(out.files).filter((f) => f !== 'canvas.json'), 'canvas.json'];
