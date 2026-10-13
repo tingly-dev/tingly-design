@@ -54,7 +54,7 @@ async def main():
         await expect(pg.locator('.medit.on')).to_have_count(1)
         check('clicking the playing stage pauses back into editing', await pg.locator('.mplay[aria-label="播放"]').count() == 1)
         await pg.locator('.mscene', has_text='outro').click()
-        await expect(pg.locator('.mscene.on')).to_have_text('outro')
+        await expect(pg.locator('.mscene.on .mname')).to_have_text('outro')
         await expect(stage.locator('section#outro')).to_be_visible()
         check('a scene button jumps to that scene', True)
 
