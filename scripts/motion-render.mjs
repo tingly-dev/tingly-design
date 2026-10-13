@@ -181,7 +181,7 @@ try {
       const forward = [];
       for (const t of times) forward.push(await shot(t));
       let same = 0;
-      let worst = { pixels: 0, max: 0 };
+      let worst = { pixels: 0, max: 0, at: 0 };
       for (const i of times.map((_, i) => i).reverse()) {
         const again = await shot(times[i]);
         if (again.equals(forward[i])) {
@@ -189,13 +189,13 @@ try {
           continue;
         }
         const d = await pngDiff(page, forward[i], again);
-        if (d.pixels > worst.pixels) worst = d;
+        if (d.pixels > worst.pixels) worst = { ...d, at: times[i] };
       }
       const share = worst.pixels / (w * h * scale * scale);
       const ok = same === times.length || (worst.max <= 16 && share < 0.001);
       console.log(
         `${format}: ${same}/${times.length} frames byte-identical when seeked in reverse` +
-          (same < times.length ? `; the rest differ on at most ${worst.pixels} pixels by at most ${worst.max}/255 (${ok ? 'antialiasing' : 'FAIL'})` : ''),
+          (same < times.length ? `; the rest differ on at most ${worst.pixels} pixels by at most ${worst.max}/255, worst at ${(worst.at / 1000).toFixed(2)} s (${ok ? 'antialiasing' : 'FAIL'})` : ''),
       );
       if (!ok) failed = true;
     }

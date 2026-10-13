@@ -17,6 +17,7 @@
   },
   "fps": 30,
   "order": [
+    "cover",
     "idea",
     "edit",
     "more",
