@@ -44,7 +44,9 @@ import {
   IconPaperclip,
   IconPencil,
   IconPhoto,
+  IconPlayerPauseFilled,
   IconPlayerPlay,
+  IconPlayerPlayFilled,
   IconPlayerStopFilled,
   IconPlus,
   IconPointer,
@@ -92,6 +94,8 @@ export const Oval = tabler(IconOval);
 export const LineI = tabler(IconLine);
 export const ArrowI = tabler(IconArrowUpRight);
 export const Play = tabler(IconPlayerPlay);
+export const PlayFilled = tabler(IconPlayerPlayFilled, 14);
+export const PauseFilled = tabler(IconPlayerPauseFilled, 14);
 export const Panel = tabler(IconLayoutSidebarRight);
 export const Chevron = ({ open = true }: { open?: boolean }) => (open ? <IconChevronDown size={12} stroke={2} aria-hidden="true" /> : <IconChevronRight size={12} stroke={2} aria-hidden="true" />);
 export const Caret = () => <IconChevronDown size={12} stroke={2} aria-hidden="true" />;
