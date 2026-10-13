@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
-import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
+import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconMovie, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
+import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
 import { toast } from '../store';
 import { Appearance } from './Appearance';
@@ -8,15 +8,17 @@ import { goTo } from '../host';
 import { SERVER } from '../base';
 import { NAME_RE, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
+import { MotionFrame } from './motion/MotionFrame';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 
-/** The five project kinds, in the order the launcher lists them. */
+/** The six project kinds, in the order the launcher lists them. */
 export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string; tone: string }[] = [
   { kind: 'design', zh: '画布', unit: '个画板', blurb: '无限画布上的画板、便签和图形，适合界面与流程。', tone: 'blue' },
   { kind: 'slides', zh: '幻灯片', unit: '页', blurb: '1920×1080 的一页页幻灯片，可以直接放映。', tone: 'purple' },
   { kind: 'design-system', zh: '设计系统', unit: '个组件', blurb: '颜色、字体、组件和品牌素材，可装进画布和幻灯片。', tone: 'teal' },
   { kind: 'dashboard', zh: '看板', unit: '个数据集', blurb: '接数据源的图表页面，每个数字都标明出处。', tone: 'orange' },
   { kind: 'docs', zh: '文档', unit: '个标签页', blurb: '富文本文档，带标签页和评论，按块写回 Markdown。', tone: 'green' },
+  { kind: 'motion', zh: '动效', unit: '个场景', blurb: '按时间播放的场景，可导出视频，一套场景出多个尺寸。', tone: 'pink' },
 ];
 const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<ProjectKind, (typeof KINDS)[number]>;
 
@@ -57,6 +59,7 @@ const KIND_ICONS: Record<ProjectKind, ComponentType<IconProps>> = {
   'design-system': IconComponents,
   dashboard: IconChartBar,
   docs: IconFileText,
+  motion: IconMovie,
 };
 
 export function KindIcon({ kind, size = 16 }: { kind: ProjectKind; size?: number }) {
@@ -191,6 +194,20 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
         </ul>
       </div>
     );
+  } else if (p.kind === 'motion') {
+    const f = p.formats[0];
+    body = (
+      <div className="lp-motion">
+        {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} />}
+        {!p.still && <div className="lp-empty">还没有场景</div>}
+        <div className="lp-mmeta">
+          <span>{p.seconds} s</span>
+          {p.formats.map((x) => (
+            <span key={x.name}>{x.w}×{x.h}</span>
+          ))}
+        </div>
+      </div>
+    );
   } else {
     body = (
       <div className="lp-doc">
@@ -212,6 +229,16 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
       {body}
     </div>
   );
+}
+
+/** A still of a motion piece: its cover scene at the end of its entrances, or most of the way through its first scene. */
+function MotionStill({ still, format, width }: { still: { motion: MotionJson; id: string; source: string }; format: string; width: number }) {
+  const motion = useMemo(() => ({ ...still.motion, order: [still.id] }), [still]);
+  const scenes = useMemo(() => ({ [still.id]: still.source }), [still]);
+  const cover = !still.motion.order.includes(still.id);
+  // the preview sits 6px in from the card on each side, at 16:10
+  const bw = width - 12;
+  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} box={{ w: bw, h: (bw * 10) / 16 }} title={`${still.motion.title} 的封面`} />;
 }
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {

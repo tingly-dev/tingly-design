@@ -62,12 +62,13 @@
   --note-purple: #e6dcfb;
   --note-pink: #fbdbe9;
 
-  /* the five project kinds */
+  /* the six project kinds */
   --t-blue: #2f6fed;
   --t-purple: #6d4fd8;
   --t-teal: #0e7c7b;
   --t-orange: #b45309;
   --t-green: #1f7a43;
+  --t-pink: #c0306e;
 
   --panel-w: 312px;
   color-scheme: light;
@@ -81,6 +82,7 @@
   --t-teal: #2dd4bf;
   --t-orange: #fb9a4b;
   --t-green: #4ade80;
+  --t-pink: #f472b6;
   --mark: color-mix(in srgb, #ffc400 28%, var(--panel));
   --comment: rgba(255, 196, 0, 0.16);
   --comment-on: rgba(255, 196, 0, 0.32);
@@ -1471,6 +1473,7 @@ textarea.code:focus {
   --t-teal-soft: color-mix(in srgb, var(--t-teal) 13%, var(--panel));
   --t-orange-soft: color-mix(in srgb, var(--t-orange) 13%, var(--panel));
   --t-green-soft: color-mix(in srgb, var(--t-green) 13%, var(--panel));
+  --t-pink-soft: color-mix(in srgb, var(--t-pink) 13%, var(--panel));
   position: relative;
   height: 100%;
   overflow: auto;
@@ -1483,6 +1486,7 @@ textarea.code:focus {
 .launcher .t-teal { --tone: var(--t-teal); --tone-soft: var(--t-teal-soft); }
 .launcher .t-orange { --tone: var(--t-orange); --tone-soft: var(--t-orange-soft); }
 .launcher .t-green { --tone: var(--t-green); --tone-soft: var(--t-green-soft); }
+.launcher .t-pink { --tone: var(--t-pink); --tone-soft: var(--t-pink-soft); }
 .launcher::before {
   /* a soft wash of the accent behind the header, like Tingly Box's hero */
   content: '';
@@ -1716,8 +1720,34 @@ textarea.code:focus {
 .lpreview.k-design {
   background: var(--panel-2) radial-gradient(color-mix(in srgb, var(--ink) 14%, transparent) 1px, transparent 1px) 0 0 / 12px 12px;
 }
-.lpreview.k-slides {
+.lpreview.k-slides,
+.lpreview.k-motion {
   background: #16181d;
+}
+.lp-motion {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.lp-motion .lp-empty {
+  color: #9a9892;
+}
+.lp-mmeta {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 4px;
+}
+.lp-mmeta span {
+  font-size: 10.5px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(22, 24, 29, 0.72);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 .lframe {
   position: absolute;
@@ -4185,4 +4215,187 @@ input.dashtitle {
 .lsteps .on {
   color: var(--ink);
   font-weight: 600;
+}
+
+/* ------------------------------------------------------------- motion */
+
+.mframe {
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.mframe.on {
+  opacity: 1;
+}
+.mframe iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+.mmain {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px 16px;
+}
+.mstage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+.mstack {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.mstack .mframe {
+  box-shadow: var(--lift-shadow), 0 0 0 1px var(--line);
+  background: #fff;
+}
+.mcover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.mcontrols {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+.mplay {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 12px;
+  flex: none;
+}
+.mtime {
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mscrub {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.mscenes {
+  display: flex;
+  gap: 2px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+.mscene {
+  flex-basis: 0;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.mscene:hover {
+  color: var(--ink);
+}
+.mscene.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.missues {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  max-height: 160px;
+  overflow: auto;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.missues ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.missues li {
+  padding: 2px 0;
+}
+.missues li.error b {
+  color: var(--danger);
+}
+.missues p {
+  margin: 0;
+  color: var(--faint);
+}
+.mseg {
+  display: flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.mseg button {
+  border: 0;
+  background: transparent;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.mseg button.on {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.mspeed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin: 0 4px;
+}
+.mspeed select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+.app.motion .dsask {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  margin: 0 auto;
+  width: min(640px, 100%);
+  flex: none;
 }

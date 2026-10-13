@@ -332,3 +332,55 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
 }
 
 (window as unknown as { dcMotion: unknown }).dcMotion = { mount };
+
+/**
+ * In the editor the runtime runs in a sandboxed frame (`sandboxDoc(origin, 'motion')`)
+ * and the editor drives it over postMessage: load a project, seek, play, pause.
+ */
+type HostMsg =
+  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still' }
+  | { dcm: 'seek'; t: number }
+  | { dcm: 'play'; from?: number }
+  | { dcm: 'pause' };
+
+if (typeof document !== 'undefined' && document.getElementById('dc-app') && window.parent !== window) {
+  const root = document.getElementById('dc-app') as HTMLElement;
+  let stage: MotionStage | null = null;
+  let loading = 0;
+  const post = (m: Record<string, unknown>) => window.parent.postMessage(m, '*');
+  window.addEventListener('message', async (e: MessageEvent) => {
+    if (e.source !== window.parent) return;
+    const m = e.data as HostMsg;
+    if (!m || typeof m !== 'object' || !('dcm' in m)) return;
+    if (m.dcm === 'load') {
+      const n = ++loading;
+      stage?.destroy();
+      stage = null;
+      try {
+        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root });
+        if (n !== loading) return s.destroy();
+        stage = s;
+        const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));
+        if (at) await s.seek(at);
+        post({ dcm: 'loaded', width: s.width, height: s.height, duration: s.duration, speed: s.speed, fps: s.fps, scenes: s.scenes, issues: s.issues, t: at });
+      } catch (err) {
+        post({ dcm: 'error', message: err instanceof Error ? err.message : String(err) });
+      }
+    } else if (!stage) {
+      return;
+    } else if (m.dcm === 'seek') {
+      stage.pause();
+      await stage.seek(m.t);
+      post({ dcm: 'time', t: m.t });
+    } else if (m.dcm === 'play') {
+      const s = stage;
+      s.play(m.from, (t) => {
+        post({ dcm: 'time', t });
+        if (t >= s.duration) post({ dcm: 'ended' });
+      });
+    } else if (m.dcm === 'pause') {
+      stage.pause();
+    }
+  });
+  post({ dcm: 'ready' });
+}

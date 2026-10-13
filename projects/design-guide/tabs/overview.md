@@ -12,7 +12,7 @@ Canvases, slide decks, design systems, dashboards and documents are plain files 
 
 It pairs with [Tingly Box](https://github.com/tingly-dev/tingly-box), our open-source AI gateway that connects any agent to any model. Point `ANTHROPIC_BASE_URL` at Tingly Box and both fast AI and Claude Code run on whichever model you route them to; *Workflow* has the settings.
 
-## Five project kinds
+## Six project kinds
 
 | Kind | What you make | Main files | Skill |
 | --- | --- | --- | --- |
@@ -21,11 +21,12 @@ It pairs with [Tingly Box](https://github.com/tingly-dev/tingly-box), our open-s
 | Design system | Tokens and components | `design-system.json`, `tokens.json` | `design-system` |
 | Dashboard | Live data pages | `dash.json`, `datasets/`, `files/index.html` | `dashboard` |
 | Docs | Guides and specs | `doc.json`, `tabs/<id>.md`, `comments.json` | `docs` |
+| Motion | Promos and animated videos | `motion.json`, `scenes/<id>.html` | `motion` |
 
 ## Before your first edit
 
 - [ ] Run `pnpm install`, then `pnpm dev`, and open `localhost:5173`
-- [ ] Pick a sample project, or create one of the five kinds from the picker
+- [ ] Pick a sample project, or create one of the six kinds from the picker
 - [ ] Set `ANTHROPIC_API_KEY` (or a Tingly Box endpoint) to turn on fast AI
 - [ ] Install the `claude` command if you want to hand work to Claude Code
 - [x] Read this handbook

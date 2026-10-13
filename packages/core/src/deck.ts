@@ -31,7 +31,7 @@ export interface DeckJson {
   [k: string]: unknown;
 }
 
-export type ProjectKind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs';
+export type ProjectKind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 
 export const SLIDE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -60,6 +60,7 @@ export function projectKind(files: Iterable<string>): ProjectKind | null {
     if (f === DECK_FILE) return 'slides';
     if (f === 'dash.json') return 'dashboard';
     if (f === 'doc.json') return 'docs';
+    if (f === 'motion.json') return 'motion';
     if (f === 'canvas.json') design = true;
     if (f === 'design-system.json') ds = true;
   }

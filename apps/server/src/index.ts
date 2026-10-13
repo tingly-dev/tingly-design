@@ -112,7 +112,7 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 app.post('/api/projects', async (c) => {
   const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: string }>();
   if (!isProjectName(name)) throw new HttpError(400, '项目名只能用字母、数字、- 和 _');
-  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' ? kind : 'design');
+  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design');
   return c.json({ ok: true });
 });
 
@@ -424,6 +424,7 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
   const bad = checkMessages(body.messages);
   if (bad) throw new HttpError(400, bad);
   if (body.kind === 'dashboard') throw new HttpError(400, '看板的页面交给 Claude Code 写');
+  if (body.kind === 'motion') throw new HttpError(400, '动效的场景交给 Claude Code 改');
   const system = body.kind === 'docs' ? FAST_EDIT_DOCS : body.kind === 'slides' ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES : FAST_EDIT_SYSTEM;
   return stream(c, async (s) => {
     const ms = anthropic!.messages.stream({

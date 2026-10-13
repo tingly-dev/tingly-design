@@ -6,7 +6,7 @@ BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
-SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs'}
+SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
 MADE = ['zz-launch', 'zz-launch-deck']
 
 def cleanup():
@@ -32,11 +32,11 @@ async def main():
 
         # --- every kind and every project ----------------------------------------------------
         tabs = await pg.locator('.ltabs [role=tab]').evaluate_all('ts => ts.map(t => t.dataset.tab)')
-        check('a tab for all and for each of the five kinds', tabs == ['all', 'design', 'slides', 'design-system', 'dashboard', 'docs'], str(tabs))
+        check('a tab for all and for each of the six kinds', tabs == ['all', 'design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'], str(tabs))
         listed = await pg.locator('.lcard[data-project]').evaluate_all('cs => Object.fromEntries(cs.map(c => [c.dataset.project, c.dataset.kind]))')
         check('every sample project is listed with its kind', all(listed.get(n) == k for n, k in SAMPLES.items()), json.dumps(listed))
         news = await pg.locator('.lstrip [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
-        check('a new-project tile for each kind', news == ['design', 'slides', 'design-system', 'dashboard', 'docs'], str(news))
+        check('a new-project tile for each kind, and one to import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
         await expect(pg.locator('.lcard[data-project="tingly-intro"] .lmeta')).to_contain_text('8 页')
         await expect(pg.locator('.lcard[data-project="box-console"] .lmeta')).to_contain_text('4 个画板')
         check('cards say how big each project is', True)
@@ -54,6 +54,10 @@ async def main():
         await expect(pg.locator('.lcard[data-project="box-usage"] .lp-dash li').first).to_have_text('September provider budgets')
         await expect(pg.locator('.lcard[data-project="design-guide"] .lp-doc li').nth(2)).to_have_attribute('style', 'padding-left: 10px;')
         check('dashboard and doc cards show datasets and the tab outline', True)
+        poster = pg.frame_locator('.lcard[data-project="design-motion"] .mframe iframe')
+        await expect(poster.locator('section#poster')).to_be_visible()
+        check('the motion card stands on its cover with its length and sizes',
+              '1920×1080' in await pg.locator('.lcard[data-project="design-motion"] .lp-mmeta').inner_text())
         await pg.screenshot(path=OUT + 'launcher.png', full_page=True)
 
         # --- filter, search, keyboard -------------------------------------------------------
@@ -93,7 +97,7 @@ async def main():
         # --- new project dialog ---------------------------------------------------------------
         await pg.locator('.lnewbtn').click()
         dlg = pg.locator('[role=dialog]')
-        check('the dialog offers all five kinds', await dlg.locator('[role=radio]').count() == 5)
+        check('the dialog offers all six kinds', await dlg.locator('[role=radio]').count() == 6)
         await expect(dlg.locator('input[aria-label="标题"]')).to_be_focused()
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Launch')
         check('the folder follows the title', await dlg.locator('input[aria-label="新项目名称"]').input_value() == 'zz-launch')
