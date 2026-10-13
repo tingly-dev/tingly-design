@@ -80,6 +80,7 @@ End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `la
 
 # Pull requests
 
-- Title `type(scope): what changed`; body follows `.github/pull_request_template.md`.
+Follow `.github/pull_request_template.md` (the same as Tingly Box's) for PR title and description. The title is `type(scope): what changed`. The description starts at `## Summary` with no header above it, then `## Key Changes`, within the template's length caps. Everything that is not about the change (requester, thread / session links, hidden markers) goes in a short, plain footer after a `---` rule; no badges, banners or "Generated with" lines.
+
 - Screenshots go to the `pr-assets` branch, not into the feature branch.
-- The PR description says which `.design/` note and which `CLAUDE.md` section it updated, or why none was needed.
+- Say in the description which `.design/` note and which `CLAUDE.md` section the PR updated, or why none was needed.
