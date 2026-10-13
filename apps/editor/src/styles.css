@@ -4547,25 +4547,100 @@ input.dashtitle {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.mscrub {
-  flex: 1;
-  accent-color: var(--accent);
-}
-.mscenes {
-  display: flex;
-  gap: 2px;
+/* one axis for the ruler, the scene blocks and the playhead: a block's left edge is its start */
+.mtimeline {
+  position: relative;
   max-width: 960px;
   width: 100%;
   margin: 0 auto;
 }
-.mscene {
-  flex-basis: 0;
-  min-width: 0;
-  height: 26px;
-  padding: 0 6px;
+.mruler {
+  position: relative;
+  height: 16px;
+}
+.mruler i {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 4px;
+  background: var(--line);
+  pointer-events: none;
+}
+.mruler i.major {
+  height: 8px;
+  background: var(--faint);
+}
+/* the native range keeps keyboard and assistive tech; a zero-width thumb maps its value onto the full width */
+.mscrub {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.mscrub::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+.mscrub::-moz-range-track {
+  height: 100%;
+  background: transparent;
+}
+.mscrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 100%;
   border: 0;
+}
+.mscrub::-moz-range-thumb {
+  width: 0;
+  height: 100%;
+  border: 0;
+}
+.mscrub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   border-radius: 4px;
-  background: var(--panel);
+}
+.mscenes {
+  position: relative;
+  height: 26px;
+}
+.mhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.mhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  border: 5px solid transparent;
+  border-top: 7px solid var(--accent);
+}
+.mscene {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* a hairline between blocks, taken from each block's own width so its edges stay on the axis */
+  border: 0;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  background-clip: padding-box;
+  min-width: 0;
+  padding: 0 6px;
+  border-radius: 4px;
+  background-color: var(--panel);
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--ink-2);
   font-size: 11px;
@@ -4578,7 +4653,7 @@ input.dashtitle {
   color: var(--ink);
 }
 .mscene.on {
-  background: var(--accent-soft);
+  background-color: var(--accent-soft);
   color: var(--accent-ink);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
@@ -4688,6 +4763,7 @@ input.dashtitle {
   background: #fff;
 }
 .mwhere {
+  margin-left: auto;
   font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
