@@ -50,7 +50,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `attachments.ts`, `ImportHere`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `attachments.ts`, `ImportHere`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -80,7 +80,7 @@ pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships
 ```
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `import_here`, `fast`, `fast_slides`, `delegate`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `delegate`); add new suites to both language versions of that table.
 
 # Pull requests
 

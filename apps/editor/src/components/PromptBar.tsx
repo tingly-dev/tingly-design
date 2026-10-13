@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { elementLabel, attr, type Attachment } from '@dc/core';
-import { display, parsed, toast, useCanvas, useStore } from '../store';
-import { cancelFastEdit, delegateToClaude, runFastEdit, runJQuery } from '../fastedit';
+import { display, focusBoard, parsed, toast, useCanvas, useStore, type LastRun } from '../store';
+import { delegateToClaude, runFastEdit, runJQuery, stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
+import { RunFeed, useAutoGrow } from './RunFeed';
 import { Send, Stop } from './icons';
+import { slideIdOf } from '@dc/core';
 
 type Target = 'ai' | 'claude' | 'jquery';
 
@@ -50,7 +52,24 @@ export function PromptBar() {
   const [handle, tag, label] = pointed?.split('|') ?? [];
   const running = fast.status === 'running';
   const activeDelegate = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
-  const lastDelegate = delegates.at(-1);
+  // the button stops what this bar would otherwise start again: one run per agent at a time
+  const busyRun: LastRun =
+    (target === 'claude' || (target === 'ai' && fast.status === 'delegated')) && activeDelegate
+      ? { kind: 'delegate', id: activeDelegate.id }
+      : target !== 'claude' && running
+        ? { kind: 'fast' }
+        : null;
+  const busy = !!busyRun;
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    if (!blocked) return;
+    const t = setTimeout(() => setBlocked(false), 4000);
+    return () => clearTimeout(t);
+  }, [blocked]);
+  useEffect(() => {
+    if (!busy) setBlocked(false);
+  }, [busy]);
+  useAutoGrow(box, text);
 
   const disabled =
     !file || (target === 'ai' && health?.fastEdit === false) || (target === 'claude' && health?.claudeCli === false);
@@ -67,7 +86,8 @@ export function PromptBar() {
   const submit = async () => {
     const t = text.trim();
     const project = useStore.getState().project;
-    if (!t || !file || !project || running || disabled || keeping) return;
+    if (!t || !file || !project || disabled || keeping) return;
+    if (busy) return setBlocked(true);
     let files: Attachment[] = [];
     if (attaching && attach.items.length) {
       setKeeping(true);
@@ -80,18 +100,30 @@ export function PromptBar() {
         setKeeping(false);
       }
     }
+    if (target === 'claude') {
+      // the request moves into the feed at once; it comes back if Claude Code could not start
+      setText('');
+      if (await delegateToClaude(file, tid, t, files)) attach.clear();
+      else setText((cur) => cur || t);
+      return;
+    }
     if (target === 'ai') void runFastEdit(file, tid, t, files);
-    else if (target === 'claude') {
-      useStore.setState({ fast: { status: 'idle', mode: 'ai', lines: [] } });
-      void delegateToClaude(file, tid, t, files);
-    } else void runJQuery(file, t);
+    else void runJQuery(file, t);
     if (target !== 'jquery') {
       setText('');
       attach.clear();
     }
   };
+  const reuse = (p: string) => {
+    setText(p);
+    requestAnimationFrame(() => box.current?.focus());
+  };
+  const open = (f: string) => {
+    const slide = slideIdOf(f);
+    if (slides && slide) useStore.setState({ slide });
+    else if (canvas.boards[f]) focusBoard(f);
+  };
 
-  const showTicker = fast.status !== 'idle' || fast.note || activeDelegate || (lastDelegate && lastDelegate.state !== 'done');
   return (
     <div
       className={`prompt${attaching && attach.over ? ' dropping' : ''}`}
@@ -99,6 +131,7 @@ export function PromptBar() {
       aria-label="让 AI 修改"
       {...(attaching ? { onDragOver: attach.handlers.onDragOver, onDragLeave: attach.handlers.onDragLeave, onDrop: attach.handlers.onDrop } : {})}
     >
+      <RunFeed onReuse={reuse} onOpen={open} />
       <div className="head">
         <span className="target" title={label}>
           {handle ? (
@@ -147,8 +180,8 @@ export function PromptBar() {
             }
           }}
         />
-        {running ? (
-          <button className="btn outline send" onClick={cancelFastEdit}>
+        {busy ? (
+          <button className="btn outline send" onClick={() => stopRun(busyRun)}>
             <Stop /> 停止
           </button>
         ) : (
@@ -158,40 +191,12 @@ export function PromptBar() {
         )}
       </div>
       {attaching && attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
-      {showTicker && (
-        <div className="ticker" aria-live="polite">
-          {fast.lines.map((l, i) =>
-            l.divider ? (
-              <div key={i} className="note-line">
-                {l.code}
-              </div>
-            ) : (
-            <div key={i} className={`st ${l.ok ? '' : 'bad'}`}>
-              <i>{l.ok ? '✓' : '✕'}</i>
-              <span>
-                {l.code}
-                {l.error ? `\n${l.error}` : ''}
-              </span>
-            </div>
-            ),
-          )}
-          {running && !fast.lines.length && <div className="note-line">{fast.mode === 'ai' ? '正在读设计并写第一行…' : '正在执行…'}</div>}
-          {fast.note && <div className="note-line">{fast.note}</div>}
-          {fast.status === 'done' && fast.lines.length > 0 && <div className="note-line">已保存。</div>}
-          {(activeDelegate ?? (lastDelegate?.state === 'error' ? lastDelegate : null)) && (
-            <>
-              <div className="note-line claude">
-                Claude Code {activeDelegate ? '正在处理' : '没能完成'}：{(activeDelegate ?? lastDelegate)!.prompt}
-              </div>
-              {(activeDelegate ?? lastDelegate)!.lines.slice(-6).map((l, i) => (
-                <div key={i} className="claude-line">
-                  {l}
-                </div>
-              ))}
-              {lastDelegate?.state === 'error' && !activeDelegate && <div className="note-line">{lastDelegate.result}</div>}
-            </>
-          )}
+      {blocked ? (
+        <div className="prompt-hint warn" role="status">
+          {target === 'claude' ? 'Claude Code' : '快速 AI'} 还在处理上一条。等它完成或先停止；你写的这条会留在这里。
         </div>
+      ) : (
+        text.includes('\n') && <div className="prompt-hint">Enter 发送，Shift + Enter 换行</div>
       )}
     </div>
   );

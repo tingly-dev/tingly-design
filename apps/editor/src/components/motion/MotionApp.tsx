@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOTION_FILE, parseMotion, primaryFormat, sceneFile, speedOf } from '@dc/core';
 import { display, isSaving, useStore } from '../../store';
-import { AskClaude } from '../ds/DsApp';
+import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { replaceUrl } from '../../host';
 import { BASE } from '../../base';
@@ -246,6 +246,10 @@ export function MotionApp() {
         )}
         <AskClaude
           file={current ? sceneFile(current.id) : MOTION_FILE}
+          onOpen={(f) => {
+            const w = windows.find((x) => sceneFile(x.id) === f);
+            if (w) seek(w.start / (info?.speed ?? 1) + 1);
+          }}
           placeholder="交给 Claude Code：改一个场景、加一段动画、调整节奏、做一张封面…"
           context={() => (current ? `播放到 ${secs(tRef.current)} s，场景 ${current.id}，尺寸 ${fmt}。` : '')}
         />

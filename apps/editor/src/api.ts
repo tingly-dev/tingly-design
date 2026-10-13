@@ -1,4 +1,4 @@
-import type { Actor, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import { at, SERVER } from './base';
 
 export interface FileState {
@@ -24,7 +24,7 @@ export type ServerEvent =
   | { type: 'file'; path: string; content: string; version: string; actor: Actor }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
-  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error'; text?: string }
+  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number }
   | { type: 'assets'; path?: string };
 
 async function json<T>(res: Response): Promise<T> {
@@ -107,6 +107,8 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then((r) => json<{ id: string }>(r)),
+
+  stopDelegate: (p: string, id: string) => fetch(at(`api/projects/${enc(p)}/delegate/${enc(id)}`), { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
 
   commit: (p: string, message: string) =>
     fetch(at(`api/projects/${enc(p)}/commit`), {

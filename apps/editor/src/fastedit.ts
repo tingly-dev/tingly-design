@@ -18,7 +18,7 @@ import {
 } from '@dc/core';
 import { api } from './api';
 import { ExecSession, replay } from './executor';
-import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine } from './store';
+import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine, type LastRun } from './store';
 import { slideTitle } from './slides';
 
 /** A deck's outline for the model: sections and slide titles, the current one marked. */
@@ -100,7 +100,8 @@ export async function runJQuery(file: string, code: string): Promise<void> {
   if (base === undefined) return;
   const statements = splitStatements(code);
   if (!statements.length) return;
-  setFast({ status: 'running', mode: 'jquery', file, prompt: code, lines: [], note: undefined });
+  setFast({ status: 'running', mode: 'jquery', file, prompt: code, lines: [], note: undefined, startedAt: Date.now(), endedAt: undefined, changed: false });
+  set({ lastRun: { kind: 'fast' }, runHidden: false });
   try {
     const { session } = await ExecSession.begin(base);
     let out: string = base;
@@ -110,7 +111,7 @@ export async function runJQuery(file: string, code: string): Promise<void> {
       pushLine({ code: s, ok: r.ok, error: r.error });
       if (!r.ok) {
         setDraft(file, undefined);
-        setFast({ status: 'error', note: r.error });
+        setFast({ status: 'error', note: r.error, endedAt: Date.now() });
         return;
       }
       if (r.log) setFast({ note: r.log });
@@ -124,39 +125,67 @@ export async function runJQuery(file: string, code: string): Promise<void> {
       summary: `${done.length} 条 jQuery 语句`,
       prompt: code.slice(0, 400),
     });
-    setFast({ status: 'done' });
+    setFast({ status: 'done', endedAt: Date.now(), changed: out !== base });
   } catch (e) {
     setDraft(file, undefined);
-    setFast({ status: 'error', note: (e as Error).message });
+    setFast({ status: 'error', note: (e as Error).message, endedAt: Date.now() });
   }
 }
 
-export async function delegateToClaude(file: string | undefined, tid: number | null, prompt: string, attachments: Attachment[] = []): Promise<void> {
+/** Stop a run: the one named, or the one the feed shows. */
+export function stopRun(run: LastRun = get().lastRun): void {
+  const s = get();
+  if (run?.kind === 'fast') return cancelFastEdit();
+  if (run?.kind === 'delegate' && s.project) void api.stopDelegate(s.project, run.id).catch((e) => toast((e as Error).message, 'error'));
+}
+
+export interface DelegateOptions {
+  /** what the person was looking at, told to Claude Code before the request but not shown as part of it */
+  context?: string;
+  /** the fast model handed the request over */
+  via?: 'fast';
+}
+
+/** Hand a request to Claude Code. False when it could not start (the request is then still the person's to resend). */
+export async function delegateToClaude(
+  file: string | undefined,
+  tid: number | null,
+  prompt: string,
+  attachments: Attachment[] = [],
+  opts: DelegateOptions = {},
+): Promise<boolean> {
   const project = get().project;
-  if (!project) return;
+  if (!project) return false;
+  // said before the request goes out: the run's first event can arrive before the reply naming it
+  if (opts.via) setFast({ status: 'delegated', note: undefined });
   try {
     const journal = get()
       .journal.slice(-12)
       .map((j) => `- [${j.actor}] ${j.file}: ${j.summary}`);
-    await api.delegate(project, {
+    const { id } = await api.delegate(project, {
       prompt,
+      ...(opts.context ? { context: opts.context } : {}),
       file,
       pointed: file ? pointedInfo(file, tid) : null,
       journal,
       ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
-    setFast({ status: 'delegated', note: '已交给 Claude Code，完成后画布会自动更新。' });
+    if (opts.via) set((s) => ({ delegates: s.delegates.map((d) => (d.id === id ? { ...d, via: opts.via } : d)) }));
+    return true;
   } catch (e) {
-    setFast({ status: 'error', note: (e as Error).message });
+    toast(`没能交给 Claude Code：${(e as Error).message}`, 'error');
+    return false;
   }
 }
+
 
 export async function runFastEdit(file: string, tid: number | null, prompt: string, attachments: Attachment[] = []): Promise<void> {
   const s0 = get();
   const project = s0.project;
   const base = display(s0, file);
   if (!project || base === undefined) return;
-  setFast({ status: 'running', mode: 'ai', file, prompt, lines: [], note: undefined });
+  setFast({ status: 'running', mode: 'ai', file, prompt, lines: [], note: undefined, startedAt: Date.now(), endedAt: undefined, changed: false });
+  set({ lastRun: { kind: 'fast' }, runHidden: false });
   abort = new AbortController();
   const signal = abort.signal;
 
@@ -238,14 +267,14 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
 
       if (delegate) {
         setDraft(file, undefined);
-        await delegateToClaude(file, tid, prompt, attachments);
+        if (!(await delegateToClaude(file, tid, prompt, attachments, { via: 'fast' }))) setFast({ status: 'error', note: '快速 AI 想交给 Claude Code，但没能交出去。', endedAt: Date.now() });
         return;
       }
       const f = failed as { line: string; error: string } | null;
       if (f) {
         setDraft(file, undefined);
         if (retries++ >= 2) {
-          setFast({ status: 'error', note: `三次都没能执行成功：${f.error}` });
+          setFast({ status: 'error', note: `三次都没能执行成功：${f.error}`, endedAt: Date.now() });
           return;
         }
         pushLine({ code: `改动已撤销，第 ${retries} 次重试`, ok: true, divider: true });
@@ -269,7 +298,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
       }
       setDraft(file, undefined);
       if (out === base) {
-        setFast({ status: 'done', note: '没有产生改动。' });
+        setFast({ status: 'done', note: '没有产生改动。', endedAt: Date.now() });
         return;
       }
       enqueueResult(file, base, out, (src) => replay(done, src), {
@@ -277,14 +306,14 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         summary: `${done.length} 条语句`,
         prompt,
       });
-      setFast({ status: 'done' });
+      setFast({ status: 'done', endedAt: Date.now(), changed: true });
       return;
     }
   } catch (e) {
     setDraft(file, undefined);
-    if ((e as Error).name === 'AbortError') setFast({ status: 'idle', note: '已取消' });
+    if ((e as Error).name === 'AbortError') setFast({ status: 'error', note: '已停止，没有保存任何改动。', endedAt: Date.now() });
     else {
-      setFast({ status: 'error', note: (e as Error).message });
+      setFast({ status: 'error', note: (e as Error).message, endedAt: Date.now() });
       toast((e as Error).message, 'error');
     }
   } finally {

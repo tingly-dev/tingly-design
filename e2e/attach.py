@@ -172,7 +172,7 @@ async def main():
             await main.locator('h1').click()
             await pg.locator('.prompt textarea').fill('标题换成截图里的紫色，下面加一个三条的要点列表')
             await pg.locator('.prompt .send').click()
-            await expect(pg.locator('.ticker')).to_contain_text('已保存', timeout=15000)
+            await expect(pg.locator('.runfeed')).to_contain_text('已保存', timeout=15000)
             calls = lines(mock_log)
             first = calls[0]['blocks'] if calls else []
             kinds = [x['type'] for x in first]
