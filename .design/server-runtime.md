@@ -1,122 +1,118 @@
 # 服务端用什么跑：Node、Go 还是两者分工
 
-状态：**研究，待定**。现行实现是 Node（`apps/server`，Hono）。本文比较几条路，给出倾向和迁移草图，供决定前讨论；在决定之前代码不动。和 [tingly-box-integration.md](./tingly-box-integration.md) 的关系见 §6。
+状态：**研究，待定**。现行实现是 Node（`apps/server`，Hono）。本文比较几条路，给出倾向和迁移步骤，供决定前讨论；决定之前代码不动。图见 [server-runtime.pencil.md](./server-runtime.pencil.md)，文字和图冲突时以本文为准。和 [tingly-box-integration.md](./tingly-box-integration.md) 的关系见 §8。
+
+**一句话**：倾向把服务端改成 Go 写的"薄宿主"，只管文件、事件、模型和子进程，不理解任何项目格式；理解格式的逻辑全部放在浏览器的 JS 里。这样 TB 和桌面版都能保持单个二进制，前端仍是 JS，和团队现有的 Go + JS 一致。
 
 ## 1. 问题
 
-tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单独看，这样最省事。放到团队的整体方案里看有三处别扭：
+tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单独看最省事，放进团队的整体方案里有三处别扭：
 
-- **和已有系统不合**。Tingly Box（下称 TB）是 Go 单二进制，加 React 前端；团队的后端都是 Go。一个 Node 服务意味着另一套运行时、另一套部署和排错方式。
-- **桌面客户端**。TB 的 Wails 桌面版不带 Node（`tingly-box/.design/gui-packaging.md`）。要在客户端里用设计编辑器，要么让用户自己装 Node，要么在每个平台的安装包里塞一份 Node，并处理签名和公证。
-- **接入成本**。[tingly-box-integration.md](./tingly-box-integration.md) 的大部分篇幅（§4.2 能力地址、§4.3 子进程看护、§4.4 包下载和 Node 探测、§4.8 里的 `downloading`/`no-node` 状态）都是因为"编辑器服务是另一个进程、另一种运行时"才需要的。
+- **和已有系统不合**。Tingly Box（下称 TB）是 Go 单二进制加 React 前端，团队的后端都是 Go。多一个 Node 服务，就多一套运行时、部署和排错方式。
+- **桌面客户端**。TB 的 Wails 桌面版不带 Node（`tingly-box/.design/gui-packaging.md`）。要在客户端里用设计编辑器，要么让用户自己装 Node，要么每个平台的安装包都带一份 Node，还要处理签名和公证。
+- **接入成本**。[tingly-box-integration.md](./tingly-box-integration.md) 的大部分篇幅（能力地址、子进程看护、包下载、Node 探测、`downloading`/`no-node` 状态）都是因为"编辑器服务是另一个进程、另一种运行时"才需要的。
 
-要回答的是：服务端换成 Go 值不值，换的话换到哪一层，哪些东西换不动。
+要回答三件事：服务端换成 Go 值不值；换的话，Go 和 JS 的边界划在哪里；哪些东西换不动。
 
-## 2. 先把"Node"拆开看
+## 2. "Node"其实是三层
 
-说"tingly-design 用 Node"，其实混着三种运行环境，它们的迁移难度完全不同：
+说"tingly-design 用 Node"，其实混着三种运行环境，迁移难度完全不同（图 1）：
 
-| 层 | 现在在哪 | 内容 | 规模 |
+| 层 | 现在在哪 | 内容 | 换成 Go 时 |
 |---|---|---|---|
-| **编辑器和运行时** | 浏览器 | `apps/editor`（React）、`packages/sandbox`（画板、看板、动效运行时）、`packages/core` 的格式解析和回写、`packages/import` 的 HTML/SVG 导入（编辑器里的导入已经在浏览器里做，`apps/editor/src/importer.ts`） | 绝大部分代码 |
-| **服务端** | Node | `apps/server`：带版本的文件读写、文件监听加 SSE 推送、journal、快速 AI 流式代理、起 `claude` 子进程、看板的只读 SQLite 查询、`git commit` | 约 1500 行（`index.ts` 606、`store.ts` 394、`delegate.ts` 187 …） |
-| **批处理工具** | Node + 真浏览器 | `scripts/motion-render.mjs`（Playwright Chromium 逐帧截图 + ffmpeg）、`dc-import` 命令行和 `check` 像素对比、调研中的 `vgpu/node`（Dawn 原生模块） | 都不在服务端的请求路径上 |
+| **编辑器和运行时** | 浏览器 | `apps/editor`、`packages/sandbox`（画板、看板、动效运行时）、`packages/core` 的格式解析和回写、`packages/import`（编辑器里的导入已经在浏览器里做，`apps/editor/src/importer.ts`） | 不动，本来就是"Go + JS"里的 JS |
+| **服务端** | Node | `apps/server`，约 1500 行：文件和版本、监听和 SSE、journal、快速 AI、起 `claude`、只读 SQLite、`git` | 要选的只有这一层 |
+| **批处理工具** | Node + 真浏览器 | 动效导出（`scripts/motion-render.mjs`：Chromium 逐帧截图 + ffmpeg）、`dc-import` 命令行和像素对比、调研中的 `vgpu/node` | 重的是 Chromium、ffmpeg、Dawn，不是 Node；见 §6 |
 
-第一层不管怎么选都是 JS，它本来就是"Go + JS"里的 JS 那一半。真正要选的是第二层；第三层的重量来自 Chromium、ffmpeg、Dawn，不来自 Node。
+更正一个常见误解：「交给 Claude Code」起的是 `claude` 命令，而 Claude Code 有原生安装包，不需要 Node。这一条不构成留在 Node 的理由。
 
-另外更正一个常见的误解：「交给 Claude Code」起的是 `claude` 命令。Claude Code 现在有原生安装包，不需要 Node，所以这一条不构成留在 Node 的理由。
+## 3. 边界原则：服务端不懂格式
 
-### 2.1 服务端对 `@dc/core` 的依赖
+换语言的难点不在 HTTP，而在服务端调用了哪些"懂格式"的共享代码（`@dc/core`）。如果这些代码要在 Go 里再写一份，两边迟早会不一致。所以先定一条原则：
 
-服务端换语言，难点不在 HTTP，而在它调用了哪些"懂格式"的共享代码。逐项看（`apps/server/src/index.ts`、`store.ts`、`connectors.ts` 的 import）：
+> **服务端只做 I/O 和安全检查，不解析、不生成任何项目格式。凡是需要理解 `canvas.json`、`deck.json`、`tokens.json` 的事，都由浏览器算好，再交给服务端写。**
 
-| 用途 | 用到的 core | 换 Go 时怎么办 |
+按这条原则，把服务端现在的每项职责过一遍（图 2）：
+
+| 职责 | 现在怎么做 | 薄宿主里归谁 |
 |---|---|---|
-| 新建项目、放示例 | `newBoardSource`、`newSlideSource`、`newMotion`、`newDash`、`newDocTab`、`newDsIndex`、各类型的 `stringify*` | 移到浏览器：编辑器算好文件，服务端只负责写。示例项目用 `go:embed` 原样带上 |
-| 设计系统改 `tokens.json` 后重写 `tokens.css` | `resolveTokens`、`compileTokensCss` | 移到浏览器（编辑器已经在用这两个函数）。外部改动（Claude Code 改了 `tokens.json`）由打开的编辑器在收到文件事件后补写；没人打开时，下次打开再补 |
-| 快速 AI 的系统提示 | `FAST_EDIT_*` | 提示是纯文本，构建时导出成文件让 Go `go:embed`，或由编辑器随请求带上 |
-| 输入校验 | `checkUploads`、`checkMessages`、`isKeptPath`、`isUploadPath`、`isDataPath`、`safeRel` | 在 Go 里重写。都是几十行的路径和结构检查，但涉及安全边界，要有共用的测试用例 |
-| 看板查询 | `cleanParams`、`bindSql`、`fillArgs` | 在 Go 里重写。`bindSql` 管只读 SQL 规则，是安全敏感的，同上 |
-| 启动页卡片 | `projectCard`、`kindOf` | 读 JSON 取标题和类型，Go 里写一份；或卡片字段由编辑器自己算 |
+| 读写文件、版本号（内容 sha256 前 12 位）、冲突返回 409、原子写、项目锁 | `store.ts` | **服务端** |
+| 文件监听，推送 SSE 事件，journal | `index.ts` 的 chokidar、`hub.ts` | **服务端**（fsnotify） |
+| 资源和上传：图片、字体、`uploads/` | `index.ts` | **服务端** |
+| 快速 AI：选系统提示，流式调用模型 | `index.ts`，提示来自 core 的 `FAST_EDIT_*` | **服务端**做流式代理；提示是纯文本，构建时导出成文件让 Go `go:embed` |
+| 交给 Claude Code：起 `claude`，转发进度 | `delegate.ts`，每类一段系统提示 | **服务端**；提示同上 |
+| 看板的只读 SQL 查询 | `connectors.ts`，core 的 `cleanParams`、`bindSql`、`fillArgs` | **服务端**，在 Go 里重写（安全边界，见下） |
+| 提交 | `git commit` 子进程 | **服务端** |
+| 输入校验：路径、附件、消息 | core 的 `safeRel`、`isKeptPath`、`isUploadPath`、`isDataPath`、`checkUploads`、`checkMessages` | **服务端**，在 Go 里重写（安全边界，见下） |
+| 新建项目 | `createProject`，用 core 的 `new*`、`stringify*` | **浏览器**算出全部文件，一次批量写入 |
+| 放示例项目 | `seedSamples` 复制 `projects/` | **服务端**原样复制，示例用 `go:embed` 带上 |
+| 把设计系统装进画布或幻灯片 | 读 `tokens.json`、`resolveTokens`、改 `canvas.json`/`deck.json` 的 `designSystems` 和 `faces` | **浏览器**读来源、算出新的索引，一次批量写入 |
+| 改 `tokens.json` 后重写 `tokens.css` | `regenTokensCss`，core 的 `compileTokensCss` | **浏览器**（编辑器已在用这个函数）。Claude Code 在外面改了 `tokens.json` 时，由打开的编辑器收到事件后补写；没人打开就在下次打开时补 |
+| 启动页卡片：标题、类型、预览 | `projectCard`、`kindOf` | **浏览器**；服务端只列目录 |
 
-结论：真正要在两种语言里各写一份的只有"校验"和"看板 SQL 绑定"两小块；其余都可以挪到浏览器，让服务端变成不懂格式的"带版本的文件库 + 事件总线 + 模型代理"。
+两个随之而来的需求：
 
-## 3. 可选方案
+- **批量写入**。新建项目和安装设计系统要一次写多个文件。服务端提供"一组文件、各带基准版本、在项目锁里一起写"的接口，任何一个版本对不上就整组退回 409。这是一个与格式无关的通用原语，替代现在两个懂格式的专用路由。
+- **两份的只有安全检查**。路径、附件、消息的校验和看板 SQL 绑定必须在服务端做（浏览器的检查可以被绕过），所以 Go 和 TS 各有一份。这几块都是几十到一百多行，测试用例做成两边共用的数据文件（输入加期望结果），各自的测试读同一份，以此防止不一致。
 
-### A. 保持 Node sidecar（现行方案）
+## 4. 可选方案
 
-- 好处：零改动；服务端和编辑器同一种语言，格式代码只有一份。
-- 代价：TB 多一种运行时；需要下载包、探测 Node、子进程看护、反向代理和能力地址；桌面版要么要求用户装 Node，要么每个平台带一份 Node（几十 MB，加 macOS 签名公证）；排错跨两个进程。
-- 适合：tingly-design 主要独立使用，TB 只是偶尔接入。
-
-### B. 用 Bun 或 Deno 把服务端编成单个可执行文件
-
-- 好处：用户不用装 Node；代码基本不动。
-- 代价：仍然是另一个进程，§4.2–4.3 的代理、能力地址、看护一样都不少；每个平台一个 50–100 MB 的二进制；`node:sqlite`、chokidar 等要验证兼容。只解决了"装 Node"，没解决"格格不入"。
-
-### C. Go 薄宿主，懂格式的逻辑全在浏览器（倾向）
-
-- 服务端用 Go 重写，但只做 I/O：文件和版本、监听和 SSE、journal、模型代理、起 `claude`、只读 SQLite、`git`。§2.1 里能挪的都挪到浏览器。
-- 做成一个 Go 包（暴露 `http.Handler` 和选项），两种用法：
-  - TB 直接 import，挂在自己的路由下，编辑器构建产物 `go:embed` 进 TB 二进制；
-  - 独立运行时一个很小的 `main`，替代现在的 `node server.mjs`。
-- 好处：
-  - TB 和桌面版都是一个二进制，不下载、不探测 Node、不看护子进程、不反向代理；
-  - 同源挂载后能力地址可以简化（认证仍要处理 iframe 带不上 bearer 的问题，但不再需要"前缀即凭证"来跨进程）；
-  - 模型调用直接走 TB 网关的进程内路径；文件监听、SQLite、SSE、Anthropic SDK、子进程启动在 TB 里都已有现成实现（fsnotify、go-sqlite3、gin、anthropic-sdk-go、agentboot）。
-- 代价：
-  - 重写约 1500 行，加上 §2.1 的校验和 SQL 绑定的 Go 版；
-  - 过渡期两份服务端并存；
-  - 贡献者跑 `pnpm dev` 需要 Go 工具链（对这个团队不是负担）；
-  - fsnotify 在 Linux 上不递归，要自己遍历加目录；Windows 的原子改名和文件锁行为要单独测。
-- 风险控制：`e2e/` 的 Playwright 套件只通过 HTTP 和浏览器说话，和服务端语言无关，可以原样当成两份实现的一致性测试。
-
-### D. Go 里嵌 JS 引擎（goja、QuickJS）跑 `@dc/core`
-
-- 好处：格式代码只有一份，服务端仍是 Go。
-- 代价：goja 不支持 ESM 和不少新语法，要先用 esbuild 打成脚本；性能和调试都差；两种运行时的边界反而更难懂。C 方案已经把需要两份的代码压到两小块，嵌引擎不值得。
-
-### 对比
-
-| | A Node | B 单文件 JS | C Go 薄宿主 | D 嵌 JS 引擎 |
+| | A 保持 Node | B Bun/Deno 单文件 | C Go 薄宿主（倾向） | D Go 里嵌 JS 引擎 |
 |---|---|---|---|---|
-| 和 TB 同一进程、同一二进制 | 否 | 否 | 是 | 是 |
-| 桌面版额外负担 | Node 运行时 | 每平台一个二进制 | 无 | 无 |
-| TB 接入工作量 | 大（代理、看护、下载） | 大 | 小（挂路由） | 小 |
-| 重写量 | 0 | 很小 | 约 1500 行 + 两块校验 | 中，且长期复杂 |
-| 格式代码几份 | 1 | 1 | 1（浏览器），校验 2 | 1 |
+| 做法 | 现状；TB 起 Node 子进程并反向代理 | 把现在的 TS 服务端编成可执行文件 | 按 §3 重写服务端，做成 Go 包，TB 直接 import | Go 宿主里用 goja/QuickJS 跑 `@dc/core` |
+| 和 TB 同一进程 | 否 | 否 | 是 | 是 |
+| 桌面版额外负担 | Node 运行时 | 每个平台 50–100 MB 的二进制 | 无 | 无 |
+| TB 接入 | 下载、Node 探测、看护、代理、能力地址 | 同 A，只省了"装 Node" | 挂一组路由 | 挂一组路由 |
+| 重写量 | 0 | 很小 | 约 1500 行 + 安全检查 | 中，且长期复杂 |
+| 格式代码几份 | 1 | 1 | 1（浏览器）；安全检查 2 | 1 |
 
-## 4. 换不动、也不必换的部分
+- **A** 适合 tingly-design 主要独立使用、TB 偶尔接入的情况。代价是 §1 的三处别扭一直存在。
+- **B** 只解决了"用户要装 Node"，没解决"另一个进程、另一种运行时"；`node:sqlite`、chokidar 也要验证兼容。
+- **D** 看似格式代码只有一份，但 goja 不支持 ESM 和不少新语法，要先打包；性能和调试都差，两种运行时的边界反而更难懂。按 §3 划界后需要两份的只剩安全检查，不值得为此嵌引擎。
+- **C** 是倾向：要长期跑在 TB 和桌面客户端里，单二进制省下的接入、分发和排错成本是持续的；重写量小，而且能用现有 e2e 兜住（§7）。
 
-- **编辑器、沙箱运行时、导入**：浏览器代码，留在 JS。桌面版跑在 Wails 的 WebView 里（macOS WKWebView、Windows WebView2、Linux WebKitGTK），要验证的是沙箱 iframe（opaque origin）、`html-to-image`、WebGPU 在这几个引擎里的表现，和服务端语言无关。
-- **动效导出**：需要 Chromium 和 ffmpeg，用 Node 还是 Go 驱动都一样重。逐帧控制本来就是页面里的 JS（`packages/sandbox/src/motion.ts`），外面那层只是"开页面、seek、截图、送 ffmpeg"，Go 用 CDP（chromedp 或 rod）可以做。Chromium（chrome-headless-shell）和 ffmpeg 首次导出时按平台下载，见 [motion.md](./motion.md) 的依赖一节。
-- **`dc-import` 命令行和 `check`**：是开发和评测用的工具，不随产品分发，留在 Node 没有问题。
-- **`vgpu/node`**：唯一真正绑在 Node 上的东西（Dawn 原生模块）。还在调研阶段，没有进产品。如果服务端换 Go，特效导出可以换成：有 GPU 时在 Chromium 里用 WebGPU 渲；或者用 Go 的 WebGPU 绑定（wgpu-native、Dawn 的 Go 封装）跑同一份 WGSL；或者把它作为按需下载的独立渲染器。这是开放问题，不该反过来决定服务端语言。
-- **pnpm 和 esbuild**：前端构建工具，只在开发和发版时用，产物是静态文件，和运行时无关。
+## 5. 薄宿主的样子
 
-## 5. 倾向和迁移草图
+- **一个 Go 包，两种挂法**（图 3）。包暴露 `http.Handler` 和选项（项目目录、路径前缀、模型地址和凭证、`claude` 的路径和环境、日志）：
+  - TB 直接 import，挂在自己的路由下；编辑器和沙箱的构建产物 `go:embed` 进 TB 二进制。TB 已有的 fsnotify、go-sqlite3、anthropic-sdk-go、agentboot 子进程都可以直接复用。
+  - 独立运行时用一个很小的 `main`，替代现在的 `node server.mjs`，环境变量（`PORT`、`DC_PROJECTS`、`DC_BASE_PATH`…）和 `TINGLY_DESIGN_READY` 行保持不变。
+- **接口不变**。路由、SSE 事件、409 语义、journal 格式保持现状，只新增批量写入、删掉被它替代的专用路由。编辑器不需要知道服务端换了语言。
+- **模型**。快速 AI 在 TB 里可以直接走网关的进程内路径；独立运行时照旧读 `ANTHROPIC_BASE_URL`。`claude` 子进程的环境和现在一样，由宿主给出。
+- **实现上要当心**：fsnotify 在 Linux 上不递归，要自己遍历并为新目录补监听；自己写的文件要从监听事件里去掉（现在的 `ownWrites`）；Windows 的原子改名和文件占用要单独测；SSE 要关掉缓冲。
 
-倾向 C：服务端用 Go 写成薄宿主，懂格式的东西放在浏览器。理由是要长期运行在 TB 和桌面客户端里，单二进制带来的简化（接入、分发、排错）是持续的收益，而重写量小且能被现有 e2e 兜住。如果近期 tingly-design 主要独立使用、TB 接入和客户端都不急，A 继续用着也合理，但 §5 第 1、2 步无论选哪条都值得先做，因为它们让服务端更薄、契约更清楚。
+## 6. 换不动、也不必换的部分
 
-1. **把契约写下来**。现有二十多个路由和 SSE 事件写成 OpenAPI（和 TB 的 swagger 习惯一致），包括版本冲突返回 409 的语义、journal 格式、`TINGLY_DESIGN_READY` 行。e2e 套件定为契约测试。
-2. **服务端变薄（仍是 Node）**。新建项目、`tokens.css` 重写、启动页卡片的计算挪到浏览器；服务端只剩 I/O、校验、SQL 绑定。用现有 e2e 验证，用户感觉不到变化。
-3. **写 Go 版**。放在本仓库一个独立 Go 模块里（宿主包加一个小 `main`），和 Node 版并行，用同一套 e2e 跑到全绿；校验和 SQL 绑定的测试用例做成两边共用的数据文件。
-4. **TB 接入改成挂路由**。TB import 这个包，`go:embed` 编辑器产物，挂到同源路径下；integration 方案里的下载、Node 探测、子进程看护、反向代理都不再需要。
+- **编辑器、沙箱运行时、导入**：浏览器代码，留在 JS。桌面版跑在 Wails 的 WebView 里（macOS WKWebView、Windows WebView2、Linux WebKitGTK），要验证的是沙箱 iframe（opaque origin）、`html-to-image`、WebGPU 在这几个引擎里的表现。这和服务端用什么语言无关，选 A 也要验证。
+- **动效导出**：需要 Chromium 和 ffmpeg，用 Node 还是 Go 驱动都一样重。逐帧控制本来就在页面的 JS 里（`packages/sandbox/src/motion.ts`），外面那层只是"开页面、seek、截图、送 ffmpeg"，Go 用 CDP（chromedp 或 rod）可以做到。Chromium（chrome-headless-shell）和 ffmpeg 在第一次导出时按平台下载，见 [motion.md](./motion.md) 的依赖一节（图 4）。
+- **`dc-import` 命令行和像素对比**：开发和评测用的工具，不随产品分发，留在 Node。
+- **`vgpu/node`**：唯一真正绑在 Node 上的东西（Dawn 原生模块），还在调研，没有进产品。可能的出路：有 GPU 时在 Chromium 里用 WebGPU 渲；用 Go 的 WebGPU 绑定跑同一份 WGSL；或者做成按需下载的独立渲染器。这是开放问题，不该反过来决定服务端语言。
+- **pnpm、Vite、esbuild**：只在开发和发版时用，产物是静态文件，和运行时无关。
+
+## 7. 迁移步骤
+
+每一步都能单独发布、单独回退；第 1、2 步不管最后选不选 C 都值得做，因为它们让服务端更薄、契约更清楚（图 5）。
+
+1. **写下契约**。把现有路由和 SSE 事件写成 OpenAPI（和 TB 的 swagger 习惯一致），包括 409 语义、journal 格式、`TINGLY_DESIGN_READY` 行。`e2e/` 的 Playwright 套件只通过 HTTP 和浏览器说话，和服务端语言无关，定为契约测试。
+2. **按 §3 让 Node 服务端变薄**。加批量写入；新建项目、安装设计系统、`tokens.css` 重写、启动页卡片挪到浏览器；安全检查的测试用例抽成共用数据文件。服务端仍是 Node，用现有 e2e 验证，用户感觉不到变化。
+3. **写 Go 版**。放在本仓库一个独立的 Go 模块里（宿主包加一个小 `main`），和 Node 版并行，同一套 e2e 和共用用例跑到全绿。
+4. **TB 接入改成挂路由**。TB import 这个包，挂到同源路径下。integration 方案里的下载、Node 探测、子进程看护、反向代理不再需要。
 5. **删掉 Node 服务端**。`pnpm dev` 改为 `go run` 加 Vite；`pnpm bundle` 产出 Go 二进制加静态文件。
-6. **动效导出**。真做编辑器内导出时，用 Go 驱动按需下载的 Chromium 和 ffmpeg；vgpu 特效走 §4 的开放问题。
+6. **动效导出进编辑器**。真做的时候，用 Go 驱动按需下载的 Chromium 和 ffmpeg；vgpu 特效走 §6 的开放问题。
 
-## 6. 和 tingly-box-integration.md 的关系
+代价：过渡期（第 3、4 步）两份服务端并存；贡献者要装 Go 工具链（对这个团队不是负担）。
 
-那份方案以 A（Node sidecar）为前提。如果选 C：
+## 8. 和 tingly-box-integration.md 的关系
 
-- §4.1 的路由划分、§4.5 模型场景、§4.6 主题、§4.7 地址镜像、§4.9 数据目录保持不变；
-- §4.2 的能力地址可以简化，§4.3 子进程看护、§4.4 下载和 Node 探测、§4.8 里的 `downloading`/`no-node` 状态不再需要。
+那份方案以 A（Node 子进程）为前提。如果选 C：
 
-决定之后改写那份方案，而不是两份并存。
+- 路由划分（`/design` 页面和 `/apps/design/...` 分开）、模型场景、主题联动、地址镜像、数据目录保持不变；
+- 能力地址可以简化（§9）；子进程看护、包下载和 Node 探测、`downloading`/`no-node` 状态不再需要。
 
-## 7. 开放问题
+定下来之后改写那份方案，不让两份并存。
 
-- 选 C 时，Go 宿主包放在 tingly-design 仓库还是 TB 仓库？倾向放在 tingly-design，让编辑器和它的服务端同一个仓库、同一个版本，TB 按版本引用。
-- 同源挂载后，编辑器请求怎么带 TB 身份：沿用能力地址，还是宿主通过消息把 token 交给编辑器、编辑器自己加 `Authorization` 头？沙箱里的资源请求仍然带不上头，这一点决定了能力地址能不能完全去掉。
-- 动效导出放在服务端（Go + Chromium）还是客户端 WebView 里（WebCodecs 编码）？后者不用下载 Chromium，但三个 WebView 引擎的一致性和确定性要实测。
-- vgpu 特效的导出路径（§4）。
+## 9. 开放问题
+
+- **Go 包放在哪个仓库**：倾向 tingly-design，让编辑器和它的服务端同仓库、同版本，TB 按版本引用。
+- **TB 里怎么认证**：同源挂载后，编辑器的 API 请求可以由宿主通过消息交给它 token、自己加 `Authorization` 头；但沙箱里的资源请求（画板图片、字体）带不上头。能力地址能不能完全去掉，取决于这一点。
+- **动效导出放哪**：服务端（Go + Chromium）还是客户端 WebView（WebCodecs 编码）？后者不用下载 Chromium，但三个 WebView 引擎的一致性和确定性要实测。
+- **vgpu 特效的导出路径**（§6）。
