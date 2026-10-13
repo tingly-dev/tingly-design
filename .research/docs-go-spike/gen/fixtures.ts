@@ -32,7 +32,7 @@ const ROOT = join(import.meta.dirname, '..', '..', '..');
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const n of readdirSync(dir)) {
-    if (n === 'node_modules' || n === 'artifact' || n === '.git' || n === 'spikes') continue;
+    if (n === 'node_modules' || n === 'artifact' || n === '.git' || n === '.research') continue;
     const p = join(dir, n);
     if (statSync(p).isDirectory()) walk(p, out);
     else if (n.endsWith('.md')) out.push(p);

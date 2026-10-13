@@ -1,8 +1,8 @@
 # 服务端用什么跑：Node、Go 还是两者分工
 
-状态：**研究，待定**。现行实现是 Node（`apps/server`，Hono）。本文比较几条路，给出倾向和迁移步骤，供决定前讨论；决定之前代码不动。图见 [server-runtime.pencil.md](./server-runtime.pencil.md)，文字和图冲突时以本文为准。和 [tingly-box-integration.md](./tingly-box-integration.md) 的关系见 §8。
+状态：**研究，待定**。现行实现是 Node（`apps/server`，Hono）。本文比较几条路，给出倾向和迁移步骤，供决定前讨论；决定之前代码不动。图见 [server-runtime.pencil.md](./server-runtime.pencil.md)，文字和图冲突时以本文为准。和 [tingly-box-integration.md](../.design/tingly-box-integration.md) 的关系见 §8。
 
-**一句话**：倾向把服务端改成 Go 写的"薄宿主"，只管文件、事件、模型和子进程，不理解任何项目格式；理解格式的逻辑全部放在浏览器的 JS 里。这样 TB 和桌面版都能保持单个二进制，前端仍是 JS，和团队现有的 Go + JS 一致。
+**一句话**：倾向取决于要不要和 TB 融合，见 §10。如果融合：倾向把服务端改成 Go 写的"薄宿主"，只管文件、事件、模型和子进程，不理解任何项目格式；理解格式的逻辑全部放在浏览器的 JS 里。这样 TB 和桌面版都能保持单个二进制，前端仍是 JS，和团队现有的 Go + JS 一致。
 
 ## 1. 问题
 
@@ -10,7 +10,7 @@ tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单�
 
 - **和已有系统不合**。Tingly Box（下称 TB）是 Go 单二进制加 React 前端，团队的后端都是 Go。多一个 Node 服务，就多一套运行时、部署和排错方式。
 - **桌面客户端**。TB 的 Wails 桌面版不带 Node（`tingly-box/.design/gui-packaging.md`）。要在客户端里用设计编辑器，要么让用户自己装 Node，要么每个平台的安装包都带一份 Node，还要处理签名和公证。
-- **接入成本**。[tingly-box-integration.md](./tingly-box-integration.md) 的大部分篇幅（能力地址、子进程看护、包下载、Node 探测、`downloading`/`no-node` 状态）都是因为"编辑器服务是另一个进程、另一种运行时"才需要的。
+- **接入成本**。[tingly-box-integration.md](../.design/tingly-box-integration.md) 的大部分篇幅（能力地址、子进程看护、包下载、Node 探测、`downloading`/`no-node` 状态）都是因为"编辑器服务是另一个进程、另一种运行时"才需要的。
 
 要回答三件事：服务端换成 Go 值不值；换的话，Go 和 JS 的边界划在哪里；哪些东西换不动。
 
@@ -83,7 +83,7 @@ tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单�
 ## 6. 换不动、也不必换的部分
 
 - **编辑器、沙箱运行时、导入**：浏览器代码，留在 JS。桌面版跑在 Wails 的 WebView 里（macOS WKWebView、Windows WebView2、Linux WebKitGTK），要验证的是沙箱 iframe（opaque origin）、`html-to-image`、WebGPU 在这几个引擎里的表现。这和服务端用什么语言无关，选 A 也要验证。
-- **动效导出**：需要 Chromium 和 ffmpeg，用 Node 还是 Go 驱动都一样重。逐帧控制本来就在页面的 JS 里（`packages/sandbox/src/motion.ts`），外面那层只是"开页面、seek、截图、送 ffmpeg"，Go 用 CDP（chromedp 或 rod）可以做到。Chromium（chrome-headless-shell）和 ffmpeg 在第一次导出时按平台下载，见 [motion.md](./motion.md) 的依赖一节（图 4）。
+- **动效导出**：需要 Chromium 和 ffmpeg，用 Node 还是 Go 驱动都一样重。逐帧控制本来就在页面的 JS 里（`packages/sandbox/src/motion.ts`），外面那层只是"开页面、seek、截图、送 ffmpeg"，Go 用 CDP（chromedp 或 rod）可以做到。Chromium（chrome-headless-shell）和 ffmpeg 在第一次导出时按平台下载，见 [motion.md](../.design/motion.md) 的依赖一节（图 4）。
 - **`dc-import` 命令行和像素对比**：开发和评测用的工具，不随产品分发，留在 Node。
 - **`vgpu/node`**：唯一真正绑在 Node 上的东西（Dawn 原生模块），还在调研，没有进产品。可能的出路：有 GPU 时在 Chromium 里用 WebGPU 渲；用 Go 的 WebGPU 绑定跑同一份 WGSL；或者做成按需下载的独立渲染器。这是开放问题，不该反过来决定服务端语言。
 - **pnpm、Vite、esbuild**：只在开发和发版时用，产物是静态文件，和运行时无关。
@@ -116,3 +116,14 @@ tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单�
 - **TB 里怎么认证**：同源挂载后，编辑器的 API 请求可以由宿主通过消息交给它 token、自己加 `Authorization` 头；但沙箱里的资源请求（画板图片、字体）带不上头。能力地址能不能完全去掉，取决于这一点。
 - **动效导出放哪**：服务端（Go + Chromium）还是客户端 WebView（WebCodecs 编码）？后者不用下载 Chromium，但三个 WebView 引擎的一致性和确定性要实测。
 - **vgpu 特效的导出路径**（§6）。
+
+## 10. 前提不同，结论不同
+
+§1–§9 默认编辑器要并进 TB。换几个前提再看：
+
+- **不和 TB 融合**：改 Go 的主要收益（同一个进程和二进制、去掉代理和看护、桌面版不带 Node）都不存在了。独立分发不想让用户装 Node，可以用 Bun/Deno 编成单文件，或者桌面版用 Electron（自带 Node）。这时倾向保持 Node，只把服务端保持得薄、接口写清楚，以后要换语言时只重写这一层。
+- **不看团队现有技术栈，只看产品**：格式逻辑天然是 JS，最重的依赖是 Chromium（导出、导入、像素对比）。倾向全栈 TS；桌面端用 Electron，让编辑视图和导出用同一个 Chromium，"所见即所得"有保证。
+- **要做移动端**：手机上跑不了 Node、Claude Code、无头 Chromium。两条路：
+  - 有一台远程主机（自己的电脑或服务器）做重活，手机是 WebView 里的瘦客户端；这时 TB 正好是现成的主机，融合的理由变强。
+  - 不要云端，App 内直接调模型、读写本地文件，自己跑一个工具调用循环充当 agent（Claude Code 给的工具只有 Read、Edit、Write、Glob、Grep 五个）。服务端的职责变成 App 里的一层，按平台接 Node 文件系统、Capacitor 文件接口或浏览器 OPFS。这一层只能是 JS/TS，Go 在手机上基本用不上。
+- **团队就是要统一到 Go**：界面和运行时仍然只能是 JS（画布、幻灯片、动效本身是 HTML），"全平台 Go"指界面以外的逻辑。格式逻辑改写成 Go，原生编进服务端，或编成 WASM 给浏览器。文档类型的实测见 [docs-go.md](./docs-go.md)，画布和幻灯片回写依赖的源码位置见 [parse5.md](./parse5.md)。

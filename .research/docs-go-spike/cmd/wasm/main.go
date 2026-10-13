@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"syscall/js"
 
-	"github.com/tingly-dev/tingly-design/spikes/go-core/docs"
+	"docs-go-spike/docs"
 )
 
 func main() {
