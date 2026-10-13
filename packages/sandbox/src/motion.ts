@@ -1,0 +1,334 @@
+/**
+ * The motion runtime (phase 0 spike, see .design/motion.md). It lays a
+ * project's scenes out for one format and turns their timing attributes into
+ * paused Web Animations on a single clock, so `seek(t)` shows exactly frame t.
+ * The renderer, the HTML player and (later) the editor stage all use it.
+ *
+ * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
+ */
+import {
+  attrsForFormat,
+  countText,
+  drawSlideArt,
+  easeProgress,
+  faceMarkup,
+  motionTimeline,
+  planScene,
+  sceneBaseCss,
+  speedOf,
+  SLIDE_BASE_CSS,
+  type DeckJson,
+  type MotionJson,
+  type SceneElement,
+  type SceneWindow,
+} from '@dc/core';
+
+export interface MountOptions {
+  motion: MotionJson;
+  /** Scene id → the scene file's source. */
+  scenes: Record<string, string>;
+  format?: string;
+  root: HTMLElement;
+  /** Overrides motion.json's speed (a preview at 2×, a render at another pace). */
+  speed?: number;
+}
+
+export interface MotionStage {
+  width: number;
+  height: number;
+  fps: number;
+  /** Milliseconds of video, after speed. */
+  duration: number;
+  /** Playback rate over the authored timing. `scenes` stay in authored time. */
+  speed: number;
+  scenes: SceneWindow[];
+  issues: { scene: string; message: string; level: string }[];
+  /** `ms` is video time; the authored time shown is `ms × speed`. */
+  seek(ms: number): Promise<void>;
+  play(from?: number, onTime?: (ms: number) => void): void;
+  pause(): void;
+  destroy(): void;
+}
+
+interface Counter {
+  el: Element;
+  text: string;
+  start: number;
+  duration: number;
+  easing: string;
+}
+
+interface Embed {
+  frame: HTMLIFrameElement;
+  sceneStart: number;
+  ready: Promise<void>;
+}
+
+/** Appended to a seekable embed: answers `seek` once the embed has drawn that time. */
+const SEEK_BRIDGE = `<script>
+addEventListener('message', function (e) {
+  var d = e.data;
+  if (!d || d.dcMotion !== 'seek') return;
+  var done = function () { requestAnimationFrame(function () { parent.postMessage({ dcMotion: 'seeked', n: d.n }, '*'); }); };
+  try {
+    var r;
+    if (typeof window.seek === 'function') r = window.seek(d.t);
+    else if (window.__timelines) for (var k in window.__timelines) window.__timelines[k].seek(d.t / 1000);
+    Promise.resolve(r).then(done, done);
+  } catch (err) { done(); }
+});
+parent.postMessage({ dcMotion: 'embed-ready' }, '*');
+</script>`;
+
+const EMBED_HEAD = '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style>';
+
+let seekCounter = 0;
+
+export async function mount(opts: MountOptions): Promise<MotionStage> {
+  const { motion, root } = opts;
+  const formats = Object.keys(motion.formats);
+  const format = opts.format && motion.formats[opts.format] ? opts.format : formats[0];
+  const [W, H] = motion.formats[format].size;
+  const speed = speedOf(opts.speed ?? motion.speed);
+  root.innerHTML = '';
+  root.classList.add('dc-motion-root');
+
+  const style = document.createElement('style');
+  style.textContent =
+    sceneBaseCss(W, H, SLIDE_BASE_CSS) +
+    `.dc-motion-root{position:relative;width:${W}px;height:${H}px;overflow:hidden;background:${motion.background ?? '#000'}}` +
+    `.dc-motion-root>.dc-slide-host{position:absolute;left:0;top:0;visibility:hidden}` +
+    `.dc-slide-host x-embed>iframe{display:block;width:100%;height:100%;border:0;background:transparent}`;
+  root.appendChild(style);
+  const faces = faceMarkup({ faces: motion.faces } as DeckJson);
+  const faceLinks: Promise<unknown>[] = [];
+  if (faces) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = faces;
+    for (const n of Array.from(tpl.content.childNodes)) {
+      if (n instanceof HTMLLinkElement) faceLinks.push(new Promise((r) => ((n.onload = r), (n.onerror = r))));
+      document.head.appendChild(n);
+    }
+  }
+
+  // read each scene's section (in this format) to learn durations and transitions first
+  const parsed = motion.order
+    .filter((id) => opts.scenes[id] != null)
+    .map((id) => {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = drawSlideArt(opts.scenes[id]);
+      const section = tpl.content.querySelector('section') ?? document.createElement('section');
+      section.querySelectorAll('aside').forEach((a) => a.remove());
+      applyFormat(section, format, formats);
+      return { id, section };
+    });
+  const timeline = motionTimeline(
+    parsed.map(({ id, section }) => ({ id, duration: section.getAttribute('data-duration') ?? undefined, transition: section.getAttribute('data-transition') ?? undefined })),
+  );
+
+  const hosts: { host: HTMLElement; win: SceneWindow }[] = [];
+  const counters: Counter[] = [];
+  const embeds: Embed[] = [];
+  const issues: MotionStage['issues'] = [];
+
+  parsed.forEach(({ id, section }, i) => {
+    const win = timeline.scenes[i];
+    const host = document.createElement('div');
+    host.className = 'dc-slide-host';
+    host.dataset.scene = id;
+    root.appendChild(host);
+    // embeds keep their markup as a string; what's inside them is not part of the scene's DOM
+    const embedHtml = new Map<Element, string>();
+    for (const x of Array.from(section.querySelectorAll('x-embed'))) {
+      embedHtml.set(x, x.innerHTML);
+      x.innerHTML = '';
+    }
+    host.appendChild(section);
+
+    const els = [section, ...Array.from(section.querySelectorAll('*'))];
+    const elements: SceneElement[] = els.map((el) => ({
+      tag: el.tagName.toLowerCase(),
+      attrs: Object.fromEntries(Array.from(el.attributes).map((a) => [a.name, a.value])),
+      text: el.children.length ? undefined : el.textContent ?? '',
+    }));
+    const plan = planScene(elements, win.duration);
+    for (const is of plan.issues) issues.push({ scene: id, level: is.level, message: `<${elements[is.index].tag}> ${is.message}` });
+    for (const p of plan.plans) {
+      const el = els[p.index];
+      if (p.kind === 'count') {
+        counters.push({ el, text: el.textContent ?? '', start: win.start + p.delay, duration: p.duration, easing: p.easing });
+        continue;
+      }
+      const anim = el.animate(p.keyframes as Keyframe[], {
+        delay: win.start + p.delay,
+        duration: p.duration,
+        easing: p.easing,
+        // an exit must not hold its first frame over the entrance before it
+        fill: p.kind === 'out' || (p.kind === 'keys' && p.composite === 'replace') ? 'forwards' : 'both',
+        composite: p.composite,
+      });
+      anim.pause();
+    }
+    for (const [x, html] of embedHtml) {
+      const frame = document.createElement('iframe');
+      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.setAttribute('title', 'embed');
+      const seekable = x.hasAttribute('data-seek');
+      const ready = seekable
+        ? new Promise<void>((resolve) => {
+            const onMsg = (e: MessageEvent) => {
+              if (e.source === frame.contentWindow && e.data?.dcMotion === 'embed-ready') {
+                window.removeEventListener('message', onMsg);
+                resolve();
+              }
+            };
+            window.addEventListener('message', onMsg);
+            setTimeout(resolve, 3000);
+          })
+        : Promise.resolve();
+      frame.srcdoc = EMBED_HEAD + html + (seekable ? SEEK_BRIDGE : '');
+      x.appendChild(frame);
+      if (seekable) embeds.push({ frame, sceneStart: win.start, ready });
+    }
+    hosts.push({ host, win });
+  });
+
+  // scene transitions: the next scene comes in over the one leaving
+  hosts.forEach(({ win }, i) => {
+    const next = hosts[i + 1];
+    if (!next || win.transition.kind === 'cut') return;
+    const at = next.win.start;
+    const opts2: KeyframeAnimationOptions = { delay: at, duration: win.transition.duration, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' };
+    if (win.transition.kind === 'push') {
+      next.host.animate([{ transform: `translateX(${W}px)` }, { transform: 'translateX(0px)' }], opts2).pause();
+      hosts[i].host.animate([{ transform: 'translateX(0px)' }, { transform: `translateX(${-W}px)` }], { ...opts2, fill: 'forwards' }).pause();
+    } else {
+      // fade; magic move falls back to it in the spike
+      next.host.animate([{ opacity: 0 }, { opacity: 1 }], opts2).pause();
+    }
+  });
+
+  await Promise.all(embeds.map((e) => e.ready));
+  await Promise.all(faceLinks);
+  await loadFonts(root);
+
+  let raf = 0;
+  const stage: MotionStage = {
+    width: W,
+    height: H,
+    fps: motion.fps,
+    duration: timeline.duration / speed,
+    speed,
+    scenes: timeline.scenes,
+    issues,
+    async seek(ms) {
+      const t = Math.max(0, Math.min(ms * speed, timeline.duration));
+      setTime(t);
+      const live = embeds.filter((e) => {
+        const h = hosts.find((h) => h.win.start === e.sceneStart);
+        return h && t >= h.win.start && t <= h.win.start + h.win.duration;
+      });
+      await Promise.all(live.map((e) => seekEmbed(e.frame, t - e.sceneStart)));
+      // the frame after next is the first one painted with the new time on every layer
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+    },
+    play(from, onTime) {
+      cancelAnimationFrame(raf);
+      const t0 = performance.now() - (from ?? 0);
+      const tick = () => {
+        let t = (performance.now() - t0) * speed;
+        if (t > timeline.duration) {
+          if (!motion.loop) {
+            setTime(timeline.duration);
+            onTime?.(timeline.duration / speed);
+            return;
+          }
+          t %= timeline.duration;
+        }
+        setTime(t);
+        for (const e of embeds) e.frame.contentWindow?.postMessage({ dcMotion: 'seek', t: t - e.sceneStart, n: -1 }, '*');
+        onTime?.(t / speed);
+        raf = requestAnimationFrame(tick);
+      };
+      tick();
+    },
+    pause() {
+      cancelAnimationFrame(raf);
+    },
+    destroy() {
+      cancelAnimationFrame(raf);
+      root.innerHTML = '';
+    },
+  };
+
+  function setTime(t: number) {
+    for (const a of root.getAnimations({ subtree: true })) {
+      a.currentTime = t;
+    }
+    for (const { host, win } of hosts) {
+      const last = win === timeline.scenes[timeline.scenes.length - 1];
+      const on = t >= win.start && (t < win.start + win.duration || (last && t <= win.start + win.duration));
+      host.style.visibility = on ? 'visible' : 'hidden';
+    }
+    for (const c of counters) c.el.textContent = countText(c.text, easeProgress(c.easing, (t - c.start) / c.duration));
+  }
+
+  await stage.seek(0);
+  return stage;
+}
+
+/**
+ * Load every face the scenes use before the first frame. `document.fonts.ready`
+ * alone resolves before a face is first needed, and hidden scenes need none
+ * yet, so early frames would be drawn in the fallback font.
+ */
+async function loadFonts(root: HTMLElement) {
+  const specs = new Map<string, string>();
+  for (const el of Array.from(root.querySelectorAll('section, section *'))) {
+    const text = Array.from(el.childNodes)
+      .filter((n) => n.nodeType === Node.TEXT_NODE)
+      .map((n) => n.textContent ?? '')
+      .join('')
+      .trim();
+    if (!text) continue;
+    const cs = getComputedStyle(el);
+    const spec = `${cs.fontStyle} ${cs.fontWeight} 16px ${cs.fontFamily}`;
+    specs.set(spec, (specs.get(spec) ?? '') + text);
+  }
+  await Promise.all(Array.from(specs, ([spec, text]) => document.fonts.load(spec, text).catch(() => [])));
+  await document.fonts.ready;
+}
+
+/** Rewrite an element tree's attributes for one format; drop what the format leaves out. */
+function applyFormat(section: Element, format: string, formats: string[]) {
+  for (const el of [section, ...Array.from(section.querySelectorAll('*'))]) {
+    if (!el.isConnected && el !== section && !section.contains(el)) continue;
+    const attrs = Object.fromEntries(Array.from(el.attributes).map((a) => [a.name, a.value]));
+    const next = attrsForFormat(attrs, format, formats);
+    if (!next) {
+      el.remove();
+      continue;
+    }
+    for (const name of Object.keys(attrs)) if (!(name in next)) el.removeAttribute(name);
+    for (const [k, v] of Object.entries(next)) if (attrs[k] !== v) el.setAttribute(k, v);
+  }
+}
+
+function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
+  const n = ++seekCounter;
+  return new Promise((resolve) => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.source === frame.contentWindow && e.data?.dcMotion === 'seeked' && e.data.n === n) finish();
+    };
+    const timer = setTimeout(finish, 1000);
+    function finish() {
+      clearTimeout(timer);
+      window.removeEventListener('message', onMsg);
+      resolve();
+    }
+    window.addEventListener('message', onMsg);
+    frame.contentWindow?.postMessage({ dcMotion: 'seek', t: Math.max(0, t), n }, '*');
+  });
+}
+
+(window as unknown as { dcMotion: unknown }).dcMotion = { mount };
