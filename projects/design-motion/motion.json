@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "title": "Tingly Design: edit from both sides",
+  "title": "Tingly Design",
   "formats": {
     "wide": {
       "size": [
@@ -17,11 +17,15 @@
   },
   "fps": 30,
   "order": [
-    "intro",
-    "canvas",
-    "code",
-    "ai",
-    "diff",
+    "idea",
+    "edit",
+    "more",
+    "kind-canvas",
+    "kind-slides",
+    "kind-system",
+    "kind-dash",
+    "kind-docs",
+    "all",
     "outro"
   ],
   "audio": [],
