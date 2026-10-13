@@ -8,7 +8,7 @@ export default {
   tabs: {
     props: '属性',
     code: '代码',
-    tweaks: 'Tweaks',
+    tweaks: '微调',
   },
   source: {
     sceneLabel: '场景源文件',

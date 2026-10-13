@@ -394,7 +394,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
             <Select
               narrow
               value={String(weight)}
-              options={['300', '400', '500', '600', '700', '800'].map((w) => ({ value: w, label: t(`panel.el.weights.${w}`) }))}
+              options={(['300', '400', '500', '600', '700', '800'] as const).map((w) => ({ value: w, label: t(`panel.el.weights.${w}`) }))}
               onChange={(w) => set({ 'font-weight': w })}
               label={t('panel.el.weight')}
             />

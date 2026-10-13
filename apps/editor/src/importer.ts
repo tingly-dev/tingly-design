@@ -233,7 +233,7 @@ export async function importPicked(picked: Picked, name: string, title: string, 
   const order = [...Object.keys(out.files).filter((f) => f !== 'canvas.json'), 'canvas.json'];
   for (const path of order) {
     const r = await api.put(name, path, { content: out.files[path], baseVersion: files[path]?.version ?? null, actor: 'human', summary: `imported ${picked.entry}` });
-    if ('conflict' in r) throw new Error(`${path} changed while importing; try again`);
+    if ('conflict' in r) throw new Error(t('importer.changedWhileImporting', { path }));
   }
   return { report: out.report };
 }

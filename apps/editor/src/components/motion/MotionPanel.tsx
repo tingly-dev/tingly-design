@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   TRANSITION_KINDS,
   attr,
@@ -19,7 +20,6 @@ import { FORMAT_PRESETS, addFormat, editMotion, motionOf, overridesOf, removeFor
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SlideLayers } from '../slides/SlidePanel';
 
-type T = ReturnType<typeof useTranslation>['t'];
 
 function useMotion() {
   const text = useStore((s) => display(s, 'motion.json'));
@@ -33,7 +33,7 @@ const sizeLabel = (size: [number, number]) => `${size[0]}×${size[1]}`;
  * (an element is off while any of its ancestors is).
  */
 /** What is off screen at `at` ms into the scene; `null` is the landed first moment, where only other formats' elements are away. */
-export function awayAt(doc: DcDoc, format: string, formats: string[], at: number | null, t: T): Map<number, string> {
+export function awayAt(doc: DcDoc, format: string, formats: string[], at: number | null, t: TFunction): Map<number, string> {
   const { windows } = sceneVisibility(doc, format, formats);
   const out = new Map<number, string>();
   for (const el of doc.elements) {
