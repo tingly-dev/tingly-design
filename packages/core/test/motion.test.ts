@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { Window as HappyWindow } from 'happy-dom';
 import {
   attrsForFormat,
+  applyHumanOps,
   countText,
+  editsForFormat,
   mergeStyle,
+  parseDc,
+  setOverride,
+  styleInFormat,
   motionTimeline,
   parseAnim,
   parseKeys,
@@ -179,5 +185,42 @@ describe('motion: project and timeline', () => {
     expect(countText('$3.5M', 0.5)).toBe('$1.8M');
     expect(countText('99.9%', 0)).toBe('0.0%');
     expect(countText('none', 0.5)).toBe('none');
+  });
+});
+
+describe('motion: edits in a format', () => {
+  const src = '<section id="s" data-duration="3s" style="display:flex"><h2 style="font-size:96px;color:#fff" data-tall="font-size:120px">Hi</h2></section>';
+
+  it('sets and drops declarations in an override', () => {
+    expect(setOverride('font-size:120px', { width: '300px' })).toBe('font-size:120px;width:300px');
+    expect(setOverride('font-size:120px', { 'font-size': '140px' })).toBe('font-size:140px');
+    expect(setOverride('font-size:120px', { 'font-size': null })).toBeNull();
+  });
+
+  it('sends style changes to the format and keeps text shared', () => {
+    const doc = parseDc(src);
+    const ops = editsForFormat(
+      [
+        { kind: 'styles', tid: 1, set: { 'font-size': '140px', color: '#f00' } },
+        { kind: 'text', tid: 1, text: 'Hello' },
+      ],
+      doc,
+      'tall',
+    );
+    const out = applyHumanOps(src, ops, new HappyWindow().document as unknown as Document).source;
+    expect(out).toContain('data-tall="font-size:140px;color:#f00"');
+    expect(out).toContain('style="font-size:96px;color:#fff"');
+    expect(out).toContain('>Hello</h2>');
+  });
+
+  it('removes the override once nothing differs', () => {
+    const doc = parseDc(src);
+    const out = applyHumanOps(src, editsForFormat([{ kind: 'style', tid: 1, prop: 'font-size', value: null }], doc, 'tall'), new HappyWindow().document as unknown as Document).source;
+    expect(out).not.toContain('data-tall');
+  });
+
+  it('shows the merged style', () => {
+    expect(styleInFormat({ style: 'font-size:96px;color:#fff', 'data-tall': 'font-size:120px' }, 'tall')).toBe('color:#fff;font-size:120px');
+    expect(styleInFormat({ style: 'font-size:96px' }, null)).toBe('font-size:96px');
   });
 });

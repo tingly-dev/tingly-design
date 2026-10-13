@@ -17,6 +17,7 @@ import {
   DS_TOKENS_CSS,
   FAST_EDIT_SYSTEM,
   FAST_EDIT_SLIDES,
+  FAST_EDIT_MOTION,
   FAST_EDIT_DOCS,
   DASH_RUNS,
   checkUploads,
@@ -424,8 +425,14 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
   const bad = checkMessages(body.messages);
   if (bad) throw new HttpError(400, bad);
   if (body.kind === 'dashboard') throw new HttpError(400, '看板的页面交给 Claude Code 写');
-  if (body.kind === 'motion') throw new HttpError(400, '动效的场景交给 Claude Code 改');
-  const system = body.kind === 'docs' ? FAST_EDIT_DOCS : body.kind === 'slides' ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES : FAST_EDIT_SYSTEM;
+  const system =
+    body.kind === 'docs'
+      ? FAST_EDIT_DOCS
+      : body.kind === 'slides'
+        ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES
+        : body.kind === 'motion'
+          ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES + '\n\n' + FAST_EDIT_MOTION
+          : FAST_EDIT_SYSTEM;
   return stream(c, async (s) => {
     const ms = anthropic!.messages.stream({
       model: FAST_MODEL,

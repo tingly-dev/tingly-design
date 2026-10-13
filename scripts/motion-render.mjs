@@ -45,8 +45,28 @@ if (!project) {
 const projectsDir = process.env.DC_PROJECTS ? resolve(process.env.DC_PROJECTS) : join(REPO, 'projects');
 const dir = existsSync(project) ? resolve(project) : join(projectsDir, project);
 const motion = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
+/** The page is rendered from a string, so files the scene points at (uploads/…) go in as data: URLs. */
+function inlineFiles(html) {
+  const data = (u) => {
+    if (/^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(u)) return null;
+    const p = resolve(dir, u.replace(/^\.?\//, ''));
+    const type = MIME[p.split('.').pop().toLowerCase()];
+    if (!type || !p.startsWith(dir + '/') || !existsSync(p)) return null;
+    return `data:${type};base64,${readFileSync(p).toString('base64')}`;
+  };
+  return html
+    .replace(/\b(src|poster|href)="([^"]+)"/g, (m, a, u) => {
+      const d = data(u);
+      return d ? `${a}="${d}"` : m;
+    })
+    .replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (m, q, u) => {
+      const d = data(u);
+      return d ? `url(${q}${d}${q})` : m;
+    });
+}
 const scenes = Object.fromEntries(
-  (motion.order ?? []).filter((id) => existsSync(join(dir, 'scenes', `${id}.html`))).map((id) => [id, readFileSync(join(dir, 'scenes', `${id}.html`), 'utf8')]),
+  (motion.order ?? []).filter((id) => existsSync(join(dir, 'scenes', `${id}.html`))).map((id) => [id, inlineFiles(readFileSync(join(dir, 'scenes', `${id}.html`), 'utf8'))]),
 );
 function seconds(v) {
   const m = /^(\d+(?:\.\d+)?|\.\d+)(ms|s)?$/.exec(String(v ?? '').trim());
@@ -55,7 +75,7 @@ function seconds(v) {
 const coverOpt = opt('poster', '') ? `${opt('poster', '')}s` : motion.cover;
 const coverAt = seconds(coverOpt);
 const coverScene = coverAt == null && typeof coverOpt === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(coverOpt) && existsSync(join(dir, 'scenes', `${coverOpt}.html`)) ? coverOpt : null;
-const coverHtml = coverScene ? readFileSync(join(dir, 'scenes', `${coverScene}.html`), 'utf8') : null;
+const coverHtml = coverScene ? inlineFiles(readFileSync(join(dir, 'scenes', `${coverScene}.html`), 'utf8')) : null;
 if (coverOpt && coverAt == null && !coverScene) console.error(`cover "${coverOpt}" is neither a time nor a scene file; no cover`);
 const hasCover = coverAt != null || !!coverScene;
 const runtimePath = join(REPO, 'packages/sandbox/dist/motion.js');

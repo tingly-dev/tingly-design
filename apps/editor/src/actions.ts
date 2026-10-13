@@ -146,6 +146,7 @@ export function duplicateSelection(): void {
     copySelection();
     return paste();
   }
+  if (sel?.kind === 'board' && s.kind === 'motion') return toast('场景的新建、复制和删除还没有放进编辑器，可以交给 Claude Code。');
   if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
     if (s.kind === 'slides' && slide) duplicateSlide(slide);
@@ -164,6 +165,8 @@ export function deleteSelection(confirmBoards = true): void {
   } else if (sel?.kind === 'note') {
     editCanvas((c) => void delete c.notes[sel.id], `note ${sel.id} deleted`);
     set({ selection: null });
+  } else if (sel?.kind === 'board' && s.kind === 'motion') {
+    toast('场景的新建、复制和删除还没有放进编辑器，可以交给 Claude Code。');
   } else if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
     if (s.kind === 'slides' && slide) {
@@ -184,6 +187,8 @@ export function orderSelection(to: 'first' | 'last'): void {
       const rest = Object.entries(c.notes).filter(([k]) => k !== sel.id);
       c.notes = Object.fromEntries(to === 'last' ? [...rest, [sel.id, n]] : [[sel.id, n], ...rest]);
     }, `note ${sel.id} moved to the ${to === 'last' ? 'front' : 'back'}`);
+  } else if (sel?.kind === 'board' && s.kind === 'motion') {
+    return;
   } else if (sel?.kind === 'board' && s.kind === 'slides') {
     const slide = slideIdOf(sel.file);
     if (slide) moveSlide(slide, to === 'first' ? (slideIds(s)[0] ?? null) : null);

@@ -144,6 +144,9 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             useStore.setState({ selection: { kind: 'el', file, tid: follow(file, slice, m.tid) } });
           break;
         }
+        case 'resize':
+          editElement(file, [{ kind: 'styles', tid: m.tid, set: m.set }]);
+          break;
         case 'dragout': {
           const ops = [{ kind: 'styles' as const, tid: m.tid, set: m.set }];
           if (m.parentTid !== null && Object.keys(m.parentSet).length) ops.push({ kind: 'styles', tid: m.parentTid, set: m.parentSet });

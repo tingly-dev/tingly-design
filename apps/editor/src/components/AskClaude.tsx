@@ -9,7 +9,7 @@ import { Send, Stop } from './icons';
 
 /**
  * The request bar of the kinds that hand work to Claude Code only (design
- * systems, dashboards, docs, motion): attachments, the request, and the
+ * systems, dashboards, docs): attachments, the request, and the
  * same run feed as the canvas and deck prompt bar.
  */
 export function AskClaude({

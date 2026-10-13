@@ -180,7 +180,7 @@ async def main():
                 await pg.goto(f'{base}/?p={proj}')
                 await box.wait_for(timeout=10000)
                 await pg.wait_for_timeout(800)
-                if kind == 'slides':
+                if kind in ('slides', 'motion'):
                     await pg.get_by_role('button', name='Claude Code', exact=True).click()
                 n = len(lines(claude_log))
                 await box.fill('改一下标题')
@@ -191,7 +191,7 @@ async def main():
                 check(f'{kind}: the feed shows the run and the file it changed', any(c.startswith(unit) for c in chips), chips)
                 if kind == 'motion':
                     sent = lines(claude_log)[n]['prompt']
-                    check('motion: the playhead is told to Claude Code but not echoed as the request', '播放到' in sent and '播放到' not in await feed.locator('.run-ask').inner_text())
+                    check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', '停在场景' in sent and '停在场景' not in await feed.locator('.run-ask').inner_text(), sent[:300])
             check('no page errors', not errs, errs)
             await b.close()
     finally:
