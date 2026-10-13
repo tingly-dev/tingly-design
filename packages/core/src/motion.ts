@@ -77,6 +77,26 @@ export function parseCover(v: unknown): MotionCover | undefined {
 
 export const FORMAT_NAME_RE = /^[a-z][a-z0-9]{0,15}$/;
 
+/** motion.json and scenes/<id>.html: the files a motion project is made of. */
+export function isMotionFile(path: string): boolean {
+  return path === MOTION_FILE || /^scenes\/[a-z0-9][a-z0-9-]{0,63}\.html$/.test(path);
+}
+
+/** A new motion project: one 16:9 title scene. */
+export function newMotion(title: string): { motion: MotionJson; scenes: Record<string, string> } {
+  const safe = title.replace(/[<&>]/g, '');
+  return {
+    motion: { v: 1, title, formats: { wide: { size: [1920, 1080] } }, fps: 30, order: ['title'], audio: [], faces: {} },
+    scenes: {
+      title:
+        `<section id="title" data-duration="4s" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">\n` +
+        `<h1 data-in="rise 700ms" style="font-size:112px;font-weight:800;line-height:1.05">${safe}</h1>\n` +
+        `<p data-in="fade 600ms" style="font-size:40px;color:#a9a59c">用 Claude Code 编辑 scenes/*.html，时间写在 data-in、data-out、data-keys 上。</p>\n` +
+        `</section>\n`,
+    },
+  };
+}
+
 export function sceneFile(id: string): string {
   return `scenes/${id}.html`;
 }
@@ -547,6 +567,13 @@ export function parseTransition(v: string | undefined): SceneWindow['transition'
   if (!kind || !(TRANSITION_KINDS as readonly string[]).includes(kind) || kind === 'cut') return { kind: 'cut', duration: 0 };
   const d = parseTime(dur);
   return { kind: kind as SceneWindow['transition']['kind'], duration: d != null && d > 0 ? d : DEFAULT_TRANSITION_MS };
+}
+
+/** A scene file's own timing, read from its <section> tag without a DOM. */
+export function sceneTiming(source: string): { duration?: string; transition?: string } {
+  const tag = /<section\b[^>]*>/i.exec(source)?.[0] ?? '';
+  const attr = (n: string) => new RegExp(`\\s${n}\\s*=\\s*"([^"]*)"`, 'i').exec(tag)?.[1];
+  return { duration: attr('data-duration'), transition: attr('data-transition') };
 }
 
 /** Lay the scenes end to end, each next one starting as the previous one's transition begins. */

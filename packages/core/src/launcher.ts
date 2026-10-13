@@ -3,6 +3,7 @@ import { DASH_INDEX, parseDash } from './dash';
 import { DECK_FILE, faceMarkup, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DOC_INDEX, parseDoc, tabFile } from './docs';
 import { DS_INDEX, DS_TOKENS, componentNames, parseDsIndex, resolveTokens } from './designSystem';
+import { MOTION_FILE, motionTimeline, parseMotion, primaryFormat, sceneFile, sceneTiming, speedOf, type MotionJson } from './motion';
 
 /** What the launcher shows on a project's card: a title, counts and a small preview. */
 export interface ProjectCard {
@@ -27,7 +28,16 @@ export type ProjectPreview =
   | { kind: 'slides'; cover?: { file: string; source: string; head: string } }
   | { kind: 'design-system'; colors: string[]; components: string[]; fonts: string[] }
   | { kind: 'dashboard'; datasets: string[] }
-  | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string };
+  | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string }
+  | {
+      kind: 'motion';
+      /** every format's name and size, the primary one first */
+      formats: { name: string; w: number; h: number }[];
+      /** seconds of video, after speed */
+      seconds: number;
+      /** what the card shows standing still: the cover scene, else the first scene at its end */
+      still?: { motion: MotionJson; id: string; source: string };
+    };
 
 /** A source the launcher frame renders; larger ones show the schematic preview only. */
 const MAX_PREVIEW_SOURCE = 200_000;
@@ -55,6 +65,34 @@ export async function projectCard(
       updatedAt,
       count: deck.order.length,
       preview: { kind, cover: id && source !== undefined ? { file: slideFile(id), source, head: faceMarkup(deck) } : undefined },
+    };
+  }
+  if (kind === 'motion') {
+    const motion = parseMotion(await read(MOTION_FILE));
+    const sources: Record<string, string> = {};
+    for (const id of motion.order) {
+      const s = await read(sceneFile(id));
+      if (s !== undefined) sources[id] = s;
+    }
+    const ids = motion.order.filter((id) => id in sources);
+    const timeline = motionTimeline(ids.map((id) => ({ id, ...sceneTiming(sources[id]) })));
+    const coverId = motion.cover && 'scene' in motion.cover ? motion.cover.scene : undefined;
+    const stillId = coverId && (await small(sceneFile(coverId))) !== undefined ? coverId : ids[0];
+    const stillSource = stillId ? (stillId === coverId ? await small(sceneFile(stillId)) : sources[stillId]) : undefined;
+    const primary = primaryFormat(motion);
+    const formats = [primary, ...Object.keys(motion.formats).filter((f) => f !== primary)].map((name) => ({ name, w: motion.formats[name].size[0], h: motion.formats[name].size[1] }));
+    return {
+      name,
+      title: motion.title,
+      kind,
+      updatedAt,
+      count: ids.length,
+      preview: {
+        kind,
+        formats,
+        seconds: Math.round(timeline.duration / speedOf(motion.speed) / 100) / 10,
+        still: stillId && stillSource !== undefined && stillSource.length <= MAX_PREVIEW_SOURCE ? { motion, id: stillId, source: stillSource } : undefined,
+      },
     };
   }
   if (kind === 'design-system') {
