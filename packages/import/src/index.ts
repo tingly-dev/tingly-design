@@ -5,7 +5,8 @@
  *
  *   sources/*    read one kind of material into the page model (model.ts)
  *     html/      extract.ts reads a page a browser has laid out (needs its window)
- *     pack.ts    uploaded files → one self-contained page (pure)
+ *     svg/       read.ts reads an SVG document (needs only a parsed Document)
+ *     pack.ts    uploaded files → one self-contained page or drawing (pure)
  *   model.ts     the page model every source produces, plain JSON
  *   generate.ts  page model → canvas.json + .dc.html artboards (pure)
  *   assets.ts    embedded data: files → project assets (pure)
@@ -18,3 +19,4 @@ export * from './model';
 export * from './generate';
 export * from './assets';
 export * from './sources/pack';
+export * from './sources/svg/read';

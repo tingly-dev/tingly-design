@@ -1,7 +1,7 @@
 /**
  * The page model every source is read into, as plain JSON.
  *
- * Each source (sources/html now; SVG, Figma… later) only has to produce
+ * Each source (sources/html, sources/svg, later Figma…) only has to produce
  * this; the generator that turns it into project files is shared, pure and
  * runs anywhere. Keeping the boundary as data means a source can change, be
  * tested or be added without touching the others.
@@ -54,7 +54,7 @@ export interface ExtractReport {
 
 export interface Extracted {
   /** which source produced it: names the import in canvas.json and the report */
-  from: 'html';
+  from: 'html' | 'svg';
   title: string;
   lang: string;
   /** the viewport width the page was laid out at */

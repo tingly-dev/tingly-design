@@ -145,7 +145,8 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
     }
     if (el.ns === 'svg' || el.ns === 'math') {
       const k = name === 'class' ? 'className' : name.startsWith('data-') || name.startsWith('aria-') ? name : camel(name);
-      p[k] = v;
+      // an <image> drawing a project file, like <img src>
+      p[k] = ctx.base && lower === 'href' && (el.tag === 'image' || el.tag === 'feImage') ? resolveSrc(v, ctx.base) : v;
       continue;
     }
     p[HTML_ATTRS[lower] ?? name] = ctx.base && (lower === 'src' || lower === 'poster') ? resolveSrc(v, ctx.base) : v;
