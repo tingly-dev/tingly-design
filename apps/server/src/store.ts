@@ -3,6 +3,10 @@ import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:
 import { dirname, join, relative, sep } from 'node:path';
 import {
   CANVAS_FILE,
+  MOTION_FILE,
+  isMotionFile,
+  newMotion,
+  sceneFile,
   DASH_DATA_TYPES,
   IMAGE_TYPES,
   isKeptPath,
@@ -82,7 +86,7 @@ export class HttpError extends Error {
 export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
-  if (isDashFile(r) || isDocFile(r)) return r;
+  if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
   // a design system's text files, and a copy of one installed into a canvas or deck
   if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/tokens\.json$/.test(r)) return r;
   throw new HttpError(400, `not a project file: ${rel}`);
@@ -132,7 +136,7 @@ export function assetRel(rel: string): string {
 }
 
 export async function kindOf(dir: string): Promise<ProjectKind | null> {
-  for (const [file, kind] of [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [DOC_INDEX, 'docs'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const) {
+  for (const [file, kind] of [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [DOC_INDEX, 'docs'], [MOTION_FILE, 'motion'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const) {
     try {
       await stat(join(dir, file));
       return kind;
@@ -172,7 +176,7 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
 
 /**
  * A projects folder that does not exist yet starts with the samples, so a
- * host's first visit opens on five working projects instead of an empty
+ * host's first visit opens on working sample projects instead of an empty
  * launcher. An existing folder, even an empty one, is left alone: someone
  * who deleted every project does not get the samples back. DC_SAMPLES=0
  * turns this off.
@@ -345,6 +349,12 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   if (kind === 'docs') {
     await writeAtomic(name, tabFile('main'), newDocTab(title));
     await writeAtomic(name, DOC_INDEX, stringifyDoc(parseDoc(JSON.stringify({ title, tabs: [{ id: 'main', title: '正文' }] }))));
+    return;
+  }
+  if (kind === 'motion') {
+    const { motion, scenes } = newMotion(title);
+    for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
+    await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
     return;
   }
   if (kind === 'dashboard') {

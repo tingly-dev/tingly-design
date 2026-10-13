@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectCard } from '../src';
+import { projectCard, projectKind } from '../src';
 
 const reader = (files: Record<string, string>) => async (rel: string) => files[rel];
 
@@ -65,5 +65,20 @@ describe('projectCard', () => {
     };
     const c = await projectCard('hb', 'docs', Object.keys(files), reader(files));
     expect(c.preview).toEqual({ kind: 'docs', tabs: [{ title: 'Overview', depth: 0 }, { title: 'Detail', depth: 1 }], excerpt: 'This is the first paragraph.' });
+  });
+
+  it('a motion piece counts its scenes, times it after speed and stands on its cover', async () => {
+    const files = {
+      'motion.json': JSON.stringify({ title: 'Promo', formats: { wide: { size: [1920, 1080] }, tall: { size: [1080, 1920] } }, order: ['a', 'b'], speed: 2, cover: 'poster' }),
+      'scenes/a.html': '<section data-duration="4s" data-transition="fade 1s"><h1>A</h1></section>',
+      'scenes/b.html': '<section data-duration="3s"><h1>B</h1></section>',
+      'scenes/poster.html': '<section><h1>Promo</h1></section>',
+    };
+    expect(projectKind(Object.keys(files))).toBe('motion');
+    const c = await projectCard('promo', 'motion', Object.keys(files), reader(files));
+    expect(c).toMatchObject({ title: 'Promo', kind: 'motion', count: 2 });
+    expect(c.preview).toMatchObject({ kind: 'motion', seconds: 3, formats: [{ name: 'wide', w: 1920, h: 1080 }, { name: 'tall', w: 1080, h: 1920 }], still: { id: 'poster' } });
+    const noCover = await projectCard('promo', 'motion', Object.keys(files), reader({ ...files, 'motion.json': JSON.stringify({ order: ['a', 'b'] }) }));
+    expect(noCover.preview).toMatchObject({ seconds: 6, still: { id: 'a' } });
   });
 });

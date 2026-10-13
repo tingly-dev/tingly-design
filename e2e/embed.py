@@ -67,7 +67,7 @@ async def main():
     port = ready['port']
     root = f'http://127.0.0.1:{port}'
     check('PORT=0 picks a port and the ready line names it', port > 0 and ready['basePath'] == PREFIX and ready['protocol'] == 1, str(ready))
-    check('a fresh projects folder starts with the five samples', sorted(os.listdir(projects)) == ['box-console', 'box-usage', 'design-guide', 'tingly-ds', 'tingly-intro'], str(os.listdir(projects)))
+    check('a fresh projects folder starts with the six samples', sorted(os.listdir(projects)) == ['box-console', 'box-usage', 'design-guide', 'design-motion', 'tingly-ds', 'tingly-intro'], str(os.listdir(projects)))
     check('…without anyone\'s journal or run reports', not any(f.startswith('.') for d in os.listdir(projects) for f in os.listdir(os.path.join(projects, d))))
     status, body, _ = get(root + PREFIX + '/api/health')
     health = json.loads(body)
@@ -109,7 +109,7 @@ async def main():
         # --- standalone under the prefix --------------------------------------------------------
         await pg.goto(root + PREFIX + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
-        check('the launcher lists every project', await pg.locator('.lcard[data-project]').count() == 5)
+        check('the launcher lists every project', await pg.locator('.lcard[data-project]').count() == 6)
         cover = pg.frame_locator('.lcard[data-project="tingly-intro"] .lframe iframe')
         await expect(cover.locator('section#cover h1')).to_contain_text('Meet Tingly')
         check('live previews run the sandbox from prefix/sandbox/', True)

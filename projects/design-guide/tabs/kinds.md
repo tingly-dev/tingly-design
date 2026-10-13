@@ -1,6 +1,6 @@
 # Project kinds
 
-Each kind is a folder under `projects/<name>/`. The file formats follow Claude's Design, Slides, Design System, Dashboard and Docs artifact types; Tingly Design is an open-source re-creation of their two-way editing. The full format for each kind is in `.claude/skills/<skill>/SKILL.md`.
+Each kind is a folder under `projects/<name>/`. Five file formats follow Claude's Design, Slides, Design System, Dashboard and Docs artifact types, and Tingly Design is an open-source re-creation of their two-way editing; Motion is our own. The full format for each kind is in `.claude/skills/<skill>/SKILL.md`.
 
 ## Canvas
 
@@ -22,6 +22,10 @@ Datasets are files under `data/` or live read-only SQLite queries. The page is p
 
 Tabs and subtabs of Markdown, comments anchored to the words they quote, AI rewrite of a selection, and export to Markdown, HTML or PDF. Hand a comment thread to Claude Code and it edits the doc and replies in the thread.
 
+## Motion
+
+A piece is `motion.json` plus one HTML file per scene, in the same subset as a slide. Timing is written on the elements (`data-in`, `data-out`, `data-keys`) at reading pace, and `speed` sets how fast the video plays. One set of scenes plays in every format, such as 16:9 and 9:16, and renders to MP4, a GIF and a cover image.
+
 ## Not there yet
 
 | Kind | Planned, not built |
@@ -31,5 +35,6 @@ Tabs and subtabs of Markdown, comments anchored to the words they quote, AI rewr
 | Design system | Mounting components on a canvas, an in-page model |
 | Dashboard | MCP connectors such as BigQuery, query history, scheduled refresh |
 | Docs | Word and Google Docs export, version compare and restore, live cursors, @mentions |
+| Motion | Editing on the stage, a draggable timeline, magic move, export from the editor |
 
 Fast AI edits one artboard or passage at a time; work that spans several files goes to Claude Code, which edits them directly.

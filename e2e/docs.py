@@ -55,7 +55,7 @@ async def main():
         await expect(body.locator('h1')).to_have_text('Tingly Design handbook')
         await expect(pg.locator('.tabrow')).to_have_count(4)
         check('tabs, subtabs and the outline', await pg.locator('.tabrow.sub').count() == 1 and await pg.locator('.outline button').count() == 4)
-        check('a table, a task list and a quote render', await body.locator('table tr').count() == 6 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
+        check('a table, a task list and a quote render', await body.locator('table tr').count() == 7 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
         await expect(body.locator('.cmark')).to_have_count(1)
         check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'the agents working beside them')
         for t in ['Workflow', 'Write-back and sync', 'Project kinds', 'Overview']:
@@ -110,11 +110,11 @@ async def main():
         write(os.path.join(DOC, 'tabs/overview.md'), before.replace('## What Tingly Design is', '## What Tingly Design does'))
         await expect(body.locator('h2').first).to_have_text('What Tingly Design does')
         check('an outside edit arrives in the open tab', True)
-        await body.locator('h2', has_text='Five project kinds').click()
+        await body.locator('h2', has_text='Six project kinds').click()
         await pg.wait_for_timeout(200)  # as above: let the editor take the new selection
         await pg.keyboard.press('End')
         await pg.keyboard.type(' and their files')
-        ok = await wait_for(lambda: '## Five project kinds and their files' in tab('overview') and '## What Tingly Design does' in tab('overview'))
+        ok = await wait_for(lambda: '## Six project kinds and their files' in tab('overview') and '## What Tingly Design does' in tab('overview'))
         check('…and my next edit keeps it', ok, [l for l in tab('overview').splitlines() if l.startswith('#')])
 
         # --- comments -------------------------------------------------------------------------
