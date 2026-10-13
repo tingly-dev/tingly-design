@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
-import { attr, getStyle, isRepeated, roleOf, styleDeclarations, templateText, type DcElement, type Inspect } from '@dc/core';
+import { attr, getStyle, isRepeated, roleOf, styleDeclarations, styleInFormat, templateText, type DcElement, type Inspect } from '@dc/core';
 import { useInstalled } from '../../ds';
 import { display, editElement, parsed, useStore } from '../../store';
 import { Menu, MenuItem } from '../Menu';
@@ -49,11 +49,16 @@ const SHADOWS: Record<string, string> = {
 
 export function ElementProps({ file, el, info }: { file: string; el: DcElement; info: Inspect | null }) {
   const tid = el.tid;
-  const style = attr(el, 'style') ?? '';
+  // a motion scene in a format other than the primary one shows that format's look
+  const view = useStore((s) => s.motionView);
+  const style =
+    view && view.format !== view.primary
+      ? styleInFormat(Object.fromEntries(el.attrs.map((a) => [a.name, a.value])), view.format)
+      : (attr(el, 'style') ?? '');
   const sv = (p: string) => getStyle(style, p) ?? '';
   const cv = (p: string) => info?.computed[p] ?? '';
   const installed = useInstalled();
-  const slides = useStore((s) => s.kind === 'slides');
+  const slides = useStore((s) => s.kind === 'slides' || s.kind === 'motion');
   const set = (s: Set_) => editElement(file, [{ kind: 'styles', tid, set: s }]);
   const one = (p: string) => (v: string) => set({ [p]: v.trim() === '' ? null : toLength(v) });
   const parent = info?.parent;

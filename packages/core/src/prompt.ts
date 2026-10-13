@@ -57,6 +57,16 @@ export const FAST_EDIT_SLIDES = `THIS DESIGN IS A SLIDE DECK
 - <x-shape kind="rect|rounded|ellipse|diamond|arrow-right|arrow-left|arrow-up|arrow-down|line" style="width;height;background">, <x-icon name="Star" style="color;width;height">.
 - After your reply the slide is checked against this subset; anything outside it is reported back to you to fix.`;
 
+export const FAST_EDIT_MOTION = `THIS IS A SCENE OF A MOTION PIECE (AN ANIMATED VIDEO)
+- The "slide" above is one scene: the same subset, but its size is the piece's format given in the design outline, not 1920×1080.
+- Timing lives in attributes; you change it with .attr() like anything else. Times are relative to the scene, in seconds (1.2s) or ms (400ms):
+  data-duration="6s" on the <section>: the scene's length. data-transition="fade 500ms" on the <section>: how it leaves (cut, fade, push, magic).
+  data-in="<preset> [duration] [@start] [easing]" and data-out="…": how and when an element enters and leaves. Presets: fade rise drop left right scale pop zoom slam spin blur wipe type count. With no @start, entrances are staggered automatically in source order.
+  data-keys="x: 0@0 120@2s ease-in-out; scale: 1@2s 1.2@3s": keyframes for x y (px offsets) scale rotate (deg) opacity.
+- Several formats (sizes) share one scene. data-<format>="declarations" (for example data-tall="font-size:120px") holds the declarations that differ in that format, merged over style; data-only="wide" keeps an element to the formats listed. The outline says which format the person is looking at: when they ask for a change "in the vertical one", write it into that format's attribute, not style.
+- "Later", "slower", "on the beat", "stagger these" are attribute patches: $('#dc7').attr('data-in', 'rise 500ms @0.7s ease-out').
+- After your reply the scene is checked against the subset and the timing rules; anything outside them is reported back to you to fix.`;
+
 export interface FastEditContext {
   canvas?: CanvasJson;
   /** a deck's outline, instead of a canvas's board list */

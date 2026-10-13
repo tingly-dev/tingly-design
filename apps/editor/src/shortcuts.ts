@@ -27,11 +27,19 @@ const TOOL_KEYS: Record<string, Tool> = {
   l: 'line',
 };
 
+/** A motion piece's player keys (play, step), set by the motion editor while it is open. */
+export const motionKeys: { handle: ((key: string, meta: boolean, shift: boolean) => boolean) | null } = { handle: null };
+
 /** Keyboard shortcuts, shared by the editor window and the artboard frames (which forward their keys). */
 export function handleKey(key: string, meta: boolean, shift: boolean, _alt = false): boolean {
   const s = useStore.getState();
   const k = key.toLowerCase();
   if (s.kind === 'slides' && slideKey(key, meta, shift)) return true;
+  if (s.kind === 'motion') {
+    if (motionKeys.handle?.(key, meta, shift)) return true;
+    // canvas tools mean nothing on a scene
+    if (!meta && !shift && TOOL_KEYS[k]) return true;
+  }
   if (s.focused) {
     if (key === 'Escape') useStore.setState({ focused: null });
     return key === 'Escape';

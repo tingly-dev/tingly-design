@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import {
   applyHumanOps,
+  editsForFormat,
+  sceneIdOf,
   rebaseSwap,
   parseCanvas,
   parseDc,
@@ -111,6 +113,11 @@ interface State {
   kind: ProjectKind | null;
   /** slides: the slide on the stage */
   slide: string | null;
+  /**
+   * motion: the format the stage shows. Style edits in any format but the
+   * primary one go to that format's `data-<format>` override.
+   */
+  motionView: { format: string; primary: string; scene: string | null; at: number } | null;
   present: Present | null;
   health: Health | null;
   connected: boolean;
@@ -152,6 +159,7 @@ export const useStore = create<State>(() => ({
   project: null,
   kind: null,
   slide: null,
+  motionView: null,
   present: null,
   health: null,
   connected: false,
@@ -284,7 +292,7 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], slide: null, present: null });
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], slide: null, present: null, motionView: null });
   const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
@@ -459,6 +467,8 @@ export function inertDocument(): Document {
 export function editElement(file: string, ops: HumanOp[], actor: Actor = 'human'): boolean {
   const cur = display(get(), file);
   if (cur === undefined) return false;
+  const view = get().motionView;
+  if (view && view.format !== view.primary && sceneIdOf(file)) ops = editsForFormat(ops, parsed(cur), view.format);
   let first: ReturnType<typeof applyHumanOps>;
   try {
     first = applyHumanOps(cur, ops, inertDocument());

@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { SLIDE_H, SLIDE_W, elementSource, faceMarkup, sandboxDoc, slideFile, type FromRuntime } from '@dc/core';
+import { SLIDE_H, SLIDE_W, elementSource, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
 import { api } from '../../api';
 import { deckOf, display, editElement, parsed, useStore } from '../../store';
 import { frames, post } from '../Board';
@@ -15,10 +15,18 @@ function follow(file: string, slice: string | null, fallback: number): number {
   return parsed(src).elements.find((e) => src.slice(e.range.start, e.range.end) === slice)?.tid ?? fallback;
 }
 
+/** A motion scene on the stage: its file, the piece's typefaces, the format and the time it is stopped at. */
+export interface SceneStage {
+  file: string;
+  faces: DeckJson['faces'];
+  info: MotionStageInfo;
+}
+
 /**
  * One slide in a sandboxed frame, laid out at 1920×1080 and scaled to fit.
  * The stage frame is the editable one: it talks to the same runtime as an
  * artboard, so selection, text editing, dragging and the panel all work.
+ * With `scene` it is a motion scene instead, in its format, stopped at a time.
  */
 export const SlideFrame = memo(function SlideFrame({
   id,
@@ -26,19 +34,28 @@ export const SlideFrame = memo(function SlideFrame({
   use,
   step = 0,
   onSteps,
+  scene,
 }: {
   id: string;
   scale: number;
   use: FrameUse;
   step?: number;
   onSteps?: (total: number) => void;
+  scene?: SceneStage;
 }) {
-  const file = slideFile(id);
+  const file = scene?.file ?? slideFile(id);
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const source = useStore((s) => display(s, file));
   const project = useStore((s) => s.project);
-  const head = useStore((s) => faceMarkup(deckOf(s)));
+  const deckHead = useStore((s) => (scene ? '' : faceMarkup(deckOf(s))));
+  const faces = scene?.faces;
+  const head = useMemo(() => (faces ? faceMarkup({ faces } as DeckJson) : deckHead), [faces, deckHead]);
+  const [W, H] = scene?.info.size ?? [SLIDE_W, SLIDE_H];
+  const drawn = scene ? JSON.stringify([scene.info.format, scene.info.formats, scene.info.size]) : '';
+  const t = scene?.info.t ?? 0;
+  const info = useRef(scene?.info);
+  info.current = scene?.info;
   const selected = useStore((s) => (use === 'stage' && s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   const hover = useStore((s) => (use === 'stage' && s.layerHover?.file === file ? s.layerHover.tid : null));
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
@@ -95,6 +112,9 @@ export const SlideFrame = memo(function SlideFrame({
             useStore.setState({ selection: { kind: 'el', file, tid: follow(file, slice, m.tid) } });
           break;
         }
+        case 'resize':
+          editElement(file, [{ kind: 'styles', tid: m.tid, set: m.set }]);
+          break;
         case 'dragout': {
           // the subset has no margin: drop the margin:0 an artboard drag adds
           const set = { ...m.set };
@@ -124,8 +144,14 @@ export const SlideFrame = memo(function SlideFrame({
 
   useEffect(() => {
     if (!ready || source === undefined) return;
-    frame.current?.contentWindow?.postMessage({ dc: 'render', file, source, files: {}, props: {}, mode, selected, slide }, '*');
-  }, [ready, source, mode, file, selected, slide]);
+    const motion = drawn ? info.current : undefined;
+    frame.current?.contentWindow?.postMessage({ dc: 'render', file, source, files: {}, props: {}, mode, selected, slide, motion }, '*');
+  }, [ready, source, mode, file, selected, slide, drawn]);
+
+  // moving the playhead only seeks: the scene is not drawn again
+  useEffect(() => {
+    if (ready && drawn) frame.current?.contentWindow?.postMessage({ dc: 'seek', t }, '*');
+  }, [ready, t, drawn]);
 
   useEffect(() => {
     if (ready && use === 'present') frame.current?.contentWindow?.postMessage({ dc: 'step', step }, '*');
@@ -136,8 +162,8 @@ export const SlideFrame = memo(function SlideFrame({
   }, [ready, hover, file, use]);
 
   return (
-    <div className={`sframe f-${use}`} style={{ width: SLIDE_W * scale, height: SLIDE_H * scale }}>
-      <div className="sinner" style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})` }}>
+    <div className={`sframe f-${use}`} style={{ width: W * scale, height: H * scale }}>
+      <div className="sinner" style={{ width: W, height: H, transform: `scale(${scale})` }}>
         <iframe ref={frame} title={id} sandbox="allow-scripts allow-popups" srcDoc={srcdoc} tabIndex={use === 'thumb' ? -1 : undefined} />
       </div>
     </div>
