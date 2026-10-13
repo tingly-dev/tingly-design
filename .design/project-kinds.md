@@ -73,7 +73,7 @@ motion 的设计见 [motion.md](./motion.md)；舞台上直接编辑、时间轴
 
 不是缺陷单，是现在的取舍或欠账，动手前先确认是否仍然成立。
 
-- motion 只能播放，不能在编辑器里改场景或导出；也没有快速 AI。
+- motion 只能播放，不能在编辑器里改场景或导出；也没有快速 AI。补上的方案见 [motion-editing.md](./motion-editing.md)。
 - 画布画板不能显示 `uploads/` 里的附件图片（`delegate.ts` 明说），而幻灯片和文档可以。
 - `dc-canvas`、`design-system`、`dashboard`、`motion` 四个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
