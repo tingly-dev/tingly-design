@@ -15,6 +15,7 @@ import {
   motionTimeline,
   planScene,
   sceneBaseCss,
+  speedOf,
   SLIDE_BASE_CSS,
   type DeckJson,
   type MotionJson,
@@ -28,16 +29,21 @@ export interface MountOptions {
   scenes: Record<string, string>;
   format?: string;
   root: HTMLElement;
+  /** Overrides motion.json's speed (a preview at 2×, a render at another pace). */
+  speed?: number;
 }
 
 export interface MotionStage {
   width: number;
   height: number;
   fps: number;
-  /** Milliseconds. */
+  /** Milliseconds of video, after speed. */
   duration: number;
+  /** Playback rate over the authored timing. `scenes` stay in authored time. */
+  speed: number;
   scenes: SceneWindow[];
   issues: { scene: string; message: string; level: string }[];
+  /** `ms` is video time; the authored time shown is `ms × speed`. */
   seek(ms: number): Promise<void>;
   play(from?: number, onTime?: (ms: number) => void): void;
   pause(): void;
@@ -83,6 +89,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
   const formats = Object.keys(motion.formats);
   const format = opts.format && motion.formats[opts.format] ? opts.format : formats[0];
   const [W, H] = motion.formats[format].size;
+  const speed = speedOf(opts.speed ?? motion.speed);
   root.innerHTML = '';
   root.classList.add('dc-motion-root');
 
@@ -210,11 +217,12 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     width: W,
     height: H,
     fps: motion.fps,
-    duration: timeline.duration,
+    duration: timeline.duration / speed,
+    speed,
     scenes: timeline.scenes,
     issues,
     async seek(ms) {
-      const t = Math.max(0, Math.min(ms, timeline.duration));
+      const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
       const live = embeds.filter((e) => {
         const h = hosts.find((h) => h.win.start === e.sceneStart);
@@ -228,18 +236,18 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       cancelAnimationFrame(raf);
       const t0 = performance.now() - (from ?? 0);
       const tick = () => {
-        let t = performance.now() - t0;
+        let t = (performance.now() - t0) * speed;
         if (t > timeline.duration) {
           if (!motion.loop) {
             setTime(timeline.duration);
-            onTime?.(timeline.duration);
+            onTime?.(timeline.duration / speed);
             return;
           }
           t %= timeline.duration;
         }
         setTime(t);
         for (const e of embeds) e.frame.contentWindow?.postMessage({ dcMotion: 'seek', t: t - e.sceneStart, n: -1 }, '*');
-        onTime?.(t);
+        onTime?.(t / speed);
         raf = requestAnimationFrame(tick);
       };
       tick();

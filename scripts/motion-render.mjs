@@ -6,6 +6,7 @@
  *
  *   --format wide,tall   formats to render (default: all in motion.json)
  *   --scale 2            render at 2× and downsample (sharper type, slower)
+ *   --speed 1.5          play the authored timing this much faster (default: motion.json "speed", else 1)
  *   --gif                also write a GIF per format
  *   --poster 2.5         use the frame at 2.5 s as the cover, whatever motion.json says
  *   --player             also write a single-file HTML player
@@ -34,10 +35,10 @@ const opt = (name, dflt) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : dflt;
 };
-const VALUED = ['--format', '--scale', '--poster', '--out'];
+const VALUED = ['--format', '--scale', '--speed', '--poster', '--out'];
 const project = args.find((a, i) => !a.startsWith('--') && !VALUED.includes(args[i - 1]));
 if (!project) {
-  console.error('usage: node scripts/motion-render.mjs <project> [--format wide,tall] [--scale 2] [--gif] [--poster 2.5] [--player] [--verify] [--out dir]');
+  console.error('usage: node scripts/motion-render.mjs <project> [--format wide,tall] [--scale 2] [--speed 1.5] [--gif] [--poster 2.5] [--player] [--verify] [--out dir]');
   process.exit(2);
 }
 
@@ -65,6 +66,7 @@ if (!existsSync(runtimePath)) {
 const runtime = readFileSync(runtimePath, 'utf8');
 const formats = (opt('format', '') || Object.keys(motion.formats ?? { wide: 1 }).join(',')).split(',').filter(Boolean);
 const scale = Math.max(1, Math.min(4, Number(opt('scale', '1')) || 1));
+const speed = opt('speed', '') ? Number(opt('speed', '')) : undefined;
 const out = resolve(opt('out', join(dir, 'renders')));
 mkdirSync(out, { recursive: true });
 const stem = basename(dir);
@@ -84,7 +86,7 @@ const json = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 /** A page holding the runtime and the project; `player` adds controls. */
 function pageHtml(player) {
   const controls = player
-    ? `<div id="bar"><button id="play">Play</button><input id="scrub" type="range" min="0" step="1" value="0"><span id="time">0.00 s</span><select id="fmt"></select></div>`
+    ? `<div id="bar"><button id="play">Play</button><input id="scrub" type="range" min="0" step="1" value="0"><span id="time">0.00 s</span><select id="fmt"></select><select id="spd" title="Speed"></select></div>`
     : '';
   const css = player
     ? `body{margin:0;background:#111;color:#ddd;font:14px system-ui;display:flex;flex-direction:column;height:100vh}#wrap{flex:1;display:grid;place-items:center;overflow:hidden}#root,#dc-cover{grid-area:1/1}#bar{display:flex;gap:12px;align-items:center;padding:10px 16px;background:#1b1b1b}#scrub{flex:1}#issues{color:#f5a524;padding:0 16px 8px;white-space:pre-wrap}`
@@ -92,15 +94,16 @@ function pageHtml(player) {
   const boot = player
     ? `const motion=${json(motion)},scenes=${json(scenes)},coverAt=${json(coverAt)},coverScene=${json(coverScene)},coverHtml=${json(coverHtml)};let stage,cover,started=false;const coverRoot=document.getElementById('dc-cover');const wrap=document.getElementById('wrap'),root=document.getElementById('root');
 const fmt=document.getElementById('fmt'),scrub=document.getElementById('scrub'),time=document.getElementById('time'),play=document.getElementById('play');
+const spd=document.getElementById('spd'),base=motion.speed||1;for(const v of [...new Set([base,0.75,1,1.25,1.5,2])].sort((a,b)=>a-b)){const o=document.createElement('option');o.value=v;o.textContent=v+'×'+(v===base?' (project)':'');o.selected=v===base;spd.appendChild(o)}
 for(const f of Object.keys(motion.formats)){const o=document.createElement('option');o.value=f;o.textContent=f+' '+motion.formats[f].size.join('×');fmt.appendChild(o)}
 function fit(){if(!stage)return;const s=Math.min(wrap.clientWidth/stage.width,wrap.clientHeight/stage.height);for(const r of [root,coverRoot]){r.style.transform='scale('+s+')';r.style.transformOrigin='center'}}
 const uncover=()=>{if(!started){started=true;coverRoot.style.display='none'}};
 const show=t=>{scrub.value=t;time.textContent=(t/1000).toFixed(2)+' s / '+(stage.duration/1000).toFixed(2)+' s'};let playing=false;
-async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,format:f,root});scrub.max=stage.duration;
+async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,format:f,speed:+spd.value,root});scrub.max=stage.duration;
 if(!started&&coverScene){cover=await dcMotion.mount({motion:{...motion,order:[coverScene]},scenes:{[coverScene]:coverHtml},format:f,root:coverRoot});cover.seek(cover.duration)}
 if(!started&&coverAt!=null)stage.seek(coverAt);fit();show(0);
 document.getElementById('issues').textContent=stage.issues.map(i=>i.level+': '+i.scene+' '+i.message).join('\\n')}
-fmt.onchange=()=>{playing=false;play.textContent='Play';load(fmt.value)};addEventListener('resize',fit);
+fmt.onchange=spd.onchange=()=>{playing=false;play.textContent='Play';load(fmt.value)};addEventListener('resize',fit);
 play.onclick=()=>{uncover();playing=!playing;play.textContent=playing?'Pause':'Play';if(playing){const from=+scrub.value>=stage.duration?0:+scrub.value;stage.play(from,t=>{show(t);if(t>=stage.duration&&!motion.loop){playing=false;play.textContent='Play'}})}else stage.pause()};
 scrub.oninput=()=>{uncover();playing=false;play.textContent='Play';stage.pause();stage.seek(+scrub.value);show(+scrub.value)};load(fmt.value);`
     : '';
@@ -179,11 +182,11 @@ try {
     page.on('pageerror', (e) => console.error(`[page] ${e.message}`));
     await page.setContent(pageHtml(false), { waitUntil: 'load' });
     const info = await page.evaluate(
-      async ({ motion, scenes, format }) => {
-        window.__stage = await window.dcMotion.mount({ motion, scenes, format, root: document.getElementById('root') });
-        return { duration: window.__stage.duration, fps: window.__stage.fps, issues: window.__stage.issues };
+      async ({ motion, scenes, format, speed }) => {
+        window.__stage = await window.dcMotion.mount({ motion, scenes, format, speed, root: document.getElementById('root') });
+        return { duration: window.__stage.duration, fps: window.__stage.fps, speed: window.__stage.speed, issues: window.__stage.issues };
       },
-      { motion, scenes, format },
+      { motion, scenes, format, speed },
     );
     for (const i of info.issues) console.log(`  ${i.level}: ${format} ${i.scene} ${i.message}`);
     const cdp = await page.context().newCDPSession(page);
@@ -258,7 +261,7 @@ try {
     }
     const secs = (performance.now() - t0) / 1000;
     console.log(
-      `${format}: ${w}×${h}${scale > 1 ? ` (rendered at ${scale}×)` : ''}, ${frames} frames, ${(info.duration / 1000).toFixed(2)} s of video in ${secs.toFixed(1)} s (${(frames / secs).toFixed(1)} frames/s) → ${file}`,
+      `${format}: ${w}×${h}${scale > 1 ? ` (rendered at ${scale}×)` : ''}, ${frames} frames, ${(info.duration / 1000).toFixed(2)} s of video${info.speed !== 1 ? ` at ${info.speed}× speed` : ''} in ${secs.toFixed(1)} s (${(frames / secs).toFixed(1)} frames/s) → ${file}`,
     );
 
     if (flag('gif')) {

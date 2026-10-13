@@ -12,6 +12,7 @@ import {
   planScene,
   sceneBaseCss,
   sceneIdOf,
+  speedOf,
   SLIDE_BASE_CSS,
 } from '../src';
 
@@ -138,6 +139,15 @@ describe('motion: project and timeline', () => {
     expect(m.fps).toBe(30);
     expect(parseMotion(undefined).formats).toEqual({ wide: { size: [1920, 1080] } });
     expect(sceneIdOf('scenes/hook.html')).toBe('hook');
+  });
+
+  it('reads the speed, clamped', () => {
+    expect(parseMotion('{"speed":1.5}').speed).toBe(1.5);
+    expect(parseMotion('{"speed":10}').speed).toBe(4);
+    expect(parseMotion('{"speed":"fast"}').speed).toBeUndefined();
+    expect(parseMotion('{}').speed).toBeUndefined();
+    expect(speedOf(0.1)).toBe(0.25);
+    expect(speedOf(undefined)).toBe(1);
   });
 
   it('reads the cover as a frame or a scene', () => {

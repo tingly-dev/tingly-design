@@ -45,5 +45,6 @@
       "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap"
     }
   },
-  "cover": "poster"
+  "cover": "poster",
+  "speed": 1.5
 }

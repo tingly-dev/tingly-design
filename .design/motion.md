@@ -109,7 +109,7 @@ A sketch to make the recommendation concrete. Names are provisional.
 
 ```
 projects/<name>/
-  motion.json            title, formats, fps, scene order, cover, audio, design system
+  motion.json            title, formats, fps, speed, scene order, cover, audio, design system
   scenes/<id>.html       one file per scene: exactly one <section>, the slides subset plus timing attributes
   audio/                 music, voiceover
   assets/                images, video clips, fonts
@@ -129,6 +129,7 @@ projects/<name>/
   },
   "fps": 30,
   "order": ["hook", "problem", "gateway", "teams", "cta"],
+  "speed": 1.25,
   "cover": "poster",
   "audio": [
     { "src": "audio/track.mp3", "start": 0, "gain": -6, "beats": "auto" },
@@ -158,6 +159,10 @@ The rules:
 - **`<x-embed data-seek>`** is the escape hatch: arbitrary HTML/JS in the existing sandbox, which must export `seek(t)` (or register a GSAP timeline, HyperFrames-style). An embed without it plays in preview but is flagged by the checker as "not exportable", with the reason.
 - **Video and audio layers**: `<video src="assets/clip.mp4" data-start="1s" data-trim="2s 6s">`, seeked like everything else.
 - **Assets are one-scene projects.** `motion.json` takes `"loop": true` and `"background": "transparent"`; nothing else changes. A loop's last frame must equal its first, which the checker verifies by comparing the two.
+
+### Speed is one knob
+
+Timing attributes are written at reading pace. `"speed"` in `motion.json` (0.25 to 4, default 1) plays everything that much faster or slower: scene lengths, entrances, holds and transitions together, so "faster" is one change rather than editing every attribute. The runtime applies it to its clock (`seek(t)` shows authored time `t × speed`); the renderer has `--speed` for a one-off, and the player has a speed menu. In the editor it is a control next to the play button, and the timeline can show either authored or video time. Two follow-ups: the "text on screen under 0.8 s" check should judge video time, not authored time; and music should keep its pitch, so audio is not sped up with it (a beat-synced piece wants speed 1 or a re-cut).
 
 ### Several formats, one project
 
@@ -290,7 +295,7 @@ The spike is in this branch. It has no editor UI; it proves the format, the runt
 | Timing grammar, format overrides, scene timeline, checks | `packages/core/src/motion.ts`, 16 unit tests in `packages/core/test/motion.test.ts` |
 | Runtime: lays out one format, compiles attributes to paused Web Animations on one clock, `seek(t)`, `play()` | `packages/sandbox/src/motion.ts` → `dist/motion.js` |
 | Renderer: MP4 per format, GIF, poster, single-file HTML player, `--verify` | `scripts/motion-render.mjs` (Playwright's Chromium + ffmpeg) |
-| Sample: "Tingly Design", a 41 s product promo in twelve scenes, 16:9 and 9:16 from the same files | `projects/design-motion/` (not listed in the launcher yet: no editor for the kind) |
+| Sample: "Tingly Design", a 36 s product promo in twelve scenes (authored at reading pace, played at `"speed": 1.5`), 16:9 and 9:16 from the same files | `projects/design-motion/` (not listed in the launcher yet: no editor for the kind) |
 
 ```bash
 pnpm --filter @dc/sandbox build
@@ -306,6 +311,6 @@ What the sample shows: the product story, with no code on screen. Its cover is a
 - **Typing needs a caret, by character.** `type` clips the element's width in equal steps, so a proportional font shows half letters and a wrapped line reveals both lines at once. The sample's hand edit instead wraps each character in a span with its own 1 ms `fade` and moves a caret with stepped `data-keys` to measured character positions (about 50 spans and two 50-key tracks). Phase 1 should make `type` reveal by character in reading order and add a caret option (`type caret`), plus a matching `erase`.
 - **"Change of state" is a pattern.** Most demo beats are "this becomes that". Drawing the new state as an overlay that fades or types in over the old one works, but costs a copy of the element. A `data-to` attribute (the new text or style, applied at a time) would make it one attribute; worth adding in phase 1.
 - **Determinism needs two things the first version lacked.** (1) Fonts: `document.fonts.ready` resolves before a hidden scene's faces are requested, so early frames were drawn in the fallback face; the runtime now loads every face/weight the scenes use before the first frame. (2) Paint: after setting `currentTime`, the next animation frame can still be the old one on composited layers; `seek` now waits two frames. With both, all 16 frames seeked in reverse are byte-identical to forward, in both formats. A third source showed up with the cover: a logo entering with `slam` (scale from 2.4×) left one 5 px column of its edge up to 21/255 off depending on seek order, because Chromium keeps a scaled layer's raster from the frame before; entering with `drop` (no scale) removed it. `--verify` now names the time of the worst frame. (The first sample left 5 of 16 vertical frames differing on at most 68 pixels by at most 4/255 around one line of text: Chromium's raster cache, invisible; `--verify` accepts that as antialiasing.)
-- **Speed: 6 to 15 frames per second**, depending on content, on a 4-core container with ffmpeg encoding in parallel. This sample (light, flat colours) renders 41.5 s at 30 fps in 88 s per format (14 fps); the first, dark sample with large radial gradients and a long-running embed took 53 to 57 s for 10.9 s (6 fps). Rendering at 2× took the same time as 1×, so the cost is per frame (a page round trip, two animation frames, PNG encoding), not per pixel. Ways to go faster, in order of effort: render several time ranges in parallel pages and concatenate; JPEG frames; drive frames with `HeadlessExperimental.beginFrame` instead of waiting on animation frames.
-- **Sizes**: MP4 2.5 MB (16:9) and 2.2 MB (9:16) for 41 s. GIF at 720 px, 15 fps came to 2.3 MB and 4.6 MB for a 14 s cut, so GIF is for short loops, not promos.
+- **Speed: 6 to 15 frames per second**, depending on content, on a 4-core container with ffmpeg encoding in parallel. This sample (light, flat colours) renders 36.4 s at 30 fps in 80 s per format (14 fps); the first, dark sample with large radial gradients and a long-running embed took 53 to 57 s for 10.9 s (6 fps). Rendering at 2× took the same time as 1×, so the cost is per frame (a page round trip, two animation frames, PNG encoding), not per pixel. Ways to go faster, in order of effort: render several time ranges in parallel pages and concatenate; JPEG frames; drive frames with `HeadlessExperimental.beginFrame` instead of waiting on animation frames.
+- **Sizes**: MP4 2.4 MB (16:9) and 2.3 MB (9:16) for 36 s. GIF at 720 px, 15 fps came to 2.3 MB and 4.6 MB for a 14 s cut, so GIF is for short loops, not promos.
 - **Not covered yet**: magic move falls back to a fade; audio mixing is wired in the renderer but untested with a real file; `count` and `type` assume one text node; the editor, the timeline UI and fast AI are phase 1.

@@ -43,10 +43,24 @@ export interface MotionJson {
   faces: Record<string, DeckFace>;
   loop?: boolean;
   background?: string;
+  /**
+   * Playback rate over the authored timing: 1.5 plays every scene, entrance and
+   * pause 1.5× faster. Timing attributes stay at reading pace; this is the one knob.
+   */
+  speed?: number;
   /** The still that stands for the video: a frame of it, or a scene file outside `order` drawn with no timing. */
   cover?: MotionCover;
   /** Put the cover in the video's first frame too, so players and chat apps that thumbnail frame 0 show it. Default true. */
   coverFirstFrame?: boolean;
+}
+
+export const MIN_SPEED = 0.25;
+export const MAX_SPEED = 4;
+
+/** A usable speed, or 1. */
+export function speedOf(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.min(MAX_SPEED, Math.max(MIN_SPEED, n)) : 1;
 }
 
 export type MotionCover = { at: number } | { scene: string };
@@ -98,6 +112,7 @@ export function parseMotion(text: string | undefined): MotionJson {
     faces: raw.faces && typeof raw.faces === 'object' ? raw.faces : {},
     loop: raw.loop === true || undefined,
     background: typeof raw.background === 'string' ? raw.background : undefined,
+    speed: raw.speed == null || speedOf(raw.speed) === 1 ? undefined : speedOf(raw.speed),
     cover: parseCover(raw.cover),
     coverFirstFrame: raw.coverFirstFrame === false ? false : undefined,
   };
