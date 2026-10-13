@@ -19,6 +19,7 @@ pnpm typecheck
 | `python3 e2e/launcher.py` | 启动页：五种类型和全部项目都列出、封面与画板实时预览、按类型筛选、搜索与 `/`、回车打开、继续上次的项目、方向键、排序、新建对话框（按标题生成文件夹名、拒绝重名和非法名）、手机宽度（26 项） |
 | `python3 e2e/theme.py` | 主题：跟随系统、外观菜单与记住选择、深色画布和看板、`?theme=` 传预设或 JSON、派生 token、`tinglyDesign` 脚本接口、Tingly Box palette、丢弃不安全的值、宿主页面用 postMessage 设主题并收到回报（25 项） |
 | `python3 e2e/embed.py` | 嵌入，先跑 `pnpm bundle`；它自己启动打包好的服务端：清单和就绪行、新项目文件夹放入示例、一切都在 `/design` 之下、编辑写进宿主的文件夹、另一个源上的宿主页面打开项目并收到 `ready` 和 `location`、宿主传主题、stdin 关闭和 SIGTERM 时退出（27 项） |
+| `python3 e2e/attach.py` | 附件，先跑 `pnpm build`；它自己启动带模拟模型和替身 `claude` 的服务端：粘贴、选择、拖入文件，拒收和最多 6 个的限制，模型收到的内容块，重试时保留附件，存进 `uploads/`（原图、同一文件只存一份、能读回来），Claude Code 读到的路径，文档页的输入框，幻灯片显示存下的图片，服务端的校验（36 项） |
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
 | `python3 e2e/fast_slides.py` | 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型 |
 | `python3 e2e/delegate.py` | 真的调用本机 `claude` CLI |

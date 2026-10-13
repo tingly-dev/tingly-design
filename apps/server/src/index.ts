@@ -19,8 +19,12 @@ import {
   FAST_EDIT_SLIDES,
   FAST_EDIT_DOCS,
   DASH_RUNS,
+  checkUploads,
+  isUploadPath,
+  checkMessages,
   cleanParams,
   fillArgs,
+  type ModelMessage,
   isDataPath,
   dsFolderOf,
   parseDsIndex,
@@ -283,25 +287,26 @@ app.delete('/api/projects/:p/assets', async (c) => {
   return c.json({ ok: true });
 });
 
-/** Upload an image or font: stored under assets/ by content hash, so the same file is kept once. */
+/** Upload an image or font (stored under assets/ by content hash, so the same file is kept once), or a request's attachment (the same, under uploads/). */
 app.post('/api/projects/:p/assets', async (c) => {
   const p = c.req.param('p');
   projectDir(p);
   const name = c.req.query('name') ?? 'file';
   const ext = (/\.([A-Za-z0-9]+)$/.exec(name)?.[1] ?? '').toLowerCase();
   const dir = c.req.query('dir');
-  if (dir === 'data' ? !isDataPath(`data/x.${ext}`) : !ASSET_TYPES[ext]) throw new HttpError(400, `不支持的文件类型：${ext || name}`);
+  if (dir === 'data' ? !isDataPath(`data/x.${ext}`) : dir === 'uploads' ? !isUploadPath(`uploads/x.${ext}`) : !ASSET_TYPES[ext]) throw new HttpError(400, `不支持的文件类型：${ext || name}`);
   const bytes = new Uint8Array(await c.req.arrayBuffer());
   if (!bytes.length) throw new HttpError(400, 'empty file');
   if (bytes.length > MAX_ASSET) throw new HttpError(413, '文件超过 20 MB');
   const stem = name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'file';
   // into a named folder (a design system's asset group, fonts/, a dashboard's data/): the file keeps its name
   let rel: string;
-  if (dir) {
+  if (dir && dir !== 'uploads') {
     rel = assetRel(`${dir.replace(/\/+$/, '')}/${stem}.${ext}`);
   } else {
+    // images, and files attached to a request: named by content, so the same file is kept once
     const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 8);
-    rel = `assets/${stem}-${hash}.${ext}`;
+    rel = `${dir ?? 'assets'}/${stem}-${hash}.${ext}`;
   }
   await writeAsset(p, rel, bytes);
   publish(p, { type: 'assets', path: rel });
@@ -397,7 +402,9 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
     return c.json({ error: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用（可以改用 jQuery 模式直接写语句）。' }, 501);
   }
   anthropic ??= new Anthropic();
-  const body = await c.req.json<{ messages: { role: 'user' | 'assistant'; content: string }[]; kind?: string }>();
+  const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
+  const bad = checkMessages(body.messages);
+  if (bad) throw new HttpError(400, bad);
   if (body.kind === 'dashboard') throw new HttpError(400, '看板的页面交给 Claude Code 写');
   const system = body.kind === 'docs' ? FAST_EDIT_DOCS : body.kind === 'slides' ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES : FAST_EDIT_SYSTEM;
   return stream(c, async (s) => {
@@ -405,7 +412,7 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
       model: FAST_MODEL,
       max_tokens: 4096,
       system,
-      messages: body.messages,
+      messages: body.messages as Anthropic.MessageParam[],
     });
     s.onAbort(() => ms.abort());
     try {
@@ -427,6 +434,8 @@ app.post('/api/projects/:p/delegate', async (c) => {
   if (!cliChecked) return c.json({ error: '本机没有可用的 claude CLI，无法委托。' }, 501);
   const req = await c.req.json<DelegateRequest>();
   if (!req.prompt?.trim()) throw new HttpError(400, 'prompt missing');
+  const bad = checkUploads(req.attachments);
+  if (bad) throw new HttpError(400, bad);
   return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design') });
 });
 
