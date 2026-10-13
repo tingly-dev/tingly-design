@@ -1,5 +1,7 @@
 # 从 Design 到五种类型
 
+状态：**已实施**（幻灯片、设计系统在 #2 之前直接提交，看板 #3，文档 #4），原放在 `docs/zh/artifact-types.md`。前半是当初的方案，"进度"一节是实施后的结论和与原版的差别。各类型现在的接线和跨类型功能见 [project-kinds.md](./project-kinds.md)。
+
 tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifact 平台上其实有五种核心类型，Design 只是其中之一：
 
 | 类型 | 一个实例是什么 | 内容存在哪 | 索引 | 内容单元 | 格式约束 |
@@ -71,10 +73,10 @@ tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifa
 
 ## 进度
 
-- **Slides：已实现**（见[使用指南：幻灯片](guide/slides.md)）。按上面的建议，编辑仍走 `copy.ts` 的最小补丁；`packages/core/src/slides.ts` 是子集检查（只用来提示和给快速 AI 反馈，不阻止保存），`slideArt.ts` 画形状/图标/连线（舞台和导出共用），`deck.ts` 是 deck.json 与基础样式。原版 Slides 没有页内快速 AI，这里有。
-- **Design System：已实现**（见[使用指南：设计系统](guide/design-system.md)）。文件布局、tokens.json 语法和 tokens.css 的编译照原版 `format.md`（`packages/core/src/designSystem.ts`，有单元测试）；页面有概览、颜色、文字、间距、组件、资源；消费侧在 Design 和 Slides 里都能装入、选 token、用文字样式。和原版的差别：没有 db / 单页模式的迁移、没有 api/ 卡片和 manifest.json 的生成、没有从 GitHub 或设计工具同步（交给 Claude Code）；多了 `type.hosted`（Google Fonts）。
-- **Dashboard：已实现**（见[使用指南：看板](guide/dashboard.md)）。照上面的方案落到文件上：`dash.json`、`datasets/<id>.json`、`files/index.html`、`data/`；页面放进 `allow-scripts` iframe，`dash` API 在 iframe 里实现（`packages/sandbox/src/dash.ts`），数据由编辑器加载后经 postMessage 交给它；查询走服务端可插拔的连接器（先有只读的 SQLite），SQL 检查与参数绑定、CSV 解析、标注核对在 `packages/core/src/dash.ts`（有单元测试）。runs 文档写成不进 git 的 `.runs.json` 给 Claude Code 看。和原版的差别：没有 MCP 连接器和读者各自的权限、没有查询历史和定时刷新；页面可以手改。
-- **Docs：已实现**（见[使用指南：文档](guide/docs.md)）。原版的内容在独立服务里、按块 id 编辑；这里改成文件：`doc.json`、每个标签页一个 `tabs/<id>.md`、`comments.json`，Claude Code 和 git 都能直接读写。编辑器是 TipTap 富文本，存盘时按块（块内再按行）合回原文件（`packages/core/src/docs.ts` 的 `mergeBlocks`、`rebaseBlocks`，有单元测试），所以手写的格式不会被编辑器重排。评论不用块 id，而是按引用的文字加前后文定位（W3C TextQuote 的做法），文件被谁改了都能找回。和原版的差别：没有版本对比与草稿、没有多人光标、没有图表/图示块和 Word/Google Docs 导出；“@Claude”在这里是底部的 Claude Code 输入框（带上选中的文字）和评论上的“交给 Claude”。
+- **Slides：已实现**（见[使用指南：幻灯片](../docs/zh/guide/slides.md)）。按上面的建议，编辑仍走 `copy.ts` 的最小补丁；`packages/core/src/slides.ts` 是子集检查（只用来提示和给快速 AI 反馈，不阻止保存），`slideArt.ts` 画形状/图标/连线（舞台和导出共用），`deck.ts` 是 deck.json 与基础样式。原版 Slides 没有页内快速 AI，这里有。
+- **Design System：已实现**（见[使用指南：设计系统](../docs/zh/guide/design-system.md)）。文件布局、tokens.json 语法和 tokens.css 的编译照原版 `format.md`（`packages/core/src/designSystem.ts`，有单元测试）；页面有概览、颜色、文字、间距、组件、资源；消费侧在 Design 和 Slides 里都能装入、选 token、用文字样式。和原版的差别：没有 db / 单页模式的迁移、没有 api/ 卡片和 manifest.json 的生成、没有从 GitHub 或设计工具同步（交给 Claude Code）；多了 `type.hosted`（Google Fonts）。
+- **Dashboard：已实现**（见[使用指南：看板](../docs/zh/guide/dashboard.md)）。照上面的方案落到文件上：`dash.json`、`datasets/<id>.json`、`files/index.html`、`data/`；页面放进 `allow-scripts` iframe，`dash` API 在 iframe 里实现（`packages/sandbox/src/dash.ts`），数据由编辑器加载后经 postMessage 交给它；查询走服务端可插拔的连接器（先有只读的 SQLite），SQL 检查与参数绑定、CSV 解析、标注核对在 `packages/core/src/dash.ts`（有单元测试）。runs 文档写成不进 git 的 `.runs.json` 给 Claude Code 看。和原版的差别：没有 MCP 连接器和读者各自的权限、没有查询历史和定时刷新；页面可以手改。
+- **Docs：已实现**（见[使用指南：文档](../docs/zh/guide/docs.md)）。原版的内容在独立服务里、按块 id 编辑；这里改成文件：`doc.json`、每个标签页一个 `tabs/<id>.md`、`comments.json`，Claude Code 和 git 都能直接读写。编辑器是 TipTap 富文本，存盘时按块（块内再按行）合回原文件（`packages/core/src/docs.ts` 的 `mergeBlocks`、`rebaseBlocks`，有单元测试），所以手写的格式不会被编辑器重排。评论不用块 id，而是按引用的文字加前后文定位（W3C TextQuote 的做法），文件被谁改了都能找回。和原版的差别：没有版本对比与草稿、没有多人光标、没有图表/图示块和 Word/Google Docs 导出；“@Claude”在这里是底部的 Claude Code 输入框（带上选中的文字）和评论上的“交给 Claude”。
 
 ## 当初建议的第一步（已完成）
 

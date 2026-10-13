@@ -70,7 +70,8 @@ projects/           示例项目：box-console（画布）、tingly-intro（幻�
 scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）；bundle.mjs：宿主随自己发布的文件夹（docs/zh/embedding.md）；sync-tingly-box-theme.mjs：把 Tingly Box 的调色板拷进编辑器（docs/zh/theming.md）
 .claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs（委托时会让它先读）
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
-docs/               使用指南与设计说明：docs/en/ 英文，docs/zh/ 中文；docs/images/ 是截图
+docs/               使用指南与工作原理：docs/en/ 英文，docs/zh/ 中文；docs/images/ 是截图
+.design/            设计说明：每个功能为什么这样做，以及每种项目类型都要支持什么（索引在 .design/README.md）
 e2e/                Playwright 端到端测试和一个模拟的 Messages API
 ```
 
