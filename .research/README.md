@@ -14,3 +14,4 @@
 | [parse5.md](./parse5.md) | 画布和幻灯片的回写怎么用 parse5 的源码位置；换成别的库、换成 Go 行不行（含 `x/net/html` 加位置的验证，代码在 [parse5-go-spike/](./parse5-go-spike/README.md)） | 研究 |
 | [server-runtime.md](./server-runtime.md) | 服务端用 Node 还是 Go：三层运行环境、"服务端不懂格式"的边界、四个方案、迁移步骤，以及融合 TB、移动端、全平台 Go 等前提下的不同结论（图：[server-runtime.pencil.md](./server-runtime.pencil.md)） | 研究 |
 | [docs-go.md](./docs-go.md) | 把 core 移植成 Go 能否逐字节一致：文档类型的实测，原生和 WASM 的速度、体积（代码在 [docs-go-spike/](./docs-go-spike/README.md)） | 验证 |
+| [motion-go.md](./motion-go.md) | 动效的代码在哪跑、谁调用，哪些能换成 Go：时间轴和画面留在浏览器，场景回写同 parse5，能换的只有存文件和导出调度 | 研究 |
