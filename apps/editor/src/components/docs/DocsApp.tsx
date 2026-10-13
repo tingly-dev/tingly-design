@@ -24,7 +24,7 @@ import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core'
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
-import { AskClaude } from '../ds/DsApp';
+import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
@@ -370,6 +370,10 @@ export function DocsApp() {
         </div>
         <AskClaude
           file={tab ? tabFile(tab) : undefined}
+          onOpen={(f) => {
+            const id = /^tabs\/(.+)\.md$/.exec(f)?.[1];
+            if (id && order.some((t) => t.id === id)) openTab(id);
+          }}
           placeholder="交给 Claude Code：写一节、按评论改、加一张表、整理全文…"
           context={() => {
             const e = docEditor.current;

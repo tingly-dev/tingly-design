@@ -25,10 +25,10 @@ async def main():
         # mid-stream: the draft shows on the artboard before anything is saved
         await pg.wait_for_timeout(250)
         await pg.screenshot(path=OUT + 'fast-mid.png')
-        await expect(pg.locator('.ticker')).to_contain_text('已保存', timeout=10000)
+        await expect(pg.locator('.runfeed')).to_contain_text('已保存', timeout=10000)
         await pg.wait_for_timeout(500)
         s = src()
-        print('ticker:', (await pg.locator('.ticker').inner_text()).replace('\n', ' | '))
+        print('ticker:', (await pg.locator('.runfeed').inner_text()).replace('\n', ' | '))
         print('PASS' if 'color:#7c3aed' in s and '<li style="font-size: 14px">保留每个 Agent 的覆盖</li>' in s and 'b42318' not in s else 'FAIL', 'retried reply saved, failed attempt fully undone')
         print('PASS' if 'id="dc' not in s else 'FAIL', 'no handle ids leaked into the file')
         log = [json.loads(l) for l in open(OUT + 'mock.log')]

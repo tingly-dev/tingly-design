@@ -30,7 +30,7 @@ async def main():
         await pg.wait_for_timeout(4000)
         await pg.locator('.tabs button', has_text='改动记录').click()
         print('journal top:', (await pg.locator('.jline').first.inner_text()).replace('\n', ' | '))
-        print('ticker:', (await pg.locator('.ticker').inner_text()).replace('\n', ' | ')[:600] if await pg.locator('.ticker').count() else '-')
+        print('ticker:', (await pg.locator('.runfeed').inner_text()).replace('\n', ' | ')[:600] if await pg.locator('.runfeed').count() else '-')
         await pg.screenshot(path=OUT + 'delegate-done.png')
         await b.close()
 asyncio.run(main())

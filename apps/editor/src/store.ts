@@ -10,6 +10,7 @@ import {
   stringifyCanvas,
   CANVAS_FILE,
   type Actor,
+  type AgentStep,
   type CanvasJson,
   type HumanOp,
   type JournalEntry,
@@ -73,15 +74,35 @@ export interface FastState {
   prompt?: string;
   lines: FastLine[];
   note?: string;
+  startedAt?: number;
+  endedAt?: number;
+  /** the run saved a change, so it can be undone */
+  changed?: boolean;
 }
+
+/** One line of a Claude Code run: a step it took, or something it said. */
+export type DelegateEntry = { step: AgentStep; at: number } | { say: string; at: number };
 
 export interface DelegateState {
   id: string;
   prompt: string;
-  state: 'start' | 'progress' | 'done' | 'error';
-  lines: string[];
+  state: 'start' | 'progress' | 'done' | 'error' | 'stopped';
+  log: DelegateEntry[];
+  startedAt: number;
+  endedAt?: number;
   result?: string;
+  /** set when the fast model handed the request over */
+  via?: 'fast';
+  /** project files the run changed, in the order it first touched them */
+  files: string[];
+  /** each changed file before the run touched it (null: the run created it) and as the run left it, to undo the run */
+  before: Record<string, string | null>;
+  after: Record<string, string>;
+  undone?: boolean;
 }
+
+/** Which run the prompt bar's feed shows: the fast model's, or a Claude Code run by id. */
+export type LastRun = { kind: 'fast' } | { kind: 'delegate'; id: string } | null;
 
 interface UndoItem {
   file: string;
@@ -150,6 +171,13 @@ interface State {
   runtimeErrors: Record<string, string | null>;
   fast: FastState;
   delegates: DelegateState[];
+  /** jQuery typed by hand in the Code tab (also filled from the run feed) */
+  jqDraft: string;
+  /** the run the feed above the prompt shows, and whether the person closed it */
+  lastRun: LastRun;
+  runHidden: boolean;
+  /** how many run feeds are on screen: when none is, a finished run is announced by a toast instead */
+  feeds: number;
   toasts: Toast[];
   undo: UndoItem[];
   redo: UndoItem[];
@@ -191,6 +219,10 @@ export const useStore = create<State>(() => ({
   runtimeErrors: {},
   fast: { status: 'idle', mode: 'ai', lines: [] },
   delegates: [],
+  jqDraft: '',
+  lastRun: null,
+  runHidden: false,
+  feeds: 0,
   toasts: [],
   undo: [],
   redo: [],
@@ -292,7 +324,7 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], slide: null, present: null, motionView: null });
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], lastRun: null, runHidden: false, slide: null, present: null, motionView: null });
   const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
@@ -311,7 +343,17 @@ function onEvent(e: ServerEvent): void {
     set((s) => {
       const cur = s.files[e.path];
       if (cur?.server?.version === e.version) return {};
-      return { files: { ...s.files, [e.path]: { server: { content: e.content, version: e.version }, pending: cur?.pending ?? [] } } };
+      const files = { ...s.files, [e.path]: { server: { content: e.content, version: e.version }, pending: cur?.pending ?? [] } };
+      const run = e.actor === 'claude' ? creditedRun(s.delegates) : -1;
+      if (run < 0) return { files };
+      // remember the file as it was before this run first touched it, so the run can be undone
+      const delegates = [...s.delegates];
+      const d = { ...delegates[run] };
+      if (!(e.path in d.before)) d.before = { ...d.before, [e.path]: cur?.server?.content ?? null };
+      d.after = { ...d.after, [e.path]: e.content };
+      if (!d.files.includes(e.path)) d.files = [...d.files, e.path];
+      delegates[run] = d;
+      return { files, delegates };
     });
   } else if (e.type === 'delete') {
     set((s) => {
@@ -325,29 +367,67 @@ function onEvent(e: ServerEvent): void {
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {
+    const now = Date.now();
     set((s) => {
       const list = [...s.delegates];
-      let d = list.find((x) => x.id === e.id);
-      if (!d) {
-        d = { id: e.id, prompt: e.text ?? '', state: 'start', lines: [] };
-        list.push(d);
-      } else {
-        d = { ...d };
-        list[list.indexOf(list.find((x) => x.id === e.id)!)] = d;
+      const i = list.findIndex((x) => x.id === e.id);
+      const d: DelegateState =
+        i >= 0
+          ? { ...list[i] }
+          : { id: e.id, prompt: e.text ?? '', state: 'start', log: [], startedAt: e.at ?? now, files: [], before: {}, after: {}, ...(s.fast.status === 'delegated' && s.lastRun?.kind === 'fast' ? { via: 'fast' as const } : {}) };
+      if (i >= 0) list[i] = d;
+      else list.push(d);
+      if (e.state === 'start') {
+        d.prompt = e.text ?? d.prompt;
+        if (e.at) d.startedAt = e.at;
       }
-      if (e.state === 'progress' && e.text) d.lines = [...d.lines, e.text].slice(-30);
-      if (e.state === 'done' || e.state === 'error') d.result = e.text;
+      if (e.state === 'progress') {
+        if (e.step) {
+          d.log = [...d.log, { step: e.step, at: now }].slice(-60);
+          if (e.step.changed && !d.files.includes(e.step.changed)) d.files = [...d.files, e.step.changed];
+        } else if (e.text) d.log = [...d.log, { say: e.text, at: now }].slice(-60);
+      }
+      if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') {
+        d.result = e.text;
+        d.endedAt = now;
+      }
       if (e.state !== 'start') d.state = e.state;
-      return { delegates: list.slice(-5) };
+      // a new run takes over the feed; a later event of an older run does not
+      const fresh = i < 0;
+      return { delegates: list.slice(-5), ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
     });
     if (e.state === 'done' || e.state === 'error') {
       const ok = e.state === 'done';
-      if (get().fast.status === 'delegated') {
-        set((s) => ({ fast: { ...s.fast, status: ok ? 'done' : 'error', note: ok ? `Claude Code 完成：${e.text ?? ''}` : undefined } }));
-      }
-      toast(ok ? 'Claude Code 完成：' + (e.text ?? '').slice(0, 120) : 'Claude Code 没能完成：' + (e.text ?? '').slice(0, 200), ok ? 'info' : 'error');
+      if (get().fast.status === 'delegated') setFastDone(ok);
+      // the feed above the prompt already says so; a toast is for when no feed is on screen
+      if (!get().feeds) toast(ok ? 'Claude Code 完成：' + (e.text ?? '').slice(0, 120) : 'Claude Code 没能完成：' + (e.text ?? '').slice(0, 200), ok ? 'info' : 'error');
     }
   }
+}
+
+function setFastDone(ok: boolean): void {
+  set((s) => ({ fast: { ...s.fast, status: ok ? 'done' : 'error', endedAt: Date.now() } }));
+}
+
+/** The run a Claude write belongs to: the newest one running, or one that ended a moment ago (its last writes arrive late). */
+function creditedRun(list: DelegateState[]): number {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const d = list[i];
+    if (d.state === 'start' || d.state === 'progress' || (d.endedAt && Date.now() - d.endedAt < 2000)) return i;
+  }
+  return -1;
+}
+
+/** Put back every file a Claude Code run changed, as it was before the run; files it created are removed. */
+export function undoDelegate(id: string): void {
+  const d = get().delegates.find((x) => x.id === id);
+  if (!d || d.undone) return;
+  for (const [file, after] of Object.entries(d.after)) {
+    const before = d.before[file];
+    if (before === null) void deleteFile(file);
+    else if (before !== undefined) edit(file, (src) => rebaseSwap(src, after, before), { actor: 'undo', summary: '撤销 Claude Code 的改动', undoable: false });
+  }
+  set((s) => ({ delegates: s.delegates.map((x) => (x.id === id ? { ...x, undone: true } : x)) }));
 }
 
 // ----------------------------------------------------------------- saving

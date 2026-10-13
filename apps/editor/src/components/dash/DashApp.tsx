@@ -24,7 +24,7 @@ import {
   dashImport,
 } from '../../dash';
 import { ImportHere } from '../ImportHere';
-import { AskClaude } from '../ds/DsApp';
+import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
@@ -256,6 +256,11 @@ export function DashApp() {
         <PageFrame />
         <AskClaude
           file={DASH_PAGE}
+          onOpen={(f) => {
+            const id = /^datasets\/(.+)\.json$/.exec(f)?.[1];
+            if (id) useDash.setState({ open: id, side: 'sources' });
+            else if (f === DASH_PAGE) useDash.setState({ side: 'code' });
+          }}
           placeholder="交给 Claude Code：连上数据、加一张图、加一个筛选、修好没对上的数字…"
           context={() => {
             const { pick, open } = useDash.getState();

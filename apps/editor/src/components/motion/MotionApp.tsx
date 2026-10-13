@@ -331,7 +331,12 @@ export function MotionApp() {
           </div>
         )}
         <div className="mprompt">
-          <PromptBar />
+          <PromptBar
+            onOpen={(f) => {
+              const w = timeline.scenes.find((x) => sceneFile(x.id) === f);
+              if (w) seek(w.start / rate);
+            }}
+          />
         </div>
       </main>
       {panelOpen && <RightPanel />}

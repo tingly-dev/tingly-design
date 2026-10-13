@@ -27,7 +27,7 @@
 | `packages/core/src/attachments.ts` | 类型、上限、`ATTACH_ACCEPT`、content block、`uploads/` 路径检查 |
 | `apps/editor/src/attachments.ts` | `useAttachments`：读文件、缩图、发送时上传（`keepAttachments`） |
 | `apps/editor/src/components/Attachments.tsx` | 回形针按钮和附件条 |
-| `PromptBar.tsx`、`ds/DsApp.tsx` 的 `AskClaude` | 两个接入点；看板、文档、设计系统、动效都用 `AskClaude`，所以一次接好了所有类型 |
+| `PromptBar.tsx`、`AskClaude.tsx` | 两个接入点；看板、文档、设计系统、动效都用 `AskClaude`，所以一次接好了所有类型 |
 | `apps/server/src/index.ts` `POST /assets?dir=uploads`、`PUT /uploads` | 按哈希存；raw 路由把文本按纯文本返回 |
 | `apps/server/src/delegate.ts` | 告诉 Claude Code 附件路径和各类型怎么引用 |
 
