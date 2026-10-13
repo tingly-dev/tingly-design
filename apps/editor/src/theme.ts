@@ -11,6 +11,7 @@
  * Tingly Box on its own and inside it, and a host can pass its mode name through unchanged.
  */
 
+import { t } from './i18n';
 import { fontMono, fontSans } from './tingly-box/fonts';
 import { claudePalette } from './tingly-box/palettes/claude';
 import { darkPalette } from './tingly-box/palettes/dark';
@@ -98,8 +99,8 @@ export type ThemeInput =
  * background needs one solid colour for the canvas.
  */
 const TINGLY_BOX: Record<PresetId, { label: string; palette: ThemePalette; menu: string; dialog: string; canvas?: string }> = {
-  light: { label: '浅色', palette: lightPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)' },
-  dark: { label: '深色', palette: darkPalette, menu: '0 10px 32px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5)', dialog: '0 24px 56px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5)' },
+  light: { label: 'Light', palette: lightPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)' },
+  dark: { label: 'Dark', palette: darkPalette, menu: '0 10px 32px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5)', dialog: '0 24px 56px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5)' },
   claude: { label: 'Claude', palette: claudePalette, menu: '0 10px 24px rgba(20, 20, 19, 0.08)', dialog: '0 20px 48px rgba(20, 20, 19, 0.16)' },
   // the page is a near-white base under a sky-blue wash: the canvas takes a quarter of the wash
   ds: { label: 'DeepSeek', palette: dsPalette, menu: '0 10px 24px rgba(30, 35, 44, 0.1)', dialog: '0 20px 48px rgba(30, 35, 44, 0.18)', canvas: '#e2eaf4' },
@@ -282,7 +283,7 @@ export function resolve(input: ThemeInput): ResolvedTheme {
   if (typeof input === 'string') {
     const id: PresetId = input === 'system' ? (systemScheme() === 'dark' ? 'dark' : 'light') : isMode(input) ? input : 'light';
     const p = PRESETS[id];
-    return { id, mode: isMode(input) ? input : 'light', name: input === 'system' ? '跟随系统' : p.label, scheme: p.scheme, tokens: { ...p.tokens } };
+    return { id, mode: isMode(input) ? input : 'light', name: t(`appearance.mode.${isMode(input) ? input : 'light'}`), scheme: p.scheme, tokens: { ...p.tokens } };
   }
   const baseMode: ThemeMode = isMode(input?.base) ? input.base : input?.palette?.mode === 'dark' ? 'dark' : 'light';
   const base = resolve(baseMode);
@@ -297,7 +298,7 @@ export function resolve(input: ThemeInput): ResolvedTheme {
   for (const [k, d] of Object.entries(DERIVED) as [Token, NonNullable<(typeof DERIVED)[Token]>][]) {
     if (!changed.has(k) && d.from.some((f) => changed.has(f))) tokens[k] = d.make(tokens, scheme);
   }
-  return { id: 'custom', mode: 'custom', name: input?.name || '外部主题', scheme, tokens };
+  return { id: 'custom', mode: 'custom', name: input?.name || t('appearance.custom'), scheme, tokens };
 }
 
 // ------------------------------------------------------------------ applying

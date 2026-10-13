@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useInstalled } from '../../ds';
 
 /** Number-ish CSS lengths: "16" → "16px"; keeps %, rem, auto, calc(), holes as typed. */
@@ -122,6 +123,7 @@ export function ColorField({
   label: string;
   allowNone?: boolean;
 }) {
+  const { t } = useTranslation();
   const shown = value || computed || '';
   const none = !shown || isTransparent(shown);
   const systems = useInstalled();
@@ -135,18 +137,18 @@ export function ColorField({
     <div className="colorfield">
       <label className={`inp ${value === '' ? 'computed' : ''}`}>
         <span className={`swatch ${none ? 'none' : ''}`} style={none ? undefined : { background: shown }}>
-          <input type="color" aria-label={`${label}（取色）`} value={toHex(shown)} onChange={(e) => onCommit(e.currentTarget.value)} />
+          <input type="color" aria-label={t('panel.color.pickerLabel', { label })} value={toHex(shown)} onChange={(e) => onCommit(e.currentTarget.value)} />
         </span>
-        <ColorText value={value} placeholder={none ? (allowNone ? '无' : '') : toHex(shown)} onCommit={onCommit} label={label} />
-        {token && <span className="tokname" title="设计系统里的颜色">{token.c.name}</span>}
+        <ColorText value={value} placeholder={none ? (allowNone ? t('common.none') : '') : toHex(shown)} onCommit={onCommit} label={label} />
+        {token && <span className="tokname" title={t('panel.color.tokenHint')}>{token.c.name}</span>}
         {systems.some((x) => x.tokens.colors.length) && (
-          <button type="button" className="tokbtn" aria-label={`${label}：从设计系统选`} aria-expanded={open} title="从设计系统选" onClick={(e) => (e.preventDefault(), setOpen(!open))}>
+          <button type="button" className="tokbtn" aria-label={t('panel.color.fromDsLabel', { label })} aria-expanded={open} title={t('panel.color.fromDs')} onClick={(e) => (e.preventDefault(), setOpen(!open))}>
             ◆
           </button>
         )}
       </label>
       {open && (
-        <div className="tokpick" role="listbox" aria-label={`${label}：设计系统的颜色`}>
+        <div className="tokpick" role="listbox" aria-label={t('panel.color.dsColorsLabel', { label })}>
           {systems.map((x) => (
             <div key={x.record.namespace}>
               {systems.length > 1 && <div className="hint">{x.record.title}</div>}

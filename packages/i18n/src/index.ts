@@ -19,6 +19,9 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'zh', label: '中文', model: 'Simplified Chinese' },
 ] as const;
 
+/** A message the server can refuse a request with (`errors.<key>`). */
+export type ErrorKey = keyof typeof en.errors;
+
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]['code'];
 
 export const DEFAULT_LANGUAGE: Language = 'en';

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BUILDS, TRANSITIONS, attr, checkSlide, getStyle, googleFace, layerTree, rootElement, slideFile, type Layer } from '@dc/core';
 import { display, editDeck, editElement, parsed, useDeck, useStore } from '../../store';
 import { isHidden, setSectionAttr, slideTitle, toggleHidden } from '../../slides';
@@ -6,23 +7,9 @@ import { ColorField, Field, Row, Select } from '../panel/fields';
 import { Chevron, RoleIcon } from '../icons';
 import { DsInstall } from '../panel/DsInstall';
 
-const ROLE_ZH: Record<string, string> = {
-  Slide: '幻灯片',
-  Column: '纵向',
-  Row: '横向',
-  Grid: '网格',
-  Text: '文字',
-  Image: '图片',
-  Vector: '矢量',
-  Link: '链接',
-  Group: '组',
-  Embed: '动态嵌入',
-  Shape: '形状',
-  Icon: '图标',
-  Connector: '连线',
-  Table: '表格',
-  Notes: '备注',
-};
+const ROLES = ['Slide', 'Column', 'Row', 'Grid', 'Text', 'Image', 'Vector', 'Link', 'Group', 'Embed', 'Shape', 'Icon', 'Connector', 'Table', 'Notes'] as const;
+type KnownRole = (typeof ROLES)[number];
+const isKnownRole = (r: string): r is KnownRole => (ROLES as readonly string[]).includes(r);
 
 export function Rows({
   file,
@@ -42,6 +29,7 @@ export function Rows({
 }) {
   const sel = useStore((s) => (s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   const scene = useStore((s) => s.kind === 'motion');
+  const { t } = useTranslation();
   return (
     <>
       {layers.map((l) => (
@@ -58,7 +46,7 @@ export function Rows({
             onMouseLeave={() => useStore.setState({ layerHover: null })}
           >
             {l.children.length ? (
-              <button className="tw" aria-label={open.has(l.tid) ? '收起' : '展开'} onClick={(e) => (e.stopPropagation(), toggle(l.tid))}>
+              <button className="tw" aria-label={open.has(l.tid) ? t('slides.layers.collapse') : t('slides.layers.expand')} onClick={(e) => (e.stopPropagation(), toggle(l.tid))}>
                 <Chevron open={open.has(l.tid)} />
               </button>
             ) : (
@@ -67,7 +55,7 @@ export function Rows({
             <span className="ri">
               <RoleIcon role={l.role === 'Slide' ? 'Artboard' : l.role === 'Notes' ? 'Note' : l.role === 'Connector' ? 'Arrow' : l.role} />
             </span>
-            <span className="rn">{scene && l.role === 'Slide' ? '场景' : (ROLE_ZH[l.role] ?? l.role)}</span>
+            <span className="rn">{scene && l.role === 'Slide' ? t('slides.role.Scene') : isKnownRole(l.role) ? t(`slides.role.${l.role}`) : l.role}</span>
             {l.label && <span className="rl">“{l.label}”</span>}
             {away?.has(l.tid) && <span className="rt">{away.get(l.tid)}</span>}
           </div>
@@ -98,23 +86,22 @@ export function SlideLayers({ file: scene, away }: { file?: string; away?: Map<n
     }
     return o;
   }, [manual, source, sel, file]);
-  const toggle = (t: number) =>
+  const toggle = (tid: number) =>
     setManual((m) => {
       const n = new Set(m);
-      if (open.has(t)) n.delete(t);
-      else n.add(t);
+      if (open.has(tid)) n.delete(tid);
+      else n.add(tid);
       return n;
     });
+  const { t } = useTranslation();
   if (!id) return <div className="layers" />;
   return (
-    <div className="layers" role="tree" aria-label="图层">
+    <div className="layers" role="tree" aria-label={t('slides.layers.label')}>
       <Rows file={file} layers={layers} depth={0} open={open} toggle={toggle} away={away} />
     </div>
   );
 }
 
-const TRANSITION_ZH: Record<string, string> = { '': '无', fade: '淡入淡出', push: '推入', magic: '神奇移动' };
-const BUILD_ZH: Record<string, string> = { '': '无', fade: '淡入', rise: '上浮', drop: '落下', left: '从左', right: '从右', scale: '缩放', pop: '弹出' };
 
 /** A whole slide selected: its id, look, transition, skipping, and the subset check. */
 export function SlideProps({ file }: { file: string }) {
@@ -123,43 +110,44 @@ export function SlideProps({ file }: { file: string }) {
   const doc = source ? parsed(source) : null;
   const root = doc ? rootElement(doc) : undefined;
   const issues = useMemo(() => (doc ? checkSlide(doc, id) : []), [doc, id]);
-  if (!root) return <div className="empty">这一页还没有内容。</div>;
+  const { t } = useTranslation();
+  if (!root) return <div className="empty">{t('slides.slideProps.empty')}</div>;
   const style = attr(root, 'style') ?? '';
   const set = (prop: string, value: string | null) => editElement(file, [{ kind: 'style', tid: root.tid, prop, value }]);
   return (
     <div className="sec">
-      <h3>幻灯片</h3>
-      <Row label="标题">
+      <h3>{t('slides.slideProps.heading')}</h3>
+      <Row label={t('slides.slideProps.title')}>
         <span className="hint" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {slideTitle(source, id)}
         </span>
       </Row>
-      <Row label="编号">
+      <Row label={t('slides.slideProps.id')}>
         <code className="hint">{id}</code>
       </Row>
-      <Row label="背景">
-        <ColorField value={getStyle(style, 'background') ?? ''} onCommit={(v) => set('background', v || null)} label="背景" allowNone={false} />
+      <Row label={t('slides.slideProps.background')}>
+        <ColorField value={getStyle(style, 'background') ?? ''} onCommit={(v) => set('background', v || null)} label={t('slides.slideProps.background')} allowNone={false} />
       </Row>
-      <Row label="文字色">
-        <ColorField value={getStyle(style, 'color') ?? ''} onCommit={(v) => set('color', v || null)} label="文字色" />
+      <Row label={t('slides.slideProps.textColor')}>
+        <ColorField value={getStyle(style, 'color') ?? ''} onCommit={(v) => set('color', v || null)} label={t('slides.slideProps.textColor')} />
       </Row>
-      <Row label="边距">
-        <Field value={getStyle(style, 'padding') ?? ''} placeholder="128px" onCommit={(v) => set('padding', v.trim() || null)} label="边距" numeric={false} />
+      <Row label={t('slides.slideProps.padding')}>
+        <Field value={getStyle(style, 'padding') ?? ''} placeholder="128px" onCommit={(v) => set('padding', v.trim() || null)} label={t('slides.slideProps.padding')} numeric={false} />
       </Row>
-      <Row label="切换">
+      <Row label={t('slides.slideProps.transition')}>
         <Select
           value={attr(root, 'data-transition') ?? ''}
-          options={['', ...TRANSITIONS].map((t) => ({ value: t, label: TRANSITION_ZH[t] }))}
+          options={[{ value: '', label: t('slides.transition.none') }, ...TRANSITIONS.map((x) => ({ value: x, label: t(`slides.transition.${x}`) }))]}
           onChange={(v) => setSectionAttr(id, 'data-transition', v || null)}
-          label="离开这一页时的切换效果"
+          label={t('slides.slideProps.transitionLabel')}
         />
       </Row>
-      <Row label="放映">
+      <Row label={t('slides.slideProps.present')}>
         <label className="chk">
-          <input type="checkbox" checked={isHidden(id)} onChange={() => toggleHidden(id)} /> 放映时跳过
+          <input type="checkbox" checked={isHidden(id)} onChange={() => toggleHidden(id)} /> {t('slides.slideProps.skip')}
         </label>
       </Row>
-      <h3>格式检查</h3>
+      <h3>{t('slides.slideProps.check')}</h3>
       {issues.length ? (
         <ul className="issue-list">
           {issues.map((i, n) => (
@@ -170,7 +158,7 @@ export function SlideProps({ file }: { file: string }) {
         </ul>
       ) : (
         <p className="hint" style={{ margin: 0 }}>
-          这一页符合幻灯片格式。
+          {t('slides.slideProps.valid')}
         </p>
       )}
     </div>
@@ -180,6 +168,7 @@ export function SlideProps({ file }: { file: string }) {
 /** Builds on a pinned element (present mode only). */
 export function BuildRow({ file, tid }: { file: string; tid: number }) {
   const source = useStore((s) => display(s, file));
+  const { t } = useTranslation();
   const el = source ? parsed(source).elements[tid] : undefined;
   if (!el || !/position\s*:\s*absolute/.test(attr(el, 'style') ?? '')) return null;
   const cur = attr(el, 'data-build-in') ?? '';
@@ -189,13 +178,26 @@ export function BuildRow({ file, tid }: { file: string; tid: number }) {
     editElement(file, [{ kind: 'attr', tid, name: 'data-build-in', value: eff ? `${eff}${a ? ' auto' : ''}` : null }]);
   return (
     <div className="sec">
-      <h3>出场动画</h3>
-      <Row label="效果">
-        <Select value={effect} options={['', ...BUILDS].map((b) => ({ value: b, label: BUILD_ZH[b] }))} onChange={(v) => write(v, auto)} label="出场动画" />
+      <h3>{t('slides.build.heading')}</h3>
+      <Row label={t('slides.build.effect')}>
+        <Select
+          value={effect}
+          options={[{ value: '', label: t('slides.build.none') }, ...BUILDS.map((b) => ({ value: b, label: t(`slides.build.${b}`) }))]}
+          onChange={(v) => write(v, auto)}
+          label={t('slides.build.heading')}
+        />
       </Row>
       {effect && (
-        <Row label="时机">
-          <Select value={auto ? 'auto' : 'click'} options={[{ value: 'click', label: '点击时' }, { value: 'auto', label: '紧跟上一个' }]} onChange={(v) => write(effect, v === 'auto')} label="时机" />
+        <Row label={t('slides.build.timing')}>
+          <Select
+            value={auto ? 'auto' : 'click'}
+            options={[
+              { value: 'click', label: t('slides.build.onClick') },
+              { value: 'auto', label: t('slides.build.afterPrevious') },
+            ]}
+            onChange={(v) => write(effect, v === 'auto')}
+            label={t('slides.build.timing')}
+          />
         </Row>
       )}
     </div>
@@ -206,32 +208,38 @@ export function BuildRow({ file, tid }: { file: string; tid: number }) {
 export function DeckProps() {
   const deck = useDeck();
   const [font, setFont] = useState('');
+  const { t } = useTranslation();
   const faces = Object.entries(deck.faces);
   return (
     <div className="sec">
       <div className="empty" style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-        <div style={{ color: 'var(--ink)', fontWeight: 500 }}>未选中任何内容</div>
-        点击幻灯片上的元素来编辑，双击文字直接改。
+        <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{t('slides.deckProps.nothingSelected')}</div>
+        {t('slides.deckProps.hint')}
       </div>
-      <h3>这套幻灯片</h3>
-      <Row label="名称">
-        <Field value={deck.title} numeric={false} label="幻灯片名称" onCommit={(v) => v.trim() && editDeck((d) => (d.title = v.trim()), `title → ${v.trim()}`)} />
+      <h3>{t('slides.deckProps.heading')}</h3>
+      <Row label={t('slides.deckProps.name')}>
+        <Field
+          value={deck.title}
+          numeric={false}
+          label={t('slides.deckProps.nameLabel')}
+          onCommit={(v) => v.trim() && editDeck((d) => (d.title = v.trim()), t('slides.journal.title', { title: v.trim() }))}
+        />
       </Row>
-      <h3>字体</h3>
+      <h3>{t('slides.deckProps.fonts')}</h3>
       {faces.length ? (
         faces.map(([k, f]) => (
           <div key={k} className="face">
             <span className="fname" style={{ fontFamily: `'${f.family}', sans-serif` }}>
               {f.family}
             </span>
-            <button className="btn outline" onClick={() => editDeck((d) => void delete d.faces[k], `typeface ${f.family} removed`)}>
-                移除
+            <button className="btn outline" onClick={() => editDeck((d) => void delete d.faces[k], t('slides.journal.typefaceRemoved', { family: f.family }))}>
+              {t('common.remove')}
             </button>
           </div>
         ))
       ) : (
         <p className="hint" style={{ margin: 0 }}>
-          还没有声明字体；幻灯片用系统字体。
+          {t('slides.deckProps.noFonts')}
         </p>
       )}
       <form
@@ -242,22 +250,29 @@ export function DeckProps() {
           if (!f) return;
           if (Object.keys(deck.faces).length >= 4) return;
           const [key, face] = googleFace(f);
-          editDeck((d) => (d.faces[key] = face), `typeface ${f} added`);
+          editDeck((d) => (d.faces[key] = face), t('slides.journal.typefaceAdded', { family: f }));
           setFont('');
         }}
       >
-        <input className="input" placeholder="Google Fonts 字体名，如 Noto Serif SC" value={font} onChange={(e) => setFont(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label="添加字体" />
+        <input
+          className="input"
+          placeholder={t('slides.deckProps.fontPlaceholder')}
+          value={font}
+          onChange={(e) => setFont(e.target.value)}
+          onKeyDown={(e) => e.stopPropagation()}
+          aria-label={t('slides.deckProps.addFont')}
+        />
         <button className="btn outline" type="submit" disabled={faces.length >= 4}>
-          添加
+          {t('common.add')}
         </button>
       </form>
       <p className="hint" style={{ margin: 0 }}>
-        最多 4 种。在元素的 font-family 里写字体名即可使用。
+        {t('slides.deckProps.fontsHint')}
       </p>
       <DsInstall />
-      <h3>快捷键</h3>
+      <h3>{t('slides.deckProps.shortcuts')}</h3>
       <p className="hint" style={{ margin: 0 }}>
-        ↑↓ / PageUp PageDown 切换幻灯片（未选中元素时）· ⌘D 复制 · ⌫ 删除 · ⇧↵ 选中上一级 · ↵ 选中下一级 · ⌘Z 撤销 · F5 放映
+        {t('slides.deckProps.shortcutList')}
       </p>
     </div>
   );

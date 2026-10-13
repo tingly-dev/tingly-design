@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
 import {
   copySelection,
@@ -19,13 +20,14 @@ import { TEXT_COLORS, sizeOf } from './Item';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';
-import { t } from '../i18n';
+import { currentLanguage } from '../i18n';
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
 // ---------------------------------------------------------------- context menu
 
 export function ContextMenu() {
+  const { t } = useTranslation();
   const menu = useStore((s) => s.menu);
   const sel = useStore((s) => s.selection);
   if (!menu || !sel) return null;
@@ -39,35 +41,35 @@ export function ContextMenu() {
   const hasKids = !!el?.el.children.some((c) => c.kind === 'el');
   const clip = getClip();
   return (
-    <Menu x={menu.x} y={menu.y} onClose={close} label="编辑">
-      <MenuItem label="剪切" keys={`${mod}X`} disabled={isRoot || sel.kind === 'board'} onSelect={run(cutSelection)} />
-      <MenuItem label="复制" keys={`${mod}C`} disabled={sel.kind === 'board'} onSelect={run(copySelection)} />
-      <MenuItem label="粘贴" keys={`${mod}V`} disabled={!clip} onSelect={run(paste)} />
-      <MenuItem label="创建副本" keys={`${mod}D`} disabled={isRoot} onSelect={run(duplicateSelection)} />
+    <Menu x={menu.x} y={menu.y} onClose={close} label={t('common.edit')}>
+      <MenuItem label={t('canvas.menu.cut')} keys={`${mod}X`} disabled={isRoot || sel.kind === 'board'} onSelect={run(cutSelection)} />
+      <MenuItem label={t('common.copy')} keys={`${mod}C`} disabled={sel.kind === 'board'} onSelect={run(copySelection)} />
+      <MenuItem label={t('canvas.menu.paste')} keys={`${mod}V`} disabled={!clip} onSelect={run(paste)} />
+      <MenuItem label={t('canvas.menu.duplicate')} keys={`${mod}D`} disabled={isRoot} onSelect={run(duplicateSelection)} />
       <hr />
-      <MenuItem label="移到最后" keys="]" disabled={isRoot} onSelect={run(() => orderSelection('last'))} />
-      <MenuItem label="移到最前" keys="[" disabled={isRoot} onSelect={run(() => orderSelection('first'))} />
+      <MenuItem label={t('canvas.menu.toLast')} keys="]" disabled={isRoot} onSelect={run(() => orderSelection('last'))} />
+      <MenuItem label={t('canvas.menu.toFirst')} keys="[" disabled={isRoot} onSelect={run(() => orderSelection('first'))} />
       {sel.kind === 'el' && (
         <>
           <hr />
-          <MenuItem label="编组" keys={`${mod}G`} disabled={isRoot} onSelect={run(() => wrapSelection('group'))} />
-          <MenuItem label="取消编组" keys={`⇧${mod}G`} disabled={isRoot || !hasKids} onSelect={run(ungroupSelection)} />
-          <MenuItem label="水平翻转" keys="⇧H" onSelect={run(() => flipSelection('x'))} />
-          <MenuItem label="垂直翻转" keys="⇧V" onSelect={run(() => flipSelection('y'))} />
+          <MenuItem label={t('canvas.menu.group')} keys={`${mod}G`} disabled={isRoot} onSelect={run(() => wrapSelection('group'))} />
+          <MenuItem label={t('canvas.menu.ungroup')} keys={`⇧${mod}G`} disabled={isRoot || !hasKids} onSelect={run(ungroupSelection)} />
+          <MenuItem label={t('canvas.menu.flipH')} keys="⇧H" onSelect={run(() => flipSelection('x'))} />
+          <MenuItem label={t('canvas.menu.flipV')} keys="⇧V" onSelect={run(() => flipSelection('y'))} />
           <hr />
-          <MenuItem label="包进 flex 容器" keys="⇧A" disabled={isRoot} onSelect={run(() => wrapSelection('flex'))} />
-          <MenuItem label="包进 grid 容器" disabled={isRoot} onSelect={run(() => wrapSelection('grid'))} />
+          <MenuItem label={t('canvas.menu.wrapFlex')} keys="⇧A" disabled={isRoot} onSelect={run(() => wrapSelection('flex'))} />
+          <MenuItem label={t('canvas.menu.wrapGrid')} disabled={isRoot} onSelect={run(() => wrapSelection('grid'))} />
         </>
       )}
       {sel.kind === 'note' && (
         <>
           <hr />
-          <MenuItem label="水平翻转" keys="⇧H" onSelect={run(() => flipSelection('x'))} />
-          <MenuItem label="垂直翻转" keys="⇧V" onSelect={run(() => flipSelection('y'))} />
+          <MenuItem label={t('canvas.menu.flipH')} keys="⇧H" onSelect={run(() => flipSelection('x'))} />
+          <MenuItem label={t('canvas.menu.flipV')} keys="⇧V" onSelect={run(() => flipSelection('y'))} />
         </>
       )}
       <hr />
-      <MenuItem label={sel.kind === 'board' ? '删除画板' : '删除'} keys="⌫" danger disabled={isRoot} onSelect={run(() => deleteSelection())} />
+      <MenuItem label={sel.kind === 'board' ? t('canvas.menu.deleteBoard') : t('common.delete')} keys="⌫" danger disabled={isRoot} onSelect={run(() => deleteSelection())} />
     </Menu>
   );
 }
@@ -76,6 +78,7 @@ export function ContextMenu() {
 
 /** Floats above a selected sticky note or title, like the original's. */
 export function NoteFormatBar() {
+  const { t } = useTranslation();
   const sel = useStore((s) => s.selection);
   const view = useStore((s) => s.view);
   const canvas = useCanvas();
@@ -89,27 +92,27 @@ export function NoteFormatBar() {
   const sizeKey = Object.entries(NOTE_SIZES).find(([, v]) => v === size)?.[0] ?? '';
   const up = (p: Parameters<typeof updateNote>[1], what: string) => updateNote(sel.id, p, what);
   return (
-    <div className="fmt" style={{ left: Math.max(8, left), top: Math.max(56, top) }} role="toolbar" aria-label="便签格式" onPointerDown={(e) => e.stopPropagation()}>
-      <select aria-label="字号" value={sizeKey} onChange={(e) => up({ size: NOTE_SIZES[e.currentTarget.value as keyof typeof NOTE_SIZES] }, 'size')}>
+    <div className="fmt" style={{ left: Math.max(8, left), top: Math.max(56, top) }} role="toolbar" aria-label={t('canvas.format.label')} onPointerDown={(e) => e.stopPropagation()}>
+      <select aria-label={t('canvas.format.size')} value={sizeKey} onChange={(e) => up({ size: NOTE_SIZES[e.currentTarget.value as keyof typeof NOTE_SIZES] }, 'size')}>
         {!sizeKey && <option value="">{size}px</option>}
         {Object.entries(NOTE_SIZES).map(([k, v]) => (
           <option key={k} value={k}>
-            {{ s: '小', m: '中', l: '大', xl: '特大', xxl: '巨大' }[k]} {v}
+            {t(`canvas.format.sizes.${k as keyof typeof NOTE_SIZES}`)} {v}
           </option>
         ))}
       </select>
-      <button className="ib" title="粗体" aria-label="粗体" aria-pressed={n.kind === 'title1' ? n.bold !== false : !!n.bold} onClick={() => up({ bold: n.kind === 'title1' ? n.bold === false : !n.bold }, 'bold')}>
+      <button className="ib" title={t('canvas.format.bold')} aria-label={t('canvas.format.bold')} aria-pressed={n.kind === 'title1' ? n.bold !== false : !!n.bold} onClick={() => up({ bold: n.kind === 'title1' ? n.bold === false : !n.bold }, 'bold')}>
         <b>B</b>
       </button>
-      <button className="ib" title="斜体" aria-label="斜体" aria-pressed={!!n.italic} onClick={() => up({ italic: !n.italic }, 'italic')}>
+      <button className="ib" title={t('canvas.format.italic')} aria-label={t('canvas.format.italic')} aria-pressed={!!n.italic} onClick={() => up({ italic: !n.italic }, 'italic')}>
         <i>I</i>
       </button>
-      <button className="ib" title="列表" aria-label="列表" onClick={() => up({ text: (n.text ?? '').split('\n').map((l) => (l.startsWith('- ') ? l.slice(2) : '- ' + l)).join('\n') }, 'list')}>
+      <button className="ib" title={t('canvas.format.list')} aria-label={t('canvas.format.list')} onClick={() => up({ text: (n.text ?? '').split('\n').map((l) => (l.startsWith('- ') ? l.slice(2) : '- ' + l)).join('\n') }, 'list')}>
         ≡
       </button>
       <span className="sep" style={{ width: 1, height: 18, background: 'var(--line)', margin: '0 2px' }} />
       {(['default', 'red', 'blue', 'green'] as const).map((c) => (
-        <button key={c} className="ib" title={`文字颜色`} aria-label={`文字颜色 ${c}`} aria-pressed={(n.color ?? 'default') === c} onClick={() => up({ color: c === 'default' ? undefined : c }, 'color')}>
+        <button key={c} className="ib" title={t('canvas.format.textColor')} aria-label={t('canvas.format.textColorLabel', { color: c })} aria-pressed={(n.color ?? 'default') === c} onClick={() => up({ color: c === 'default' ? undefined : c }, 'color')}>
           <span className="sw" style={{ background: TEXT_COLORS[c] }} />
         </button>
       ))}
@@ -117,7 +120,7 @@ export function NoteFormatBar() {
         <>
           <span className="sep" style={{ width: 1, height: 18, background: 'var(--line)', margin: '0 2px' }} />
           {(['default', 'green', 'blue', 'pink', 'gray'] as const).map((f) => (
-            <button key={f} className="ib" title="底色" aria-label={`底色 ${f}`} aria-pressed={(n.fill ?? 'default') === f} onClick={() => up({ fill: f === 'default' ? undefined : f }, 'fill')}>
+            <button key={f} className="ib" title={t('canvas.format.fill')} aria-label={t('canvas.format.fillLabel', { color: f })} aria-pressed={(n.fill ?? 'default') === f} onClick={() => up({ fill: f === 'default' ? undefined : f }, 'fill')}>
               <span className="sw" style={{ background: `var(--note-${f})` }} />
             </button>
           ))}
@@ -131,6 +134,7 @@ export function NoteFormatBar() {
 
 /** One artboard, full window, running (play mode). Arrows step through artboards. */
 export function FocusView() {
+  const { t } = useTranslation();
   const file = useStore((s) => s.focused);
   const source = useStore((s) => (s.focused ? display(s, s.focused) : undefined));
   const canvas = useCanvas();
@@ -193,20 +197,20 @@ export function FocusView() {
   const h = fill ? Math.max(size.h, b.h) : b.h;
   const i = order.indexOf(file);
   return (
-    <div className="focus" role="dialog" aria-label={`全屏：${b.title ?? file}`}>
+    <div className="focus" role="dialog" aria-label={t('canvas.focus.label', { title: b.title ?? file })}>
       <header>
         <span className="t">{b.title ?? file}</span>
         <span style={{ opacity: 0.6 }}>
           {i + 1} / {order.length}
         </span>
         <span style={{ flex: 1 }} />
-        <button className="tb" disabled={i <= 0} onClick={() => useStore.setState({ focused: order[i - 1] })} aria-label="上一个画板">
+        <button className="tb" disabled={i <= 0} onClick={() => useStore.setState({ focused: order[i - 1] })} aria-label={t('canvas.focus.prev')}>
           ←
         </button>
-        <button className="tb" disabled={i >= order.length - 1} onClick={() => useStore.setState({ focused: order[i + 1] })} aria-label="下一个画板">
+        <button className="tb" disabled={i >= order.length - 1} onClick={() => useStore.setState({ focused: order[i + 1] })} aria-label={t('canvas.focus.next')}>
           →
         </button>
-        <button className="tb" onClick={() => useStore.setState({ focused: null })} aria-label="退出全屏">
+        <button className="tb" onClick={() => useStore.setState({ focused: null })} aria-label={t('canvas.focus.exit')}>
           <Close />
         </button>
       </header>
@@ -223,36 +227,38 @@ export function FocusView() {
 
 function time(iso: string): string {
   const d = new Date(iso);
+  const locale = currentLanguage() === 'zh' ? 'zh-CN' : currentLanguage();
   return new Date().toDateString() === d.toDateString()
-    ? d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    ? d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : d.toLocaleString(locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function JournalPopover() {
+  const { t } = useTranslation();
   const open = useStore((s) => s.journalOpen);
   const journal = useStore((s) => s.journal);
   const project = useStore((s) => s.project);
   if (!open) return null;
   const commit = async () => {
     if (!project) return;
-    const msg = prompt('提交说明', `canvas(${project}): ${canvasOf(useStore.getState()).title}`);
+    const msg = prompt(t('canvas.journal.commitPrompt'), `canvas(${project}): ${canvasOf(useStore.getState()).title}`);
     if (msg === null) return;
     const r = await api.commit(project, msg);
     toast(r.output, r.ok ? 'info' : 'error');
   };
   return (
-    <section className="journal-pop" aria-label="改动记录">
+    <section className="journal-pop" aria-label={t('canvas.journal.title')}>
       <header>
-        改动记录
+        {t('canvas.journal.title')}
         <button className="btn" onClick={commit}>
-          提交到 git
+          {t('canvas.journal.commit')}
         </button>
-        <button className="ib" aria-label="关闭" onClick={() => useStore.setState({ journalOpen: false })}>
+        <button className="ib" aria-label={t('common.close')} onClick={() => useStore.setState({ journalOpen: false })}>
           <Close />
         </button>
       </header>
       <div className="journal" aria-live="polite">
-        {!journal.length && <div className="empty">每次改动都会记在这里：谁改的（手改、快速 AI、Claude Code、外部编辑）、改了哪个画板、改了什么。</div>}
+        {!journal.length && <div className="empty">{t('canvas.journal.empty')}</div>}
         {[...journal].reverse().map((j) => (
           <div className="jline" key={j.id}>
             <div className="bar2" style={{ background: `var(--actor-${j.actor})` }} />

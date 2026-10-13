@@ -43,6 +43,7 @@ Run `node <bundle>/server.mjs` with these variables:
 | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` | The host's model gateway and a token for it. Fast AI calls it; "hand to Claude Code" runs `claude` with the same environment, so both go through the host. |
 | `DC_FAST_MODEL`, `DC_DELEGATE_MODEL` | Model names the gateway understands. |
 | `DC_THEME` | The default look when the person has not picked one (a preset name or JSON, see [Themes](theming.md)). |
+| `DC_LANG` | The UI language when neither the link nor the person chose one (`en` or `zh`; tags such as `zh-CN` work too). Unset, it follows the browser, then English. |
 | `DC_EXIT_WITH_STDIN` | `1`, with stdin a pipe the host holds open: the server exits when the pipe closes, so it never outlives a host that crashed. |
 
 When it is listening it prints one line:
@@ -72,14 +73,16 @@ From the host:
 | `{ type: 'tingly-design:open', project: 'box-console' }` | Opens a project; `project: null` goes back to the launcher. |
 | `{ type: 'tingly-design:open', search: '?p=tingly-intro&s=box' }` | Restores a full address the host mirrored (see `location` below). |
 | `{ type: 'tingly-design:set-theme', theme }` | Applies a theme until the page reloads; `theme` is a preset name, tokens or a Tingly Box palette ([Themes](theming.md)). |
+| `{ type: 'tingly-design:set-language', language: 'zh' }` | Switches the UI language until the page reloads; tags such as `zh-CN` or `en-US` work, unknown languages are ignored. `?lang=zh` on the framed address does the same at load. |
 
 From the editor:
 
 | Message | When |
 |---|---|
-| `{ type: 'tingly-design:ready', version, protocol, project, search }` | Every page load: the launcher (`project: null`) or a project. |
+| `{ type: 'tingly-design:ready', version, protocol, project, search, language }` | Every page load: the launcher (`project: null`) or a project; `language` is the UI language. |
 | `{ type: 'tingly-design:location', project, search }` | The address changed inside a project (a slide, a tab, a view). |
 | `{ type: 'tingly-design:theme-changed', theme: { id, mode, scheme, name } }` | Any theme change, including the person's own pick. |
+| `{ type: 'tingly-design:language-changed', language }` | Any language change, including the person's pick in the appearance menu. |
 
 A host that keeps `search` in its own URL (`/design?p=tingly-intro&s=box`) gives people working back buttons, reloads and links: on load, frame `<prefix>/` + that search.
 

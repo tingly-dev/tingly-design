@@ -16,6 +16,7 @@ import { api } from './api';
 import { display, edit, toast, useStore } from './store';
 import { SERVER } from './base';
 import { filesOf, type ImportTarget } from './components/ImportHere';
+import { t } from './i18n';
 
 /**
  * Design-system helpers: tokens as the page reads them, edits of tokens.json
@@ -117,7 +118,7 @@ export async function uploadTo(dir: string, files: FileList | File[]): Promise<s
     try {
       out.push((await api.upload(project, f, dir)).path);
     } catch (e) {
-      toast(`${f.name}：${(e as Error).message}`, 'error');
+      toast(t('ds.import.uploadFailed', { name: f.name, error: (e as Error).message }), 'error');
     }
   }
   assetsChanged();
@@ -271,12 +272,16 @@ export async function addFonts(files: FileList | File[]): Promise<string[]> {
  */
 export const dsImport: ImportTarget = {
   accepts: ['font', 'image', 'drawing'],
-  what: '字体文件加进字体（写进 tokens.json），图片和 SVG 加进素材的"Other"分组。',
+  get what() {
+    return t('ds.import.what');
+  },
   run: async (picked) => {
     const asFile = (f: { path: string; type: string; bytes: Uint8Array }) => new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type });
     const fonts = await addFonts(filesOf(picked, 'font').map(asFile));
     const pics = await uploadTo('assets/Other', filesOf(picked, 'image', 'drawing').map(asFile));
-    if (!fonts.length && !pics.length) throw new Error('没有加进任何文件，上传没有成功。');
-    return `已加入 ${[fonts.length ? `${fonts.length} 个字体` : '', pics.length ? `${pics.length} 个素材` : ''].filter(Boolean).join('、')}。`;
+    if (!fonts.length && !pics.length) throw new Error(t('ds.import.noneAdded'));
+    const f = fonts.length ? t('ds.import.fonts', { count: fonts.length }) : '';
+    const a = pics.length ? t('ds.import.assets', { count: pics.length }) : '';
+    return f && a ? t('ds.import.addedBoth', { fonts: f, assets: a }) : t('ds.import.addedOne', { what: f || a });
   },
 };

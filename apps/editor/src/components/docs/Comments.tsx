@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { tabFile, type DocThread } from '@dc/core';
 import { delegateToClaude } from '../../fastedit';
-import { addThread, author, deleteThread, reply, setResolved, threadsOf, useComments, useCurrentTab, useDocs } from '../../docs';
+import { addThread, author, dateLocale, deleteThread, reply, setResolved, threadsOf, useComments, useCurrentTab, useDocs } from '../../docs';
+import { useTranslation } from 'react-i18next';
 
 function when(at: string): string {
   const t = Date.parse(at);
   if (!Number.isFinite(t)) return '';
   const d = new Date(t);
-  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(dateLocale(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function Composer({ placeholder, onSend, autoFocus, onCancel }: { placeholder: string; onSend: (text: string) => void; autoFocus?: boolean; onCancel?: () => void }) {
+  const { t: tr } = useTranslation();
   const [text, setText] = useState('');
   const send = () => {
     if (!text.trim()) return;
@@ -35,11 +37,11 @@ function Composer({ placeholder, onSend, autoFocus, onCancel }: { placeholder: s
       <div className="row">
         {onCancel && (
           <button className="btn ghost" onClick={onCancel}>
-            取消
+            {tr('common.cancel')}
           </button>
         )}
         <button className="btn primary" disabled={!text.trim()} onClick={send}>
-          发送
+          {tr('common.send')}
         </button>
       </div>
     </div>
@@ -47,6 +49,7 @@ function Composer({ placeholder, onSend, autoFocus, onCancel }: { placeholder: s
 }
 
 function Thread({ t, tab }: { t: DocThread; tab: string }) {
+  const { t: tr } = useTranslation();
   const active = useDocs((s) => s.thread === t.id);
   return (
     <article className={`cthread${active ? ' on' : ''}${t.resolved ? ' done' : ''}`} data-thread={t.id} onClick={() => useDocs.setState({ thread: t.id })}>
@@ -61,14 +64,14 @@ function Thread({ t, tab }: { t: DocThread; tab: string }) {
       ))}
       {active && (
         <>
-          <Composer placeholder="回复" onSend={(text) => reply(t.id, text)} />
+          <Composer placeholder={tr('docs.comments.reply')} onSend={(text) => reply(t.id, text)} />
           <div className="row">
             <button className="btn ghost" onClick={() => setResolved(t.id, !t.resolved)}>
-              {t.resolved ? '重新打开' : '解决'}
+              {t.resolved ? tr('docs.comments.reopen') : tr('docs.comments.resolve')}
             </button>
             <button
               className="btn ghost"
-              title="让 Claude Code 读这条讨论，按它改文档，并在这里回复"
+              title={tr('docs.comments.delegateHint')}
               onClick={() =>
                 void delegateToClaude(
                   tabFile(tab),
@@ -77,15 +80,15 @@ function Thread({ t, tab }: { t: DocThread; tab: string }) {
                 )
               }
             >
-              交给 Claude
+              {tr('docs.comments.delegate')}
             </button>
             <button
               className="btn ghost danger"
               onClick={() => {
-                if (confirm('删除这条讨论？')) deleteThread(t.id);
+                if (confirm(tr('docs.comments.confirmDelete'))) deleteThread(t.id);
               }}
             >
-              删除
+              {tr('common.delete')}
             </button>
           </div>
         </>
@@ -95,6 +98,7 @@ function Thread({ t, tab }: { t: DocThread; tab: string }) {
 }
 
 export function CommentsRail() {
+  const { t: tr } = useTranslation();
   const tab = useCurrentTab();
   const comments = useComments();
   const draft = useDocs((s) => s.draft);
@@ -103,23 +107,23 @@ export function CommentsRail() {
   const resolvedCount = comments.threads.filter((t) => t.tab === tab && t.resolved).length;
   if (!tab) return null;
   return (
-    <aside className="crail" aria-label="评论">
+    <aside className="crail" aria-label={tr('docs.comments.title')}>
       <header>
-        <h3>评论</h3>
+        <h3>{tr('docs.comments.title')}</h3>
         {resolvedCount > 0 && (
           <label className="hint">
-            <input type="checkbox" checked={showResolved} onChange={(e) => useDocs.setState({ showResolved: e.target.checked })} /> 显示已解决（{resolvedCount}）
+            <input type="checkbox" checked={showResolved} onChange={(e) => useDocs.setState({ showResolved: e.target.checked })} /> {tr('docs.comments.showResolved', { count: resolvedCount })}
           </label>
         )}
       </header>
       {draft && (
         <article className="cthread on">
           <blockquote className="cquote">{draft.quote}</blockquote>
-          <div className="hint">以 {author()} 的身份评论</div>
-          <Composer autoFocus placeholder="写评论" onSend={(text) => addThread(tab, draft, text)} onCancel={() => useDocs.setState({ draft: null })} />
+          <div className="hint">{tr('docs.comments.commentAs', { name: author() })}</div>
+          <Composer autoFocus placeholder={tr('docs.comments.write')} onSend={(text) => addThread(tab, draft, text)} onCancel={() => useDocs.setState({ draft: null })} />
         </article>
       )}
-      {!list.length && !draft && <p className="hint">选中一段文字，点“评论”。</p>}
+      {!list.length && !draft && <p className="hint">{tr('docs.comments.empty')}</p>}
       {list.map((t) => (
         <Thread key={t.id} t={t} tab={tab} />
       ))}

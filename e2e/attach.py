@@ -115,7 +115,7 @@ async def main():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-            pg = await b.new_page(viewport={'width': 1440, 'height': 900})
+            pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(base + '/?p=box-console')

@@ -12,11 +12,12 @@ Tingly Design ships inside Tingly Box and follows the same working conventions a
 
 The product is the core; **UX always comes first**. When UX conflicts with implementation convenience, push UX further rather than diluting it.
 
-**Before building a new feature or changing an existing one, read Tingly Box's [`.design/ux-principles.md`](https://github.com/tingly-dev/tingly-box/blob/main/.design/ux-principles.md).** Its 12 criteria (organize around the user's question; eliminate mode pickers; one word, one meaning; separate orthogonal axes; concrete values over aliases; smart defaults over toggles; diagnostics on the real path; education inside the product; less visual noise; done ≠ locked; hand over the artifact for the next action; scope side effects to the current surface) end in a checklist. Check new features and PRs against it; a deviation needs a stated reason. Editor copy is Chinese.
+**Before building a new feature or changing an existing one, read Tingly Box's [`.design/ux-principles.md`](https://github.com/tingly-dev/tingly-box/blob/main/.design/ux-principles.md).** Its 12 criteria (organize around the user's question; eliminate mode pickers; one word, one meaning; separate orthogonal axes; concrete values over aliases; smart defaults over toggles; diagnostics on the real path; education inside the product; less visual noise; done ≠ locked; hand over the artifact for the next action; scope side effects to the current surface) end in a checklist. Check new features and PRs against it; a deviation needs a stated reason.
 
 ## Frontend
 
 - Icons are Tabler (`@tabler/icons-react`); prefer the shared set in `apps/editor/src/components/icons.tsx` and add new ones there when they are reused.
+- No UI text in code. Every string a person sees (labels, `aria-label`, `title`, placeholders, toasts, empty states, server errors, starter copy written into new projects) is a key in `packages/i18n/src/locales/en/<area>.ts` with its twin in `zh/<area>.ts`. Components use `useTranslation()`; other editor code imports `t` from `apps/editor/src/i18n.ts`; the server uses `trOf(c)` / `HttpError(status, key, params)`. English is the default and fallback, Chinese is the other shipped language. Write the English and the Chinese together; keep core free of wording (return data such as `AgentStep.op`, let the editor say it). Model-facing prompts and `.claude/skills/` stay English. `pnpm test` fails on a missing key, a mismatched placeholder, or a Chinese string outside the bundles. See `.design/i18n.md`.
 - The editor's look is theme tokens (`apps/editor/src/theme.ts`, synced from Tingly Box's `@tingly/ui` palettes by `scripts/sync-tingly-box-theme.mjs`); use tokens, not raw colours, in editor chrome. Work inside canvases, slides and dashboards keeps its own colours.
 
 ## Files people bring in
@@ -44,7 +45,7 @@ Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind
 
 ## 3. Features that span project kinds
 
-Most editor features are not "canvas features": the prompt bar, attachments, themes, the journal and undo, host messages, export, the launcher card, Claude Code delegation all have to work in every kind. Every kind, motion included, has to plug into every one of them, and so does any kind added later.
+Most editor features are not "canvas features": the prompt bar, attachments, themes, the UI language, the journal and undo, host messages, export, the launcher card, Claude Code delegation all have to work in every kind. Every kind, motion included, has to plug into every one of them, and so does any kind added later.
 
 **Read `.design/project-kinds.md` before adding a kind or a feature that any kind can reach.** It lists every place a kind is registered (core, server, editor, launcher, skills, samples, docs, e2e) and a matrix of which cross-kind features each kind supports, with the known gaps. When you change either, update the matrix in the same PR. When a feature deliberately skips a kind, write that down in the matrix with the reason, so the next session knows it is a choice and not an omission.
 
@@ -58,6 +59,7 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
+packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
@@ -75,13 +77,13 @@ artifact/         private reference material; never publish
 
 ```bash
 pnpm dev            # server + editor
-pnpm test           # core unit tests
+pnpm test           # core, import and i18n unit tests
 pnpm typecheck
 pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships
 ```
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
 
 # Pull requests
 

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { clipText, toast } from '../store';
+import { t as tNow } from '../i18n';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { Menu, MenuItem } from './Menu';
 import { FileText, ImportI } from './icons';
@@ -16,14 +18,14 @@ import { FileText, ImportI } from './icons';
 /** What a file is, as far as importing goes. */
 export type Material = 'page' | 'drawing' | 'image' | 'markdown' | 'data' | 'font';
 
-// image is what the server keeps in uploads/ (no AVIF there)
-const MATERIAL: Record<Material, { zh: string; ext: RegExp; accept: string }> = {
-  page: { zh: '网页（.html，连同它的文件夹）', ext: /\.html?$/i, accept: '.html,.htm,.css' },
-  drawing: { zh: 'SVG', ext: /\.svg$/i, accept: '.svg' },
-  image: { zh: '图片（PNG、JPG、GIF、WebP）', ext: /\.(png|jpe?g|gif|webp)$/i, accept: 'image/png,image/jpeg,image/gif,image/webp' },
-  markdown: { zh: 'Markdown（.md）', ext: /\.(md|markdown|txt)$/i, accept: '.md,.markdown,.txt' },
-  data: { zh: '数据（CSV、TSV、JSON）', ext: /\.(csv|tsv|tab|json)$/i, accept: '.csv,.tsv,.tab,.json' },
-  font: { zh: '字体（WOFF2、WOFF、TTF、OTF）', ext: /\.(woff2?|ttf|otf)$/i, accept: '.woff2,.woff,.ttf,.otf' },
+// image is what the server keeps in uploads/ (no AVIF there); each one's name in words is importer.material.<material>
+const MATERIAL: Record<Material, { ext: RegExp; accept: string }> = {
+  page: { ext: /\.html?$/i, accept: '.html,.htm,.css' },
+  drawing: { ext: /\.svg$/i, accept: '.svg' },
+  image: { ext: /\.(png|jpe?g|gif|webp)$/i, accept: 'image/png,image/jpeg,image/gif,image/webp' },
+  markdown: { ext: /\.(md|markdown|txt)$/i, accept: '.md,.markdown,.txt' },
+  data: { ext: /\.(csv|tsv|tab|json)$/i, accept: '.csv,.tsv,.tab,.json' },
+  font: { ext: /\.(woff2?|ttf|otf)$/i, accept: '.woff2,.woff,.ttf,.otf' },
 };
 
 export function materialOf(path: string): Material | null {
@@ -39,13 +41,14 @@ export function filesOf(picked: Picked, ...kinds: Material[]): Picked['files'] {
 export interface ImportTarget {
   /** what this kind takes; a pick holding none of it is refused with this list */
   accepts: Material[];
-  /** one line, said where people choose: what each material becomes here */
+  /** one line, said where people choose: what each material becomes here (in the language showing: a getter over t()) */
   what: string;
   /** do it; resolves to what to tell the person when it is done. `at` is where a drop landed, in screen px */
   run: (picked: Picked, at?: { x: number; y: number }) => Promise<string>;
 }
 
-const busyText = (p: Picked) => (p.entry ? p.entry.split('/').pop()! : p.files.length === 1 ? p.files[0].path.split('/').pop()! : `${p.files.length} 个文件`);
+const busyText = (p: Picked) =>
+  p.entry ? p.entry.split('/').pop()! : p.files.length === 1 ? p.files[0].path.split('/').pop()! : tNow('importer.here.files', { count: p.files.length });
 
 /** Is the person typing somewhere? Then a paste is theirs, not an import. */
 const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
@@ -55,8 +58,12 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
  * whole editor and a paste handler. Drops and pastes that another part of the
  * editor already handled (the prompt bar's attachments, a drop zone) are left
  * alone.
+ *
+ * `label` is the open project's kind as a noun in the language showing
+ * ("canvas" / "画布"), said as "Import into this {label}".
  */
 export function ImportHere({ target, label, button = 'icon' }: { target: ImportTarget; label: string; button?: 'icon' | 'text' | false }) {
+  const { t: tr } = useTranslation();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dropping, setDropping] = useState(false);
   const [busy, setBusy] = useState('');
@@ -70,7 +77,8 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
     const t = live.current.target;
     if (live.current.busy) return;
     if (!picked.files.some((f) => t.accepts.includes(materialOf(f.path) as Material))) {
-      toast(`这里能导入的是：${t.accepts.map((m) => MATERIAL[m].zh).join('、')}。`, 'error');
+      // tNow, not the hook's t: drops and pastes reach this through an effect set up on the first render
+      toast(tNow('importer.here.accepts', { list: t.accepts.map((m) => tNow(`importer.material.${m}`)).join(tNow('importer.listSeparator')) }), 'error');
       return;
     }
     setBusy(busyText(picked));
@@ -161,8 +169,8 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
         <button
           ref={btn}
           className={button === 'text' ? 'btn ghost' : 'tb'}
-          title={`导入到这个${label}`}
-          aria-label={`导入到这个${label}`}
+          title={tr('importer.here.into', { label })}
+          aria-label={tr('importer.here.into', { label })}
           aria-haspopup="menu"
           disabled={!!busy}
           onClick={() => {
@@ -170,15 +178,15 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
             setMenu({ x: r.left, y: r.bottom + 8 });
           }}
         >
-          {button === 'text' ? '导入' : <ImportI />}
+          {button === 'text' ? tr('importer.here.button') : <ImportI />}
         </button>
       )}
       {menu && (
-        <Menu x={menu.x} y={menu.y} label="导入" onClose={() => setMenu(null)}>
-          <div className="head">导入到这个{label}</div>
+        <Menu x={menu.x} y={menu.y} label={tr('importer.here.button')} onClose={() => setMenu(null)}>
+          <div className="head">{tr('importer.here.into', { label })}</div>
           <div className="mhint">{target.what}</div>
           <MenuItem
-            label="选择文件…"
+            label={tr('importer.here.chooseFiles')}
             icon={<FileText />}
             onSelect={() => {
               setMenu(null);
@@ -187,7 +195,7 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
           />
           {(target.accepts.includes('page') || target.accepts.includes('markdown')) && (
             <MenuItem
-              label="选择文件夹…"
+              label={tr('importer.here.chooseFolder')}
               icon={<FileText />}
               onSelect={() => {
                 setMenu(null);
@@ -195,7 +203,7 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
               }}
             />
           )}
-          <div className="mhint faint">也可以把文件拖进来{target.accepts.includes('drawing') || target.accepts.includes('image') ? '，或直接粘贴' : ''}。</div>
+          <div className="mhint faint">{target.accepts.includes('drawing') || target.accepts.includes('image') ? tr('importer.here.dragOrPaste') : tr('importer.here.drag')}</div>
         </Menu>
       )}
       <input ref={fileRef} type="file" multiple hidden accept={accept} onChange={(e) => fromInput(e.currentTarget)} />
@@ -203,14 +211,14 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
       {dropping && (
         <div className="importdrop" aria-hidden="true">
           <div>
-            <b>松开，导入到这个{label}</b>
+            <b>{tr('importer.here.dropInto', { label })}</b>
             <span>{target.what}</span>
           </div>
         </div>
       )}
       {busy && (
         <div className="importbusy" role="status">
-          正在导入 {busy}…
+          {tr('importer.here.busy', { name: busy })}
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { useTranslation } from 'react-i18next';
 import { elementSource, roleOf, rootElement, sandboxDoc, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
 import { display, editElement, focusBoard, parsed, toast, useStore } from '../store';
 import { insertHtml, updateBoard } from '../actions';
@@ -9,6 +10,7 @@ import { Download, Expand } from './icons';
 import { Menu, MenuItem } from './Menu';
 import { SERVER } from '../base';
 import { api } from '../api';
+import { t as tr } from '../i18n';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -25,11 +27,11 @@ export function post(file: string, msg: ToRuntime): void {
 export function exportPng(file: string, scale = 2): Promise<string> {
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => (exports.delete(id), reject(new Error('导出超时'))), 20000);
+    const timer = setTimeout(() => (exports.delete(id), reject(new Error(tr('canvas.export.timeout')))), 20000);
     exports.set(id, (r) => {
-      clearTimeout(t);
+      clearTimeout(timer);
       if (r.dataUrl) resolve(r.dataUrl);
-      else reject(new Error(r.error ?? '导出失败'));
+      else reject(new Error(r.error ?? tr('canvas.export.failed')));
     });
     post(file, { dc: 'export', id, scale });
   });
@@ -69,6 +71,7 @@ function follow(file: string, slice: string | null, fallback: number): number {
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
 export const BoardView = memo(function BoardView({ file, entry }: { file: string; entry: BoardEntry }) {
+  const { t } = useTranslation();
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [drag, setDrag] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -187,7 +190,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
       const el = tid === null ? rootElement(doc) : doc.elements[tid];
       if (!el) return;
       const container = ['Group', 'Row', 'Column', 'Grid'].includes(roleOf(el)) && el.tag !== 'sc-for';
-      const html = '<p style="margin:0;font-size:16px;line-height:1.5">文字</p>';
+      const html = `<p style="margin:0;font-size:16px;line-height:1.5">${tr('canvas.text.placeholder')}</p>`;
       const newTid = insertHtml(file, el.tid, container ? 'last' : 'after', html);
       if (newTid !== null) {
         useStore.setState({ selection: { kind: 'el', file, tid: newTid }, tool: 'select' });
@@ -280,7 +283,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           <input
             autoFocus
             defaultValue={entry.title ?? ''}
-            aria-label="画板名称"
+            aria-label={t('canvas.board.nameLabel')}
             onKeyDown={(e) => {
               e.stopPropagation();
               if (e.key === 'Enter') e.currentTarget.blur();
@@ -294,26 +297,26 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         ) : (
           <span
             className="t"
-            title={`${title}（${file}）— 拖动移动，双击改名`}
+            title={t('canvas.board.stripHint', { title, file })}
             onPointerDown={(e) => startDrag(e, 'move')}
             onDoubleClick={() => mode === 'edit' && setRenaming(true)}
           >
             {title}
           </span>
         )}
-        {drafting ? <span className="badge ai">快速 AI 正在改</span> : claudeOn && <span className="badge claude">Claude Code 正在改</span>}
+        {drafting ? <span className="badge ai">{t('canvas.board.fastAiEditing')}</span> : claudeOn && <span className="badge claude">{t('canvas.board.claudeEditing')}</span>}
         {error && (
           <span className="badge err" title={error}>
-            出错
+            {t('canvas.board.error')}
           </span>
         )}
-        <button className="sb" aria-label={`全屏打开 ${title}`} title="全屏打开" onClick={() => useStore.setState({ focused: file })}>
+        <button className="sb" aria-label={t('canvas.board.fullscreenLabel', { title })} title={t('canvas.board.fullscreen')} onClick={() => useStore.setState({ focused: file })}>
           <Expand />
         </button>
         <button
           className="sb"
-          aria-label={`导出 ${title}`}
-          title="导出"
+          aria-label={t('canvas.export.boardLabel', { title })}
+          title={t('canvas.export.title')}
           onClick={(e) => {
             const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
             setExportMenu({ x: r.right, y: r.bottom + 6 });
@@ -346,11 +349,11 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           />
         ))}
       {exportMenu && (
-        <Menu x={exportMenu.x} y={exportMenu.y} align="right" label="导出" onClose={() => setExportMenu(null)}>
+        <Menu x={exportMenu.x} y={exportMenu.y} align="right" label={t('canvas.export.title')} onClose={() => setExportMenu(null)}>
           <MenuItem label="PNG" onSelect={() => (setExportMenu(null), void exportBoard(file, 'png1'))} />
           <MenuItem label="PNG @2x" onSelect={() => (setExportMenu(null), void exportBoard(file, 'png2'))} />
           <hr />
-          <MenuItem label="源文件 (.dc.html)" onSelect={() => (setExportMenu(null), void exportBoard(file, 'source'))} />
+          <MenuItem label={t('canvas.export.source')} onSelect={() => (setExportMenu(null), void exportBoard(file, 'source'))} />
         </Menu>
       )}
     </div>

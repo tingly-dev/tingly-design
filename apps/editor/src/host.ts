@@ -1,8 +1,9 @@
 import { at } from './base';
+import { currentLanguage } from './i18n';
 
 /**
  * The page embedding the editor (Tingly Box, say): what we tell it and what it
- * may ask of us. Themes have their own two messages in theme.ts. The protocol
+ * may ask of us. Themes have their own two messages in theme.ts, languages theirs in i18n.ts. The protocol
  * is in docs/en/embedding.md; bump PROTOCOL in apps/server/src/layout.ts when
  * it changes incompatibly.
  */
@@ -10,7 +11,7 @@ import { at } from './base';
 export const EMBEDDED = window.parent !== window;
 
 export type ToHost =
-  | { type: 'tingly-design:ready'; version: string | null; protocol: number | null; project: string | null; search: string }
+  | { type: 'tingly-design:ready'; version: string | null; protocol: number | null; project: string | null; search: string; language: string }
   | { type: 'tingly-design:location'; project: string | null; search: string };
 
 export type FromHost = { type: 'tingly-design:open'; project?: string | null; search?: string };
@@ -23,7 +24,7 @@ const projectOf = (search: string) => new URLSearchParams(search).get('p');
 
 /** Loaded: the host learns our version and where we are, so it can mirror the address into its own. */
 export function announceReady(health: { version?: string; protocol?: number } | null): void {
-  tell({ type: 'tingly-design:ready', version: health?.version ?? null, protocol: health?.protocol ?? null, project: projectOf(location.search), search: location.search });
+  tell({ type: 'tingly-design:ready', version: health?.version ?? null, protocol: health?.protocol ?? null, project: projectOf(location.search), search: location.search, language: currentLanguage() });
 }
 
 /** history.replaceState for the editor's own address (slide, tab, view), told to the host. */

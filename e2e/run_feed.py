@@ -88,7 +88,7 @@ async def main():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-            pg = await b.new_page(viewport={'width': 1280, 'height': 800})
+            pg = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             feed = pg.locator('.runfeed')
@@ -170,7 +170,7 @@ async def main():
             await box.fill('SLOW 改标题')
             await box.press('Enter')
             await expect(feed.locator('.run-step', has_text='搜索')).to_have_count(1, timeout=8000)
-            pg2 = await b.new_page(viewport={'width': 1280, 'height': 800})
+            pg2 = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
             await pg2.goto(f'{base}/?p=box-console')
             await expect(pg2.locator('.runfeed .run-ask')).to_have_text('SLOW 改标题', timeout=8000)
             check('an editor opened mid-run sees the steps so far', await pg2.locator('.runfeed .run-step').count() >= 3)

@@ -31,6 +31,7 @@ import {
 } from './store';
 import { deleteSlide, duplicateSlide, moveSlide } from './slides';
 import { slideIdOf } from '@dc/core';
+import { currentLanguage, t } from './i18n';
 
 /**
  * Commands on the current selection, shared by the context menu, the
@@ -109,7 +110,7 @@ export function paste(): void {
   const clip = getClip();
   const s = get();
   const sel = s.selection;
-  if (!clip) return toast('剪贴板是空的。');
+  if (!clip) return toast(t('app.clipboard.empty'));
   if (clip.kind === 'el') {
     if (sel?.kind === 'el') {
       const tid = insertHtml(sel.file, sel.tid, 'after', clip.html);
@@ -119,7 +120,7 @@ export function paste(): void {
       if (!root) return;
       const tid = insertHtml(sel.file, root.tid, 'last', clip.html);
       if (tid !== null) set({ selection: { kind: 'el', file: sel.file, tid } });
-    } else toast('先选中一个元素或画板，再粘贴。');
+    } else toast(t('app.clipboard.selectFirst'));
     return;
   }
   let first = '';
@@ -146,7 +147,7 @@ export function duplicateSelection(): void {
     copySelection();
     return paste();
   }
-  if (sel?.kind === 'board' && s.kind === 'motion') return toast('场景的新建、复制和删除还没有放进编辑器，可以交给 Claude Code。');
+  if (sel?.kind === 'board' && s.kind === 'motion') return toast(t('app.scene.notInEditor'));
   if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
     if (s.kind === 'slides' && slide) duplicateSlide(slide);
@@ -160,18 +161,18 @@ export function deleteSelection(confirmBoards = true): void {
   if (sel?.kind === 'el') {
     const src = display(s, sel.file);
     const el = src ? parsed(src).elements[sel.tid] : undefined;
-    if (el && !el.parent && el.tag !== 'helmet') return toast('这是画板的根元素；要删除整个画板，请选中画板再删除。');
+    if (el && !el.parent && el.tag !== 'helmet') return toast(t('app.board.rootDelete'));
     elementOp((tid) => ({ kind: 'remove', tid }), false);
   } else if (sel?.kind === 'note') {
     editCanvas((c) => void delete c.notes[sel.id], `note ${sel.id} deleted`);
     set({ selection: null });
   } else if (sel?.kind === 'board' && s.kind === 'motion') {
-    toast('场景的新建、复制和删除还没有放进编辑器，可以交给 Claude Code。');
+    toast(t('app.scene.notInEditor'));
   } else if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
     if (s.kind === 'slides' && slide) {
-      if (!confirmBoards || confirm(`删除这一页（${slide}）？文件也会被删除（可以用 git 找回）。`)) void deleteSlide(slide);
-    } else if (!confirmBoards || confirm(`删除画板 ${sel.file}？文件也会被删除（可以用 git 找回）。`)) void deleteBoard(sel.file);
+      if (!confirmBoards || confirm(t('app.confirm.deleteSlide', { slide }))) void deleteSlide(slide);
+    } else if (!confirmBoards || confirm(t('app.confirm.deleteBoard', { file: sel.file }))) void deleteBoard(sel.file);
   }
 }
 
@@ -210,7 +211,7 @@ export const WRAP_STYLES = {
 export function wrapSelection(kind: keyof typeof WRAP_STYLES): void {
   const s = selectedElement();
   if (!s) return;
-  if (!s.el.parent) return toast('画板的根元素不能再包一层。');
+  if (!s.el.parent) return toast(t('app.board.rootWrap'));
   if (!editElement(s.file, [{ kind: 'wrap', tid: s.tid, style: WRAP_STYLES[kind] }])) return;
   // the new wrapper takes the element's old place, and so its tid
   set({ selection: { kind: 'el', file: s.file, tid: s.tid } });
@@ -219,8 +220,8 @@ export function wrapSelection(kind: keyof typeof WRAP_STYLES): void {
 export function ungroupSelection(): void {
   const s = selectedElement();
   if (!s) return;
-  if (!s.el.parent) return toast('画板的根元素不能拆开。');
-  if (!s.el.children.some((c) => c.kind === 'el')) return toast('这个元素里面没有可以拆出来的子元素。');
+  if (!s.el.parent) return toast(t('app.board.rootUnwrap'));
+  if (!s.el.children.some((c) => c.kind === 'el')) return toast(t('app.board.noChildren'));
   if (editElement(s.file, [{ kind: 'unwrap', tid: s.tid }])) set({ selection: { kind: 'el', file: s.file, tid: s.tid } });
 }
 
@@ -281,14 +282,14 @@ export function selectParent(): void {
 
 // ---------------------------------------------------------------- artboards
 
-export function addBoard(rect?: { x: number; y: number; w: number; h: number }, title = '新画板'): string {
+export function addBoard(rect?: { x: number; y: number; w: number; h: number }, title = t('app.board.newTitle')): string {
   const c = canvasOf(get());
   const file = uniqueBoardName(c, 'Board');
   const w = Math.round(rect?.w ?? 1200);
   const h = Math.round(rect?.h ?? 760);
   const pos = rect ? { x: Math.round(rect.x), y: Math.round(rect.y) } : nextBoardPosition(c, w);
   const page = get().page || undefined;
-  edit(file, () => newBoardSource({ title, w, h }), { actor: 'human', summary: 'artboard created', undoable: false });
+  edit(file, () => newBoardSource({ title, w, h, lang: currentLanguage(), hint: t('starter.canvasHint') }), { actor: 'human', summary: 'artboard created', undoable: false });
   editCanvas((cc) => {
     cc.boards[file] = { ...pos, w, h, title, ...(page ? { page } : {}) };
     cc.order.push(file);
@@ -307,7 +308,7 @@ export function duplicateBoard(file: string): void {
   const copy = uniqueBoardName(c, stem + 'Copy');
   edit(copy, () => src, { actor: 'human', summary: `artboard duplicated from ${file}`, undoable: false });
   editCanvas((cc) => {
-    const nb: BoardEntry = { ...structuredClone(b), x: b.x + b.w + 80, title: (b.title ?? file) + ' 副本' };
+    const nb: BoardEntry = { ...structuredClone(b), x: b.x + b.w + 80, title: t('app.board.copyTitle', { title: b.title ?? file }) };
     cc.boards[copy] = nb;
     cc.order.splice(cc.order.indexOf(file) + 1, 0, copy);
   }, `artboard ${copy} added`);
@@ -355,11 +356,11 @@ export function updateBoard(file: string, patch: Partial<BoardEntry>, what = 'ch
 export function addPage(): void {
   let id = '';
   editCanvas((c) => {
-    if (!c.pages.length) c.pages.push({ id: 'p1', name: '第 1 页' });
+    if (!c.pages.length) c.pages.push({ id: 'p1', name: t('app.page.name', { n: 1 }) });
     let i = c.pages.length + 1;
     while (c.pages.some((p) => p.id === 'p' + i)) i++;
     id = 'p' + i;
-    c.pages.push({ id, name: `第 ${c.pages.length + 1} 页` });
+    c.pages.push({ id, name: t('app.page.name', { n: c.pages.length + 1 }) });
     // items that had no page lived on the first page; pin them there
     const first = c.pages[0].id;
     for (const b of Object.values(c.boards)) b.page ??= first;

@@ -1646,15 +1646,18 @@ button.file-chip:hover {
   color: var(--on-accent);
 }
 /* appearance menu */
-.menu .amode {
+.menu .amode,
+.menu .alang {
   height: 34px;
 }
-.menu .amode[aria-checked='true'] {
+.menu .amode[aria-checked='true'],
+.menu .alang[aria-checked='true'] {
   background: var(--accent-soft);
   color: var(--accent-ink);
   font-weight: 500;
 }
-.menu .amode .al {
+.menu .amode .al,
+.menu .alang .al {
   flex: 1;
 }
 .aswatch {
@@ -4346,7 +4349,8 @@ input.dashtitle {
 
 /* import HTML */
 .launcher.dropping::after {
-  content: '松开，导入这个页面或 SVG';
+  /* the words come from the launcher (launcher.dropHint), so they follow the language */
+  content: attr(data-drop-hint);
   position: fixed;
   inset: 12px;
   z-index: 19;

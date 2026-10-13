@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { translator } from '@dc/i18n';
 import { addToCanvas, describeReport, escapeAttr, escapeText, hexColors, joinPath, packPage, patchStyle, toCanvas, type Extracted, type XElement, type XNode } from '../src';
 import { resolveVars, specificity, splitSelectors } from '../src/sources/html/extract';
 
@@ -66,7 +67,8 @@ describe('toCanvas', () => {
     const canvas = JSON.parse(out.files['canvas.json']);
     expect(canvas.boards['Main.dc.html'].imported).toMatchObject({ from: 'html', width: 1280 });
     expect(canvas.notes.imported.text).toContain('b.css');
-    expect(describeReport(out.report)[0]).toMatch(/^1 个画板/);
+    expect(describeReport(out.report)[0]).toBe('1 artboard, 0 elements');
+    expect(describeReport(out.report, translator('zh'))[0]).toMatch(/^1 个画板/);
   });
 
   it('adds an import beside what a canvas already has, without touching it', () => {

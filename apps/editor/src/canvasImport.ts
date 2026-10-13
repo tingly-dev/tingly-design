@@ -1,6 +1,7 @@
 import { addToCanvas } from '@dc/import';
 import { CANVAS_FILE, uniqueNoteId, type NoteEntry } from '@dc/core';
 import { api } from './api';
+import { t } from './i18n';
 import { display, edit, editCanvas, fitTo, toCanvas, useStore } from './store';
 import { readPage, writePage, type Picked } from './importer';
 import { filesOf, type ImportTarget } from './components/ImportHere';
@@ -17,7 +18,9 @@ const IMAGE_MAX = 800;
  */
 export const canvasImport: ImportTarget = {
   accepts: ['page', 'drawing', 'image'],
-  what: '网页和 SVG 变成新的画板，放在已有内容的右边；图片放在画布上。原文件留在项目的 uploads/ 里。',
+  get what() {
+    return t('importer.canvas.what');
+  },
   run: async (picked, at) => (picked.entry ? addPage(picked) : addImages(picked, at)),
 };
 
@@ -32,14 +35,16 @@ async function addPage(picked: Picked): Promise<string> {
   for (const f of added.boards) edit(f, () => added.files[f], { actor: 'human', summary, undoable: false });
   edit(CANVAS_FILE, (src) => added.merge(src), { actor: 'human', summary });
   fitTo(added.area);
-  return `已导入 ${picked.entry.split('/').pop()}：${added.boards.length} 个画板${page.extracted.report.notes?.length || out.report.missing.length ? '，旁边的便签写了没带过来的东西' : ''}。`;
+  const name = picked.entry.split('/').pop();
+  const count = added.boards.length;
+  return page.extracted.report.notes?.length || out.report.missing.length ? t('importer.canvas.importedWithNote', { name, count }) : t('importer.canvas.imported', { name, count });
 }
 
 async function addImages(picked: Picked, at?: { x: number; y: number }): Promise<string> {
   const project = get().project!;
   const files = filesOf(picked, 'image');
   // where it was dropped, else the middle of what is on screen
-  const el = document.querySelector<HTMLElement>('[aria-label="画布"]');
+  const el = document.querySelector<HTMLElement>(`[aria-label="${t('canvas.surface.label')}"]`);
   const r = el?.getBoundingClientRect();
   const { viewport } = get();
   const origin = at && r ? toCanvas(at.x - r.left, at.y - r.top) : toCanvas(viewport.w / 2, viewport.h / 2);
@@ -62,7 +67,7 @@ async function addImages(picked: Picked, at?: { x: number; y: number }): Promise
     }
   }, `imported ${items.length} image${items.length > 1 ? 's' : ''}`);
   if (ids.length === 1) useStore.setState({ selection: { kind: 'note', id: ids[0] } });
-  return files.length === 1 ? `已放上 ${files[0].path.split('/').pop()}。` : `已放上 ${files.length} 张图片。`;
+  return files.length === 1 ? t('importer.canvas.placedOne', { name: files[0].path.split('/').pop() }) : t('importer.canvas.placedImages', { count: files.length });
 }
 
 function sizeOf(file: File): Promise<{ w: number; h: number }> {
