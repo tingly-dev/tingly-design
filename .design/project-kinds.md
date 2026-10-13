@@ -2,27 +2,27 @@
 
 状态：**现行契约**。加一种项目类型，或做一个各类型都能碰到的功能（提示栏、附件、主题、导出……）之前先读这份；改了接线或矩阵，同时更新这里。
 
-为什么要有这份：编辑器的大部分功能不是"画布功能"。附件一次接进了画布、幻灯片、设计系统、看板、文档，因为它挂在共用的 `PromptBar` 和 `AskClaude` 上；而 motion 的示例项目已经在 `projects/` 里，却因为没在 `kindOf` 和启动页登记，启动页根本看不到它。前者是做对了的样子，后者是最容易忘的地方：类型是在十几个文件里分别登记的，没有一处总表，漏一处不会报错，只会悄悄缺一块。
+为什么要有这份：编辑器的大部分功能不是"画布功能"。附件一次接进了画布、幻灯片、设计系统、看板、文档，因为它挂在共用的 `PromptBar` 和 `AskClaude` 上；而一种新类型的格式和示例项目都写好了，只要没在 `kindOf` 和启动页登记，启动页就根本看不到它（motion 起初就是这样）。前者是做对了的样子，后者是最容易忘的地方：类型是在十几个文件里分别登记的，没有一处总表，漏一处不会报错，只会悄悄缺一块。
 
 ## 1. 现有类型
 
 | 类型（`ProjectKind`） | 中文名 | 索引文件 | 内容单元 | 编辑器 | Claude Code 技能 | 示例项目 |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|--- |
 | `design` | 画布 | `canvas.json` | `*.dc.html` 画板 | `App.tsx` + `components/` | `dc-canvas` | `box-console` |
 | `slides` | 幻灯片 | `deck.json` | `slides/<id>.html` | `components/slides/` | `slides` | `tingly-intro` |
 | `design-system` | 设计系统 | `design-system.json` | `tokens.json`、`components/`、`assets/`、`fonts/` | `components/ds/` | `design-system` | `tingly-ds` |
 | `dashboard` | 看板 | `dash.json` | `datasets/<id>.json` + `files/index.html` | `components/dash/` | `dashboard` | `box-usage` |
 | `docs` | 文档 | `doc.json` | `tabs/<id>.md` | `components/docs/` | `docs` | `design-guide` |
-| （motion，未登记） | 动效 | `motion.json` | `scenes/<id>.html` | 无 | 无 | `design-motion` |
+| `motion` | 动效 | `motion.json` | `scenes/<id>.html` | `components/motion/`（目前是播放器） | `motion` | `design-motion` |
 
-motion 目前只有 `packages/core/src/motion.ts`、`packages/sandbox/src/motion.ts` 和示例项目，是 phase 0 的验证，见 [motion.md](./motion.md) §11。正式成为第六种类型时按 §2 逐项接上。
+motion 的设计见 [motion.md](./motion.md)；舞台上直接编辑、时间轴拖动和在编辑器里导出还没做。
 
 ## 2. 一种类型要在哪些地方登记
 
 按代码路径排列。漏掉任何一行，现象写在最后一列。
 
 | 位置 | 做什么 | 漏了会怎样 |
-|---|---|---|
+|---|---|--- |
 | `packages/core/src/deck.ts` `ProjectKind`、`projectKind(files)` | 类型名；按文件判断类型 | 类型检查不过，或前端认不出 |
 | `apps/server/src/store.ts` `kindOf` | 按索引文件判断目录是什么类型（**有先后**：`deck.json` 先于 `canvas.json`） | 启动页不列、接口按画布处理 |
 | `apps/server/src/store.ts` `createProject` | 新建时写出最小的索引和第一个内容单元 | 新建出空目录 |
@@ -45,21 +45,21 @@ motion 目前只有 `packages/core/src/motion.ts`、`packages/sandbox/src/motion
 
 ✓ 支持，✗ 不支持（附原因），— 不适用。"共用部件"一列说明它在哪里实现，新类型接上它就有。
 
-| 功能 | 共用部件 | 画布 | 幻灯片 | 设计系统 | 看板 | 文档 | 备注 |
-|---|---|---|---|---|---|---|---|
-| 快速 AI（jQuery 写回） | `PromptBar`、`fastedit.ts`、`/fast-edit` | ✓ | ✓（越出幻灯片子集会撤回并说明） | ✗ | ✗（页面交给 Claude Code 写，服务端拒绝） | ✓ 选中段落改写，走 `FAST_EDIT_DOCS` | |
-| 交给 Claude Code | `AskClaude`（`ds/DsApp.tsx`）、`PromptBar` 的 `askClaude()`、`delegate.ts` | ✓ | ✓ | ✓ | ✓（可跑 `scripts/dash-query.mjs`） | ✓ | |
-| 附件（[attachments.md](./attachments.md)） | `attachments.ts`、`Attachments.tsx` | ✓ 发给模型；画板**不能**显示 `uploads/` 里的图 | ✓ 可用 `src="uploads/…"` 显示 | ✓ | ✓ | ✓ Claude Code 栏可附；段落改写不带附件；标签页用 `../uploads/…` | `dc-canvas`、`design-system`、`dashboard` 技能还没写 `uploads/` |
-| 版本、409 重放、协作 | `apps/server`、编辑队列 | ✓ | ✓ | ✓ | ✓ | ✓ 按块合并（`docs.ts` `mergeBlocks`） | |
-| 日志（journal） | `JournalPopover`、`Journal` | ✓ | ✓ | ✓ | ✓ | ✓ | |
-| 撤销自己的改动 | 编辑队列 + `rebase.ts` 定位 | ✓ | ✓ | ✓ | 未核实 | 编辑器内撤销（tiptap），写回标记 `undoable: false` | |
-| 编辑器主题（[theming](../docs/zh/theming.md)） | `theme.ts`、CSS 变量 | ✓ | ✓ | ✓ | ✓ | ✓ | 只改编辑器外壳，**不改**作品本身的颜色；外观菜单只在启动页 |
-| 宿主消息（[embedding](../docs/zh/embedding.md)） | `host.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | `location` 只带 `?p=`，不分类型 |
-| 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | |
-| 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | |
-| 导出 | 各自实现 | ✓ `Board.tsx` | ✓ `exportDeck.ts` | ✗ | ✗ | ✓ HTML | 没有共用的导出部件 |
-| 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | motion 会需要第三种 |
-| 导入外部素材（[import](./import-external-material.md)） | `packages/import`、`ImportDialog` | ✓ HTML、SVG | ✗ 评估中 | — | — | ✗ Markdown 评估中 | 入口在启动页，导入结果总是画布 |
+| 功能 | 共用部件 | 画布 | 幻灯片 | 设计系统 | 看板 | 文档 | 动效 | 备注 |
+|---|---|---|---|---|---|---|---|--- |
+| 快速 AI（jQuery 写回） | `PromptBar`、`fastedit.ts`、`/fast-edit` | ✓ | ✓（越出幻灯片子集会撤回并说明） | ✗ | ✗（页面交给 Claude Code 写，服务端拒绝） | ✓ 选中段落改写，走 `FAST_EDIT_DOCS` | ✗（服务端拒绝，场景交给 Claude Code） | |
+| 交给 Claude Code | `AskClaude`（`ds/DsApp.tsx`）、`PromptBar` 的 `askClaude()`、`delegate.ts` | ✓ | ✓ | ✓ | ✓（可跑 `scripts/dash-query.mjs`） | ✓ | ✓ | |
+| 附件（[attachments.md](./attachments.md)） | `attachments.ts`、`Attachments.tsx` | ✓ 发给模型；画板**不能**显示 `uploads/` 里的图 | ✓ 可用 `src="uploads/…"` 显示 | ✓ | ✓ | ✓ Claude Code 栏可附；段落改写不带附件；标签页用 `../uploads/…` | ✓ 发给模型 | `dc-canvas`、`design-system`、`dashboard`、`motion` 技能还没写 `uploads/` |
+| 版本、409 重放、协作 | `apps/server`、编辑队列 | ✓ | ✓ | ✓ | ✓ | ✓ 按块合并（`docs.ts` `mergeBlocks`） | ✓ | |
+| 日志（journal） | `JournalPopover`、`Journal` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| 撤销自己的改动 | 编辑队列 + `rebase.ts` 定位 | ✓ | ✓ | ✓ | 未核实 | 编辑器内撤销（tiptap），写回标记 `undoable: false` | —（还不能在编辑器里改） | |
+| 编辑器主题（[theming](../docs/zh/theming.md)） | `theme.ts`、CSS 变量 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只改编辑器外壳，**不改**作品本身的颜色；外观菜单只在启动页 |
+| 宿主消息（[embedding](../docs/zh/embedding.md)） | `host.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `location` 只带 `?p=`，不分类型 |
+| 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
+| 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
+| 导出 | 各自实现 | ✓ `Board.tsx` | ✓ `exportDeck.ts` | ✗ | ✗ | ✓ HTML | ✗ 编辑器里没有；`scripts/motion-render.mjs` 命令行渲染 | 没有共用的导出部件 |
+| 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | ✓ 播放器 | 三种各自实现，没有共用的播放部件 |
+| 导入外部素材（[import](./import-external-material.md)） | `packages/import`、`ImportDialog` | ✓ HTML、SVG | ✗ 评估中 | — | — | ✗ Markdown 评估中 | — | 入口在启动页，导入结果总是画布 |
 
 ## 4. 做跨类型功能时
 
@@ -73,9 +73,9 @@ motion 目前只有 `packages/core/src/motion.ts`、`packages/sandbox/src/motion
 
 不是缺陷单，是现在的取舍或欠账，动手前先确认是否仍然成立。
 
-- motion 没有登记成类型（§2 全部未接），示例项目在启动页不可见。
+- motion 只能播放，不能在编辑器里改场景或导出；也没有快速 AI。
 - 画布画板不能显示 `uploads/` 里的附件图片（`delegate.ts` 明说），而幻灯片和文档可以。
-- `dc-canvas`、`design-system`、`dashboard` 三个技能没有提 `uploads/`。
+- `dc-canvas`、`design-system`、`dashboard`、`motion` 四个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 导出各写各的，设计系统和看板没有导出。
 - 外观菜单只在启动页，进入编辑器后改主题要回启动页（或由宿主、URL 传入）。

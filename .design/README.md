@@ -18,7 +18,7 @@
 |---|---|---|
 | [project-kinds.md](./project-kinds.md) | 一种项目类型要在哪些地方登记；跨类型功能矩阵和已知缺口 | 现行契约 |
 | [five-kinds.md](./five-kinds.md) | 从 Design 扩展到幻灯片、设计系统、看板、文档 | 前半是当初的方案，"进度"一节是实施结论 |
-| [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；phase 1 未做 |
+| [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；已登记为类型并有播放器，编辑未做 |
 
 ## 编辑器功能
 

@@ -27,7 +27,7 @@
 | `packages/core/src/attachments.ts` | 类型、上限、`ATTACH_ACCEPT`、content block、`uploads/` 路径检查 |
 | `apps/editor/src/attachments.ts` | `useAttachments`：读文件、缩图、发送时上传（`keepAttachments`） |
 | `apps/editor/src/components/Attachments.tsx` | 回形针按钮和附件条 |
-| `PromptBar.tsx`、`ds/DsApp.tsx` 的 `AskClaude` | 两个接入点；看板、文档、设计系统都用 `AskClaude`，所以一次接好五种类型 |
+| `PromptBar.tsx`、`ds/DsApp.tsx` 的 `AskClaude` | 两个接入点；看板、文档、设计系统、动效都用 `AskClaude`，所以一次接好了所有类型 |
 | `apps/server/src/index.ts` `POST /assets?dir=uploads`、`PUT /uploads` | 按哈希存；raw 路由把文本按纯文本返回 |
 | `apps/server/src/delegate.ts` | 告诉 Claude Code 附件路径和各类型怎么引用 |
 
@@ -38,13 +38,13 @@
 | 画布 | **不能**（`delegate.ts` 这样告诉 Claude Code；具体卡在哪一层没核实） | — |
 | 幻灯片 | 能 | `src="uploads/…"` |
 | 文档 | 能 | `../uploads/…`（标签页在 `tabs/` 下） |
-| 设计系统、看板 | 没有专门支持，Claude Code 可读 | — |
+| 设计系统、看板、动效 | 没有专门支持，Claude Code 可读 | — |
 
 这一节和 [project-kinds.md](./project-kinds.md) §3 的附件行是同一件事，改了一处两处一起改。
 
 ## 5. 没做的
 
 - 画板显示 `uploads/` 里的图片。
-- `dc-canvas`、`design-system`、`dashboard` 技能还没提 `uploads/`。
+- `dc-canvas`、`design-system`、`dashboard`、`motion` 技能还没提 `uploads/`。
 - 文档的段落改写（快速 AI）不带附件，只有「交给 Claude Code」栏可以。
 - 没有管理 `uploads/` 的界面（删除、查看哪些请求用过），目前靠文件系统。

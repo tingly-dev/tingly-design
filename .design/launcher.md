@@ -27,4 +27,4 @@
 
 ## 4. 加一种类型时
 
-启动页是最容易漏的地方：`kindOf` 认不出的目录不会出现在列表里，也不报错。要动的是 `ProjectPreview` 和 `projectCard`（core）、`KINDS`、图标和 `Preview`（`Launcher.tsx`）、`POST /api/projects` 的白名单（server），完整清单见 [project-kinds.md](./project-kinds.md) §2。motion 的示例项目现在就是这样不可见的。
+启动页是最容易漏的地方：`kindOf` 认不出的目录不会出现在列表里，也不报错。要动的是 `ProjectPreview` 和 `projectCard`（core）、`KINDS`、图标和 `Preview`（`Launcher.tsx`）、`POST /api/projects` 的白名单（server），完整清单见 [project-kinds.md](./project-kinds.md) §2。动效类型最初就是这样：格式和示例都写好了，启动页却看不到。

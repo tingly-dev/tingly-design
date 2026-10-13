@@ -1,10 +1,10 @@
 # Motion: a sixth project kind for promo videos and animated assets
 
-Status: **research; phase 0 spike done** (§11). This note looks at whether Tingly Design should have a "motion" kind (short animated videos such as a product launch or a feature explainer, and animated assets such as a title card, a looping hero or a UI animation), how it differs from slides, what comparable tools do, which source format fits our two-way editing, how export and AI would work, and what it would cost. It ends with a recommendation and a phased plan.
+Status: **research; phase 0 spike done** (§11); motion is registered as the sixth kind and opens in a player, while editing on the stage, the timeline and export from the editor are not built yet. This note looks at whether Tingly Design should have a "motion" kind (short animated videos such as a product launch or a feature explainer, and animated assets such as a title card, a looping hero or a UI animation), how it differs from slides, what comparable tools do, which source format fits our two-way editing, how export and AI would work, and what it would cost. It ends with a recommendation and a phased plan.
 
 Decisions from the owner so far (§10): both promo videos and animated assets are in scope; render on the server first, in the browser if it can be done; several sizes of the same piece live in one project.
 
-Facts about this repository are from `5efd911`. Facts about other tools come from their public docs and READMEs as of October 2026, linked in §3; anything inferred rather than read is marked as such.
+Facts about other tools come from their public docs and READMEs as of October 2026, linked in §3; anything inferred rather than read is marked as such.
 
 ## 1. What people mean by "motion"
 

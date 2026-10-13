@@ -1,6 +1,6 @@
 # Tingly Design
 
-A design editor with two-way editing: canvases, slides, design systems, dashboards and docs are plain files under `projects/<name>/`, edited by hand in the editor, by a fast model, by Claude Code, or in a terminal, all through one write-back engine. It runs alone or embedded in Tingly Box.
+A design editor with two-way editing: canvases, slides, design systems, dashboards, docs and motion pieces are plain files under `projects/<name>/`, edited by hand in the editor, by a fast model, by Claude Code, or in a terminal, all through one write-back engine. It runs alone or embedded in Tingly Box.
 
 Start with `docs/en/architecture.md` for how it works and the repository layout.
 
@@ -40,7 +40,7 @@ Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind
 
 ## 3. Features that span project kinds
 
-Most editor features are not "canvas features": the prompt bar, attachments, themes, the journal and undo, host messages, export, the launcher card, Claude Code delegation all have to work in every kind. A sixth kind (motion is on its way) has to plug into every one of them.
+Most editor features are not "canvas features": the prompt bar, attachments, themes, the journal and undo, host messages, export, the launcher card, Claude Code delegation all have to work in every kind. Every kind, motion included, has to plug into every one of them, and so does any kind added later.
 
 **Read `.design/project-kinds.md` before adding a kind or a feature that any kind can reach.** It lists every place a kind is registered (core, server, editor, launcher, skills, samples, docs, e2e) and a matrix of which cross-kind features each kind supports, with the known gaps. When you change either, update the matrix in the same PR. When a feature deliberately skips a kind, write that down in the matrix with the reason, so the next session knows it is a choice and not an omission.
 
@@ -58,7 +58,7 @@ packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md)
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
-projects/         sample projects, one per kind (design-motion: motion, not in the launcher yet)
+projects/         sample projects, one per kind
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind
 .design/          design notes (index in .design/README.md)
 docs/en, docs/zh  guides and how-it-works pages, both languages
