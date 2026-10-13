@@ -12,3 +12,4 @@
 | 调研 | 问题 | 状态 |
 |---|---|---|
 | [parse5.md](./parse5.md) | 画布和幻灯片的回写怎么用 parse5 的源码位置；换成别的库、换成 Go 行不行（含 `x/net/html` 加位置的验证，代码在 [parse5-go-spike/](./parse5-go-spike/README.md)） | 研究 |
+| [go-core-spike/](./go-core-spike/README.md) | 把 `packages/core` 移植成 Go 能否和 TypeScript 逐字节一致，先拿文档类型试，原生和 WASM 各要多少代价 | 验证 |
