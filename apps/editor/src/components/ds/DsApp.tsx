@@ -4,7 +4,8 @@ import { delegateToClaude } from '../../fastedit';
 import { keepAttachments, useAttachments } from '../../attachments';
 import { AttachButton, AttachTray } from '../Attachments';
 import { display, edit, isSaving, toast, useStore } from '../../store';
-import { editDsIndex, useDsIndex, useTokens } from '../../ds';
+import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
+import { ImportHere } from '../ImportHere';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
@@ -276,6 +277,7 @@ export function DsApp() {
               </select>
             </label>
           )}
+          <ImportHere target={dsImport} label="设计系统" />
           <button className="tb" aria-pressed={journalOpen} aria-label="同步状态和改动记录" onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
             <span className="sync">
               <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />

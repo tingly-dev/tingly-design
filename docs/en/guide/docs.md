@@ -19,6 +19,7 @@ projects/<name>/
 - **Comments**: select text and comment; a thread is anchored to the quoted words (plus context) and highlighted while they exist; reply, resolve, delete, or hand the thread to Claude, which reads it, edits the document accordingly and replies in the thread.
 - **AI rewrite**: on a selection, "shorter", "polish", "more formal" or your own instruction; the model streams a new passage that replaces the selection or goes below it (needs `ANTHROPIC_API_KEY`). Whole-document work goes to Claude Code.
 - **Layout and export**: heading and body typefaces (serif or sans), page width; export the current tab or the whole document as Markdown or HTML, or print to PDF.
+- **Import**: Import in the top bar, or drop Markdown files (with their folder). Each file becomes a new tab titled by its first heading; its pictures and the original stay in `uploads/`.
 
 Format reference: [`.claude/skills/docs/SKILL.md`](../../../.claude/skills/docs/SKILL.md)
 

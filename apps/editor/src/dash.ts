@@ -4,6 +4,7 @@ import {
   DASH_INDEX,
   EMPTY_STATE,
   datasetFile,
+  DASH_DATA_MAX,
   datasetIdOf,
   formatOf,
   isStale,
@@ -27,6 +28,7 @@ import { api } from './api';
 import { display, edit, toast, useStore } from './store';
 import { currentTheme, onTheme } from './theme';
 import { at } from './base';
+import { filesOf, type ImportTarget } from './components/ImportHere';
 
 /**
  * A dashboard's data, on the editor's side: it loads each dataset the page
@@ -428,3 +430,51 @@ export function resumeQuery(id: string): void {
 export function rawUrl(path: string): string {
   return api.rawBase(useStore.getState().project!) + path.split('/').map(encodeURIComponent).join('/');
 }
+
+// ------------------------------------------------------------------ import
+
+/**
+ * What a dashboard takes: each CSV, TSV or JSON table becomes a dataset of
+ * its own, its file kept under data/ (the one place a dashboard reads files
+ * from) and opened in Sources so the next step, using it on the page, is at
+ * hand. A file that is not a table is refused before anything is written.
+ */
+export const dashImport: ImportTarget = {
+  accepts: ['data'],
+  what: '每个 CSV、TSV 或 JSON 表格变成一个新的数据集，文件存进 data/，在"数据来源"里打开。',
+  run: async (picked) => {
+    const project = useStore.getState().project!;
+    const files = filesOf(picked, 'data');
+    const taken = new Set([...datasetsOf().map((d) => d.id), ...(await api.assets(project)).map((a) => a.path.replace(/^data\//, '').replace(/\.[^.]+$/, ''))]);
+    // every file is read before any is written, so a bad one leaves nothing half-imported
+    const tables = files.map((f) => {
+      const name = f.path.split('/').pop()!;
+      const ext = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
+      const format = ext === 'json' ? 'json' : ext === 'csv' ? 'csv' : 'tsv';
+      if (f.bytes.length > DASH_DATA_MAX) throw new Error(`${name} 超过 8 MB，看板读不了这么大的文件，没有导入任何文件。`);
+      try {
+        const { table } = parseDataFile(new TextDecoder().decode(f.bytes), format);
+        if (!table) throw new Error();
+        return { f, name, ext, format, rows: table.rows.length };
+      } catch {
+        throw new Error(`${name} 读不出表格（JSON 需要是一组对象，或 {columns, rows}），没有导入任何文件。`);
+      }
+    });
+    const added: string[] = [];
+    for (const { f, name, ext, format, rows } of tables) {
+      const stem = name.replace(/\.[^.]+$/, '');
+      // the server keeps at most 40 characters of a data file's name; leave room for "-2"
+      const base = stem.normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 36).replace(/-+$/, '') || 'data';
+      let id = base;
+      for (let k = 2; taken.has(id); k++) id = `${base}-${k}`;
+      taken.add(id);
+      const up = await api.upload(project, new File([f.bytes as Uint8Array<ArrayBuffer>], `${id}.${ext}`, { type: f.type }), 'data');
+      const now = new Date().toISOString();
+      const dataset: DatasetJson = { title: stem, description: `从 ${name} 导入，${rows} 行。`, source: { kind: 'file', url: up.path, name, format }, updated: { at: now, by: '编辑器' } };
+      edit(datasetFile(id), () => JSON.stringify(dataset, null, 2) + '\n', { actor: 'human', summary: `dataset ${id} imported from ${name}`, undoable: false });
+      added.push(id);
+    }
+    dset({ side: 'sources', open: added[0] ?? null });
+    return added.length === 1 ? `已把 ${files[0].path.split('/').pop()} 加成数据集 ${added[0]}。` : `已加了 ${added.length} 个数据集。`;
+  },
+};
