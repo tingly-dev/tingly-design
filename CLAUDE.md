@@ -4,6 +4,21 @@ A design editor with two-way editing: canvases, slides, design systems, dashboar
 
 Start with `docs/en/architecture.md` for how it works and the repository layout.
 
+# Guideline
+
+Tingly Design ships inside Tingly Box and follows the same working conventions as the Tingly Box repository (its `CLAUDE.md` and `.design/`). When this file is silent, do what Tingly Box does.
+
+## UX-First (highest priority)
+
+The product is the core; **UX always comes first**. When UX conflicts with implementation convenience, push UX further rather than diluting it.
+
+**Before building a new feature or changing an existing one, read Tingly Box's [`.design/ux-principles.md`](https://github.com/tingly-dev/tingly-box/blob/main/.design/ux-principles.md).** Its 12 criteria (organize around the user's question; eliminate mode pickers; one word, one meaning; separate orthogonal axes; concrete values over aliases; smart defaults over toggles; diagnostics on the real path; education inside the product; less visual noise; done ≠ locked; hand over the artifact for the next action; scope side effects to the current surface) end in a checklist. Check new features and PRs against it; a deviation needs a stated reason. Editor copy is Chinese.
+
+## Frontend
+
+- Icons are Tabler (`@tabler/icons-react`); prefer the shared set in `apps/editor/src/components/icons.tsx` and add new ones there when they are reused.
+- The editor's look is theme tokens (`apps/editor/src/theme.ts`, synced from Tingly Box's `@tingly/ui` palettes by `scripts/sync-tingly-box-theme.mjs`); use tokens, not raw colours, in editor chrome. Work inside canvases, slides and dashboards keeps its own colours.
+
 # Keep these in sync (read this before every change)
 
 Three things drift silently when a session forgets them. Each PR that touches one of them updates it in the same PR, not in a follow-up.
@@ -18,6 +33,7 @@ Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind
 
 - **Before** building a feature or changing a subsystem, read the index and the notes it points to.
 - **With** each PR whose core is a new feature, a new project kind, a new file format, a protocol or a non-obvious trade-off, write a note or update the existing one, and its row in the index. A bug fix, a rename or copy change usually needs none; say so in the PR if you skip it.
+- Follow the maintenance rules at the top of `.design/README.md` (the same as Tingly Box's): current contract, implementation status, history and proposals kept apart; diagrams in a separate `<topic>.pencil.md`; renames update every reference.
 - A note says its status on the first line after the title (`方案` / `研究` / `已实施` …) and the commit its code facts were taken from. Keep implemented facts, proposals and history apart.
 - `docs/` is the other half: user guides (`docs/*/guide/`) and how-it-works pages (`architecture`, `theming`, `embedding`, `development`). Those are written in both `docs/en/` and `docs/zh/`; change both. `.design/` notes are written once, in either language.
 
@@ -32,10 +48,6 @@ Rules of thumb:
 - Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `attachments.ts`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
-
-# UX
-
-Tingly Design ships inside Tingly Box and follows its UX principles: `tingly-box/.design/ux-principles.md` (organize around the user's question, smart defaults over toggles, show concrete values, surface the artifact for the next action…). Check new features against it. Editor copy is Chinese.
 
 # Layout
 
