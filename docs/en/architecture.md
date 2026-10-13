@@ -70,7 +70,8 @@ projects/           sample projects: box-console (canvas), tingly-intro (slides)
 scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code); bundle.mjs: the folder a host ships (docs/en/embedding.md); sync-tingly-box-theme.mjs: copies Tingly Box's palettes into the editor (docs/en/theming.md)
 .claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs (read before every delegated task)
 artifact/           reference material for the original five types (Design, Slides, Dashboard, Docs, Design System), private
-docs/               guides and design notes: docs/en/ in English, docs/zh/ in Chinese; docs/images/ holds the screenshots
+docs/               guides and how-it-works pages: docs/en/ in English, docs/zh/ in Chinese; docs/images/ holds the screenshots
+.design/            design notes: why each feature is built the way it is, and what every project kind must support (index in .design/README.md)
 e2e/                Playwright end-to-end tests and a mock Messages API
 ```
 
