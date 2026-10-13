@@ -255,7 +255,7 @@ function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }
                   <Undo size={14} /> 撤销
                 </button>
               )}
-              {f.status === 'error' && f.prompt && onReuse && (
+              {f.status === 'error' && !jq && f.prompt && onReuse && (
                 <button className="btn outline sm" onClick={() => onReuse(f.prompt!)} title="把这条请求放回输入框，改一改再发">
                   <Reuse /> 放回输入框
                 </button>
@@ -286,9 +286,26 @@ function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }
           )}
         </ol>
       )}
+      {open && !running && !jq && statements.length > 0 && (
+        <button className="run-link" onClick={() => editAsJQuery(f.file, statements.map((l) => l.code).join('\n'))} title="把这些语句放进右侧“代码”里的 jQuery，改一改再执行">
+          在 jQuery 里改
+        </button>
+      )}
       {f.note && <p className={`run-result${f.status === 'error' ? ' bad' : ''}`}>{f.note}</p>}
     </section>
   );
+}
+
+/** Hand the fast model's statements to the Code tab's jQuery box, with the file they ran on selected. */
+function editAsJQuery(file: string | undefined, code: string) {
+  const s = useStore.getState();
+  const onFile = s.selection && 'file' in s.selection && s.selection.file === file;
+  useStore.setState({
+    jqDraft: code,
+    panelOpen: true,
+    panelTab: 'code',
+    ...(file && !onFile ? { selection: { kind: 'board', file } as const } : {}),
+  });
 }
 
 /** Grow a one-line textarea with what is typed, up to its CSS max-height. */

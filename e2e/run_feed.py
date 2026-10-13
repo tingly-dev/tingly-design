@@ -115,6 +115,13 @@ async def main():
                 if not saved(): break
                 await pg.wait_for_timeout(100)
             check('the feed undoes the fast run', not saved())
+            # the statements can be taken into the Code tab's jQuery box, the advanced path, to adjust by hand
+            await feed.locator('.run-link', has_text='条语句').click()
+            await feed.get_by_role('button', name='在 jQuery 里改').click()
+            await expect(pg.locator('.panel [role="tab"][aria-selected="true"]')).to_have_text('代码')
+            jq = await pg.locator('.jqbox textarea').input_value()
+            check('“在 jQuery 里改” puts the kept statements in the Code tab', len(jq.strip().split('\n')) == 5, jq)
+            await pg.locator('.panel [role="tab"]', has_text='属性').click()
 
             # Claude Code: steps in plain words, elapsed time, a busy bar that keeps what was typed
             await pg.get_by_role('button', name='Claude Code', exact=True).click()

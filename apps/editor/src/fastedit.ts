@@ -73,7 +73,7 @@ function motionOutline(file: string): string {
 
 /**
  * The fast in-page editor. A request becomes jQuery statements (written by
- * a model, or typed by the person in jQuery mode) that run one by one on a
+ * a model, or typed by the person in the Code tab's jQuery box) that run one by one on a
  * sandboxed copy of the artboard; after each statement the artboard shows
  * the new source as a draft. When the reply finishes the draft is saved like
  * any other edit — and if the file changed meanwhile, the statements are

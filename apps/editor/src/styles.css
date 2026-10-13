@@ -4768,3 +4768,22 @@ input.dashtitle {
 body.filedrag iframe {
   pointer-events: none;
 }
+/* jQuery typed by hand, in the Code tab (panel/JQueryBox.tsx) */
+.jqbox textarea.code {
+  min-height: 84px;
+}
+.jqrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.jqrow .hint {
+  flex: 1;
+  margin: 0;
+}
+.jqrow .btn {
+  flex: none;
+}
+.runfeed > .run-link {
+  align-self: flex-start;
+}

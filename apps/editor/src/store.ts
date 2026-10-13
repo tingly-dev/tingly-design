@@ -171,6 +171,8 @@ interface State {
   runtimeErrors: Record<string, string | null>;
   fast: FastState;
   delegates: DelegateState[];
+  /** jQuery typed by hand in the Code tab (also filled from the run feed) */
+  jqDraft: string;
   /** the run the feed above the prompt shows, and whether the person closed it */
   lastRun: LastRun;
   runHidden: boolean;
@@ -217,6 +219,7 @@ export const useStore = create<State>(() => ({
   runtimeErrors: {},
   fast: { status: 'idle', mode: 'ai', lines: [] },
   delegates: [],
+  jqDraft: '',
   lastRun: null,
   runHidden: false,
   feeds: 0,
