@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconTable } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
+import { t } from '../../i18n';
 import { SLIDE_H, SLIDE_W, checkSlide, sectionsOf, slideFile, ICON_NAMES } from '@dc/core';
 import { deckOf, display, editDeck, isSaving, parsed, slideIds, toast, useDeck, useSlideIds, useStore } from '../../store';
 import {
@@ -43,6 +45,7 @@ function Thumb({ id, index }: { id: string; index: number }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [over, setOver] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   useEffect(() => {
     if (current) ref.current?.scrollIntoView({ block: 'nearest' });
   }, [current]);
@@ -52,7 +55,7 @@ function Thumb({ id, index }: { id: string; index: number }) {
       className={`thumb ${current ? 'on' : ''} ${hidden ? 'skipped' : ''} ${over ? 'over' : ''}`}
       role="option"
       aria-selected={current}
-      aria-label={`第 ${index + 1} 页：${slideTitle(source, id)}`}
+      aria-label={t('slides.strip.thumb', { n: index + 1, title: slideTitle(source, id) })}
       data-slide={id}
       draggable
       onClick={() => goToSlide(id)}
@@ -80,21 +83,21 @@ function Thumb({ id, index }: { id: string; index: number }) {
       <span className="num">{index + 1}</span>
       <div className="tframe">
         <SlideFrame id={id} scale={THUMB_K} use="thumb" />
-        {hidden && <span className="tag">跳过</span>}
+        {hidden && <span className="tag">{t('slides.strip.skipped')}</span>}
         {errors > 0 && (
-          <span className="tag err" title={`${errors} 处不符合幻灯片格式`}>
+          <span className="tag err" title={t('slides.strip.errors', { count: errors })}>
             {errors}
           </span>
         )}
       </div>
       {menu && (
-        <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label="幻灯片">
-          <MenuItem label="在后面新建一页" onSelect={() => (setMenu(null), addSlide(id))} />
-          <MenuItem label="复制这一页" onSelect={() => (setMenu(null), duplicateSlide(id))} />
-          <MenuItem label={hidden ? '取消跳过' : '放映时跳过'} onSelect={() => (setMenu(null), toggleHidden(id))} />
-          <MenuItem label="从这一页开始新的一节" onSelect={() => (setMenu(null), addSection(id))} />
+        <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label={t('slides.strip.menu.label')}>
+          <MenuItem label={t('slides.strip.menu.addAfter')} onSelect={() => (setMenu(null), addSlide(id))} />
+          <MenuItem label={t('slides.strip.menu.duplicate')} onSelect={() => (setMenu(null), duplicateSlide(id))} />
+          <MenuItem label={hidden ? t('slides.strip.menu.unskip') : t('slides.strip.menu.skip')} onSelect={() => (setMenu(null), toggleHidden(id))} />
+          <MenuItem label={t('slides.strip.menu.startSection')} onSelect={() => (setMenu(null), addSection(id))} />
           <hr />
-          <MenuItem label="删除这一页" danger onSelect={() => (setMenu(null), void deleteSlide(id))} />
+          <MenuItem label={t('slides.strip.menu.delete')} danger onSelect={() => (setMenu(null), void deleteSlide(id))} />
         </Menu>
       )}
     </div>
@@ -103,6 +106,7 @@ function Thumb({ id, index }: { id: string; index: number }) {
 
 function SectionHead({ k, description }: { k: string; description: string }) {
   const [editing, setEditing] = useState(false);
+  const { t } = useTranslation();
   if (!k) return null;
   return (
     <div className="shead">
@@ -110,7 +114,7 @@ function SectionHead({ k, description }: { k: string; description: string }) {
         <input
           autoFocus
           defaultValue={description}
-          aria-label="节的说明"
+          aria-label={t('slides.section.descriptionLabel')}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter') e.currentTarget.blur();
@@ -123,11 +127,11 @@ function SectionHead({ k, description }: { k: string; description: string }) {
           }}
         />
       ) : (
-        <span className="d" title="双击修改这一节的说明" onDoubleClick={() => setEditing(true)}>
-          {description || '（未命名的一节）'}
+        <span className="d" title={t('slides.section.renameHint')} onDoubleClick={() => setEditing(true)}>
+          {description || t('slides.section.unnamed')}
         </span>
       )}
-      <button className="ib" aria-label="删除这一节（保留幻灯片）" title="删除这一节（保留幻灯片）" onClick={() => removeSection(k)}>
+      <button className="ib" aria-label={t('slides.section.remove')} title={t('slides.section.remove')} onClick={() => removeSection(k)}>
         ×
       </button>
     </div>
@@ -138,10 +142,11 @@ function Strip() {
   const deck = useDeck();
   const ids = useSlideIds();
   const groups = useMemo(() => sectionsOf(deck, ids), [deck, ids]);
+  const { t } = useTranslation();
   let n = 0;
   return (
-    <aside className="strip" aria-label="幻灯片">
-      <div className="slist" role="listbox" aria-label="幻灯片列表">
+    <aside className="strip" aria-label={t('slides.strip.label')}>
+      <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
         {groups.map((g, gi) => (
           <div key={g.key || gi} className="sgroup">
             <SectionHead k={g.key} description={g.description} />
@@ -160,7 +165,7 @@ function Strip() {
         />
       </div>
       <button className="btn outline addslide" onClick={() => addSlide()}>
-        + 新建幻灯片
+        {t('slides.strip.addSlide')}
       </button>
     </aside>
   );
@@ -168,17 +173,7 @@ function Strip() {
 
 // ---------------------------------------------------------------- toolbar
 
-const SHAPES: [string, string][] = [
-  ['rect', '矩形'],
-  ['rounded', '圆角矩形'],
-  ['ellipse', '椭圆'],
-  ['diamond', '菱形'],
-  ['arrow-right', '向右箭头'],
-  ['arrow-left', '向左箭头'],
-  ['arrow-up', '向上箭头'],
-  ['arrow-down', '向下箭头'],
-  ['line', '直线'],
-];
+const SHAPES = ['rect', 'rounded', 'ellipse', 'diamond', 'arrow-right', 'arrow-left', 'arrow-up', 'arrow-down', 'line'] as const;
 
 function TopLeft() {
   const deck = useDeck();
@@ -186,18 +181,19 @@ function TopLeft() {
   const [renaming, setRenaming] = useState(false);
   const shapesBtn = useRef<HTMLButtonElement>(null);
   const file = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
   const at = (b: HTMLElement | null) => {
     const r = b?.getBoundingClientRect();
     return { x: r?.left ?? 0, y: (r?.bottom ?? 0) + 8 };
   };
   return (
-    <div className="bar left" role="toolbar" aria-label="插入">
+    <div className="bar left" role="toolbar" aria-label={t('slides.toolbar.insert')}>
       {renaming ? (
         <input
           className="dtitle"
           autoFocus
           defaultValue={deck.title}
-          aria-label="幻灯片名称"
+          aria-label={t('slides.toolbar.deckName')}
           onKeyDown={(e) => {
             e.stopPropagation();
             if (e.key === 'Enter') e.currentTarget.blur();
@@ -206,19 +202,19 @@ function TopLeft() {
           onBlur={(e) => {
             setRenaming(false);
             const v = e.currentTarget.value.trim();
-            if (v && v !== deck.title) editDeck((d) => (d.title = v), `title → ${v}`);
+            if (v && v !== deck.title) editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }));
           }}
         />
       ) : (
-        <button className="tb text dtitle" title="双击改名" onDoubleClick={() => setRenaming(true)}>
+        <button className="tb text dtitle" title={t('slides.toolbar.renameHint')} onDoubleClick={() => setRenaming(true)}>
           {deck.title}
         </button>
       )}
       <span className="sep" />
-      <button className="tb" aria-label="插入文字" title="插入文字" onClick={() => insertOnSlide(INSERTS.text, true)}>
+      <button className="tb" aria-label={t('slides.toolbar.insertText')} title={t('slides.toolbar.insertText')} onClick={() => insertOnSlide(INSERTS.text, true)}>
         <TextT />
       </button>
-      <button className="tb" aria-label="插入图片" title="插入图片" onClick={() => file.current?.click()}>
+      <button className="tb" aria-label={t('slides.toolbar.insertImage')} title={t('slides.toolbar.insertImage')} onClick={() => file.current?.click()}>
         <Picture />
       </button>
       <input
@@ -232,28 +228,28 @@ function TopLeft() {
           if (f) void uploadImage(f);
         }}
       />
-      <ImportHere target={slidesImport} label="幻灯片" button={false} />
-      <button className="tb" aria-label="插入表格" title="插入表格" onClick={() => insertOnSlide(INSERTS.table, false)}>
+      <ImportHere target={slidesImport} label={t('slides.toolbar.importLabel')} button={false} />
+      <button className="tb" aria-label={t('slides.toolbar.insertTable')} title={t('slides.toolbar.insertTable')} onClick={() => insertOnSlide(INSERTS.table, false)}>
         <IconTable size={16} stroke={1.6} aria-hidden="true" />
       </button>
-      <button ref={shapesBtn} className="tb" aria-haspopup="menu" aria-label="形状、连线和图标" title="形状、连线和图标" onClick={() => setMenu('shapes')}>
+      <button ref={shapesBtn} className="tb" aria-haspopup="menu" aria-label={t('slides.toolbar.shapesMenu')} title={t('slides.toolbar.shapesMenu')} onClick={() => setMenu('shapes')}>
         <Shapes />
         <span className="caret">
           <Caret />
         </span>
       </button>
       {menu === 'shapes' && (
-        <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label="形状">
-          {SHAPES.map(([k, l]) => (
-            <MenuItem key={k} label={l} onSelect={() => (setMenu(null), insertOnSlide(INSERTS.shape(k), true))} />
+        <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.shapes')}>
+          {SHAPES.map((k) => (
+            <MenuItem key={k} label={t(`slides.shape.${k}`)} onSelect={() => (setMenu(null), insertOnSlide(INSERTS.shape(k), true))} />
           ))}
           <hr />
-          <MenuItem label="连线（箭头）" onSelect={() => (setMenu(null), insertOnSlide(INSERTS.connector, true))} />
-          <MenuItem label="图标…" onSelect={() => setMenu('icons')} />
+          <MenuItem label={t('slides.toolbar.connector')} onSelect={() => (setMenu(null), insertOnSlide(INSERTS.connector, true))} />
+          <MenuItem label={t('slides.toolbar.icon')} onSelect={() => setMenu('icons')} />
         </Menu>
       )}
       {menu === 'icons' && (
-        <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label="图标">
+        <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.icons')}>
           <div className="iconpick">
             {ICON_NAMES.map((n) => (
               <button key={n} className="tb" title={n} onClick={() => (setMenu(null), insertOnSlide(INSERTS.icon(n), true))}>
@@ -275,43 +271,44 @@ function TopRight() {
   const [menu, setMenu] = useState<null | 'play' | 'download'>(null);
   const playBtn = useRef<HTMLButtonElement>(null);
   const dlBtn = useRef<HTMLButtonElement>(null);
+  const { t } = useTranslation();
   const at = (b: HTMLElement | null) => {
     const r = b?.getBoundingClientRect();
     return { x: r?.right ?? 0, y: (r?.bottom ?? 0) + 8, align: 'right' as const };
   };
   return (
-    <div className="bar right" role="toolbar" aria-label="幻灯片">
-      <button ref={playBtn} className="tb text" aria-haspopup="menu" aria-label="放映" onClick={() => setMenu('play')}>
-        <Play /> 放映
+    <div className="bar right" role="toolbar" aria-label={t('slides.toolbar.slides')}>
+      <button ref={playBtn} className="tb text" aria-haspopup="menu" aria-label={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
+        <Play /> {t('slides.toolbar.present')}
         <span className="caret">
           <Caret />
         </span>
       </button>
-      <button ref={dlBtn} className="tb" aria-haspopup="menu" aria-label="下载" title="下载" onClick={() => setMenu('download')}>
+      <button ref={dlBtn} className="tb" aria-haspopup="menu" aria-label={t('slides.toolbar.download')} title={t('slides.toolbar.download')} onClick={() => setMenu('download')}>
         <Download />
       </button>
-      <button className="tb" aria-pressed={panelOpen} aria-label="属性面板" title="属性面板（⌘\）" onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
+      <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
         <Panel />
       </button>
       <span className="sep" />
-      <button className="tb" aria-pressed={journalOpen} aria-label="同步状态和改动记录" onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
+      <button className="tb" aria-pressed={journalOpen} aria-label={t('slides.toolbar.sync')} onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
         <span className="sync">
           <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-          {!connected ? '未连接' : saving ? '保存中' : '已同步'}
+          {!connected ? t('slides.toolbar.offline') : saving ? t('slides.toolbar.saving') : t('slides.toolbar.synced')}
         </span>
       </button>
       {menu === 'play' && (
-        <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label="放映">
-          <MenuItem label="从头放映" onSelect={() => (setMenu(null), startPresent(0))} />
-          <MenuItem label="从当前页放映" onSelect={() => (setMenu(null), startPresent(null))} />
-          <MenuItem label="放映并显示演讲者备注" onSelect={() => (setMenu(null), startPresent(null, true))} />
+        <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
+          <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />
+          <MenuItem label={t('slides.toolbar.presentFromCurrent')} onSelect={() => (setMenu(null), startPresent(null))} />
+          <MenuItem label={t('slides.toolbar.presentWithNotes')} onSelect={() => (setMenu(null), startPresent(null, true))} />
         </Menu>
       )}
       {menu === 'download' && (
-        <Menu {...at(dlBtn.current)} onClose={() => setMenu(null)} label="下载">
-          <MenuItem label="PDF（打印）" onSelect={() => (setMenu(null), void exportDeck('pdf'))} />
-          <MenuItem label="单个 HTML 文件" onSelect={() => (setMenu(null), void exportDeck('html'))} />
-          <MenuItem label="演讲者备注（.txt）" onSelect={() => (setMenu(null), void exportDeck('notes'))} />
+        <Menu {...at(dlBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.download')}>
+          <MenuItem label={t('slides.toolbar.downloadPdf')} onSelect={() => (setMenu(null), void exportDeck('pdf'))} />
+          <MenuItem label={t('slides.toolbar.downloadHtml')} onSelect={() => (setMenu(null), void exportDeck('html'))} />
+          <MenuItem label={t('slides.toolbar.downloadNotes')} onSelect={() => (setMenu(null), void exportDeck('notes'))} />
         </Menu>
       )}
     </div>
@@ -342,15 +339,16 @@ function Notes({ id }: { id: string }) {
   const [text, setText] = useState(saved);
   const focused = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { t } = useTranslation();
   useEffect(() => {
     if (!focused.current) setText(saved);
   }, [saved]);
   // save as you type (a click on the slide never blurs this box: the frame keeps focus where it is)
-  const save = (t: string) => {
+  const save = (v: string) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       timer.current = null;
-      if (t !== notesOf(display(useStore.getState(), slideFile(id)))) setNotes(id, t);
+      if (v !== notesOf(display(useStore.getState(), slideFile(id)))) setNotes(id, v);
     }, 700);
   };
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
@@ -358,8 +356,8 @@ function Notes({ id }: { id: string }) {
     <textarea
       className="snotes"
       value={text}
-      placeholder="演讲者备注（只在放映的备注窗口里出现）"
-      aria-label="演讲者备注"
+      placeholder={t('slides.stage.notesPlaceholder')}
+      aria-label={t('slides.stage.notesLabel')}
       onFocus={() => (focused.current = true)}
       onChange={(e) => {
         setText(e.target.value);
@@ -377,12 +375,13 @@ function Issues({ id }: { id: string }) {
   const source = useStore((s) => display(s, slideFile(id)));
   const issues = useMemo(() => (source ? checkSlide(parsed(source), id).filter((i) => i.level !== 'note') : []), [source, id]);
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
   if (!issues.length) return null;
   const errors = issues.filter((i) => i.level === 'error').length;
   return (
     <div className={`issues ${errors ? 'err' : ''}`}>
       <button className="ibtn" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {errors ? `${errors} 处超出幻灯片格式` : `${issues.length} 处提示`}
+        {errors ? t('slides.stage.errors', { count: errors }) : t('slides.stage.hints', { count: issues.length })}
       </button>
       {open && (
         <ul>
@@ -406,6 +405,7 @@ function Stage() {
   const area = useRef<HTMLDivElement>(null);
   const k = useFit(area, 40, 40);
   const error = useStore((s) => (id ? s.runtimeErrors[slideFile(id)] : null));
+  const { t } = useTranslation();
   return (
     <div className="sarea" ref={area} onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
       {id ? (
@@ -414,7 +414,7 @@ function Stage() {
             <Issues id={id} />
             {error && (
               <span className="badge err" title={error}>
-                出错
+                {t('slides.stage.error')}
               </span>
             )}
           </div>
@@ -422,7 +422,7 @@ function Stage() {
           <Notes key={id} id={id} />
         </div>
       ) : (
-        <div className="empty">没有幻灯片。点左下角“新建幻灯片”。</div>
+        <div className="empty">{t('slides.stage.empty')}</div>
       )}
     </div>
   );
@@ -433,7 +433,7 @@ function Stage() {
 export function startPresent(from: number | null, notes = false): void {
   const s = useStore.getState();
   const ids = slideIds(s).filter((id) => !isHidden(id));
-  if (!ids.length) return toast('没有可以放映的幻灯片。');
+  if (!ids.length) return toast(t('slides.present.nothing'));
   const i = from ?? Math.max(0, ids.indexOf(s.slide ?? ''));
   useStore.setState({ present: { index: i, step: 0, total: 0, leaving: null, notes }, mode: 'play', selection: null, menu: null });
   document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
@@ -485,12 +485,13 @@ function Present() {
   const tr = p.leaving ? transitionOf(p.leaving.dir > 0 ? leaving : id) : 'none';
   useEffect(() => {
     if (!p.leaving) return;
-    const t = setTimeout(() => useStore.setState((s) => (s.present ? { present: { ...s.present, leaving: null } } : {})), 650);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => useStore.setState((s) => (s.present ? { present: { ...s.present, leaving: null } } : {})), 650);
+    return () => clearTimeout(timer);
   }, [p.leaving]);
   const source = useStore((s) => (id ? display(s, slideFile(id)) : undefined));
+  const { t } = useTranslation();
   return (
-    <div className={`present ${p.notes ? 'withnotes' : ''}`} role="dialog" aria-label="放映">
+    <div className={`present ${p.notes ? 'withnotes' : ''}`} role="dialog" aria-label={t('slides.present.label')}>
       <div className="pstage" ref={box}>
         {leaving && p.leaving && (
           <div key={'out' + leaving} className={`pslide out t-${tr} d${p.leaving.dir > 0 ? 'f' : 'b'}`}>
@@ -510,28 +511,26 @@ function Present() {
         )}
       </div>
       {p.notes && (
-        <aside className="pnotes" aria-label="演讲者备注">
-          <div className="pn-h">
-            演讲者备注 · {p.index + 1} / {ids.length}
-          </div>
-          <div className="pn-b">{notesOf(source) || '（这一页没有备注）'}</div>
+        <aside className="pnotes" aria-label={t('slides.present.notes')}>
+          <div className="pn-h">{t('slides.present.notesHead', { n: p.index + 1, total: ids.length })}</div>
+          <div className="pn-b">{notesOf(source) || t('slides.present.noNotes')}</div>
         </aside>
       )}
       <div className="pbar">
-        <button className="tb" onClick={() => presentStep(-1)} aria-label="上一页">
+        <button className="tb" onClick={() => presentStep(-1)} aria-label={t('slides.present.previous')}>
           ‹
         </button>
         <span>
           {p.index + 1} / {ids.length}
         </span>
-        <button className="tb" onClick={() => presentStep(1)} aria-label="下一页">
+        <button className="tb" onClick={() => presentStep(1)} aria-label={t('slides.present.next')}>
           ›
         </button>
         <button className="tb" onClick={() => useStore.setState({ present: { ...p, notes: !p.notes } })} aria-pressed={p.notes}>
-          备注
+          {t('slides.present.toggleNotes')}
         </button>
         <button className="tb" onClick={stopPresent}>
-          退出
+          {t('slides.present.exit')}
         </button>
       </div>
     </div>
@@ -546,6 +545,7 @@ export function SlidesApp() {
   const present = useStore((s) => !!s.present);
   const slide = useStore((s) => s.slide);
   const ids = useSlideIds();
+  const { t } = useTranslation();
 
   // keep the stage on a slide that exists (another editor may delete it)
   useEffect(() => {
@@ -562,8 +562,8 @@ export function SlidesApp() {
   }, []);
 
   useEffect(() => {
-    const t = deckOf(useStore.getState()).title;
-    if (t) document.title = `${t} · 幻灯片`;
+    const title = deckOf(useStore.getState()).title;
+    if (title) document.title = t('slides.docTitle', { title });
   });
 
   return (

@@ -57,7 +57,7 @@ async def main():
     restore()
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-        ctx = await b.new_context(viewport={'width': 1440, 'height': 900}, accept_downloads=True)
+        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 900}, accept_downloads=True)
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))

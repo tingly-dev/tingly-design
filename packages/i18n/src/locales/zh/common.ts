@@ -1,0 +1,33 @@
+import type en from '../en/common';
+import type { Locale } from '../../types';
+
+export default {
+  add: '添加',
+  apply: '应用',
+  back: '返回',
+  cancel: '取消',
+  close: '关闭',
+  confirm: '确认',
+  copy: '复制',
+  copied: '已复制',
+  delete: '删除',
+  done: '完成',
+  duplicate: '复制一份',
+  edit: '编辑',
+  loading: '加载中…',
+  more: '更多',
+  none: '无',
+  ok: '好',
+  open: '打开',
+  redo: '重做',
+  remove: '移除',
+  rename: '重命名',
+  reset: '重置',
+  retry: '重试',
+  save: '保存',
+  search: '搜索',
+  send: '发送',
+  stop: '停止',
+  undo: '撤销',
+  untitled: '未命名',
+} satisfies Locale<typeof en>;

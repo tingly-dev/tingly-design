@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { addBoard, addNote } from '../actions';
 import { onPage, setView, toCanvas, useCanvas, useStore, zoomAt } from '../store';
 import { BoardView } from './Board';
@@ -19,6 +20,7 @@ type Draft =
 const CREATE = new Set(['frame', 'rect', 'oval', 'line', 'arrow', 'draw', 'note', 'text']);
 
 export function Canvas() {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const canvas = useCanvas();
   const view = useStore((s) => s.view);
@@ -199,7 +201,7 @@ export function Canvas() {
     .filter(Boolean)
     .join(' ');
   return (
-    <div ref={ref} className={cls} onPointerDown={onPointerDown} aria-label="画布">
+    <div ref={ref} className={cls} onPointerDown={onPointerDown} aria-label={t('canvas.surface.label')}>
       <div className="layer" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${z})` }}>
         {canvas.order
           .filter((f) => canvas.boards[f] && onPage(canvas, canvas.boards[f].page, page))

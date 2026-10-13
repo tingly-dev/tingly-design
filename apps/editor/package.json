@@ -25,10 +25,13 @@
     "@tiptap/react": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "dompurify": "3.2.4",
+    "i18next": "^26.4.4",
     "marked": "14.1.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "zustand": "^5.0.15"
+    "react-i18next": "^17.0.16",
+    "zustand": "^5.0.15",
+    "@dc/i18n": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

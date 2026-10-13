@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { elapsedLabel, type AgentStep } from '@dc/core';
+import { elapsed, type AgentStep } from '@dc/core';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { undo, undoDelegate, useStore, type DelegateEntry, type DelegateState, type FastState } from '../store';
 import {
   Chevron,
@@ -25,6 +27,12 @@ import {
  * same answers everywhere: what did I ask, is it still working and on what,
  * what changed, and how do I take it back. See .design/agent-feedback.md.
  */
+/** "12s", "1m 05s" in the language showing. */
+function elapsedLabel(t: TFunction, ms: number): string {
+  const { m, s } = elapsed(ms);
+  return m ? t('prompt.elapsed.minutes', { m, ss: String(s).padStart(2, '0') }) : t('prompt.elapsed.seconds', { s });
+}
+
 export function RunFeed({ onReuse, onOpen }: { onReuse?: (prompt: string) => void; onOpen?: (file: string) => void }) {
   const lastRun = useStore((s) => s.lastRun);
   const hidden = useStore((s) => s.runHidden);
@@ -99,6 +107,7 @@ function StepIcon({ step }: { step: AgentStep }) {
 }
 
 function Entry({ e, current }: { e: DelegateEntry; current: boolean }) {
+  const { t } = useTranslation();
   if ('say' in e)
     return (
       <li className="run-say">
@@ -111,12 +120,13 @@ function Entry({ e, current }: { e: DelegateEntry; current: boolean }) {
   return (
     <li className={`run-step ${e.step.kind}${current ? ' current' : ''}`}>
       <i>{current ? <Spinner /> : <StepIcon step={e.step} />}</i>
-      <span>{e.step.text}</span>
+      <span>{t(`prompt.step.${e.step.op}`, { target: e.step.target ?? '', within: e.step.within ?? '' })}</span>
     </li>
   );
 }
 
 function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: string) => void; onOpen?: (f: string) => void }) {
+  const { t } = useTranslation();
   const running = d.state === 'start' || d.state === 'progress';
   const now = useNow(running);
   const [open, setOpen] = useState(false);
@@ -125,48 +135,49 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
   const showSteps = running || open;
   const last = d.log.at(-1);
   const quiet = running ? Math.floor((now - (last?.at ?? d.startedAt)) / 1000) : 0;
-  const took = elapsedLabel((d.endedAt ?? now) - d.startedAt);
+  const took = elapsedLabel(t, (d.endedAt ?? now) - d.startedAt);
   const changed = d.files.filter((f) => !f.startsWith('.'));
 
   const title = running
     ? d.log.length
-      ? 'Claude Code 正在处理'
-      : 'Claude Code 正在启动'
+      ? t('prompt.run.claudeWorking')
+      : t('prompt.run.claudeStarting')
     : d.state === 'done'
       ? d.undone
-        ? 'Claude Code 的改动已撤销'
-        : 'Claude Code 完成'
+        ? t('prompt.run.claudeUndone')
+        : t('prompt.run.claudeDone')
       : d.state === 'stopped'
-        ? '已停止'
-        : 'Claude Code 没能完成';
+        ? t('prompt.run.stopped')
+        : t('prompt.run.claudeFailed');
+  const result = d.state === 'stopped' ? t('prompt.run.stoppedNote') : d.result;
 
   return (
-    <section className={`runfeed ${running ? 'running' : d.state}`} aria-label="Claude Code 的进度" aria-live="polite">
+    <section className={`runfeed ${running ? 'running' : d.state}`} aria-label={t('prompt.run.claudeProgress')} aria-live="polite">
       <Ask text={d.prompt} />
-      {d.via === 'fast' && <div className="run-via">快速 AI 判断这件事要读写多个文件，交给了 Claude Code。</div>}
+      {d.via === 'fast' && <div className="run-via">{t('prompt.run.viaFast')}</div>}
       <header className="run-head">
         <span className="run-state">{running ? <Spinner size={16} /> : d.state === 'done' ? <Done /> : <Failed />}</span>
         <b>{title}</b>
-        <span className="run-time">{running ? `已 ${took}` : `用时 ${took}`}</span>
+        <span className="run-time">{running ? t('prompt.run.elapsedSoFar', { took }) : t('prompt.run.took', { took })}</span>
         {!running && d.log.length > 0 && (
           <button className="run-link" aria-expanded={open} onClick={() => setOpen(!open)}>
-            {d.log.filter((e) => 'step' in e).length} 步 <Chevron open={open} />
+            {t('prompt.run.steps', { count: d.log.filter((e) => 'step' in e).length })} <Chevron open={open} />
           </button>
         )}
         <span className="run-actions">
           {running ? null : (
             <>
               {Object.keys(d.after).length > 0 && !d.undone && (
-                <button className="btn outline sm" onClick={() => undoDelegate(d.id)} title="把这次改过的文件都恢复成改之前的样子">
-                  <UndoAll /> 撤销这次改动
+                <button className="btn outline sm" onClick={() => undoDelegate(d.id)} title={t('prompt.run.undoAllHint')}>
+                  <UndoAll /> {t('prompt.run.undoAll')}
                 </button>
               )}
               {d.state !== 'done' && onReuse && (
-                <button className="btn outline sm" onClick={() => onReuse(d.prompt)} title="把这条请求放回输入框，改一改再发">
-                  <Reuse /> 放回输入框
+                <button className="btn outline sm" onClick={() => onReuse(d.prompt)} title={t('prompt.run.reuseHint')}>
+                  <Reuse /> {t('prompt.run.reuse')}
                 </button>
               )}
-              <button className="ib sm" aria-label="收起" onClick={close}>
+              <button className="ib sm" aria-label={t('prompt.run.collapse')} onClick={close}>
                 <Close />
               </button>
             </>
@@ -183,18 +194,18 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
               <i>
                 <Spinner />
               </i>
-              <span>{!last ? '读请求、准备动手…' : quiet >= 8 ? `在想下一步（${quiet} 秒没有新动作）` : '在想下一步…'}</span>
+              <span>{!last ? t('prompt.run.preparing') : quiet >= 8 ? t('prompt.run.thinkingQuiet', { count: quiet }) : t('prompt.run.thinking')}</span>
             </li>
           )}
         </ol>
       )}
-      {!running && d.result && <p className={`run-result${d.state === 'done' ? '' : ' bad'}`}>{d.result}</p>}
+      {!running && result && <p className={`run-result${d.state === 'done' ? '' : ' bad'}`}>{result}</p>}
       {changed.length > 0 && (
         <div className="run-files">
-          <span>{running ? '正在改' : d.undone ? '恢复了' : '改了'}</span>
+          <span>{running ? t('prompt.run.filesChanging') : d.undone ? t('prompt.run.filesRestored') : t('prompt.run.filesChanged')}</span>
           {changed.map((f) =>
             onOpen ? (
-              <button key={f} className="file-chip" onClick={() => onOpen(f)} title={`查看 ${f}`}>
+              <button key={f} className="file-chip" onClick={() => onOpen(f)} title={t('prompt.run.viewFile', { file: f })}>
                 {f}
               </button>
             ) : (
@@ -210,57 +221,59 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
 }
 
 function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }) {
+  const { t } = useTranslation();
   const running = f.status === 'running';
   const now = useNow(running);
   const [open, setOpen] = useState(false);
   const list = useRef<HTMLOListElement>(null);
   const onScroll = useFollow(list, f.lines.length);
   const canUndo = useStore((s) => f.status === 'done' && !!f.changed && s.undo.at(-1)?.file === f.file);
-  const took = f.startedAt ? elapsedLabel((f.endedAt ?? now) - f.startedAt) : '';
+  const took = f.startedAt ? elapsedLabel(t, (f.endedAt ?? now) - f.startedAt) : '';
   const jq = f.mode === 'jquery';
   // after a retry only the last attempt's statements were kept
   const lastTry = f.lines.slice(f.lines.findLastIndex((l) => l.divider) + 1);
   const statements = lastTry.filter((l) => l.ok);
-  const who = jq ? 'jQuery' : '快速 AI';
   const title = running
     ? jq
-      ? '正在执行'
+      ? t('prompt.run.jqRunning')
       : statements.length
-        ? '快速 AI 正在改'
-        : '快速 AI 正在读设计'
+        ? t('prompt.run.fastEditing')
+        : t('prompt.run.fastReading')
     : f.status === 'done'
       ? f.changed
-        ? '已保存'
-        : '没有改动'
-      : `${who}没能完成`;
+        ? t('prompt.run.saved')
+        : t('prompt.run.noChange')
+      : jq
+        ? t('prompt.run.jqFailed')
+        : t('prompt.run.fastFailed');
   const showLines = running || open || f.status === 'error';
 
   return (
-    <section className={`runfeed fast ${running ? 'running' : f.status}`} aria-label={`${who}的进度`} aria-live="polite">
+    <section className={`runfeed fast ${running ? 'running' : f.status}`} aria-label={jq ? t('prompt.run.jqProgress') : t('prompt.run.fastProgress')} aria-live="polite">
       {f.prompt && <Ask text={f.prompt} code={jq} />}
       <header className="run-head">
         <span className="run-state">{running ? <Spinner size={16} /> : f.status === 'done' ? <Done /> : <Failed />}</span>
         <b>{title}</b>
-        {took && <span className="run-time">{running ? `已 ${took}` : `用时 ${took}`}</span>}
+        {took && <span className="run-time">{running ? t('prompt.run.elapsedSoFar', { took }) : t('prompt.run.took', { took })}</span>}
         {!running && statements.length > 0 && f.status !== 'error' && (
           <button className="run-link" aria-expanded={open} onClick={() => setOpen(!open)}>
-            {statements.length} 条语句 <Chevron open={open} />
+            {t('prompt.run.statements', { count: statements.length })} <Chevron open={open} />
           </button>
         )}
         <span className="run-actions">
           {running ? null : (
             <>
               {canUndo && (
-                <button className="btn outline sm" onClick={undo} title="撤销（⌘Z）">
-                  <Undo size={14} /> 撤销
+                <button className="btn outline sm" onClick={undo} title={t('prompt.run.undoHint')}>
+                  <Undo size={14} /> {t('common.undo')}
                 </button>
               )}
               {f.status === 'error' && !jq && f.prompt && onReuse && (
-                <button className="btn outline sm" onClick={() => onReuse(f.prompt!)} title="把这条请求放回输入框，改一改再发">
-                  <Reuse /> 放回输入框
+                <button className="btn outline sm" onClick={() => onReuse(f.prompt!)} title={t('prompt.run.reuseHint')}>
+                  <Reuse /> {t('prompt.run.reuse')}
                 </button>
               )}
-              <button className="ib sm" aria-label="收起" onClick={close}>
+              <button className="ib sm" aria-label={t('prompt.run.collapse')} onClick={close}>
                 <Close />
               </button>
             </>
@@ -287,8 +300,8 @@ function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }
         </ol>
       )}
       {open && !running && !jq && statements.length > 0 && (
-        <button className="run-link" onClick={() => editAsJQuery(f.file, statements.map((l) => l.code).join('\n'))} title="把这些语句放进右侧“代码”里的 jQuery，改一改再执行">
-          在 jQuery 里改
+        <button className="run-link" onClick={() => editAsJQuery(f.file, statements.map((l) => l.code).join('\n'))} title={t('prompt.run.editInJqHint')}>
+          {t('prompt.run.editInJq')}
         </button>
       )}
       {f.note && <p className={`run-result${f.status === 'error' ? ' bad' : ''}`}>{f.note}</p>}

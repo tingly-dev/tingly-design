@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import { useStore } from '../../store';
 import { runJQuery } from '../../fastedit';
 
@@ -9,6 +10,7 @@ import { runJQuery } from '../../fastedit';
  * "在 jQuery 里改", which drops the fast model's statements here.
  */
 export function JQueryBox({ file, handle }: { file: string; handle?: string }) {
+  const { t } = useTranslation();
   const draft = useStore((s) => s.jqDraft);
   const running = useStore((s) => s.fast.status === 'running');
   const run = () => {
@@ -23,7 +25,7 @@ export function JQueryBox({ file, handle }: { file: string; handle?: string }) {
         rows={4}
         value={draft}
         placeholder={`${handle ? `$('${handle}')` : "$('h1')"}.css('color', '#15803d')`}
-        aria-label="jQuery 语句"
+        aria-label={t('panel.jquery.label')}
         onChange={(e) => useStore.setState({ jqDraft: e.target.value })}
         onKeyDown={(e) => {
           e.stopPropagation();
@@ -35,10 +37,16 @@ export function JQueryBox({ file, handle }: { file: string; handle?: string }) {
       />
       <div className="jqrow">
         <span className="hint">
-          在 <code>{file}</code> 上逐条执行，和快速 AI 走同一条回写链路；不需要 API key。{handle ? <> 选中的元素是 <code>{handle}</code>。</> : null}
+          <Trans t={t} i18nKey="panel.jquery.hint" values={{ file }} components={{ code: <code /> }} />
+          {handle ? (
+            <>
+              {' '}
+              <Trans t={t} i18nKey="panel.jquery.selected" values={{ handle }} components={{ code: <code /> }} />
+            </>
+          ) : null}
         </span>
-        <button className="btn primary sm" onClick={run} disabled={!draft.trim() || running} title="执行（⌘↵）">
-          执行
+        <button className="btn primary sm" onClick={run} disabled={!draft.trim() || running} title={t('panel.jquery.runTitle')}>
+          {t('panel.jquery.run')}
         </button>
       </div>
     </div>

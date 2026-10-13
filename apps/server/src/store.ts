@@ -52,6 +52,8 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
+import type { ErrorKey, Language, TFunction } from '@dc/i18n';
+import { translator } from '@dc/i18n';
 
 export { PROJECTS_DIR, ROOT as REPO_ROOT } from './layout';
 
@@ -69,16 +71,21 @@ export function isProjectName(name: string): boolean {
 }
 
 export function projectDir(name: string): string {
-  if (!isProjectName(name)) throw new HttpError(400, 'bad project name');
+  if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
   return join(PROJECTS_DIR, name);
 }
 
+/**
+ * A refused request. `key` names the message in @dc/i18n's `errors` area; the server's error
+ * handler words it in the language of the request, so the person reads it in the editor's language.
+ */
 export class HttpError extends Error {
   constructor(
     public status: number,
-    message: string,
+    public key: ErrorKey,
+    public params: Record<string, string | number> = {},
   ) {
-    super(message);
+    super(key);
   }
 }
 
@@ -89,7 +96,7 @@ export function safeRel(rel: string): string {
   if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
   // a design system's text files, and a copy of one installed into a canvas or deck
   if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/tokens\.json$/.test(r)) return r;
-  throw new HttpError(400, `not a project file: ${rel}`);
+  throw new HttpError(400, 'notProjectFile', { path: rel });
 }
 
 /** Images and fonts a project keeps beside its files (binary, never edited as text). */
@@ -131,7 +138,7 @@ export function assetRel(rel: string): string {
   // what people brought in: files attached to requests, folders they imported
   if (isUploadPath(r) || isKeptPath(r)) return r;
   const m = /^(assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_. -]{0,120})\.([a-z0-9]+)$/i.exec(r);
-  if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, `not an asset path: ${rel}`);
+  if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, 'notAssetPath', { path: rel });
   return r;
 }
 
@@ -220,7 +227,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
 
 export async function readProject(name: string): Promise<Record<string, FileState>> {
   const dir = projectDir(name);
-  if (!(await kindOf(dir))) throw new HttpError(404, `no project ${name}`);
+  if (!(await kindOf(dir))) throw new HttpError(404, 'noProject', { name });
   const files: string[] = [];
   await walk(dir, dir, files);
   const out: Record<string, FileState> = {};
@@ -334,31 +341,33 @@ export async function removeFile(name: string, rel: string): Promise<void> {
   await rm(join(projectDir(name), safeRel(rel)), { force: true });
 }
 
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design'): Promise<void> {
+/** A new project, its starter copy in `lang`: the language of whoever created it. */
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en'): Promise<void> {
+  const t: TFunction = translator(lang);
   const dir = projectDir(name);
-  if (await kindOf(dir)) throw new HttpError(409, `project ${name} exists`);
+  if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
   await mkdir(dir, { recursive: true });
   if (kind === 'design-system') {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
     await writeAtomic(name, DS_TOKENS, starterTokens(title));
-    await writeAtomic(name, DS_README, `# ${title}\n\n${title} 的设计系统。从品牌的真实来源（代码库、设计稿、品牌手册）补全它，或者让 Claude Code 来做。\n\n## 使用\n\n颜色是语义 token（\`surface\`、\`ink\`、\`accent\`），每个 token 的说明写明它用在什么底色上。\n`);
+    await writeAtomic(name, DS_README, t('starter.dsReadme', { title }));
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
     return;
   }
   if (kind === 'docs') {
     await writeAtomic(name, tabFile('main'), newDocTab(title));
-    await writeAtomic(name, DOC_INDEX, stringifyDoc(parseDoc(JSON.stringify({ title, tabs: [{ id: 'main', title: '正文' }] }))));
+    await writeAtomic(name, DOC_INDEX, stringifyDoc(parseDoc(JSON.stringify({ title, tabs: [{ id: 'main', title: t('starter.docTab') }] }))));
     return;
   }
   if (kind === 'motion') {
-    const { motion, scenes } = newMotion(title);
+    const { motion, scenes } = newMotion(title, t('starter.motionHint'));
     for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
     await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
     return;
   }
   if (kind === 'dashboard') {
-    await writeAtomic(name, DASH_PAGE, DASH_STARTER_PAGE.replace('TITLE', title.replace(/[<&>]/g, '')));
+    await writeAtomic(name, DASH_PAGE, DASH_STARTER_PAGE.replace('TITLE', title.replace(/[<&>]/g, '')).replace('HINT', t('starter.dashEmpty')));
     await writeAtomic(name, DASH_INDEX, stringifyDash(newDash(title)));
     return;
   }
@@ -377,7 +386,7 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     await writeAtomic(name, slideFile('cover'), newSlideSource('cover', {
       like: "background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px",
       title,
-      body: '双击改字，或在下方让 AI 写这套幻灯片。',
+      body: t('starter.deckHint'),
     }).replace('font-size:72px', 'font-size:112px'));
     await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
     return;
@@ -390,5 +399,5 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     order: ['Main.dc.html'],
   }));
   await writeAtomic(name, CANVAS_FILE, stringifyCanvas(canvas));
-  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: 1200, h: 760 }));
+  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: 1200, h: 760, lang, hint: t('starter.canvasHint') }));
 }

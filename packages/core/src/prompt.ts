@@ -1,5 +1,5 @@
 import type { CanvasJson, JournalEntry } from './canvas';
-import { ACTOR_LABEL } from './canvas';
+import { ACTOR_NAME } from './canvas';
 
 /**
  * Prompts for the fast in-page editor.
@@ -98,7 +98,7 @@ export function buildFastEditPrompt(ctx: FastEditContext): string {
       .join('\n');
   const journal = ctx.journal
     .slice(-30)
-    .map((j) => `- [${ACTOR_LABEL[j.actor] ?? j.actor}] ${j.file}: ${j.summary}${j.prompt ? ` (asked: "${j.prompt.slice(0, 80)}")` : ''}`)
+    .map((j) => `- [${ACTOR_NAME[j.actor] ?? j.actor}] ${j.file}: ${j.summary}${j.prompt ? ` (asked: "${j.prompt.slice(0, 80)}")` : ''}`)
     .join('\n');
   const parts = [
     `design\n${fence(nonce, boards || '(no artboards)')}`,

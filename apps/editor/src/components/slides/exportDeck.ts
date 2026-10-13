@@ -3,6 +3,7 @@ import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
 import { isHidden, notesOf, slideTitle } from '../../slides';
+import { t } from '../../i18n';
 
 /**
  * Downloads: one self-contained HTML file that plays the deck (images inlined,
@@ -115,19 +116,19 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'notes'): Promise<void> 
       const text = slideIds(s)
         .map((id, i) => {
           const src = display(s, slideFile(id));
-          return `${i + 1}. ${slideTitle(src, id)}\n${notesOf(src) || '（无备注）'}\n`;
+          return `${i + 1}. ${slideTitle(src, id)}\n${notesOf(src) || t('slides.export.noNotes')}\n`;
         })
         .join('\n');
-      return download(`${name} 备注.txt`, new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      return download(t('slides.export.notesFile', { name }), new Blob([text], { type: 'text/plain;charset=utf-8' }));
     }
     const html = await buildHtml(kind === 'pdf');
     if (kind === 'html') return download(`${name}.html`, new Blob([html], { type: 'text/html' }));
     const w = window.open('', '_blank');
-    if (!w) return toast('浏览器拦截了打印窗口，请允许弹出窗口后重试。', 'error');
+    if (!w) return toast(t('slides.export.popupBlocked'), 'error');
     w.document.open();
     w.document.write(html);
     w.document.close();
-    toast('在打印窗口里选择“存储为 PDF”。');
+    toast(t('slides.export.savePdf'));
   } catch (e) {
     toast((e as Error).message, 'error');
   }

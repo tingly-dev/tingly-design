@@ -27,5 +27,8 @@
     "pngjs": "7.0.0",
     "vitest": "^5.0.3",
     "happy-dom": "^20.9.0"
+  },
+  "dependencies": {
+    "@dc/i18n": "workspace:*"
   }
 }

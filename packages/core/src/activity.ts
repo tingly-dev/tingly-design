@@ -3,15 +3,24 @@
  * calls (`Read /abs/path`, `Grep title`); the editor shows them as steps a
  * person can follow: what was read, searched or changed, with paths
  * relative to the project, so a changed file is a name they recognise.
- * See .design/agent-feedback.md.
+ * A step carries what happened and to what, not a sentence: the editor
+ * words it in the language it is showing (`prompt.step.<op>` in @dc/i18n),
+ * so two people watching the same run each read it in their own.
+ * See .design/agent-feedback.md and .design/i18n.md.
  */
 
 export type StepKind = 'read' | 'search' | 'edit' | 'run' | 'plan' | 'other';
 
+/** what the step did; each has a `prompt.step.<op>` string */
+export type StepOp = 'readSkill' | 'read' | 'glob' | 'grep' | 'grepIn' | 'write' | 'edit' | 'query' | 'run' | 'plan' | 'tool';
+
 export interface AgentStep {
   kind: StepKind;
-  /** what happened, short, in the editor's language */
-  text: string;
+  op: StepOp;
+  /** what it was done to: a path, a pattern, a command or a tool name */
+  target?: string;
+  /** where a search looked, relative to the project */
+  within?: string;
   /** a project file this step changed (edit and write only), relative to the project folder */
   changed?: string;
 }
@@ -51,38 +60,36 @@ export function describeTool(tool: string, input: ToolInput, root: string, proje
   const where = shown(file, root, project);
   switch (tool) {
     case 'Read': {
-      if (/\.claude\/skills\/[^/]+\/SKILL\.md$/.test(file)) return { kind: 'read', text: '读格式说明' };
-      return { kind: 'read', text: `读 ${where}` };
+      if (/\.claude\/skills\/[^/]+\/SKILL\.md$/.test(file)) return { kind: 'read', op: 'readSkill' };
+      return { kind: 'read', op: 'read', target: where };
     }
     case 'Glob':
-      return { kind: 'search', text: `找文件 ${str(input.pattern)}`.trim() };
-    case 'Grep':
-    {
+      return { kind: 'search', op: 'glob', target: str(input.pattern) };
+    case 'Grep': {
       const rel = inside(file, project);
-      return { kind: 'search', text: `搜索“${str(input.pattern)}”${rel ? `（${rel}）` : ''}` };
+      return rel ? { kind: 'search', op: 'grepIn', target: str(input.pattern), within: rel } : { kind: 'search', op: 'grep', target: str(input.pattern) };
     }
     case 'Edit':
     case 'MultiEdit':
     case 'Write': {
       const rel = inside(file, project);
-      const text = `${tool === 'Write' ? '写' : '改'} ${where}`;
-      return rel ? { kind: 'edit', text, changed: rel } : { kind: 'edit', text };
+      const step: AgentStep = { kind: 'edit', op: tool === 'Write' ? 'write' : 'edit', target: where };
+      return rel ? { ...step, changed: rel } : step;
     }
     case 'Bash': {
       const cmd = str(input.command);
-      if (cmd.includes('dash-query')) return { kind: 'run', text: '查询数据' };
-      return { kind: 'run', text: `运行 ${cmd.length > 60 ? cmd.slice(0, 60) + '…' : cmd}`.trim() };
+      if (cmd.includes('dash-query')) return { kind: 'run', op: 'query' };
+      return { kind: 'run', op: 'run', target: cmd.length > 60 ? cmd.slice(0, 60) + '…' : cmd };
     }
     case 'TodoWrite':
-      return { kind: 'plan', text: '列出步骤' };
+      return { kind: 'plan', op: 'plan' };
     default:
-      return { kind: 'other', text: tool };
+      return { kind: 'other', op: 'tool', target: tool };
   }
 }
 
-/** "12 秒", "1 分 05 秒": how long a run has taken. */
-export function elapsedLabel(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  if (s < 60) return `${s} 秒`;
-  return `${Math.floor(s / 60)} 分 ${String(s % 60).padStart(2, '0')} 秒`;
+/** How long a run has taken, as minutes and seconds; the editor words it. */
+export function elapsed(ms: number): { m: number; s: number } {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return { m: Math.floor(total / 60), s: total % 60 };
 }

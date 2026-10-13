@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconMovie, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
@@ -10,15 +12,16 @@ import { NAME_RE, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
+import { htmlLang } from '../i18n';
 
-/** The six project kinds, in the order the launcher lists them. */
-export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string; tone: string }[] = [
-  { kind: 'design', zh: '画布', unit: '个画板', blurb: '无限画布上的画板、便签和图形，适合界面与流程。', tone: 'blue' },
-  { kind: 'slides', zh: '幻灯片', unit: '页', blurb: '1920×1080 的一页页幻灯片，可以直接放映。', tone: 'purple' },
-  { kind: 'design-system', zh: '设计系统', unit: '个组件', blurb: '颜色、字体、组件和品牌素材，可装进画布和幻灯片。', tone: 'teal' },
-  { kind: 'dashboard', zh: '看板', unit: '个数据集', blurb: '接数据源的图表页面，每个数字都标明出处。', tone: 'orange' },
-  { kind: 'docs', zh: '文档', unit: '个标签页', blurb: '富文本文档，带标签页和评论，按块写回 Markdown。', tone: 'green' },
-  { kind: 'motion', zh: '动效', unit: '个场景', blurb: '按时间播放的场景，可导出视频，一套场景出多个尺寸。', tone: 'pink' },
+/** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
+export const KINDS: { kind: ProjectKind; tone: string }[] = [
+  { kind: 'design', tone: 'blue' },
+  { kind: 'slides', tone: 'purple' },
+  { kind: 'design-system', tone: 'teal' },
+  { kind: 'dashboard', tone: 'orange' },
+  { kind: 'docs', tone: 'green' },
+  { kind: 'motion', tone: 'pink' },
 ];
 const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<ProjectKind, (typeof KINDS)[number]>;
 
@@ -42,13 +45,13 @@ function open(name: string) {
   goTo(name);
 }
 
-function ago(iso: string | null): string {
+function ago(t: TFunction, iso: string | null): string {
   if (!iso) return '';
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (s < 60) return '刚刚';
-  if (s < 3600) return `${Math.floor(s / 60)} 分钟前`;
-  if (s < 86400) return `${Math.floor(s / 3600)} 小时前`;
-  if (s < 86400 * 30) return `${Math.floor(s / 86400)} 天前`;
+  if (s < 60) return t('launcher.ago.now');
+  if (s < 3600) return t('launcher.ago.minutes', { count: Math.floor(s / 60) });
+  if (s < 86400) return t('launcher.ago.hours', { count: Math.floor(s / 3600) });
+  if (s < 86400 * 30) return t('launcher.ago.days', { count: Math.floor(s / 86400) });
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -94,10 +97,11 @@ function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
 
 /** A board or slide rendered by the sandbox runtime, read only, scaled to the card. */
 function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string }; base?: string }) {
+  const { t: tr } = useTranslation();
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== frame.current?.contentWindow) return;
@@ -121,14 +125,15 @@ function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; s
   return (
     <div className={`lframe${shown ? ' on' : ''}`} style={{ paddingTop: top }}>
       <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
-        <iframe ref={frame} title={`预览：${file}`} sandbox="allow-scripts" srcDoc={srcdoc} tabIndex={-1} aria-hidden="true" />
+        <iframe ref={frame} title={tr('launcher.preview.frame', { file })} sandbox="allow-scripts" srcDoc={srcdoc} tabIndex={-1} aria-hidden="true" />
       </div>
     </div>
   );
 }
 
 function Minimap({ boards }: { boards: { x: number; y: number; w: number; h: number; title: string }[] }) {
-  if (!boards.length) return <div className="lp-empty">空画布</div>;
+  const { t } = useTranslation();
+  if (!boards.length) return <div className="lp-empty">{t('launcher.preview.emptyCanvas')}</div>;
   const x0 = Math.min(...boards.map((b) => b.x));
   const y0 = Math.min(...boards.map((b) => b.y));
   const x1 = Math.max(...boards.map((b) => b.x + b.w));
@@ -144,6 +149,7 @@ function Minimap({ boards }: { boards: { x: number; y: number; w: number; h: num
 }
 
 function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
+  const { t } = useTranslation();
   const [ref, near] = useNear<HTMLDivElement>();
   let body: ReactNode;
   if (p.kind === 'design') {
@@ -161,7 +167,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
       near && p.cover && width > 0 ? (
         <LiveFrame file={p.cover.file} source={p.cover.source} w={SLIDE_W} h={SLIDE_H} width={width} slide={{ head: p.cover.head, base: api.rawBase(project) }} />
       ) : (
-        <div className="lp-empty">{p.cover ? '' : '还没有幻灯片'}</div>
+        <div className="lp-empty">{p.cover ? '' : t('launcher.preview.noSlides')}</div>
       );
   } else if (p.kind === 'design-system') {
     body = (
@@ -176,7 +182,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
           {p.components.map((c) => (
             <span key={c}>{c}</span>
           ))}
-          {!p.components.length && <span className="faint">还没有组件</span>}
+          {!p.components.length && <span className="faint">{t('launcher.preview.noComponents')}</span>}
         </div>
       </div>
     );
@@ -190,7 +196,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
           {p.datasets.map((d) => (
             <li key={d}>{d}</li>
           ))}
-          {!p.datasets.length && <li className="faint">还没有数据集</li>}
+          {!p.datasets.length && <li className="faint">{t('launcher.preview.noDatasets')}</li>}
         </ul>
       </div>
     );
@@ -199,7 +205,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
     body = (
       <div className="lp-motion">
         {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} base={api.rawBase(project)} />}
-        {!p.still && <div className="lp-empty">还没有场景</div>}
+        {!p.still && <div className="lp-empty">{t('launcher.preview.noScenes')}</div>}
         <div className="lp-mmeta">
           <span>{p.seconds} s</span>
           {p.formats.map((x) => (
@@ -213,9 +219,9 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
       <div className="lp-doc">
         <div className="page">
           <ul>
-            {p.tabs.map((t, i) => (
-              <li key={i} style={{ paddingLeft: t.depth * 10 }}>
-                {t.title}
+            {p.tabs.map((tab, i) => (
+              <li key={i} style={{ paddingLeft: tab.depth * 10 }}>
+                {tab.title}
               </li>
             ))}
           </ul>
@@ -233,12 +239,13 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
 
 /** A still of a motion piece: its cover scene at the end of its entrances, or most of the way through its first scene. */
 function MotionStill({ still, format, width, base }: { still: { motion: MotionJson; id: string; source: string }; format: string; width: number; base: string }) {
+  const { t } = useTranslation();
   const motion = useMemo(() => ({ ...still.motion, order: [still.id] }), [still]);
   const scenes = useMemo(() => ({ [still.id]: still.source }), [still]);
   const cover = !still.motion.order.includes(still.id);
   // the preview sits 6px in from the card on each side, at 16:10
   const bw = width - 12;
-  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={`${still.motion.title} 的封面`} />;
+  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
 }
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
@@ -256,25 +263,25 @@ function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] 
 }
 
 function Card({ p, recent }: { p: ProjectCard; recent: boolean }) {
+  const { t } = useTranslation();
   const [ref, width] = useWidth<HTMLButtonElement>();
   const k = KIND[p.kind];
+  const kindName = t(`launcher.kind.${p.kind}.name`);
   return (
-    <button ref={ref} className={`lcard t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={`打开 ${p.title}（${k.zh}）`}>
+    <button ref={ref} className={`lcard t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={t('launcher.card.open', { title: p.title, kind: kindName })}>
       <Preview p={p.preview} project={p.name} width={width} />
       <div className="lbody">
         <div className="ltitle">
           <span className="name">{p.title || p.name}</span>
-          {recent && <span className="recent">最近打开</span>}
+          {recent && <span className="recent">{t('launcher.card.recent')}</span>}
         </div>
         <div className="lmeta">
           <span className="kbadge">
             <KindIcon kind={p.kind} size={12} />
-            {k.zh}
+            {kindName}
           </span>
-          <span>
-            {p.count} {k.unit}
-          </span>
-          {p.updatedAt && <span>{ago(p.updatedAt)}</span>}
+          <span>{t(`launcher.kind.${p.kind}.count`, { count: p.count })}</span>
+          {p.updatedAt && <span>{ago(t, p.updatedAt)}</span>}
         </div>
         <div className="lpath">projects/{p.name}</div>
       </div>
@@ -283,6 +290,7 @@ function Card({ p, recent }: { p: ProjectCard; recent: boolean }) {
 }
 
 function NewTile({ kind, onClick }: { kind: ProjectKind; onClick: () => void }) {
+  const { t } = useTranslation();
   const k = KIND[kind];
   return (
     <button className={`lcard lnew t-${k.tone}`} onClick={onClick} data-new={kind}>
@@ -290,28 +298,30 @@ function NewTile({ kind, onClick }: { kind: ProjectKind; onClick: () => void }) 
         <KindIcon kind={kind} size={22} />
       </span>
       <span className="txt">
-        <span className="name">新建{k.zh}</span>
-        <span className="blurb">{k.blurb}</span>
+        <span className="name">{t(`launcher.kind.${kind}.new`)}</span>
+        <span className="blurb">{t(`launcher.kind.${kind}.blurb`)}</span>
       </span>
     </button>
   );
 }
 
 function ImportTile({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
   return (
     <button className="lcard lnew t-blue" onClick={onClick} data-new="import">
       <span className="ic">
         <IconFileImport size={22} stroke={1.7} />
       </span>
       <span className="txt">
-        <span className="name">导入 HTML 或 SVG</span>
-        <span className="blurb">把现成的网页或 Figma 里复制的 SVG 变成可以编辑的画布。</span>
+        <span className="name">{t('launcher.importTile.name')}</span>
+        <span className="blurb">{t('launcher.importTile.blurb')}</span>
       </span>
     </button>
   );
 }
 
 function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: Set<string>; onClose: () => void }) {
+  const { t } = useTranslation();
   const [kind, setKind] = useState<ProjectKind>(initial);
   const [title, setTitle] = useState('');
   const [folder, setFolder] = useState('');
@@ -327,12 +337,12 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
   const name = touched ? folder : slugOf(title);
   const problem = !name
     ? title.trim()
-      ? '标题里没有可用作文件夹名的字母或数字，请填写文件夹名。'
+      ? t('launcher.new.noSlug')
       : ''
     : !NAME_RE.test(name)
-      ? '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。'
+      ? t('launcher.new.folderInvalid')
       : taken.has(name)
-        ? `projects/${name} 已经存在。`
+        ? t('launcher.new.folderTaken', { name })
         : '';
   const submit = async () => {
     if (!name || problem || busy) return;
@@ -350,19 +360,19 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
       <form
         className="ldialog"
         role="dialog"
-        aria-label="新建项目"
+        aria-label={t('launcher.new.title')}
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
         <header>
-          <h2>新建项目</h2>
-          <button type="button" className="tb" aria-label="关闭" onClick={onClose}>
+          <h2>{t('launcher.new.title')}</h2>
+          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
             ×
           </button>
         </header>
-        <div className="kinds" role="radiogroup" aria-label="类型">
+        <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
           {KINDS.map((k) => (
             <button
               type="button"
@@ -376,23 +386,23 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
               <span className="ic">
                 <KindIcon kind={k.kind} size={20} />
               </span>
-              <span className="name">{k.zh}</span>
-              <span className="blurb">{k.blurb}</span>
+              <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
+              <span className="blurb">{t(`launcher.kind.${k.kind}.blurb`)}</span>
             </button>
           ))}
         </div>
         <label className="field">
-          <span>标题</span>
-          <input ref={titleRef} className="input" placeholder={`如：新人上手${KIND[kind].zh}`} aria-label="标题" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <span>{t('launcher.new.titleField')}</span>
+          <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="field">
-          <span>文件夹</span>
+          <span>{t('launcher.new.folder')}</span>
           <span className="folder">
             <span className="pre">projects/</span>
             <input
               className="input"
               placeholder="onboarding"
-              aria-label="新项目名称"
+              aria-label={t('launcher.new.folderLabel')}
               value={name}
               onChange={(e) => {
                 setTouched(true);
@@ -406,10 +416,10 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
         </div>
         <footer>
           <button type="button" className="btn" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </button>
           <button className="btn primary" type="submit" disabled={!name || !!problem || busy}>
-            创建{KIND[kind].zh}
+            {t(`launcher.kind.${kind}.create`)}
           </button>
         </footer>
       </form>
@@ -442,6 +452,7 @@ function arrowNav(e: React.KeyboardEvent<HTMLElement>) {
 }
 
 export function Launcher() {
+  const { t } = useTranslation();
   const [list, setList] = useState<ProjectCard[] | null>(null);
   const [tab, setTab] = useState<ProjectKind | 'all'>('all');
   const [q, setQ] = useState('');
@@ -494,19 +505,20 @@ export function Launcher() {
       return i < 0 ? Infinity : i;
     };
     return (list ?? [])
-      .filter((p) => (tab === 'all' || p.kind === tab) && (!needle || p.title.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle) || KIND[p.kind].zh.includes(needle)))
+      .filter((p) => (tab === 'all' || p.kind === tab) && (!needle || p.title.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle) || t(`launcher.kind.${p.kind}.name`).toLowerCase().includes(needle)))
       .sort((a, b) =>
         sort === 'name'
           ? (a.title || a.name).localeCompare(b.title || b.name)
           : rank(a) - rank(b) || (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '') || a.name.localeCompare(b.name),
       );
-  }, [list, tab, q, sort, recent]);
+  }, [list, tab, q, sort, recent, t]);
   const taken = useMemo(() => new Set((list ?? []).map((p) => p.name)), [list]);
   const lastOpened = recent.find((n) => taken.has(n));
 
   return (
     <div
       className={`launcher${dropping ? ' dropping' : ''}`}
+      data-drop-hint={t('launcher.dropHint')}
       onDragOver={(e) => {
         if (creating || importing || !e.dataTransfer.types.includes('Files')) return;
         e.preventDefault();
@@ -519,7 +531,7 @@ export function Launcher() {
         setDropping(false);
         void droppedFiles(e.dataTransfer)
           .then(readPicked)
-          .then((picked) => (picked.entry ? setImporting({ picked }) : toast('拖进来的文件里没有 .html 页面或 .svg 图形。', 'error')));
+          .then((picked) => (picked.entry ? setImporting({ picked }) : toast(t('launcher.dropNoEntry'), 'error')));
       }}
     >
       <header className="lhead">
@@ -527,7 +539,7 @@ export function Launcher() {
           <Mark />
           <div>
             <h1>Tingly Design</h1>
-            <div className="sub">本地设计工作区 · {list ? `${list.length} 个项目` : '读取中…'}</div>
+            <div className="sub">{list ? t('launcher.subtitle', { count: list.length }) : t('launcher.subtitleLoading')}</div>
           </div>
         </div>
         <div className="tools">
@@ -535,8 +547,8 @@ export function Launcher() {
             <IconSearch size={15} stroke={1.7} aria-hidden="true" />
             <input
               ref={search}
-              placeholder="搜索标题或文件夹"
-              aria-label="搜索项目"
+              placeholder={t('launcher.search.placeholder')}
+              aria-label={t('launcher.search.label')}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
@@ -546,32 +558,32 @@ export function Launcher() {
             />
             <kbd>/</kbd>
           </label>
-          <select className="lsort" aria-label="排序" value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'name')}>
-            <option value="recent">最近</option>
-            <option value="name">名称</option>
+          <select className="lsort" aria-label={t('launcher.sort.label')} value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'name')}>
+            <option value="recent">{t('launcher.sort.recent')}</option>
+            <option value="name">{t('launcher.sort.name')}</option>
           </select>
           <Appearance className="btn lbtn" />
           <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
-            <IconPlus size={15} stroke={2} aria-hidden="true" /> 新建项目
+            <IconPlus size={15} stroke={2} aria-hidden="true" /> {t('launcher.new.title')}
           </button>
         </div>
       </header>
 
-      <nav className="ltabs" role="tablist" aria-label="按类型筛选">
+      <nav className="ltabs" role="tablist" aria-label={t('launcher.tabs.label')}>
         {(['all', ...KINDS.map((k) => k.kind)] as const).map((k) => (
           <button key={k} role="tab" aria-selected={tab === k} data-tab={k} className={k === 'all' ? '' : `t-${KIND[k].tone}`} onClick={() => setTab(k)}>
             {k !== 'all' && <KindIcon kind={k} size={14} />}
-            {k === 'all' ? '全部' : KIND[k].zh}
+            {k === 'all' ? t('launcher.tabs.all') : t(`launcher.kind.${k}.name`)}
             <span className="n">{counts[k]}</span>
           </button>
         ))}
       </nav>
 
       <main className="lmain" onKeyDown={arrowNav}>
-        {list === null && <div className="lhint">读取中…</div>}
+        {list === null && <div className="lhint">{t('launcher.loading')}</div>}
         {tab === 'all' && !q.trim() && (
-          <section className="lstart" aria-label="新建">
-            <h2>新建</h2>
+          <section className="lstart" aria-label={t('launcher.start')}>
+            <h2>{t('launcher.start')}</h2>
             <div className="lstrip">
               {KINDS.map((k) => (
                 <NewTile key={k.kind} kind={k.kind} onClick={() => setCreating(k.kind)} />
@@ -582,22 +594,22 @@ export function Launcher() {
         )}
         {list !== null && !q.trim() && lastOpened && (tab === 'all' || list.find((p) => p.name === lastOpened)?.kind === tab) && (
           <div className="lcontinue">
-            <span>继续上次的：</span>
+            <span>{t('launcher.continue')}</span>
             <button className="linkish" onClick={() => open(lastOpened)}>
               {list.find((p) => p.name === lastOpened)?.title || lastOpened}
             </button>
           </div>
         )}
         {list !== null && (
-          <section className="lall" aria-label="项目">
-            <h2>{tab === 'all' ? '全部项目' : KIND[tab].zh}</h2>
+          <section className="lall" aria-label={t('launcher.projects')}>
+            <h2>{tab === 'all' ? t('launcher.allProjects') : t(`launcher.kind.${tab}.name`)}</h2>
             <div className="lgrid">
               {shown.map((p) => (
                 <Card key={p.name} p={p} recent={p.name === lastOpened} />
               ))}
               {tab !== 'all' && <NewTile kind={tab} onClick={() => setCreating(tab)} />}
             </div>
-            {!shown.length && <div className="lhint">{q.trim() ? `没有找到“${q.trim()}”。` : `还没有${tab === 'all' ? '项目，从上面选一种类型新建' : KIND[tab].zh}。`}</div>}
+            {!shown.length && <div className="lhint">{q.trim() ? t('launcher.notFound', { q: q.trim() }) : tab === 'all' ? t('launcher.noProjects') : t(`launcher.kind.${tab}.empty`)}</div>}
           </section>
         )}
       </main>

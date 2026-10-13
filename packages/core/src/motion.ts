@@ -86,7 +86,7 @@ export function isMotionFile(path: string): boolean {
 }
 
 /** A new motion project: one 16:9 title scene. */
-export function newMotion(title: string): { motion: MotionJson; scenes: Record<string, string> } {
+export function newMotion(title: string, hint = 'Edit scenes/*.html with Claude Code; timing goes on data-in, data-out and data-keys.'): { motion: MotionJson; scenes: Record<string, string> } {
   const safe = title.replace(/[<&>]/g, '');
   return {
     motion: { v: 1, title, formats: { wide: { size: [1920, 1080] } }, fps: 30, order: ['title'], audio: [], faces: {} },
@@ -94,7 +94,7 @@ export function newMotion(title: string): { motion: MotionJson; scenes: Record<s
       title:
         `<section id="title" data-duration="4s" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">\n` +
         `<h1 data-in="rise 700ms" style="font-size:112px;font-weight:800;line-height:1.05">${safe}</h1>\n` +
-        `<p data-in="fade 600ms" style="font-size:40px;color:#a9a59c">用 Claude Code 编辑 scenes/*.html，时间写在 data-in、data-out、data-keys 上。</p>\n` +
+        `<p data-in="fade 600ms" style="font-size:40px;color:#a9a59c">${hint.replace(/[<&>]/g, '')}</p>\n` +
         `</section>\n`,
     },
   };

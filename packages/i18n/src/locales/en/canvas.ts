@@ -1,0 +1,73 @@
+export default {
+  surface: {
+    label: 'Canvas',
+  },
+  text: {
+    /** placeholder text of a new text element or an empty title */
+    placeholder: 'Text',
+  },
+  board: {
+    nameLabel: 'Artboard name',
+    stripHint: '{{title}} ({{file}}) — drag to move, double-click to rename',
+    fastAiEditing: 'Fast AI is editing',
+    claudeEditing: 'Claude Code is editing',
+    error: 'Error',
+    fullscreen: 'Open full screen',
+    fullscreenLabel: 'Open {{title}} full screen',
+  },
+  export: {
+    title: 'Export',
+    boardLabel: 'Export {{title}}',
+    source: 'Source file (.dc.html)',
+    timeout: 'Export timed out',
+    failed: 'Export failed',
+  },
+  note: {
+    titleLabel: 'Title',
+    contentLabel: 'Note text',
+  },
+  menu: {
+    cut: 'Cut',
+    paste: 'Paste',
+    duplicate: 'Duplicate',
+    toLast: 'Move to back',
+    toFirst: 'Move to front',
+    group: 'Group',
+    ungroup: 'Ungroup',
+    flipH: 'Flip horizontal',
+    flipV: 'Flip vertical',
+    wrapFlex: 'Wrap in flex container',
+    wrapGrid: 'Wrap in grid container',
+    deleteBoard: 'Delete artboard',
+  },
+  format: {
+    label: 'Note format',
+    size: 'Font size',
+    sizes: {
+      s: 'Small',
+      m: 'Medium',
+      l: 'Large',
+      xl: 'Extra large',
+      xxl: 'Huge',
+    },
+    bold: 'Bold',
+    italic: 'Italic',
+    list: 'List',
+    textColor: 'Text color',
+    textColorLabel: 'Text color {{color}}',
+    fill: 'Fill',
+    fillLabel: 'Fill {{color}}',
+  },
+  focus: {
+    label: 'Full screen: {{title}}',
+    prev: 'Previous artboard',
+    next: 'Next artboard',
+    exit: 'Exit full screen',
+  },
+  journal: {
+    title: 'Change log',
+    commit: 'Commit to git',
+    commitPrompt: 'Commit message',
+    empty: 'Every change is recorded here: who made it (by hand, Fast AI, Claude Code, an outside editor), which artboard, and what changed.',
+  },
+};

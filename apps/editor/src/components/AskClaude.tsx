@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Attachment } from '@dc/core';
 import { delegateToClaude, stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
@@ -13,7 +14,7 @@ import { Send, Stop } from './icons';
  * same run feed as the canvas and deck prompt bar.
  */
 export function AskClaude({
-  placeholder = '交给 Claude Code：从代码库补全 token 和组件、写品牌手册、做封面…',
+  placeholder,
   file,
   context,
   onOpen,
@@ -25,6 +26,7 @@ export function AskClaude({
   /** show a file the run changed */
   onOpen?: (file: string) => void;
 }) {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const delegates = useStore((s) => s.delegates);
   const health = useStore((s) => s.health);
@@ -43,9 +45,9 @@ export function AskClaude({
     if (!active) setBlocked(false);
   }, [active]);
   const send = async () => {
-    const t = text.trim();
+    const req = text.trim();
     const project = useStore.getState().project;
-    if (!t || !project || keeping) return;
+    if (!req || !project || keeping) return;
     if (active) return setBlocked(true);
     let files: Attachment[] = [];
     if (attach.items.length) {
@@ -53,7 +55,7 @@ export function AskClaude({
       try {
         files = await keepAttachments(project, attach.items);
       } catch (e) {
-        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
+        toast(t('prompt.attach.keepFailed', { error: (e as Error).message }), 'error');
         return;
       } finally {
         setKeeping(false);
@@ -61,8 +63,8 @@ export function AskClaude({
     }
     // the request moves into the feed at once; it comes back if Claude Code could not start
     setText('');
-    if (await delegateToClaude(file, null, t, files, { context: context?.() || undefined })) attach.clear();
-    else setText((cur) => cur || t);
+    if (await delegateToClaude(file, null, req, files, { context: context?.() || undefined })) attach.clear();
+    else setText((cur) => cur || req);
   };
   const reuse = (p: string) => {
     setText(p);
@@ -72,7 +74,7 @@ export function AskClaude({
     <div
       className={`dsask${attach.over ? ' dropping' : ''}`}
       role="region"
-      aria-label="交给 Claude Code"
+      aria-label={t('prompt.askClaude.label')}
       onDragOver={attach.handlers.onDragOver}
       onDragLeave={attach.handlers.onDragLeave}
       onDrop={attach.handlers.onDrop}
@@ -84,8 +86,8 @@ export function AskClaude({
         ref={box}
         rows={1}
         value={text}
-        placeholder={health?.claudeCli === false ? '本机找不到 claude 命令，无法委托。' : placeholder}
-        aria-label="请求"
+        placeholder={health?.claudeCli === false ? t('prompt.bar.noClaudeCli') : (placeholder ?? t('prompt.askClaude.placeholder'))}
+        aria-label={t('prompt.bar.request')}
         onChange={(e) => setText(e.target.value)}
         onPaste={attach.handlers.onPaste}
         onKeyDown={(e) => {
@@ -98,20 +100,20 @@ export function AskClaude({
       />
       {active ? (
         <button className="btn outline" onClick={() => stopRun({ kind: 'delegate', id: active.id })}>
-          <Stop /> 停止
+          <Stop /> {t('common.stop')}
         </button>
       ) : (
         <button className="btn primary" onClick={() => void send()} disabled={!text.trim() || keeping || health?.claudeCli === false}>
-          <Send /> 发送
+          <Send /> {t('common.send')}
         </button>
       )}
-      {attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
+      {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
       {blocked ? (
         <div className="prompt-hint warn" role="status">
-          Claude Code 还在处理上一条。等它完成或先停止；你写的这条会留在这里。
+          {t('prompt.bar.busyClaude')}
         </div>
       ) : (
-        text.includes('\n') && <div className="prompt-hint">Enter 发送，Shift + Enter 换行</div>
+        text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
       )}
     </div>
   );
