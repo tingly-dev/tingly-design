@@ -20,6 +20,8 @@ import {
   TextT,
 } from './icons';
 import { goTo } from '../host';
+import { ImportHere } from './ImportHere';
+import { canvasImport } from '../canvasImport';
 
 const SHAPES: { tool: Tool; label: string; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', label: '矩形', keys: 'R', icon: <Rect /> },
@@ -155,6 +157,8 @@ export function LeftBar() {
           <Caret />
         </span>
       </button>
+      <span className="sep" />
+      <ImportHere target={canvasImport} label="画布" />
       {menu === 'pages' && <PagesMenu {...at(pagesBtn.current)} onClose={() => setMenu(null)} />}
       {menu === 'shapes' && (
         <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label="形状和线条">

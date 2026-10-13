@@ -23,12 +23,13 @@ import DOMPurify from 'dompurify';
 import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
-import { addTab, deleteTab, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
+import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
 import { AskClaude } from '../ds/DsApp';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
 import { BASE } from '../../base';
+import { ImportHere } from '../ImportHere';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
   const [renaming, setRenaming] = useState(false);
@@ -330,6 +331,7 @@ export function DocsApp() {
         <span className="hint">{saving ? '保存中…' : '已保存'}</span>
         <div className="grow" />
         <span className="hint">{words} 字</span>
+        <ImportHere target={docsImport} label="文档" button="text" />
         <div className="popwrap">
           <button className={`btn ghost${pop === 'settings' ? ' on' : ''}`} onClick={() => setPop(pop === 'settings' ? null : 'settings')}>
             版式

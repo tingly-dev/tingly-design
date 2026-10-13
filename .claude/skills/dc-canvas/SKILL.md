@@ -33,7 +33,11 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files. An
 - `boards`: one entry per artboard file, keyed by its path in the folder. `x`, `y`, `w`, `h` in CSS px. Leave 80 px between artboards in a row and 120 px between rows. Optional `title`, `is_interactive: true` (the artboard has working controls), `radius`.
 - `order`: the same paths, back to front. The first is `Main.dc.html`.
 - `notes`: `kind: "title1"` is a 72 px heading over several artboards (keep it ≥ 223 px above their row); no `kind` is a sticky note with `w` and a `fill` of gray, red, orange, green, teal, blue, purple or pink.
+- `notes` can also hold pictures: `{ "kind": "image", "x", "y", "w", "h", "src": "uploads/photo-1a2b3c4d.png", "alt" }`, the path relative to the folder.
+- A `boards` entry with `imported` (`from`, `source`, `original`, `at`) came from an imported page or SVG; `original` is that file, kept under `uploads/`. Keep the key.
 - Keep every key you are not changing. To add an artboard, write its file and add a `boards` entry and an `order` slot.
+
+Files people brought in (attachments, imported pages and pictures) live under `uploads/`. An artboard shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; don't move or rename them.
 
 ## An artboard file
 

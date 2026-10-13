@@ -19,6 +19,7 @@ import {
   slideTitle,
   toggleHidden,
   uploadImage,
+  slidesImport,
 } from '../../slides';
 import { SlideFrame } from './SlideFrame';
 import { Menu, MenuItem } from '../Menu';
@@ -27,6 +28,7 @@ import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
 import { exportDeck } from './exportDeck';
+import { ImportHere } from '../ImportHere';
 
 // ------------------------------------------------------------------ strip
 
@@ -230,6 +232,7 @@ function TopLeft() {
           if (f) void uploadImage(f);
         }}
       />
+      <ImportHere target={slidesImport} label="幻灯片" button={false} />
       <button className="tb" aria-label="插入表格" title="插入表格" onClick={() => insertOnSlide(INSERTS.table, false)}>
         <IconTable size={16} stroke={1.6} aria-hidden="true" />
       </button>

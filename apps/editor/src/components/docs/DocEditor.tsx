@@ -50,7 +50,7 @@ export function pickImage(e: Editor): void {
     const project = useStore.getState().project;
     if (!f || !project) return;
     try {
-      const up = await api.upload(project, f);
+      const up = await api.upload(project, f, 'uploads');
       // the tab file is tabs/<id>.md: images are written relative to it
       e.chain().focus().setImage({ src: '../' + up.path, alt: f.name.replace(/\.[^.]*$/, '') }).run();
     } catch (err) {
