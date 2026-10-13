@@ -97,6 +97,13 @@ describe('toCanvas', () => {
     expect(JSON.parse(added.files['canvas.json']).boards['Acme.dc.html']).toMatchObject({ x: 0, y: 0 });
   });
 
+  it('names the first board of a split page after the page', () => {
+    const sections = [0, 1, 2, 3].map((i) => el('section', [text(`S${i}`)], '', box(i * 900, 900)));
+    const out = toCanvas(page(el('body', sections, '', box(0, 3600))), { now: 'x', note: false });
+    const added = addToCanvas(undefined, out);
+    expect(added.boards[0]).toBe('Acme.dc.html');
+  });
+
   it('splits a long page into one artboard per section', () => {
     const sections = [0, 1, 2, 3].map((i) => el('section', [text(`S${i}`)], '', box(i * 900, 900)));
     const out = toCanvas(page(el('body', sections, '', box(0, 3600))), { now: 'x', note: false });

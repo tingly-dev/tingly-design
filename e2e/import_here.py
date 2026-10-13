@@ -102,7 +102,7 @@ async def main():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-            pg = await b.new_page(viewport={'width': 1440, 'height': 900})
+            pg = await b.new_page(viewport={'width': 1440, 'height': 900}, permissions=['clipboard-read', 'clipboard-write'])
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             # the folder's picture is made in the page, so the PNG is real
@@ -141,6 +141,22 @@ async def main():
             ok = await wait_for(lambda: any(f.startswith('Imported') or f.startswith('Pasted') or 'Badge' in read('box-console', f) for f in json.loads(read('box-console', 'canvas.json'))['boards'] if f not in after['boards']))
             check('canvas: pasting SVG adds an artboard', ok)
 
+            # the real ⌘V: the system clipboard's SVG reaches the import, not the in-app clipboard
+            boards = set(json.loads(read('box-console', 'canvas.json'))['boards'])
+            await pg.evaluate("(t) => navigator.clipboard.writeText(t)", SVG.replace('Badge', 'Stamp'))
+            await pg.mouse.click(1300, 820)
+            await pg.keyboard.press('ControlOrMeta+V')
+            ok = await wait_for(lambda: any('Stamp' in read('box-console', f) for f in json.loads(read('box-console', 'canvas.json'))['boards'] if f not in boards))
+            check('canvas: ⌘V with SVG on the clipboard adds an artboard', ok)
+
+            # a file dragged over an artboard is not swallowed by its frame
+            frame = await pg.evaluate("() => { const r = document.querySelector('iframe')?.getBoundingClientRect(); return r ? [r.x + r.width / 2, r.y + Math.min(r.height / 2, 200)] : null; }")
+            if frame:
+                await pg.evaluate("() => { const d = new DataTransfer(); d.items.add(new File(['x'], 'a.png', { type: 'image/png' })); window.__dt = d; document.body.dispatchEvent(new DragEvent('dragenter', { dataTransfer: d, bubbles: true })); }")
+                hit = await pg.evaluate("([x, y]) => document.elementFromPoint(x, y)?.tagName", frame)
+                await pg.evaluate("() => document.body.dispatchEvent(new DragEvent('dragleave', { dataTransfer: window.__dt, bubbles: true }))")
+                check('canvas: while dragging, artboard frames let the drop through', hit != 'IFRAME', hit)
+
             # a picture dropped on the canvas lands where it was dropped
             shown = await drop(pg, [('photo.png', None, 'image/png')], at=(600, 400))
             check('canvas: dragging files shows where they will go', shown)
@@ -150,6 +166,14 @@ async def main():
             check('…as an image item kept in uploads/', ok and img.get('src', '').startswith('uploads/photo-'), img)
             loaded = await pg.wait_for_function("() => [...document.querySelectorAll('img')].some((i) => i.src.includes('/raw/uploads/photo-') && i.naturalWidth > 0)", timeout=8000)
             check('…and it shows on the canvas', bool(loaded))
+
+            # ⌘C ⌘V of the picture still uses the in-app clipboard: nothing to import, so the item is copied
+            count = lambda: sum(1 for n in json.loads(read('box-console', 'canvas.json'))['notes'].values() if n.get('kind') == 'image')
+            n0 = count()
+            await pg.keyboard.press('ControlOrMeta+C')
+            await pg.wait_for_timeout(300)
+            await pg.keyboard.press('ControlOrMeta+V')
+            check('canvas: ⌘V with the in-app clipboard still pastes the item', await wait_for(lambda: count() == n0 + 1), count())
 
             # what a canvas does not take is refused, naming what it does
             await drop(pg, [('notes.md', NOTES, 'text/markdown')])

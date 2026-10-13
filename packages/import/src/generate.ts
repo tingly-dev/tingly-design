@@ -433,7 +433,8 @@ export function addToCanvas(existing: string | undefined, gen: Generated, opts: 
   const dy = boxes.length ? Math.min(...boxes.map((b) => b.y)) : 0;
   const files: Record<string, string> = {};
   const entries: [string, BoardEntry][] = [];
-  const lead = slugName((incoming.order[0] && incoming.boards[incoming.order[0]].title) || '') || 'Imported';
+  // a split page's boards are titled "1 · Title": name the first after the page
+  const lead = slugName(((incoming.order[0] && incoming.boards[incoming.order[0]].title) || '').replace(/^\d+\s*·\s*/, '')) || 'Imported';
   for (const file of incoming.order) {
     const b = incoming.boards[file];
     const base = file === 'Main.dc.html' ? lead : file.replace(/\.dc\.html$/, '');

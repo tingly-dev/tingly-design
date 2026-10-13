@@ -4452,3 +4452,7 @@ input.dashtitle {
   width: min(640px, 100%);
   flex: none;
 }
+/* while a file is dragged over the editor, frames let it through to the import */
+body.filedrag iframe {
+  pointer-events: none;
+}

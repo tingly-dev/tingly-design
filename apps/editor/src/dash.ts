@@ -446,22 +446,25 @@ export const dashImport: ImportTarget = {
     const project = useStore.getState().project!;
     const files = filesOf(picked, 'data');
     const taken = new Set([...datasetsOf().map((d) => d.id), ...(await api.assets(project)).map((a) => a.path.replace(/^data\//, '').replace(/\.[^.]+$/, ''))]);
-    const added: string[] = [];
-    for (const f of files) {
+    // every file is read before any is written, so a bad one leaves nothing half-imported
+    const tables = files.map((f) => {
       const name = f.path.split('/').pop()!;
       const ext = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
       const format = ext === 'json' ? 'json' : ext === 'csv' ? 'csv' : 'tsv';
-      if (f.bytes.length > DASH_DATA_MAX) throw new Error(`${name} 超过 8 MB，看板读不了这么大的文件。`);
-      let rows: number;
+      if (f.bytes.length > DASH_DATA_MAX) throw new Error(`${name} 超过 8 MB，看板读不了这么大的文件，没有导入任何文件。`);
       try {
         const { table } = parseDataFile(new TextDecoder().decode(f.bytes), format);
         if (!table) throw new Error();
-        rows = table.rows.length;
+        return { f, name, ext, format, rows: table.rows.length };
       } catch {
-        throw new Error(`${name} 读不出表格：JSON 需要是一组对象，或 {columns, rows}。`);
+        throw new Error(`${name} 读不出表格（JSON 需要是一组对象，或 {columns, rows}），没有导入任何文件。`);
       }
+    });
+    const added: string[] = [];
+    for (const { f, name, ext, format, rows } of tables) {
       const stem = name.replace(/\.[^.]+$/, '');
-      const base = stem.normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 48) || 'data';
+      // the server keeps at most 40 characters of a data file's name; leave room for "-2"
+      const base = stem.normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 36).replace(/-+$/, '') || 'data';
       let id = base;
       for (let k = 2; taken.has(id); k++) id = `${base}-${k}`;
       taken.add(id);

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { styleDeclarations, type DsColor, type DsTokens, type DsTypeGroup, type DsTypeStyle } from '@dc/core';
-import { addFonts, editTokens, familyList } from '../../ds';
+import { addFonts, editTokens, familyList, typeOf } from '../../ds';
 import { contrastRatio, toHex } from '../panel/fields';
 
 /**
@@ -263,13 +263,6 @@ function StyleRow({ t, g, gi, s, open, onToggle }: { t: DsTokens; g: DsTypeGroup
 export function TypeView({ t }: { t: DsTokens }) {
   const [open, setOpen] = useState<string | null>(null);
   const fontInput = useRef<HTMLInputElement>(null);
-  const typeOf = (json: Record<string, unknown>) => {
-    const ty = (json.type ??= { fonts: [], families: {}, groups: [] }) as { fonts?: unknown[]; families?: Record<string, string>; groups?: { name: string; family?: string; styles: unknown[] }[] };
-    ty.fonts ??= [];
-    ty.families ??= {};
-    ty.groups ??= [];
-    return ty;
-  };
   const addStyle = (gi: number) => {
     const names = new Set(t.groups.flatMap((g) => g.styles.map((s) => s.name)));
     let i = 1;

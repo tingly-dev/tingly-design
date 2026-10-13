@@ -244,7 +244,13 @@ export const docsImport: ImportTarget = {
       const md = text.replace(MD_REF, (m, a1, p1, z1, a2, p2, z2) => {
         const ref = p1 ?? p2;
         if (/^([a-z]+:|\/|#)/i.test(ref)) return m;
-        const kept = at.get(joinPath(dir, decodeURI(ref.split(/[?#]/)[0])));
+        let path = ref.split(/[?#]/)[0];
+        try {
+          path = decodeURI(path);
+        } catch {
+          // a stray % in a link: look it up as written
+        }
+        const kept = at.get(joinPath(dir, path));
         return kept ? `${a1 ?? a2}../${kept}${z1 ?? z2}` : m;
       });
       const title = /^#\s+(.+)$/m.exec(md)?.[1].trim() || f.path.split('/').pop()!.replace(/\.[^.]+$/, '');

@@ -236,17 +236,27 @@ export function useInstalled(): Installed[] {
 }
 
 /** Font files into fonts/, each registered in tokens.json with a family and weight read from its name. */
+export type TypeJson = { fonts?: unknown[]; families?: Record<string, string>; groups?: { name: string; family?: string; styles: unknown[] }[] };
+
+/** tokens.json's type section, created with every list it holds if it is missing. */
+export function typeOf(json: Record<string, unknown>): TypeJson {
+  const ty = (json.type ??= { fonts: [], families: {}, groups: [] }) as TypeJson;
+  ty.fonts ??= [];
+  ty.families ??= {};
+  ty.groups ??= [];
+  return ty;
+}
+
 export async function addFonts(files: FileList | File[]): Promise<string[]> {
   const paths = await uploadTo('fonts', files);
   if (paths.length)
     editTokens((json) => {
-      const ty = (json.type ??= { fonts: [], families: {}, groups: [] }) as { fonts?: unknown[] };
-      ty.fonts ??= [];
+      const ty = typeOf(json);
       for (const p of paths) {
         const stem = p.replace(/^fonts\//, '').replace(/\.[^.]+$/, '');
         const family = stem.replace(/[-_](regular|bold|medium|light|semibold|black|italic|\d+)$/i, '').replace(/[-_]+/g, ' ');
         const weight = /bold/i.test(stem) ? '700' : /semibold/i.test(stem) ? '600' : /medium/i.test(stem) ? '500' : /light/i.test(stem) ? '300' : '400';
-        ty.fonts.push({ family, file: p, weight });
+        ty.fonts!.push({ family, file: p, weight });
       }
     }, 'fonts added');
   return paths;
@@ -266,6 +276,7 @@ export const dsImport: ImportTarget = {
     const asFile = (f: { path: string; type: string; bytes: Uint8Array }) => new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type });
     const fonts = await addFonts(filesOf(picked, 'font').map(asFile));
     const pics = await uploadTo('assets/Other', filesOf(picked, 'image', 'drawing').map(asFile));
-    return [fonts.length ? `${fonts.length} 个字体` : '', pics.length ? `${pics.length} 个素材` : ''].filter(Boolean).join('、').replace(/^/, '已加入 ') + '。';
+    if (!fonts.length && !pics.length) throw new Error('没有加进任何文件，上传没有成功。');
+    return `已加入 ${[fonts.length ? `${fonts.length} 个字体` : '', pics.length ? `${pics.length} 个素材` : ''].filter(Boolean).join('、')}。`;
   },
 };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { toast } from '../store';
+import { clipText, toast } from '../store';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { Menu, MenuItem } from './Menu';
 import { FileText, ImportI } from './icons';
@@ -16,10 +16,11 @@ import { FileText, ImportI } from './icons';
 /** What a file is, as far as importing goes. */
 export type Material = 'page' | 'drawing' | 'image' | 'markdown' | 'data' | 'font';
 
+// image is what the server keeps in uploads/ (no AVIF there)
 const MATERIAL: Record<Material, { zh: string; ext: RegExp; accept: string }> = {
   page: { zh: '网页（.html，连同它的文件夹）', ext: /\.html?$/i, accept: '.html,.htm,.css' },
   drawing: { zh: 'SVG', ext: /\.svg$/i, accept: '.svg' },
-  image: { zh: '图片（PNG、JPG、GIF、WebP）', ext: /\.(png|jpe?g|gif|webp|avif)$/i, accept: 'image/png,image/jpeg,image/gif,image/webp,image/avif' },
+  image: { zh: '图片（PNG、JPG、GIF、WebP）', ext: /\.(png|jpe?g|gif|webp)$/i, accept: 'image/png,image/jpeg,image/gif,image/webp' },
   markdown: { zh: 'Markdown（.md）', ext: /\.(md|markdown|txt)$/i, accept: '.md,.markdown,.txt' },
   data: { zh: '数据（CSV、TSV、JSON）', ext: /\.(csv|tsv|tab|json)$/i, accept: '.csv,.tsv,.tab,.json' },
   font: { zh: '字体（WOFF2、WOFF、TTF、OTF）', ext: /\.(woff2?|ttf|otf)$/i, accept: '.woff2,.woff,.ttf,.otf' },
@@ -88,23 +89,29 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
   useEffect(() => dirRef.current?.setAttribute('webkitdirectory', ''), []);
   useEffect(() => {
     let depth = 0;
+    const end = () => {
+      document.body.classList.remove('filedrag');
+      setDropping(false);
+    };
     const files = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
     const enter = (e: DragEvent) => {
       if (!files(e)) return;
       depth++;
+      // frames (artboards, the slide, the dashboard page) would swallow the drop
+      document.body.classList.add('filedrag');
       setDropping(true);
     };
     const leave = (e: DragEvent) => {
       if (!files(e)) return;
       depth = Math.max(0, depth - 1);
-      if (!depth) setDropping(false);
+      if (!depth) end();
     };
     const over = (e: DragEvent) => {
       if (files(e) && !e.defaultPrevented) e.preventDefault();
     };
     const drop = (e: DragEvent) => {
       depth = 0;
-      setDropping(false);
+      end();
       if (!files(e) || e.defaultPrevented) return;
       e.preventDefault();
       const at = { x: e.clientX, y: e.clientY };
@@ -115,7 +122,9 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
       const cd = e.clipboardData;
       if (!cd) return;
       const list = [...cd.files].map((file, i) => ({ file, path: file.name || `pasted-${i + 1}.${file.type.split('/')[1] ?? 'bin'}` }));
-      const svg = list.length ? null : pickedFromText(cd.getData('text/plain'));
+      const text = cd.getData('text/plain');
+      // an element copied in the editor that holds an SVG is pasted as that element
+      const svg = list.length || (text && text === clipText()) ? null : pickedFromText(text);
       const t = live.current.target;
       if (svg && t.accepts.includes('drawing')) {
         e.preventDefault();
@@ -136,6 +145,7 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
       window.removeEventListener('dragover', over);
       window.removeEventListener('drop', drop);
       window.removeEventListener('paste', paste);
+      end();
     };
   }, []);
 

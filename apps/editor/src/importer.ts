@@ -223,7 +223,7 @@ export async function importPicked(picked: Picked, name: string, title: string, 
   const page = await readPage(picked);
   await api.createProject(name, title || page.extracted.title || name, 'design');
   onStep('assets');
-  const out = await writePage(name, picked, page, title || name);
+  const out = await writePage(name, picked, page, title || page.extracted.title || name);
   onStep('write');
   const { files } = await api.files(name);
   // artboards first, the index last, so the canvas never lists a file that is not there yet
