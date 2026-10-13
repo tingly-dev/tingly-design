@@ -9,7 +9,11 @@ import {
   attr,
   attachmentBlocks,
   attachmentSummary,
+  checkScene,
   checkSlide,
+  sceneFile,
+  sceneIdOf,
+  sceneTiming,
   type Attachment,
   type ModelMessage,
   sectionsOf,
@@ -20,6 +24,7 @@ import { api } from './api';
 import { ExecSession, replay } from './executor';
 import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine } from './store';
 import { slideTitle } from './slides';
+import { motionOf } from './motion';
 
 /** A deck's outline for the model: sections and slide titles, the current one marked. */
 function deckOutline(file: string): string {
@@ -40,12 +45,30 @@ function deckOutline(file: string): string {
 
 /** Subset errors a reply introduced (ones the slide already had are not the reply's). */
 function newSlideErrors(file: string, before: string, after: string): string[] {
-  const id = slideIdOf(file);
+  const scene = sceneIdOf(file);
+  const id = slideIdOf(file) ?? scene;
   if (!id) return [];
-  const known = new Set(checkSlide(parseDc(before), id).map((i) => i.message));
-  return checkSlide(parseDc(after), id)
+  const check = (src: string) => (scene ? checkScene(parseDc(src), scene) : checkSlide(parseDc(src), id));
+  const known = new Set(check(before).map((i) => i.message));
+  return check(after)
     .filter((i) => i.level === 'error' && !known.has(i.message))
     .map((i) => i.message);
+}
+
+/** A motion piece for the model: its sizes, the scenes with their length, where the playhead is. */
+function motionOutline(file: string): string {
+  const s = get();
+  const m = motionOf(s);
+  const view = s.motionView;
+  const fmts = Object.entries(m.formats).map(([n, f], i) => `${n} ${f.size.join('×')}${i === 0 ? ' (primary: style is its look)' : ''}`);
+  const lines = [`"${m.title}", a motion piece. Formats: ${fmts.join(', ')}.`];
+  if (view) lines.push(`The person is looking at the ${view.format} format${view.scene ? (view.landed ? `, at the start of scene ${view.scene}, with every element drawn where it lands` : `, ${(view.at / 1000).toFixed(2)}s into scene ${view.scene}`) : ''}.`);
+  lines.push('Scenes in order:');
+  m.order.forEach((id, i) => {
+    const t = sceneTiming(display(s, sceneFile(id)) ?? '');
+    lines.push(`- ${i + 1}. ${sceneFile(id)}${sceneFile(id) === file ? ' (this one)' : ''}: ${t.duration ?? '4s'}${t.transition ? `, leaves with ${t.transition}` : ''}`);
+  });
+  return lines.join('\n');
 }
 
 /**
@@ -138,8 +161,11 @@ export async function delegateToClaude(file: string | undefined, tid: number | n
     const journal = get()
       .journal.slice(-12)
       .map((j) => `- [${j.actor}] ${j.file}: ${j.summary}`);
+    // a motion piece: where the person stopped, so "this" and "here" mean something
+    const view = get().kind === 'motion' ? get().motionView : null;
+    const where = view?.scene ? view.landed ? `停在场景 ${view.scene} 的开头（按落定的样子看整页），看的是 ${view.format} 尺寸。` : `停在场景 ${view.scene} 的 ${(view.at / 1000).toFixed(1)} s，看的是 ${view.format} 尺寸。` : '';
     await api.delegate(project, {
-      prompt,
+      prompt: where ? `${where}\n\n${prompt}` : prompt,
       file,
       pointed: file ? pointedInfo(file, tid) : null,
       journal,
@@ -173,7 +199,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
       if (markupOnce === null) {
         markupOnce = markup;
         const text = buildFastEditPrompt({
-          ...(get().kind === 'slides' ? { outline: deckOutline(file) } : { canvas: canvasOf(get()) }),
+          ...(get().kind === 'slides' ? { outline: deckOutline(file) } : get().kind === 'motion' ? { outline: motionOutline(file) } : { canvas: canvasOf(get()) }),
           file,
           markup,
           journal: get().journal,
@@ -256,7 +282,7 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         messages.push({ role: 'assistant', content: reply.trim() }, { role: 'user', content: logMessage(logs) });
         continue;
       }
-      const broke = get().kind === 'slides' && out !== base ? newSlideErrors(file, base, out) : [];
+      const broke = (get().kind === 'slides' || get().kind === 'motion') && out !== base ? newSlideErrors(file, base, out) : [];
       if (broke.length && retries < 2) {
         retries++;
         setDraft(file, undefined);

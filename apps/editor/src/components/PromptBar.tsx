@@ -33,11 +33,26 @@ export function PromptBar() {
   }, [health]);
 
   const slides = useStore((s) => s.kind === 'slides');
+  const motion = useStore((s) => s.kind === 'motion');
   const placeholder = slides
     ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题再大一点、换成深色背景”', claude: '交给 Claude Code：适合整页重写、跨页修改、新建一组幻灯片' }
-    : PLACEHOLDER;
+    : motion
+      ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题晚半秒进来”“竖版里字再大一点”', claude: '交给 Claude Code：改一个场景、加一段动画、调整节奏、做一张封面…' }
+      : PLACEHOLDER;
   const stageSlide = useStore((s) => s.slide);
-  const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : slides ? (stageSlide ? `slides/${stageSlide}.html` : undefined) : canvas.order[0];
+  const stageScene = useStore((s) => s.motionView?.scene ?? null);
+  const file =
+    sel?.kind === 'el' || sel?.kind === 'board'
+      ? sel.file
+      : slides
+        ? stageSlide
+          ? `slides/${stageSlide}.html`
+          : undefined
+        : motion
+          ? stageScene
+            ? `scenes/${stageScene}.html`
+            : undefined
+          : canvas.order[0];
   const tid = sel?.kind === 'el' ? sel.tid : null;
   const pointed = useStore((s) => {
     if (!file || tid === null) return null;
@@ -106,9 +121,17 @@ export function PromptBar() {
               <code>{handle}</code> &lt;{tag}&gt; {label}
             </>
           ) : file ? (
-            slides ? <>整页 {file.replace(/^slides\/|\.html$/g, '')}</> : <>整个画板 {canvas.boards[file]?.title || file}</>
+            slides ? (
+              <>整页 {file.replace(/^slides\/|\.html$/g, '')}</>
+            ) : motion ? (
+              <>整个场景 {file.replace(/^scenes\/|\.html$/g, '')}</>
+            ) : (
+              <>整个画板 {canvas.boards[file]?.title || file}</>
+            )
           ) : slides ? (
             '没有幻灯片'
+          ) : motion ? (
+            '没有场景'
           ) : (
             '没有画板'
           )}

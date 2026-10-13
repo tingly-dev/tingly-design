@@ -198,7 +198,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
     const f = p.formats[0];
     body = (
       <div className="lp-motion">
-        {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} />}
+        {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} base={api.rawBase(project)} />}
         {!p.still && <div className="lp-empty">还没有场景</div>}
         <div className="lp-mmeta">
           <span>{p.seconds} s</span>
@@ -232,13 +232,13 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
 }
 
 /** A still of a motion piece: its cover scene at the end of its entrances, or most of the way through its first scene. */
-function MotionStill({ still, format, width }: { still: { motion: MotionJson; id: string; source: string }; format: string; width: number }) {
+function MotionStill({ still, format, width, base }: { still: { motion: MotionJson; id: string; source: string }; format: string; width: number; base: string }) {
   const motion = useMemo(() => ({ ...still.motion, order: [still.id] }), [still]);
   const scenes = useMemo(() => ({ [still.id]: still.source }), [still]);
   const cover = !still.motion.order.includes(still.id);
   // the preview sits 6px in from the card on each side, at 16:10
   const bw = width - 12;
-  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} box={{ w: bw, h: (bw * 10) / 16 }} title={`${still.motion.title} 的封面`} />;
+  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={`${still.motion.title} 的封面`} />;
 }
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {

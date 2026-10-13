@@ -24,14 +24,30 @@ const ROLE_ZH: Record<string, string> = {
   Notes: '备注',
 };
 
-function Rows({ file, layers, depth, open, toggle }: { file: string; layers: Layer[]; depth: number; open: Set<number>; toggle: (t: number) => void }) {
+export function Rows({
+  file,
+  layers,
+  depth,
+  open,
+  toggle,
+  away,
+}: {
+  file: string;
+  layers: Layer[];
+  depth: number;
+  open: Set<number>;
+  toggle: (t: number) => void;
+  /** motion: elements not on screen at the playhead, with when they are */
+  away?: Map<number, string>;
+}) {
   const sel = useStore((s) => (s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
+  const scene = useStore((s) => s.kind === 'motion');
   return (
     <>
       {layers.map((l) => (
         <div key={l.tid}>
           <div
-            className="lr"
+            className={`lr${away?.has(l.tid) ? ' away' : ''}`}
             role="treeitem"
             aria-selected={sel === l.tid}
             aria-expanded={l.children.length ? open.has(l.tid) : undefined}
@@ -51,10 +67,11 @@ function Rows({ file, layers, depth, open, toggle }: { file: string; layers: Lay
             <span className="ri">
               <RoleIcon role={l.role === 'Slide' ? 'Artboard' : l.role === 'Notes' ? 'Note' : l.role === 'Connector' ? 'Arrow' : l.role} />
             </span>
-            <span className="rn">{ROLE_ZH[l.role] ?? l.role}</span>
+            <span className="rn">{scene && l.role === 'Slide' ? '场景' : (ROLE_ZH[l.role] ?? l.role)}</span>
             {l.label && <span className="rl">“{l.label}”</span>}
+            {away?.has(l.tid) && <span className="rt">{away.get(l.tid)}</span>}
           </div>
-          {open.has(l.tid) && l.children.length > 0 && <Rows file={file} layers={l.children} depth={depth + 1} open={open} toggle={toggle} />}
+          {open.has(l.tid) && l.children.length > 0 && <Rows file={file} layers={l.children} depth={depth + 1} open={open} toggle={toggle} away={away} />}
         </div>
       ))}
     </>
@@ -62,9 +79,10 @@ function Rows({ file, layers, depth, open, toggle }: { file: string; layers: Lay
 }
 
 /** The current slide's layers (the deck's other slides live in the strip). */
-export function SlideLayers() {
-  const id = useStore((s) => s.slide);
-  const file = id ? slideFile(id) : '';
+export function SlideLayers({ file: scene, away }: { file?: string; away?: Map<number, string> } = {}) {
+  const slide = useStore((s) => s.slide);
+  const id = scene ?? slide;
+  const file = scene ?? (id ? slideFile(id) : '');
   const source = useStore((s) => (file ? display(s, file) : undefined));
   const sel = useStore((s) => s.selection);
   const layers = useMemo(() => (source ? layerTree(parsed(source)) : []), [source]);
@@ -90,7 +108,7 @@ export function SlideLayers() {
   if (!id) return <div className="layers" />;
   return (
     <div className="layers" role="tree" aria-label="图层">
-      <Rows file={file} layers={layers} depth={0} open={open} toggle={toggle} />
+      <Rows file={file} layers={layers} depth={0} open={open} toggle={toggle} away={away} />
     </div>
   );
 }

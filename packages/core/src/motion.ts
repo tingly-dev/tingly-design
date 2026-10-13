@@ -16,6 +16,9 @@
  * share one interpretation of the source.
  */
 import type { DeckFace } from './deck';
+import type { HumanOp } from './ops';
+import { attr, type DcDoc, type DcElement } from './parse';
+import { checkSlide, type SlideIssue } from './slides';
 import { parseStyle } from './style';
 
 export const MOTION_FILE = 'motion.json';
@@ -537,6 +540,57 @@ export function attrsForFormat(attrs: Record<string, string>, format: string, fo
   return out;
 }
 
+/**
+ * `over` (a `data-<format>` value) with `set` applied: a value replaces or adds
+ * a declaration, null drops it so the shared value shows again. Null when
+ * nothing is left.
+ */
+export function setOverride(over: string, set: Record<string, string | null>): string | null {
+  const decls = parseStyle(over)
+    .filter((d) => d.prop)
+    .map((d) => [d.prop, d.value] as [string, string]);
+  for (const [prop, value] of Object.entries(set)) {
+    const i = decls.findIndex(([p]) => p === prop);
+    if (value === null) {
+      if (i >= 0) decls.splice(i, 1);
+    } else if (i >= 0) decls[i][1] = value;
+    else decls.push([prop, value]);
+  }
+  return decls.length ? decls.map(([p, v]) => `${p}:${v}`).join(';') : null;
+}
+
+/**
+ * Edits made while a scene is shown in a format other than the primary one:
+ * style changes go to that format's override (`data-<format>`), everything
+ * else (text, structure, timing) stays shared.
+ */
+export function editsForFormat(ops: HumanOp[], doc: DcDoc, format: string): HumanOp[] {
+  const name = `data-${format}`;
+  const pending = new Map<number, string | null>();
+  const out: HumanOp[] = [];
+  for (const op of ops) {
+    if (op.kind !== 'styles' && op.kind !== 'style') {
+      out.push(op);
+      continue;
+    }
+    const el = doc.elements[op.tid];
+    if (!el) continue;
+    const set = op.kind === 'styles' ? op.set : { [op.prop]: op.value };
+    const before = pending.has(op.tid) ? pending.get(op.tid)! : (attr(el, name) ?? null);
+    const next = setOverride(before ?? '', set);
+    pending.set(op.tid, next);
+  }
+  for (const [tid, value] of pending) out.push({ kind: 'attr', tid, name, value });
+  return out;
+}
+
+/** The style an element shows in a format: `style` with its `data-<format>` merged over it. */
+export function styleInFormat(attrs: { style?: string } & Record<string, string | undefined>, format: string | null): string {
+  const base = attrs.style ?? '';
+  const over = format ? attrs[`data-${format}`] : undefined;
+  return over ? mergeStyle(base, over) : base;
+}
+
 /** `base` with every declaration in `over` replacing or added after it. */
 export function mergeStyle(base: string, over: string): string {
   const extra = parseStyle(over).filter((d) => d.prop);
@@ -595,4 +649,66 @@ export function motionTimeline(scenes: { id: string; duration?: string; transiti
 /** Base CSS for a scene of any size (the slide subset's rules, sized to the format). */
 export function sceneBaseCss(w: number, h: number, css: string): string {
   return css.replace(/width:1920px;height:1080px/g, `width:${w}px;height:${h}px`);
+}
+
+/**
+ * A scene file checked as the editor and fast AI see it: the slide subset
+ * (motion transitions take a duration, so the slide rule for them is left
+ * out) and the timing rules, each tied to the element it is about.
+ */
+export function checkScene(doc: DcDoc, id: string, duration?: number): SlideIssue[] {
+  const out = checkSlide(doc, id).filter((i) => !i.message.startsWith('data-transition is'));
+  const section = doc.elements.find((e) => e.tag === 'section' && !e.parent);
+  if (!section) return out;
+  const tr = attr(section, 'data-transition');
+  if (tr && !(TRANSITION_KINDS as readonly string[]).includes(tr.trim().split(/\s+/)[0])) out.push({ tid: section.tid, level: 'error', message: `data-transition is cut, fade, push or magic, not "${tr}".` });
+  const els = doc.elements.filter((e) => e === section || within(e, section));
+  const plan = planScene(
+    els.map((e) => ({ tag: e.tag, attrs: Object.fromEntries(e.attrs.map((a) => [a.name, a.value])), text: e.children.some((c) => c.kind === 'el') ? undefined : e.children.map((c) => (c.kind === 'text' ? c.text : '')).join('') })),
+    duration ?? parseTime(attr(section, 'data-duration')) ?? DEFAULT_SCENE_MS,
+  );
+  for (const i of plan.issues) out.push({ tid: els[i.index].tid, level: i.level, message: `<${els[i.index].tag}> ${i.message}` });
+  return out;
+}
+
+function within(el: DcElement, root: DcElement): boolean {
+  for (let p = el.parent; p; p = p.parent) if (p === root) return true;
+  return false;
+}
+
+/**
+ * When each element of a scene file is on screen, in one format: tid → its
+ * window relative to the scene. The section itself is always on screen.
+ */
+export function sceneVisibility(
+  doc: DcDoc,
+  format: string,
+  formats: string[],
+): { duration: number; windows: Map<number, { from: number; to: number }>; settled: number } {
+  const section = doc.elements.find((e) => e.tag === 'section' && !e.parent);
+  const windows = new Map<number, { from: number; to: number }>();
+  if (!section) return { duration: DEFAULT_SCENE_MS, windows, settled: 0 };
+  const shown: { el: DcElement; attrs: Record<string, string> }[] = [];
+  for (const e of doc.elements) {
+    if (e !== section && !within(e, section)) continue;
+    let gone = false;
+    for (let p: DcElement | null = e; p; p = p.parent) if (!attrsForFormat(Object.fromEntries(p.attrs.map((a) => [a.name, a.value])), format, formats)) gone = true;
+    if (gone) continue;
+    shown.push({ el: e, attrs: attrsForFormat(Object.fromEntries(e.attrs.map((a) => [a.name, a.value])), format, formats)! });
+  }
+  const duration = parseTime(shown[0]?.attrs['data-duration']) ?? DEFAULT_SCENE_MS;
+  const plan = planScene(
+    shown.map(({ el, attrs }) => ({ tag: el.tag, attrs, text: el.children.some((c) => c.kind === 'el') ? undefined : el.children.map((c) => (c.kind === 'text' ? c.text : '')).join('') })),
+    duration,
+  );
+  for (const v of plan.visible) windows.set(shown[v.index].el.tid, { from: v.from, to: v.to });
+  // the moment everything has arrived and nothing has left yet: where an editor lands on a scene
+  let arrived = 0;
+  let leaving = duration;
+  for (const p of plan.plans) {
+    if (p.kind === 'in' || p.kind === 'count') arrived = Math.max(arrived, p.delay + p.duration);
+    if (p.kind === 'out') leaving = Math.min(leaving, p.delay);
+  }
+  const settled = Math.max(0, Math.min(arrived, leaving - 1, duration - 1));
+  return { duration, windows, settled };
 }
