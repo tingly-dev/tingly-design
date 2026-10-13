@@ -1,0 +1,59 @@
+<section id="intro" data-duration="4.5s" data-transition="fade 500ms" style="background:#05070f;color:#ffffff;font-family:'Inter', Arial, sans-serif;padding:120px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:32px;position:relative;overflow:hidden" data-tall="padding:80px 56px">
+<x-embed data-seek style="position:absolute;left:0;top:0;width:100%;height:100%;display:block"><canvas data-quality="0.5" style="display:block;width:100%;height:100%"></canvas><script type="text/wgsl">
+struct Fx { time: f32, aspect: f32 }
+@group(0) @binding(0) var<uniform> fx: Fx;
+fn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
+fn noise(p: vec2f) -> f32 {
+  let i = floor(p); let f = fract(p); let s = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2f(1.0, 0.0)), s.x), mix(hash(i + vec2f(0.0, 1.0)), hash(i + vec2f(1.0, 1.0)), s.x), s.y);
+}
+fn fbm(p: vec2f) -> f32 {
+  var v = 0.0; var a = 0.5; var q = p;
+  for (var i = 0; i < 5; i++) { v += a * noise(q); q = q * 2.03 + vec2f(1.7, 9.2); a *= 0.5; }
+  return v;
+}
+@fragment fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
+  let t = fx.time * 0.22;
+  let p = vec2f(uv.x * fx.aspect, uv.y) * 1.8;
+  let q = vec2f(fbm(p + vec2f(0.0, t)), fbm(p + vec2f(5.2, 1.3) - t));
+  let r = vec2f(fbm(p + 3.0 * q + vec2f(1.7, 9.2) + 0.6 * t), fbm(p + 3.0 * q + vec2f(8.3, 2.8) - 0.4 * t));
+  let f = fbm(p + 3.0 * r);
+  var c = mix(vec3f(0.02, 0.03, 0.09), vec3f(0.15, 0.39, 0.92), clamp(f * f * 2.4, 0.0, 1.0));
+  c = mix(c, vec3f(0.52, 0.30, 0.95), clamp(length(q) * 0.7 - 0.2, 0.0, 1.0) * 0.55);
+  c = mix(c, vec3f(1.0, 0.56, 0.46), clamp(r.x * r.x * 1.6 - 0.35, 0.0, 1.0) * 0.75);
+  c *= 1.0 - 0.55 * distance(uv, vec2f(0.5));
+  return vec4f(c, 1.0);
+}
+</script><script>
+(function () {
+  // a shader layer for motion: draws itself with vgpu where WebGPU works, else asks the renderer for each frame
+  var cv = document.querySelector('canvas'), wgsl = document.querySelector('script[type="text/wgsl"]').textContent;
+  var q = +(cv.dataset.quality || 0.5), w = 0, h = 0;
+  var mode = new Promise(function (res) {
+    var timer = setTimeout(function () { res(null); }, 250);
+    addEventListener('message', function (e) { if (e.data && e.data.dcFx === 'host') { clearTimeout(timer); res(e.data.url); } });
+    parent.postMessage({ dcFx: 'probe' }, '*');
+  });
+  var live = mode.then(function (url) {
+    if (url || !navigator.gpu) return null;
+    return import('https://cdn.jsdelivr.net/npm/vgpu@0.3.1/+esm').then(function (v) {
+      return v.init().then(function (gpu) {
+        var s = v.surface(gpu, cv, { alphaMode: 'premultiplied' }), fx = v.effect(gpu, wgsl);
+        return function (t) { fx.set({ fx: { time: t / 1000, aspect: innerWidth / innerHeight } }); v.frame(gpu, function (f) { f.pass(s, fx); }); };
+      });
+    }).catch(function (e) { console.warn('fx: ' + e.message); return null; });
+  });
+  function fromHost(url, t) {
+    if (!w) { var r = devicePixelRatio || 1; w = Math.max(1, Math.round(innerWidth * r * q)); h = Math.max(1, Math.round(innerHeight * r * q)); cv.width = w; cv.height = h; }
+    return fetch(url, { method: 'POST', body: JSON.stringify({ wgsl: wgsl, t: t, w: w, h: h }) })
+      .then(function (r) { if (!r.ok) throw new Error('fx frame ' + r.status); return r.arrayBuffer(); })
+      .then(function (b) { cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(b), w, h), 0, 0); });
+  }
+  window.seek = function (t) { return mode.then(function (url) { return url ? fromHost(url, t) : live.then(function (draw) { if (draw) draw(t); }); }); };
+})();
+</script></x-embed>
+<p data-in="rise 500ms @0.3s" style="position:relative;padding:12px 26px;border:2px solid rgba(255,255,255,0.4);border-radius:999px;font-size:26px;font-weight:800;letter-spacing:5px">NEW IN MOTION</p>
+<h1 data-in="blur 900ms @0.6s" style="position:relative;font-family:'Instrument Serif', Georgia, serif;font-size:210px;font-weight:400;line-height:1;letter-spacing:-4px;text-align:center" data-tall="font-size:150px">Shader effects</h1>
+<p data-in="rise 600ms @1.5s" style="position:relative;font-size:46px;font-weight:600;text-align:center;color:rgba(255,255,255,0.85)" data-tall="font-size:40px;width:880px">Write a WGSL shader. It plays in the editor and renders to video.</p>
+<aside>Opening: an aurora shader behind the title, drawn with vgpu.</aside>
+</section>

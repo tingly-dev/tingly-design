@@ -27,6 +27,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFile
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
+import { disposeFx, FX_HOST, hostFx, warmFx } from './motion-fx.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -109,7 +110,7 @@ scrub.oninput=()=>{uncover();playing=false;play.textContent='Play';stage.pause()
     : '';
   return `<!doctype html><html><head><meta charset="utf-8"><title>${(motion.title ?? stem).replace(/</g, '&lt;')}</title><style>${css}</style></head><body>${
     player ? '<div id="wrap"><div id="root"></div><div id="dc-cover"></div></div>' + controls + '<div id="issues"></div>' : '<div id="root"></div>'
-  }<script>${runtime.replace(/<\/script/gi, '<\\/script')}</script>${player ? `<script>${boot}</script>` : ''}</body></html>`;
+  }<script>${runtime.replace(/<\/script/gi, '<\\/script')}</script>${player ? `<script>${boot}</script>` : `<script>${FX_HOST}</script>`}</body></html>`;
 }
 
 function run(cmd, argv, input) {
@@ -167,6 +168,8 @@ function pngDiff(page, a, b) {
   );
 }
 
+// a cold GPU or shader compile can outlast an embed's seek timeout, so get them out of the way
+if ((await warmFx([...Object.values(scenes), coverHtml ?? ''])) > 0) console.log('shader effects: GPU ready');
 const browser = await chromium.launch({ executablePath: chromePath() });
 let failed = false;
 try {
@@ -179,6 +182,7 @@ try {
     }
     const [w, h] = size;
     const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: scale });
+    await hostFx(page);
     page.on('pageerror', (e) => console.error(`[page] ${e.message}`));
     await page.setContent(pageHtml(false), { waitUntil: 'load' });
     const info = await page.evaluate(
@@ -225,6 +229,7 @@ try {
     if (coverAt != null) coverPng = await shot(Math.min(coverAt, info.duration));
     else if (coverScene) {
       const cp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: scale });
+      await hostFx(cp);
       await cp.setContent(pageHtml(false), { waitUntil: 'load' });
       await cp.evaluate(
         async ({ motion, id, html, format }) => {
@@ -280,5 +285,6 @@ try {
   }
 } finally {
   await browser.close();
+  disposeFx();
 }
 process.exit(failed ? 1 : 0);
