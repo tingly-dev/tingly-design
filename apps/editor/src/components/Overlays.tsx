@@ -165,7 +165,8 @@ export function FocusView() {
 
   useEffect(() => {
     if (!ready || !file || source === undefined) return;
-    const msg: ToRuntime = { dc: 'render', file, source, files: {}, props: {}, mode: 'play', selected: null };
+    const project = useStore.getState().project;
+    const msg: ToRuntime = { dc: 'render', file, source, files: {}, props: {}, mode: 'play', selected: null, base: project ? api.rawBase(project) : undefined };
     frame.current?.contentWindow?.postMessage(msg, '*');
   }, [ready, file, source]);
 

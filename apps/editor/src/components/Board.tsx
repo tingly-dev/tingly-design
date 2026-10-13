@@ -8,6 +8,7 @@ import { handleKey } from '../shortcuts';
 import { Download, Expand } from './icons';
 import { Menu, MenuItem } from './Menu';
 import { SERVER } from '../base';
+import { api } from '../api';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -77,6 +78,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   const source = useStore((s) => display(s, file));
   const drafting = useStore((s) => s.drafts[file] !== undefined);
   const mode = useStore((s) => s.mode);
+  const project = useStore((s) => s.project);
   const zoom = useStore((s) => s.view.zoom);
   const selected = useStore((s) => (s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   const boardSelected = useStore((s) => s.selection?.kind === 'board' && s.selection.file === file);
@@ -195,12 +197,12 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   // keep the frame rendering the current source
   useEffect(() => {
     if (!ready || source === undefined) return;
-    post(file, { dc: 'render', file, source, files: imports, props: {}, mode, selected });
+    post(file, { dc: 'render', file, source, files: imports, props: {}, mode, selected, base: project ? api.rawBase(project) : undefined });
     if (pendingEdit.current !== null) {
       post(file, { dc: 'edit', tid: pendingEdit.current });
       pendingEdit.current = null;
     }
-  }, [ready, source, imports, mode, file, selected]);
+  }, [ready, source, imports, mode, file, selected, project]);
 
   useEffect(() => {
     if (ready) post(file, { dc: 'hover', tid: hover });
