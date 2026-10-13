@@ -1,6 +1,6 @@
 # 导入外部素材（HTML、Markdown、PPT）：调研与评估
 
-状态：**HTML、SVG → 画布已实施**（`packages/import`，见 §10、§11），Figma、HTML 幻灯片、Markdown 和 PPT 仍是评估。本文回答一个问题：用户手里已经有别处做好的素材（一个 HTML 页面、一份 Markdown、一套 PPT），怎样把它变成 tingly-design 里可以双向编辑的项目，值不值得做，先做什么。代码事实取自 tingly-design `c726adc`，路径相对本仓库。
+状态：**HTML、SVG → 画布已实施**（`packages/import`，见 §10、§11），Figma、HTML 幻灯片、Markdown 和 PPT 仍是评估。本文回答一个问题：用户手里已经有别处做好的素材（一个 HTML 页面、一份 Markdown、一套 PPT），怎样把它变成 tingly-design 里可以双向编辑的项目，值不值得做，先做什么。路径相对本仓库。
 
 ## 0. 结论先说
 
@@ -266,7 +266,7 @@ SVG 是第二个来源（`sources/svg/read.ts`）：
 
 ## 12. 导入的原文件放哪：统一进 `uploads/`
 
-和对话附件（PR #10）用同一个目录、同一条规则：**人带进项目的东西都放 `uploads/`，用的地方直接引用，不再复制一份。**
+和对话附件（[attachments.md](./attachments.md)）用同一个目录、同一条规则：**人带进项目的东西都放 `uploads/`，用的地方直接引用，不再复制一份。**
 
 | 带进来的是 | 放在 | 说明 |
 | --- | --- | --- |

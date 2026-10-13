@@ -63,4 +63,4 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 | **[How it works](docs/en/architecture.md)** | The source format, the write-back engine, fast AI, collaboration, sandboxing and the repository layout |
 | **[Development and tests](docs/en/development.md)** | Unit tests, typecheck and the Playwright end-to-end suites |
 | **[Compared with the original](docs/en/comparison.md)** | What matches Claude's artifact types and what is not there yet |
-| **[From Design to five kinds](docs/zh/artifact-types.md)** | The design notes behind the five project kinds (in Chinese) |
+| **[Design notes](.design/README.md)** | Why each subsystem is built the way it is, one note per feature, and which features every project kind must support (mostly in Chinese) |
