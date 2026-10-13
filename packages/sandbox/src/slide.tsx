@@ -133,11 +133,6 @@ export function innerSource(source: string, inner: { start: number; end: number 
   return inner ? source.slice(inner.start, inner.end) : '';
 }
 
-/** Relative image paths in a slide point into the project's files. */
-export function resolveSrc(src: unknown, base: string): unknown {
-  if (typeof src !== 'string' || !base) return src;
-  if (/^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(src)) return src;
-  return base + src.replace(/^\.?\//, '');
-}
+export { resolveSrc } from './urls';
 
 export { parseStyle, styleObject };

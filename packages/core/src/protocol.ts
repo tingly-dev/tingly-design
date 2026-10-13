@@ -32,6 +32,8 @@ export type ToRuntime =
       slide?: { head: string; base: string; still?: boolean };
       /** a canvas board: where the project's files are served, for relative paths such as assets/logo.png */
       base?: string;
+      /** a motion scene (with `slide`): drawn in one format, stopped at a time */
+      motion?: MotionStageInfo;
     }
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }
@@ -40,7 +42,21 @@ export type ToRuntime =
   /** start retyping an element's text in place */
   | { dc: 'edit'; tid: number }
   /** presenting a slide: show its builds up to this step */
-  | { dc: 'step'; step: number };
+  | { dc: 'step'; step: number }
+  /** a motion scene: show this time (ms from the scene's start) without rendering again */
+  | { dc: 'seek'; t: number; landed?: boolean };
+
+/** How a motion scene is drawn on the editor stage. */
+export interface MotionStageInfo {
+  format: string;
+  /** every format's name, to tell `data-<format>` overrides from other data attributes */
+  formats: string[];
+  size: [number, number];
+  /** ms from the scene's start */
+  t: number;
+  /** draw every element landed, the scene read as a page: the playhead sits on the scene's first moment */
+  landed?: boolean;
+}
 
 export type FromRuntime =
   | { dc: 'ready' }
@@ -52,6 +68,8 @@ export type FromRuntime =
   | { dc: 'move'; tid: number; target: number; where: 'before' | 'after' }
   /** a drag out of the flow: the element becomes absolutely positioned */
   | { dc: 'dragout'; tid: number; set: Record<string, string>; parentTid: number | null; parentSet: Record<string, string> }
+  /** the selected element resized by its handles: declarations to set (null removes one) */
+  | { dc: 'resize'; tid: number; set: Record<string, string | null> }
   | { dc: 'exported'; id: string; dataUrl?: string; error?: string }
   | { dc: 'hover'; tid: number | null }
   | { dc: 'text'; tid: number; text: string }

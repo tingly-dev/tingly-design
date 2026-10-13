@@ -4,7 +4,7 @@
 
 Choose "动效" (motion) when creating a project. The sample [`?p=design-motion`](http://localhost:5173/?p=design-motion) is a 36 s promo for Tingly Design in 16:9 and 9:16 from the same scenes, with its own cover.
 
-![Motion player: the cover on the stage, the timeline and scene strip below, formats and speed in the top bar](../../images/motion.png)
+![Motion editor: the cover on the stage, the timeline and scene strip below, formats and speed in the top bar](../../images/motion.png)
 
 ```
 projects/<name>/
@@ -13,11 +13,13 @@ projects/<name>/
   renders/             exported videos (not tracked)
 ```
 
-- **Player**: opens on the cover, so you see what a thumbnail of the video will show. Space plays and pauses; ← / → step one frame, with Shift one second. The scene strip below the timeline is drawn to scale; click a scene to jump to it.
-- **Formats**: every format in `motion.json` plays from the same scenes; switch between them in the top bar. Elements that need a different layout carry overrides such as `data-tall="…"`.
+- **Stage and player**: while paused, the stage shows the scene under the playhead at that moment and you edit it like a slide. Space plays: the player takes over and runs the whole timeline, transitions included; pause and the stage comes back where it stopped. ← / → step one frame, with Shift one second. The scene strip below the timeline is drawn to scale; clicking a scene jumps to its start. On a scene's first moment the stage draws every element where it lands, so the scene reads as a page to edit (the label under the timeline says 落定); step one frame on to see the real frame. It opens on the cover, so you see what a thumbnail of the video will show.
+- **Editing on the stage**: click to select, double-click to retype, drag a handle to resize (Shift keeps the ratio, Alt resizes from the centre, edges snap to other elements). The panel on the right has the element's styles, the scene's length, transition and background when the scene is selected, and the piece's sizes when nothing is. Elements not on screen at the playhead can't be clicked; pick them from the layers, which say when they come in. A selected element is shown where it lands, not half way through its entrance. Undo works as everywhere else.
+- **Sizes**: every size in `motion.json` plays from the same scenes; switch between them in the top bar, and add, resize or remove them in the panel (横版 16:9, 竖版 9:16, 方形, 竖图 4:5 or your own). Edits made while looking at the first size change every size; in another size they are written as that size's override (`data-tall="…"`), and the panel says which. Click an override chip to go back to the shared value.
+- **Importing pictures**: drop, paste or use the import button to put pictures and SVGs on the scene under the playhead. They fade in from the playhead (from the start on a scene's landed first moment) and are kept in `uploads/`.
 - **Speed**: timing is written at reading pace and `speed` in `motion.json` sets how fast the video plays. The speed menu tries another pace without touching any file.
 - **Check**: lists timing problems such as an exit before the entry, text on screen for less than 0.8 s, or an embed that cannot be exported.
-- **Editing**: hand a change to Claude Code from the box at the bottom; it gets the scene under the playhead. Files change on disk and the player reloads in place.
+- **AI**: the box at the bottom works on the scene under the playhead, or the selected element. Pick the fast AI for a small change, which lands on the stage at once, or Claude Code for a larger one; Claude Code is told which scene, moment and size you are looking at.
 - **Export**: `pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> [--format wide] [--gif] [--player]` writes MP4s, the cover PNG, a GIF and a single-file HTML player to `renders/`. It needs Chromium and ffmpeg.
 
 Timing lives on the elements: `data-duration` and `data-transition` on the `<section>`, `data-in` / `data-out` presets (`rise`, `drop`, `type`, `count`…) and `data-keys` keyframe tracks on anything inside.
