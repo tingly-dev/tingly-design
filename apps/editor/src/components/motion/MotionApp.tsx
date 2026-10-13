@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
+import { api } from '../../api';
+import { motionImport } from '../../motion';
+import { ImportHere } from '../ImportHere';
 import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
@@ -66,6 +69,8 @@ export function MotionApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const panelOpen = useStore((s) => s.panelOpen);
+  const project = useStore((s) => s.project);
+  const base = project ? api.rawBase(project) : '';
   const { motionText, scenes } = useSources();
   const motion = useMemo(() => parseMotion(motionText), [motionText]);
   const playScenes = useMemo(() => Object.fromEntries(motion.order.filter((id) => id in scenes).map((id) => [id, scenes[id]])), [motion, scenes]);
@@ -232,6 +237,7 @@ export function MotionApp() {
             封面
           </button>
         )}
+        <ImportHere target={motionImport} label="动效" />
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title="时间上的问题">
           检查{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
@@ -254,6 +260,7 @@ export function MotionApp() {
                   format={fmt}
                   speed={rate}
                   at={playerAt}
+                  base={base}
                   box={box}
                   title="动效"
                   control={control}

@@ -6,6 +6,7 @@
  *
  * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
  */
+import { resolveSrc, urlsAgainst } from './urls';
 import { attrsForFormat, drawSlideArt, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 
@@ -17,6 +18,8 @@ export interface MountOptions {
   root: HTMLElement;
   /** Overrides motion.json's speed (a preview at 2×, a render at another pace). */
   speed?: number;
+  /** Where the project's files are served: relative src and url() (uploads/…) resolve against it. */
+  base?: string;
 }
 
 export interface MotionStage {
@@ -82,6 +85,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       const section = tpl.content.querySelector('section') ?? document.createElement('section');
       section.querySelectorAll('aside').forEach((a) => a.remove());
       applyFormat(section, format, formats);
+      if (opts.base) resolveUrls(section, opts.base);
       return { id, section };
     });
   const timeline = motionTimeline(
@@ -255,6 +259,23 @@ function applyFormat(section: Element, format: string, formats: string[]) {
   }
 }
 
+/** Point relative image paths and url()s at the project's files, as the editing stage does. */
+function resolveUrls(section: Element, base: string) {
+  for (const el of [section, ...Array.from(section.querySelectorAll('*'))]) {
+    for (const name of ['src', 'poster', 'href']) {
+      const v = el.getAttribute(name);
+      if (v === null || (name === 'href' && el.tagName.toLowerCase() !== 'image')) continue;
+      const r = resolveSrc(v, base) as string;
+      if (r !== v) el.setAttribute(name, r);
+    }
+    const style = el.getAttribute('style');
+    if (style) {
+      const r = urlsAgainst(style, base);
+      if (r !== style) el.setAttribute('style', r);
+    }
+  }
+}
+
 function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
   const n = ++seekCounter;
   return new Promise((resolve) => {
@@ -279,7 +300,7 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
  * and the editor drives it over postMessage: load a project, seek, play, pause.
  */
 type HostMsg =
-  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still' }
+  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' };
@@ -298,7 +319,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       stage?.destroy();
       stage = null;
       try {
-        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root });
+        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root, base: m.base });
         if (n !== loading) return s.destroy();
         stage = s;
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));

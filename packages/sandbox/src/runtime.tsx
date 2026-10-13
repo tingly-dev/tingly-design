@@ -31,6 +31,7 @@ import {
   type ToRuntime,
 } from '@dc/core';
 import { BUILD_CSS, XArt, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
+import { urlsAgainst } from './urls';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
@@ -68,14 +69,6 @@ function interp(s: string, scope: Scope): unknown {
   });
 }
 
-/** Relative url()s (assets/…, an imported page's files) point at the project's files. */
-function urlsAgainst(css: string, base: string): string {
-  if (!css.includes('url(')) return css;
-  return css.replace(/url\(\s*(['"]?)([^'")]*)\1\s*\)/g, (m, q: string, u: string) => {
-    const r = u ? resolveSrc(u, base) : u;
-    return r === u ? m : `url(${q}${r}${q})`;
-  });
-}
 
 // ------------------------------------------------------------- attributes
 

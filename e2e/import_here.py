@@ -1,7 +1,7 @@
 """End-to-end checks for importing into an open project: the 导入 button, a drop anywhere on the editor
 or a paste, in every kind. A page or an SVG becomes artboards beside a canvas's own, pictures land on a
 canvas or the open slide, Markdown becomes doc tabs, a CSV a dashboard dataset, fonts and pictures a
-design system's own; motion takes nothing yet. Originals a person brings in are kept in uploads/.
+design system's own; pictures onto the motion scene under the playhead. Originals a person brings in are kept in uploads/.
 Run after `pnpm build`: python3 e2e/import_here.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh copy of the sample projects."""
 import os, sys, asyncio, json, shutil, subprocess, tempfile, threading, time
@@ -232,10 +232,33 @@ async def main():
             check('design system: the font is registered in tokens.json', ok)
             check('design system: the SVG is an asset in assets/Other', os.path.exists(P('tingly-ds', 'assets', 'Other', 'mark.svg')))
 
-            # --- motion: nothing to import into yet ---------------------------------------------------
+            # --- motion: a picture onto the scene under the playhead, entering there --------------------
             await pg.goto(base + '/?p=design-motion')
             await pg.wait_for_timeout(2500)
-            check('motion: no import button', await pg.locator('button[aria-label^="导入到这个"]').count() == 0)
+            check('motion: an import button in the top bar', await pg.locator('button[aria-label^="导入到这个"]').count() == 1)
+            await pg.locator('.mscene', has_text='kind-slides').click()
+            await pg.wait_for_timeout(500)
+            await drop(pg, [('still.png', None, 'image/png')])
+            check('motion: a dropped picture says so', await toast(pg, '已放上 still.png'))
+            scene = lambda: read('design-motion', 'scenes', 'kind-slides.html')
+            ok = await wait_for(lambda: 'src="uploads/still-' in scene())
+            check('motion: …onto the scene under the playhead, kept in uploads/', ok)
+            check('…entering at the playhead (the scene start)', 'data-in="fade 300ms @0s"' in scene(), scene()[-400:])
+            stage = pg.frame_locator('.medit iframe')
+            img = stage.locator('img[src*="uploads/still-"]')
+            await expect(img).to_be_visible()
+            check('…and it shows on the stage', await img.evaluate('i => i.complete && i.naturalWidth > 0'))
+            await pg.locator('.mplay').click()
+            await pg.wait_for_timeout(800)
+            await pg.locator('.mplay').click()
+            shown = False
+            for fr in pg.frames:
+                try:
+                    if await fr.evaluate("() => [...document.querySelectorAll('.dc-motion-root img')].some((i) => i.src.includes('/uploads/still-') && i.naturalWidth > 0)"):
+                        shown = True
+                except Exception:
+                    pass
+            check('…and the player loads it too', shown)
 
             check('no page errors', not errs, errs)
             await b.close()
