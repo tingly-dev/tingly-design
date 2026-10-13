@@ -1,19 +1,18 @@
-import { embeddedAssets, packPage, parseSvg, readSvg, toCanvas, type Extracted, type InFile, type ImportReport } from '@dc/import';
+import { embeddedAssets, packPage, toCanvas, type Extracted, type InFile, type ImportReport } from '@dc/import';
 import { extractPage } from '@dc/import/extract';
 import { isKeptPath } from '@dc/core';
 import { api } from './api';
 import { slugOf } from './projectName';
 
 /**
- * Import an HTML page or an SVG drawing (and the files beside it) as a new
- * canvas, through @dc/import's sources and its one generator.
+ * Import an HTML page (and the files beside it) as a new canvas, through
+ * @dc/import's HTML source and its generator.
  *
  * An HTML page is laid out in a hidden frame with scripts off and no network
  * except Google Fonts and web images, then read back with the extractor:
  * every element keeps the style its author gave it, inline. Pages that need
  * JavaScript to show anything import from a terminal instead (`dc-import
- * html`, which runs them in a headless browser). An SVG needs no layout: it
- * is parsed and goes onto one artboard as a drawing.
+ * html`, which runs them in a headless browser).
  */
 
 export type ImportStep = 'layout' | 'assets' | 'write';
@@ -27,7 +26,7 @@ const WIDTH = 1280;
 
 export interface Picked {
   files: InFile[];
-  /** the file to import: index.html when there is one, else the first .html, else the first .svg */
+  /** the file to import: index.html when there is one, else the first .html */
   entry: string;
   pages: string[];
   title: string;
@@ -52,21 +51,12 @@ export async function readPicked(list: { file: File; path: string }[]): Promise<
   return pick(files, common > 0 ? first[common - 1] : '');
 }
 
-/** SVG markup pasted from a design tool (Figma's "Copy as SVG") → a picked file; null when it is not SVG. */
-export function pickedFromText(text: string): Picked | null {
-  if (!/<svg[\s>]/i.test(text)) return null;
-  return pick([{ path: 'pasted.svg', type: 'image/svg+xml', bytes: new TextEncoder().encode(text) }]);
-}
-
 const depth = (p: string) => p.split('/').length;
-const isSvg = (p: string) => /\.svg$/i.test(p);
 
 function pick(files: InFile[], folder = ''): Picked {
   const html = files.map((f) => f.path).filter((p) => /\.html?$/i.test(p));
-  const svg = files.map((f) => f.path).filter(isSvg);
   const order = (a: string, b: string) => depth(a) - depth(b) || a.localeCompare(b);
-  // a folder with a page in it imports the page; its .svg files are just its images
-  const pages = (html.length ? html : svg).sort(order);
+  const pages = html.sort(order);
   const entry = pages.find((p) => /(^|\/)index\.html?$/i.test(p)) ?? pages[0] ?? '';
   const text = entry ? new TextDecoder().decode(files.find((f) => f.path === entry)!.bytes) : '';
   const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text)?.[1].replace(/\s+/g, ' ').trim() ?? '';
@@ -137,19 +127,15 @@ export async function importPicked(picked: Picked, name: string, title: string, 
   onStep('layout');
   const packed = packPage(picked.files, picked.entry);
   let extracted: Extracted;
-  if (isSvg(picked.entry)) {
-    extracted = readSvg(parseSvg(packed.html));
-  } else {
-    const { frame, win } = await layOut(packed.html);
-    try {
-      extracted = extractPage(win);
-    } finally {
-      frame.remove();
-    }
-    extracted.report.unreadableSheets.push(...packed.remoteCss);
-    if (extracted.report.elements < 4 && extracted.report.scripts > 0)
-      throw new Error('这个页面要运行脚本才会显示内容，编辑器里不运行导入页面的脚本。请在终端用 `pnpm dc-import html <文件>` 导入。');
+  const { frame, win } = await layOut(packed.html);
+  try {
+    extracted = extractPage(win);
+  } finally {
+    frame.remove();
   }
+  extracted.report.unreadableSheets.push(...packed.remoteCss);
+  if (extracted.report.elements < 4 && extracted.report.scripts > 0)
+    throw new Error('这个页面要运行脚本才会显示内容，编辑器里不运行导入页面的脚本。请在终端用 `pnpm dc-import html <文件>` 导入。');
 
   await api.createProject(name, title || extracted.title || name, 'design');
   onStep('assets');
@@ -183,7 +169,7 @@ export async function importPicked(picked: Picked, name: string, title: string, 
       local.set(dataUrl, up.path);
     }
   }
-  // images the file carried inside itself (Figma's SVGs embed screenshots this way): made here, so assets/
+  // images the page carried inside itself as data: urls: made here, so assets/
   for (const a of embeddedAssets(extracted.urls)) {
     if (local.has(a.url)) continue;
     // the server names uploads by their content, so each embedded file lands once
@@ -193,8 +179,7 @@ export async function importPicked(picked: Picked, name: string, title: string, 
   if (skipped.length) (extracted.report.notes ??= []).push(`${skipped.length} 个文件类型不能保存在项目里，没有留存：${skipped.slice(0, 3).join('、')}${skipped.length > 3 ? ' 等' : ''}`);
 
   onStep('write');
-  const source = picked.entry === 'pasted.svg' && picked.files.length === 1 ? undefined : picked.entry;
-  const out = toCanvas(extracted, { title: title || extracted.title || name, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
+  const out = toCanvas(extracted, { title: title || extracted.title || name, source: picked.entry, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
   const { files } = await api.files(name);
   // artboards first, the index last, so the canvas never lists a file that is not there yet
   const order = [...Object.keys(out.files).filter((f) => f !== 'canvas.json'), 'canvas.json'];

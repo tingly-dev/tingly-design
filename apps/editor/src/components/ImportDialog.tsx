@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { IconFile, IconFileImport, IconFolder } from '@tabler/icons-react';
 import { toast } from '../store';
 import { NAME_RE, freeName, slugOf } from '../projectName';
-import { droppedFiles, importPicked, pickedFromText, readPicked, type ImportStep, type Picked } from '../importer';
+import { droppedFiles, importPicked, readPicked, type ImportStep, type Picked } from '../importer';
 
 const STEPS: { step: ImportStep; zh: string }[] = [
   { step: 'layout', zh: '读出每个元素和它的样式' },
@@ -12,9 +12,8 @@ const STEPS: { step: ImportStep; zh: string }[] = [
 
 /**
  * Turn an HTML page (one file, or its folder with the css and images beside
- * it) or an SVG drawing into a new canvas. Opened from the launcher's 新建
- * strip, or by dropping files or pasting SVG anywhere on the launcher, in
- * which case `initial` already holds them.
+ * it) into a new canvas. Opened from the launcher's 新建 strip, or by dropping
+ * files anywhere on the launcher, in which case `initial` already holds them.
  */
 export function ImportDialog({
   initial,
@@ -43,26 +42,12 @@ export function ImportDialog({
   }, [onClose, step]);
   // folder inputs need a non-standard attribute React does not know
   useEffect(() => dirRef.current?.setAttribute('webkitdirectory', ''), []);
-  // SVG copied from a design tool (Figma: Copy as SVG) pastes straight in
-  useEffect(() => {
-    const paste = (e: ClipboardEvent) => {
-      if (step || (e.target instanceof HTMLInputElement && e.target.type !== 'file')) return;
-      const p = pickedFromText(e.clipboardData?.getData('text/plain') ?? '');
-      if (!p) return;
-      e.preventDefault();
-      setPicked(p);
-      setEntry(p.entry);
-      setTitle(p.title);
-    };
-    window.addEventListener('paste', paste);
-    return () => window.removeEventListener('paste', paste);
-  }, [step]);
 
   const take = async (list: { file: File; path: string }[]) => {
     if (!list.length) return;
     const p = await readPicked(list);
     if (!p.entry) {
-      toast('这些文件里没有 .html 页面或 .svg 图形。', 'error');
+      toast('这些文件里没有 .html 页面。', 'error');
       return;
     }
     setPicked(p);
@@ -75,7 +60,7 @@ export function ImportDialog({
     void take(list);
   };
 
-  const base = slugOf(title) || slugOf(entry.replace(/(^|\/)index\.html?$/i, '').replace(/\.(html?|svg)$/i, '').split('/').pop() ?? '') || 'imported';
+  const base = slugOf(title) || slugOf(entry.replace(/(^|\/)index\.html?$/i, '').replace(/\.html?$/i, '').split('/').pop() ?? '') || 'imported';
   const name = touched ? folder : freeName(base, taken);
   const problem = !picked
     ? ''
@@ -104,14 +89,14 @@ export function ImportDialog({
       <form
         className="ldialog limport"
         role="dialog"
-        aria-label="导入 HTML 或 SVG"
+        aria-label="导入 HTML"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
         <header>
-          <h2>导入 HTML 或 SVG</h2>
+          <h2>导入 HTML</h2>
           <button type="button" className="tb" aria-label="关闭" onClick={onClose} disabled={!!step}>
             ×
           </button>
@@ -131,8 +116,8 @@ export function ImportDialog({
             }}
           >
             <IconFileImport size={28} stroke={1.5} aria-hidden="true" />
-            <div className="what">把 HTML 或 SVG 文件，或它所在的文件夹拖到这里</div>
-            <div className="why">网页连同旁边的 CSS、图片和字体一起选，样式和图片才完整。从 Figma 复制的 SVG 可以直接粘贴（⌘V）。</div>
+            <div className="what">把 HTML 文件，或它所在的文件夹拖到这里</div>
+            <div className="why">网页连同旁边的 CSS、图片和字体一起选，样式和图片才完整。</div>
             <div className="pick">
               <button type="button" className="btn" onClick={() => dirRef.current?.click()}>
                 <IconFolder size={15} stroke={1.7} aria-hidden="true" /> 选择文件夹
@@ -141,7 +126,7 @@ export function ImportDialog({
                 <IconFile size={15} stroke={1.7} aria-hidden="true" /> 选择文件
               </button>
             </div>
-            <input ref={fileRef} type="file" multiple accept=".html,.htm,.svg,.css,image/*,font/*,.woff,.woff2,.ttf,.otf" hidden onChange={(e) => fromInput(e.currentTarget)} />
+            <input ref={fileRef} type="file" multiple accept=".html,.htm,.css,image/*,font/*,.woff,.woff2,.ttf,.otf" hidden onChange={(e) => fromInput(e.currentTarget)} />
             <input ref={dirRef} type="file" hidden onChange={(e) => fromInput(e.currentTarget)} />
           </div>
         ) : (
@@ -156,9 +141,9 @@ export function ImportDialog({
                     ))}
                   </select>
                 ) : (
-                  <code>{entry === 'pasted.svg' ? '粘贴的 SVG' : entry}</code>
+                  <code>{entry}</code>
                 )}
-                {entry !== 'pasted.svg' && <span className="n">{picked.files.length} 个文件</span>}
+                <span className="n">{picked.files.length} 个文件</span>
                 {!step && (
                   <button type="button" className="linkish" onClick={() => setPicked(null)}>
                     换一个
