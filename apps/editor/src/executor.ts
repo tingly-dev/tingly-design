@@ -1,5 +1,6 @@
 import { sandboxDoc, type FromExecutor, type StatementResult, type ToExecutor } from '@dc/core';
 import { SERVER } from './base';
+import { t } from './i18n';
 
 /**
  * The hidden, sandboxed iframe that runs model-written jQuery. Requests are
@@ -42,12 +43,12 @@ function send(m: ToExecutor): Promise<FromExecutor> {
   const p = chain.then(
     () =>
       new Promise<FromExecutor>((resolve, reject) => {
-        const t = setTimeout(() => {
+        const timer = setTimeout(() => {
           waiting.delete(m.id);
-          reject(new Error('执行器没有响应'));
+          reject(new Error(t('app.executor.noResponse')));
         }, 10000);
         waiting.set(m.id, (r) => {
-          clearTimeout(t);
+          clearTimeout(timer);
           resolve(r);
         });
         frame!.contentWindow!.postMessage(m, '*');
@@ -83,7 +84,7 @@ export async function replay(statements: string[], source: string): Promise<stri
   let out = source;
   for (const s of statements) {
     const r = await session.run(s);
-    if (!r.ok) throw new Error(`改动无法在新版本上重放：${r.error}`);
+    if (!r.ok) throw new Error(t('app.executor.replayFailed', { error: r.error }));
     out = r.source;
   }
   return out;

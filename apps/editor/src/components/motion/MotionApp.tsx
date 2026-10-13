@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
 import { motionImport } from '../../motion';
@@ -69,6 +70,7 @@ export function MotionApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const panelOpen = useStore((s) => s.panelOpen);
+  const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const base = project ? api.rawBase(project) : '';
   const { motionText, scenes } = useSources();
@@ -97,9 +99,9 @@ export function MotionApp() {
 
   const control = useRef<MotionControl | null>(null);
   const [info, setInfo] = useState<MotionInfo | null>(null);
-  const [t, setT] = useState(() => (coverAt !== null ? coverAt / rate : 0));
-  const tRef = useRef(t);
-  tRef.current = t;
+  const [time, setTime] = useState(() => (coverAt !== null ? coverAt / rate : 0));
+  const tRef = useRef(time);
+  tRef.current = time;
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
@@ -109,7 +111,7 @@ export function MotionApp() {
   const player = useSettled(useMemo(() => ({ motion, scenes: playScenes }), [motion, playScenes]), 600);
 
   // the scene under the playhead; in a transition, the one coming in
-  const authored = t * rate;
+  const authored = time * rate;
   const current = timeline.scenes.findLast((w) => authored >= w.start) ?? timeline.scenes[0];
   const stageId = cover ? coverScene! : current?.id;
   const stageAt = cover
@@ -125,8 +127,8 @@ export function MotionApp() {
   const stage = held.current;
 
   useEffect(() => {
-    document.title = `${motion.title} · 动效`;
-  }, [motion.title]);
+    document.title = t('motion.docTitle', { title: motion.title });
+  }, [motion.title, t]);
   useEffect(() => {
     const u = new URL(location.href);
     if (fmt === primary) u.searchParams.delete('f');
@@ -152,7 +154,7 @@ export function MotionApp() {
     if (!info) return;
     setShowCover(false);
     useStore.setState({ menu: null });
-    const from = t >= duration - 1 ? 0 : t;
+    const from = time >= duration - 1 ? 0 : time;
     control.current?.play(from);
     setPlaying(true);
   };
@@ -164,7 +166,7 @@ export function MotionApp() {
     setShowCover(false);
     control.current?.seek(ms);
     setPlaying(false);
-    setT(Math.max(0, Math.min(duration, ms)));
+    setTime(Math.max(0, Math.min(duration, ms)));
   };
 
   // space plays; arrows step a frame (a second with Shift)
@@ -200,14 +202,14 @@ export function MotionApp() {
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title="所有项目">
+        <a className="btn ghost back" href={BASE} title={t('motion.bar.allProjects')}>
           ←
         </a>
         <span className="dashtitle">{motion.title}</span>
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? '保存中…' : '已连接') : '连不上服务端'} />
+        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('motion.bar.saving') : t('motion.bar.connected')) : t('motion.bar.offline')} />
         <div className="grow" />
         {formats.length > 1 && (
-          <div className="mseg" role="radiogroup" aria-label="尺寸">
+          <div className="mseg" role="radiogroup" aria-label={t('motion.bar.formats')}>
             {formats.map((f) => (
               <button key={f} role="radio" aria-checked={f === fmt} className={f === fmt ? 'on' : ''} onClick={() => setFormat(f)} title={`${f} ${motion.formats[f].size.join('×')}`}>
                 {f} <span className="faint">{motion.formats[f].size.join('×')}</span>
@@ -215,14 +217,14 @@ export function MotionApp() {
             ))}
           </div>
         )}
-        <label className="mspeed" title="播放速度。项目的默认速度写在 motion.json 的 speed 里">
-          速度
+        <label className="mspeed" title={t('motion.bar.speedHint')}>
+          {t('motion.bar.speed')}
           <select value={String(rate)} onChange={(e) => setSpeed(Number(e.target.value) === projectSpeed ? null : Number(e.target.value))}>
             {[...new Set([...SPEEDS, projectSpeed])]
               .sort((a, b) => a - b)
               .map((v) => (
                 <option key={v} value={String(v)}>
-                  {v}×{v === projectSpeed ? '（项目）' : ''}
+                  {v === projectSpeed ? t('motion.bar.speedOptionProject', { speed: v }) : `${v}×`}
                 </option>
               ))}
           </select>
@@ -232,25 +234,25 @@ export function MotionApp() {
             className={`btn ghost${cover ? ' on' : ''}`}
             aria-pressed={cover}
             onClick={() => (cover ? setShowCover(false) : (pause(), setShowCover(true)))}
-            title="封面：缩略图、视频第一帧和播放前显示的那一页。打开时可以直接改它"
+            title={t('motion.bar.coverHint')}
           >
-            封面
+            {t('motion.bar.cover')}
           </button>
         )}
-        <ImportHere target={motionImport} label="动效" />
-        <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title="时间上的问题">
-          检查{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
+        <ImportHere target={motionImport} label={t('motion.bar.importLabel')} />
+        <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
+          {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
         <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          记录
+          {t('motion.bar.journal')}
         </button>
-        <button className="tb" aria-pressed={panelOpen} aria-label="属性面板" title="属性面板（⌘\）" onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
+        <button className="tb" aria-pressed={panelOpen} aria-label={t('motion.bar.panel')} title={t('motion.bar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
           <Panel />
         </button>
       </header>
       <main className="mmain">
         <div ref={stageRef} className="mstage" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
-          {!motion.order.length && <div className="lhint">motion.json 的 order 里还没有场景。</div>}
+          {!motion.order.length && <div className="lhint">{t('motion.stage.noScenes')}</div>}
           {box.w > 0 && motion.order.length > 0 && (
             <div className="mstack" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
               <div className={`mlayer${playing ? ' on' : ''}`} aria-hidden={!playing}>
@@ -262,20 +264,20 @@ export function MotionApp() {
                   at={playerAt}
                   base={base}
                   box={box}
-                  title="动效"
+                  title={t('motion.stage.playerTitle')}
                   control={control}
                   onLoaded={(i) => {
                     setInfo(i);
                     setError(null);
                     setPlaying(false);
                   }}
-                  onTime={(v) => keys.current.playing && setT(v)}
+                  onTime={(v) => keys.current.playing && setTime(v)}
                   onEnded={() => setPlaying(false)}
                   onError={setError}
                 />
               </div>
               {/* the player is a frame, so clicks on it never reach here: a clear layer pauses instead */}
-              {playing && <button className="mcatch" aria-label="暂停并回到编辑" title="点一下暂停，回到编辑" onClick={pause} />}
+              {playing && <button className="mcatch" aria-label={t('motion.stage.pauseLabel')} title={t('motion.stage.pauseHint')} onClick={pause} />}
               {stage.id && scenes[stage.id] !== undefined && (
                 <div className={`mlayer medit${playing ? '' : ' on'}`} aria-hidden={playing}>
                   <SlideFrame
@@ -291,25 +293,35 @@ export function MotionApp() {
           {error && <div className="dashhint">{error}</div>}
         </div>
         <div className="mcontrols">
-          <button className="btn mplay" onClick={playing ? pause : play} disabled={!info} aria-label={playing ? '暂停' : '播放'}>
+          <button className="btn mplay" onClick={playing ? pause : play} disabled={!info} aria-label={playing ? t('motion.stage.pause') : t('motion.stage.play')}>
             {playing ? '❚❚' : '▶'}
           </button>
           <span className="mtime">
-            {secs(t)} / {secs(duration)} s
+            {secs(time)} / {secs(duration)} s
           </span>
-          <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(t)} onChange={(e) => seek(Number(e.target.value))} aria-label="时间" />
-          <span className="mwhere" title={cover ? '封面' : stageLanded ? '场景开头：所有元素按落定的样子画出，方便编辑；往后拖一帧看真实画面' : '播放头所在的场景和场景里的时间'}>
-            {cover ? '封面' : current ? `${current.id} · ${secs(stageAt)} s${stageLanded ? ' · 落定' : ''}` : ''}
+          <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(time)} onChange={(e) => seek(Number(e.target.value))} aria-label={t('motion.stage.time')} />
+          <span className="mwhere" title={cover ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
+            {cover
+              ? t('motion.stage.whereCover')
+              : current
+                ? stageLanded
+                  ? t('motion.stage.whereLandedValue', { scene: current.id, time: secs(stageAt) })
+                  : `${current.id} · ${secs(stageAt)} s`
+                : ''}
           </span>
         </div>
-        <div className="mscenes" aria-label="场景">
+        <div className="mscenes" aria-label={t('motion.stage.scenes')}>
           {timeline.scenes.map((w) => (
             <button
               key={w.id}
               className={`mscene${!cover && current?.id === w.id ? ' on' : ''}`}
               style={{ flexGrow: w.duration }}
               onClick={() => seek(w.start / rate)}
-              title={`${w.id}：${secs(w.duration / rate)} s${w.transition.kind !== 'cut' ? `，${w.transition.kind} 转场` : ''}`}
+              title={
+                w.transition.kind !== 'cut'
+                  ? t('motion.stage.sceneHintTransition', { scene: w.id, time: secs(w.duration / rate), transition: w.transition.kind })
+                  : t('motion.stage.sceneHint', { scene: w.id, time: secs(w.duration / rate) })
+              }
             >
               {w.id}
             </button>
@@ -326,7 +338,7 @@ export function MotionApp() {
                 ))}
               </ul>
             ) : (
-              <p>没有发现问题。</p>
+              <p>{t('motion.stage.noIssues')}</p>
             )}
           </div>
         )}

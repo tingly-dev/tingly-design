@@ -1,49 +1,57 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { layerTree, pathTo, type Layer, type NoteEntry } from '@dc/core';
 import { display, focusBoard, onPage, parsed, useCanvas, useStore } from '../../store';
 import { Chevron, RoleIcon } from '../icons';
 
-const ROLE_ZH: Record<string, string> = {
-  Column: '纵向',
-  Row: '横向',
-  Grid: '网格',
-  Text: '文字',
-  Image: '图片',
-  Vector: '矢量',
-  Button: '按钮',
-  Input: '输入框',
-  Link: '链接',
-  'Repeating group': '循环',
-  Condition: '条件',
-  Component: '组件',
-  Group: '组',
-  Shape: '形状',
-  Embed: '动态嵌入',
-  Icon: '图标',
-  Connector: '连线',
-  Table: '表格',
-  Notes: '备注',
-  Slide: '幻灯片',
-};
+/** A layer's role (core's names) → its key under `panel.role`. */
+const ROLE_KEY = {
+  Column: 'column',
+  Row: 'row',
+  Grid: 'grid',
+  Text: 'text',
+  Image: 'image',
+  Vector: 'vector',
+  Button: 'button',
+  Input: 'input',
+  Link: 'link',
+  'Repeating group': 'repeatingGroup',
+  Condition: 'condition',
+  Component: 'component',
+  Group: 'group',
+  Shape: 'shape',
+  Embed: 'embed',
+  Icon: 'icon',
+  Connector: 'connector',
+  Table: 'table',
+  Notes: 'notes',
+  Slide: 'slide',
+} as const;
 
-export function itemName(n: NoteEntry): string {
+function roleName(t: TFunction, role: string): string {
+  const key = ROLE_KEY[role as keyof typeof ROLE_KEY];
+  return key ? t(`panel.role.${key}`) : role;
+}
+
+export function itemName(t: TFunction, n: NoteEntry): string {
   switch (n.kind) {
     case 'title1':
-      return '标题';
+      return t('panel.item.title');
     case 'rect':
-      return '矩形';
+      return t('panel.item.rect');
     case 'oval':
-      return '椭圆';
+      return t('panel.item.oval');
     case 'line':
-      return '直线';
+      return t('panel.item.line');
     case 'arrow':
-      return '箭头';
+      return t('panel.item.arrow');
     case 'pen':
-      return '手绘';
+      return t('panel.item.pen');
     case 'image':
-      return '图片';
+      return t('panel.item.image');
     default:
-      return '便签';
+      return t('panel.item.note');
   }
 }
 const ITEM_ICON: Record<string, string> = {
@@ -62,6 +70,7 @@ function firstLine(t?: string): string {
 }
 
 function ElementRows({ file, layers, depth, open, toggle, counts }: { file: string; layers: Layer[]; depth: number; open: Set<string>; toggle: (k: string) => void; counts: Record<number, number> }) {
+  const { t } = useTranslation();
   const sel = useStore((s) => (s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   return (
     <>
@@ -83,7 +92,7 @@ function ElementRows({ file, layers, depth, open, toggle, counts }: { file: stri
               onMouseLeave={() => useStore.setState({ layerHover: null })}
             >
               {l.children.length ? (
-                <button className="tw" aria-label={isOpen ? '收起' : '展开'} onClick={(e) => (e.stopPropagation(), toggle(key))}>
+                <button className="tw" aria-label={isOpen ? t('panel.layers.collapse') : t('panel.layers.expand')} onClick={(e) => (e.stopPropagation(), toggle(key))}>
                   <Chevron open={isOpen} />
                 </button>
               ) : (
@@ -92,9 +101,9 @@ function ElementRows({ file, layers, depth, open, toggle, counts }: { file: stri
               <span className="ri">
                 <RoleIcon role={l.role} />
               </span>
-              <span className="rn">{ROLE_ZH[l.role] ?? l.role}</span>
+              <span className="rn">{roleName(t, l.role)}</span>
               {l.label && <span className="rl">“{l.label}”</span>}
-              {l.role === 'Repeating group' && <span className="rc">{count} 项</span>}
+              {l.role === 'Repeating group' && <span className="rc">{t('panel.layers.count', { count })}</span>}
             </div>
             {isOpen && l.children.length > 0 && <ElementRows file={file} layers={l.children} depth={depth + 1} open={open} toggle={toggle} counts={counts} />}
           </div>
@@ -105,6 +114,7 @@ function ElementRows({ file, layers, depth, open, toggle, counts }: { file: stri
 }
 
 function BoardRow({ file, title, open, toggle }: { file: string; title: string; open: Set<string>; toggle: (k: string) => void }) {
+  const { t } = useTranslation();
   const source = useStore((s) => display(s, file));
   const counts = useStore((s) => s.counts[file]) ?? {};
   const sel = useStore((s) => s.selection?.kind === 'board' && s.selection.file === file);
@@ -125,7 +135,7 @@ function BoardRow({ file, title, open, toggle }: { file: string; title: string; 
         onClick={() => useStore.setState({ selection: { kind: 'board', file }, editingNote: null })}
         onDoubleClick={() => focusBoard(file)}
       >
-        <button className="tw" aria-label={isOpen ? '收起' : '展开'} onClick={(e) => (e.stopPropagation(), toggle(file))}>
+        <button className="tw" aria-label={isOpen ? t('panel.layers.collapse') : t('panel.layers.expand')} onClick={(e) => (e.stopPropagation(), toggle(file))}>
           <Chevron open={isOpen} />
         </button>
         <span className="ri">
@@ -142,6 +152,7 @@ function BoardRow({ file, title, open, toggle }: { file: string; title: string; 
 
 /** Canvas items, then artboards and the elements inside them; follows the selection. */
 export function LayerTree() {
+  const { t } = useTranslation();
   const canvas = useCanvas();
   const page = useStore((s) => s.page);
   const sel = useStore((s) => s.selection);
@@ -164,7 +175,7 @@ export function LayerTree() {
       if (src) {
         keys.push(sel.file);
         const path = pathTo(parsed(src), sel.tid);
-        for (const t of path.slice(0, -1)) keys.push(`${sel.file}#${t}`);
+        for (const tid of path.slice(0, -1)) keys.push(`${sel.file}#${tid}`);
       }
     }
     if (keys.length) setOpen((o) => new Set([...o, ...keys]));
@@ -177,7 +188,7 @@ export function LayerTree() {
   const notes = Object.entries(canvas.notes).filter(([, n]) => typeof n.x === 'number' && onPage(canvas, n.page, page));
   const boards = canvas.order.filter((f) => canvas.boards[f] && onPage(canvas, canvas.boards[f].page, page));
   return (
-    <div className="layers" ref={box} role="tree" aria-label="图层">
+    <div className="layers" ref={box} role="tree" aria-label={t('panel.layers.label')}>
       {notes.map(([id, n]) => (
         <div
           key={id}
@@ -192,14 +203,14 @@ export function LayerTree() {
           <span className="ri">
             <RoleIcon role={ITEM_ICON[n.kind ?? ''] ?? 'Note'} />
           </span>
-          <span className="rn">{itemName(n)}</span>
+          <span className="rn">{itemName(t, n)}</span>
           {n.text && <span className="rl">“{firstLine(n.text)}”</span>}
         </div>
       ))}
       {boards.map((f) => (
         <BoardRow key={f} file={f} title={canvas.boards[f].title || f} open={open} toggle={toggle} />
       ))}
-      {!notes.length && !boards.length && <div className="empty">这一页还是空的。用左上角的画板工具（A）拖出一块画板。</div>}
+      {!notes.length && !boards.length && <div className="empty">{t('panel.layers.empty')}</div>}
     </div>
   );
 }

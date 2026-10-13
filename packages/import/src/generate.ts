@@ -1,5 +1,7 @@
 import { noteBox, parseCanvas, stringifyCanvas, uniqueNoteId, type BoardEntry } from '@dc/core';
+import { translator, type TFunction } from '@dc/i18n';
 import type { ExtractReport, Extracted, XElement, XNode } from './model';
+import { ImportError } from './sources/svg/read';
 
 /**
  * Turns an extracted page into canvas files: `canvas.json` and one
@@ -32,6 +34,8 @@ export interface GenerateOptions {
   missing?: string[];
   /** where the caller kept the original entry file in the project (e.g. "source/index.html"), recorded in canvas.json */
   kept?: string;
+  /** the language of the sticky note the import leaves on the canvas (default English); pass the editor's translator */
+  t?: TFunction;
 }
 
 export interface BoardOut {
@@ -367,7 +371,10 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
   const report: ImportReport = { ...x.report, boards, remoteUrls: [...ctx.remote], styleBytes: ctx.styleBytes, missing: opts.missing ?? [] };
   const notes: Record<string, unknown> = {};
   if (opts.note !== false) {
-    const lines = describeReport(report).slice(1);
+    const t = opts.t ?? translator();
+    const lines = describeReport(report, t).slice(1);
+    const svg = x.from === 'svg';
+    const file = opts.source?.split(/[\\/]/).pop();
     notes.imported = {
       x: Math.round(x.width) + 80,
       y: 0,
@@ -375,13 +382,11 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
       fill: 'orange',
       size: 16,
       text: [
-        `从 ${x.from === 'svg' ? 'SVG' : 'HTML'} 导入${opts.source ? `：${opts.source.split(/[\\/]/).pop()}` : ''}`,
+        file ? t(svg ? 'importReport.note.fromSvgFile' : 'importReport.note.fromHtmlFile', { file }) : t(svg ? 'importReport.note.fromSvg' : 'importReport.note.fromHtml'),
         '',
-        ...(lines.length ? lines.map((l) => `· ${l}`) : [x.from === 'svg' ? '· 图形完整带过来了' : '· 页面的内容和样式都带过来了']),
+        ...(lines.length ? lines.map((l) => `· ${l}`) : [`· ${t(svg ? 'importReport.note.allSvg' : 'importReport.note.allHtml')}`]),
         '',
-        x.from === 'svg'
-          ? '图形保持为 SVG：选中形状可以改颜色、描边和位置，文字（如果还是文字）可以直接改。想把它变成普通的布局元素（flex、可改的文字），选中画板让 AI 重建。'
-          : '每个元素的样式都写在它自己的 style 里，可以直接选中修改。想要更干净的结构（flex 布局、少一些嵌套），选中画板让 AI 整理。',
+        t(svg ? 'importReport.note.nextSvg' : 'importReport.note.nextHtml'),
       ].join('\n'),
     };
   }
@@ -476,21 +481,34 @@ function slugName(title: string): string {
   return /^[A-Za-z]/.test(s) ? s.slice(0, 40) : '';
 }
 
-/** The import report in the editor's language, one line per finding; empty lines left out. */
-export function describeReport(r: ImportReport): string[] {
+/** The import report in the given language (default English), one line per finding; empty lines left out. */
+export function describeReport(r: ImportReport, t: TFunction = translator()): string[] {
   const lines: string[] = [];
-  lines.push(`${r.boards.length} 个画板，${r.elements} 个元素${r.truncated ? '（超过上限，后面的内容没有导入）' : ''}`);
-  if (r.scripts) lines.push(`${r.scripts} 段脚本没有带过来：导入的是页面渲染后的静态样子，交互需要另外做`);
-  if (r.stateRules) lines.push(`${r.stateRules} 条悬停、聚焦等状态样式没有带过来`);
-  if (r.otherMediaRules) lines.push(`${r.otherMediaRules} 条只在其他屏幕宽度生效的样式没有带过来`);
-  if (r.hidden) lines.push(`${r.hidden} 个隐藏元素（display:none）没有导入`);
-  if (r.transparent) lines.push(`${r.transparent} 处内容是透明的（opacity 为 0，多半是滚动时才出现的动画），选中后把不透明度改成 100% 就能看到`);
-  if (r.pseudoElements) lines.push(`${r.pseudoElements} 个 ::before / ::after 变成了真实的 <span>`);
+  const sep = t('importReport.listSep');
+  const counts = { artboards: t('importReport.line.artboards', { count: r.boards.length }), elements: t('importReport.line.elements', { count: r.elements }) };
+  lines.push(t(r.truncated ? 'importReport.line.summaryTruncated' : 'importReport.line.summary', counts));
+  if (r.scripts) lines.push(t('importReport.line.scripts', { count: r.scripts }));
+  if (r.stateRules) lines.push(t('importReport.line.stateRules', { count: r.stateRules }));
+  if (r.otherMediaRules) lines.push(t('importReport.line.otherMediaRules', { count: r.otherMediaRules }));
+  if (r.hidden) lines.push(t('importReport.line.hidden', { count: r.hidden }));
+  if (r.transparent) lines.push(t('importReport.line.transparent', { count: r.transparent }));
+  if (r.pseudoElements) lines.push(t('importReport.line.pseudoElements', { count: r.pseudoElements }));
   const dropped = Object.entries(r.dropped);
-  if (dropped.length) lines.push(`画布放不了的元素已去掉：${dropped.map(([k, v]) => `${k} ×${v}`).join('、')}`);
-  if (r.unreadableSheets.length) lines.push(`${r.unreadableSheets.length} 个样式表读不到（跨域），对应的样式会缺失`);
-  if (r.missing.length) lines.push(`${r.missing.length} 个引用的文件不在导入的文件里：${r.missing.slice(0, 3).join('、')}${r.missing.length > 3 ? ' 等' : ''}`);
+  if (dropped.length) lines.push(t('importReport.line.dropped', { list: dropped.map(([k, v]) => `${k} ×${v}`).join(sep) }));
+  if (r.unreadableSheets.length) lines.push(t('importReport.line.unreadableSheets', { count: r.unreadableSheets.length }));
+  if (r.missing.length) {
+    const list = r.missing.slice(0, 3).join(sep);
+    lines.push(t(r.missing.length > 3 ? 'importReport.line.missingMore' : 'importReport.line.missing', { count: r.missing.length, list }));
+  }
+  if (r.outlinedText) lines.push(t('importReport.line.outlinedText'));
+  if (r.bitmaps) lines.push(t('importReport.line.bitmaps', { count: r.bitmaps }));
   for (const n of r.notes ?? []) lines.push(n);
-  if (r.remoteUrls.length) lines.push(`${r.remoteUrls.length} 个资源仍是外链，没有复制进项目`);
+  if (r.remoteUrls.length) lines.push(t('importReport.line.remoteUrls', { count: r.remoteUrls.length }));
   return lines;
+}
+
+/** An error from the importer as people read it: an ImportError translated, anything else its message. */
+export function importErrorText(e: unknown, t: TFunction = translator()): string {
+  if (e instanceof ImportError) return t(`importReport.error.${e.code}`);
+  return e instanceof Error ? e.message : String(e);
 }

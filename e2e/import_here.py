@@ -102,7 +102,7 @@ async def main():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-            pg = await b.new_page(viewport={'width': 1440, 'height': 900}, permissions=['clipboard-read', 'clipboard-write'])
+            pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900}, permissions=['clipboard-read', 'clipboard-write'])
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             # the folder's picture is made in the page, so the PNG is real

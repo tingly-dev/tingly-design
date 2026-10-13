@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Window } from 'happy-dom';
-import { decodeDataUrl, embeddedAssets, parseSvg, readSvg, svgLength, svgSize, toCanvas } from '../src';
+import { translator } from '@dc/i18n';
+import { ImportError, decodeDataUrl, embeddedAssets, importErrorText, parseSvg, readSvg, svgLength, svgSize, toCanvas } from '../src';
 
 const parser = new new Window().DOMParser() as unknown as DOMParser;
 const read = (text: string) => readSvg(parseSvg(text, parser));
@@ -53,16 +54,24 @@ pasted note after the drawing`;
     const canvas = JSON.parse(out.files['canvas.json']);
     expect(canvas.boards['Main.dc.html'].imported.from).toBe('svg');
     expect(canvas.boards['Main.dc.html']).toMatchObject({ w: 300, h: 200, title: 'Card' });
-    expect(canvas.notes.imported.text).toContain('从 SVG 导入');
+    expect(canvas.notes.imported.text).toContain('Imported from SVG');
   });
 
   it('notes outlined text', () => {
     const paths = '<path d="M0 0h1"/>'.repeat(3);
-    expect(read(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">${paths}</svg>`).report.notes?.[0]).toMatch(/没有可改的文字/);
+    expect(read(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">${paths}</svg>`).report.outlinedText).toBe(true);
   });
 
   it('rejects what is not an svg', () => {
-    expect(() => read('<html></html>')).toThrow();
+    expect(() => read('<html></html>')).toThrow(ImportError);
+    let caught: unknown;
+    try {
+      read('<html></html>');
+    } catch (e) {
+      caught = e;
+    }
+    expect(importErrorText(caught)).toBe('This is not a valid SVG file');
+    expect(importErrorText(caught, translator('zh'))).toBe('这不是一个有效的 SVG 文件');
   });
 });
 

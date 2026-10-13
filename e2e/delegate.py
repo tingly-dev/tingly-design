@@ -8,7 +8,7 @@ async def main():
     subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        pg = await b.new_page(viewport={'width': 1440, 'height': 900})
+        pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
         await pg.goto(BASE + '/?p=box-console')
         await pg.wait_for_timeout(2500)
         flow = pg.frame_locator('[data-board="Flow.dc.html"] iframe')

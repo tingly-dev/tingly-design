@@ -13,6 +13,23 @@ import type { ExtractReport, Extracted, XElement, XNode } from '../../model';
  * Needs only a parsed Document (DOMParser in a browser, any DOM in tests).
  */
 
+/**
+ * What the importer throws for input it cannot read. Its message is English; `code` names an
+ * `importReport.error.*` string, so a caller shows it in its own language with importErrorText()
+ * (in generate.ts, which keeps i18next out of the browser bundle).
+ */
+export class ImportError extends Error {
+  constructor(
+    readonly code: 'notSvg',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ImportError';
+  }
+}
+
+const notSvg = () => new ImportError('notSvg', 'This is not a valid SVG file');
+
 export interface SvgOptions {
   /** stop after this many elements (default 6000) */
   maxElements?: number;
@@ -56,7 +73,7 @@ const box = (height = 0, display = 'inline') => ({ top: 0, height, marginTop: 0,
 
 export function readSvg(doc: Document, opts: SvgOptions = {}): Extracted {
   const svg = doc.documentElement;
-  if (!svg || svg.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) throw new Error('这不是一个有效的 SVG 文件');
+  if (!svg || svg.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) throw notSvg();
   const max = opts.maxElements ?? 6000;
   const report: ExtractReport = { elements: 0, stateRules: 0, otherMediaRules: 0, unreadableSheets: [], scripts: 0, hidden: 0, transparent: 0, pseudoElements: 0, dropped: {}, truncated: false };
   const urls: string[] = [];
@@ -129,10 +146,9 @@ export function readSvg(doc: Document, opts: SvgOptions = {}): Extracted {
   // design tools turn text into outlines on export unless told not to; say so, since it decides what can be edited
   const texts = svg.getElementsByTagNameNS(SVG_NS, 'text').length;
   const paths = svg.getElementsByTagNameNS(SVG_NS, 'path').length;
-  if (!texts && paths >= 3)
-    report.notes = ['没有可改的文字：文字在导出时多半被转成了路径。Figma 导出 SVG 时取消勾选 "Outline text"，文字就能保留下来'];
+  if (!texts && paths >= 3) report.outlinedText = true;
   const images = svg.getElementsByTagNameNS(SVG_NS, 'image').length;
-  if (images) (report.notes ??= []).push(`${images} 张嵌入的位图（截图、照片）作为图片导入，里面的内容不能编辑`);
+  if (images) report.bitmaps = images;
   const title = Array.from(svg.children).find((c) => c.localName === 'title')?.textContent?.trim() ?? '';
   return { from: 'svg', title, lang: svg.getAttribute('xml:lang') ?? svg.getAttribute('lang') ?? '', width: w, height: h, root, headCss: '', fontLinks: [], urls, report };
 }
@@ -145,7 +161,7 @@ export function parseSvg(text: string, parser: DOMParser = new DOMParser()): Doc
   let s = text.replace(/^﻿/, '');
   const start = s.search(/<\?xml|<svg[\s>]/i);
   const end = s.lastIndexOf('</svg>');
-  if (start < 0) throw new Error('这不是一个有效的 SVG 文件');
+  if (start < 0) throw notSvg();
   s = end > start ? s.slice(start, end + 6) : s.slice(start).trim(); // <svg …/> has no closing tag
   return parser.parseFromString(s, 'image/svg+xml');
 }

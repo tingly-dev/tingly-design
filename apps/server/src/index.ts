@@ -63,6 +63,7 @@ import {
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
+import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -87,7 +88,7 @@ const DC_THEME: unknown = await (async () => {
 const app = new Hono();
 
 app.onError((err, c) => {
-  if (err instanceof HttpError) return c.json({ error: err.message }, err.status as 400);
+  if (err instanceof HttpError) return c.json({ error: trOf(c)(`errors.${err.key}`, err.params), code: err.key }, err.status as 400);
   console.error(err);
   return c.json({ error: err.message }, 500);
 });
@@ -102,6 +103,7 @@ app.get('/api/health', (c) => {
     claudeCli: cliChecked,
     projectsDir: fromRoot(PROJECTS_DIR),
     theme: DC_THEME,
+    lang: DC_LANG,
     version: VERSION,
     protocol: PROTOCOL,
     basePath: BASE_PATH,
@@ -112,8 +114,8 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 app.post('/api/projects', async (c) => {
   const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: string }>();
-  if (!isProjectName(name)) throw new HttpError(400, '项目名只能用字母、数字、- 和 _');
-  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design');
+  if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
+  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design', langOf(c));
   return c.json({ ok: true });
 });
 
@@ -129,7 +131,7 @@ app.put('/api/projects/:p/file', async (c) => {
     summary?: string;
     prompt?: string;
   }>();
-  if (typeof body.content !== 'string') throw new HttpError(400, 'content missing');
+  if (typeof body.content !== 'string') throw new HttpError(400, 'contentMissing');
   const actor = ACTORS.includes(body.actor as Actor) ? (body.actor as Actor) : 'human';
   return withLock(p, async () => {
     const cur = await readOne(p, rel);
@@ -182,7 +184,7 @@ async function editIndex(p: string, rel: string, fn: (json: Record<string, unkno
   try {
     json = cur ? JSON.parse(cur.content) : {};
   } catch {
-    throw new HttpError(409, `${rel} is not valid JSON`);
+    throw new HttpError(409, 'invalidJson', { path: rel });
   }
   fn(json);
   const content = JSON.stringify(json, null, 2) + '\n';
@@ -201,13 +203,13 @@ async function editIndex(p: string, rel: string, fn: (json: Record<string, unkno
 app.post('/api/projects/:p/design-systems', async (c) => {
   const p = c.req.param('p');
   const { from } = await c.req.json<{ from: string }>();
-  if (!isProjectName(from ?? '')) throw new HttpError(400, 'bad design system name');
+  if (!isProjectName(from ?? '')) throw new HttpError(400, 'badDesignSystemName');
   const kind = await kindOf(projectDir(p));
-  if (kind !== 'design' && kind !== 'slides') throw new HttpError(400, '只能把设计系统装进画布或幻灯片');
-  if ((await kindOf(projectDir(from))) !== 'design-system') throw new HttpError(404, `${from} 不是设计系统`);
+  if (kind !== 'design' && kind !== 'slides') throw new HttpError(400, 'installOnlyInto');
+  if ((await kindOf(projectDir(from))) !== 'design-system') throw new HttpError(404, 'notDesignSystem', { name: from });
   const index = parseDsIndex((await readOne(from, DS_INDEX))?.content);
   const tokens = await readOne(from, DS_TOKENS);
-  if (!tokens) throw new HttpError(409, `${from} 没有 tokens.json`);
+  if (!tokens) throw new HttpError(409, 'noTokens', { name: from });
   const folder = dsFolderOf(index.namespace);
   return withLock(p, async () => {
     const rel = `ds/${folder}/tokens.json`;
@@ -255,9 +257,9 @@ app.post('/api/projects/:p/design-systems', async (c) => {
 app.delete('/api/projects/:p/design-systems', async (c) => {
   const p = c.req.param('p');
   const folder = c.req.query('namespace') ?? '';
-  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(folder)) throw new HttpError(400, 'bad namespace');
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(folder)) throw new HttpError(400, 'badNamespace');
   const kind = await kindOf(projectDir(p));
-  if (kind !== 'design' && kind !== 'slides') throw new HttpError(400, 'not a canvas or deck');
+  if (kind !== 'design' && kind !== 'slides') throw new HttpError(400, 'notCanvasOrDeck');
   return withLock(p, async () => {
     await editIndex(
       p,
@@ -296,10 +298,10 @@ app.post('/api/projects/:p/assets', async (c) => {
   const name = c.req.query('name') ?? 'file';
   const ext = (/\.([A-Za-z0-9]+)$/.exec(name)?.[1] ?? '').toLowerCase();
   const dir = c.req.query('dir');
-  if (dir === 'data' ? !isDataPath(`data/x.${ext}`) : dir === 'uploads' ? !isUploadPath(`uploads/x.${ext}`) : !ASSET_TYPES[ext]) throw new HttpError(400, `不支持的文件类型：${ext || name}`);
+  if (dir === 'data' ? !isDataPath(`data/x.${ext}`) : dir === 'uploads' ? !isUploadPath(`uploads/x.${ext}`) : !ASSET_TYPES[ext]) throw new HttpError(400, 'unsupportedFileType', { type: ext || name });
   const bytes = new Uint8Array(await c.req.arrayBuffer());
-  if (!bytes.length) throw new HttpError(400, 'empty file');
-  if (bytes.length > MAX_ASSET) throw new HttpError(413, '文件超过 20 MB');
+  if (!bytes.length) throw new HttpError(400, 'emptyFile');
+  if (bytes.length > MAX_ASSET) throw new HttpError(413, 'fileTooLarge', { size: '20 MB' });
   const stem = name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'file';
   // into a named folder (a design system's asset group, fonts/, a dashboard's data/): the file keeps its name
   let rel: string;
@@ -324,9 +326,9 @@ app.put('/api/projects/:p/uploads', async (c) => {
   const p = c.req.param('p');
   projectDir(p);
   const rel = c.req.query('path') ?? '';
-  if (!isKeptPath(rel)) throw new HttpError(400, `不能保存这个文件：${rel}`);
+  if (!isKeptPath(rel)) throw new HttpError(400, 'cannotKeep', { path: rel });
   const bytes = new Uint8Array(await c.req.arrayBuffer());
-  if (bytes.length > MAX_ASSET) throw new HttpError(413, '文件超过 20 MB');
+  if (bytes.length > MAX_ASSET) throw new HttpError(413, 'fileTooLarge', { size: '20 MB' });
   await writeAsset(p, rel, bytes);
   publish(p, { type: 'assets', path: rel });
   return c.json({ path: rel, size: bytes.length });
@@ -355,9 +357,9 @@ app.get('/api/connectors', (c) => c.json(Object.fromEntries(Object.entries(CONNE
 /** Run one dataset's call, as the original's page does on each reader's connection. */
 app.post('/api/projects/:p/query', async (c) => {
   const p = c.req.param('p');
-  if ((await kindOf(projectDir(p))) !== 'dashboard') throw new HttpError(400, 'not a dashboard');
+  if ((await kindOf(projectDir(p))) !== 'dashboard') throw new HttpError(400, 'notDashboard');
   const body = await c.req.json<{ connector: string; tool: string; args: Record<string, unknown>; params?: unknown }>();
-  if (!body.args || typeof body.args !== 'object' || Array.isArray(body.args)) throw new HttpError(400, 'args missing');
+  if (!body.args || typeof body.args !== 'object' || Array.isArray(body.args)) throw new HttpError(400, 'argsMissing');
   const params = cleanParams(body.params) ?? {};
   const t0 = Date.now();
   try {
@@ -374,7 +376,7 @@ app.post('/api/projects/:p/query', async (c) => {
 app.put('/api/projects/:p/runs', async (c) => {
   const p = c.req.param('p');
   const text = await c.req.text();
-  if (text.length > 256 * 1024) throw new HttpError(413, 'runs over 256 KB');
+  if (text.length > 256 * 1024) throw new HttpError(413, 'runsTooLarge', { size: '256 KB' });
   JSON.parse(text);
   await writeFile(join(projectDir(p), DASH_RUNS), text, 'utf8');
   return c.json({ ok: true });
@@ -418,13 +420,13 @@ app.get('/api/projects/:p/events', (c) => {
 let anthropic: Anthropic | null = null;
 app.post('/api/projects/:p/fast-edit', async (c) => {
   if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
-    return c.json({ error: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用（可以改用 jQuery 模式直接写语句）。' }, 501);
+    return c.json({ error: trOf(c)('errors.noFastModel') }, 501);
   }
   anthropic ??= new Anthropic();
   const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
   const bad = checkMessages(body.messages);
-  if (bad) throw new HttpError(400, bad);
-  if (body.kind === 'dashboard') throw new HttpError(400, '看板的页面交给 Claude Code 写');
+  if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
+  if (body.kind === 'dashboard') throw new HttpError(400, 'dashboardIsClaudeCode');
   const system =
     body.kind === 'docs'
       ? FAST_EDIT_DOCS
@@ -433,11 +435,12 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
         : body.kind === 'motion'
           ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES + '\n\n' + FAST_EDIT_MOTION
           : FAST_EDIT_SYSTEM;
+  const lang = replyLanguage(langOf(c));
   return stream(c, async (s) => {
     const ms = anthropic!.messages.stream({
       model: FAST_MODEL,
       max_tokens: 4096,
-      system,
+      system: system + '\n\n' + lang,
       messages: body.messages as Anthropic.MessageParam[],
     });
     s.onAbort(() => ms.abort());
@@ -457,18 +460,18 @@ app.post('/api/projects/:p/delegate', async (c) => {
   const p = c.req.param('p');
   projectDir(p);
   if (cliChecked === null) cliChecked = claudeAvailable();
-  if (!cliChecked) return c.json({ error: '本机没有可用的 claude CLI，无法委托。' }, 501);
+  if (!cliChecked) return c.json({ error: trOf(c)('errors.noClaudeCli') }, 501);
   const req = await c.req.json<DelegateRequest>();
-  if (!req.prompt?.trim()) throw new HttpError(400, 'prompt missing');
+  if (!req.prompt?.trim()) throw new HttpError(400, 'promptMissing');
   const bad = checkUploads(req.attachments);
-  if (bad) throw new HttpError(400, bad);
-  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design') });
+  if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
+  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c)) });
 });
 
 app.delete('/api/projects/:p/delegate/:id', (c) => {
   const p = c.req.param('p');
   projectDir(p);
-  if (!stopDelegate(p, c.req.param('id'))) throw new HttpError(404, '这个任务已经结束了。');
+  if (!stopDelegate(p, c.req.param('id'))) throw new HttpError(404, 'taskFinished');
   return c.json({ ok: true });
 });
 
@@ -482,12 +485,12 @@ app.post('/api/projects/:p/commit', async (c) => {
   try {
     await run('git', ['add', '-A', '--', dir], { cwd: PROJECTS_DIR });
     const st = await run('git', ['diff', '--cached', '--stat', '--', dir], { cwd: PROJECTS_DIR });
-    if (!st.stdout.trim()) return c.json({ ok: false, output: '没有需要提交的改动。' });
+    if (!st.stdout.trim()) return c.json({ ok: false, output: trOf(c)('errors.nothingToCommit') });
     const out = await run('git', ['commit', '-m', message?.trim() || `canvas(${p}): update`, '--', dir], { cwd: PROJECTS_DIR });
     return c.json({ ok: true, output: out.stdout.trim().split('\n')[0] });
   } catch (e) {
     const err = e as { stderr?: string; message: string };
-    if (/not a git repository/i.test(err.stderr ?? '')) return c.json({ ok: false, output: `项目文件夹 ${fromRoot(PROJECTS_DIR)} 不在 git 仓库里，没有可提交的地方。` });
+    if (/not a git repository/i.test(err.stderr ?? '')) return c.json({ ok: false, output: trOf(c)('errors.notGitRepo', { dir: fromRoot(PROJECTS_DIR) }) });
     return c.json({ ok: false, output: (err.stderr || err.message).trim() }, 500);
   }
 });

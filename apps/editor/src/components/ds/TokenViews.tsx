@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { styleDeclarations, type DsColor, type DsTokens, type DsTypeGroup, type DsTypeStyle } from '@dc/core';
 import { addFonts, editTokens, familyList, typeOf } from '../../ds';
 import { contrastRatio, toHex } from '../panel/fields';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Token views: colours per theme, type styles, and the plain families
@@ -66,6 +67,7 @@ function TextInput({ value, onCommit, label, mono, area, placeholder }: { value:
 // ------------------------------------------------------------------ colors
 
 function ColorRow({ t, c, theme, open, onToggle }: { t: DsTokens; c: DsColor; theme: string; open: boolean; onToggle: () => void }) {
+  const { t: tr } = useTranslation();
   const v = c.values[theme];
   const list = contrasts(t, c, theme);
   const at = (json: Record<string, unknown>) => familyList(json, 'color').find((x) => x.name === c.name);
@@ -104,7 +106,7 @@ function ColorRow({ t, c, theme, open, onToggle }: { t: DsTokens; c: DsColor; th
         <span className="us">{c.usage}</span>
         <span className="cr">
           {list.map((x) => (
-            <span key={x.on} className={`ratio ${x.ratio >= 4.5 ? 'ok' : x.ratio >= 3 ? 'mid' : 'bad'}`} title={`在 ${x.on} 上的对比度`}>
+            <span key={x.on} className={`ratio ${x.ratio >= 4.5 ? 'ok' : x.ratio >= 3 ? 'mid' : 'bad'}`} title={tr('ds.color.contrastOn', { name: x.on })}>
               {x.ratio.toFixed(1)} · {x.on}
             </span>
           ))}
@@ -113,8 +115,8 @@ function ColorRow({ t, c, theme, open, onToggle }: { t: DsTokens; c: DsColor; th
       {open && (
         <div className="dsedit">
           <label>
-            名称
-            <TextInput value={c.name} onCommit={rename} label="颜色名称" mono />
+            {tr('ds.color.name')}
+            <TextInput value={c.name} onCommit={rename} label={tr('ds.color.nameLabel')} mono />
           </label>
           {t.themes.map((th) => (
             <label key={th.id}>
@@ -122,24 +124,24 @@ function ColorRow({ t, c, theme, open, onToggle }: { t: DsTokens; c: DsColor; th
               <span className="cv">
                 <input
                   type="color"
-                  aria-label={`${th.name} 取色`}
+                  aria-label={tr('ds.color.pick', { theme: th.name })}
                   value={isHex(c.values[th.id]) ? toHex(c.values[th.id]) : '#000000'}
                   onChange={(e) => setValue(th.id, e.target.value)}
                 />
-                <TextInput value={c.raw[th.id] ?? ''} onCommit={(x) => setValue(th.id, x.trim())} label={`${th.name} 的值`} mono placeholder="#rrggbb、oklch()… 或 {别的颜色}" />
+                <TextInput value={c.raw[th.id] ?? ''} onCommit={(x) => setValue(th.id, x.trim())} label={tr('ds.color.value', { theme: th.name })} mono placeholder={tr('ds.color.valuePlaceholder')} />
               </span>
             </label>
           ))}
           <label>
-            用法
-            <TextInput value={c.usage ?? ''} label="用法说明" area onCommit={(x) => editTokens((json) => void (at(json) && (at(json)!.usage = x.trim() || undefined)), `color ${c.name} usage`)} placeholder="它用在哪里、在什么底色上可读：on surface and surface-raised" />
+            {tr('ds.color.usage')}
+            <TextInput value={c.usage ?? ''} label={tr('ds.color.usageLabel')} area onCommit={(x) => editTokens((json) => void (at(json) && (at(json)!.usage = x.trim() || undefined)), `color ${c.name} usage`)} placeholder={tr('ds.color.usagePlaceholder')} />
           </label>
           <div className="acts">
             <button className="btn outline danger" onClick={() => editTokens((json) => {
               const l = familyList(json, 'color');
               l.splice(l.findIndex((x) => x.name === c.name), 1);
             }, `color ${c.name} removed`)}>
-              删除这个颜色
+              {tr('ds.color.remove')}
             </button>
           </div>
         </div>
@@ -149,6 +151,7 @@ function ColorRow({ t, c, theme, open, onToggle }: { t: DsTokens; c: DsColor; th
 }
 
 export function ColorsView({ t, theme }: { t: DsTokens; theme: string }) {
+  const { t: tr } = useTranslation();
   const [open, setOpen] = useState<string | null>(null);
   const groups = useMemo(() => {
     const m = new Map<string, DsColor[]>();
@@ -166,12 +169,12 @@ export function ColorsView({ t, theme }: { t: DsTokens; theme: string }) {
     setOpen(name);
   };
   return (
-    <section className="dsview" aria-label="颜色">
+    <section className="dsview" aria-label={tr('ds.color.title')}>
       <header>
-        <h2>颜色</h2>
-        <span className="hint">{t.colors.length} 个 · 主题 {t.themes.map((x) => x.name).join(' / ')}</span>
+        <h2>{tr('ds.color.title')}</h2>
+        <span className="hint">{tr('ds.color.summary', { count: t.colors.length, themes: t.themes.map((x) => x.name).join(' / ') })}</span>
         <button className="btn outline" onClick={add}>
-          + 添加颜色
+          {tr('ds.color.add')}
         </button>
       </header>
       {groups.map(([stem, list]) => (
@@ -182,7 +185,7 @@ export function ColorsView({ t, theme }: { t: DsTokens; theme: string }) {
           ))}
         </div>
       ))}
-      {!t.colors.length && <p className="hint">还没有颜色。</p>}
+      {!t.colors.length && <p className="hint">{tr('ds.color.empty')}</p>}
     </section>
   );
 }
@@ -190,6 +193,7 @@ export function ColorsView({ t, theme }: { t: DsTokens; theme: string }) {
 // -------------------------------------------------------------- typography
 
 function StyleRow({ t, g, gi, s, open, onToggle }: { t: DsTokens; g: DsTypeGroup; gi: number; s: DsTypeStyle; open: boolean; onToggle: () => void }) {
+  const { t: tr } = useTranslation();
   const css = styleDeclarations(t, s, g);
   const style = Object.fromEntries(Object.entries(css).map(([k, v]) => [k.replace(/-([a-z])/g, (_, x: string) => x.toUpperCase()), v]));
   const set = (key: string, value: string | number | undefined) =>
@@ -201,16 +205,16 @@ function StyleRow({ t, g, gi, s, open, onToggle }: { t: DsTokens; g: DsTypeGroup
       else st[key] = value;
     }, `type style ${s.name} ${key}`);
   const fields: [string, string, string | undefined][] = [
-    ['fontSize', '字号', s.fontSize],
-    ['lineHeight', '行高', s.lineHeight],
-    ['fontWeight', '字重', s.fontWeight],
-    ['letterSpacing', '字距', s.letterSpacing],
+    ['fontSize', tr('ds.type.fontSize'), s.fontSize],
+    ['lineHeight', tr('ds.type.lineHeight'), s.lineHeight],
+    ['fontWeight', tr('ds.type.fontWeight'), s.fontWeight],
+    ['letterSpacing', tr('ds.type.letterSpacing'), s.letterSpacing],
   ];
   return (
     <div className={`dsrow ${open ? 'open' : ''}`} data-style={s.name}>
       <button className="dshead tstyle" onClick={onToggle} aria-expanded={open}>
         <span className="sample" style={style}>
-          {s.sample ?? '敏捷的狐狸跳过懒狗 The quick brown fox'}
+          {s.sample ?? tr('ds.type.sample')}
         </span>
         <span className="meta">
           <b>{s.name}</b> {s.fontSize}
@@ -228,9 +232,9 @@ function StyleRow({ t, g, gi, s, open, onToggle }: { t: DsTokens; g: DsTypeGroup
             ))}
           </div>
           <label>
-            字体族
-            <select className="dsin" value={s.family ?? ''} onChange={(e) => set('family', e.target.value || undefined)} aria-label="字体族">
-              <option value="">跟随这一组（{g.family ?? '无'}）</option>
+            {tr('ds.type.family')}
+            <select className="dsin" value={s.family ?? ''} onChange={(e) => set('family', e.target.value || undefined)} aria-label={tr('ds.type.family')}>
+              <option value="">{tr('ds.type.followGroup', { family: g.family ?? tr('common.none') })}</option>
               {Object.keys(t.families).map((k) => (
                 <option key={k} value={k}>
                   {k}
@@ -239,19 +243,19 @@ function StyleRow({ t, g, gi, s, open, onToggle }: { t: DsTokens; g: DsTypeGroup
             </select>
           </label>
           <label>
-            示例文字
-            <TextInput value={s.sample ?? ''} label="示例文字" onCommit={(x) => set('sample', x.trim() || undefined)} />
+            {tr('ds.type.sampleText')}
+            <TextInput value={s.sample ?? ''} label={tr('ds.type.sampleText')} onCommit={(x) => set('sample', x.trim() || undefined)} />
           </label>
           <label>
-            用法
-            <TextInput value={s.usage ?? ''} label="用法" area onCommit={(x) => set('usage', x.trim() || undefined)} />
+            {tr('ds.type.usage')}
+            <TextInput value={s.usage ?? ''} label={tr('ds.type.usage')} area onCommit={(x) => set('usage', x.trim() || undefined)} />
           </label>
           <div className="acts">
             <button className="btn outline danger" onClick={() => editTokens((json) => {
               const st = (json.type as { groups?: { styles?: Record<string, unknown>[] }[] })?.groups?.[gi]?.styles;
               if (st) st.splice(st.findIndex((x) => x.name === s.name), 1);
             }, `type style ${s.name} removed`)}>
-              删除这个样式
+              {tr('ds.type.removeStyle')}
             </button>
           </div>
         </div>
@@ -261,6 +265,7 @@ function StyleRow({ t, g, gi, s, open, onToggle }: { t: DsTokens; g: DsTypeGroup
 }
 
 export function TypeView({ t }: { t: DsTokens }) {
+  const { t: tr } = useTranslation();
   const [open, setOpen] = useState<string | null>(null);
   const fontInput = useRef<HTMLInputElement>(null);
   const addStyle = (gi: number) => {
@@ -275,10 +280,10 @@ export function TypeView({ t }: { t: DsTokens }) {
     setOpen(`style-${i}`);
   };
   return (
-    <section className="dsview" aria-label="文字">
+    <section className="dsview" aria-label={tr('ds.type.title')}>
       <header>
-        <h2>文字</h2>
-        <span className="hint">{t.groups.reduce((n, g) => n + g.styles.length, 0)} 个样式</span>
+        <h2>{tr('ds.type.title')}</h2>
+        <span className="hint">{tr('ds.type.count', { count: t.groups.reduce((n, g) => n + g.styles.length, 0) })}</span>
       </header>
       {t.groups.map((g, gi) => (
         <div key={gi} className="dsgroup">
@@ -291,35 +296,35 @@ export function TypeView({ t }: { t: DsTokens }) {
             <StyleRow key={s.name} t={t} g={g} gi={gi} s={s} open={open === s.name} onToggle={() => setOpen(open === s.name ? null : s.name)} />
           ))}
           <button className="btn ghost" onClick={() => addStyle(gi)}>
-            + 添加样式
+            {tr('ds.type.addStyle')}
           </button>
         </div>
       ))}
       {!t.groups.length && (
         <button className="btn outline" onClick={() => addStyle(0)}>
-          + 添加第一个文字样式
+          {tr('ds.type.addFirst')}
         </button>
       )}
       <div className="dsgroup">
-        <h3>字体族</h3>
+        <h3>{tr('ds.type.families')}</h3>
         {Object.entries(t.families).map(([k, v]) => (
           <div key={k} className="kv">
             <code>{k}</code>
-            <TextInput value={v} label={`字体族 ${k}`} mono onCommit={(x) => editTokens((json) => void (typeOf(json).families![k] = x.trim()), `family ${k}`)} />
+            <TextInput value={v} label={tr('ds.type.familyLabel', { name: k })} mono onCommit={(x) => editTokens((json) => void (typeOf(json).families![k] = x.trim()), `family ${k}`)} />
           </div>
         ))}
         <button
           className="btn ghost"
           onClick={() => {
-            const k = prompt('字体族的名字（如 serif、display）')?.trim().toLowerCase();
+            const k = prompt(tr('ds.type.familyPrompt'))?.trim().toLowerCase();
             if (k && /^[a-z0-9][a-z0-9_.-]{0,63}$/.test(k)) editTokens((json) => void (typeOf(json).families![k] = 'system-ui, sans-serif'), `family ${k} added`);
           }}
         >
-          + 添加字体族
+          {tr('ds.type.addFamily')}
         </button>
       </div>
       <div className="dsgroup">
-        <h3>字体文件</h3>
+        <h3>{tr('ds.type.fontFiles')}</h3>
         {t.fonts.map((f) => (
           <div key={f.file} className="kv">
             <span style={{ fontFamily: `"${f.family}"`, fontSize: 20 }}>{f.family}</span>
@@ -334,9 +339,9 @@ export function TypeView({ t }: { t: DsTokens }) {
             <code className="hint">Google Fonts</code>
           </div>
         ))}
-        {!t.fonts.length && !t.hosted.length && <p className="hint">没有字体文件；样式用的是系统字体。</p>}
+        {!t.fonts.length && !t.hosted.length && <p className="hint">{tr('ds.type.noFonts')}</p>}
         <button className="btn ghost" onClick={() => fontInput.current?.click()}>
-          + 上传字体文件
+          {tr('ds.type.uploadFonts')}
         </button>
         <input
           ref={fontInput}
@@ -357,14 +362,16 @@ export function TypeView({ t }: { t: DsTokens }) {
 
 // ----------------------------------------------------------- other families
 
-const KEY_ZH: Record<string, string> = { spacing: '间距', radius: '圆角', shadow: '阴影' };
+const KNOWN = ['spacing', 'radius', 'shadow'] as const;
+const isKnown = (k: string): k is (typeof KNOWN)[number] => (KNOWN as readonly string[]).includes(k);
 
 export function FamiliesView({ t, theme }: { t: DsTokens; theme: string }) {
+  const { t: tr } = useTranslation();
   const keys = ['spacing', 'radius', 'shadow', ...t.others.map((f) => f.key).filter((k) => !['spacing', 'radius', 'shadow'].includes(k))];
   return (
-    <section className="dsview" aria-label="间距、圆角与阴影">
+    <section className="dsview" aria-label={tr('ds.families.title')}>
       <header>
-        <h2>间距、圆角与阴影</h2>
+        <h2>{tr('ds.families.title')}</h2>
       </header>
       {keys.map((key) => {
         const fam = t.others.find((f) => f.key === key);
@@ -378,7 +385,7 @@ export function FamiliesView({ t, theme }: { t: DsTokens; theme: string }) {
           }, `${key} ${name} ${field}`);
         return (
           <div key={key} className="dsgroup" data-family={key}>
-            <h3>{KEY_ZH[key] ?? fam?.title ?? key}</h3>
+            <h3>{isKnown(key) ? tr(`ds.families.${key}`) : (fam?.title ?? key)}</h3>
             {fam?.note && <p className="hint">{fam.note}</p>}
             {tokens.map((x) => {
               const v = x.values?.[theme] ?? x.value;
@@ -394,9 +401,9 @@ export function FamiliesView({ t, theme }: { t: DsTokens; theme: string }) {
                     ) : null}
                   </span>
                   <code className="nm">{x.name}</code>
-                  <TextInput value={v} label={`${x.name} 的值`} mono onCommit={(nv) => set(x.name, 'value', nv.trim())} />
-                  <TextInput value={x.usage ?? ''} label={`${x.name} 的用法`} placeholder="用法" onCommit={(nv) => set(x.name, 'usage', nv.trim())} />
-                  <button className="ib" aria-label={`删除 ${x.name}`} title="删除" onClick={() => editTokens((json) => {
+                  <TextInput value={v} label={tr('ds.families.value', { name: x.name })} mono onCommit={(nv) => set(x.name, 'value', nv.trim())} />
+                  <TextInput value={x.usage ?? ''} label={tr('ds.families.usageLabel', { name: x.name })} placeholder={tr('ds.families.usagePlaceholder')} onCommit={(nv) => set(x.name, 'usage', nv.trim())} />
+                  <button className="ib" aria-label={tr('ds.families.deleteName', { name: x.name })} title={tr('common.delete')} onClick={() => editTokens((json) => {
                     const l = familyList(json, key);
                     l.splice(l.findIndex((y) => y.name === x.name), 1);
                   }, `${key} ${x.name} removed`)}>
@@ -412,7 +419,7 @@ export function FamiliesView({ t, theme }: { t: DsTokens; theme: string }) {
                 editTokens((json) => void familyList(json, key).push({ name, value: key === 'shadow' ? '0 2px 8px rgba(0,0,0,0.12)' : key === 'spacing' || key === 'radius' ? '8px' : '1', usage: '' }), `${key} ${name} added`);
               }}
             >
-              + 添加
+              {tr('ds.families.add')}
             </button>
           </div>
         );

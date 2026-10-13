@@ -3,6 +3,7 @@ import { extractPage } from '@dc/import/extract';
 import { isKeptPath } from '@dc/core';
 import { api } from './api';
 import { slugOf } from './projectName';
+import { t } from './i18n';
 
 /**
  * Import an HTML page or an SVG drawing (and the files beside it) as a new
@@ -176,7 +177,7 @@ export async function readPage(picked: Picked): Promise<{ extracted: Extracted; 
     }
     extracted.report.unreadableSheets.push(...packed.remoteCss);
     if (extracted.report.elements < 4 && extracted.report.scripts > 0)
-      throw new Error('这个页面要运行脚本才会显示内容，编辑器里不运行导入页面的脚本。请在终端用 `pnpm dc-import html <文件>` 导入。');
+      throw new Error(t('importer.needsScripts'));
   }
   return { extracted, packed };
 }
@@ -212,9 +213,11 @@ export async function writePage(
     const up = await api.upload(project, new File([a.bytes as Uint8Array<ArrayBuffer>], `embedded.${a.ext}`, { type: a.type }));
     local.set(a.url, up.path);
   }
-  if (skipped.length) (extracted.report.notes ??= []).push(`${skipped.length} 个文件类型不能保存在项目里，没有留存：${skipped.slice(0, 3).join('、')}${skipped.length > 3 ? ' 等' : ''}`);
+  if (skipped.length) (extracted.report.notes ??= []).push(
+      t(skipped.length > 3 ? 'importer.skippedMore' : 'importer.skipped', { count: skipped.length, files: skipped.slice(0, 3).join(t('importer.listSeparator')) }),
+    );
   const source = picked.entry === 'pasted.svg' && picked.files.length === 1 ? undefined : picked.entry;
-  return toCanvas(extracted, { title: title || extracted.title || undefined, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
+  return toCanvas(extracted, { title: title || extracted.title || undefined, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry), t });
 }
 
 /** A page or drawing as a new canvas project. */
@@ -230,7 +233,7 @@ export async function importPicked(picked: Picked, name: string, title: string, 
   const order = [...Object.keys(out.files).filter((f) => f !== 'canvas.json'), 'canvas.json'];
   for (const path of order) {
     const r = await api.put(name, path, { content: out.files[path], baseVersion: files[path]?.version ?? null, actor: 'human', summary: `imported ${picked.entry}` });
-    if ('conflict' in r) throw new Error(`${path} changed while importing; try again`);
+    if ('conflict' in r) throw new Error(t('importer.changedWhileImporting', { path }));
   }
   return { report: out.report };
 }

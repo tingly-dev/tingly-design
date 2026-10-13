@@ -33,7 +33,7 @@ async def main():
 
         # --- the default follows the system ---------------------------------------------------
         for scheme, want in (('light', 'light'), ('dark', 'dark')):
-            ctx = await b.new_context(viewport={'width': 1280, 'height': 800}, color_scheme=scheme)
+            ctx = await b.new_context(locale='zh-CN', viewport={'width': 1280, 'height': 800}, color_scheme=scheme)
             pg = await ctx.new_page()
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(BASE + '/')
@@ -42,7 +42,7 @@ async def main():
             check(f'with nothing chosen, a {scheme} system gets the {want} theme', got == [want, want], str(got))
             await ctx.close()
 
-        ctx = await b.new_context(viewport={'width': 1280, 'height': 800})
+        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1280, 'height': 800})
         pg = await ctx.new_page()
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and errs.append(m.text))

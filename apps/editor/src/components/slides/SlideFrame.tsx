@@ -5,6 +5,7 @@ import { deckOf, display, editElement, parsed, useStore } from '../../store';
 import { frames, post } from '../Board';
 import { handleKey } from '../../shortcuts';
 import { SERVER } from '../../base';
+import { htmlLang } from '../../i18n';
 
 export type FrameUse = 'stage' | 'thumb' | 'present';
 
@@ -59,7 +60,7 @@ export const SlideFrame = memo(function SlideFrame({
   info.current = scene?.info;
   const selected = useStore((s) => (use === 'stage' && s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   const hover = useStore((s) => (use === 'stage' && s.layerHover?.file === file ? s.layerHover.tid : null));
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   const mode = use === 'present' ? 'play' : 'edit';
   const slide = useMemo(() => ({ head, base: project ? api.rawBase(project) : '', still: use === 'thumb' }), [head, project, use]);
   const stepsCb = useRef(onSteps);

@@ -1,34 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { describeTool, elapsedLabel } from '../src/activity';
+import { describeTool, elapsed } from '../src/activity';
 
 const root = '/repo';
 const project = '/repo/projects/deck';
 
 describe('describeTool', () => {
   it('names the format reference instead of its path', () => {
-    expect(describeTool('Read', { file_path: '/repo/.claude/skills/slides/SKILL.md' }, root, project)).toEqual({ kind: 'read', text: '读格式说明' });
+    expect(describeTool('Read', { file_path: '/repo/.claude/skills/slides/SKILL.md' }, root, project)).toEqual({ kind: 'read', op: 'readSkill' });
   });
   it('shows project files relative to the project', () => {
-    expect(describeTool('Read', { file_path: '/repo/projects/deck/deck.json' }, root, project).text).toBe('读 deck.json');
-    expect(describeTool('Read', { file_path: 'projects/deck/slides/a.html' }, root, project).text).toBe('读 slides/a.html');
+    expect(describeTool('Read', { file_path: '/repo/projects/deck/deck.json' }, root, project).target).toBe('deck.json');
+    expect(describeTool('Read', { file_path: 'projects/deck/slides/a.html' }, root, project).target).toBe('slides/a.html');
   });
   it('marks edits and writes inside the project as changed files', () => {
-    expect(describeTool('Edit', { file_path: '/repo/projects/deck/slides/a.html' }, root, project)).toEqual({ kind: 'edit', text: '改 slides/a.html', changed: 'slides/a.html' });
-    expect(describeTool('Write', { file_path: '/repo/projects/deck/slides/b.html' }, root, project).changed).toBe('slides/b.html');
+    expect(describeTool('Edit', { file_path: '/repo/projects/deck/slides/a.html' }, root, project)).toEqual({ kind: 'edit', op: 'edit', target: 'slides/a.html', changed: 'slides/a.html' });
+    expect(describeTool('Write', { file_path: '/repo/projects/deck/slides/b.html' }, root, project)).toMatchObject({ op: 'write', changed: 'slides/b.html' });
     expect(describeTool('Edit', { file_path: '/elsewhere/x.txt' }, root, project).changed).toBeUndefined();
   });
-  it('words searches and commands', () => {
-    expect(describeTool('Grep', { pattern: 'title' }, root, project).text).toBe('搜索“title”');
-    expect(describeTool('Glob', { pattern: '**/*.html' }, root, project).text).toBe('找文件 **/*.html');
-    expect(describeTool('Bash', { command: 'node scripts/dash-query.mjs projects/x/data/a.db "select 1"' }, root, project).text).toBe('查询数据');
-    expect(describeTool('Mystery', {}, root, project)).toEqual({ kind: 'other', text: 'Mystery' });
+  it('tells searches and commands apart', () => {
+    expect(describeTool('Grep', { pattern: 'title' }, root, project)).toEqual({ kind: 'search', op: 'grep', target: 'title' });
+    expect(describeTool('Grep', { pattern: 'title', path: '/repo/projects/deck/slides' }, root, project)).toEqual({ kind: 'search', op: 'grepIn', target: 'title', within: 'slides' });
+    expect(describeTool('Glob', { pattern: '**/*.html' }, root, project)).toEqual({ kind: 'search', op: 'glob', target: '**/*.html' });
+    expect(describeTool('Bash', { command: 'node scripts/dash-query.mjs projects/x/data/a.db "select 1"' }, root, project)).toEqual({ kind: 'run', op: 'query' });
+    expect(describeTool('Mystery', {}, root, project)).toEqual({ kind: 'other', op: 'tool', target: 'Mystery' });
   });
 });
 
-describe('elapsedLabel', () => {
-  it('counts seconds, then minutes', () => {
-    expect(elapsedLabel(400)).toBe('0 秒');
-    expect(elapsedLabel(12_300)).toBe('12 秒');
-    expect(elapsedLabel(65_000)).toBe('1 分 05 秒');
+describe('elapsed', () => {
+  it('splits into minutes and seconds', () => {
+    expect(elapsed(400)).toEqual({ m: 0, s: 0 });
+    expect(elapsed(12_300)).toEqual({ m: 0, s: 12 });
+    expect(elapsed(65_000)).toEqual({ m: 1, s: 5 });
   });
 });

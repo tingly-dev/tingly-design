@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   TRANSITION_KINDS,
   attr,
@@ -18,7 +20,6 @@ import { FORMAT_PRESETS, addFormat, editMotion, motionOf, overridesOf, removeFor
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SlideLayers } from '../slides/SlidePanel';
 
-const TRANSITION_ZH: Record<string, string> = { cut: '直接切', fade: '淡入淡出', push: '推入', magic: '神奇移动' };
 
 function useMotion() {
   const text = useStore((s) => display(s, 'motion.json'));
@@ -32,7 +33,7 @@ const sizeLabel = (size: [number, number]) => `${size[0]}×${size[1]}`;
  * (an element is off while any of its ancestors is).
  */
 /** What is off screen at `at` ms into the scene; `null` is the landed first moment, where only other formats' elements are away. */
-export function awayAt(doc: DcDoc, format: string, formats: string[], at: number | null): Map<number, string> {
+export function awayAt(doc: DcDoc, format: string, formats: string[], at: number | null, t: TFunction): Map<number, string> {
   const { windows } = sceneVisibility(doc, format, formats);
   const out = new Map<number, string>();
   for (const el of doc.elements) {
@@ -48,12 +49,12 @@ export function awayAt(doc: DcDoc, format: string, formats: string[], at: number
     }
     if (!known) {
       // not drawn in this format at all
-      if (attr(el, 'data-only') !== undefined || el.parent) out.set(el.tid, `不在 ${format}`);
+      if (attr(el, 'data-only') !== undefined || el.parent) out.set(el.tid, t('motion.away.notInFormat', { format }));
       continue;
     }
     if (at === null) continue;
-    if (at < from) out.set(el.tid, `${formatTime(Math.round(from))} 入场`);
-    else if (at > to) out.set(el.tid, `${formatTime(Math.round(to))} 已离场`);
+    if (at < from) out.set(el.tid, t('motion.away.entersAt', { time: formatTime(Math.round(from)) }));
+    else if (at > to) out.set(el.tid, t('motion.away.leftAt', { time: formatTime(Math.round(to)) }));
   }
   return out;
 }
@@ -62,6 +63,7 @@ export function awayAt(doc: DcDoc, format: string, formats: string[], at: number
 export function FormatNote({ file, el }: { file: string; el: DcElement }) {
   const view = useStore((s) => s.motionView);
   const m = useMotion();
+  const { t } = useTranslation();
   if (!view) return null;
   const formats = Object.keys(m.formats);
   if (formats.length < 2) return null;
@@ -75,22 +77,24 @@ export function FormatNote({ file, el }: { file: string; el: DcElement }) {
   return (
     <div className="sec mfmt">
       <div className="mfmt-where">
-        改动写到：
-        <b>{own ? `仅 ${view.format}（${sizeLabel(m.formats[view.format].size)}）` : '所有尺寸'}</b>
+        {t('motion.formatNote.writesTo')}
+        <b>{own ? t('motion.formatNote.onlyFormat', { format: view.format, size: sizeLabel(m.formats[view.format].size) }) : t('motion.formatNote.allFormats')}</b>
       </div>
       <p className="hint" style={{ margin: 0 }}>
-        {own ? '文字和时间仍然所有尺寸共用；样式只改这个尺寸。' : `在其他尺寸（${formats.filter((f) => f !== view.primary).join('、')}）里改，只会改那个尺寸。`}
+        {own
+          ? t('motion.formatNote.ownHint')
+          : t('motion.formatNote.sharedHint', { formats: formats.filter((f) => f !== view.primary).join(t('motion.formatNote.listSeparator')) })}
       </p>
       {own && over.length > 0 && (
         <div className="mover">
-          <span className="hint">这个尺寸单独设了：</span>
+          <span className="hint">{t('motion.formatNote.overrides')}</span>
           {over.map((d) => (
-            <button key={d.prop} className="chip" title={`${d.prop}: ${d.value}。点一下，改回所有尺寸共用的值`} onClick={() => drop(d.prop)}>
+            <button key={d.prop} className="chip" title={t('motion.formatNote.overrideHint', { prop: d.prop, value: d.value })} onClick={() => drop(d.prop)}>
               {d.prop} ×
             </button>
           ))}
           <button className="btn ghost" onClick={() => drop(null)}>
-            全部用共享值
+            {t('motion.formatNote.dropAll')}
           </button>
         </div>
       )}
@@ -105,7 +109,8 @@ export function SceneProps({ file }: { file: string }) {
   const doc = source ? parsed(source) : null;
   const root = doc ? rootElement(doc) : undefined;
   const issues = useMemo(() => (doc ? checkScene(doc, id).filter((i) => i.level !== 'note') : []), [doc, id]);
-  if (!root) return <div className="empty">这个场景还没有内容。</div>;
+  const { t } = useTranslation();
+  if (!root) return <div className="empty">{t('motion.sceneProps.empty')}</div>;
   const style = attr(root, 'style') ?? '';
   const set = (prop: string, value: string | null) => editElement(file, [{ kind: 'style', tid: root.tid, prop, value }]);
   const setAttr = (name: string, value: string | null) => editElement(file, [{ kind: 'attr', tid: root.tid, name, value }]);
@@ -114,39 +119,39 @@ export function SceneProps({ file }: { file: string }) {
   const trMs = tr[1] ?? '';
   return (
     <div className="sec">
-      <h3>场景</h3>
-      <Row label="编号">
+      <h3>{t('motion.sceneProps.heading')}</h3>
+      <Row label={t('motion.sceneProps.id')}>
         <code className="hint">{id}</code>
       </Row>
-      <Row label="时长" title="data-duration：这个场景播放多久（播放速度之前）">
+      <Row label={t('motion.sceneProps.duration')} title={t('motion.sceneProps.durationHint')}>
         <Field
           value={attr(root, 'data-duration') ?? ''}
           placeholder="4s"
           numeric={false}
-          label="场景时长"
+          label={t('motion.sceneProps.durationLabel')}
           onCommit={(v) => {
-            const t = v.trim();
-            if (!t) return setAttr('data-duration', null);
-            const ms = parseTime(/^\d+(\.\d+)?$/.test(t) ? `${t}s` : t);
+            const d = v.trim();
+            if (!d) return setAttr('data-duration', null);
+            const ms = parseTime(/^\d+(\.\d+)?$/.test(d) ? `${d}s` : d);
             if (ms !== null && ms > 0) setAttr('data-duration', formatTime(ms));
           }}
         />
       </Row>
-      <Row label="离开时">
+      <Row label={t('motion.sceneProps.leaving')}>
         <Select
           value={trKind}
-          options={TRANSITION_KINDS.map((k) => ({ value: k, label: TRANSITION_ZH[k] }))}
+          options={TRANSITION_KINDS.map((k) => ({ value: k, label: t(`motion.transition.${k}`) }))}
           onChange={(v) => setAttr('data-transition', v === 'cut' ? null : `${v}${trMs ? ' ' + trMs : ''}`)}
-          label="转场"
+          label={t('motion.sceneProps.transition')}
         />
       </Row>
       {trKind !== 'cut' && (
-        <Row label="转场时长">
+        <Row label={t('motion.sceneProps.transitionDuration')}>
           <Field
             value={trMs}
             placeholder="500ms"
             numeric={false}
-            label="转场时长"
+            label={t('motion.sceneProps.transitionDuration')}
             onCommit={(v) => {
               const ms = parseTime(/^\d+$/.test(v.trim()) ? `${v.trim()}ms` : v.trim());
               setAttr('data-transition', ms ? `${trKind} ${formatTime(ms)}` : trKind);
@@ -154,13 +159,13 @@ export function SceneProps({ file }: { file: string }) {
           />
         </Row>
       )}
-      <Row label="背景">
-        <ColorField value={getStyle(style, 'background') ?? ''} onCommit={(v) => set('background', v || null)} label="背景" allowNone={false} />
+      <Row label={t('motion.sceneProps.background')}>
+        <ColorField value={getStyle(style, 'background') ?? ''} onCommit={(v) => set('background', v || null)} label={t('motion.sceneProps.background')} allowNone={false} />
       </Row>
-      <Row label="文字色">
-        <ColorField value={getStyle(style, 'color') ?? ''} onCommit={(v) => set('color', v || null)} label="文字色" />
+      <Row label={t('motion.sceneProps.textColor')}>
+        <ColorField value={getStyle(style, 'color') ?? ''} onCommit={(v) => set('color', v || null)} label={t('motion.sceneProps.textColor')} />
       </Row>
-      <h3>检查</h3>
+      <h3>{t('motion.sceneProps.check')}</h3>
       {issues.length ? (
         <ul className="issue-list">
           {issues.map((i, n) => (
@@ -171,7 +176,7 @@ export function SceneProps({ file }: { file: string }) {
         </ul>
       ) : (
         <p className="hint" style={{ margin: 0 }}>
-          这个场景符合格式，时间上也没有问题。
+          {t('motion.sceneProps.valid')}
         </p>
       )}
     </div>
@@ -184,6 +189,7 @@ export function MotionProps() {
   const names = Object.keys(m.formats);
   const [adding, setAdding] = useState(false);
   const [custom, setCustom] = useState({ name: '', w: '', h: '' });
+  const { t } = useTranslation();
   const num = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : NaN);
   const add = (name: string, size: [number, number]) => {
     if (addFormat(name, size)) {
@@ -197,42 +203,47 @@ export function MotionProps() {
   return (
     <div className="sec">
       <div className="empty" style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-        <div style={{ color: 'var(--ink)', fontWeight: 500 }}>未选中任何内容</div>
-        暂停时点画面上的元素来编辑，双击文字直接改。
+        <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{t('motion.motionProps.nothingSelected')}</div>
+        {t('motion.motionProps.hint')}
       </div>
-      <h3>这段动效</h3>
-      <Row label="名称">
-        <Field value={m.title} numeric={false} label="动效名称" onCommit={(v) => v.trim() && editMotion((r) => (r.title = v.trim()), `title → ${v.trim()}`)} />
+      <h3>{t('motion.motionProps.heading')}</h3>
+      <Row label={t('motion.motionProps.name')}>
+        <Field
+          value={m.title}
+          numeric={false}
+          label={t('motion.motionProps.nameLabel')}
+          onCommit={(v) => v.trim() && editMotion((r) => (r.title = v.trim()), t('motion.journal.title', { title: v.trim() }))}
+        />
       </Row>
-      <Row label="帧率">
+      <Row label={t('motion.motionProps.fps')}>
         <Field
           value={String(m.fps)}
           unit="fps"
-          label="帧率"
+          label={t('motion.motionProps.fps')}
           onCommit={(v) => {
             const n = num(v);
-            if (n >= 1 && n <= 120) editMotion((r) => (r.fps = n), `fps → ${n}`);
+            if (n >= 1 && n <= 120) editMotion((r) => (r.fps = n), t('motion.journal.fps', { fps: n }));
           }}
         />
       </Row>
-      <h3>尺寸</h3>
+      <h3>{t('motion.motionProps.formats')}</h3>
       <div className="mformats">
         {names.map((name, i) => (
           <div key={name} className="mformat">
             <span className="mfname">
               {name}
-              {i === 0 && <span className="faint">主尺寸</span>}
+              {i === 0 && <span className="faint">{t('motion.motionProps.primary')}</span>}
             </span>
-            <Field value={String(m.formats[name].size[0])} pre="W" label={`${name} 宽`} onCommit={(v) => num(v) > 0 && setFormatSize(name, [num(v), m.formats[name].size[1]])} />
-            <Field value={String(m.formats[name].size[1])} pre="H" label={`${name} 高`} onCommit={(v) => num(v) > 0 && setFormatSize(name, [m.formats[name].size[0], num(v)])} />
+            <Field value={String(m.formats[name].size[0])} pre="W" label={t('motion.motionProps.width', { name })} onCommit={(v) => num(v) > 0 && setFormatSize(name, [num(v), m.formats[name].size[1]])} />
+            <Field value={String(m.formats[name].size[1])} pre="H" label={t('motion.motionProps.height', { name })} onCommit={(v) => num(v) > 0 && setFormatSize(name, [m.formats[name].size[0], num(v)])} />
             {i > 0 ? (
               <button
                 className="ib"
-                aria-label={`删除尺寸 ${name}`}
-                title="删除这个尺寸"
+                aria-label={t('motion.motionProps.removeLabel', { name })}
+                title={t('motion.motionProps.removeHint')}
                 onClick={() => {
                   const n = overridesOf(name);
-                  if (confirm(`删除尺寸 ${name}？${n ? `场景里只属于它的 ${n} 处设置也会一起删掉。` : ''}`)) removeFormat(name);
+                  if (confirm(n ? t('motion.motionProps.confirmRemoveOverrides', { name, count: n }) : t('motion.motionProps.confirmRemove', { name }))) removeFormat(name);
                 }}
               >
                 ×
@@ -247,7 +258,7 @@ export function MotionProps() {
         <div className="maddfmt">
           {free.map((p) => (
             <button key={p.name} className="btn outline" onClick={() => add(p.name, p.size)}>
-              {p.label} <span className="faint">{sizeLabel(p.size)}</span>
+              {t(`motion.preset.${p.name}`)} <span className="faint">{sizeLabel(p.size)}</span>
             </button>
           ))}
           <form
@@ -259,25 +270,25 @@ export function MotionProps() {
               if (w > 0 && h > 0) add(custom.name.trim() || `s${w}x${h}`.replace(/[^a-z0-9]/g, '').slice(0, 16), [w, h]);
             }}
           >
-            <input className="input" placeholder="名字" value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label="新尺寸的名字" />
-            <input className="input" placeholder="宽" value={custom.w} onChange={(e) => setCustom({ ...custom, w: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label="新尺寸的宽" />
-            <input className="input" placeholder="高" value={custom.h} onChange={(e) => setCustom({ ...custom, h: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label="新尺寸的高" />
+            <input className="input" placeholder={t('motion.motionProps.newName')} value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label={t('motion.motionProps.newNameLabel')} />
+            <input className="input" placeholder={t('motion.motionProps.newWidth')} value={custom.w} onChange={(e) => setCustom({ ...custom, w: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label={t('motion.motionProps.newWidthLabel')} />
+            <input className="input" placeholder={t('motion.motionProps.newHeight')} value={custom.h} onChange={(e) => setCustom({ ...custom, h: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label={t('motion.motionProps.newHeightLabel')} />
             <button className="btn outline" type="submit">
-              添加
+              {t('common.add')}
             </button>
           </form>
         </div>
       ) : (
         <button className="btn outline" onClick={() => setAdding(true)}>
-          ＋ 添加尺寸
+          {t('motion.motionProps.addFormat')}
         </button>
       )}
       <p className="hint" style={{ margin: 0 }}>
-        所有尺寸共用场景、文字和时间。新尺寸先按版式自己适配，再切到它把不合适的地方单独调。
+        {t('motion.motionProps.formatsHint')}
       </p>
-      <h3>快捷键</h3>
+      <h3>{t('motion.motionProps.shortcuts')}</h3>
       <p className="hint" style={{ margin: 0 }}>
-        空格 播放 / 暂停 · ← → 前后一帧（⇧ 一秒）· ⌫ 删除 · ⌘D 复制 · ⇧↵ 选中上一级 · ⌘Z 撤销 · Esc 取消选择
+        {t('motion.motionProps.shortcutList')}
       </p>
     </div>
   );
@@ -289,9 +300,10 @@ export function MotionLayers() {
   const file = view?.scene ? `scenes/${view.scene}.html` : '';
   const source = useStore((s) => (file ? display(s, file) : undefined));
   const m = useMotion();
+  const { t } = useTranslation();
   const away = useMemo(
-    () => (source && view ? awayAt(parsed(source), view.format, Object.keys(m.formats), view.landed ? null : view.at) : new Map<number, string>()),
-    [source, view, m],
+    () => (source && view ? awayAt(parsed(source), view.format, Object.keys(m.formats), view.landed ? null : view.at, t) : new Map<number, string>()),
+    [source, view, m, t],
   );
   if (!file) return <div className="layers" />;
   return <SlideLayers file={file} away={away} />;

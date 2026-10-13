@@ -1,7 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { IconDeviceDesktop, IconMoon, IconSun } from '@tabler/icons-react';
 import { Menu } from './Menu';
 import { PRESETS, PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode, type Tokens } from '../theme';
+import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
 
 /** Three stripes of the theme's own colours: what you get, not a name for it. */
 function Swatch({ tokens, split }: { tokens: Tokens; split?: Tokens }) {
@@ -15,24 +17,29 @@ function Swatch({ tokens, split }: { tokens: Tokens; split?: Tokens }) {
   );
 }
 
-const OPTIONS: { mode: ThemeMode; label: string; hint?: string }[] = [
-  { mode: 'system', label: '跟随系统', hint: '浅色 / 深色' },
-  ...PRESET_IDS.map((id) => ({ mode: id as ThemeMode, label: PRESETS[id].label })),
-];
+const MODES: ThemeMode[] = ['system', ...PRESET_IDS];
 
-/** The appearance menu: pick a look for the editor. A theme a host passed in shows as its own row. */
+/**
+ * The appearance menu: how the editor looks and which language it speaks, both settings of the
+ * editor itself rather than of a project. A theme a host passed in shows as its own row.
+ * Languages are listed by their own names, so someone who cannot read the current one still
+ * finds theirs.
+ */
 export function Appearance({ className = 'btn' }: { className?: string }) {
+  const { t } = useTranslation();
   const theme = useSyncExternalStore(onTheme, currentTheme);
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   if (!theme) return null;
-  const { mode, scheme, name, tokens } = theme.theme;
+  const { mode, scheme, name: themeName, tokens } = theme.theme;
+  const name = mode === 'custom' ? themeName : t(`appearance.mode.${mode}`);
+  const lang = currentLanguage();
   const Icon = mode === 'system' ? IconDeviceDesktop : scheme === 'dark' ? IconMoon : IconSun;
   return (
     <>
       <button
         className={className}
-        aria-label="外观"
-        title={`外观：${name}`}
+        aria-label={t('appearance.title')}
+        title={t('appearance.titleWith', { name })}
         aria-haspopup="menu"
         aria-expanded={!!at}
         onClick={(e) => {
@@ -43,30 +50,47 @@ export function Appearance({ className = 'btn' }: { className?: string }) {
         <Icon size={16} stroke={1.6} />
       </button>
       {at && (
-        <Menu x={at.x} y={at.y} align="right" label="外观" onClose={() => setAt(null)}>
-          <div className="head">外观</div>
+        <Menu x={at.x} y={at.y} align="right" label={t('appearance.title')} onClose={() => setAt(null)}>
+          <div className="head">{t('appearance.theme')}</div>
           {mode === 'custom' && (
             <button className="mi amode" role="menuitemradio" aria-checked="true" data-mode="custom" onClick={() => setAt(null)}>
               <Swatch tokens={tokens} />
               <span className="al">{name}</span>
-              <span className="k">{theme.source === 'host' ? '宿主传入' : theme.source === 'url' ? '链接传入' : theme.source === 'server' ? 'DC_THEME' : ''}</span>
+              <span className="k">{theme.source === 'host' || theme.source === 'url' || theme.source === 'server' ? t(`appearance.source.${theme.source}`) : ''}</span>
             </button>
           )}
-          {OPTIONS.map((o) => (
+          {MODES.map((m) => (
             <button
-              key={o.mode}
+              key={m}
               className="mi amode"
               role="menuitemradio"
-              aria-checked={mode === o.mode}
-              data-mode={o.mode}
+              aria-checked={mode === m}
+              data-mode={m}
               onClick={() => {
-                pickTheme(o.mode);
+                pickTheme(m);
                 setAt(null);
               }}
             >
-              <Swatch tokens={PRESETS[o.mode === 'system' ? 'light' : o.mode].tokens} split={o.mode === 'system' ? PRESETS.dark.tokens : undefined} />
-              <span className="al">{o.label}</span>
-              {o.hint && <span className="k">{o.hint}</span>}
+              <Swatch tokens={PRESETS[m === 'system' ? 'light' : m].tokens} split={m === 'system' ? PRESETS.dark.tokens : undefined} />
+              <span className="al">{t(`appearance.mode.${m}`)}</span>
+              {m === 'system' && <span className="k">{t('appearance.mode.systemHint')}</span>}
+            </button>
+          ))}
+          <div className="head">{t('appearance.language')}</div>
+          {SUPPORTED_LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              className="mi alang"
+              role="menuitemradio"
+              aria-checked={lang === l.code}
+              data-lang={l.code}
+              lang={l.code}
+              onClick={() => {
+                chooseLanguage(l.code);
+                setAt(null);
+              }}
+            >
+              <span className="al">{l.label}</span>
             </button>
           ))}
         </Menu>

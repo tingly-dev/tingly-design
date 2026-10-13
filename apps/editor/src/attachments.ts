@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type ClipboardEvent, type DragEvent } fr
 import { ATTACH_LIMITS, attachmentKind, type Attachment } from '@dc/core';
 import { api } from './api';
 import { toast } from './store';
+import { t } from './i18n';
 
 /**
  * Files and images attached to a request. In the browser they are read for
@@ -57,7 +58,7 @@ async function fitImage(file: Blob, mediaType: string): Promise<{ blob: Blob; me
   c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
   // WebP keeps transparency and stays small
   const blob = await new Promise<Blob | null>((r) => c.toBlob(r, 'image/webp', 0.9));
-  if (!blob) throw new Error('图片转换失败');
+  if (!blob) throw new Error(t('app.attach.convertFailed'));
   return { blob, mediaType: blob.type || 'image/webp' };
 }
 
@@ -67,24 +68,24 @@ let seq = 0;
 export async function readAttachment(file: File): Promise<Attached> {
   const pasted = !file.name;
   const ext = file.type.slice(file.type.indexOf('/') + 1).replace('jpeg', 'jpg');
-  const name = pasted ? (file.type.startsWith('image/') ? `粘贴的图片.${ext}` : 'file') : file.name;
+  const name = pasted ? (file.type.startsWith('image/') ? `${t('app.attach.pastedImage')}.${ext}` : 'file') : file.name;
   // a pasted image has no name: it is kept as pasted-<hash>.png
   const k = attachmentKind(name, file.type);
-  if (!k) throw new Error(`不支持这种文件：${name}（可以附图片、PDF 和文本文件）`);
+  if (!k) throw new Error(t('app.attach.unsupported', { name }));
   const key = `a${++seq}`;
   if (k.kind === 'image') {
     const { blob, mediaType } = await fitImage(file, k.mediaType);
-    if (blob.size > ATTACH_LIMITS.imageBytes) throw new Error(`${name} 超过 5 MB`);
+    if (blob.size > ATTACH_LIMITS.imageBytes) throw new Error(t('app.attach.tooLarge', { name, size: '5 MB' }));
     const keepName = pasted || !attachmentKind(name) ? `${pasted ? 'pasted' : name}.${ext}` : name;
     const keep = file.size <= KEEP_BYTES ? new File([file], keepName, { type: file.type }) : new File([blob], keepName.replace(/\.[^.]+$/, '') + '.webp', { type: mediaType });
     return { key, name, kind: 'image', mediaType, data: base64(await blob.arrayBuffer()), size: blob.size, preview: URL.createObjectURL(blob), keep };
   }
   if (k.kind === 'pdf') {
-    if (file.size > ATTACH_LIMITS.pdfBytes) throw new Error(`${name} 超过 10 MB`);
+    if (file.size > ATTACH_LIMITS.pdfBytes) throw new Error(t('app.attach.tooLarge', { name, size: '10 MB' }));
     return { key, name, kind: 'pdf', mediaType: k.mediaType, data: base64(await file.arrayBuffer()), size: file.size, keep: file };
   }
   const text = await file.text();
-  if (text.length > ATTACH_LIMITS.textChars) throw new Error(`${name} 太长（超过 ${ATTACH_LIMITS.textChars / 1000}k 字符）`);
+  if (text.length > ATTACH_LIMITS.textChars) throw new Error(t('app.attach.tooLong', { name, k: ATTACH_LIMITS.textChars / 1000 }));
   // kept under a name the server knows the kind of
   const keepName = /\.[A-Za-z0-9]+$/.test(name) && attachmentKind(name) ? name : `${name}.txt`;
   return { key, name, kind: 'text', mediaType: k.mediaType, data: text, size: file.size, keep: new File([file], keepName, { type: file.type || 'text/plain' }) };
@@ -127,14 +128,14 @@ export function useAttachments() {
     async (files: Iterable<File>) => {
       for (const f of files) {
         if (live.current.length >= ATTACH_LIMITS.count) {
-          toast(`一次最多附 ${ATTACH_LIMITS.count} 个文件`, 'error');
+          toast(t('app.attach.tooMany', { count: ATTACH_LIMITS.count }), 'error');
           return;
         }
         try {
           const a = await readAttachment(f);
           if (live.current.length >= ATTACH_LIMITS.count) {
             if (a.preview) URL.revokeObjectURL(a.preview);
-            toast(`一次最多附 ${ATTACH_LIMITS.count} 个文件`, 'error');
+            toast(t('app.attach.tooMany', { count: ATTACH_LIMITS.count }), 'error');
             return;
           }
           put([...live.current, a]);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DASH_PAGE, sandboxDoc, type FromDash, type QuerySource } from '@dc/core';
 import { display, isSaving, useStore } from '../../store';
 import {
@@ -30,12 +31,16 @@ import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
 import { replaceUrl } from '../../host';
 import { BASE, SERVER } from '../../base';
+import { currentLanguage, htmlLang } from '../../i18n';
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
 function PageFrame() {
+  const { t } = useTranslation();
   const ref = useRef<HTMLIFrameElement>(null);
   const pageKey = useDash((s) => s.pageKey);
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'dash'), []);
+  // the frame's own words (its error banner) follow <html lang>; a language change reloads the page
+  const lang = htmlLang(currentLanguage());
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'dash', lang), [lang]);
   const datasets = useDatasets();
   const ids = useRef<string[]>([]);
   ids.current = datasets.map((d) => d.id);
@@ -108,7 +113,7 @@ function PageFrame() {
 
   useEffect(() => () => setFrame(null), []);
 
-  return <iframe key={pageKey} ref={ref} className="dashframe" title="看板页面" sandbox="allow-scripts" srcDoc={srcdoc} />;
+  return <iframe key={pageKey} ref={ref} className="dashframe" title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />;
 }
 
 /** Reload the page when its files change; reload datasets whose source changed. */
@@ -144,6 +149,7 @@ function Watch() {
 }
 
 function Title() {
+  const { t } = useTranslation();
   const index = useDashIndex();
   const [renaming, setRenaming] = useState(false);
   if (renaming)
@@ -152,7 +158,7 @@ function Title() {
         className="dashtitle"
         autoFocus
         defaultValue={index.title}
-        aria-label="看板名称"
+        aria-label={t('dash.title.nameLabel')}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === 'Enter') e.currentTarget.blur();
@@ -166,33 +172,35 @@ function Title() {
       />
     );
   return (
-    <h1 className="dashtitle" title="双击改名" onDoubleClick={() => setRenaming(true)}>
+    <h1 className="dashtitle" title={t('dash.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
       {index.title}
     </h1>
   );
 }
 
 function Filters() {
+  const { t } = useTranslation();
   const params = useDash((s) => s.params);
   const index = useDashIndex();
   const set = changedParams(params, index.params);
   if (!set.length) return null;
-  const show = (v: unknown) => (Array.isArray(v) ? v.join('、') : v === null || v === undefined ? '（空）' : String(v));
+  const show = (v: unknown) => (Array.isArray(v) ? v.join(t('dash.listSep')) : v === null || v === undefined ? t('dash.filters.empty') : String(v));
   return (
-    <div className="dashfilters" aria-label="筛选">
+    <div className="dashfilters" aria-label={t('dash.filters.label')}>
       {set.map((k) => (
         <span key={k} className="chip" title={`${k} = ${JSON.stringify(params[k] ?? null)}`}>
-          {k}：{show(params[k])}
+          {t('dash.filters.chip', { name: k, value: show(params[k]) })}
         </span>
       ))}
       <button className="btn ghost" onClick={() => setParams(null)}>
-        重置筛选
+        {t('dash.filters.reset')}
       </button>
     </div>
   );
 }
 
 export function DashApp() {
+  const { t } = useTranslation();
   const index = useDashIndex();
   const project = useStore((s) => s.project);
   const connected = useStore((s) => s.connected);
@@ -209,8 +217,8 @@ export function DashApp() {
     resetDash();
   }, [project]);
   useEffect(() => {
-    document.title = `${index.title} · 看板`;
-  }, [index.title]);
+    document.title = t('dash.bar.docTitle', { title: index.title });
+  }, [index.title, t]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -224,35 +232,36 @@ export function DashApp() {
   return (
     <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title="所有项目">
+        <a className="btn ghost back" href={BASE} title={t('dash.bar.allProjects')}>
           ←
         </a>
         <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? '保存中…' : '已连接') : '连不上服务端'} />
+        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('dash.bar.saving') : t('dash.bar.connected')) : t('dash.bar.offline')} />
         <Filters />
         <div className="grow" />
-        <ImportHere target={dashImport} label="看板" button="text" />
-        <button className="btn ghost" onClick={refreshAll} title="重新读取所有数据">
-          刷新
+        <ImportHere target={dashImport} label={t('dash.kind')} button="text" />
+        <button className="btn ghost" onClick={refreshAll} title={t('dash.bar.refreshAllTitle')}>
+          {t('dash.bar.refresh')}
         </button>
-        <button className={`btn ghost${mode === 'data' ? ' on' : ''}`} aria-pressed={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} title="点一个数字或图表，看它的来源">
-          数据模式
+        <button className={`btn ghost${mode === 'data' ? ' on' : ''}`} aria-pressed={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} title={t('dash.bar.dataModeTitle')}>
+          {t('dash.bar.dataMode')}
         </button>
-        <button className="btn ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="切换明暗">
-          {theme === 'dark' ? '亮色' : '暗色'}
+        <button className="btn ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={t('dash.bar.toggleTheme')}>
+          {theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')}
         </button>
         <button className={`btn ghost${side === 'sources' ? ' on' : ''}`} aria-pressed={side === 'sources'} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })}>
-          数据来源{problems ? <span className="badge">{problems}</span> : null}
+          {t('dash.sources.label')}
+          {problems ? <span className="badge">{problems}</span> : null}
         </button>
         <button className={`btn ghost${side === 'code' ? ' on' : ''}`} aria-pressed={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })}>
-          代码
+          {t('dash.bar.code')}
         </button>
         <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          记录
+          {t('dash.bar.journal')}
         </button>
       </header>
       <main className="dashmain">
-        {mode === 'data' && <div className="dashhint">数据模式：点一个数字、图表或表格，看它的来源。Esc 退出。</div>}
+        {mode === 'data' && <div className="dashhint">{t('dash.bar.dataModeHint')}</div>}
         <PageFrame />
         <AskClaude
           file={DASH_PAGE}
@@ -261,12 +270,17 @@ export function DashApp() {
             if (id) useDash.setState({ open: id, side: 'sources' });
             else if (f === DASH_PAGE) useDash.setState({ side: 'code' });
           }}
-          placeholder="交给 Claude Code：连上数据、加一张图、加一个筛选、修好没对上的数字…"
+          placeholder={t('dash.ask.placeholder')}
           context={() => {
             const { pick, open } = useDash.getState();
             const lines: string[] = [];
-            if (pick) lines.push(`看板上点的是：来源 ${pick.sources.join(' ')}${pick.field ? `，列 ${pick.field}` : ''}${pick.where ? `，行 ${pick.where}` : pick.row !== undefined ? `，第 ${pick.row} 行` : ''}${pick.at ? `（在 #${pick.at} 里）` : ''}。`);
-            else if (open) lines.push(`数据来源里打开的是 ${open}。`);
+            if (pick) {
+              const detail =
+                (pick.field ? t('dash.ask.field', { field: pick.field }) : '') +
+                (pick.where ? t('dash.ask.where', { where: pick.where }) : pick.row !== undefined ? t('dash.ask.row', { row: pick.row }) : '') +
+                (pick.at ? t('dash.ask.at', { at: pick.at }) : '');
+              lines.push(t('dash.ask.picked', { sources: pick.sources.join(' '), detail }));
+            } else if (open) lines.push(t('dash.ask.open', { id: open }));
             return lines.join('\n');
           }}
         />

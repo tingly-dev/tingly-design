@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { addPage, renamePage } from '../actions';
 import { fitAll, isSaving, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
 import { Menu, MenuItem } from './Menu';
@@ -23,21 +24,22 @@ import { goTo } from '../host';
 import { ImportHere } from './ImportHere';
 import { canvasImport } from '../canvasImport';
 
-const SHAPES: { tool: Tool; label: string; keys: string; icon: React.ReactElement }[] = [
-  { tool: 'rect', label: '矩形', keys: 'R', icon: <Rect /> },
-  { tool: 'oval', label: '椭圆', keys: 'O', icon: <Oval /> },
-  { tool: 'arrow', label: '箭头', keys: '⇧L', icon: <ArrowI /> },
-  { tool: 'line', label: '直线', keys: 'L', icon: <LineI /> },
+const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
+  { tool: 'rect', keys: 'R', icon: <Rect /> },
+  { tool: 'oval', keys: 'O', icon: <Oval /> },
+  { tool: 'arrow', keys: '⇧L', icon: <ArrowI /> },
+  { tool: 'line', keys: 'L', icon: <LineI /> },
 ];
 
 function ToolButton({ tool, label, keys, children }: { tool: Tool; label: string; keys: string; children: React.ReactElement }) {
+  const { t } = useTranslation();
   const current = useStore((s) => s.tool);
   return (
     <button
       className="tb"
       aria-pressed={current === tool}
       aria-label={label}
-      title={`${label}（${keys}）`}
+      title={t('app.tool.withKeys', { label, keys })}
       onClick={() => useStore.setState({ tool: current === tool && tool !== 'select' ? 'select' : tool, mode: 'edit' })}
     >
       {children}
@@ -46,13 +48,14 @@ function ToolButton({ tool, label, keys, children }: { tool: Tool; label: string
 }
 
 function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: number }) {
+  const { t } = useTranslation();
   const canvas = useCanvas();
   const page = useStore((s) => s.page);
   const current = page || canvas.pages[0]?.id || '';
   const [renaming, setRenaming] = useState<string | null>(null);
-  const pages = canvas.pages.length ? canvas.pages : [{ id: '', name: '第 1 页' }];
+  const pages = canvas.pages.length ? canvas.pages : [{ id: '', name: t('app.page.name', { n: 1 }) }];
   return (
-    <Menu x={x} y={y} onClose={onClose} label="页面">
+    <Menu x={x} y={y} onClose={onClose} label={t('app.pages.label')}>
       <div className="head">{canvas.title}</div>
       {pages.map((p) =>
         renaming === p.id ? (
@@ -60,7 +63,7 @@ function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: numbe
             <input
               autoFocus
               defaultValue={p.name}
-              aria-label="页面名称"
+              aria-label={t('app.pages.nameLabel')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   renamePage(p.id, e.currentTarget.value);
@@ -92,55 +95,56 @@ function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: numbe
       )}
       <hr />
       <MenuItem
-        label="新建页面"
+        label={t('app.pages.add')}
         onSelect={() => {
           addPage();
           onClose();
         }}
       />
-      <MenuItem label="所有画布…" onSelect={() => goTo(null)} />
+      <MenuItem label={t('app.pages.allCanvases')} onSelect={() => goTo(null)} />
     </Menu>
   );
 }
 
 export function LeftBar() {
+  const { t } = useTranslation();
   const canvas = useCanvas();
   const page = useStore((s) => s.page);
   const tool = useStore((s) => s.tool);
   const [menu, setMenu] = useState<null | 'pages' | 'shapes'>(null);
   const pagesBtn = useRef<HTMLButtonElement>(null);
   const shapesBtn = useRef<HTMLButtonElement>(null);
-  const pageName = canvas.pages.find((p) => p.id === (page || canvas.pages[0]?.id))?.name ?? '第 1 页';
+  const pageName = canvas.pages.find((p) => p.id === (page || canvas.pages[0]?.id))?.name ?? t('app.page.name', { n: 1 });
   const shape = SHAPES.find((s) => s.tool === tool);
   const at = (b: HTMLButtonElement | null) => {
     const r = b?.getBoundingClientRect();
     return { x: r?.left ?? 0, y: (r?.bottom ?? 0) + 8 };
   };
   return (
-    <div className="bar left" role="toolbar" aria-label="工具">
-      <button ref={pagesBtn} className="tb text" aria-haspopup="menu" aria-label={`${pageName}，页面`} onClick={() => setMenu('pages')}>
+    <div className="bar left" role="toolbar" aria-label={t('app.tool.bar')}>
+      <button ref={pagesBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.pages.button', { name: pageName })} onClick={() => setMenu('pages')}>
         {pageName}
         <span className="caret">
           <Caret />
         </span>
       </button>
       <span className="sep" />
-      <ToolButton tool="select" label="选择" keys="V">
+      <ToolButton tool="select" label={t('app.tool.select')} keys="V">
         <Cursor />
       </ToolButton>
-      <ToolButton tool="hand" label="抓手" keys="H">
+      <ToolButton tool="hand" label={t('app.tool.hand')} keys="H">
         <Hand />
       </ToolButton>
-      <ToolButton tool="text" label="文字" keys="T">
+      <ToolButton tool="text" label={t('app.tool.text')} keys="T">
         <TextT />
       </ToolButton>
-      <ToolButton tool="frame" label="画板" keys="A">
+      <ToolButton tool="frame" label={t('app.tool.frame')} keys="A">
         <Frame />
       </ToolButton>
-      <ToolButton tool="note" label="便签" keys="N">
+      <ToolButton tool="note" label={t('app.tool.note')} keys="N">
         <Note />
       </ToolButton>
-      <ToolButton tool="draw" label="画笔" keys="P">
+      <ToolButton tool="draw" label={t('app.tool.draw')} keys="P">
         <Pen />
       </ToolButton>
       <button
@@ -148,8 +152,8 @@ export function LeftBar() {
         className="tb"
         aria-pressed={!!shape}
         aria-haspopup="menu"
-        aria-label="形状和线条"
-        title="形状和线条"
+        aria-label={t('app.tool.shapes')}
+        title={t('app.tool.shapes')}
         onClick={() => setMenu('shapes')}
       >
         {shape?.icon ?? <Shapes />}
@@ -158,14 +162,14 @@ export function LeftBar() {
         </span>
       </button>
       <span className="sep" />
-      <ImportHere target={canvasImport} label="画布" />
+      <ImportHere target={canvasImport} label={t('app.importTarget')} />
       {menu === 'pages' && <PagesMenu {...at(pagesBtn.current)} onClose={() => setMenu(null)} />}
       {menu === 'shapes' && (
-        <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label="形状和线条">
+        <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label={t('app.tool.shapes')}>
           {SHAPES.map((s) => (
             <MenuItem
               key={s.tool}
-              label={s.label}
+              label={t(`app.shape.${s.tool}`)}
               keys={s.keys}
               icon={s.icon}
               onSelect={() => {
@@ -181,6 +185,7 @@ export function LeftBar() {
 }
 
 export function RightBar() {
+  const { t } = useTranslation();
   const mode = useStore((s) => s.mode);
   const panelOpen = useStore((s) => s.panelOpen);
   const zoom = useStore((s) => s.view.zoom);
@@ -199,12 +204,12 @@ export function RightBar() {
     setView({ zoom: z, x: cx - (cx - s.view.x) * k, y: cy - (cy - s.view.y) * k });
   };
   return (
-    <div className="bar right" role="toolbar" aria-label="视图">
+    <div className="bar right" role="toolbar" aria-label={t('app.view.bar')}>
       <button
         className="tb"
         aria-pressed={mode === 'play'}
-        aria-label={mode === 'play' ? '退出播放' : '播放'}
-        title="播放：按钮和链接可以点（Esc 退出）"
+        aria-label={mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
+        title={t('app.view.playHint')}
         onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
       >
         <Play />
@@ -212,14 +217,14 @@ export function RightBar() {
       <button
         className="tb"
         aria-pressed={panelOpen}
-        aria-label="属性面板"
-        title="属性面板（⌘\）"
+        aria-label={t('app.view.panel')}
+        title={t('app.view.panelHint')}
         onClick={() => useStore.setState({ panelOpen: !panelOpen })}
       >
         <Panel />
       </button>
       <span className="sep" />
-      <button ref={zoomBtn} className="tb text" aria-haspopup="menu" aria-label={`${Math.round(zoom * 100)}%，缩放`} onClick={() => setZoomMenu(true)}>
+      <button ref={zoomBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.view.zoomButton', { zoom: Math.round(zoom * 100) })} onClick={() => setZoomMenu(true)}>
         <span className="zoomval">{Math.round(zoom * 100)}%</span>
         <span className="caret">
           <Caret />
@@ -229,21 +234,21 @@ export function RightBar() {
       <button
         className="tb"
         aria-pressed={journalOpen}
-        aria-label="同步状态和改动记录"
+        aria-label={t('app.view.sync')}
         onClick={() => useStore.setState({ journalOpen: !journalOpen })}
       >
         <span className="sync">
           <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-          {!connected ? '未连接' : saving ? '保存中' : '已同步'}
+          {!connected ? t('app.view.offline') : saving ? t('app.view.saving') : t('app.view.synced')}
         </span>
       </button>
       {zoomMenu && (
-        <Menu x={(r?.right ?? 0)} y={(r?.bottom ?? 0) + 8} align="right" onClose={() => setZoomMenu(false)} label="缩放">
-          <MenuItem label="放大" keys="⌘+" onSelect={() => zoomAt(1.25, viewport.w / 2, viewport.h / 2)} />
-          <MenuItem label="缩小" keys="⌘−" onSelect={() => zoomAt(0.8, viewport.w / 2, viewport.h / 2)} />
+        <Menu x={(r?.right ?? 0)} y={(r?.bottom ?? 0) + 8} align="right" onClose={() => setZoomMenu(false)} label={t('app.view.zoom')}>
+          <MenuItem label={t('app.view.zoomIn')} keys="⌘+" onSelect={() => zoomAt(1.25, viewport.w / 2, viewport.h / 2)} />
+          <MenuItem label={t('app.view.zoomOut')} keys="⌘−" onSelect={() => zoomAt(0.8, viewport.w / 2, viewport.h / 2)} />
           <hr />
-          <MenuItem label="适应全部" keys="⇧1" onSelect={() => (fitAll(), setZoomMenu(false))} />
-          <MenuItem label="缩放到选中" keys="⇧2" onSelect={() => (zoomToSelection(), setZoomMenu(false))} />
+          <MenuItem label={t('app.view.fitAll')} keys="⇧1" onSelect={() => (fitAll(), setZoomMenu(false))} />
+          <MenuItem label={t('app.view.zoomToSelection')} keys="⇧2" onSelect={() => (zoomToSelection(), setZoomMenu(false))} />
           <hr />
           {[0.5, 1, 2].map((z) => (
             <MenuItem key={z} label={`${z * 100}%`} keys={z === 1 ? '⌘0' : undefined} onSelect={() => (setZoom(z), setZoomMenu(false))} />

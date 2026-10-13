@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { elementLabel, attr, type Attachment } from '@dc/core';
 import { display, focusBoard, parsed, toast, useCanvas, useStore, type LastRun } from '../store';
 import { delegateToClaude, runFastEdit, stopRun } from '../fastedit';
@@ -10,14 +11,10 @@ import { slideIdOf } from '@dc/core';
 
 type Target = 'ai' | 'claude';
 
-const PLACEHOLDER: Record<Target, string> = {
-  ai: '描述要改什么，比如“把按钮改成圆角、颜色更深一些”',
-  claude: '交给 Claude Code：适合改脚本、数据、跨画板或新建画板',
-};
-
 /** Where requests go: the fast in-page model or Claude Code. jQuery typed by hand lives in the Code tab (panel/JQueryBox.tsx). */
 /** `onOpen` shows a file a Claude Code run changed, for kinds whose own view knows how (motion seeks to the scene). */
 export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) {
+  const { t } = useTranslation();
   const sel = useStore((s) => s.selection);
   const fast = useStore((s) => s.fast);
   const health = useStore((s) => s.health);
@@ -36,11 +33,11 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
 
   const slides = useStore((s) => s.kind === 'slides');
   const motion = useStore((s) => s.kind === 'motion');
-  const placeholder = slides
-    ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题再大一点、换成深色背景”', claude: '交给 Claude Code：适合整页重写、跨页修改、新建一组幻灯片' }
+  const placeholder: Record<Target, string> = slides
+    ? { ai: t('prompt.placeholder.slides.ai'), claude: t('prompt.placeholder.slides.claude') }
     : motion
-      ? { ...PLACEHOLDER, ai: '描述要改什么，比如“标题晚半秒进来”“竖版里字再大一点”', claude: '交给 Claude Code：改一个场景、加一段动画、调整节奏、做一张封面…' }
-      : PLACEHOLDER;
+      ? { ai: t('prompt.placeholder.motion.ai'), claude: t('prompt.placeholder.motion.claude') }
+      : { ai: t('prompt.placeholder.canvas.ai'), claude: t('prompt.placeholder.canvas.claude') };
   const stageSlide = useStore((s) => s.slide);
   const stageScene = useStore((s) => s.motionView?.scene ?? null);
   const file =
@@ -90,16 +87,16 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     !file || (target === 'ai' && health?.fastEdit === false) || (target === 'claude' && health?.claudeCli === false);
   const why =
     target === 'ai' && health?.fastEdit === false
-      ? '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用。'
+      ? t('prompt.bar.noFastModel')
       : target === 'claude' && health?.claudeCli === false
-        ? '本机找不到 claude 命令，无法委托。'
+        ? t('prompt.bar.noClaudeCli')
         : null;
 
   const [keeping, setKeeping] = useState(false);
   const submit = async () => {
-    const t = text.trim();
+    const req = text.trim();
     const project = useStore.getState().project;
-    if (!t || !file || !project || disabled || keeping) return;
+    if (!req || !file || !project || disabled || keeping) return;
     if (busy) return setBlocked(true);
     let files: Attachment[] = [];
     if (attach.items.length) {
@@ -107,7 +104,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
       try {
         files = await keepAttachments(project, attach.items);
       } catch (e) {
-        toast(`附件没能存进项目：${(e as Error).message}`, 'error');
+        toast(t('prompt.attach.keepFailed', { error: (e as Error).message }), 'error');
         return;
       } finally {
         setKeeping(false);
@@ -116,11 +113,11 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     if (target === 'claude') {
       // the request moves into the feed at once; it comes back if Claude Code could not start
       setText('');
-      if (await delegateToClaude(file, tid, t, files)) attach.clear();
-      else setText((cur) => cur || t);
+      if (await delegateToClaude(file, tid, req, files)) attach.clear();
+      else setText((cur) => cur || req);
       return;
     }
-    void runFastEdit(file, tid, t, files);
+    void runFastEdit(file, tid, req, files);
     setText('');
     attach.clear();
   };
@@ -139,7 +136,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     <div
       className={`prompt${attach.over ? ' dropping' : ''}`}
       role="region"
-      aria-label="让 AI 修改"
+      aria-label={t('prompt.bar.label')}
       onDragOver={attach.handlers.onDragOver}
       onDragLeave={attach.handlers.onDragLeave}
       onDrop={attach.handlers.onDrop}
@@ -153,24 +150,24 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
             </>
           ) : file ? (
             slides ? (
-              <>整页 {file.replace(/^slides\/|\.html$/g, '')}</>
+              <>{t('prompt.target.slide', { name: file.replace(/^slides\/|\.html$/g, '') })}</>
             ) : motion ? (
-              <>整个场景 {file.replace(/^scenes\/|\.html$/g, '')}</>
+              <>{t('prompt.target.scene', { name: file.replace(/^scenes\/|\.html$/g, '') })}</>
             ) : (
-              <>整个画板 {canvas.boards[file]?.title || file}</>
+              <>{t('prompt.target.board', { name: canvas.boards[file]?.title || file })}</>
             )
           ) : slides ? (
-            '没有幻灯片'
+            t('prompt.target.noSlides')
           ) : motion ? (
-            '没有场景'
+            t('prompt.target.noScenes')
           ) : (
-            '没有画板'
+            t('prompt.target.noBoards')
           )}
         </span>
-        <div className="seg" role="group" aria-label="交给谁">
+        <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
           {(
             [
-              ['ai', '快速 AI'],
+              ['ai', t('prompt.bar.fastAi')],
               ['claude', 'Claude Code'],
             ] as const
           ).map(([k, l]) => (
@@ -188,7 +185,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
           rows={1}
           value={text}
           placeholder={why ?? placeholder[target]}
-          aria-label="请求"
+          aria-label={t('prompt.bar.request')}
           onChange={(e) => setText(e.target.value)}
           onPaste={attach.handlers.onPaste}
           onKeyDown={(e) => {
@@ -201,21 +198,21 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
         />
         {busy ? (
           <button className="btn outline send" onClick={() => stopRun(busyRun)}>
-            <Stop /> 停止
+            <Stop /> {t('common.stop')}
           </button>
         ) : (
           <button className="btn primary send" onClick={() => void submit()} disabled={disabled || keeping || !text.trim()}>
-            <Send /> 发送
+            <Send /> {t('common.send')}
           </button>
         )}
       </div>
-      {attach.over && <div className="drop-hint">松开即可附加，作为这次请求的参考</div>}
+      {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
       {blocked ? (
         <div className="prompt-hint warn" role="status">
-          {target === 'claude' ? 'Claude Code' : '快速 AI'} 还在处理上一条。等它完成或先停止；你写的这条会留在这里。
+          {target === 'claude' ? t('prompt.bar.busyClaude') : t('prompt.bar.busyFast')}
         </div>
       ) : (
-        text.includes('\n') && <div className="prompt-hint">Enter 发送，Shift + Enter 换行</div>
+        text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { attr, elementLabel, parseStyle, type DcDoc, type DcElement, type Inspect } from '@dc/core';
 import { editElement } from '../../store';
 import { Plus, Close } from '../icons';
@@ -18,6 +19,7 @@ function bodyRule(doc: DcDoc): Record<string, string> {
 }
 
 export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el: DcElement; info: Inspect | null }) {
+  const { t } = useTranslation();
   const tid = el.tid;
   const style = attr(el, 'style') ?? '';
   const decls = parseStyle(style).filter((d) => d.prop);
@@ -48,7 +50,7 @@ export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el:
   return (
     <div className="sec">
       <div className="hint" style={{ fontFamily: 'var(--mono)' }}>
-        &lt;{el.tag}&gt; {elementLabel(el) ? `“${elementLabel(el)}”` : ''}
+        &lt;{el.tag}&gt; {elementLabel(el) ? t('panel.code.quoted', { text: elementLabel(el) }) : ''}
       </div>
       <div className="decls">
         {decls.map((d, i) => (
@@ -67,7 +69,7 @@ export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el:
                 onBlur={(e) => e.currentTarget.value !== d.value && set({ [d.prop]: e.currentTarget.value.trim() || null })}
               />
             </span>
-            <button className="ib" aria-label={`删除 ${d.prop}`} title="删除" onClick={() => set({ [d.prop]: null })} style={{ width: 20, height: 20 }}>
+            <button className="ib" aria-label={t('panel.code.deleteDecl', { prop: d.prop })} title={t('common.delete')} onClick={() => set({ [d.prop]: null })} style={{ width: 20, height: 20 }}>
               <Close />
             </button>
           </div>
@@ -75,8 +77,8 @@ export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el:
         <input
           className="code-new"
           value={fresh}
-          placeholder={decls.length ? '添加：color: red;' : '还没有样式。输入 color: red; 来添加'}
-          aria-label="添加样式声明"
+          placeholder={decls.length ? t('panel.code.addPlaceholder') : t('panel.code.emptyPlaceholder')}
+          aria-label={t('panel.code.addLabel')}
           onChange={(e) => setFresh(e.target.value)}
           onKeyDown={(e) => {
             e.stopPropagation();
@@ -88,7 +90,7 @@ export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el:
       {groups.map((g) => (
         <div key={g.from} className="decls">
           <div className="from">
-            继承自 <code>{g.from}</code>
+            <Trans t={t} i18nKey="panel.code.inheritedFrom" values={{ from: g.from }} components={{ code: <code /> }} />
           </div>
           {g.props.map(([p, v]) => (
             <div className="decl" key={p}>
@@ -97,7 +99,7 @@ export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el:
                 {isColor(v) && <i style={{ background: v }} />}
                 {v}
               </span>
-              <button className="ib" aria-label={`在这个元素上覆盖 ${p}`} title="在这个元素上覆盖" onClick={() => set({ [p]: v })} style={{ width: 20, height: 20 }}>
+              <button className="ib" aria-label={t('panel.code.overrideLabel', { prop: p })} title={t('panel.code.override')} onClick={() => set({ [p]: v })} style={{ width: 20, height: 20 }}>
                 <Plus />
               </button>
             </div>
@@ -106,7 +108,7 @@ export function CodeTab({ file, doc, el, info }: { file: string; doc: DcDoc; el:
       ))}
       {info && (
         <div className="hint" style={{ marginTop: 4 }}>
-          渲染尺寸 {Math.round(info.rect.w)} × {Math.round(info.rect.h)}
+          {t('panel.code.renderedSize', { w: Math.round(info.rect.w), h: Math.round(info.rect.h) })}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import { useInstalled } from '../../ds';
 import { toast, useStore } from '../../store';
@@ -10,6 +11,7 @@ import { toast, useStore } from '../../store';
  * menu offer its tokens.
  */
 export function DsInstall() {
+  const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const installed = useInstalled();
   const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
@@ -23,7 +25,7 @@ export function DsInstall() {
     setBusy(true);
     try {
       const r = await api.installDs(project, from);
-      toast(`已装入设计系统${r.fonts.length ? `，带上 ${r.fonts.length} 个字体文件` : ''}。颜色和文字样式菜单里可以选它的 token 了。`);
+      toast(r.fonts.length ? t('panel.ds.installedWithFonts', { count: r.fonts.length }) : t('panel.ds.installed'));
       setPick('');
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -33,7 +35,7 @@ export function DsInstall() {
   };
   return (
     <>
-      <h3>设计系统</h3>
+      <h3>{t('panel.ds.title')}</h3>
       {installed.map((x) => {
         const from = x.record.artifact.replace(/^projects\//, '');
         return (
@@ -41,7 +43,7 @@ export function DsInstall() {
             <div className="dsi-t">
               <b>{x.record.title}</b>
               <span className="hint">
-                {x.tokens.colors.length} 色 · {x.tokens.groups.reduce((n, g) => n + g.styles.length, 0)} 个文字样式
+                {t('panel.ds.summary', { colors: x.tokens.colors.length, styles: x.tokens.groups.reduce((n, g) => n + g.styles.length, 0) })}
               </span>
             </div>
             <div className="dsi-sw">
@@ -53,10 +55,10 @@ export function DsInstall() {
               {systems.some((s) => s.name === from) && (
                 <>
                   <a className="btn ghost" href={`?p=${encodeURIComponent(from)}`} target="_blank" rel="noreferrer">
-                    打开
+                    {t('common.open')}
                   </a>
-                  <button className="btn ghost" disabled={busy} onClick={() => install(from)} title="重新复制它当前的 tokens">
-                    更新
+                  <button className="btn ghost" disabled={busy} onClick={() => install(from)} title={t('panel.ds.updateHint')}>
+                    {t('panel.ds.update')}
                   </button>
                 </>
               )}
@@ -68,7 +70,7 @@ export function DsInstall() {
                   await api.uninstallDs(project, x.record.namespace).catch((e) => toast(e.message, 'error'));
                 }}
               >
-                移除
+                {t('common.remove')}
               </button>
             </div>
           </div>
@@ -76,8 +78,8 @@ export function DsInstall() {
       })}
       {systems.length ? (
         <div className="faceadd">
-          <select className="input" value={pick} onChange={(e) => setPick(e.target.value)} aria-label="选择设计系统">
-            <option value="">选择要装入的设计系统…</option>
+          <select className="input" value={pick} onChange={(e) => setPick(e.target.value)} aria-label={t('panel.ds.pickLabel')}>
+            <option value="">{t('panel.ds.pickPlaceholder')}</option>
             {systems.map((s) => (
               <option key={s.name} value={s.name}>
                 {s.title}
@@ -85,12 +87,12 @@ export function DsInstall() {
             ))}
           </select>
           <button className="btn outline" disabled={!pick || busy} onClick={() => install(pick)}>
-            装入
+            {t('panel.ds.install')}
           </button>
         </div>
       ) : (
         <p className="hint" style={{ margin: 0 }}>
-          这个仓库里还没有设计系统。新建项目时选“设计系统”。
+          {t('panel.ds.none')}
         </p>
       )}
     </>
