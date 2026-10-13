@@ -18,7 +18,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "typescript": "^5.9.3",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "playwright-core": "1.56.1",
+    "typescript": "^5.9.3"
   }
 }
