@@ -66,7 +66,7 @@ packages/core       格式解析、DOM 副本、最小补丁回写、人工操�
 packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
 apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、git 提交、看板的数据连接器
 apps/editor         React + Vite + zustand 的画布、幻灯片（components/slides）、设计系统（components/ds）、看板（components/dash）和文档（components/docs）编辑器
-projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档）
+projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档）、design-motion（动效）
 scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）；bundle.mjs：宿主随自己发布的文件夹（docs/zh/embedding.md）；sync-tingly-box-theme.mjs：把 Tingly Box 的调色板拷进编辑器（docs/zh/theming.md）
 .claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs（委托时会让它先读）
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有

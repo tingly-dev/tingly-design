@@ -1,4 +1,4 @@
-import type { Actor, JournalEntry, ModelMessage, ProjectCard } from '@dc/core';
+import type { Actor, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import { at, SERVER } from './base';
 
 export interface FileState {
@@ -38,7 +38,7 @@ const enc = encodeURIComponent;
 export const api = {
   health: () => fetch(at('api/health')).then((r) => json<Health>(r)),
   projects: () => fetch(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
-  createProject: (name: string, title: string, kind: 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' = 'design') =>
+  createProject: (name: string, title: string, kind: ProjectKind = 'design') =>
     fetch(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
       json<{ ok: true }>(r),
     ),

@@ -11,6 +11,7 @@ import { SlidesApp } from './components/slides/SlidesApp';
 import { DsApp } from './components/ds/DsApp';
 import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
+import { MotionApp } from './components/motion/MotionApp';
 import { Launcher } from './components/Launcher';
 import { serverDefault } from './theme';
 import { announceReady } from './host';
@@ -88,6 +89,13 @@ export function App() {
     return (
       <>
         <DsApp />
+        <Toasts />
+      </>
+    );
+  if (kind === 'motion')
+    return (
+      <>
+        <MotionApp />
         <Toasts />
       </>
     );

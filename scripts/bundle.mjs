@@ -45,7 +45,7 @@ await esbuild.build({
 const copy = (from, to, filter) => cpSync(join(root, from), join(out, to), { recursive: true, filter });
 copy('apps/editor/dist', 'editor');
 copy('packages/sandbox/dist', 'sandbox');
-copy('projects', 'samples', (src) => !/[/\\]\.(journal\.jsonl|runs\.json)$/.test(src));
+copy('projects', 'samples', (src) => !/[/\\]\.(journal\.jsonl|runs\.json)$/.test(src) && !/[/\\]renders([/\\]|$)/.test(src));
 copy('.claude/skills', '.claude/skills');
 copy('scripts/dash-query.mjs', 'scripts/dash-query.mjs');
 
