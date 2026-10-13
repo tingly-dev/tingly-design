@@ -1,0 +1,231 @@
+--- x/net/html/parse.go	2026-10-13 15:42:41.227911680 +0000
++++ xhtml/parse.go	2026-10-13 15:49:47.333087487 +0000
+@@ -46,6 +46,9 @@
+ 	fosterParenting bool
+ 	// quirks is whether the parser is operating in "quirks mode."
+ 	quirks bool
++	tokStart, tokEnd, off int
++	attrSpans            []Span
++	implied, endUsed     bool
+ 	// fragment is whether the parser is parsing an HTML fragment.
+ 	fragment bool
+ 	// context is the context element when parsing an HTML fragment
+@@ -317,11 +320,15 @@
+ 	t := p.top()
+ 	if n := t.LastChild; n != nil && n.Type == TextNode {
+ 		n.Data += text
++		if n.Loc != nil && !p.implied {
++			n.Loc.End = p.tokEnd
++		}
+ 		return
+ 	}
+ 	p.addChild(&Node{
+ 		Type: TextNode,
+ 		Data: text,
++		Loc:  p.tokLoc(),
+ 	})
+ }
+ 
+@@ -340,6 +347,7 @@
+ 		DataAtom: p.tok.DataAtom,
+ 		Data:     p.tok.Data,
+ 		Attr:     p.tok.Attr,
++		Loc:      p.elementLoc(),
+ 	})
+ }
+ 
+@@ -515,7 +523,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.doc.AppendChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -560,7 +568,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.doc.AppendChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -599,7 +607,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -714,7 +722,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -822,7 +830,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -1215,7 +1223,9 @@
+ 				p.clearActiveFormattingElements()
+ 			}
+ 		case a.Br:
++			// </br> is treated as <br>; parse5 gives that element no location
+ 			p.tok.Type = StartTagToken
++			p.implied = true // reset when the next token is read
+ 			return false
+ 		case a.Template:
+ 			return inHeadIM(p)
+@@ -1224,7 +1234,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 	case ErrorToken:
+@@ -1351,6 +1361,7 @@
+ 			}
+ 			// Step 14.7.
+ 			clone := node.clone()
++			clone.Loc = nil // the adoption agency's copies are not in the source (as in parse5)
+ 			p.afe[p.afe.index(node)] = clone
+ 			p.oe[p.oe.index(node)] = clone
+ 			node = clone
+@@ -1382,6 +1393,7 @@
+ 		// Steps 16-18. Reparent nodes from the furthest block's children
+ 		// to a clone of the formatting element.
+ 		clone := formattingElement.clone()
++		clone.Loc = nil
+ 		reparentChildren(clone, furthestBlock)
+ 		furthestBlock.AppendChild(clone)
+ 
+@@ -1528,7 +1540,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -1598,7 +1610,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -1685,7 +1697,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -1892,7 +1904,7 @@
+ 			panic("html: bad parser state: <html> element not found, in the after-body insertion mode")
+ 		}
+ 		p.oe[0].AppendChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -1906,7 +1918,7 @@
+ 	switch p.tok.Type {
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 	case TextToken:
+@@ -1956,7 +1968,7 @@
+ 	switch p.tok.Type {
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 	case TextToken:
+@@ -2008,7 +2020,7 @@
+ 		}
+ 	case CommentToken:
+ 		p.doc.AppendChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 		return true
+@@ -2024,7 +2036,7 @@
+ 	switch p.tok.Type {
+ 	case CommentToken:
+ 		p.doc.AppendChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 	case TextToken:
+@@ -2072,7 +2084,7 @@
+ 		p.addText(p.tok.Data)
+ 	case CommentToken:
+ 		p.addChild(&Node{
+-			Type: CommentNode,
++			Type: CommentNode, Loc: p.tokLoc(),
+ 			Data: p.tok.Data,
+ 		})
+ 	case StartTagToken:
+@@ -2186,7 +2198,9 @@
+ // parseImpliedToken parses a token as though it had appeared in the parser's
+ // input.
+ func (p *parser) parseImpliedToken(t TokenType, dataAtom a.Atom, data string) {
+-	realToken, selfClosing := p.tok, p.hasSelfClosingToken
++	realToken, selfClosing, wasImplied := p.tok, p.hasSelfClosingToken, p.implied
++	p.implied = true
++	defer func() { p.implied = wasImplied }()
+ 	p.tok = Token{
+ 		Type:     t,
+ 		DataAtom: dataAtom,
+@@ -2233,7 +2247,14 @@
+ 		p.tokenizer.AllowCDATA(n != nil && n.Namespace != "")
+ 		// Read and parse the next token.
+ 		p.tokenizer.Next()
++		p.tokStart = p.off
++		p.off += len(p.tokenizer.Raw())
++		p.tokEnd = p.off
+ 		p.tok = p.tokenizer.Token()
++		p.attrSpans = p.tokenizer.AttrSpans()
++		p.endUsed = false
++		p.implied = false
++		before := append([]*Node(nil), p.oe...)
+ 		if p.tok.Type == ErrorToken {
+ 			err = p.tokenizer.Err()
+ 			if err != nil && err != io.EOF {
+@@ -2241,6 +2262,7 @@
+ 			}
+ 		}
+ 		p.parseCurrentToken()
++		p.closePopped(before)
+ 	}
+ 	return nil
+ }
