@@ -1,6 +1,6 @@
 # 从 Design 到五种类型
 
-状态：**已实施**（幻灯片、设计系统在 #2 之前直接提交，看板 #3，文档 #4），原放在 `docs/zh/artifact-types.md`。前半是当初的方案，"进度"一节是实施后的结论和与原版的差别。各类型现在的接线和跨类型功能见 [project-kinds.md](./project-kinds.md)。
+状态：**已实施**。前半是当初的方案，"进度"一节是实施后的结论和与原版的差别。各类型现在的接线和跨类型功能见 [project-kinds.md](./project-kinds.md)。
 
 tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifact 平台上其实有五种核心类型，Design 只是其中之一：
 

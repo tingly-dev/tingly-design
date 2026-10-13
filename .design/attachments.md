@@ -1,10 +1,10 @@
 # 给 AI 的附件：图片和文件留在项目里
 
-状态：**已实施**（#10），代码事实取自 `8f3f26a`。用户说明见 [architecture.md](../docs/zh/architecture.md) §3，测试是 `e2e/attach.py`。
+状态：**已实施**。用户说明见 [architecture.md](../docs/zh/architecture.md) §3，测试是 `e2e/attach.py`。
 
 ## 1. 要解决的问题
 
-以前给 AI 的请求只能是文字。可人手里常常有更准的材料：一张要对齐的截图、一份 mockup、logo、品牌手册 PDF、一份真实数字的 CSV。现在提示栏和「交给 Claude Code」栏都能粘贴、拖入或点回形针附上图片、PDF 和文本文件。
+只用文字描述，AI 常常猜不准；人手里往往有更准的材料：一张要对齐的截图、一份 mockup、logo、品牌手册 PDF、一份真实数字的 CSV。所以提示栏和「交给 Claude Code」栏都能粘贴、拖入或点回形针附上图片、PDF 和文本文件。
 
 ## 2. 决定
 

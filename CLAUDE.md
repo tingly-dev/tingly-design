@@ -29,12 +29,13 @@ Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind
 
 ## 2. `.design/`
 
-`.design/` holds the design notes: why a subsystem looks the way it is, the options weighed, what was decided and what is still open. `.design/README.md` is the index, with a row per note and the PRs it covers.
+`.design/` holds the design notes: why a subsystem looks the way it is, the options weighed, what was decided and what is still open. `.design/README.md` is the index, with a row per note grouped by topic.
 
 - **Before** building a feature or changing a subsystem, read the index and the notes it points to.
 - **With** each PR whose core is a new feature, a new project kind, a new file format, a protocol or a non-obvious trade-off, write a note or update the existing one, and its row in the index. A bug fix, a rename or copy change usually needs none; say so in the PR if you skip it.
 - Follow the maintenance rules at the top of `.design/README.md` (the same as Tingly Box's): current contract, implementation status, history and proposals kept apart; diagrams in a separate `<topic>.pencil.md`; renames update every reference.
-- A note says its status on the first line after the title (`方案` / `研究` / `已实施` …) and the commit its code facts were taken from. Keep implemented facts, proposals and history apart.
+- A note describes the design and the reasoning: the problem, the options weighed, what was decided and why, what is still open. It is not a changelog: no PR numbers, commit hashes or "in this PR we…"; that belongs in git history and the PR description. When the design changes, rewrite the note to the current design instead of appending an entry.
+- A note says its status on the first line after the title (`方案` / `研究` / `已实施` …). Keep implemented facts, proposals and history apart.
 - `docs/` is the other half: user guides (`docs/*/guide/`) and how-it-works pages (`architecture`, `theming`, `embedding`, `development`). Those are written in both `docs/en/` and `docs/zh/`; change both. `.design/` notes are written once, in either language.
 
 ## 3. Features that span project kinds
