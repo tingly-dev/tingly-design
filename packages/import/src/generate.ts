@@ -29,6 +29,8 @@ export interface GenerateOptions {
   note?: boolean;
   /** files the page names that were not given to the import (listed in the report) */
   missing?: string[];
+  /** where the caller kept the original entry file in the project (e.g. "source/index.html"), recorded in canvas.json */
+  kept?: string;
 }
 
 export interface BoardOut {
@@ -398,7 +400,7 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
     pages: [],
     launch: { view: 'canvas' },
     designSystems: [],
-    imported: { from: x.from, ...(opts.source ? { source: opts.source } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) },
+    imported: { from: x.from, ...(opts.source ? { source: opts.source } : {}), ...(opts.kept ? { original: opts.kept } : {}), at: opts.now ?? new Date().toISOString(), width: Math.round(x.width) },
   };
   files['canvas.json'] = JSON.stringify(canvas, null, 2) + '\n';
   return { files, report };

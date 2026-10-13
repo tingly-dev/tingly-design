@@ -71,6 +71,10 @@ export const api = {
       json<{ path: string; size: number; type: string }>(r),
     ),
 
+  /** keep a file of an imported folder at its own path under uploads/ (uploads/<folder>-<hash>/…) */
+  keepUpload: (p: string, path: string, bytes: Uint8Array) =>
+    fetch(at(`api/projects/${enc(p)}/uploads?path=${enc(path)}`), { method: 'PUT', body: bytes as Uint8Array<ArrayBuffer> }).then((r) => json<{ path: string; size: number }>(r)),
+
   assets: (p: string) => fetch(at(`api/projects/${enc(p)}/assets`)).then((r) => json<{ path: string; size: number }[]>(r)),
 
   removeAsset: (p: string, path: string) =>

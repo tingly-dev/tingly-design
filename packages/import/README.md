@@ -24,7 +24,7 @@ slides…) means adding a folder under `src/sources/`, nothing else.
 | `src/sources/pack.ts` | anywhere | uploaded files → one self-contained page or drawing (stylesheets inlined, local files as data urls) |
 | `src/model.ts` | — | the page model, plain JSON |
 | `src/generate.ts` | anywhere | page model → project files, splitting long pages into one artboard per section and leaving a sticky note with the report |
-| `src/assets.ts` | anywhere | big embedded `data:` files (Figma's SVGs embed screenshots) → project assets |
+| `src/assets.ts` | anywhere | big embedded `data:` files (Figma's SVGs embed screenshots) → files in `assets/` |
 | `src/cli.ts` | Node + Chromium | `dc-import` |
 
 The editor's 导入 HTML 或 SVG (launcher tile, drop, or ⌘V of SVG markup)
@@ -46,6 +46,18 @@ Options: `--name`, `--title`, `--width 1280`, `--split auto|on|off`,
 `check` renders each artboard through the real sandbox runtime
 (`pnpm --filter @dc/sandbox build` first) and reports the share of pixels
 that differ from the original page.
+
+## Where files go
+
+Same rule as chat attachments: what a person brings in lives under
+`uploads/`, and artboards point at it instead of copying it.
+
+- one file (an SVG, a pasted drawing) → `uploads/<name>-<hash8>.<ext>`
+- a page with its folder → `uploads/<name>-<hash8>/…`, tree intact; files
+  from other hosts (font CDNs) under `_ext/<host>/…`
+- files cut out of another file (base64 images inside an SVG) → `assets/`
+
+`canvas.json` records the entry file as `imported.original`.
 
 ## What does not come along
 

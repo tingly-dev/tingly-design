@@ -9,7 +9,7 @@ import { build } from 'esbuild';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
-import { sandboxDoc } from '@dc/core';
+import { UPLOADS_DIR, isKeptPath, sandboxDoc } from '@dc/core';
 import type { Extracted } from './model';
 import { describeReport, toCanvas, type BoardOut } from './generate';
 import { embeddedAssets } from './assets';
@@ -91,8 +91,17 @@ function pageUrl(input: string): string {
   return /^(https?|file):/i.test(input) ? input : pathToFileURL(resolve(input)).href;
 }
 
-async function loadPage(context: BrowserContext, input: string, width: number): Promise<Page> {
+/** Every file a page loads, as the browser received it: what the import keeps as the original. */
+type Received = Map<string, Buffer>;
+
+async function loadPage(context: BrowserContext, input: string, width: number, received?: Received): Promise<Page> {
   const page = await context.newPage();
+  if (received)
+    page.on('response', (res) => {
+      const url = res.url();
+      if (!/^(https?|file):/i.test(url) || !res.ok()) return;
+      res.body().then((b) => b.length && b.length <= MAX_ASSET && received.set(url.split('#')[0], b), () => undefined);
+    });
   await page.setViewportSize({ width, height: 900 });
   await page.goto(pageUrl(input), { waitUntil: 'load', timeout: 60_000 });
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
@@ -119,6 +128,36 @@ async function loadPage(context: BrowserContext, input: string, width: number): 
   return page;
 }
 
+/**
+ * Write what the page loaded under uploads/<name>-<hash>/, keeping the tree:
+ * files beside the page by their path relative to it, others under
+ * _ext/<host>/. Returns url → kept path for the files that may be kept.
+ */
+function keepReceived(received: Received, entry: string, name: string, dir: string): Map<string, string> {
+  const base = new URL('.', entry);
+  const rels = new Map<string, string>();
+  for (const url of received.keys()) {
+    const u = new URL(url);
+    const inside = u.origin === base.origin && u.pathname.startsWith(base.pathname);
+    const path = inside ? u.pathname.slice(base.pathname.length) : `_ext/${u.host || 'local'}${u.pathname}`;
+    let rel = decodeURIComponent(path).replace(/\/+$/, '/index.html').replace(/^\/+/, '');
+    if (!/\.[a-z0-9]+$/i.test(rel)) rel += url === entry ? '.html' : '';
+    rels.set(url, rel);
+  }
+  const hash = createHash('sha256');
+  for (const [url, rel] of [...rels].sort((a, b) => a[1].localeCompare(b[1]))) hash.update(rel).update(received.get(url)!);
+  const root = `${UPLOADS_DIR}/${name}-${hash.digest('hex').slice(0, 8)}`;
+  const kept = new Map<string, string>();
+  for (const [url, rel] of rels) {
+    const path = `${root}/${rel}`;
+    if (!isKeptPath(path)) continue;
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), received.get(url)!);
+    kept.set(url, path);
+  }
+  return kept;
+}
+
 let extractorSource: string | undefined;
 async function extractor(): Promise<string> {
   if (!extractorSource) {
@@ -133,7 +172,7 @@ async function extract(page: Page): Promise<Extracted> {
   return page.evaluate(`${await extractor()}\n;window.dcExtract(window)`) as Promise<Extracted>;
 }
 
-/** Copy every image and font the page uses into assets/, named as the server names uploads. */
+/** Write embedded data: files, and any image or font that could not be kept under uploads/, into assets/. */
 async function copyAssets(context: BrowserContext, urls: string[], dir: string): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   mkdirSync(join(dir, 'assets'), { recursive: true });
@@ -383,20 +422,38 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     const { browser, context } = await open(insecure);
     try {
       const t0 = Date.now();
-      const page = await loadPage(context, input, width);
+      const received: Received = new Map();
+      const page = await loadPage(context, input, width, received);
       const x = await extract(page);
       await page.close();
       mkdirSync(dir, { recursive: true });
-      const assets = await copyAssets(context, x.urls, dir);
+      // the page as received, kept under uploads/ with its own tree; the artboards point at those files
+      // files the page names but the browser never asked for (a .woff beside the .woff2 it used, a lazy image) belong with the rest
+      for (const u of x.urls) {
+        if (received.has(u) || !/^(https?|file):/.test(u)) continue;
+        try {
+          if (u.startsWith('file:')) received.set(u, readFileSync(fileURLToPath(u.split(/[?#]/)[0])));
+          else {
+            const res = await context.request.get(u, { timeout: 20_000 });
+            if (res.ok()) received.set(u, await res.body());
+          }
+        } catch {
+          // left for copyAssets, which reports what it could not fetch
+        }
+      }
+      const kept = keepReceived(received, pageUrl(input), name, dir);
+      const assets = await copyAssets(context, x.urls.filter((u) => !kept.has(u)), dir);
+      for (const [u, rel] of kept) assets.set(u, rel);
       const split = args.split === 'on' ? true : args.split === 'off' ? false : 'auto';
-      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), split });
+      const original = kept.get(pageUrl(input).split('#')[0]);
+      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), split, kept: original });
       // the check needs to know where each artboard came from on the page
       const canvas = JSON.parse(out.files['canvas.json']);
       for (const b of out.report.boards) canvas.boards[b.file].importTop = Math.round(b.top);
       out.files['canvas.json'] = JSON.stringify(canvas, null, 2) + '\n';
       for (const [rel, text] of Object.entries(out.files)) writeFileSync(join(dir, rel), text);
       console.log(`imported ${input} → ${dir} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-      console.log(`  ${assets.size} assets copied, ${(out.report.styleBytes / 1024).toFixed(1)} KB of inline style`);
+      console.log(`  ${kept.size} original files kept under uploads/, ${assets.size - kept.size} assets copied, ${(out.report.styleBytes / 1024).toFixed(1)} KB of inline style`);
       for (const line of describeReport(out.report)) console.log(`  ${line}`);
       if (args.check) {
         const shotDir = typeof args.out === 'string' ? args.out : undefined;
@@ -424,8 +481,13 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       const x = (await page.evaluate((t) => (window as unknown as { dcReadSvg(t: string): Extracted }).dcReadSvg(t), text)) as Extracted;
       await page.close();
       mkdirSync(dir, { recursive: true });
+      // the drawing as given, named by its content like any single file a person brings in
+      const stem = basenameOf(input) || 'drawing';
+      const original = `${UPLOADS_DIR}/${stem}-${createHash('sha256').update(text).digest('hex').slice(0, 8)}.svg`;
+      mkdirSync(join(dir, UPLOADS_DIR), { recursive: true });
+      writeFileSync(join(dir, original), text);
       const assets = await copyAssets(context, x.urls, dir);
-      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u) });
+      const out = toCanvas(x, { title: typeof args.title === 'string' ? args.title : undefined, source: input, mapUrl: (u) => assets.get(u), kept: original });
       for (const [rel, file] of Object.entries(out.files)) writeFileSync(join(dir, rel), file);
       console.log(`imported ${input} → ${dir} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
       console.log(`  ${assets.size} assets copied`);

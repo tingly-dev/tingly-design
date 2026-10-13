@@ -100,6 +100,24 @@ export function isUploadPath(rel: string): boolean {
   return !!m && !rel.includes('..') && attachmentKind(m[1]) !== null;
 }
 
+/** Fonts and other files a kept folder may hold beside what can be attached (a page's own fonts, icons). */
+const KEPT_EXTRA = new Set(['woff', 'woff2', 'ttf', 'otf', 'avif', 'ico']);
+const KEPT_SEGMENT = /^[\p{L}\p{N}_][\p{L}\p{N}_. ()+-]{0,120}$/u;
+
+/**
+ * Any file a person brought into the project and it keeps under uploads/: an
+ * attachment (uploads/<name>-<hash>.<ext>), or a file of an imported folder,
+ * kept with the folder's own tree (uploads/<folder>-<hash>/css/site.css) so
+ * the page's relative links still hold.
+ */
+export function isKeptPath(rel: string): boolean {
+  const segs = rel.split('/');
+  if (segs[0] !== UPLOADS_DIR || segs.length < 2 || segs.length > 13) return false;
+  if (!segs.slice(1).every((s) => KEPT_SEGMENT.test(s) && s !== '..')) return false;
+  const name = segs[segs.length - 1];
+  return attachmentKind(name) !== null || KEPT_EXTRA.has(ext(name));
+}
+
 /** Why a list of kept attachments cannot be handed on, or null when it can. The server checks again. */
 export function checkUploads(list: unknown): string | null {
   if (list === undefined) return null;

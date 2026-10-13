@@ -8,6 +8,7 @@ import {
   buildFastEditPrompt,
   checkMessages,
   checkUploads,
+  isKeptPath,
   isUploadPath,
   type Attachment,
 } from '../src';
@@ -37,6 +38,15 @@ describe('attachments', () => {
     expect(isUploadPath('uploads/shot-1a2b3c4d.png')).toBe(true);
     expect(isUploadPath('uploads/q3-1a2b3c4d.csv')).toBe(true);
     expect(isUploadPath('uploads/a.zip')).toBe(false);
+  });
+  it('keeps an imported folder with its own tree under uploads/', () => {
+    expect(isKeptPath('uploads/site-1a2b3c4d/index.html')).toBe(true);
+    expect(isKeptPath('uploads/site-1a2b3c4d/fonts/Inter Var.woff2')).toBe(true);
+    expect(isKeptPath('uploads/官网-1a2b3c4d/图片/头图.png')).toBe(true);
+    expect(isKeptPath('uploads/site/../canvas.json')).toBe(false);
+    expect(isKeptPath('uploads/site/.env')).toBe(false);
+    expect(isKeptPath('uploads/site/app.exe')).toBe(false);
+    expect(isKeptPath('assets/x.png')).toBe(false);
     expect(isUploadPath('uploads/../canvas.json')).toBe(false);
     expect(isUploadPath('uploads/sub/a.png')).toBe(false);
     expect(isUploadPath('assets/a.png')).toBe(false);

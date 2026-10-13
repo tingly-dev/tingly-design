@@ -257,9 +257,24 @@ HTML 导入做成了独立的包 `packages/import`（`@dc/import`），编辑器
 SVG 是第二个来源（`sources/svg/read.ts`）：
 - **不排版、不拍平**：SVG 本身就是带坐标的图形树，原样作为内联 SVG 放进一个画板，尺寸取自它的 width/height 或 viewBox。文字保持为 `<text>`，颜色和描边保持为属性；属性面板对 SVG 形状改的就是 `fill`、`stroke`、`stroke-width`、`opacity` 这几个属性，回写只动一处。
 - **去掉画布接不住的**：脚本、`<foreignObject>`、Inkscape/Illustrator 的私有命名空间和 metadata，计数写进报告。
-- **嵌入的位图搬出来**：Figma 导出的 SVG 会把截图以 base64 嵌在里面，超过 2 KB 的 `data:` 文件都存成 `assets/` 下的文件（HTML 也一样）。
+- **嵌入的位图搬出来**：Figma 导出的 SVG 会把截图以 base64 嵌在里面，超过 2 KB 的 `data:` 文件都存成 `assets/` 下的文件（HTML 也一样）。原文件本身放 `uploads/`，见 §12。
 - **入口**：编辑器里"导入 HTML 或 SVG"可以选文件、拖文件，或者直接 ⌘V 粘贴从 Figma "复制为 SVG"得到的代码；终端是 `dc-import svg`。
 
 用 YZ 给的一份 Figma 复制的 SVG（830×400，2.1 MB）实测：
 - 像素差异 0.00%，画板文件 45 KB，两张截图搬进 `assets/`。
 - **Figma 复制或导出的 SVG 默认把文字转成了路径**，所以导入后能改颜色和位置，但改不了字。报告会提示：导出时取消勾选 "Outline text" 就能保留文字。要拿到 Frame、自动布局、文字样式这些真正的结构，还是要走 Figma 的 API（§0 之后讨论的 Figma 导入）。
+
+## 12. 导入的原文件放哪：统一进 `uploads/`
+
+和对话附件（PR #10）用同一个目录、同一条规则：**人带进项目的东西都放 `uploads/`，用的地方直接引用，不再复制一份。**
+
+| 带进来的是 | 放在 | 说明 |
+| --- | --- | --- |
+| 单个文件（一个 .svg、一个 .html、粘贴的 SVG） | `uploads/<名字>-<内容哈希8位>.<扩展名>` | 和对话附件的命名一样，同样的内容只存一份 |
+| 一个文件夹（网页连同 css、图片、字体） | `uploads/<文件夹名>-<哈希8位>/…` | 保留原来的目录结构，相对路径不变；页面目录以外的文件（字体 CDN、外链图片）放 `_ext/<域名>/…` |
+| 从文件里抠出来的（SVG/HTML 里内嵌的 base64 图片） | `assets/embedded-<哈希>.<扩展名>` | 原文件里没有单独的这份文件，是导入时派生出来的 |
+
+- 画板里的图片、字体直接指向 `uploads/…` 下的原文件；`canvas.json` 的 `imported.original` 记着入口文件，以后要重新导入或对照原样都从这里取。
+- 服务器端：`isKeptPath`（`packages/core/src/attachments.ts`）定义 `uploads/` 下允许的路径（最多 12 层，扩展名是可附加的类型或字体）；`PUT /api/projects/:p/uploads?path=` 按路径写入，单个文件经 `POST …/assets?dir=uploads` 按内容命名。
+- 编辑器和 `dc-import` 结果一致：五个对照页面重新导入后像素差异不变（0.00%～0.30%），图片和字体都从 `uploads/` 加载。
+- 导入失败会留下一个空项目，还没有删除项目的接口，后面补。

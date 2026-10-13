@@ -6,7 +6,7 @@ import { droppedFiles, importPicked, pickedFromText, readPicked, type ImportStep
 
 const STEPS: { step: ImportStep; zh: string }[] = [
   { step: 'layout', zh: '读出每个元素和它的样式' },
-  { step: 'assets', zh: '复制图片和字体到项目里' },
+  { step: 'assets', zh: '保存原文件，把图片和字体放进项目' },
   { step: 'write', zh: '写入画板' },
 ];
 

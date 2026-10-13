@@ -1,6 +1,8 @@
 import { embeddedAssets, packPage, parseSvg, readSvg, toCanvas, type Extracted, type InFile, type ImportReport } from '@dc/import';
 import { extractPage } from '@dc/import/extract';
+import { isKeptPath } from '@dc/core';
 import { api } from './api';
+import { slugOf } from './projectName';
 
 /**
  * Import an HTML page or an SVG drawing (and the files beside it) as a new
@@ -29,6 +31,8 @@ export interface Picked {
   entry: string;
   pages: string[];
   title: string;
+  /** the picked folder's own name, when a folder was picked or dropped */
+  folder: string;
 }
 
 /** Files from a picker or a drop → paths relative to the folder they came from. */
@@ -45,7 +49,7 @@ export async function readPicked(list: { file: File; path: string }[]): Promise<
       return { path, type: file.type || MIME[ext] || 'application/octet-stream', bytes: new Uint8Array(await file.arrayBuffer()) };
     }),
   );
-  return pick(files);
+  return pick(files, common > 0 ? first[common - 1] : '');
 }
 
 /** SVG markup pasted from a design tool (Figma's "Copy as SVG") → a picked file; null when it is not SVG. */
@@ -57,7 +61,7 @@ export function pickedFromText(text: string): Picked | null {
 const depth = (p: string) => p.split('/').length;
 const isSvg = (p: string) => /\.svg$/i.test(p);
 
-function pick(files: InFile[]): Picked {
+function pick(files: InFile[], folder = ''): Picked {
   const html = files.map((f) => f.path).filter((p) => /\.html?$/i.test(p));
   const svg = files.map((f) => f.path).filter(isSvg);
   const order = (a: string, b: string) => depth(a) - depth(b) || a.localeCompare(b);
@@ -66,7 +70,7 @@ function pick(files: InFile[]): Picked {
   const entry = pages.find((p) => /(^|\/)index\.html?$/i.test(p)) ?? pages[0] ?? '';
   const text = entry ? new TextDecoder().decode(files.find((f) => f.path === entry)!.bytes) : '';
   const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text)?.[1].replace(/\s+/g, ' ').trim() ?? '';
-  return { files, entry, pages, title };
+  return { files, entry, pages, title, folder };
 }
 
 /** Everything a drop carries, folders walked. */
@@ -116,6 +120,15 @@ async function layOut(html: string): Promise<{ frame: HTMLIFrameElement; win: Wi
   return { frame, win };
 }
 
+/** A short name for a set of files (crypto.subtle is missing on plain-http hosts, and this needs no secrecy). */
+function fnv1a(files: InFile[]): string {
+  let h = 0x811c9dc5;
+  for (const f of files) {
+    for (const bytes of [new TextEncoder().encode(f.path), f.bytes]) for (let i = 0; i < bytes.length; i++) h = Math.imul(h ^ bytes[i], 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
 export interface ImportResult {
   report: ImportReport;
 }
@@ -140,26 +153,48 @@ export async function importPicked(picked: Picked, name: string, title: string, 
 
   await api.createProject(name, title || extracted.title || name, 'design');
   onStep('assets');
+  // what the person brought in is kept in uploads/, as it was, and the artboards point at it there:
+  // one file named by its content (as chat attachments are), a folder with its own tree so its links hold
   const local = new Map<string, string>();
-  // the files the page used, uploaded once each; their data: urls point at the copies
-  const byPath = new Map(picked.files.map((f) => [f.path, f]));
-  for (const [dataUrl, path] of packed.paths) {
-    if (!ASSET_EXT.test(path)) continue;
-    const f = byPath.get(path)!;
-    const up = await api.upload(name, new File([f.bytes as Uint8Array<ArrayBuffer>], path.split('/').pop()!, { type: f.type }));
-    local.set(dataUrl, up.path);
+  const at = new Map<string, string>(); // picked path → kept path
+  const skipped: string[] = [];
+  if (picked.files.length === 1) {
+    const f = picked.files[0];
+    const up = await api.upload(name, new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), 'uploads');
+    at.set(f.path, up.path);
+  } else {
+    const root = `uploads/${slugOf(picked.folder || picked.entry.replace(/\.[a-z]+$/i, '')) || 'import'}-${fnv1a(picked.files)}`;
+    for (const f of picked.files) {
+      const path = `${root}/${f.path}`;
+      if (!isKeptPath(path)) {
+        skipped.push(f.path);
+        continue;
+      }
+      await api.keepUpload(name, path, f.bytes);
+      at.set(f.path, path);
+    }
   }
-  // images the file carried inside itself (Figma's SVGs embed screenshots this way)
+  for (const [dataUrl, path] of packed.paths) {
+    const kept = at.get(path);
+    if (kept) local.set(dataUrl, kept);
+    else if (ASSET_EXT.test(path)) {
+      const f = picked.files.find((x) => x.path === path)!;
+      const up = await api.upload(name, new File([f.bytes as Uint8Array<ArrayBuffer>], path.split('/').pop()!, { type: f.type }));
+      local.set(dataUrl, up.path);
+    }
+  }
+  // images the file carried inside itself (Figma's SVGs embed screenshots this way): made here, so assets/
   for (const a of embeddedAssets(extracted.urls)) {
     if (local.has(a.url)) continue;
     // the server names uploads by their content, so each embedded file lands once
     const up = await api.upload(name, new File([a.bytes as Uint8Array<ArrayBuffer>], `embedded.${a.ext}`, { type: a.type }));
     local.set(a.url, up.path);
   }
+  if (skipped.length) (extracted.report.notes ??= []).push(`${skipped.length} 个文件类型不能保存在项目里，没有留存：${skipped.slice(0, 3).join('、')}${skipped.length > 3 ? ' 等' : ''}`);
 
   onStep('write');
   const source = picked.entry === 'pasted.svg' && picked.files.length === 1 ? undefined : picked.entry;
-  const out = toCanvas(extracted, { title: title || extracted.title || name, source, mapUrl: (u) => local.get(u), missing: packed.missing });
+  const out = toCanvas(extracted, { title: title || extracted.title || name, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
   const { files } = await api.files(name);
   // artboards first, the index last, so the canvas never lists a file that is not there yet
   const order = [...Object.keys(out.files).filter((f) => f !== 'canvas.json'), 'canvas.json'];

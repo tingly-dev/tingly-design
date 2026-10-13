@@ -5,6 +5,7 @@ import {
   CANVAS_FILE,
   DASH_DATA_TYPES,
   IMAGE_TYPES,
+  isKeptPath,
   isUploadPath,
   DOC_INDEX,
   isDocFile,
@@ -109,9 +110,11 @@ export function assetType(rel: string): string {
   return (rel.startsWith('data/') ? DASH_DATA_TYPES[ext] : ASSET_TYPES[ext]) ?? 'application/octet-stream';
 }
 
-/** An attachment kept in uploads/ is served as an image, a PDF, an SVG, or else plain text (never as a page). */
+/** A file kept in uploads/ is served as an image, a font, a PDF, an SVG, or else plain text (never as a page or a script). */
 function uploadType(ext: string): string {
   if (IMAGE_TYPES[ext]) return IMAGE_TYPES[ext];
+  if (ext !== 'svg' && ASSET_TYPES[ext]) return ASSET_TYPES[ext];
+  if (ext === 'ico') return 'image/x-icon';
   if (ext === 'pdf') return 'application/pdf';
   if (ext === 'svg') return 'image/svg+xml';
   return 'text/plain; charset=utf-8';
@@ -121,8 +124,8 @@ export function assetRel(rel: string): string {
   const r = rel.replace(/\\/g, '/');
   // a dashboard's data files: csv, tsv, json, SQLite
   if (isDataPath(r)) return r;
-  // files attached to requests
-  if (isUploadPath(r)) return r;
+  // what people brought in: files attached to requests, folders they imported
+  if (isUploadPath(r) || isKeptPath(r)) return r;
   const m = /^(assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_. -]{0,120})\.([a-z0-9]+)$/i.exec(r);
   if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, `not an asset path: ${rel}`);
   return r;
