@@ -7,17 +7,22 @@
  *   --format wide,tall   formats to render (default: all in motion.json)
  *   --scale 2            render at 2× and downsample (sharper type, slower)
  *   --gif                also write a GIF per format
- *   --poster 2.5         also write a PNG of the frame at 2.5 s
+ *   --poster 2.5         use the frame at 2.5 s as the cover, whatever motion.json says
  *   --player             also write a single-file HTML player
  *   --verify             seek frames in two orders and check they match
  *   --out <dir>          output folder (default: projects/<project>/renders)
+ *
+ * The cover (motion.json "cover": a time such as "2.2s", or a scene file outside
+ * "order" such as "poster") is written as <project>-<format>-cover.png, embedded
+ * in the MP4 as its cover art, and used as the video's first frame unless
+ * "coverFirstFrame" is false, so apps that thumbnail frame 0 don't show a blank.
  *
  * Needs Chromium (DC_CHROME, or Playwright's browsers) and ffmpeg on PATH.
  * Every frame is a seek on the runtime's single clock, then a screenshot, so
  * the same source always gives the same video.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -42,6 +47,16 @@ const motion = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
 const scenes = Object.fromEntries(
   (motion.order ?? []).filter((id) => existsSync(join(dir, 'scenes', `${id}.html`))).map((id) => [id, readFileSync(join(dir, 'scenes', `${id}.html`), 'utf8')]),
 );
+function seconds(v) {
+  const m = /^(\d+(?:\.\d+)?|\.\d+)(ms|s)?$/.exec(String(v ?? '').trim());
+  return m ? Number(m[1]) * (m[2] === 'ms' ? 1 : 1000) : null;
+}
+const coverOpt = opt('poster', '') ? `${opt('poster', '')}s` : motion.cover;
+const coverAt = seconds(coverOpt);
+const coverScene = coverAt == null && typeof coverOpt === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(coverOpt) && existsSync(join(dir, 'scenes', `${coverOpt}.html`)) ? coverOpt : null;
+const coverHtml = coverScene ? readFileSync(join(dir, 'scenes', `${coverScene}.html`), 'utf8') : null;
+if (coverOpt && coverAt == null && !coverScene) console.error(`cover "${coverOpt}" is neither a time nor a scene file; no cover`);
+const hasCover = coverAt != null || !!coverScene;
 const runtimePath = join(REPO, 'packages/sandbox/dist/motion.js');
 if (!existsSync(runtimePath)) {
   console.error('packages/sandbox/dist/motion.js is missing: run `pnpm --filter @dc/sandbox build` first');
@@ -72,22 +87,25 @@ function pageHtml(player) {
     ? `<div id="bar"><button id="play">Play</button><input id="scrub" type="range" min="0" step="1" value="0"><span id="time">0.00 s</span><select id="fmt"></select></div>`
     : '';
   const css = player
-    ? `body{margin:0;background:#111;color:#ddd;font:14px system-ui;display:flex;flex-direction:column;height:100vh}#wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}#bar{display:flex;gap:12px;align-items:center;padding:10px 16px;background:#1b1b1b}#scrub{flex:1}#issues{color:#f5a524;padding:0 16px 8px;white-space:pre-wrap}`
+    ? `body{margin:0;background:#111;color:#ddd;font:14px system-ui;display:flex;flex-direction:column;height:100vh}#wrap{flex:1;display:grid;place-items:center;overflow:hidden}#root,#dc-cover{grid-area:1/1}#bar{display:flex;gap:12px;align-items:center;padding:10px 16px;background:#1b1b1b}#scrub{flex:1}#issues{color:#f5a524;padding:0 16px 8px;white-space:pre-wrap}`
     : `html,body{margin:0;background:transparent}`;
   const boot = player
-    ? `const motion=${json(motion)},scenes=${json(scenes)};let stage;const wrap=document.getElementById('wrap'),root=document.getElementById('root');
+    ? `const motion=${json(motion)},scenes=${json(scenes)},coverAt=${json(coverAt)},coverScene=${json(coverScene)},coverHtml=${json(coverHtml)};let stage,cover,started=false;const coverRoot=document.getElementById('dc-cover');const wrap=document.getElementById('wrap'),root=document.getElementById('root');
 const fmt=document.getElementById('fmt'),scrub=document.getElementById('scrub'),time=document.getElementById('time'),play=document.getElementById('play');
 for(const f of Object.keys(motion.formats)){const o=document.createElement('option');o.value=f;o.textContent=f+' '+motion.formats[f].size.join('×');fmt.appendChild(o)}
-function fit(){if(!stage)return;const s=Math.min(wrap.clientWidth/stage.width,wrap.clientHeight/stage.height);root.style.transform='scale('+s+')';root.style.transformOrigin='center'}
+function fit(){if(!stage)return;const s=Math.min(wrap.clientWidth/stage.width,wrap.clientHeight/stage.height);for(const r of [root,coverRoot]){r.style.transform='scale('+s+')';r.style.transformOrigin='center'}}
+const uncover=()=>{if(!started){started=true;coverRoot.style.display='none'}};
 const show=t=>{scrub.value=t;time.textContent=(t/1000).toFixed(2)+' s / '+(stage.duration/1000).toFixed(2)+' s'};let playing=false;
-async function load(f){stage&&stage.destroy();stage=await dcMotion.mount({motion,scenes,format:f,root});scrub.max=stage.duration;fit();show(0);
+async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,format:f,root});scrub.max=stage.duration;
+if(!started&&coverScene){cover=await dcMotion.mount({motion:{...motion,order:[coverScene]},scenes:{[coverScene]:coverHtml},format:f,root:coverRoot});cover.seek(cover.duration)}
+if(!started&&coverAt!=null)stage.seek(coverAt);fit();show(0);
 document.getElementById('issues').textContent=stage.issues.map(i=>i.level+': '+i.scene+' '+i.message).join('\\n')}
 fmt.onchange=()=>{playing=false;play.textContent='Play';load(fmt.value)};addEventListener('resize',fit);
-play.onclick=()=>{playing=!playing;play.textContent=playing?'Pause':'Play';if(playing){const from=+scrub.value>=stage.duration?0:+scrub.value;stage.play(from,t=>{show(t);if(t>=stage.duration&&!motion.loop){playing=false;play.textContent='Play'}})}else stage.pause()};
-scrub.oninput=()=>{playing=false;play.textContent='Play';stage.pause();stage.seek(+scrub.value);show(+scrub.value)};load(fmt.value);`
+play.onclick=()=>{uncover();playing=!playing;play.textContent=playing?'Pause':'Play';if(playing){const from=+scrub.value>=stage.duration?0:+scrub.value;stage.play(from,t=>{show(t);if(t>=stage.duration&&!motion.loop){playing=false;play.textContent='Play'}})}else stage.pause()};
+scrub.oninput=()=>{uncover();playing=false;play.textContent='Play';stage.pause();stage.seek(+scrub.value);show(+scrub.value)};load(fmt.value);`
     : '';
   return `<!doctype html><html><head><meta charset="utf-8"><title>${(motion.title ?? stem).replace(/</g, '&lt;')}</title><style>${css}</style></head><body>${
-    player ? '<div id="wrap"><div id="root"></div></div>' + controls + '<div id="issues"></div>' : '<div id="root"></div>'
+    player ? '<div id="wrap"><div id="root"></div><div id="dc-cover"></div></div>' + controls + '<div id="issues"></div>' : '<div id="root"></div>'
   }<script>${runtime.replace(/<\/script/gi, '<\\/script')}</script>${player ? `<script>${boot}</script>` : ''}</body></html>`;
 }
 
@@ -200,19 +218,44 @@ try {
       if (!ok) failed = true;
     }
 
+    let coverPng = null;
+    if (coverAt != null) coverPng = await shot(Math.min(coverAt, info.duration));
+    else if (coverScene) {
+      const cp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: scale });
+      await cp.setContent(pageHtml(false), { waitUntil: 'load' });
+      await cp.evaluate(
+        async ({ motion, id, html, format }) => {
+          const s = await window.dcMotion.mount({ motion: { ...motion, order: [id] }, scenes: { [id]: html }, format, root: document.getElementById('root') });
+          await s.seek(s.duration);
+        },
+        { motion, id: coverScene, html: coverHtml, format },
+      );
+      coverPng = await cp.screenshot({ type: 'png' });
+      await cp.close();
+    }
+    const coverFile = join(out, `${stem}-${format}-cover.png`);
+    if (coverPng) writeFileSync(coverFile, coverPng);
+    const firstIsCover = coverPng && motion.coverFirstFrame !== false;
+
     const frames = Math.round((info.duration / 1000) * info.fps);
     const file = join(out, `${stem}-${format}.mp4`);
     const t0 = performance.now();
     await run('ffmpeg', encodeArgs(info.fps, w, h, info.duration / 1000, file), async (stdin) => {
       try {
         for (let i = 0; i < frames; i++) {
-          const buf = await shot((i * 1000) / info.fps);
+          const buf = i === 0 && firstIsCover ? coverPng : await shot((i * 1000) / info.fps);
           if (!stdin.write(buf)) await new Promise((r) => stdin.once('drain', r));
         }
       } finally {
         stdin.end();
       }
     });
+    if (coverPng) {
+      // cover art: an attached picture stream, which Finder, Explorer and most players show as the thumbnail
+      const tmp = file.replace(/\.mp4$/, '.cover.mp4');
+      await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', file, '-i', coverFile, '-map', '0', '-map', '1', '-c', 'copy', '-c:v:1', 'png', '-disposition:v:1', 'attached_pic', tmp]);
+      renameSync(tmp, file);
+    }
     const secs = (performance.now() - t0) / 1000;
     console.log(
       `${format}: ${w}×${h}${scale > 1 ? ` (rendered at ${scale}×)` : ''}, ${frames} frames, ${(info.duration / 1000).toFixed(2)} s of video in ${secs.toFixed(1)} s (${(frames / secs).toFixed(1)} frames/s) → ${file}`,
@@ -224,12 +267,7 @@ try {
       await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', file, '-vf', `fps=15,scale=${gw}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`, gif]);
       console.log(`${format}: GIF → ${gif}`);
     }
-    const posterAt = opt('poster', '');
-    if (posterAt) {
-      const png = join(out, `${stem}-${format}-poster.png`);
-      writeFileSync(png, await shot(Math.round(Number(posterAt) * 1000)));
-      console.log(`${format}: poster → ${png}`);
-    }
+    if (coverPng) console.log(`${format}: cover (${coverScene ? `scene ${coverScene}` : `frame at ${(coverAt / 1000).toFixed(2)} s`}${firstIsCover ? ', also the first frame' : ''}) → ${coverFile}`);
     await page.close();
   }
   if (flag('player')) {

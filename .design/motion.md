@@ -109,7 +109,7 @@ A sketch to make the recommendation concrete. Names are provisional.
 
 ```
 projects/<name>/
-  motion.json            title, formats, fps, scene order, audio, design system
+  motion.json            title, formats, fps, scene order, cover, audio, design system
   scenes/<id>.html       one file per scene: exactly one <section>, the slides subset plus timing attributes
   audio/                 music, voiceover
   assets/                images, video clips, fonts
@@ -129,6 +129,7 @@ projects/<name>/
   },
   "fps": 30,
   "order": ["hook", "problem", "gateway", "teams", "cta"],
+  "cover": "poster",
   "audio": [
     { "src": "audio/track.mp3", "start": 0, "gain": -6, "beats": "auto" },
     { "src": "audio/voice.mp3", "start": 0.5, "captions": "audio/voice.srt" }
@@ -200,7 +201,7 @@ Generative footage and music (Veo, Seedance, Suno…) stay out of this repositor
 | **Single-file HTML player** | Same as slides' HTML download: inlined assets, the runtime, play/scrub controls. Also the way to embed a motion piece in a web page or in a deck's `<x-embed>` | 1 |
 | **MP4 (H.264 + AAC)** | Server-side: headless Chromium opens the scene with the runtime in render mode, seeks frame by frame, screenshots, pipes to FFmpeg; audio mixed by FFmpeg. Rendered at 2× and downsampled for crisp type | 1 |
 | **GIF** | From the same frames, FFmpeg `palettegen` / `paletteuse`, capped at 720 px and 15 fps by default | 1 |
-| **PNG poster / frame at t** | One seek, one screenshot; also used for thumbnails | 1 |
+| **Cover image** | See "The cover" below: a fully written still per format, as a PNG, as the MP4's cover art and as its first frame | 1 |
 | **All formats at once** | One render job per entry in `formats`, same frames timeline, files named `<title>-wide.mp4`, `-tall`, `-square` | 1 |
 | **WebM with alpha, PNG sequence, ProRes** | Transparent background; for overlaying on footage in an NLE or on a web page | 2 |
 | **Lottie / dotLottie** | For animated assets and UI motion. Format E is what makes this tractable: presets and `data-keys` are already keyframes on transform, opacity and a few properties, which is what Lottie layers hold. Shapes and SVG paths map to shape layers, images to image layers, text to glyph outlines (opentype.js) so no font is needed at playback. Anything in an `<x-embed>`, video, CSS filters and blend modes cannot go; the checker lists them before export, and "Lottie-safe" can be a project setting that warns as you edit | 2 |
@@ -211,6 +212,15 @@ Dependencies are the real cost of export:
 
 - The server has neither Chromium nor FFmpeg today (PDF is the browser's print). Playwright with its Chromium is ~150 MB; FFmpeg is a static binary or `ffmpeg-static`.
 - For Tingly Box hosting (`.design/tingly-box-integration.md`), the bundle already needs Node, but shipping Chromium and FFmpeg inside a single-binary product is heavy. Phase 1 downloads them on first render, the way Playwright's own installer does, with progress shown in the export dialog.
+
+### The cover
+
+A promo almost always opens on an empty or half-built frame, because everything enters. Chat apps, social feeds and file browsers thumbnail a video from its first frame or its cover art, so a shared video looks blank. Motion therefore needs a cover as its own concept, separate from the timeline:
+
+- **Where it comes from**: `"cover"` in `motion.json` is either a time (`"2.2s"`, a frame of the video, good enough when one frame says it all) or the id of a scene file outside `order` (`"poster"`), a page designed to be read standing still: the name, the promise, the features, the product on screen. A cover scene has no timing attributes; if it has some, it is drawn at its end state. The editor shows it as a separate card before scene 1, with "Use this frame as the cover" on the playhead's menu.
+- **Where it goes**: a PNG per format; the MP4's cover art (an attached picture stream, which Finder, Explorer and most players use); and, unless `"coverFirstFrame": false`, the video's first frame, for the apps that only look at frame 0. One frame at 30 fps is 33 ms, so playback barely shows it. The HTML player shows the cover until play or scrub.
+- **Per format**: the cover follows the same format overrides as scenes, so 16:9 and 9:16 each get their own still.
+- **AI**: "make a cover" is a natural first ask once a piece exists; the AI writes the cover scene from the piece's own scenes.
 
 ### Rendering in the browser
 
@@ -284,10 +294,10 @@ The spike is in this branch. It has no editor UI; it proves the format, the runt
 
 ```bash
 pnpm --filter @dc/sandbox build
-node scripts/motion-render.mjs design-motion --verify --poster 2.2 --player
+node scripts/motion-render.mjs design-motion --verify --player
 ```
 
-What the sample shows: the product story, with no code on screen. (0) A cover: the name, the promise and four things it makes floating around it. (1) An idea typed into the prompt ("A landing page for a coffee subscription") and the AI building the page. (2) A cursor clicking the headline, then a text caret backspacing over it and typing a new one, character by character: editing by hand, in place. (3) A second prompt ("Make it warmer and add a pricing section") and the AI changing the same page. (4) The six kinds of project, one scene each: canvas, slides, design systems, dashboards, docs, and motion itself (marked new). (5) A recap and the brand close ("Coming soon"). It exercises `rise`, `pop`, `fade`, `wipe`, `type`, `count`, `spin`, `slam`; cursor paths with `data-keys` (holds, then eased glides) with a separate path per format (`data-keys-tall`); state changes drawn as overlays that fade or type in over the old state; `data-tall` turning the artboard into a phone layout. Earlier samples (a dark one about Tingly Box, a fast beat-cut one, and one showing the source file and a git diff) were dropped after review: too fast, too technical, or not about the product's features.
+What the sample shows: the product story, with no code on screen. Its cover is a separate, fully written page (`scenes/poster.html`: name, promise, a line on how it works, the six kinds, the product on screen), used as the PNG, the MP4's cover art and its first frame. (0) An animated opening: the name, the promise and four things it makes floating around it. (1) An idea typed into the prompt ("A landing page for a coffee subscription") and the AI building the page. (2) A cursor clicking the headline, then a text caret backspacing over it and typing a new one, character by character: editing by hand, in place. (3) A second prompt ("Make it warmer and add a pricing section") and the AI changing the same page. (4) The six kinds of project, one scene each: canvas, slides, design systems, dashboards, docs, and motion itself (marked new). (5) A recap and the brand close ("Coming soon"). It exercises `rise`, `pop`, `fade`, `wipe`, `type`, `count`, `spin`, `slam`; cursor paths with `data-keys` (holds, then eased glides) with a separate path per format (`data-keys-tall`); state changes drawn as overlays that fade or type in over the old state; `data-tall` turning the artboard into a phone layout. Earlier samples (a dark one about Tingly Box, a fast beat-cut one, and one showing the source file and a git diff) were dropped after review: too fast, too technical, or not about the product's features.
 
 **Findings:**
 

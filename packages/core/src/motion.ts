@@ -43,6 +43,22 @@ export interface MotionJson {
   faces: Record<string, DeckFace>;
   loop?: boolean;
   background?: string;
+  /** The still that stands for the video: a frame of it, or a scene file outside `order` drawn with no timing. */
+  cover?: MotionCover;
+  /** Put the cover in the video's first frame too, so players and chat apps that thumbnail frame 0 show it. Default true. */
+  coverFirstFrame?: boolean;
+}
+
+export type MotionCover = { at: number } | { scene: string };
+
+const SCENE_ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+/** `"2.2s"` → a frame of the video; `"poster"` → `scenes/poster.html`. */
+export function parseCover(v: unknown): MotionCover | undefined {
+  if (typeof v !== 'string' || !v.trim()) return undefined;
+  const t = parseTime(v);
+  if (t != null) return t >= 0 ? { at: t } : undefined;
+  return SCENE_ID_RE.test(v.trim()) ? { scene: v.trim() } : undefined;
 }
 
 export const FORMAT_NAME_RE = /^[a-z][a-z0-9]{0,15}$/;
@@ -82,6 +98,8 @@ export function parseMotion(text: string | undefined): MotionJson {
     faces: raw.faces && typeof raw.faces === 'object' ? raw.faces : {},
     loop: raw.loop === true || undefined,
     background: typeof raw.background === 'string' ? raw.background : undefined,
+    cover: parseCover(raw.cover),
+    coverFirstFrame: raw.coverFirstFrame === false ? false : undefined,
   };
 }
 

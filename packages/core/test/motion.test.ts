@@ -6,6 +6,7 @@ import {
   motionTimeline,
   parseAnim,
   parseKeys,
+  parseCover,
   parseMotion,
   parseTime,
   planScene,
@@ -137,6 +138,15 @@ describe('motion: project and timeline', () => {
     expect(m.fps).toBe(30);
     expect(parseMotion(undefined).formats).toEqual({ wide: { size: [1920, 1080] } });
     expect(sceneIdOf('scenes/hook.html')).toBe('hook');
+  });
+
+  it('reads the cover as a frame or a scene', () => {
+    expect(parseCover('2.2s')).toEqual({ at: 2200 });
+    expect(parseCover('poster')).toEqual({ scene: 'poster' });
+    expect(parseCover('../etc')).toBeUndefined();
+    expect(parseCover(3)).toBeUndefined();
+    expect(parseMotion('{"cover":"poster","coverFirstFrame":false}')).toMatchObject({ cover: { scene: 'poster' }, coverFirstFrame: false });
+    expect(parseMotion('{}').cover).toBeUndefined();
   });
 
   it('overlaps scenes by their transitions', () => {
