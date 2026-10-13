@@ -8,7 +8,7 @@ import { goTo } from '../host';
 import { SERVER } from '../base';
 import { NAME_RE, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
-import { droppedFiles, readPicked, type Picked } from '../importer';
+import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 
 /** The five project kinds, in the order the launcher lists them. */
 export const KINDS: { kind: ProjectKind; zh: string; unit: string; blurb: string; tone: string }[] = [
@@ -277,8 +277,8 @@ function ImportTile({ onClick }: { onClick: () => void }) {
         <IconFileImport size={22} stroke={1.7} />
       </span>
       <span className="txt">
-        <span className="name">导入 HTML</span>
-        <span className="blurb">把现成的网页变成可以编辑的画布。</span>
+        <span className="name">导入 HTML 或 SVG</span>
+        <span className="blurb">把现成的网页或 Figma 里复制的 SVG 变成可以编辑的画布。</span>
       </span>
     </button>
   );
@@ -439,8 +439,20 @@ export function Launcher() {
         search.current?.focus();
       }
     };
+    // SVG on the clipboard (Figma: Copy as SVG) pasted onto the launcher opens the import with it
+    const paste = (e: ClipboardEvent) => {
+      if (creating || importing || document.activeElement instanceof HTMLInputElement) return;
+      const picked = pickedFromText(e.clipboardData?.getData('text/plain') ?? '');
+      if (!picked) return;
+      e.preventDefault();
+      setImporting({ picked });
+    };
     window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
+    window.addEventListener('paste', paste);
+    return () => {
+      window.removeEventListener('keydown', key);
+      window.removeEventListener('paste', paste);
+    };
   }, [creating, importing]);
 
   const counts = useMemo(() => {
@@ -480,7 +492,7 @@ export function Launcher() {
         setDropping(false);
         void droppedFiles(e.dataTransfer)
           .then(readPicked)
-          .then((picked) => (picked.entry ? setImporting({ picked }) : toast('拖进来的文件里没有 .html 页面。', 'error')));
+          .then((picked) => (picked.entry ? setImporting({ picked }) : toast('拖进来的文件里没有 .html 页面或 .svg 图形。', 'error')));
       }}
     >
       <header className="lhead">

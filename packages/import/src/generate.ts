@@ -102,7 +102,7 @@ export function patchStyle(style: string, set: Record<string, string | null>): s
 
 const hasText = (n: XElement) => n.children.some((c) => c.kind === 'text' && c.text.trim());
 
-const isBlock = (c: XNode) => c.kind === 'el' && c.tag !== 'br' && !INLINE_DISPLAY.test(c.box.display) && c.ns === 'html';
+const isBlock = (c: XNode) => c.kind === 'el' && c.tag !== 'br' && !INLINE_DISPLAY.test(c.box.display) && (c.ns === 'html' || c.tag === 'svg');
 
 /**
  * Lines for an element's children, or null to keep them on one line.
@@ -350,7 +350,8 @@ function boardSource(x: Extracted, part: Part, i: number, n: number, ctx: Ctx, t
 
 export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
   const ctx: Ctx = { mapUrl: opts.mapUrl ?? (() => undefined), remote: new Set(), styleBytes: 0, elements: 0 };
-  const parts = splitPage(x.root, Math.round(x.height), opts);
+  // an SVG is one picture: never cut it into parts
+  const parts = splitPage(x.root, Math.round(x.height), x.from === 'svg' ? { ...opts, split: false } : opts);
   const files: Record<string, string> = {};
   const boards: BoardOut[] = [];
   const used = new Set<string>(['Main.dc.html']);
@@ -380,11 +381,13 @@ export function toCanvas(x: Extracted, opts: GenerateOptions = {}): Generated {
       fill: 'orange',
       size: 16,
       text: [
-        `从 HTML 导入${opts.source ? `：${opts.source.split(/[\\/]/).pop()}` : ''}`,
+        `从 ${x.from === 'svg' ? 'SVG' : 'HTML'} 导入${opts.source ? `：${opts.source.split(/[\\/]/).pop()}` : ''}`,
         '',
-        ...(lines.length ? lines.map((l) => `· ${l}`) : ['· 页面的内容和样式都带过来了']),
+        ...(lines.length ? lines.map((l) => `· ${l}`) : [x.from === 'svg' ? '· 图形完整带过来了' : '· 页面的内容和样式都带过来了']),
         '',
-        '每个元素的样式都写在它自己的 style 里，可以直接选中修改。想要更干净的结构（flex 布局、少一些嵌套），选中画板让 AI 整理。',
+        x.from === 'svg'
+          ? '图形保持为 SVG：选中形状可以改颜色、描边和位置，文字（如果还是文字）可以直接改。想把它变成普通的布局元素（flex、可改的文字），选中画板让 AI 重建。'
+          : '每个元素的样式都写在它自己的 style 里，可以直接选中修改。想要更干净的结构（flex 布局、少一些嵌套），选中画板让 AI 整理。',
       ].join('\n'),
     };
   }
