@@ -62,7 +62,7 @@ import {
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
-import { activeDelegates, claudeAvailable, startDelegate, stopDelegates, type DelegateRequest } from './delegate';
+import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -463,6 +463,13 @@ app.post('/api/projects/:p/delegate', async (c) => {
   const bad = checkUploads(req.attachments);
   if (bad) throw new HttpError(400, bad);
   return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design') });
+});
+
+app.delete('/api/projects/:p/delegate/:id', (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  if (!stopDelegate(p, c.req.param('id'))) throw new HttpError(404, '这个任务已经结束了。');
+  return c.json({ ok: true });
 });
 
 // ---------------------------------------------------------------- git

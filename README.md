@@ -50,7 +50,7 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 | `PORT` | The server port; defaults to 8787. |
 | `DC_HOST` | The address it listens on; defaults to `127.0.0.1`. Set `0.0.0.0` to reach it from other machines. |
 
-- No API key is needed to start: jQuery mode lets you type statements yourself, through exactly the same execution and write-back path fast AI uses.
+- No API key is needed to start: the jQuery box in the Code tab lets you type statements yourself, through exactly the same execution and write-back path fast AI uses.
 - "Hand to Claude Code" needs the `claude` command on this machine.
 
 ## Documentation
