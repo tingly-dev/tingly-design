@@ -1,5 +1,5 @@
 /**
- * Shader effects for motion renders (see .design/motion.md §12).
+ * Shader effects for motion renders, vgpu path (see .design/motion-effects.md §3).
  *
  * An effect is a `<x-embed data-seek>` holding a `<canvas>`, a WGSL fragment
  * shader in `<script type="text/wgsl">` and a small runtime (see
