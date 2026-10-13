@@ -316,17 +316,25 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
     if (!m || typeof m !== 'object' || !('dcm' in m)) return;
     if (m.dcm === 'load') {
       const n = ++loading;
-      stage?.destroy();
-      stage = null;
+      // loads overlap while files are still being written (a generation saves scene after scene);
+      // each mounts into its own box, so a stale one finishing late can't wipe the newer one
+      const box = document.createElement('div');
+      root.appendChild(box);
       try {
-        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root, base: m.base });
-        if (n !== loading) return s.destroy();
+        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root: box, base: m.base });
+        if (n !== loading) {
+          s.destroy();
+          return box.remove();
+        }
+        stage?.destroy();
         stage = s;
+        for (const el of Array.from(root.children)) if (el !== box) el.remove();
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));
         if (at) await s.seek(at);
         post({ dcm: 'loaded', width: s.width, height: s.height, duration: s.duration, speed: s.speed, fps: s.fps, scenes: s.scenes, issues: s.issues, t: at });
       } catch (err) {
-        post({ dcm: 'error', message: err instanceof Error ? err.message : String(err) });
+        box.remove();
+        if (n === loading) post({ dcm: 'error', message: err instanceof Error ? err.message : String(err) });
       }
     } else if (!stage) {
       return;
