@@ -148,9 +148,11 @@ export function cspFor(origin: string, kind: 'runtime' | 'executor' | 'dash' | '
 /** The page a slide's <x-embed> runs in: its own opaque origin, no network, inline scripts allowed. */
 export const EMBED_CSP = `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:`;
 
-export function sandboxDoc(origin: string, kind: 'runtime' | 'executor' | 'dash' | 'motion'): string {
+/** A sandboxed frame's page. `lang` is the editor's language (an HTML lang tag): the runtime's own messages follow it. */
+export function sandboxDoc(origin: string, kind: 'runtime' | 'executor' | 'dash' | 'motion', lang?: string): string {
   const script = kind === 'runtime' ? 'runtime.js' : kind === 'dash' ? 'dash.js' : kind === 'motion' ? 'motion.js' : 'executor.js';
-  return `<!doctype html><html><head><meta charset="utf-8">
+  const attr = lang && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(lang) ? ` lang="${lang}"` : '';
+  return `<!doctype html><html${attr}><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${cspFor(origin, kind)}">
 <style>html,body{margin:0}</style></head><body><div id="dc-app"></div>
 <script src="${origin}/sandbox/${script}"></script></body></html>`;

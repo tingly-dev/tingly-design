@@ -31,16 +31,16 @@ import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
 import { replaceUrl } from '../../host';
 import { BASE, SERVER } from '../../base';
-import { currentLanguage } from '../../i18n';
+import { currentLanguage, htmlLang } from '../../i18n';
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
 function PageFrame() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const ref = useRef<HTMLIFrameElement>(null);
   const pageKey = useDash((s) => s.pageKey);
   // the frame's own words (its error banner) follow <html lang>; a language change reloads the page
-  const lang = i18n.language && currentLanguage() === 'zh' ? 'zh-CN' : 'en';
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'dash').replace(/<html>/i, `<html lang="${lang}">`), [lang]);
+  const lang = htmlLang(currentLanguage());
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'dash', lang), [lang]);
   const datasets = useDatasets();
   const ids = useRef<string[]>([]);
   ids.current = datasets.map((d) => d.id);

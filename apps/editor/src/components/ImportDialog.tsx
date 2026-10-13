@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { importErrorText } from '@dc/import';
 import { IconFile, IconFileImport, IconFolder } from '@tabler/icons-react';
 import { toast } from '../store';
 import { NAME_RE, freeName, slugOf } from '../projectName';
@@ -93,7 +94,7 @@ export function ImportDialog({
       onDone(name);
     } catch (err) {
       setStep(null);
-      toast((err as Error).message, 'error');
+      toast(importErrorText(err, t), 'error');
     }
   };
   const at = step ? STEPS.indexOf(step) : -1;

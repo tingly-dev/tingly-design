@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { importErrorText } from '@dc/import';
 import { clipText, toast } from '../store';
 import { t as tNow } from '../i18n';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
@@ -85,7 +86,7 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
     try {
       toast(await t.run(picked, at));
     } catch (e) {
-      toast((e as Error).message, 'error');
+      toast(importErrorText(e, tNow), 'error');
     } finally {
       setBusy('');
     }

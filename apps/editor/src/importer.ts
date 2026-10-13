@@ -217,7 +217,7 @@ export async function writePage(
       t(skipped.length > 3 ? 'importer.skippedMore' : 'importer.skipped', { count: skipped.length, files: skipped.slice(0, 3).join(t('importer.listSeparator')) }),
     );
   const source = picked.entry === 'pasted.svg' && picked.files.length === 1 ? undefined : picked.entry;
-  return toCanvas(extracted, { title: title || extracted.title || undefined, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry) });
+  return toCanvas(extracted, { title: title || extracted.title || undefined, source, mapUrl: (u) => local.get(u), missing: packed.missing, kept: at.get(picked.entry), t });
 }
 
 /** A page or drawing as a new canvas project. */

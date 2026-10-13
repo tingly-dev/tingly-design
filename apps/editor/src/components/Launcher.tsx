@@ -12,6 +12,7 @@ import { NAME_RE, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
+import { htmlLang } from '../i18n';
 
 /** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
 export const KINDS: { kind: ProjectKind; tone: string }[] = [
@@ -100,7 +101,7 @@ function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; s
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== frame.current?.contentWindow) return;

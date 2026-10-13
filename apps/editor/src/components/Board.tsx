@@ -10,7 +10,7 @@ import { Download, Expand } from './icons';
 import { Menu, MenuItem } from './Menu';
 import { SERVER } from '../base';
 import { api } from '../api';
-import { t as tr } from '../i18n';
+import { t as tr, htmlLang } from '../i18n';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -96,7 +96,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
       return out;
     }),
   );
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
 
   useEffect(() => {
     const el = frame.current;

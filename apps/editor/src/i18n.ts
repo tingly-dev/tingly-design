@@ -58,10 +58,12 @@ export const t = i18next.t.bind(i18next);
 
 export const currentLanguage = (): Language => (isLanguage(i18next.language) ? i18next.language : DEFAULT_LANGUAGE);
 export const languageSource = () => source;
+/** The language as an HTML lang tag, for <html lang> and the sandboxed frames. */
+export const htmlLang = (lang: Language = currentLanguage()): string => (lang === 'zh' ? 'zh-CN' : lang);
 
 function apply(lang: Language, from: LanguageSource): void {
   source = from;
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+  document.documentElement.lang = htmlLang(lang);
   if (lang !== i18next.language) void i18next.changeLanguage(lang);
   if (window.parent !== window) window.parent.postMessage({ type: 'tingly-design:language-changed', language: lang }, '*');
 }
@@ -88,7 +90,7 @@ export function serverLanguage(tag: unknown): void {
 }
 
 export function initLanguage(): void {
-  document.documentElement.lang = start.lang === 'zh' ? 'zh-CN' : start.lang;
+  document.documentElement.lang = htmlLang(start.lang);
   // an embedding host (Tingly Box, say) hands its language down
   window.addEventListener('message', (e) => {
     if (e.source !== window.parent && e.source !== window.opener) return;

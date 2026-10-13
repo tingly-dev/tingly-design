@@ -20,7 +20,7 @@ import { TEXT_COLORS, sizeOf } from './Item';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';
-import { currentLanguage } from '../i18n';
+import { currentLanguage, htmlLang } from '../i18n';
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
@@ -142,7 +142,7 @@ export function FocusView() {
   const box = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime'), []);
+  const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   const order = canvas.order;
   const b = file ? canvas.boards[file] : undefined;
 

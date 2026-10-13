@@ -95,6 +95,8 @@ describe('the code', () => {
       'packages/core/src/docs.ts': /cjk|\[぀-ヿ/,
       // 万 and 亿 are number suffixes a dashboard reads in data
       'packages/core/src/dash.ts': /万|亿/,
+      // the sandbox runs in opaque-origin frames without i18next; its two messages carry their own table
+      'packages/sandbox/src/msg.ts': /./,
     };
     const hits: string[] = [];
     for (const f of code) {
