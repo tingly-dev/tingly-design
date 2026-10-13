@@ -116,12 +116,36 @@ function slideKey(key: string, meta: boolean, shift: boolean): boolean {
   return false;
 }
 
+const typingIn = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
+
 export function installShortcuts(): () => void {
+  // a ⌘V waiting for its paste event; browsers that send none for a page with no text field get the in-app paste anyway
+  let waiting = 0;
   const onKey = (e: KeyboardEvent) => {
-    const t = e.target as HTMLElement;
-    if (t.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]')) return;
+    if (typingIn(e.target)) return;
+    // ⌘V in the editor window goes through the browser's paste event (onPaste), so
+    // files and SVG on the system clipboard can reach the import first
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'v' && !useStore.getState().present) {
+      clearTimeout(waiting);
+      waiting = window.setTimeout(() => handleKey('v', true, false), 150);
+      return;
+    }
     if (handleKey(e.key, e.metaKey || e.ctrlKey, e.shiftKey, e.altKey)) e.preventDefault();
   };
+  const onPaste = (e: ClipboardEvent) => {
+    clearTimeout(waiting);
+    if (typingIn(e.target) || typingIn(document.activeElement)) return;
+    const files = !!e.clipboardData?.files.length;
+    // after every listener has run: whatever the import did not take is the in-app clipboard's
+    setTimeout(() => {
+      if (!e.defaultPrevented && !files) handleKey('v', true, false);
+    });
+  };
   window.addEventListener('keydown', onKey);
-  return () => window.removeEventListener('keydown', onKey);
+  window.addEventListener('paste', onPaste);
+  return () => {
+    window.removeEventListener('keydown', onKey);
+    window.removeEventListener('paste', onPaste);
+    clearTimeout(waiting);
+  };
 }

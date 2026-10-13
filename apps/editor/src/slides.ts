@@ -13,6 +13,7 @@ import { api } from './api';
 import { insertHtml } from './actions';
 import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from './store';
 import { replaceUrl } from './host';
+import { filesOf, type ImportTarget } from './components/ImportHere';
 
 /**
  * Deck commands: slides are files placed by deck.json `order`, so adding,
@@ -235,28 +236,48 @@ export const INSERTS = {
 };
 
 export async function uploadImage(file: File): Promise<void> {
-  const project = get().project;
-  if (!project) return;
   try {
-    const r = await api.upload(project, file);
-    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 800, h: 600 });
-      img.src = URL.createObjectURL(file);
-    });
-    const k = Math.min(1, 960 / dims.w, 720 / dims.h);
-    const w = Math.round(dims.w * k);
-    const h = Math.round(dims.h * k);
-    const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
-    insertOnSlide(
-      `<img src="${r.path}" alt="${alt}" style="position:absolute;left:${Math.round((1920 - w) / 2)}px;top:${Math.round((1080 - h) / 2)}px;width:${w}px;height:${h}px;object-fit:cover">`,
-      true,
-    );
+    await placeImage(file);
   } catch (e) {
     toast((e as Error).message, 'error');
   }
 }
+
+/** A picture onto the current slide, centred, the nth one stepped down and right; kept in uploads/ like anything brought in. */
+async function placeImage(file: File, nth = 0): Promise<void> {
+  const project = get().project;
+  if (!project) return;
+  const r = await api.upload(project, file, 'uploads');
+  const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || 800, h: img.naturalHeight || 600 });
+    img.onerror = () => resolve({ w: 800, h: 600 });
+    img.src = URL.createObjectURL(file);
+  });
+  const k = Math.min(1, 960 / dims.w, 720 / dims.h);
+  const w = Math.round(dims.w * k);
+  const h = Math.round(dims.h * k);
+  const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
+  insertOnSlide(
+    `<img src="${r.path}" alt="${alt}" style="position:absolute;left:${Math.round((1920 - w) / 2) + nth * 40}px;top:${Math.round((1080 - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
+    true,
+  );
+}
+
+/**
+ * What a deck takes: pictures and SVGs go onto the slide that is open. A web
+ * page does not: a slide is a closed subset of HTML that an arbitrary page
+ * would not fit (PowerPoint import is the way decks will come in).
+ */
+export const slidesImport: ImportTarget = {
+  accepts: ['image', 'drawing'],
+  what: '图片和 SVG 放到当前这张幻灯片上，原文件留在项目的 uploads/ 里。',
+  run: async (picked) => {
+    const files = filesOf(picked, 'image', 'drawing');
+    for (const [i, f] of files.entries()) await placeImage(new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), i);
+    return files.length === 1 ? `已放上 ${files[0].path.split('/').pop()}。` : `已放上 ${files.length} 张图片。`;
+  },
+};
 
 /** The slide's title for strips and menus: its first heading's words. */
 export function slideTitle(source: string | undefined, id: string): string {

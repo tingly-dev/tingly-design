@@ -25,6 +25,7 @@ projects/<name>/
 - **Install into a canvas or deck**: in that project's panel, with nothing selected, pick the system under 设计系统 and install it. tokens.json is copied to `ds/<folder>/` in that project and recorded in its `designSystems`; from then on every colour field has a ◆ to pick its colours and shows which token the current value is, and the text-style menu lists its styles. A deck also gets the system's typefaces. Slides store the colour value itself, since the subset has no `var()`.
 - **Hosted fonts**: `type.hosted: [{family, href}]` in tokens.json is an extension of this repository (the original only reads font files) that loads Google Fonts css2 links, in previews and in decks that install the system.
 - **AI**: like the original, the design system page has no in-page model; changes go to Claude Code.
+- **Import**: the import button at the bottom of the left bar, or drop files in. Font files join the fonts (registered in `tokens.json`); pictures and SVGs join the assets' Other group.
 
 Format reference: [`.claude/skills/design-system/SKILL.md`](../../../.claude/skills/design-system/SKILL.md)
 

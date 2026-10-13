@@ -2,6 +2,7 @@ import { memo, useState, type CSSProperties } from 'react';
 import { NOTE_SIZES, isShape, noteBox, type NoteEntry } from '@dc/core';
 import { editCanvas, useStore } from '../store';
 import { updateNote } from '../actions';
+import { api } from '../api';
 
 export const TEXT_COLORS: Record<string, string> = {
   default: '#2a2924',
@@ -87,6 +88,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
   const zoom = useStore((s) => s.view.zoom);
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
+  const project = useStore((s) => s.project);
   const [live, setLive] = useState<NoteEntry | null>(null);
 
   if (typeof note.x !== 'number' || typeof note.y !== 'number') return null;
@@ -212,7 +214,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
     );
   } else if (n.kind === 'image') {
     style = { ...style, width: n.w, height: n.h, ...shapeStyle(n) };
-    body = <img src={n.src} alt={n.alt ?? ''} style={{ width: '100%', height: '100%', objectFit: (n.css?.['object-fit'] as CSSProperties['objectFit']) ?? 'cover', display: 'block' }} draggable={false} />;
+    body = <img src={n.src && project && !/^(https?:|data:|blob:|\/)/i.test(n.src) ? api.rawBase(project) + n.src : n.src} alt={n.alt ?? ''} style={{ width: '100%', height: '100%', objectFit: (n.css?.['object-fit'] as CSSProperties['objectFit']) ?? 'cover', display: 'block' }} draggable={false} />;
   } else if (shape) {
     style = { ...style, width: n.w, height: n.h, ...shapeStyle(n), ...(n.kind === 'oval' ? { borderRadius: '50%' } : {}) };
   } else if (title) {
