@@ -4525,50 +4525,92 @@ input.dashtitle {
   place-items: center;
   pointer-events: none;
 }
-.mcontrols {
+/* the timeline panel: a bar (play, time, where), then the ruler and the scene track on one time axis */
+.mtimeline {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 6px 12px 12px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.mbar {
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 960px;
-  width: 100%;
-  margin: 0 auto;
+  height: 32px;
 }
 .mplay {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 50%;
-  font-size: 12px;
+  width: 28px;
+  height: 28px;
   flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+  transition: filter 0.12s var(--ease);
+}
+.mplay:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.mplay:disabled {
+  background: var(--panel-2);
+  color: var(--faint);
+  cursor: default;
 }
 .mtime {
   font-size: 12px;
-  color: var(--ink-2);
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* one axis for the ruler, the scene blocks and the playhead: a block's left edge is its start */
-.mtimeline {
+.mtime b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.mwhere {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.mlanes {
   position: relative;
-  max-width: 960px;
-  width: 100%;
-  margin: 0 auto;
+  margin-top: 4px;
 }
 .mruler {
   position: relative;
-  height: 16px;
+  height: 20px;
+  border-bottom: 1px solid var(--line);
 }
 .mruler i {
   position: absolute;
   bottom: 0;
   width: 1px;
   height: 4px;
-  background: var(--line);
+  background: var(--line-2);
   pointer-events: none;
 }
 .mruler i.major {
-  height: 8px;
+  height: 7px;
   background: var(--faint);
+}
+.mruler i span {
+  position: absolute;
+  bottom: 8px;
+  left: 3px;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 /* the native range keeps keyboard and assistive tech; a zero-width thumb maps its value onto the full width */
 .mscrub {
@@ -4578,7 +4620,7 @@ input.dashtitle {
   height: 100%;
   margin: 0;
   background: transparent;
-  cursor: pointer;
+  cursor: ew-resize;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -4609,53 +4651,85 @@ input.dashtitle {
 }
 .mscenes {
   position: relative;
-  height: 26px;
+  height: 40px;
+  margin-top: 8px;
 }
-.mhead {
+/* a clip: its edges are on the axis; the 2px gap between clips comes out of each clip's own width */
+.mscene {
   position: absolute;
   top: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  background-clip: padding-box;
+  border-radius: 6px;
+  background-color: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+}
+.mscene .mname,
+.mscene .mlen {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.mscene .mname {
+  font-size: 11px;
+  font-weight: 500;
+}
+.mscene .mlen {
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.mscene:hover {
+  background-color: var(--hover);
+  color: var(--ink);
+}
+.mscene.on {
+  background-color: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.mscene.on .mlen {
+  color: var(--accent-ink);
+  opacity: 0.7;
+}
+/* the playhead: a line through the ruler and the track, with its handle on the ruler */
+.mhead {
+  position: absolute;
+  top: 0;
+  bottom: -4px;
   width: 2px;
   margin-left: -1px;
   background: var(--accent);
+  border-radius: 1px;
   pointer-events: none;
 }
 .mhead::before {
   content: '';
   position: absolute;
   top: 0;
-  left: -4px;
-  border: 5px solid transparent;
-  border-top: 7px solid var(--accent);
-}
-.mscene {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  /* a hairline between blocks, taken from each block's own width so its edges stay on the axis */
-  border: 0;
-  border-left: 1px solid transparent;
-  border-right: 1px solid transparent;
-  background-clip: padding-box;
-  min-width: 0;
-  padding: 0 6px;
-  border-radius: 4px;
-  background-color: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--ink-2);
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-.mscene:hover {
-  color: var(--ink);
-}
-.mscene.on {
-  background-color: var(--accent-soft);
-  color: var(--accent-ink);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  left: -5px;
+  width: 12px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 3px 3px 2px 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
 }
 .missues {
   max-width: 960px;
@@ -4761,13 +4835,6 @@ input.dashtitle {
 .mlayer.medit .sframe {
   box-shadow: var(--lift-shadow), 0 0 0 1px var(--line);
   background: #fff;
-}
-.mwhere {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 .mprompt {
   flex: none;

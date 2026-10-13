@@ -8,7 +8,7 @@ import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
-import { Panel } from '../icons';
+import { Panel, PauseFilled, PlayFilled } from '../icons';
 import { replaceUrl } from '../../host';
 import { BASE } from '../../base';
 import { motionKeys } from '../../shortcuts';
@@ -195,9 +195,11 @@ export function MotionApp() {
   // a player reload (a file changed, another format or speed) keeps the place, in authored time
   const playerAt = !info && coverAt !== null ? coverAt / rate : tRef.current;
 
-  // ruler ticks in video seconds: every second on a short piece, coarser on a long one
-  const tickStep = duration <= 60_000 ? 1000 : duration <= 300_000 ? 5000 : 30_000;
-  const ticks = useMemo(() => Array.from({ length: Math.floor(duration / tickStep) + 1 }, (_, i) => i * tickStep), [duration, tickStep]);
+  // ruler: a labelled tick at least ~64 px apart, four minor ticks between labels
+  const [lanesRef, lanes] = useBox();
+  const labelStep = [1000, 2000, 5000, 10_000, 15_000, 30_000, 60_000, 120_000, 300_000].find((st) => (st / Math.max(1, duration)) * lanes.w >= 64) ?? 600_000;
+  const tickStep = labelStep / (labelStep === 2000 || labelStep === 120_000 ? 4 : 5);
+  const ticks = useMemo(() => (lanes.w > 0 ? Array.from({ length: Math.floor(duration / tickStep) + 1 }, (_, i) => i * tickStep) : []), [duration, tickStep, lanes.w]);
 
   const errors = info?.issues.filter((i) => i.level === 'error').length ?? 0;
   const [W, H] = motion.formats[fmt]?.size ?? [1920, 1080];
@@ -296,52 +298,57 @@ export function MotionApp() {
           )}
           {error && <div className="dashhint">{error}</div>}
         </div>
-        <div className="mcontrols">
-          <button className="btn mplay" onClick={playing ? pause : play} disabled={!info} aria-label={playing ? t('motion.stage.pause') : t('motion.stage.play')}>
-            {playing ? '❚❚' : '▶'}
-          </button>
-          <span className="mtime">
-            {secs(time)} / {secs(duration)} s
-          </span>
-          <span className="mwhere" title={cover ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
-            {cover
-              ? t('motion.stage.whereCover')
-              : current
-                ? stageLanded
-                  ? t('motion.stage.whereLandedValue', { scene: current.id, time: secs(stageAt) })
-                  : `${current.id} · ${secs(stageAt)} s`
-                : ''}
-          </span>
-        </div>
         <div className="mtimeline">
-          <div className="mruler">
-            {ticks.map((ms) => (
-              <i key={ms} className={ms % 5000 === 0 ? 'major' : undefined} style={{ left: `${(ms / duration) * 100}%` }} />
-            ))}
-            <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(time)} onChange={(e) => seek(Number(e.target.value))} aria-label={t('motion.stage.time')} />
+          <div className="mbar">
+            <button className="mplay" onClick={playing ? pause : play} disabled={!info} aria-label={playing ? t('motion.stage.pause') : t('motion.stage.play')}>
+              {playing ? <PauseFilled /> : <PlayFilled />}
+            </button>
+            <span className="mtime">
+              <b>{secs(time)}</b> / {secs(duration)} s
+            </span>
+            <span className="mwhere" title={cover ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
+              {cover
+                ? t('motion.stage.whereCover')
+                : current
+                  ? stageLanded
+                    ? t('motion.stage.whereLandedValue', { scene: current.id, time: secs(stageAt) })
+                    : `${current.id} · ${secs(stageAt)} s`
+                  : ''}
+            </span>
           </div>
-          <div className="mscenes" aria-label={t('motion.stage.scenes')}>
-            {timeline.scenes.map((w, i) => {
-              // a scene's block runs to where the next one takes over, so blocks and playhead share one axis
-              const end = timeline.scenes[i + 1]?.start ?? timeline.duration;
-              return (
-                <button
-                  key={w.id}
-                  className={`mscene${!cover && current?.id === w.id ? ' on' : ''}`}
-                  style={{ left: `${(w.start / timeline.duration) * 100}%`, width: `${((end - w.start) / timeline.duration) * 100}%` }}
-                  onClick={() => seek(w.start / rate)}
-                  title={
-                    w.transition.kind !== 'cut'
-                      ? t('motion.stage.sceneHintTransition', { scene: w.id, time: secs(w.duration / rate), transition: w.transition.kind })
-                      : t('motion.stage.sceneHint', { scene: w.id, time: secs(w.duration / rate) })
-                  }
-                >
-                  {w.id}
-                </button>
-              );
-            })}
+          <div className="mlanes" ref={lanesRef}>
+            <div className="mruler">
+              {ticks.map((ms) => (
+                <i key={ms} className={ms % labelStep === 0 ? 'major' : undefined} style={{ left: `${(ms / duration) * 100}%` }}>
+                  {ms % labelStep === 0 && <span>{ms / 1000}s</span>}
+                </i>
+              ))}
+              <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(time)} onChange={(e) => seek(Number(e.target.value))} aria-label={t('motion.stage.time')} />
+            </div>
+            <div className="mscenes" aria-label={t('motion.stage.scenes')}>
+              {timeline.scenes.map((w, i) => {
+                // a scene's clip runs to where the next one takes over, so clips and playhead share one axis
+                const end = timeline.scenes[i + 1]?.start ?? timeline.duration;
+                return (
+                  <button
+                    key={w.id}
+                    className={`mscene${!cover && current?.id === w.id ? ' on' : ''}${w.transition.kind !== 'cut' ? ' blend' : ''}`}
+                    style={{ left: `${(w.start / timeline.duration) * 100}%`, width: `${((end - w.start) / timeline.duration) * 100}%` }}
+                    onClick={() => seek(w.start / rate)}
+                    title={
+                      w.transition.kind !== 'cut'
+                        ? t('motion.stage.sceneHintTransition', { scene: w.id, time: secs(w.duration / rate), transition: w.transition.kind })
+                        : t('motion.stage.sceneHint', { scene: w.id, time: secs(w.duration / rate) })
+                    }
+                  >
+                    <span className="mname">{w.id}</span>
+                    <span className="mlen">{secs(w.duration / rate)}s</span>
+                  </button>
+                );
+              })}
+            </div>
+            {!cover && duration > 0 && <div className="mhead" style={{ left: `${(time / duration) * 100}%` }} />}
           </div>
-          {!cover && duration > 0 && <div className="mhead" style={{ left: `${(time / duration) * 100}%` }} />}
         </div>
         {issuesOpen && (
           <div className="missues">
