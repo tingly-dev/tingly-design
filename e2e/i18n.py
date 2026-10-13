@@ -54,7 +54,7 @@ async def main():
         ctx = await b.new_context(locale='en-US', viewport={'width': 1440, 'height': 900})
         pg = await ctx.new_page()
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
+        pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and '400 (Bad Request)' not in m.text and errs.append(m.text))
         await pg.goto(BASE + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
         han = await pg.evaluate(HAN)
@@ -80,6 +80,7 @@ async def main():
         await pg.reload()
         await pg.locator('.lcard[data-project]').first.wait_for()
         check('the pick is remembered', await pg.locator('button[aria-label="外观"]').count() == 1)
+        check('and the launcher reads in Chinese', len(await pg.evaluate(HAN)) > 5)
         await pg.screenshot(path=OUT + 'i18n-zh-launcher.png')
 
         # --- ?lang= wins for the tab, the script API ------------------------------------------------

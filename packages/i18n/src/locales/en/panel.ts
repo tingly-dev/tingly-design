@@ -110,7 +110,7 @@ export default {
     update: 'Update',
     updateHint: 'Copy its current tokens again',
     pickLabel: 'Choose a design system',
-    pickPlaceholder: 'Choose a design system to install…',
+    pickPlaceholder: 'Pick a design system…',
     install: 'Install',
     none: 'There are no design systems in this repository yet. Pick “Design system” when creating a project.',
   },
