@@ -1,0 +1,55 @@
+<section id="orbit" data-duration="4.5s" data-transition="fade 500ms" style="background:#0b0d14;color:#ffffff;font-family:'Inter', Arial, sans-serif;padding:120px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:20px;position:relative;overflow:hidden" data-tall="padding:80px 56px 220px">
+<x-embed data-seek style="position:absolute;left:0;top:0;width:100%;height:100%;display:block"><canvas data-quality="0.5" style="display:block;width:100%;height:100%"></canvas><script type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+uniform float time;
+uniform float aspect;
+in vec2 uv;
+out vec4 color;
+void main() {
+  vec2 p = (uv - vec2(0.5, 0.42)) * vec2(aspect, 1.0) / min(aspect, 1.0);
+  vec3 col = vec3(0.0);
+  for (int i = 0; i < 28; i++) {
+    float k = float(i);
+    float ang = k / 28.0 * 6.2831853 + time * (0.35 + 0.012 * k);
+    float rad = 0.24 + 0.035 * sin(time * 1.3 + k * 1.7);
+    float d = length(p - vec2(cos(ang), sin(ang)) * rad);
+    vec3 tint = mix(vec3(0.25, 0.5, 1.0), vec3(1.0, 0.45, 0.6), 0.5 + 0.5 * sin(k * 0.9 + time));
+    col += tint * (0.00045 / (d * d + 0.00025));
+  }
+  float ring = abs(length(p) - 0.24);
+  col += vec3(0.35, 0.5, 1.0) * (0.0025 / (ring + 0.004)) * (0.6 + 0.4 * sin(time * 2.0));
+  col = clamp(col, 0.0, 1.0);
+  color = vec4(col, max(col.r, max(col.g, col.b)));
+}
+</script><script>
+(function () {
+  // a shader layer for motion: a GLSL fragment shader drawn with WebGL2, a function of the seek time only
+  var cv = document.querySelector('canvas'), src = document.querySelector('script[type="x-shader/x-fragment"]').textContent;
+  var q = +(cv.dataset.quality || 0.5), g = cv.getContext('webgl2', { premultipliedAlpha: true, preserveDrawingBuffer: true }), ut, ua;
+  function compile(type, s) { var x = g.createShader(type); g.shaderSource(x, s); g.compileShader(x); if (!g.getShaderParameter(x, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(x)); return x; }
+  if (g) {
+    var pr = g.createProgram();
+    g.attachShader(pr, compile(g.VERTEX_SHADER, '#version 300 es\nout vec2 uv;\nvoid main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
+    g.attachShader(pr, compile(g.FRAGMENT_SHADER, src.trim()));
+    g.linkProgram(pr); g.useProgram(pr);
+    ut = g.getUniformLocation(pr, 'time'); ua = g.getUniformLocation(pr, 'aspect');
+  }
+  window.seek = function (t) {
+    if (!g) return;
+    var r = devicePixelRatio || 1, w = Math.max(1, Math.round(innerWidth * r * q)), h = Math.max(1, Math.round(innerHeight * r * q));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    g.viewport(0, 0, w, h); g.clearColor(0, 0, 0, 0); g.clear(g.COLOR_BUFFER_BIT);
+    g.uniform1f(ut, t / 1000); g.uniform1f(ua, w / h); g.drawArrays(g.TRIANGLES, 0, 3);
+    // a canvas that just came into view presents a frame late: wait until this one is on screen
+    return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+  };
+  // draw once at load, so the canvas already has a layer on screen when its scene first shows
+  window.seek(0);
+})();
+</script></x-embed>
+<svg data-in="pop 600ms @0.3s" aria-label="Tingly mark" width="150" height="150" viewBox="0 0 88 88" style="position:absolute;left:50%;top:42%;width:150px;height:150px;margin:-75px 0 0 -75px"><rect width="88" height="88" rx="28" fill="#16181d"/><rect x="25" y="25" width="38" height="9" rx="2" fill="#ffffff"/><rect x="39.5" y="25" width="9" height="39" rx="2" fill="#ffffff"/></svg>
+<h2 data-in="rise 600ms @0.8s" style="position:relative;font-family:'Instrument Serif', Georgia, serif;font-size:110px;font-weight:400;line-height:1;text-align:center" data-tall="font-size:96px">Layered with your design</h2>
+<p data-in="rise 600ms @1.3s" style="position:relative;font-size:38px;font-weight:600;color:rgba(255,255,255,0.7);text-align:center" data-tall="width:880px">A transparent shader layer, composited with the page on every frame.</p>
+<aside>An orbit of glowing points with alpha, between the background and the mark.</aside>
+</section>
