@@ -5,8 +5,9 @@ name: Release
 #   build    tests, typecheck, `pnpm bundle`, start the bundle like a host,
 #            pack it into tingly-design-<ver>.tgz plus its sha256
 #   github   a GitHub release on the tag with both files attached
-#   npm      the same tarball published as @tingly-dev/tingly-design, behind the
-#            `npm` environment; a prerelease goes to the `next` dist-tag
+#   npm      the same bundle published as @tingly-dev/tingly-design and as
+#            tingly-design, behind the `npm` environment; a prerelease goes to
+#            the `next` dist-tag
 #
 # The release asset and the npm package are one tarball, so a host can pin a
 # version and its sha256 and fetch it from either place. See .design/release.md.
@@ -126,6 +127,8 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           name: tingly-design-${{ needs.build.outputs.version }}
@@ -136,14 +139,9 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Publish @tingly-dev/tingly-design
+      - name: Publish @tingly-dev/tingly-design and tingly-design
         env:
           VERSION: ${{ needs.build.outputs.version }}
           DIST_TAG: ${{ needs.build.outputs.dist_tag }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if npm view "@tingly-dev/tingly-design@$VERSION" version >/dev/null 2>&1; then
-            echo "@tingly-dev/tingly-design@$VERSION is already on npm; nothing to do"
-            exit 0
-          fi
-          npm publish "out/tingly-design-$VERSION.tgz" --provenance --access public --tag "$DIST_TAG"
+        run: .github/scripts/npm-publish.sh "out/tingly-design-$VERSION.tgz" "$DIST_TAG" @tingly-dev/tingly-design tingly-design
