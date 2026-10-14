@@ -7,6 +7,7 @@ import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
 import { projectDir } from './store';
 import { publish } from './hub';
+import { claudeLaunch } from './aiconfig';
 
 /**
  * The slow agent: Claude Code, run headless in this repository (or the
@@ -139,14 +140,15 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   ];
   const resume = isSessionId(req.resume) ? req.resume : undefined;
   if (resume) args.push('--resume', resume);
-  if (process.env.DC_DELEGATE_MODEL) args.push('--model', process.env.DC_DELEGATE_MODEL);
+  const launch = claudeLaunch();
+  if (launch.model) args.push('--model', launch.model);
   // a host keeps the projects in its own data folder: let Claude Code edit there too
   if (!PROJECTS_INSIDE_ROOT) args.push('--add-dir', PROJECTS_DIR);
 
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
   publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });
 
-  const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, ...launch.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
   children.set(id, {
     project,

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconMovie, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
-import { toast } from '../store';
+import { toast, useStore } from '../store';
+import { Sliders } from './icons';
 import { Appearance, LanguageMenu } from './Appearance';
 import { ISSUES_URL, REPO_URL } from '../links';
 import { goTo } from '../host';
@@ -14,6 +15,7 @@ import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
+import { Specimen } from './ds/Specimen';
 
 /** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
 export const KINDS: { kind: ProjectKind; tone: string }[] = [
@@ -149,8 +151,24 @@ function Minimap({ boards }: { boards: { x: number; y: number; w: number; h: num
   );
 }
 
+/** The typefaces a system's sample is set in, loaded once for the launcher page. */
+function useHostedFonts(hrefs: string) {
+  useEffect(() => {
+    for (const href of hrefs.split('\n').filter(Boolean)) {
+      if (document.head.querySelector(`link[data-ds-font="${CSS.escape(href)}"]`)) continue;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.dataset.dsFont = href;
+      document.head.appendChild(link);
+    }
+  }, [hrefs]);
+}
+
 function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
   const { t } = useTranslation();
+  const hosted = p.kind === 'design-system' ? p.hosted.join('\n') : '';
+  useHostedFonts(hosted);
   const [ref, near] = useNear<HTMLDivElement>();
   let body: ReactNode;
   if (p.kind === 'design') {
@@ -173,17 +191,22 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
   } else if (p.kind === 'design-system') {
     body = (
       <div className="lp-ds">
-        <div className="sw">
-          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).map((c, i) => (
-            <span key={i} style={{ background: c }} />
-          ))}
-        </div>
-        {p.fonts.length > 0 && <div className="aa" style={{ fontFamily: p.fonts[0] }}>Aa {p.fonts[0]}</div>}
-        <div className="chips">
-          {p.components.map((c) => (
-            <span key={c}>{c}</span>
-          ))}
-          {!p.components.length && <span className="faint">{t('launcher.preview.noComponents')}</span>}
+        <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
+        <div className="foot">
+          <div className="faces">
+            {[p.glance.headingFont, p.glance.bodyFont]
+              .filter((f, i, a) => f && a.indexOf(f) === i)
+              .map((f) => (
+                <span key={f} style={{ fontFamily: f }}>
+                  {f!.split(',')[0].replace(/["']/g, '').trim()}
+                </span>
+              ))}
+          </div>
+          <div className="sw">
+            {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 6).map((c, i) => (
+              <span key={i} style={{ background: c }} />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -556,6 +579,9 @@ export function Launcher() {
             <option value="name">{t('launcher.sort.name')}</option>
           </select>
           <LanguageMenu className="btn lbtn" />
+          <button className="btn lbtn" aria-label={t('aiSettings.menu')} title={t('aiSettings.menu')} onClick={() => useStore.setState({ aiSettingsOpen: true })}>
+            <Sliders />
+          </button>
           <Appearance className="btn lbtn" />
           <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
             <IconPlus size={15} stroke={2} aria-hidden="true" /> {t('launcher.new.title')}

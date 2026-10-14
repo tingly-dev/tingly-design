@@ -55,6 +55,8 @@ async def main():
         await pg.goto(BASE + '/?p=tingly-ds&v=overview')
         await expect(pg.locator('.dsnav h1')).to_have_text('Tingly Design System')
         await expect(pg.locator('.md h1').first).to_have_text('Tingly Design System')
+        await expect(pg.locator('.glance .specimen')).to_be_visible()
+        check('the overview shows the palette by token name', await pg.locator('.gpalette .gsw').count() == 12)
         cover = pg.frame_locator('.cover iframe')
         await expect(cover.locator('h1')).to_have_text('Tingly Design System')
         check('the cover runs with the system\'s tokens', await cover.locator('h1').evaluate("e => getComputedStyle(e).fontFamily.includes('Instrument Serif')"))
