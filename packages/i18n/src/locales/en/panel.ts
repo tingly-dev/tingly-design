@@ -30,6 +30,12 @@ export default {
     shortcutList: 'V select · H hand · T text · A artboard · N note · P pen · R rectangle · O oval · L line · ⇧1 fit all · ⇧2 zoom to selection · Esc deselect · ⇧↵ select parent · ↵ select child',
   },
   layers: {
+    hide: 'Hide',
+    show: 'Show',
+    hideInherited: 'Hidden by a layer around it',
+    lock: 'Lock',
+    unlock: 'Unlock',
+    lockInherited: 'Locked by a layer around it',
     label: 'Layers',
     collapse: 'Collapse',
     expand: 'Expand',
@@ -58,6 +64,7 @@ export default {
     table: 'Table',
     notes: 'Notes',
     slide: 'Slide',
+    scene: 'Scene',
   },
   item: {
     title: 'Title',

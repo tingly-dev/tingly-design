@@ -30,7 +30,7 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) plays the piece and rel
 - `formats`: the first is the primary one. Names are lower-case letters and digits.
 - `speed` (0.25 to 4, default 1) plays all timing faster or slower. Write timing at reading pace and change `speed` to change the pace; never retime every attribute.
 - `order`: the scenes, in play order. Adding a scene means writing its file and adding its id here.
-- `cover`: the still that stands for the video (thumbnail, first frame, the player before play): a time such as `"2.2s"`, or the id of a scene file that is **not** in `order`, designed to be read standing still, usually with no timing attributes.
+- `cover` (optional): the still that stands for the video (thumbnail, first frame, the player before play): the id of a scene file that is **not** in `order`, designed to be read standing still, usually with no timing attributes. The editor shows it as its own clip before 0 s on the timeline. Leave `cover` out for none, and the video's first frame stands in. A time such as `"2.2s"` (a frame of the video) is still read in older files, but don't write one.
 
 ## Timing attributes
 
@@ -46,6 +46,8 @@ On any element:
 - Presets: `fade rise drop left right scale pop zoom slam spin blur wipe type count`. `type` reveals text left to right in steps; `count` counts a number up (keeps grouping, decimals and units).
 - `data-keys="x: 0@0 120@2s ease-in-out; scale: 1@2s 1.2@3s"` — keyframe tracks on `x`, `y` (px), `scale`, `rotate` (deg) and `opacity`; the easing after a key eases the segment arriving at it; `steps(1)` makes a jump.
 - Times are `500ms`, `0.5s` or `2` (seconds), measured from the start of the scene.
+
+`data-hide` hides an element for the whole scene (in every format, the player and the render too) and `data-lock` stops it being picked or moved on the stage; they are the layers panel's eye and lock, set by hand or by the editor. Keep them.
 
 The editor lists problems it finds: an exit before the entry, text on screen under 0.8 s, an `<x-embed>` without `data-seek` (it cannot be exported).
 

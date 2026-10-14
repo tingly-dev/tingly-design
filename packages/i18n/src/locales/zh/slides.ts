@@ -2,29 +2,6 @@ import type en from '../en/slides';
 import type { Locale } from '../../types';
 
 export default {
-  role: {
-    Slide: '幻灯片',
-    Scene: '场景',
-    Column: '纵向',
-    Row: '横向',
-    Grid: '网格',
-    Text: '文字',
-    Image: '图片',
-    Vector: '矢量',
-    Link: '链接',
-    Group: '组',
-    Embed: '动态嵌入',
-    Shape: '形状',
-    Icon: '图标',
-    Connector: '连线',
-    Table: '表格',
-    Notes: '备注',
-  },
-  layers: {
-    label: '图层',
-    collapse: '收起',
-    expand: '展开',
-  },
   transition: {
     none: '无',
     fade: '淡入淡出',

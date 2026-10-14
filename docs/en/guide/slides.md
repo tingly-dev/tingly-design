@@ -14,7 +14,7 @@ projects/<name>/
 ```
 
 - **Thumbnail strip**: grouped by section (double-click a section to edit its description); drag to reorder; right-click to add, duplicate, skip, start a section or delete. Live embeds stay still in thumbnails.
-- **Stage**: the current slide, scaled to fit. Selection, double-click to retype, drag to reorder or pin, and the layers / properties / code panel all work as on the canvas, through the same minimal write-back. Speaker notes sit below the stage (written to `<aside>`).
+- **Stage**: the current slide, scaled to fit. Selection, double-click to retype, drag to reorder or pin, and the layers / properties / code panel (the layers with the same hide and lock on every row) all work as on the canvas, through the same minimal write-back. Speaker notes sit below the stage (written to `<aside>`).
 - **Insert**: text, images (uploaded to `assets/`), tables, shapes (rectangle, rounded, ellipse, diamond, four arrows, line), connectors and icons.
 - **Format check**: every slide is checked against the subset of the original `format.md` (unknown tags, `margin`, `z-index`, `em`, `var()`, an unpinned `<x-embed>`…). Counts show above the stage and on thumbnails, and clicking an issue selects the element. If a fast AI edit introduces a new violation, it is undone and the model is told why and asked again.
 - **Present**: F5 from the start, ⇧F5 from the current slide; → / Space / click plays the slide's builds (`data-build-in`) and then advances; `fade` and `push` transitions (`magic` falls back to fade); N toggles speaker notes; F for full screen; Esc to leave.
