@@ -1,6 +1,6 @@
 # `.dc.html` 为什么只出现在画布里，其他类型能不能复用
 
-状态：**研究**（结论待确认，未实施）。
+状态：**研究**（结论待确认，未实施）。§7 是对 Claude 原版当前版本（2026-10-14）的核对。
 
 ## 1. 问题
 
@@ -63,3 +63,61 @@
 
 - 重命名要不要连 sandbox 里的 `data-dc-tid`、`dc-slide-host` 这些 DOM 名一起改（它们出现在 e2e 和导出里，改动面更大，收益只是好看）。倾向只改 TypeScript 的导出名。
 - 设计系统预览要不要从脚本调用改成静态 HTML（见 C）。
+
+## 7. Claude 原版的当前版本是怎么做的
+
+2026-10-14 读了五种类型当前 release 的全部类型文件（`claude-design-artifact` 仓库已更新到这一版，见其 `artifact/README.md`）。
+
+### 7.1 这一版改了什么
+
+| 类型 | release（旧 → 新） | 变化 |
+|---|---|---|
+| Design | `1791586906-56be` → `1791995251-3af4` | `app.js` / `app.css` / `index.html` 变了；**`dc-runtime.js`（画板运行时）和 `fast-edit-worker.js`（快速 AI）一字未改**，`format.md` 等格式文档也没变。可见的新东西：复制单个画板的链接（"Select just one artboard to copy a link to it"）、改到 `<sc-for>` 里的元素时提示"会改到列表里每一项"、字体改从独立域名加载、健康上报加了 insert / delete / reorder 动作；`view-state.md` 把 `dirty` 改成"可能还没进你读到的版本" |
+| Slides | `1791584864-97b0` → `1792006065-07f4` | 新增 `<div data-text>`（一组无样式的 `<p>`/`<ul>` 合成一个文本框）；排版标点规则（正文里用弯引号）；`view-state.md` 同上 |
+| Dashboard | `1791487385-53e8` → `1792006705-3bf5` | 连接器来的数据要做成实时查询而不是附件；编出来的数字必须放进标题为 "Sample…" 的文件并在交付时说明 |
+| Design System | `1791558544-c1cf` → `1791927328-0a67` | 只有代码改动，文档未变 |
+| Docs | `1791658616-c881` → `1792002905-b2ae` | 换了一批 chunk（新增表情选择器，去掉 Spark 菜单），文档未变 |
+
+格式本身这一版都没动，对 dc.html 的结论没有影响。
+
+### 7.2 Anthropic 自己也只在 Design 里用 `.dc.html`
+
+在五个编辑器 bundle 里数关键字（当前版）：
+
+| bundle | `x-dc` | `DCLogic` | `sc-for` | `x-embed` / `x-shape` | `PptxGenJS` |
+|---|---|---|---|---|---|
+| Design `app.js` | 73 | 3 | 30 | 0 / 0 | 0 |
+| Slides `app.js` | 0 | 0 | 0 | 22 / 25 | 9 |
+| Dashboard `app.js` | 0 | 0 | 0 | 0 / 0 | 0 |
+| Design System `app.js` | 0 | 0 | 0 | 0 / 0 | 0 |
+| Docs `app-core` / `lfile-runtime` | 0 | 0 | 0 | 0 / 0 | 0 |
+
+每种类型是一个独立的编辑器，各有自己的内容模型：
+
+- **Design**：画板在 iframe 里由 `dc-runtime.js`（React 18 + 模板编译器，作为画板的 `support.js` 提供）渲染；快速 AI 在 Web Worker 里用 happy-dom + jQuery 改副本。
+- **Slides**：没有 iframe，页面内 React 渲染；把 HTML 解析成类型化模型（解析器就是子集校验器），保存时整页 `<section>` 重新序列化；PPTX 用 PptxGenJS 生成。没有页内快速 AI（`claude-slides/FINDINGS.md`）。
+- **Dashboard**：内容在 artifact 自己的 db 里，不是文件；页面注入同一文档执行。
+- **Design System**：文件型，预览由 `run.html` 跑。
+- **Docs**：内容在独立的 Claude Docs 服务里，编辑器是 ProseMirror。
+
+所以"每种类型一套格式"不是我们复刻时的偶然，原版就是这样设计的。我们比原版共享得更多：画布、幻灯片、动效共用一套解析和最小补丁回写，幻灯片因此有了原版没有的快速 AI（§2）。
+
+### 7.3 原版共享的是"套件层"，不是内容格式
+
+几样东西在多个 bundle 里是同一份代码或同一份文档：
+
+- **文件索引表**：Design、Slides、Design System 三个 `app.js` 里有一模一样的 `{design:"project/canvas.json", slides:"project/deck.json", designSystem:"project/design-system.json"}`，连同从 db 迁到文件的迁移逻辑（`migration.json`、索引里的 `createdOnFiles`）。Dashboard 和 Docs 不在文件上，所以没有。
+- **保存与冲突**：都走 `window.claude.self.publish(files, {ifMatch})`，冲突返回 `{code:"conflict", live, paths}`。
+- **装入设计系统**：画布和幻灯片用同一套规则：文件拷到 `project/ds/<folder>/`，索引里记一条 `designSystems`，颜色选择器和文字样式读 `tokens.json`。
+- **共用的模型文档片段**：`view-state.md` 的 `shared:view-context`、`craft.md` 的 `shared:content-design`、`questions.md` 的 `shared:ask-first`，注释写明由 `skills/_shared/*.md` 生成。
+- **页面外壳**：`index.html` 里的 flags、健康上报、字体加载。
+
+这和我们的分层一致：服务端的版本、409 重放、journal、SSE，设计系统装入，提示栏、附件、AgentBar 这些跨类型部件，就是我们的"套件层"（`.design/project-kinds.md` §3 的矩阵）。
+
+### 7.4 原版让 `.dc.html` 覆盖多种用途，但仍然是"设计"
+
+Design 自己用一种格式做了很多事：`expand: "fill"` 的 PAGE 做落地页、看板、应用界面；`print: "flow"` + `paper` 做可分页的文档；固定尺寸画板做海报和多页印刷品。画板里还能写 `<meta name="design_doc_mode">` 改变全窗口显示方式。也就是说，"像看板的设计""像文档的设计"放在画布里画；真正的看板（数据集、数字溯源）和文档（多人协作、评论）是另外的类型。
+
+### 7.5 对结论的影响
+
+原版的做法支持 §5 的建议：**不把其他类型统一成 `.dc.html`**，共享放在套件层和引擎层。值得补的只有一点：既然原版把"看板样子的页面""文档样子的页面"作为画布里的 PAGE / print flow 处理，我们的画布也应该把这两种画板做好，而不是去改看板和文档的格式。现状：`packages/core/src/canvas.ts:10` 有 `expand?: 'fill'`，但没有 `print` / `paper`，画布还不能导出可分页的文档 PDF；这是一个可以单独立项的缺口。
