@@ -1,0 +1,77 @@
+name: Pages
+
+# The homepage (site/) with the design-motion promo rendered here from
+# projects/design-motion, so the video is always the one the sample project
+# produces and is never committed. Pushes to main deploy it; pull requests only
+# build it, so a broken render shows up before merge.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - projects/design-motion/**
+      - packages/sandbox/**
+      - scripts/motion-render.mjs
+      - scripts/build-site.sh
+      - docs/images/**
+      - .github/workflows/pages.yml
+  pull_request:
+    paths:
+      - site/**
+      - projects/design-motion/**
+      - packages/sandbox/**
+      - scripts/motion-render.mjs
+      - scripts/build-site.sh
+      - docs/images/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Render and build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - name: Build the motion runtime
+        run: pnpm --filter @dc/sandbox build
+
+      - name: Install Chromium
+        run: |
+          export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/pw"
+          pnpm exec playwright-core install --with-deps chromium
+          echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
+
+      - name: Build the site
+        run: scripts/build-site.sh _site
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

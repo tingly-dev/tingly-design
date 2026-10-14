@@ -46,6 +46,8 @@ npm 发布只走 Trusted Publishing：哪里都不存 token，两个包也拒绝
 
 `.github/workflows/ci.yml` 在每个 PR 上跑同样的检查，再用 `npm pack --dry-run` 列出包里会有什么。为什么这样做、npm 发布怎么鉴权，见 `.design/release.md`。
 
+`.github/workflows/pages.yml` 构建主页（`site/`），在 main 上部署到 GitHub Pages。主页上的 design-motion 宣传片由这个任务从 `projects/design-motion` 渲染（`scripts/build-site.sh`），不提交进仓库。维护者需要手动开启一次 Pages：Settings → Pages → Source 选 GitHub Actions。issue 通过 `.github/ISSUE_TEMPLATE` 里的表单提交；`.github/workflows/issue-area.yml` 把所选领域变成 `area/<name>` 标签和 `feat(motion):` 样式的标题。
+
 ---
 
 返回 [README](../../README.zh-CN.md)
