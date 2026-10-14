@@ -2,7 +2,7 @@
 
 # 动效
 
-新建项目时类型选“动效”。示例 [`?p=design-motion`](http://localhost:5173/?p=design-motion) 是 36 秒的 Tingly Design 宣传片，同一套场景出 16:9 和 9:16，带独立封面。
+新建项目时类型选“动效”，然后选尺寸：横版 16:9（B 站、YouTube、X/Twitter、PPT）、竖版 9:16（抖音、视频号、快手、TikTok、Reels）、方形 1:1、竖图 4:5 或 3:4（Instagram、小红书）、经典 4:3（旧版 PPT），或任意宽高。下一个作品默认用上次的尺寸，自己用过的尺寸会和预设放在一起。示例 [`?p=design-motion`](http://localhost:5173/?p=design-motion) 是 36 秒的 Tingly Design 宣传片，同一套场景出 16:9 和 9:16，带独立封面。
 
 ![动效编辑器：舞台上是封面，下面是时间轴和场景条，顶栏切换尺寸和速度](../../images/motion.png)
 

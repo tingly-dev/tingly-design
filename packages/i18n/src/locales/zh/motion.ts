@@ -8,6 +8,16 @@ export default {
     tall: '竖版 9:16',
     square: '方形 1:1',
     portrait: '竖图 4:5',
+    upright: '竖图 3:4',
+    classic: '经典 4:3',
+  },
+  presetFor: {
+    wide: 'B 站、YouTube、X/Twitter、PPT 16:9',
+    tall: '抖音、视频号、快手、TikTok、Reels',
+    square: '朋友圈、X/Twitter、Instagram',
+    portrait: 'Instagram 信息流、X/Twitter',
+    upright: '小红书、视频号',
+    classic: 'PPT 4:3、老式屏幕',
   },
   transition: {
     cut: '直接切',

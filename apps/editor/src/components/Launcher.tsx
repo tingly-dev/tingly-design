@@ -12,6 +12,8 @@ import { SERVER } from '../base';
 import { NAME_RE, freeName, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
+import { SizePicker } from './motion/SizePicker';
+import { readSizes, rememberSize, type Size } from '../motionSizes';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
 
@@ -327,6 +329,8 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
   const [title, setTitle] = useState('');
   const [folder, setFolder] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // a motion piece starts in the size last used (16:9 the first time)
+  const [size, setSize] = useState<Size | null>(() => readSizes().last ?? [1920, 1080]);
   const titleRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   useEffect(() => titleRef.current?.focus(), []);
@@ -339,12 +343,14 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
   // letters (Chinese, say), and steps aside for a name that is taken, until the person edits it
   const auto = freeName(slugOf(title) || kind, taken);
   const name = folder ?? auto;
+  const sizeBad = kind === 'motion' && !size;
   const problem = !name ? '' : !NAME_RE.test(name) ? t('launcher.new.folderInvalid') : taken.has(name) ? t('launcher.new.folderTaken', { name }) : '';
   const submit = async () => {
-    if (!name || problem || busy) return;
+    if (!name || problem || busy || sizeBad) return;
     setBusy(true);
     try {
-      await api.createProject(name, title.trim() || name, kind);
+      await api.createProject(name, title.trim() || name, kind, kind === 'motion' && size ? size : undefined);
+      if (kind === 'motion' && size) rememberSize(size);
       open(name);
     } catch (err) {
       setBusy(false);
@@ -378,6 +384,7 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
         </div>
         <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
         <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
         <div className="where">
           {folder === null ? (
             <>
@@ -409,7 +416,7 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
           <button type="button" className="btn" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button className="btn primary" type="submit" disabled={!name || !!problem || busy}>
+          <button className="btn primary" type="submit" disabled={!name || !!problem || busy || sizeBad}>
             {t(`launcher.kind.${kind}.create`)}
           </button>
         </footer>

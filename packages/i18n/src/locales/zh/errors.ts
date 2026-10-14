@@ -3,6 +3,7 @@ import type { Locale } from '../../types';
 
 export default {
   badProjectName: '项目名只能用字母、数字、- 和 _',
+  badSize: '尺寸是宽和高两个像素值，各在 1 到 7680 之间',
   notProjectFile: '不是项目里的文件：{{path}}',
   notAssetPath: '不是素材路径：{{path}}',
   noProject: '没有叫 {{name}} 的项目',

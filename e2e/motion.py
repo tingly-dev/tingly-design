@@ -1,5 +1,5 @@
 """End-to-end checks for motion pieces: the player, formats, the cover, editing on the stage
-(selecting at a time, retyping, resizing, per-format overrides, sizes), a new piece.
+(selecting at a time, retyping, resizing, per-format overrides, sizes), a new piece in a picked size.
 Run with `pnpm dev` up: python3 e2e/motion.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
 import os, re, asyncio, subprocess
 from playwright.async_api import async_playwright, expect
@@ -11,7 +11,7 @@ CHROME = os.environ.get('DC_CHROME')
 
 SAMPLE = 'projects/design-motion'
 def restore():
-    subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects/zz-motion')])
+    for n in ('zz-motion', 'zz-motion-2'): subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
     subprocess.run(['git', 'checkout', '--', SAMPLE], cwd=REPO)
 def read(rel): return open(os.path.join(REPO, SAMPLE, rel)).read()
 
@@ -201,16 +201,49 @@ async def main():
         check('speed changes the length without touching the files', True)
         await pg.screenshot(path=OUT + 'motion-tall.png')
 
-        # --- a new piece --------------------------------------------------------------------------------
+        # --- a new piece, in the size picked -----------------------------------------------------------
         await pg.goto(BASE + '/')
+        await pg.evaluate("localStorage.removeItem('dc.motionSizes')")
         await pg.locator('.lstrip [data-new="motion"]').click()
-        await pg.locator('[role=dialog] .where .linkish').click()
-        await pg.locator('[role=dialog] input[aria-label="新项目名称"]').fill('zz-motion')
-        await pg.locator('[role=dialog] button[type="submit"]').click()
+        dlg = pg.locator('[role=dialog]')
+        check('the new-motion dialog asks for a size, 16:9 the first time', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')
+        check('the sizes are the presets and a custom one', await dlg.locator('.szopt').count() == 7)
+        await dlg.locator('.szopt[data-size=tall]').click()
+        await expect(dlg.locator('.szfor')).to_contain_text('抖音')
+        check('a preset names the platforms that take it', True)
+        await dlg.locator('.where .linkish').click()
+        await dlg.locator('input[aria-label="新项目名称"]').fill('zz-motion')
+        await pg.screenshot(path=OUT + 'motion-new-size.png')
+        await dlg.locator('button[type="submit"]').click()
         await expect(pg.locator('.dashtitle')).to_have_text('zz-motion')
         await expect(pg.frame_locator('.medit iframe').locator('section#title h1')).to_have_text('zz-motion')
         check('a new motion piece starts with one titled scene',
               os.path.exists(os.path.join(REPO, 'projects/zz-motion/motion.json')) and os.path.exists(os.path.join(REPO, 'projects/zz-motion/scenes/title.html')))
+        import json
+        made = json.load(open(os.path.join(REPO, 'projects/zz-motion/motion.json')))
+        check('and is made in the picked size', made['formats'] == {'tall': {'size': [1080, 1920]}}, str(made['formats']))
+        box = await pg.locator('.medit .sframe').bounding_box()
+        check('the stage stands up for a vertical piece', box and box['height'] > box['width'], str(box))
+
+        # the last size is the next default; a custom one is kept in the person's own
+        await pg.goto(BASE + '/')
+        await pg.locator('.lstrip [data-new="motion"]').click()
+        check('the next piece starts in the size used last', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'tall')
+        await dlg.locator('.szopt[data-size=custom]').click()
+        await dlg.locator('input[aria-label="宽（像素）"]').fill('1280')
+        await dlg.locator('input[aria-label="高（像素）"]').fill('720')
+        await dlg.locator(".where .linkish").click()
+        await dlg.locator('input[aria-label="新项目名称"]').fill('zz-motion-2')
+        await dlg.locator('button[type="submit"]').click()
+        await expect(pg.locator('.dashtitle')).to_have_text('zz-motion-2')
+        made = json.load(open(os.path.join(REPO, 'projects/zz-motion-2/motion.json')))
+        check('a custom size is written as its own format', made['formats'] == {'s1280x720': {'size': [1280, 720]}}, str(made['formats']))
+        await pg.goto(BASE + '/')
+        await pg.locator('.lstrip [data-new="motion"]').click()
+        check('and kept as the person\'s own size, picked by default', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'mine')
+        await dlg.locator('.szx').click()
+        check('which they can remove', await dlg.locator('.szmine').count() == 0 and await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')
+        await pg.keyboard.press('Escape')
 
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
