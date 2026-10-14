@@ -2,7 +2,7 @@
 
 # Motion
 
-Choose "动效" (motion) when creating a project. The sample [`?p=design-motion`](http://localhost:5173/?p=design-motion) is a 36 s promo for Tingly Design in 16:9 and 9:16 from the same scenes, with its own cover.
+Choose "动效" (motion) when creating a project, then pick its size: Landscape 16:9 (YouTube, Bilibili, X/Twitter, PPT), Vertical 9:16 (Douyin, WeChat Channels, TikTok, Reels), Square, Portrait 4:5 or 3:4 (Instagram, Xiaohongshu), Classic 4:3 (older PPT) or any width and height. The next piece starts in the size you used last, and your own sizes are kept next to the presets. The sample [`?p=design-motion`](http://localhost:5173/?p=design-motion) is a 36 s promo for Tingly Design in 16:9 and 9:16 from the same scenes, with its own cover.
 
 ![Motion editor: the cover on the stage, the timeline and scene strip below, formats and speed in the top bar](../../images/motion.png)
 

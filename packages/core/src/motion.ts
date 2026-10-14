@@ -85,16 +85,54 @@ export function isMotionFile(path: string): boolean {
   return path === MOTION_FILE || /^scenes\/[a-z0-9][a-z0-9-]{0,63}\.html$/.test(path);
 }
 
-/** A new motion project: one 16:9 title scene. */
-export function newMotion(title: string, hint = 'Edit scenes/*.html with Claude Code; timing goes on data-in, data-out and data-keys.'): { motion: MotionJson; scenes: Record<string, string> } {
+/**
+ * The sizes a piece is usually made for, named by shape (platforms come and go and share sizes;
+ * the editor words each one, with the platforms that take it, in `motion.preset`). The name is the
+ * format's key in motion.json.
+ */
+export const MOTION_SIZES = [
+  { name: 'wide', size: [1920, 1080] },
+  { name: 'tall', size: [1080, 1920] },
+  { name: 'square', size: [1080, 1080] },
+  { name: 'portrait', size: [1080, 1350] },
+  { name: 'upright', size: [1080, 1440] },
+  { name: 'classic', size: [1440, 1080] },
+] as const satisfies readonly { name: string; size: [number, number] }[];
+
+export const MAX_FORMAT_PX = 7680;
+
+/** A size usable for a format, rounded, or null. */
+export function validSize(size: unknown): [number, number] | null {
+  if (!Array.isArray(size) || size.length !== 2) return null;
+  const [w, h] = size.map((v) => Math.round(Number(v)));
+  return w > 0 && h > 0 && w <= MAX_FORMAT_PX && h <= MAX_FORMAT_PX ? [w, h] : null;
+}
+
+/** The key a custom size gets in motion.json when its owner gives no name: `s1280x720`. */
+export function sizeName(size: [number, number]): string {
+  return `s${size[0]}x${size[1]}`;
+}
+
+/** A new motion project: one title scene in the size asked for (16:9 when none), laid out to that size. */
+export function newMotion(
+  title: string,
+  hint = 'Edit scenes/*.html with Claude Code; timing goes on data-in, data-out and data-keys.',
+  opts: { format?: string; size?: [number, number] } = {},
+): { motion: MotionJson; scenes: Record<string, string> } {
   const safe = title.replace(/[<&>]/g, '');
+  const size = validSize(opts.size) ?? [1920, 1080];
+  const preset = MOTION_SIZES.find((p) => p.size[0] === size[0] && p.size[1] === size[1]);
+  const format = opts.format && FORMAT_NAME_RE.test(opts.format) ? opts.format : (preset?.name ?? sizeName(size));
+  // the starter's type and margins are drawn for a 1080 px short side
+  const k = Math.min(size[0], size[1]) / 1080;
+  const px = (v: number) => Math.round(v * k);
   return {
-    motion: { v: 1, title, formats: { wide: { size: [1920, 1080] } }, fps: 30, order: ['title'], audio: [], faces: {} },
+    motion: { v: 1, title, formats: { [format]: { size } }, fps: 30, order: ['title'], audio: [], faces: {} },
     scenes: {
       title:
-        `<section id="title" data-duration="4s" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">\n` +
-        `<h1 data-in="rise 700ms" style="font-size:112px;font-weight:800;line-height:1.05">${safe}</h1>\n` +
-        `<p data-in="fade 600ms" style="font-size:40px;color:#a9a59c">${hint.replace(/[<&>]/g, '')}</p>\n` +
+        `<section id="title" data-duration="4s" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:${px(128)}px;display:flex;flex-direction:column;justify-content:center;gap:${px(32)}px">\n` +
+        `<h1 data-in="rise 700ms" style="font-size:${px(112)}px;font-weight:800;line-height:1.05">${safe}</h1>\n` +
+        `<p data-in="fade 600ms" style="font-size:${px(40)}px;color:#a9a59c">${hint.replace(/[<&>]/g, '')}</p>\n` +
         `</section>\n`,
     },
   };
@@ -141,7 +179,7 @@ export function parseMotion(text: string | undefined): MotionJson {
     const size = (f as MotionFormat)?.size;
     if (!FORMAT_NAME_RE.test(name) || !Array.isArray(size)) continue;
     const [w, h] = size.map(Number);
-    if (w > 0 && h > 0 && w <= 7680 && h <= 7680) formats[name] = { size: [Math.round(w), Math.round(h)] };
+    if (w > 0 && h > 0 && w <= MAX_FORMAT_PX && h <= MAX_FORMAT_PX) formats[name] = { size: [Math.round(w), Math.round(h)] };
   }
   if (!Object.keys(formats).length) formats.wide = { size: [1920, 1080] };
   const fps = Number(raw.fps);

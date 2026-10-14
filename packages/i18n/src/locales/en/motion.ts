@@ -6,6 +6,17 @@ export default {
     tall: 'Vertical 9:16',
     square: 'Square 1:1',
     portrait: 'Portrait 4:5',
+    upright: 'Portrait 3:4',
+    classic: 'Classic 4:3',
+  },
+  /** the platforms each preset size is made for, shown under the picker */
+  presetFor: {
+    wide: 'YouTube, Bilibili, X/Twitter, PPT 16:9',
+    tall: 'Douyin, TikTok, WeChat Channels, Reels, Shorts',
+    square: 'WeChat Moments, X/Twitter, Instagram',
+    portrait: 'Instagram feed, X/Twitter',
+    upright: 'Xiaohongshu, WeChat Channels',
+    classic: 'PPT 4:3, older screens',
   },
   /** how a scene leaves (data-transition) */
   transition: {
