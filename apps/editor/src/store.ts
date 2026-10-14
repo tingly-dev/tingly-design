@@ -100,12 +100,27 @@ export interface DelegateState {
   result?: string;
   /** set when the fast model handed the request over */
   via?: 'fast';
+  /** Claude Code's session id, once it reports one: the next request can continue it */
+  session?: string;
+  /** this run continued an earlier session instead of starting a fresh one */
+  continued?: boolean;
   /** project files the run changed, in the order it first touched them */
   files: string[];
   /** each changed file before the run touched it (null: the run created it) and as the run left it, to undo the run */
   before: Record<string, string | null>;
   after: Record<string, string>;
   undone?: boolean;
+}
+
+/** One request in the history list above the prompt, from either agent. */
+export interface RunRecord {
+  id: string;
+  agent: 'fast' | 'claude';
+  prompt: string;
+  at: number;
+  state: 'running' | 'done' | 'error' | 'stopped';
+  /** Claude Code: continued an earlier session (true) or started a fresh one (false) */
+  continued?: boolean;
 }
 
 /** Which run the prompt bar's feed shows: the fast model's, or a Claude Code run by id. */
@@ -185,6 +200,14 @@ interface State {
   runHidden: boolean;
   /** how many run feeds are on screen: when none is, a finished run is announced by a toast instead */
   feeds: number;
+  /** the prompt bar folded to a pill (kept across sessions) */
+  barCollapsed: boolean;
+  /** the list of earlier requests open above the bar */
+  historyOpen: boolean;
+  /** every request of this editor session, oldest first */
+  history: RunRecord[];
+  /** the next Claude Code request starts a fresh session even though one could be continued */
+  freshNext: boolean;
   toasts: Toast[];
   undo: UndoItem[];
   redo: UndoItem[];
@@ -230,6 +253,16 @@ export const useStore = create<State>(() => ({
   lastRun: null,
   runHidden: false,
   feeds: 0,
+  barCollapsed: (() => {
+    try {
+      return localStorage.getItem('dc.barCollapsed') === '1';
+    } catch {
+      return false;
+    }
+  })(),
+  historyOpen: false,
+  history: [],
+  freshNext: false,
   toasts: [],
   undo: [],
   redo: [],
@@ -331,7 +364,7 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], lastRun: null, runHidden: false, slide: null, present: null, motionView: null });
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], lastRun: null, runHidden: false, history: [], historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
   const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
@@ -387,7 +420,9 @@ function onEvent(e: ServerEvent): void {
       if (e.state === 'start') {
         d.prompt = e.text ?? d.prompt;
         if (e.at) d.startedAt = e.at;
+        if (e.continued) d.continued = true;
       }
+      if (e.session) d.session = e.session;
       if (e.state === 'progress') {
         if (e.step) {
           d.log = [...d.log, { step: e.step, at: now }].slice(-60);
@@ -402,7 +437,8 @@ function onEvent(e: ServerEvent): void {
       if (e.state !== 'start') d.state = e.state;
       // a new run takes over the feed; a later event of an older run does not
       const fresh = i < 0;
-      return { delegates: list.slice(-5), ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
+      const history = recordRun(s.history, { id: e.id, agent: 'claude', prompt: d.prompt, at: d.startedAt, state: 'running', continued: !!d.continued }, e.state === 'start' || e.state === 'progress' ? undefined : e.state === 'done' ? 'done' : e.state === 'stopped' ? 'stopped' : 'error');
+      return { delegates: list.slice(-5), history, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
     });
     if (e.state === 'done' || e.state === 'error') {
       const ok = e.state === 'done';
@@ -412,6 +448,39 @@ function onEvent(e: ServerEvent): void {
     }
   }
 }
+
+/** Add a request to the history, or move an existing one to its end state. */
+export function recordRun(history: RunRecord[], rec: RunRecord, end?: RunRecord['state']): RunRecord[] {
+  const i = history.findIndex((h) => h.id === rec.id);
+  if (i < 0) return [...history, end ? { ...rec, state: end } : rec].slice(-50);
+  if (!end || history[i].state === end) return history;
+  const next = [...history];
+  next[i] = { ...next[i], state: end };
+  return next;
+}
+
+/** The Claude Code session the next request would continue: that of the newest run that finished. */
+export function continuable(delegates: DelegateState[]): DelegateState | undefined {
+  return [...delegates].reverse().find((d) => d.session && d.state === 'done');
+}
+
+export function setBarCollapsed(on: boolean): void {
+  try {
+    localStorage.setItem('dc.barCollapsed', on ? '1' : '0');
+  } catch {
+    // private window
+  }
+  set({ barCollapsed: on, historyOpen: false });
+}
+
+// a fast-model request is one store value; its entry in the history follows it
+useStore.subscribe((s, prev) => {
+  if (s.fast === prev.fast || s.fast.status === 'idle' || s.fast.mode !== 'ai' || !s.fast.startedAt) return;
+  const id = `fast-${s.fast.startedAt}`;
+  const end = s.fast.status === 'running' ? undefined : s.fast.status === 'error' ? 'error' : 'done';
+  const history = recordRun(s.history, { id, agent: 'fast', prompt: s.fast.prompt ?? '', at: s.fast.startedAt, state: 'running' }, end);
+  if (history !== s.history) set({ history });
+});
 
 function setFastDone(ok: boolean): void {
   set((s) => ({ fast: { ...s.fast, status: ok ? 'done' : 'error', endedAt: Date.now() } }));

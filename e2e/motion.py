@@ -58,6 +58,50 @@ async def main():
         await expect(stage.locator('section#outro')).to_be_visible()
         check('a scene button jumps to that scene', True)
 
+        # click: a clip's start; double-click: its end
+        await pg.locator('.mscene', has_text='kind-slides').click()
+        t0 = float((await pg.locator('.mtime').inner_text()).split('/')[0])
+        await pg.locator('.mscene', has_text='kind-slides').dblclick()
+        t1 = float((await pg.locator('.mtime').inner_text()).split('/')[0])
+        await expect(pg.locator('.mscene.on .mname')).to_have_text('kind-slides')
+        check('double-clicking a clip jumps to its end, still inside that scene', t1 > t0 + 1, f'{t0} {t1}')
+        await pg.locator('.mscene', has_text='kind-slides').click()
+        t2 = float((await pg.locator('.mtime').inner_text()).split('/')[0])
+        check('a single click goes back to its start', abs(t2 - t0) < 0.15, f'{t0} {t2}')
+
+        # the cover sits before 0 s: its clip, and the way to have none
+        check('the cover is a clip before 0 s', await pg.locator('.mcoverclip.on').count() == 0 and await pg.locator('.mcoverclip').count() == 1)
+        await pg.locator('.mcoverclip').click()
+        await expect(stage.locator('section#poster')).to_be_visible()
+        await expect(pg.locator('.mcoverclip.on')).to_have_count(1)
+        check('clicking the cover clip shows the cover on the stage', True)
+        await pg.locator('.mcoverx').click(force=True)
+        await pg.wait_for_timeout(600)
+        check('removing the cover unsets it in motion.json', '"cover": "poster"' not in read('motion.json'))
+        await expect(pg.locator('.mcoverclip.add')).to_have_count(1)
+        await pg.locator('.mcoverclip.add').click()
+        await expect(pg.locator('.mcoverclip.on')).to_have_count(1)
+        await pg.wait_for_timeout(600)
+        check('adding a cover takes the old poster scene back', '"cover": "poster"' in read('motion.json'))
+        await pg.locator('.mscene', has_text='kind-slides').click()
+
+        # a scene's length: the field in the bar and the clip's right edge
+        dur = pg.locator('.mdur input')
+        await dur.fill('2')
+        await dur.press('Enter')
+        await pg.wait_for_timeout(700)
+        check('the length field in the bar writes data-duration', 'data-duration="3s"' in read('scenes/kind-slides.html'), read('scenes/kind-slides.html')[:160])
+        grip = pg.locator('.mgrip').nth(await pg.locator('.mscene').evaluate_all("els => els.findIndex(e => e.textContent.includes('kind-slides'))"))
+        gb = await grip.bounding_box()
+        gx, gy = gb['x'] + gb['width'] / 2, gb['y'] + gb['height'] / 2
+        await pg.mouse.move(gx, gy)
+        await pg.mouse.down()
+        await pg.mouse.move(gx + 30, gy, steps=5)
+        await pg.mouse.move(gx + 60, gy, steps=5)
+        await pg.mouse.up()
+        await pg.wait_for_timeout(700)
+        check('dragging a clip edge changes its length', 'data-duration="3s"' not in read('scenes/kind-slides.html') and 'data-duration=' in read('scenes/kind-slides.html'), read('scenes/kind-slides.html')[:160])
+
         # --- editing on the stage --------------------------------------------------------------------
         await pg.locator('.mscene', has_text='kind-slides').click()
         h2 = stage.locator('section#kind-slides h2')
