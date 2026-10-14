@@ -97,4 +97,5 @@ A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` ove
 Follow `.github/pull_request_template.md` (the same as Tingly Box's) for PR title and description. The title is `type(scope): what changed`. The description starts at `## Summary` with no header above it, then `## Key Changes`, within the template's length caps. Everything that is not about the change (requester, thread / session links, hidden markers) goes in a short, plain footer after a `---` rule; no badges, banners or "Generated with" lines.
 
 - Screenshots go to the `pr-assets` branch, not into the feature branch.
+- Any frontend / UI change comes back with screenshots of the changed UI (before/after where useful), captured in a real browser (the e2e suites already drive Playwright and save shots with `page.screenshot`). Embed or link them in the PR description and attach them in the thread reply.
 - Say in the description which `.design/` note and which `CLAUDE.md` section the PR updated, or why none was needed.
