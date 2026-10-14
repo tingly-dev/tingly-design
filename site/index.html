@@ -26,6 +26,8 @@
   .btn { padding:10px 18px; border-radius:8px; border:1px solid var(--line); color:var(--fg); text-decoration:none; }
   .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   video, img { width:100%; height:auto; border-radius:12px; border:1px solid var(--line); background:var(--card); display:block; }
+  .videos { display:grid; grid-template-columns:16fr 9fr; gap:16px; align-items:end; }
+  @media (max-width:640px) { .videos { grid-template-columns:1fr; } .videos video:last-child { max-width:260px; margin:0 auto; } }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
   .card h3 { margin:0 0 6px; font-size:17px; }
@@ -60,12 +62,17 @@
     <a class="btn" href="https://github.com/tingly-dev/tingly-design">GitHub</a>
   </div>
 
-  <video controls playsinline preload="metadata" poster="media/design-motion-wide-cover.png">
-    <source src="media/design-motion-wide.mp4" type="video/mp4">
-  </video>
+  <div class="videos">
+    <video controls playsinline preload="metadata" poster="media/design-motion-wide-cover.png" aria-label="16:9">
+      <source src="media/design-motion-wide.mp4" type="video/mp4">
+    </video>
+    <video controls playsinline preload="metadata" poster="media/design-motion-tall-cover.png" aria-label="9:16">
+      <source src="media/design-motion-tall.mp4" type="video/mp4">
+    </video>
+  </div>
   <p style="color:var(--muted);font-size:14px">
-    <span lang="en">The promo above is a Tingly Design motion project, rendered by CI from <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a>. <a href="media/design-motion-tall.mp4">9:16 version</a>.</span>
-    <span lang="zh">上面的宣传片本身就是一个 Tingly Design 动效项目，由 CI 从 <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a> 渲染而成。<a href="media/design-motion-tall.mp4">竖版 9:16</a>。</span>
+    <span lang="en">One motion project, two formats: 16:9 and 9:16 come from the same scenes. Rendered by CI from <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a>.</span>
+    <span lang="zh">同一个动效项目，同一组场景，输出 16:9 和 9:16 两种画幅，由 CI 从 <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a> 渲染。</span>
   </p>
 
   <h2 lang="en">One source, three editors</h2>
