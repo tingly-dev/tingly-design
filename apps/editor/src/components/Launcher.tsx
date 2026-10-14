@@ -191,7 +191,7 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
       <div className="lp-ds">
         <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
         <div className="sw">
-          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 10).map((c, i) => (
+          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 12).map((c, i) => (
             <span key={i} style={{ background: c }} />
           ))}
         </div>
@@ -204,7 +204,6 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
               </span>
             ))}
         </div>
-        <div className="facts">{t('launcher.preview.dsFacts', { colors: p.glance.colors, type: p.glance.typeStyles, components: p.components.length })}</div>
       </div>
     );
   } else if (p.kind === 'dashboard') {

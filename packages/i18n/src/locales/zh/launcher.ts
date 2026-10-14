@@ -68,7 +68,6 @@ export default {
     frame: '预览：{{file}}',
     emptyCanvas: '空画布',
     noSlides: '还没有幻灯片',
-    dsFacts: '颜色 {{colors}} · 文字 {{type}} · 组件 {{components}}',
     noDatasets: '还没有数据集',
     noScenes: '还没有场景',
     cover: '{{title}} 的封面',

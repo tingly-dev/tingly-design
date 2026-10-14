@@ -74,7 +74,6 @@ export default {
     frame: 'Preview: {{file}}',
     emptyCanvas: 'Empty canvas',
     noSlides: 'No slides yet',
-    dsFacts: 'Colors {{colors}} · Type {{type}} · Components {{components}}',
     noDatasets: 'No datasets yet',
     noScenes: 'No scenes yet',
     cover: 'Cover of {{title}}',
