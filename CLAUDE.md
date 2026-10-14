@@ -24,6 +24,10 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 
 Which model answers is set in one dialog (`apps/editor/src/components/AiSettings.tsx`, opened from the launcher, `ProjectMenu` and the prompt bar's hint): one connection (Tingly Box suggested, Anthropic, or another address) shared by fast AI and Claude Code, a model name for each, and Claude Code's own sign-in as the alternative. The values resolve environment > saved > default in `packages/core/src/aiConfig.ts`; the server (`apps/server/src/aiconfig.ts`) owns the file and the key. A new model-using feature (image generation, #32) joins this dialog, not a new place. See `.design/ai-settings.md`.
 
+## Frontend changes come back with screenshots
+
+A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description as `https://github.com/tingly-dev/tingly-design/blob/pr-assets/<path>?raw=true` (`raw.githubusercontent.com` links do not render in this private repository), and the thread that did the work attaches them to its reply.
+
 ## Files people bring in
 
 What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.
@@ -94,7 +98,7 @@ End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `la
 
 # Issues
 
-A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` over this repository's issues: team issues (owners, members, collaborators) go to analysis and a draft PR, external issues get one short evaluation comment and wait for a maintainer. Its stage lives in a hidden `<!-- issue-resolve stage=… -->` marker on its comments. See `.design/issue-resolve.md`.
+A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` over this repository's issues: team issues (owners, members, collaborators) go to analysis and a draft PR, external issues get one short evaluation comment and wait for a maintainer. Its stage lives in a hidden `<!-- issue-resolve stage=… -->` marker on its comments. Issues come in through the forms in `.github/ISSUE_TEMPLATE` (Feature / Bug / Feedback / Other plus an area); `issue-area.yml` turns the area into an `area/<name>` label and a `feat(motion):` title, and the sweep reads those labels. See `.design/issue-resolve.md`.
 
 # Pull requests
 
