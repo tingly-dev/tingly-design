@@ -22,7 +22,7 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 
 ## Frontend changes come back with screenshots
 
-A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description, and the thread that did the work attaches them to its reply.
+A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description as `https://github.com/tingly-dev/tingly-design/blob/pr-assets/<path>?raw=true` (`raw.githubusercontent.com` links do not render in this private repository), and the thread that did the work attaches them to its reply.
 
 ## Files people bring in
 
