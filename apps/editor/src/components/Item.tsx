@@ -106,7 +106,7 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
     e.stopPropagation();
     e.preventDefault();
     useStore.setState({ selection: { kind: 'note', id } });
-    if (editing) return;
+    if (editing || note.locked) return;
     const sx = e.clientX;
     const sy = e.clientY;
     const base = structuredClone(note);
@@ -271,12 +271,12 @@ export const CanvasItem = memo(function CanvasItem({ id, note }: { id: string; n
       onPointerDown={(e) => drag(e, 'move')}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        if (mode === 'edit' && !shape && !line) useStore.setState({ editingNote: id, selection: { kind: 'note', id } });
+        if (mode === 'edit' && !shape && !line && !note.locked) useStore.setState({ editingNote: id, selection: { kind: 'note', id } });
       }}
     >
       {body}
       {selected && !line && <div className="sel" style={n.kind === 'oval' ? { borderRadius: '50%' } : undefined} />}
-      {selected && !editing && mode === 'edit' &&
+      {selected && !editing && !note.locked && mode === 'edit' &&
         handles.map((h) => <div key={h} className="handle" style={handleAt(h)} onPointerDown={(e) => drag(e, h)} />)}
       {selected && line && (
         <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }} width="1" height="1">

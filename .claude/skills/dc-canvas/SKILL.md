@@ -35,6 +35,7 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files. An
 - `notes`: `kind: "title1"` is a 72 px heading over several artboards (keep it ≥ 223 px above their row); no `kind` is a sticky note with `w` and a `fill` of gray, red, orange, green, teal, blue, purple or pink.
 - `notes` can also hold pictures: `{ "kind": "image", "x", "y", "w", "h", "src": "uploads/photo-1a2b3c4d.png", "alt" }`, the path relative to the folder.
 - A `boards` entry with `imported` (`from`, `source`, `original`, `at`) came from an imported page or SVG; `original` is that file, kept under `uploads/`. Keep the key.
+- `boards` and `notes` entries take `hidden: true` (not drawn) and `locked: true` (can't be moved or edited on the canvas); they are the layers panel's eye and lock. Keep them.
 - Keep every key you are not changing. To add an artboard, write its file and add a `boards` entry and an `order` slot.
 
 Files people brought in (attachments, imported pages and pictures) live under `uploads/`. An artboard shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; don't move or rename them.
@@ -106,6 +107,10 @@ The canvas edits these files in place: a person selects an element and changes i
 - `data-props` declares Tweaks — a few real levers (an accent colour, a density enum, a dark toggle), never label copy. It is a single-quoted JSON attribute: escape `&` as `&amp;` and `'` as `&#39;`.
 - Diagrams (boxes and arrows): one host `<div style="position:relative;width:…;height:…">`, every box an absolutely positioned `<div>` with its label as text, every straight arrow segment its own small `<svg>`. Never one big `<svg>`: the canvas would select it as a single block.
 - Sizes: phone screen 390×844; desktop screen or page width 1280–1440; the root element is fixed at the artboard's `w`×`h`.
+
+## Hidden and locked elements
+
+`data-hide` on an element means it isn't drawn (it, and everything inside, stays in the file); `data-lock` means it can't be picked, moved, resized or retyped on the canvas. Both are plain boolean attributes, the layers panel's eye and lock, and they work the same in slides and motion scenes. Keep them when you rewrite an element; add `data-hide` rather than deleting something the user only asked to hide.
 
 ## Handle ids
 

@@ -1,0 +1,69 @@
+name: Issue area
+
+# The issue forms (.github/ISSUE_TEMPLATE) ask for an area, but a form can only
+# set fixed labels and a fixed title prefix. This reads the area the reporter
+# picked and turns it into an `area/<name>` label and a scoped title, so
+# `feat: dark mode` filed against Motion becomes `feat(motion): dark mode`.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  area:
+    name: Label by area
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const AREAS = {
+              'Canvas': 'canvas',
+              'Slides': 'slides',
+              'Design system': 'design-system',
+              'Dashboard': 'dashboard',
+              'Docs': 'docs',
+              'Motion': 'motion',
+              'Editor (launcher, prompt bar, panels)': 'editor',
+              'Server (fast AI, Claude Code, files)': 'server',
+            };
+            const TYPES = { feat: 'enhancement', bug: 'bug', feedback: 'feedback', other: 'other' };
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+
+            const section = /^### Area\s*\n+([^\n]+)/m.exec(issue.body ?? '');
+            const area = section ? AREAS[section[1].trim()] : undefined;
+            const prefix = /^(feat|bug|feedback|other)(?:\([^)]*\))?:\s*/i.exec(issue.title);
+
+            async function ensure(name, color) {
+              try {
+                await github.rest.issues.createLabel({ owner, repo, name, color });
+              } catch (e) {
+                if (e.status !== 422) throw e; // already exists
+              }
+            }
+
+            const labels = [];
+            if (area) {
+              await ensure(`area/${area}`, '5319e7');
+              labels.push(`area/${area}`);
+            }
+            if (prefix) {
+              const type = TYPES[prefix[1].toLowerCase()];
+              if (type === 'feedback' || type === 'other') await ensure(type, 'fbca04');
+              labels.push(type);
+            }
+            if (labels.length) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issue.number, labels });
+            }
+
+            if (area && prefix) {
+              const title = `${prefix[1].toLowerCase()}(${area}): ${issue.title.slice(prefix[0].length)}`;
+              if (title !== issue.title) {
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, title });
+              }
+            }

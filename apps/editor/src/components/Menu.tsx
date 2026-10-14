@@ -42,8 +42,8 @@ export function Menu({
         onClose();
       }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const items = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>('button.mi:not(:disabled)') ?? []);
-        const i = items.indexOf(document.activeElement as HTMLButtonElement);
+        const items = Array.from(ref.current?.querySelectorAll<HTMLElement>('.mi:not(:disabled)') ?? []);
+        const i = items.indexOf(document.activeElement as HTMLElement);
         const next = items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
         next?.focus();
         e.preventDefault();

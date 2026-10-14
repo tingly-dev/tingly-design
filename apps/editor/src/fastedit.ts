@@ -23,7 +23,7 @@ import {
 import { api } from './api';
 import { t } from './i18n';
 import { ExecSession, replay } from './executor';
-import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine, type LastRun } from './store';
+import { canvasOf, continuable, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine, type LastRun } from './store';
 import { slideTitle } from './slides';
 import { motionOf } from './motion';
 
@@ -190,14 +190,18 @@ export async function delegateToClaude(
     const view = get().kind === 'motion' ? get().motionView : null;
     const where = view?.scene ? view.landed ? `Stopped at the start of scene ${view.scene} (looking at the whole page as it lands), viewing the ${view.format} format.` : `Stopped at ${(view.at / 1000).toFixed(1)} s into scene ${view.scene}, viewing the ${view.format} format.` : '';
     const context = [where, opts.context].filter(Boolean).join('\n\n');
+    // a request typed to Claude Code continues the last finished session unless the person asked for a fresh one
+    const resume = opts.via || get().freshNext ? undefined : continuable(get().delegates)?.session;
     const { id } = await api.delegate(project, {
       prompt,
+      ...(resume ? { resume } : {}),
       ...(context ? { context } : {}),
       file,
       pointed: file ? pointedInfo(file, tid) : null,
       journal,
       ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
+    set({ freshNext: false });
     if (opts.via) set((s) => ({ delegates: s.delegates.map((d) => (d.id === id ? { ...d, via: opts.via } : d)) }));
     return true;
   } catch (e) {

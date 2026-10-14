@@ -29,6 +29,18 @@ export type Role =
   | 'Table'
   | 'Notes';
 
+/**
+ * Hide and lock, as the layers tree writes them: boolean attributes on the
+ * element itself, so a hand edit, Claude Code and the editor all see the same
+ * state. Hidden is not drawn anywhere (stage, play, export); locked can't be
+ * picked, dragged, resized or retyped on the stage (the panel still edits it).
+ * Both apply to everything inside the element.
+ */
+export const HIDE_ATTR = 'data-hide';
+export const LOCK_ATTR = 'data-lock';
+/** The stylesheet half of hide, shared by every runtime and the deck export. */
+export const HIDE_CSS = `[${HIDE_ATTR}]{display:none!important}`;
+
 export interface Layer {
   tid: number;
   role: Role;
@@ -36,6 +48,9 @@ export interface Layer {
   tag: string;
   /** inside an <sc-for>: rendered once per item, not editable one by one */
   repeated: boolean;
+  /** this element's own hide / lock switch (what's inside follows it) */
+  hidden: boolean;
+  locked: boolean;
   children: Layer[];
 }
 
@@ -86,7 +101,7 @@ export function layerTree(doc: DcDoc): Layer[] {
         if (l) kids.push(l);
       }
     }
-    return { tid: el.tid, role, label: elementLabel(el), tag: el.tag, repeated, children: kids };
+    return { tid: el.tid, role, label: elementLabel(el), tag: el.tag, repeated, hidden: attr(el, HIDE_ATTR) !== undefined, locked: attr(el, LOCK_ATTR) !== undefined, children: kids };
   };
   const out: Layer[] = [];
   for (const n of doc.children) {
