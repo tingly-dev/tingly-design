@@ -26,6 +26,7 @@
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建 | 已实施 |
+| [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |

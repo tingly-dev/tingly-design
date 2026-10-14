@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DS_README, compileTokensCss, sectionFiles } from '@dc/core';
+import { DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
 import { display, edit, isSaving, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
@@ -7,6 +7,7 @@ import { ImportHere } from '../ImportHere';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
+import { Specimen } from './Specimen';
 import { currentTheme } from '../../theme';
 import { replaceUrl } from '../../host';
 import { useTranslation } from 'react-i18next';
@@ -70,8 +71,52 @@ function Overview({ theme }: { theme: string }) {
     const list = sectionFiles(Object.keys(files));
     return list.includes(DS_README) ? list : [DS_README, ...list];
   }, [files]);
+  const bundle = useStore((s) => display(s, 'components/bundle.js'));
+  const glance = useMemo(() => dsGlance(t), [t]);
+  const components = useMemo(() => componentNames(Object.keys(files), bundle).length, [files, bundle]);
+  const stack = (f?: string) => f?.split(',')[0].replace(/["']/g, '').trim();
   return (
     <section className="dsview" aria-label={tr('ds.nav.overview')}>
+      <div className="glance">
+        <Specimen glance={glance} title={index.title} />
+        <div className="gfacts">
+          <p>{tr('ds.glance.what')}</p>
+          <dl>
+            <dt>{tr('ds.glance.faces')}</dt>
+            <dd>
+              <span style={{ fontFamily: glance.headingFont }}>{stack(glance.headingFont) ?? '–'}</span> · {tr('ds.glance.heading')}
+              {glance.bodyFont && glance.bodyFont !== glance.headingFont && (
+                <>
+                  <br />
+                  <span style={{ fontFamily: glance.bodyFont }}>{stack(glance.bodyFont)}</span> · {tr('ds.glance.body')}
+                </>
+              )}
+            </dd>
+            <dt>{tr('ds.glance.shape')}</dt>
+            <dd>
+              {tr('ds.glance.radius')} {glance.radius ?? tr('ds.glance.none')} · {tr('ds.glance.shadow')} {glance.shadow ? '✓' : tr('ds.glance.none')}
+            </dd>
+            <dt>{tr('ds.glance.themes')}</dt>
+            <dd>{glance.themes.join(' / ') || '–'}</dd>
+          </dl>
+          <div className="gcount">
+            <span>{tr('ds.glance.colorsN', { count: glance.colors })}</span>
+            <span>{tr('ds.glance.typeN', { count: glance.typeStyles })}</span>
+            <span>{tr('ds.glance.tokensN', { count: glance.tokens })}</span>
+            <span>{tr('ds.glance.componentsN', { count: components })}</span>
+          </div>
+        </div>
+      </div>
+      {t.colors.length > 0 && (
+        <div className="gpalette" aria-label={tr('ds.glance.palette')}>
+          {t.colors.map((c) => (
+            <span key={c.name} className="gsw" title={c.name}>
+              <i style={{ background: c.values[theme] ?? Object.values(c.values)[0] }} />
+              <b>{c.name}</b>
+            </span>
+          ))}
+        </div>
+      )}
       {cover && (
         <div className="cover">
           <Preview comp="Cover" html={cover} t={t} index={index} theme={theme} minHeight={320} />

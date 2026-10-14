@@ -2,7 +2,7 @@ import { CANVAS_FILE, parseCanvas } from './canvas';
 import { DASH_INDEX, parseDash } from './dash';
 import { DECK_FILE, faceMarkup, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DOC_INDEX, parseDoc, tabFile } from './docs';
-import { DS_INDEX, DS_TOKENS, componentNames, parseDsIndex, resolveTokens } from './designSystem';
+import { DS_INDEX, DS_TOKENS, componentNames, dsGlance, type DsGlance, parseDsIndex, resolveTokens } from './designSystem';
 import { MOTION_FILE, motionTimeline, parseMotion, primaryFormat, sceneFile, sceneTiming, speedOf, type MotionJson } from './motion';
 
 /** What the launcher shows on a project's card: a title, counts and a small preview. */
@@ -26,7 +26,7 @@ export type ProjectPreview =
       board?: { file: string; w: number; h: number; source: string };
     }
   | { kind: 'slides'; cover?: { file: string; source: string; head: string } }
-  | { kind: 'design-system'; colors: string[]; components: string[]; fonts: string[] }
+  | { kind: 'design-system'; colors: string[]; components: string[]; fonts: string[]; glance: DsGlance }
   | { kind: 'dashboard'; datasets: string[] }
   | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string }
   | {
@@ -102,7 +102,7 @@ export async function projectCard(
     const colors = tokens.colors.map((c) => (theme && c.values[theme]) || Object.values(c.values)[0]).filter((v): v is string => !!v);
     const components = componentNames(files, await read('components/bundle.js'));
     const fonts = [...new Set(Object.values(tokens.families).map((f) => f.split(',')[0].replace(/["']/g, '').trim()))].filter(Boolean);
-    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3) } };
+    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3), glance: dsGlance(tokens) } };
   }
   if (kind === 'dashboard') {
     const dash = parseDash(await read(DASH_INDEX));

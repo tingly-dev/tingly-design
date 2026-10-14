@@ -13,6 +13,7 @@ import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
+import { Specimen } from './ds/Specimen';
 
 /** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
 export const KINDS: { kind: ProjectKind; tone: string }[] = [
@@ -172,17 +173,15 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
   } else if (p.kind === 'design-system') {
     body = (
       <div className="lp-ds">
+        <Specimen glance={p.glance} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
         <div className="sw">
-          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).map((c, i) => (
+          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 8).map((c, i) => (
             <span key={i} style={{ background: c }} />
           ))}
         </div>
-        {p.fonts.length > 0 && <div className="aa" style={{ fontFamily: p.fonts[0] }}>Aa {p.fonts[0]}</div>}
-        <div className="chips">
-          {p.components.map((c) => (
-            <span key={c}>{c}</span>
-          ))}
-          {!p.components.length && <span className="faint">{t('launcher.preview.noComponents')}</span>}
+        <div className="facts">
+          {t('launcher.preview.dsFacts', { colors: p.glance.colors, type: p.glance.typeStyles, components: p.components.length })}
+          {p.glance.themes.length > 1 && ` · ${p.glance.themes.join(' / ')}`}
         </div>
       </div>
     );
