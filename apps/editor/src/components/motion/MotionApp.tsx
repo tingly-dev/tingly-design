@@ -4,13 +4,13 @@ import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sce
 import { api } from '../../api';
 import { motionImport } from '../../motion';
 import { ImportHere } from '../ImportHere';
+import { ProjectMenu } from '../ProjectMenu';
 import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { Panel, PauseFilled, PlayFilled } from '../icons';
 import { replaceUrl } from '../../host';
-import { BASE } from '../../base';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
 import { MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
@@ -208,9 +208,7 @@ export function MotionApp() {
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title={t('motion.bar.allProjects')}>
-          ←
-        </a>
+        <ProjectMenu />
         <span className="dashtitle">{motion.title}</span>
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('motion.bar.saving') : t('motion.bar.connected')) : t('motion.bar.offline')} />
         <div className="grow" />

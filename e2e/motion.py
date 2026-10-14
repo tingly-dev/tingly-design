@@ -160,6 +160,7 @@ async def main():
         # --- a new piece --------------------------------------------------------------------------------
         await pg.goto(BASE + '/')
         await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('[role=dialog] .where .linkish').click()
         await pg.locator('[role=dialog] input[aria-label="新项目名称"]').fill('zz-motion')
         await pg.locator('[role=dialog] button[type="submit"]').click()
         await expect(pg.locator('.dashtitle')).to_have_text('zz-motion')

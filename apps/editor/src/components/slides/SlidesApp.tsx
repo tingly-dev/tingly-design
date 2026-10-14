@@ -28,6 +28,7 @@ import { Menu, MenuItem } from '../Menu';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
+import { ProjectMenu } from '../ProjectMenu';
 import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
 import { exportDeck } from './exportDeck';
 import { ImportHere } from '../ImportHere';
@@ -188,6 +189,8 @@ function TopLeft() {
   };
   return (
     <div className="bar left" role="toolbar" aria-label={t('slides.toolbar.insert')}>
+      <ProjectMenu />
+      <span className="sep" />
       {renaming ? (
         <input
           className="dtitle"

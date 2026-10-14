@@ -20,9 +20,9 @@ import {
   Shapes,
   TextT,
 } from './icons';
-import { goTo } from '../host';
 import { ImportHere } from './ImportHere';
 import { canvasImport } from '../canvasImport';
+import { ProjectMenu } from './ProjectMenu';
 
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },
@@ -101,7 +101,6 @@ function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: numbe
           onClose();
         }}
       />
-      <MenuItem label={t('app.pages.allCanvases')} onSelect={() => goTo(null)} />
     </Menu>
   );
 }
@@ -122,6 +121,8 @@ export function LeftBar() {
   };
   return (
     <div className="bar left" role="toolbar" aria-label={t('app.tool.bar')}>
+      <ProjectMenu />
+      <span className="sep" />
       <button ref={pagesBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.pages.button', { name: pageName })} onClick={() => setMenu('pages')}>
         {pageName}
         <span className="caret">

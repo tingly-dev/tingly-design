@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconDeviceDesktop, IconMoon, IconSun } from '@tabler/icons-react';
+import { Language } from './icons';
 import { Menu } from './Menu';
 import { PRESETS, PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode, type Tokens } from '../theme';
 import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
@@ -20,10 +21,10 @@ function Swatch({ tokens, split }: { tokens: Tokens; split?: Tokens }) {
 const MODES: ThemeMode[] = ['system', ...PRESET_IDS];
 
 /**
- * The appearance menu: how the editor looks and which language it speaks, both settings of the
- * editor itself rather than of a project. A theme a host passed in shows as its own row.
- * Languages are listed by their own names, so someone who cannot read the current one still
- * finds theirs.
+ * The appearance menu: how the editor looks, a setting of the editor itself rather than of a
+ * project. A theme a host passed in shows as its own row. The language has its own button
+ * (LanguageMenu) because a person looking for it should not have to guess it hides behind a
+ * sun or a moon.
  */
 export function Appearance({ className = 'btn' }: { className?: string }) {
   const { t } = useTranslation();
@@ -76,7 +77,40 @@ export function Appearance({ className = 'btn' }: { className?: string }) {
               {m === 'system' && <span className="k">{t('appearance.mode.systemHint')}</span>}
             </button>
           ))}
-          <div className="head">{t('appearance.language')}</div>
+        </Menu>
+      )}
+    </>
+  );
+}
+
+/**
+ * The language button: it shows the language in use, written in that language, so it is the
+ * first thing someone who cannot read the page looks for. Languages are listed by their own names.
+ */
+export function LanguageMenu({ className = 'btn' }: { className?: string }) {
+  const { t } = useTranslation();
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const lang = currentLanguage();
+  const current = SUPPORTED_LANGUAGES.find((l) => l.code === lang);
+  return (
+    <>
+      <button
+        className={className}
+        aria-label={t('appearance.language')}
+        title={t('appearance.languageWith', { name: current?.label ?? lang })}
+        aria-haspopup="menu"
+        aria-expanded={!!at}
+        data-language={lang}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setAt(at ? null : { x: r.right, y: r.bottom + 6 });
+        }}
+      >
+        <Language />
+        <span lang={lang}>{current?.label ?? lang}</span>
+      </button>
+      {at && (
+        <Menu x={at.x} y={at.y} align="right" label={t('appearance.language')} onClose={() => setAt(null)}>
           {SUPPORTED_LANGUAGES.map((l) => (
             <button
               key={l.code}

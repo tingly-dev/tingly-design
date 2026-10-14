@@ -28,8 +28,8 @@ import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
-import { BASE } from '../../base';
 import { ImportHere } from '../ImportHere';
+import { ProjectMenu } from '../ProjectMenu';
 import { useTranslation } from 'react-i18next';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
@@ -331,9 +331,7 @@ export function DocsApp() {
   return (
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title={t('docs.app.allProjects')}>
-          ←
-        </a>
+        <ProjectMenu />
         <Title />
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('docs.app.saving') : t('docs.app.saved')) : t('docs.app.offline')} />
         <span className="hint">{saving ? t('docs.app.saving') : t('docs.app.saved')}</span>

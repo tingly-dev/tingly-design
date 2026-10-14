@@ -1696,12 +1696,26 @@ button.file-chip:hover {
   display: flex;
   flex-direction: column;
 }
-.launcher .t-blue { --tone: var(--t-blue); --tone-soft: var(--t-blue-soft); }
-.launcher .t-purple { --tone: var(--t-purple); --tone-soft: var(--t-purple-soft); }
-.launcher .t-teal { --tone: var(--t-teal); --tone-soft: var(--t-teal-soft); }
-.launcher .t-orange { --tone: var(--t-orange); --tone-soft: var(--t-orange-soft); }
-.launcher .t-green { --tone: var(--t-green); --tone-soft: var(--t-green-soft); }
-.launcher .t-pink { --tone: var(--t-pink); --tone-soft: var(--t-pink-soft); }
+.lmodal {
+  --t-blue-soft: color-mix(in srgb, var(--t-blue) 13%, var(--panel));
+  --t-purple-soft: color-mix(in srgb, var(--t-purple) 13%, var(--panel));
+  --t-teal-soft: color-mix(in srgb, var(--t-teal) 13%, var(--panel));
+  --t-orange-soft: color-mix(in srgb, var(--t-orange) 13%, var(--panel));
+  --t-green-soft: color-mix(in srgb, var(--t-green) 13%, var(--panel));
+  --t-pink-soft: color-mix(in srgb, var(--t-pink) 13%, var(--panel));
+}
+.launcher .t-blue,
+.lmodal .t-blue { --tone: var(--t-blue); --tone-soft: var(--t-blue-soft); }
+.launcher .t-purple,
+.lmodal .t-purple { --tone: var(--t-purple); --tone-soft: var(--t-purple-soft); }
+.launcher .t-teal,
+.lmodal .t-teal { --tone: var(--t-teal); --tone-soft: var(--t-teal-soft); }
+.launcher .t-orange,
+.lmodal .t-orange { --tone: var(--t-orange); --tone-soft: var(--t-orange-soft); }
+.launcher .t-green,
+.lmodal .t-green { --tone: var(--t-green); --tone-soft: var(--t-green-soft); }
+.launcher .t-pink,
+.lmodal .t-pink { --tone: var(--t-pink); --tone-soft: var(--t-pink-soft); }
 .launcher::before {
   /* a soft wash of the accent behind the header, like Tingly Box's hero */
   content: '';
@@ -1806,6 +1820,12 @@ button.file-chip:hover {
   padding: 0;
   border-radius: 8px;
   color: var(--ink-2);
+}
+.lbtn[data-language] {
+  width: auto;
+  gap: 5px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 .ltabs {
   position: relative;
@@ -2250,7 +2270,7 @@ button.file-chip:hover {
   padding: 16px;
 }
 .ldialog {
-  width: min(680px, 100%);
+  width: min(520px, 100%);
   max-height: calc(100% - 32px);
   overflow: auto;
   background: var(--panel);
@@ -2272,31 +2292,54 @@ button.file-chip:hover {
   font-size: 17px;
 }
 .ldialog .kinds {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ldialog .kblurb {
+  margin: -4px 0 0;
+  min-height: 2.8em;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.ldialog .where {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin-top: -4px;
+}
+.ldialog .where .path {
+  font: 12px var(--mono);
+  color: var(--faint);
+}
+.ldialog .where .folder {
+  flex: 1;
 }
 .kopt {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  padding: 12px;
+  height: 32px;
+  padding: 0 11px;
   border: 1px solid var(--line-2);
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--panel);
-  text-align: left;
   font: inherit;
+  color: var(--ink-2);
   cursor: pointer;
+}
+.kopt svg {
+  color: var(--tone);
 }
 .kopt:hover {
   border-color: var(--tone);
 }
 .kopt[aria-checked='true'] {
   border-color: var(--tone);
-  box-shadow: 0 0 0 2px var(--tone-soft), inset 0 0 0 1px var(--tone);
-}
-.kopt .name {
+  background: var(--tone-soft);
+  color: var(--ink);
   font-weight: 600;
 }
 .ldialog .field {
@@ -2342,9 +2385,9 @@ button.file-chip:hover {
 }
 .ldialog .problem {
   min-height: 18px;
+  margin-top: -8px;
   font-size: 12px;
   color: var(--danger);
-  padding-left: 64px;
 }
 .ldialog footer {
   display: flex;
@@ -4933,4 +4976,59 @@ body.filedrag iframe {
 }
 .runfeed > .run-link {
   align-self: flex-start;
+}
+
+/* the way out of a project: home, then a menu to switch, start, report */
+.pmenu {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.pmenu .tb {
+  text-decoration: none;
+}
+.pmenu .tb + .tb {
+  min-width: 22px;
+  padding: 0 3px;
+  margin-left: -2px;
+}
+.menu a.mi {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.menu .mi .k svg {
+  display: block;
+}
+.dsnav .pmenu {
+  margin: 0 0 6px -6px;
+}
+/* the logo is a link to the repository, with nothing to say so until it is pointed at */
+.lhead .brand .mark {
+  display: inline-flex;
+  border-radius: 9px;
+}
+.lhead .brand .mark:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.lhead .brand .mark:hover svg {
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+/* feedback stays at the foot of the page: quiet text, not a banner */
+.lfoot {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 24px 22px;
+  margin-top: auto;
+  font-size: 12px;
+}
+.lfoot a {
+  color: var(--faint);
+  text-decoration: none;
+}
+.lfoot a:hover,
+.lfoot a:focus-visible {
+  color: var(--ink-2);
+  text-decoration: underline;
 }
