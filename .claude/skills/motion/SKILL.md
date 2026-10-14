@@ -47,6 +47,8 @@ On any element:
 - `data-keys="x: 0@0 120@2s ease-in-out; scale: 1@2s 1.2@3s"` — keyframe tracks on `x`, `y` (px), `scale`, `rotate` (deg) and `opacity`; the easing after a key eases the segment arriving at it; `steps(1)` makes a jump.
 - Times are `500ms`, `0.5s` or `2` (seconds), measured from the start of the scene.
 
+`data-hide` hides an element for the whole scene (in every format, the player and the render too) and `data-lock` stops it being picked or moved on the stage; they are the layers panel's eye and lock, set by hand or by the editor. Keep them.
+
 The editor lists problems it finds: an exit before the entry, text on screen under 0.8 s, an `<x-embed>` without `data-seek` (it cannot be exported).
 
 ## Pictures and files people brought in

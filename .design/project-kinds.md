@@ -64,6 +64,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
 | 导出 | 各自实现 | ✓ `Board.tsx` | ✓ `exportDeck.ts` | ✗ | ✗ | ✓ HTML | ✗ 编辑器里没有；`scripts/motion-render.mjs` 命令行渲染 | 没有共用的导出部件 |
 | 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | ✓ 播放器 | 三种各自实现，没有共用的播放部件 |
+| 图层树（[layers-tree.md](./layers-tree.md)） | `panel/LayerTree.tsx`（`LayerRow`、`ElementRows`）；隐藏/锁定写进文件，runtime 认 `data-hide`、`data-lock` | ✓ 画板、画布上的项、画板里的元素 | ✓ 当前这一页的元素 | ✗ 没有元素树，是令牌和组件的列表 | ✗ 页面是一份代码，没有可选的元素 | ✗ 用大纲（标题导航）；段落不是图层，隐藏和锁定对文档没有意义 | ✓ 播放头所在场景的元素，另标"何时入场" | 同一棵树、同一行（箭头、图标、名称、“文字”、隐藏、锁定）；幻灯片/场景自己的那一行没有开关（跳过一页是另一个开关）|
 | 元素缩放手柄 | `runtime.tsx` 的 `resize` 消息 | ✓ | ✓ | — | 待定：元素尺寸多由网格决定 | 待定：只有图片宽度值得做 | ✓ 非主尺寸里写进覆盖 | 八个手柄、吸附、W×H；看板和文档见 [motion-editing.md](./motion-editing.md) §3.7 |
 | 新建时导入（[import](./import-external-material.md)） | `packages/import`、`ImportDialog` | ✓ HTML、SVG | ✗ PPT 评估中 | — | ✗ 还不能从 CSV 新建 | ✗ 还不能从 Markdown 新建 | — | 启动页的入口，结果总是新画布 |
 | 往打开的项目里导入（[import-into-project](./import-into-project.md)） | `ImportHere`（按钮、拖放、粘贴）+ 各类型的 `ImportTarget` | ✓ 网页、SVG → 新画板；图片 → 画布上的图片 | ✓ 图片、SVG → 当前幻灯片（只拖放和粘贴，按钮仍是"插入图片"）；网页不收 | ✓ 字体 → 字体，图片、SVG → 素材 | ✓ CSV/TSV/JSON → 数据集 | ✓ Markdown → 新标签页 | ✓ 图片、SVG → 播放头所在场景，从播放头入场 | 原文件放 `uploads/`；看板数据在 `data/`、设计系统的字体和素材在它自己的目录 |
@@ -83,5 +84,6 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - motion 在编辑器里还不能新建、复制、删除、排序场景，没有时间条和关键帧，不能导出，也不能装入设计系统；剩下的分期见 [motion-editing.md](./motion-editing.md) §5。
 - `design-system`、`dashboard` 两个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
+- 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 导出各写各的，设计系统和看板没有导出。
 - 外观菜单只在启动页，进入编辑器后改主题或语言要回启动页（或由宿主、URL 传入）。

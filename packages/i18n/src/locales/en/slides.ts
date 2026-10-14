@@ -1,28 +1,4 @@
 export default {
-  /** layer roles in the layers tree (core's layerTree roles) */
-  role: {
-    Slide: 'Slide',
-    Scene: 'Scene',
-    Column: 'Column',
-    Row: 'Row',
-    Grid: 'Grid',
-    Text: 'Text',
-    Image: 'Image',
-    Vector: 'Vector',
-    Link: 'Link',
-    Group: 'Group',
-    Embed: 'Live embed',
-    Shape: 'Shape',
-    Icon: 'Icon',
-    Connector: 'Connector',
-    Table: 'Table',
-    Notes: 'Notes',
-  },
-  layers: {
-    label: 'Layers',
-    collapse: 'Collapse',
-    expand: 'Expand',
-  },
   /** how a slide leaves (data-transition) */
   transition: {
     none: 'None',
