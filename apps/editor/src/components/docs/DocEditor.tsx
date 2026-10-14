@@ -12,13 +12,37 @@ import { Markdown } from '@tiptap/markdown';
 import { docsUserMessage, quoteAt, tabFile } from '@dc/core';
 import { api } from '../../api';
 import { display, toast, useStore } from '../../store';
-import { dateLocale, saveTab, useComments, useDocs, threadsOf } from '../../docs';
+import { addThread, currentTab, dateLocale, saveTab, useComments, useDocs, threadsOf } from '../../docs';
+import type { NoteTarget } from '../../noteTarget';
 import { useTranslation } from 'react-i18next';
 import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
+
+/** "Keep as note" in a doc: a comment pinned to the selected words, else to the paragraph the cursor is in. */
+export const docNoteTarget: NoteTarget = {
+  keep: (text) => {
+    const e = docEditor.current;
+    const tab = currentTab();
+    if (!e || e.isDestroyed || !tab) throw new Error(tModule('prompt.run.keepNoTab'));
+    const { $from, from, to, empty } = e.state.selection;
+    const doc = docText(e.state.doc);
+    const a = empty ? ($from.depth >= 1 ? $from.start(1) : from) : from;
+    const b = empty ? ($from.depth >= 1 ? $from.end(1) : to) : to;
+    let at = { from: doc.offsetAt(a), to: doc.offsetAt(b) };
+    if (at.to <= at.from) {
+      // an empty line: pin to the first paragraph with words
+      const first = doc.text.search(/\S/);
+      if (first < 0) throw new Error(tModule('prompt.run.keepNoTab'));
+      at = { from: first, to: first + (doc.text.slice(first).split('\n')[0].length || 1) };
+    }
+    // a long block is pinned by its opening words
+    addThread(tab, quoteAt(doc.text, at.from, Math.min(at.to, at.from + 120)), text.trim());
+    return tModule('prompt.run.keptDoc');
+  },
+};
 
 type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'table' | 'hr' | 'date' | 'image';
 

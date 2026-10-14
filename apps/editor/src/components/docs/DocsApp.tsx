@@ -26,7 +26,8 @@ import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
-import { DocEditor, docEditor, pickImage } from './DocEditor';
+import { DocEditor, docEditor, docNoteTarget, pickImage } from './DocEditor';
+import { registerNoteTarget } from '../../noteTarget';
 import { CommentsRail } from './Comments';
 import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
@@ -307,6 +308,7 @@ function Title() {
 
 export function DocsApp() {
   const { t } = useTranslation();
+  useEffect(() => registerNoteTarget(docNoteTarget), []);
   const d = useDocIndex();
   const tab = useCurrentTab();
   const connected = useStore((s) => s.connected);

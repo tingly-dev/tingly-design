@@ -16,6 +16,8 @@ import { Launcher } from './components/Launcher';
 import { serverDefault } from './theme';
 import { announceReady } from './host';
 import { serverLanguage, t } from './i18n';
+import { registerNoteTarget } from './noteTarget';
+import { canvasNoteTarget } from './actions';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -37,6 +39,8 @@ export function App() {
   const tool = useStore((s) => s.tool);
   const panelOpen = useStore((s) => s.panelOpen);
   const kind = useStore((s) => s.kind);
+
+  useEffect(() => (kind === 'design' ? registerNoteTarget(canvasNoteTarget) : undefined), [kind]);
 
   useEffect(() => {
     api.health().then(

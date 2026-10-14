@@ -4,6 +4,7 @@ import {
   IconAlignJustified,
   IconAlignLeft,
   IconAlignRight,
+  IconNotes,
   IconArrowBackUp,
   IconArrowDown,
   IconArrowForwardUp,
@@ -173,6 +174,7 @@ export const Spinner = ({ size = 14 }: { size?: number }) => (
 export const Done = tabler(IconCircleCheck, 16);
 export const Failed = tabler(IconAlertCircle, 16);
 export const UndoAll = tabler(IconArrowBackUpDouble, 14);
+export const KeepNote = tabler(IconNotes, 14);
 export const Reuse = tabler(IconCornerLeftUp, 14);
 
 // layer roles
