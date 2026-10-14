@@ -32,8 +32,13 @@
 
 ### 3. 配置
 
-- 新增 `DC_IMAGE_BASE_URL`、`DC_IMAGE_API_KEY`、`DC_IMAGE_MODEL`（默认 `gpt-image-1`，有待确认）。嵌进 Tingly Box 时，宿主把地址设成自己的 `/tingly/imagegen/v1`。不从 `ANTHROPIC_BASE_URL` 推导，因为生成图片在 TB 里是另一个场景、另一条路径。
-- `/api/health` 增加 `imageGen: boolean`。没配置时，入口和工具都不出现，不显示一个点了才报错的按钮。
+AI 设置对话框已经有了（`.design/ai-settings.md`）：一个连接（地址 + 密钥），快速 AI 和 Claude Code 各一个模型名，每一项按"环境变量 > 已保存 > 默认"解析（`packages/core/src/aiConfig.ts` 的 `resolveAi`）。那份说明 §6 已经把图片生成定为同一个对话框里的第三个用途。这里只补它和前两个用途不一样的地方：
+
+- **地址不能直接沿用。** 连接地址是 Anthropic 兼容的入口（Tingly Box 是 `/tingly/anthropic`），图片走的是 OpenAI 兼容的 `/v1/images/*`，路径不同，协议也不同。
+- **倾向的做法**：图片这一块有自己的"地址"一栏，默认跟着连接走。选 Tingly Box 时自动填 `http://localhost:12580/tingly/imagegen/v1`，密钥沿用连接的。选 Anthropic 时没有可用的图片接口，这一栏留空，图片生成不出现。选"其他地址"时，人自己填一个 OpenAI 兼容的地址，必要时再填一把单独的密钥。
+- 模型名一栏：Tingly Box 默认 `tingly`，由 TB 的规则决定实际用哪个模型；其他情况由人自己填，不预设。
+- 环境变量照旧最先：新增 `DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`，以及可选的 `DC_IMAGE_API_KEY`（不设就用连接的密钥）。宿主设了的值在界面上只读。
+- `/api/health` 增加 `imageGen: boolean`。没配好时，入口和工具都不出现，不显示一个点了才报错的按钮。
 
 ### 4. 改图
 
@@ -47,5 +52,5 @@
 
 1. 入口：A（倾向）、B，还是 C？
 2. 存放：`uploads/`（倾向）还是 `generated/`？
-3. 配置名和默认模型是否就按上面写的？
+3. 图片这一栏放进 AI 设置对话框、地址默认跟着连接走（Tingly Box 自动填 imagegen 地址，Anthropic 不提供），这样可以吗？
 4. 改图放第二步，这次先不做，可以吗？
