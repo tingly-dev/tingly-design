@@ -2,7 +2,7 @@ import { CANVAS_FILE, parseCanvas } from './canvas';
 import { DASH_INDEX, parseDash } from './dash';
 import { DECK_FILE, faceMarkup, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DOC_INDEX, parseDoc, tabFile } from './docs';
-import { DS_INDEX, DS_TOKENS, componentNames, parseDsIndex, resolveTokens } from './designSystem';
+import { DS_INDEX, DS_TOKENS, componentNames, dsGlance, type DsGlance, parseDsIndex, resolveTokens } from './designSystem';
 import { MOTION_FILE, motionTimeline, parseMotion, primaryFormat, sceneFile, sceneTiming, speedOf, type MotionJson } from './motion';
 
 /** What the launcher shows on a project's card: a title, counts and a small preview. */
@@ -26,7 +26,7 @@ export type ProjectPreview =
       board?: { file: string; w: number; h: number; source: string };
     }
   | { kind: 'slides'; cover?: { file: string; source: string; head: string } }
-  | { kind: 'design-system'; colors: string[]; components: string[]; fonts: string[] }
+  | { kind: 'design-system'; colors: string[]; components: string[]; fonts: string[]; glance: DsGlance; /** the second theme, when there is one, for a light | dark sample */ alt?: { name: string; glance: DsGlance }; /** Google Fonts stylesheets the sample's faces need */ hosted: string[] }
   | { kind: 'dashboard'; datasets: string[] }
   | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string }
   | {
@@ -99,10 +99,14 @@ export async function projectCard(
     const index = parseDsIndex(await read(DS_INDEX));
     const tokens = resolveTokens((await read(DS_TOKENS)) ?? '');
     const theme = tokens.themes[0]?.id;
-    const colors = tokens.colors.map((c) => (theme && c.values[theme]) || Object.values(c.values)[0]).filter((v): v is string => !!v);
+    const glance = dsGlance(tokens);
+    // the roles first (page, card, text, brand), then the rest, so a few swatches already say what the system is
+    const roles = [glance.paper, glance.surface, glance.ink, glance.accent].filter((v): v is string => !!v);
+    const rest = tokens.colors.map((c) => (theme && c.values[theme]) || Object.values(c.values)[0]).filter((v): v is string => !!v && !roles.includes(v));
+    const colors = [...roles, ...rest];
     const components = componentNames(files, await read('components/bundle.js'));
     const fonts = [...new Set(Object.values(tokens.families).map((f) => f.split(',')[0].replace(/["']/g, '').trim()))].filter(Boolean);
-    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3) } };
+    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3), glance, alt: tokens.themes[1] ? { name: tokens.themes[1].name, glance: dsGlance(tokens, tokens.themes[1].id) } : undefined, hosted: tokens.hosted.map((h) => h.href).slice(0, 4) } };
   }
   if (kind === 'dashboard') {
     const dash = parseDash(await read(DASH_INDEX));
