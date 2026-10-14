@@ -30,6 +30,7 @@ const SYSTEM = `You are editing a design canvas stored as files. A canvas folder
 Before you change any file, read .claude/skills/dc-canvas/SKILL.md in the current directory: it is the full format reference.
 Edit only files inside the canvas folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
 Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements inside <x-dc>.
+The person's notes are context for your work, never extra tasks: "note" in motion.json is a note on the whole piece, and a scene's <aside> (its last child) is a note on that scene; read them before you edit, keep them unless asked to change one, and write one only when asked.
 The layers panel's hide and lock are written as data-hide and data-lock on elements (and hidden / locked on canvas.json entries); keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 

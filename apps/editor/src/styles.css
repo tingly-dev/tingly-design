@@ -5574,6 +5574,36 @@ body.filedrag iframe {
   text-decoration: underline;
 }
 
+/* notes under the timeline: the whole piece, and the scene on the stage (an <aside> in its file) */
+.mnotes {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.mnotes label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mnotes .snotes {
+  height: 56px;
+}
+.mnotedot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
 /* the size step of the new-motion dialog: shapes drawn to scale, the platforms that take the picked one under them */
 .sizes {
   display: flex;
