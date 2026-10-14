@@ -5,7 +5,7 @@ import { api } from '../api';
 import { at } from '../base';
 import { useStore } from '../store';
 import { ISSUES_URL, REPO_URL } from '../links';
-import { Bug, Caret, External, Home, Plus, Star } from './icons';
+import { Bug, Caret, External, Home, Plus, Sliders, Star } from './icons';
 import { Menu, MenuItem } from './Menu';
 import { KindIcon, NewDialog, open, readRecent } from './Launcher';
 
@@ -74,6 +74,15 @@ export function ProjectMenu() {
             onSelect={() => {
               setPos(null);
               setCreating(true);
+            }}
+          />
+          <hr />
+          <MenuItem
+            label={t('aiSettings.menu')}
+            icon={<Sliders />}
+            onSelect={() => {
+              setPos(null);
+              useStore.setState({ aiSettingsOpen: true });
             }}
           />
           <hr />

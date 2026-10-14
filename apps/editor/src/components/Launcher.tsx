@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconMovie, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
-import { toast } from '../store';
+import { toast, useStore } from '../store';
+import { Sliders } from './icons';
 import { Appearance, LanguageMenu } from './Appearance';
 import { ISSUES_URL, REPO_URL } from '../links';
 import { goTo } from '../host';
@@ -578,6 +579,9 @@ export function Launcher() {
             <option value="name">{t('launcher.sort.name')}</option>
           </select>
           <LanguageMenu className="btn lbtn" />
+          <button className="btn lbtn" aria-label={t('aiSettings.menu')} title={t('aiSettings.menu')} onClick={() => useStore.setState({ aiSettingsOpen: true })}>
+            <Sliders />
+          </button>
           <Appearance className="btn lbtn" />
           <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
             <IconPlus size={15} stroke={2} aria-hidden="true" /> {t('launcher.new.title')}

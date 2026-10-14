@@ -3,6 +3,7 @@ import appearance from './appearance';
 import errors from './errors';
 import launcher from './launcher';
 import prompt from './prompt';
+import aiSettings from './aiSettings';
 import importer from './importer';
 import app from './app';
 import canvas from './canvas';
@@ -23,6 +24,7 @@ export default {
   errors,
   launcher,
   prompt,
+  aiSettings,
   importer,
   app,
   canvas,

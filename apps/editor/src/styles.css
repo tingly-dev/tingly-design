@@ -5573,3 +5573,85 @@ body.filedrag iframe {
   color: var(--ink-2);
   text-decoration: underline;
 }
+
+/* ------------------------------------------------------------- AI settings */
+
+.aiset {
+  width: min(560px, 100%);
+}
+.aiset section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.aiset h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.aiset .note {
+  margin: -4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.aiset .kopt .tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.aiset .kopt {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft, var(--hover));
+}
+.aiset .field {
+  grid-template-columns: 64px 1fr auto;
+}
+.aiset .field .lock {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.aiset .addr {
+  font: 12px var(--mono);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.aiset .mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.aiset .status {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.aiset .status.ok {
+  color: var(--ok, var(--ink-2));
+}
+.aiset .status.bad {
+  color: var(--danger, #c0392b);
+}
+.aiset .status a {
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.aiset .testrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.aiset .seg {
+  align-self: flex-start;
+}
+.aiset footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.prompt .head .setup {
+  color: var(--accent);
+  white-space: nowrap;
+}
