@@ -21,12 +21,15 @@ import {
   IconComponents,
   IconDiamond,
   IconDownload,
+  IconEye,
+  IconEyeOff,
   IconForms,
   IconFileImport,
   IconFileText,
   IconFileTypePdf,
   IconFrame,
   IconHandStop,
+  IconHistory,
   IconLayoutAlignBottom,
   IconLayoutAlignCenter,
   IconLayoutAlignLeft,
@@ -38,6 +41,8 @@ import {
   IconLayoutSidebarRight,
   IconLine,
   IconLink,
+  IconLock,
+  IconLockOpen,
   IconMinus,
   IconNote,
   IconOval,
@@ -103,7 +108,13 @@ export const PlayFilled = tabler(IconPlayerPlayFilled, 14);
 export const PauseFilled = tabler(IconPlayerPauseFilled, 14);
 export const Panel = tabler(IconLayoutSidebarRight);
 export const Chevron = ({ open = true }: { open?: boolean }) => (open ? <IconChevronDown size={12} stroke={2} aria-hidden="true" /> : <IconChevronRight size={12} stroke={2} aria-hidden="true" />);
+// layer switches (hide, lock)
+export const Eye = tabler(IconEye, 14);
+export const EyeOff = tabler(IconEyeOff, 14);
+export const Lock = tabler(IconLock, 14);
+export const Unlock = tabler(IconLockOpen, 14);
 export const Caret = () => <IconChevronDown size={12} stroke={2} aria-hidden="true" />;
+export const History = tabler(IconHistory, 14);
 export const Expand = tabler(IconArrowsMaximize, 14);
 export const Download = tabler(IconDownload, 14);
 export const Plus = tabler(IconPlus, 14);

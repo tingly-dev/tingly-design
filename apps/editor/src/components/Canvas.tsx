@@ -204,12 +204,12 @@ export function Canvas() {
     <div ref={ref} className={cls} onPointerDown={onPointerDown} aria-label={t('canvas.surface.label')}>
       <div className="layer" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${z})` }}>
         {canvas.order
-          .filter((f) => canvas.boards[f] && onPage(canvas, canvas.boards[f].page, page))
+          .filter((f) => canvas.boards[f] && !canvas.boards[f].hidden && onPage(canvas, canvas.boards[f].page, page))
           .map((f) => (
             <BoardView key={f} file={f} entry={canvas.boards[f]} />
           ))}
         {Object.entries(canvas.notes)
-          .filter(([, n]) => onPage(canvas, n.page, page))
+          .filter(([, n]) => !n.hidden && onPage(canvas, n.page, page))
           .map(([id, n]) => (
             <CanvasItem key={id} id={id} note={n} />
           ))}

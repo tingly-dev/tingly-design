@@ -6,6 +6,7 @@ import { keepAttachments, useAttachments } from '../attachments';
 import { toast, useStore } from '../store';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
+import { BarPill, BarTools, ContextChip, HistoryList } from './AgentBar';
 import { Send, Stop } from './icons';
 
 /**
@@ -31,6 +32,8 @@ export function AskClaude({
   const delegates = useStore((s) => s.delegates);
   const health = useStore((s) => s.health);
   const attach = useAttachments();
+  const collapsed = useStore((s) => s.barCollapsed);
+  const historyOpen = useStore((s) => s.historyOpen);
   const box = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(box, text);
   const active = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
@@ -70,6 +73,12 @@ export function AskClaude({
     setText(p);
     requestAnimationFrame(() => box.current?.focus());
   };
+  if (collapsed)
+    return (
+      <div className="dsask collapsed" role="region" aria-label={t('prompt.askClaude.label')}>
+        <BarPill />
+      </div>
+    );
   return (
     <div
       className={`dsask${attach.over ? ' dropping' : ''}`}
@@ -79,7 +88,11 @@ export function AskClaude({
       onDragLeave={attach.handlers.onDragLeave}
       onDrop={attach.handlers.onDrop}
     >
-      <RunFeed onReuse={reuse} onOpen={onOpen} />
+      {historyOpen ? <HistoryList onReuse={reuse} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />}
+      <div className="head">
+        <ContextChip target="claude" />
+        <BarTools />
+      </div>
       <AttachTray items={attach.items} onRemove={attach.remove} />
       <AttachButton onFiles={(f) => void attach.add(f)} />
       <textarea

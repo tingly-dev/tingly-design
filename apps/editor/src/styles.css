@@ -686,6 +686,55 @@ select:not([multiple]) {
 .lr.rep .rn {
   font-style: italic;
 }
+.board.locked .frame {
+  pointer-events: none;
+}
+/* hide and lock: shown while on, or while the row is hovered, focused or selected */
+.lr .sw {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  padding: 0;
+  color: var(--faint);
+  cursor: pointer;
+  flex: none;
+  visibility: hidden;
+}
+.lr .sws {
+  margin-left: auto;
+  display: inline-flex;
+  flex: none;
+}
+.lr .rc + .sws,
+.lr .rt + .sws {
+  margin-left: 0;
+}
+.lr:hover .sw,
+.lr:focus-within .sw,
+.lr[aria-selected='true'] .sw,
+.lr .sw[aria-pressed='true'] {
+  visibility: visible;
+}
+.lr .sw:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.lr .sw[aria-pressed='true'] {
+  color: var(--ink-2);
+}
+.lr .sw.inh {
+  opacity: 0.55;
+}
+.lr.off .rn,
+.lr.off .rl,
+.lr.off .ri {
+  opacity: 0.45;
+}
 
 .pbody {
   overflow: auto;
@@ -1272,8 +1321,168 @@ textarea.code:focus {
   width: 100%;
   padding: 0 2px;
 }
-.prompt.collapsed {
+.prompt.collapsed,
+.dsask.collapsed {
   width: auto;
+  padding: 0;
+  display: block;
+}
+.bar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bar-pill:hover {
+  color: var(--ink);
+}
+.bar-pill.running {
+  color: var(--actor-claude);
+}
+.bar-pill.done svg {
+  color: var(--ok, var(--accent));
+}
+.bar-pill.failed svg {
+  color: var(--bad, #d14343);
+}
+/* the head row every bar shares: where the request goes, whether it continues a conversation, history and fold */
+.dsask .head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.dsask .head .bar-tools {
+  margin-left: auto;
+}
+.bar-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.bar-tools .ib.on {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.prompt .head .target {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 220px;
+}
+.ctx-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 190px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-chip.action {
+  cursor: pointer;
+}
+.ctx-chip.action:hover {
+  color: var(--ink);
+}
+.ctx-chip.continues {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+/* the run card and the history list float above the bar: opening or growing them never moves the stage */
+.prompt > .runfeed,
+.dsask > .runfeed,
+.prompt > .run-history,
+.dsask > .run-history {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: auto;
+  margin: 0;
+  box-sizing: border-box;
+  max-height: min(60vh, 380px);
+  overflow: auto;
+  background: var(--panel);
+  box-shadow: var(--lift-shadow);
+  border-radius: 12px;
+}
+.run-history {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.run-history header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.run-history ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.hist {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 4px;
+  border-top: 1px solid var(--line);
+}
+.hist:first-child {
+  border-top: 0;
+}
+.hist-state {
+  flex: none;
+  display: inline-flex;
+  padding-top: 1px;
+  color: var(--muted);
+}
+.hist.done .hist-state {
+  color: var(--ok, var(--accent));
+}
+.hist.error .hist-state {
+  color: var(--bad, #d14343);
+}
+.hist-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hist-prompt {
+  font-size: 13px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.hist-meta {
+  font-size: 11.5px;
+  color: var(--muted);
 }
 /* the run feed above the request: what was asked, what is happening, what came of it (RunFeed.tsx) */
 .runfeed {
@@ -1289,11 +1498,6 @@ textarea.code:focus {
 }
 .runfeed.fast {
   --run-ink: var(--actor-fast-edit);
-}
-.dsask .runfeed {
-  width: 100%;
-  margin: 0;
-  box-sizing: border-box;
 }
 .run-ask {
   align-self: flex-end;
@@ -4627,8 +4831,150 @@ input.dashtitle {
   font-variant-numeric: tabular-nums;
 }
 .mlanes {
-  position: relative;
+  display: flex;
+  gap: 12px;
   margin-top: 4px;
+}
+/* the axis: ruler, clips and playhead share it, 0 s at its left edge */
+.maxis {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+/* before 0 s: the cover's own slot, always there so adding one moves nothing */
+.mcoverslot {
+  flex: none;
+  width: 84px;
+  padding-right: 12px;
+  border-right: 1px dashed var(--line-2);
+}
+.mcoverhead {
+  height: 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 20px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.mcovertrack {
+  position: relative;
+  height: 40px;
+  margin-top: 8px;
+}
+.mcoverclip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+.mcoverclip .mname {
+  font-size: 11px;
+  font-weight: 500;
+}
+.mcoverclip .mlen {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--faint);
+}
+.mcoverclip:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.mcoverclip.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.mcoverclip.add {
+  align-items: center;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+.mcoverx {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+.mcovertrack:hover .mcoverx,
+.mcoverx:focus-visible {
+  opacity: 1;
+}
+.mcoverx:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+/* a clip's right edge: drag to set the scene's length */
+.mgrip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  margin-left: -6px;
+  z-index: 1;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.mgrip::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+.mgrip:hover::after,
+.mgrip:focus-visible::after {
+  opacity: 0.8;
+}
+.mdur {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.mdur .input {
+  width: 52px;
+  height: 24px;
+  padding: 0 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .mruler {
   position: relative;
@@ -4882,16 +5228,17 @@ input.dashtitle {
   box-shadow: var(--lift-shadow), 0 0 0 1px var(--line);
   background: #fff;
 }
+/* a fixed slot under the timeline: the bar (and the card above it) float over the stage instead of pushing it */
 .mprompt {
   flex: none;
   position: relative;
+  height: 96px;
+}
+.mprompt.collapsed {
+  height: 36px;
 }
 .mprompt .prompt {
-  position: relative;
-  left: auto;
-  bottom: auto;
-  transform: none;
-  margin: 0 auto;
+  bottom: 0;
 }
 .lr.away {
   opacity: 0.5;
