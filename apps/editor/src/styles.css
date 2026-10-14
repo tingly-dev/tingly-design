@@ -2465,6 +2465,9 @@ button.file-chip:hover {
   flex-direction: column;
   min-height: 0;
 }
+.slides .stripbar {
+  padding: 8px 6px 0 17px;
+}
 .slides .slist {
   flex: 1;
   overflow: auto;
@@ -5000,7 +5003,10 @@ body.filedrag iframe {
   display: block;
 }
 .dsnav .pmenu {
-  margin: 0 0 6px -6px;
+  margin: 0 0 6px 7px;
+}
+.dashbar .pmenu {
+  margin-left: 7px;
 }
 /* the logo is a link to the repository, with nothing to say so until it is pointed at */
 .lhead .brand .mark {

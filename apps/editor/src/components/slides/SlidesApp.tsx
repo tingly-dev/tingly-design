@@ -147,6 +147,9 @@ function Strip() {
   let n = 0;
   return (
     <aside className="strip" aria-label={t('slides.strip.label')}>
+      <div className="stripbar">
+        <ProjectMenu />
+      </div>
       <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
         {groups.map((g, gi) => (
           <div key={g.key || gi} className="sgroup">
@@ -189,8 +192,6 @@ function TopLeft() {
   };
   return (
     <div className="bar left" role="toolbar" aria-label={t('slides.toolbar.insert')}>
-      <ProjectMenu />
-      <span className="sep" />
       {renaming ? (
         <input
           className="dtitle"
