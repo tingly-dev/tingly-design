@@ -53,6 +53,8 @@ export interface MotionJson {
   speed?: number;
   /** The still that stands for the video: a frame of it, or a scene file outside `order` drawn with no timing. */
   cover?: MotionCover;
+  /** A note on the whole piece: what it is for, who sees it, the tone. Context for people and for the agent; never drawn or rendered. */
+  note?: string;
   /** Put the cover in the video's first frame too, so players and chat apps that thumbnail frame 0 show it. Default true. */
   coverFirstFrame?: boolean;
 }
@@ -157,6 +159,7 @@ export function parseMotion(text: string | undefined): MotionJson {
     background: typeof raw.background === 'string' ? raw.background : undefined,
     speed: raw.speed == null || speedOf(raw.speed) === 1 ? undefined : speedOf(raw.speed),
     cover: parseCover(raw.cover),
+    note: typeof raw.note === 'string' && raw.note.trim() ? raw.note : undefined,
     coverFirstFrame: raw.coverFirstFrame === false ? false : undefined,
   };
 }

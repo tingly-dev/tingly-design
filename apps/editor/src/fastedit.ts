@@ -64,6 +64,7 @@ function motionOutline(file: string): string {
   const fmts = Object.entries(m.formats).map(([n, f], i) => `${n} ${f.size.join('×')}${i === 0 ? ' (primary: style is its look)' : ''}`);
   const lines = [`"${m.title}", a motion piece. Formats: ${fmts.join(', ')}.`];
   if (view) lines.push(`The person is looking at the ${view.format} format${view.scene ? (view.landed ? `, at the start of scene ${view.scene}, with every element drawn where it lands` : `, ${(view.at / 1000).toFixed(2)}s into scene ${view.scene}`) : ''}.`);
+  if (m.note) lines.push(`Note on the whole piece (the person's words, context only): ${JSON.stringify(m.note.slice(0, 600))}`);
   lines.push('Scenes in order:');
   m.order.forEach((id, i) => {
     const t = sceneTiming(display(s, sceneFile(id)) ?? '');

@@ -65,6 +65,7 @@ export const FAST_EDIT_MOTION = `THIS IS A SCENE OF A MOTION PIECE (AN ANIMATED 
   data-keys="x: 0@0 120@2s ease-in-out; scale: 1@2s 1.2@3s": keyframes for x y (px offsets) scale rotate (deg) opacity.
 - Several formats (sizes) share one scene. data-<format>="declarations" (for example data-tall="font-size:120px") holds the declarations that differ in that format, merged over style; data-only="wide" keeps an element to the formats listed. The outline says which format the person is looking at: when they ask for a change "in the vertical one", write it into that format's attribute, not style.
 - "Later", "slower", "on the beat", "stagger these" are attribute patches: $('#dc7').attr('data-in', 'rise 500ms @0.7s ease-out').
+- Notes: the scene's <aside> is the person's note on it, and the piece's note is in the outline. They say what the scene or piece is for and the tone. Read them as context for the request, not as extra tasks; keep them as they are unless asked to change a note.
 - After your reply the scene is checked against the subset and the timing rules; anything outside them is reported back to you to fix.`;
 
 export interface FastEditContext {

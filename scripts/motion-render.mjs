@@ -45,6 +45,9 @@ if (!project) {
 const projectsDir = process.env.DC_PROJECTS ? resolve(process.env.DC_PROJECTS) : join(REPO, 'projects');
 const dir = existsSync(project) ? resolve(project) : join(projectsDir, project);
 const motion = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
+// notes are for the people making the piece: they never go into a render or a shared player
+delete motion.note;
+const NOTES = /<aside\b[^>]*>[\s\S]*?<\/aside>/gi;
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
 /** The page is rendered from a string, so files the scene points at (uploads/…) go in as data: URLs. */
 function inlineFiles(html) {
@@ -66,7 +69,7 @@ function inlineFiles(html) {
     });
 }
 const scenes = Object.fromEntries(
-  (motion.order ?? []).filter((id) => existsSync(join(dir, 'scenes', `${id}.html`))).map((id) => [id, inlineFiles(readFileSync(join(dir, 'scenes', `${id}.html`), 'utf8'))]),
+  (motion.order ?? []).filter((id) => existsSync(join(dir, 'scenes', `${id}.html`))).map((id) => [id, inlineFiles(readFileSync(join(dir, 'scenes', `${id}.html`), 'utf8').replace(NOTES, ''))]),
 );
 function seconds(v) {
   const m = /^(\d+(?:\.\d+)?|\.\d+)(ms|s)?$/.exec(String(v ?? '').trim());
@@ -75,7 +78,7 @@ function seconds(v) {
 const coverOpt = opt('poster', '') ? `${opt('poster', '')}s` : motion.cover;
 const coverAt = seconds(coverOpt);
 const coverScene = coverAt == null && typeof coverOpt === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(coverOpt) && existsSync(join(dir, 'scenes', `${coverOpt}.html`)) ? coverOpt : null;
-const coverHtml = coverScene ? inlineFiles(readFileSync(join(dir, 'scenes', `${coverScene}.html`), 'utf8')) : null;
+const coverHtml = coverScene ? inlineFiles(readFileSync(join(dir, 'scenes', `${coverScene}.html`), 'utf8').replace(NOTES, '')) : null;
 if (coverOpt && coverAt == null && !coverScene) console.error(`cover "${coverOpt}" is neither a time nor a scene file; no cover`);
 const hasCover = coverAt != null || !!coverScene;
 const runtimePath = join(REPO, 'packages/sandbox/dist/motion.js');

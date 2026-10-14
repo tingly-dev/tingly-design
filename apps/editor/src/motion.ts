@@ -203,3 +203,15 @@ export const motionImport: ImportTarget = {
     return n === 1 ? t('motion.import.placedOne', { name: files[0].path.split('/').pop() }) : t('motion.import.placedMany', { count: n });
   },
 };
+
+/** The note on the whole piece (motion.json `note`); empty removes it. */
+export function setPieceNote(text: string): void {
+  const body = text.slice(0, 4000);
+  editMotion(
+    (raw) => {
+      if (body.trim()) raw.note = body;
+      else delete raw.note;
+    },
+    t('motion.journal.pieceNote'),
+  );
+}

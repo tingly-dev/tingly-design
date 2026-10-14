@@ -15,6 +15,7 @@ import {
   newCoverScene,
   parseCover,
   parseMotion,
+  checkScene,
   parseTime,
   planScene,
   sceneBaseCss,
@@ -240,5 +241,18 @@ describe('motion: edits in a format', () => {
   it('shows the merged style', () => {
     expect(styleInFormat({ style: 'font-size:96px;color:#fff', 'data-tall': 'font-size:120px' }, 'tall')).toBe('color:#fff;font-size:120px');
     expect(styleInFormat({ style: 'font-size:96px' }, null)).toBe('font-size:96px');
+  });
+});
+
+describe('notes', () => {
+  it('keeps a note on the piece and drops an empty one', () => {
+    expect(parseMotion('{"note":"For the launch, upbeat."}').note).toBe('For the launch, upbeat.');
+    expect(parseMotion('{"note":"  "}').note).toBeUndefined();
+    expect(parseMotion('{"note":3}').note).toBeUndefined();
+  });
+
+  it('accepts a scene note (an aside) without a finding', () => {
+    const doc = parseDc('<section id="a" data-duration="2s"><h1 data-in="fade">Hi</h1><aside>Open on the logo.</aside></section>');
+    expect(checkScene(doc, 'a').filter((i) => i.level === 'error')).toEqual([]);
   });
 });

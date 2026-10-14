@@ -1,5 +1,5 @@
 """End-to-end checks for motion pieces: the player, formats, the cover, editing on the stage
-(selecting at a time, retyping, resizing, per-format overrides, sizes), a new piece.
+(selecting at a time, retyping, resizing, per-format overrides, sizes), a new piece, notes.
 Run with `pnpm dev` up: python3 e2e/motion.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
 import os, re, asyncio, subprocess
 from playwright.async_api import async_playwright, expect
@@ -211,6 +211,26 @@ async def main():
         await expect(pg.frame_locator('.medit iframe').locator('section#title h1')).to_have_text('zz-motion')
         check('a new motion piece starts with one titled scene',
               os.path.exists(os.path.join(REPO, 'projects/zz-motion/motion.json')) and os.path.exists(os.path.join(REPO, 'projects/zz-motion/scenes/title.html')))
+
+        # --- notes: on the piece and on a scene ---------------------------------------------------------
+        await pg.goto(BASE + '/?p=design-motion')
+        await expect(pg.locator('.mtime')).to_contain_text('/ 36.')
+        await pg.locator('.mscene').nth(1).click()
+        await pg.locator('[data-notes-toggle]').click()
+        await pg.locator('.mnotes textarea').first.fill('For the launch page. Upbeat, no voice-over.')
+        await pg.locator('.mnotes textarea').nth(1).fill('Open on the logo, hold it a beat.')
+        await pg.locator('.mnotes textarea').nth(1).blur()
+        await asyncio.sleep(1.2)
+        check('a note on the piece is saved in motion.json', 'For the launch page' in read('motion.json'))
+        sid = await pg.locator('.mnotes label span').nth(1).inner_text()
+        scene_id = sid.replace('场景', '').strip()
+        check('a note on a scene is the scene\'s last child, an aside', re.search(r'<aside>Open on the logo[^<]*</aside>\s*</section>', read(f'scenes/{scene_id}.html')) is not None)
+        check('the scene\'s clip carries a dot', await pg.locator('.mscene.on .mnotedot').count() == 1)
+        await pg.screenshot(path=OUT + 'motion-notes.png')
+        await pg.locator('.mnotes textarea').nth(1).fill('')
+        await pg.locator('.mnotes textarea').nth(1).blur()
+        await asyncio.sleep(1.0)
+        check('emptying a note removes it', '<aside' not in read(f'scenes/{scene_id}.html'))
 
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
