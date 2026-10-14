@@ -60,6 +60,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 界面语言（[i18n.md](./i18n.md)） | `@dc/i18n`（每个区域一份词条）、编辑器 `i18n.ts`、外观菜单、服务端 `x-dc-lang` | ✓ `canvas`、`panel` | ✓ `slides` | ✓ `ds` | ✓ `dash` | ✓ `docs` | ✓ `motion` | 共用部件的文字在 `common`、`prompt`、`app`、`importer`；新建时的占位文案在 `starter`，按新建者的语言写进文件；新类型要加自己的区域文件，测试会查出漏掉的汉字和缺的键 |
 | 编辑器主题（[theming](../docs/zh/theming.md)） | `theme.ts`、CSS 变量 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只改编辑器外壳，**不改**作品本身的颜色；外观菜单只在启动页 |
 | 宿主消息（[embedding](../docs/zh/embedding.md)） | `host.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `location` 只带 `?p=`，不分类型 |
+| 离开项目：回首页、切换、新建、反馈（[launcher.md](./launcher.md) §4） | `ProjectMenu`（各类型自己的栏里放一份） | ✓ 左浮栏 | ✓ 缩略图栏顶部 | ✓ 侧栏顶部 | ✓ 顶栏 | ✓ 顶栏 | ✓ 顶栏 | 没有共用顶栏，所以组件共用、位置各自；新类型要自己放进去 |
 | 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
 | 导出 | 各自实现 | ✓ `Board.tsx` | ✓ `exportDeck.ts` | ✗ | ✗ | ✓ HTML | ✗ 编辑器里没有；`scripts/motion-render.mjs` 命令行渲染 | 没有共用的导出部件 |
@@ -86,4 +87,4 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 导出各写各的，设计系统和看板没有导出。
-- 外观菜单只在启动页，进入编辑器后改主题或语言要回启动页（或由宿主、URL 传入）。
+- 外观菜单和语言按钮只在启动页，进入编辑器后改主题或语言要回启动页（或由宿主、URL 传入）。

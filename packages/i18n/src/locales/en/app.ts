@@ -90,7 +90,6 @@ export default {
     label: 'Pages',
     nameLabel: 'Page name',
     add: 'New page',
-    allCanvases: 'All canvases…',
     button: '{{name}}, pages',
   },
   importTarget: 'canvas',

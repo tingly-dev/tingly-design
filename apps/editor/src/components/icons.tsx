@@ -76,6 +76,11 @@ import {
   IconCircleCheck,
   IconArrowBackUpDouble,
   IconCornerLeftUp,
+  IconHome,
+  IconStar,
+  IconBug,
+  IconLanguage,
+  IconExternalLink,
   type IconProps,
 } from '@tabler/icons-react';
 
@@ -115,6 +120,11 @@ export const Download = tabler(IconDownload, 14);
 export const Plus = tabler(IconPlus, 14);
 export const Minus = tabler(IconMinus, 14);
 export const Close = tabler(IconX, 14);
+export const Home = tabler(IconHome);
+export const Star = tabler(IconStar, 14);
+export const Bug = tabler(IconBug, 14);
+export const Language = tabler(IconLanguage, 15);
+export const External = tabler(IconExternalLink, 12);
 export const Check = tabler(IconCheck, 14);
 export const Trash = tabler(IconTrash, 14);
 export const Undo = tabler(IconArrowBackUp);

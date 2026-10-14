@@ -89,7 +89,6 @@ export default {
     label: '页面',
     nameLabel: '页面名称',
     add: '新建页面',
-    allCanvases: '所有画布…',
     button: '{{name}}，页面',
   },
   importTarget: '画布',
