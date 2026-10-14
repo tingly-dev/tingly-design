@@ -46,7 +46,8 @@ const copy = (from, to, filter) => cpSync(join(root, from), join(out, to), { rec
 copy('apps/editor/dist', 'editor');
 copy('packages/sandbox/dist', 'sandbox');
 copy('projects', 'samples', (src) => !/[/\\]\.(journal\.jsonl|runs\.json)$/.test(src) && !/[/\\]renders([/\\]|$)/.test(src));
-copy('.claude/skills', '.claude/skills');
+// issue-resolve is a maintainer workflow, not a format reference a host's Claude Code needs
+copy('.claude/skills', '.claude/skills', (src) => !/[/\\]issue-resolve([/\\]|$)/.test(src));
 copy('scripts/dash-query.mjs', 'scripts/dash-query.mjs');
 
 writeFileSync(

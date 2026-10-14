@@ -32,6 +32,12 @@
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |
 | [i18n.md](./i18n.md) | 界面语言：词条放哪、用什么库、语言从哪来，服务端报错、新建文案、模型回复和沙箱各用哪种语言 | 已实施（英文、中文）；§6 是没做的 |
 
+## 工程协作
+
+| 文档 | 内容 | 状态 / 阅读边界 |
+|---|---|---|
+| [issue-resolve.md](./issue-resolve.md) | Issue 自动跟进：每 5 小时拉取，团队的直接推进到 draft PR，外部的先评估回复、等维护者放行；阶段记在 issue 评论里 | 已实施；skill 在 `.claude/skills/issue-resolve/` |
+
 ## 宿主与 Tingly Box
 
 | 文档 | 内容 | 状态 / 阅读边界 |
