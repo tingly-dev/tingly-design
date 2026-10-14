@@ -686,6 +686,55 @@ select:not([multiple]) {
 .lr.rep .rn {
   font-style: italic;
 }
+.board.locked .frame {
+  pointer-events: none;
+}
+/* hide and lock: shown while on, or while the row is hovered, focused or selected */
+.lr .sw {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  padding: 0;
+  color: var(--faint);
+  cursor: pointer;
+  flex: none;
+  visibility: hidden;
+}
+.lr .sws {
+  margin-left: auto;
+  display: inline-flex;
+  flex: none;
+}
+.lr .rc + .sws,
+.lr .rt + .sws {
+  margin-left: 0;
+}
+.lr:hover .sw,
+.lr:focus-within .sw,
+.lr[aria-selected='true'] .sw,
+.lr .sw[aria-pressed='true'] {
+  visibility: visible;
+}
+.lr .sw:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.lr .sw[aria-pressed='true'] {
+  color: var(--ink-2);
+}
+.lr .sw.inh {
+  opacity: 0.55;
+}
+.lr.off .rn,
+.lr.off .rl,
+.lr.off .ri {
+  opacity: 0.45;
+}
 
 .pbody {
   overflow: auto;

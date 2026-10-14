@@ -5,6 +5,8 @@
  * a closed subset of HTML and inline CSS (see `slides.ts`).
  */
 
+import { HIDE_CSS } from './layers';
+
 export const DECK_FILE = 'deck.json';
 export const SLIDE_W = 1920;
 export const SLIDE_H = 1080;
@@ -186,6 +188,7 @@ export function googleFace(family: string, weights = '400;700'): [string, DeckFa
 
 /** The base stylesheet for the slide subset: tag defaults and what "no display" means. */
 export const SLIDE_BASE_CSS = `
+${HIDE_CSS}
 .dc-slide-host{position:relative;width:${SLIDE_W}px;height:${SLIDE_H}px;overflow:hidden}
 .dc-slide-host section{position:relative;width:${SLIDE_W}px;height:${SLIDE_H}px;overflow:hidden;box-sizing:border-box;font-size:32px;line-height:1.4;font-weight:400}
 .dc-slide-host section *{box-sizing:border-box;margin:0}

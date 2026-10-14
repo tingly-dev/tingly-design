@@ -220,6 +220,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     e.preventDefault();
     e.stopPropagation();
     useStore.setState({ selection: { kind: 'board', file }, editingNote: null });
+    if (entry.locked) return;
     const z = useStore.getState().view.zoom;
     const sx = e.clientX;
     const sy = e.clientY;
@@ -274,7 +275,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
 
   return (
     <div
-      className={`board ${boardSelected ? 'selected' : ''} ${drafting ? 'drafting' : ''}`}
+      className={`board ${boardSelected ? 'selected' : ''} ${drafting ? 'drafting' : ''} ${entry.locked && mode === 'edit' ? 'locked' : ''}`}
       style={{ left: x, top: y, width: w, height: h, ['--ow' as string]: `${1.5 * inv}px` }}
       data-board={file}
     >
@@ -299,7 +300,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             className="t"
             title={t('canvas.board.stripHint', { title, file })}
             onPointerDown={(e) => startDrag(e, 'move')}
-            onDoubleClick={() => mode === 'edit' && setRenaming(true)}
+            onDoubleClick={() => mode === 'edit' && !entry.locked && setRenaming(true)}
           >
             {title}
           </span>
@@ -331,6 +332,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
       {boardSelected && <div className="outline" />}
       {boardSelected &&
         mode === 'edit' &&
+        !entry.locked &&
         (['nw', 'ne', 'sw', 'se'] as Corner[]).map((c) => (
           <div
             key={c}

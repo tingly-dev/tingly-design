@@ -25,6 +25,7 @@
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
+| [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建 | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |

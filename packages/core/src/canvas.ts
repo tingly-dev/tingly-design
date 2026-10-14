@@ -10,6 +10,9 @@ export interface BoardEntry {
   expand?: 'fill';
   is_interactive?: boolean;
   radius?: number;
+  /** the layers tree's switches: not drawn / not movable or pickable on the canvas */
+  hidden?: boolean;
+  locked?: boolean;
   [k: string]: unknown;
 }
 
@@ -54,6 +57,9 @@ export interface NoteEntry {
   bold?: boolean;
   italic?: boolean;
   page?: string;
+  /** the layers tree's switches: not drawn / not movable or editable on the canvas */
+  hidden?: boolean;
+  locked?: boolean;
   [k: string]: unknown;
 }
 

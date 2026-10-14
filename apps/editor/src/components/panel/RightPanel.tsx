@@ -9,7 +9,7 @@ import { LayerTree } from './LayerTree';
 import { BoardProps, ItemProps, Tweaks } from './OtherProps';
 import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
-import { BuildRow, DeckProps, SlideLayers, SlideProps } from '../slides/SlidePanel';
+import { BuildRow, DeckProps, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
 import { JQueryBox } from './JQueryBox';
 import { FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
@@ -149,7 +149,7 @@ export function RightPanel() {
           <Close />
         </button>
       </div>
-      {motion ? <MotionLayers /> : slides ? <SlideLayers /> : <LayerTree />}
+      {motion ? <MotionLayers /> : <LayerTree />}
       <div className="pbody">{body}</div>
     </aside>
   );
