@@ -6,7 +6,7 @@
 //   editor/  sandbox/    the built editor and the artboard runtime
 //   samples/             the sample projects, copied into a projects folder that does not exist yet
 //   scripts/  .claude/   what Claude Code reads and runs when work is handed to it
-//   package.json         the npm package @tingly-dev/tingly-design; README, LICENSE, NOTICE and
+//   package.json         the npm package @tingly-dev/tingly-design; README, LICENSE and NOTICE (when the repo has them),
 //                        THIRD_PARTY_LICENSES (the notices of every dependency bundled in) beside it
 //
 // Usage: pnpm bundle   (builds the editor and sandbox first). See docs/en/embedding.md.

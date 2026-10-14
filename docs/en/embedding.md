@@ -30,7 +30,7 @@ pnpm bundle        # builds, then writes dist/tingly-design/
 
 Copy the folder anywhere; it does not need this repository or `node_modules`.
 
-Released versions come ready-made: `tingly-design-<ver>.tgz` and its `.sha256` on the GitHub release, or the same file as the npm package `@tingly-dev/tingly-design`. It unpacks into `package/`, which is this folder, plus `LICENSE`, `NOTICE` and `THIRD_PARTY_LICENSES.txt`.
+Released versions come ready-made: `tingly-design-<ver>.tgz` and its `.sha256` on the GitHub release, or the same file as the npm package `@tingly-dev/tingly-design`. It unpacks into `package/`, which is this folder, plus `THIRD_PARTY_LICENSES.txt` (the notices of the dependencies bundled in).
 
 ## 2. Launching it
 
