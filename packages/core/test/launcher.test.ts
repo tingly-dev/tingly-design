@@ -48,7 +48,9 @@ describe('projectCard', () => {
     };
     const c = await projectCard('brand', 'design-system', Object.keys(files), reader(files));
     expect(c.title).toBe('Brand DS');
-    expect(c.preview).toEqual({ kind: 'design-system', colors: ['#111111', '#2563eb'], components: ['Button'], fonts: ['Inter'] });
+    expect(c.preview).toMatchObject({ kind: 'design-system', colors: ['#111111', '#2563eb'], components: ['Button'], fonts: ['Inter'] });
+    if (c.preview.kind !== 'design-system') throw new Error('kind');
+    expect(c.preview.glance).toMatchObject({ ink: '#111111', accent: '#2563eb', bodyFont: "'Inter', Arial, sans-serif", colors: 2, themes: ['Light'] });
   });
 
   it('a dashboard lists its datasets by title, falling back to the file name', async () => {
