@@ -6,6 +6,7 @@ import { delegateToClaude, runFastEdit, stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
+import { BarPill, BarTools, ContextChip, HistoryList } from './AgentBar';
 import { Send, Stop } from './icons';
 import { slideIdOf } from '@dc/core';
 
@@ -24,6 +25,8 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
   const [text, setText] = useState('');
   const box = useRef<HTMLTextAreaElement>(null);
   const attach = useAttachments();
+  const collapsed = useStore((s) => s.barCollapsed);
+  const historyOpen = useStore((s) => s.historyOpen);
 
   useEffect(() => {
     if (health && !health.fastEdit && health.claudeCli && target === 'ai') setTarget('claude');
@@ -132,6 +135,13 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     else if (canvas.boards[f]) focusBoard(f);
   };
 
+  if (collapsed)
+    return (
+      <div className="prompt collapsed" role="region" aria-label={t('prompt.bar.label')}>
+        <BarPill />
+      </div>
+    );
+
   return (
     <div
       className={`prompt${attach.over ? ' dropping' : ''}`}
@@ -141,7 +151,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
       onDragLeave={attach.handlers.onDragLeave}
       onDrop={attach.handlers.onDrop}
     >
-      <RunFeed onReuse={reuse} onOpen={open} />
+      {historyOpen ? <HistoryList onReuse={reuse} /> : <RunFeed onReuse={reuse} onOpen={open} />}
       <div className="head">
         <span className="target" title={label}>
           {handle ? (
@@ -164,6 +174,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
             t('prompt.target.noBoards')
           )}
         </span>
+        <ContextChip target={target} />
         <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
           {(
             [
@@ -176,6 +187,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
             </button>
           ))}
         </div>
+        <BarTools />
       </div>
       <AttachTray items={attach.items} onRemove={attach.remove} />
       <div className="body">
