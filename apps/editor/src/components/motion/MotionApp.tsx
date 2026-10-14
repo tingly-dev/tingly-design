@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MOTION_FILE, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
+import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, snapSceneMs, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { motionImport } from '../../motion';
+import { addCover, motionImport, removeCover, setSceneDuration } from '../../motion';
 import { ImportHere } from '../ImportHere';
 import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
@@ -89,17 +89,32 @@ export function MotionApp() {
   const rate = speed ?? projectSpeed;
 
   // the timeline, from the files themselves: the stage needs it before (and without) the player
-  const timeline = useMemo(() => motionTimeline(motion.order.filter((id) => id in scenes).map((id) => ({ id, ...sceneTiming(scenes[id]) }))), [motion, scenes]);
+  // a clip's right edge being dragged: its new length shows at once, on the axis as it was when the drag began
+  const [drag, setDrag] = useState<{ id: string; ms: number; total: number } | null>(null);
+  const timeline = useMemo(
+    () =>
+      motionTimeline(
+        motion.order
+          .filter((id) => id in scenes)
+          .map((id) => {
+            const timing = sceneTiming(scenes[id]);
+            return { id, ...timing, duration: drag?.id === id ? formatTime(drag.ms) : timing.duration };
+          }),
+      ),
+    [motion, scenes, drag],
+  );
   const duration = timeline.duration / rate;
+  const axisMs = drag ? Math.max(drag.total, timeline.duration) : timeline.duration;
+  const axis = axisMs / rate;
 
+  // the cover is a scene before 0 s; with none, the video's first frame stands for it
   const coverScene = motion.cover && 'scene' in motion.cover && scenes[motion.cover.scene] !== undefined ? motion.cover.scene : null;
-  const coverAt = motion.cover && 'at' in motion.cover ? motion.cover.at : null;
-  const [showCover, setShowCover] = useState(true);
-  const cover = !!coverScene && showCover;
+  const [onCover, setOnCover] = useState(true);
+  const cover = !!coverScene && onCover;
 
   const control = useRef<MotionControl | null>(null);
   const [info, setInfo] = useState<MotionInfo | null>(null);
-  const [time, setTime] = useState(() => (coverAt !== null ? coverAt / rate : 0));
+  const [time, setTime] = useState(0);
   const tRef = useRef(time);
   tRef.current = time;
   const [playing, setPlaying] = useState(false);
@@ -152,7 +167,7 @@ export function MotionApp() {
 
   const play = () => {
     if (!info) return;
-    setShowCover(false);
+    setOnCover(false);
     useStore.setState({ menu: null });
     const from = time >= duration - 1 ? 0 : time;
     control.current?.play(from);
@@ -163,7 +178,7 @@ export function MotionApp() {
     setPlaying(false);
   };
   const seek = (ms: number) => {
-    setShowCover(false);
+    setOnCover(false);
     control.current?.seek(ms);
     setPlaying(false);
     setTime(Math.max(0, Math.min(duration, ms)));
@@ -193,13 +208,47 @@ export function MotionApp() {
   }, []);
 
   // a player reload (a file changed, another format or speed) keeps the place, in authored time
-  const playerAt = !info && coverAt !== null ? coverAt / rate : tRef.current;
+  const playerAt = tRef.current;
 
   // ruler: a labelled tick at least ~64 px apart, four minor ticks between labels
   const [lanesRef, lanes] = useBox();
-  const labelStep = [1000, 2000, 5000, 10_000, 15_000, 30_000, 60_000, 120_000, 300_000].find((st) => (st / Math.max(1, duration)) * lanes.w >= 64) ?? 600_000;
+  const labelStep = [1000, 2000, 5000, 10_000, 15_000, 30_000, 60_000, 120_000, 300_000].find((st) => (st / Math.max(1, axis)) * lanes.w >= 64) ?? 600_000;
   const tickStep = labelStep / (labelStep === 2000 || labelStep === 120_000 ? 4 : 5);
-  const ticks = useMemo(() => (lanes.w > 0 ? Array.from({ length: Math.floor(duration / tickStep) + 1 }, (_, i) => i * tickStep) : []), [duration, tickStep, lanes.w]);
+  const ticks = useMemo(() => (lanes.w > 0 ? Array.from({ length: Math.floor(axis / tickStep) + 1 }, (_, i) => i * tickStep) : []), [axis, tickStep, lanes.w]);
+
+  // a clip's right edge: drag to set the scene's length in 0.1 s steps, written once on release; Esc cancels, arrows nudge
+  const dragEdge = (e: React.PointerEvent, id: string, d0: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const x0 = e.clientX;
+    const total = timeline.duration;
+    const perMs = lanes.w / Math.max(1, total);
+    let last = d0;
+    const move = (ev: PointerEvent) => {
+      last = snapSceneMs(d0 + (ev.clientX - x0) / perMs);
+      setDrag({ id, ms: last, total });
+    };
+    const end = (commit: boolean) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('keydown', key, true);
+      setDrag(null);
+      if (commit && last !== d0) setSceneDuration(id, last);
+    };
+    const up = () => end(true);
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape') return;
+      ev.stopPropagation();
+      end(false);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('keydown', key, true);
+  };
+  const commitLength = (text: string) => {
+    const v = Number(text.trim().replace(/s$/, ''));
+    if (current && Number.isFinite(v) && v > 0) setSceneDuration(current.id, snapSceneMs(v * 1000 * rate, 1));
+  };
 
   const errors = info?.issues.filter((i) => i.level === 'error').length ?? 0;
   const [W, H] = motion.formats[fmt]?.size ?? [1920, 1080];
@@ -235,16 +284,6 @@ export function MotionApp() {
               ))}
           </select>
         </label>
-        {coverScene && (
-          <button
-            className={`btn ghost${cover ? ' on' : ''}`}
-            aria-pressed={cover}
-            onClick={() => (cover ? setShowCover(false) : (pause(), setShowCover(true)))}
-            title={t('motion.bar.coverHint')}
-          >
-            {t('motion.bar.cover')}
-          </button>
-        )}
         <ImportHere target={motionImport} label={t('motion.bar.importLabel')} />
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
           {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
@@ -306,6 +345,28 @@ export function MotionApp() {
             <span className="mtime">
               <b>{secs(time)}</b> / {secs(duration)} s
             </span>
+            {!cover && current && (
+              <label className="mdur" title={t('motion.stage.sceneLengthHint')}>
+                {t('motion.stage.sceneLength')}
+                <input
+                  key={`${current.id}:${current.duration}:${rate}`}
+                  className="input"
+                  defaultValue={+(current.duration / rate / 1000).toFixed(2)}
+                  inputMode="decimal"
+                  aria-label={t('motion.stage.sceneLength')}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') {
+                      (e.target as HTMLInputElement).value = String(+(current.duration / rate / 1000).toFixed(2));
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  onBlur={(e) => commitLength(e.target.value)}
+                />
+                s
+              </label>
+            )}
             <span className="mwhere" title={cover ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
               {cover
                 ? t('motion.stage.whereCover')
@@ -316,38 +377,90 @@ export function MotionApp() {
                   : ''}
             </span>
           </div>
-          <div className="mlanes" ref={lanesRef}>
-            <div className="mruler">
-              {ticks.map((ms) => (
-                <i key={ms} className={ms % labelStep === 0 ? 'major' : undefined} style={{ left: `${(ms / duration) * 100}%` }}>
-                  {ms % labelStep === 0 && <span>{ms / 1000}s</span>}
-                </i>
-              ))}
-              <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(time)} onChange={(e) => seek(Number(e.target.value))} aria-label={t('motion.stage.time')} />
-            </div>
-            <div className="mscenes" aria-label={t('motion.stage.scenes')}>
-              {timeline.scenes.map((w, i) => {
-                // a scene's clip runs to where the next one takes over, so clips and playhead share one axis
-                const end = timeline.scenes[i + 1]?.start ?? timeline.duration;
-                return (
+          <div className="mlanes">
+            <div className="mcoverslot">
+              <div className="mcoverhead">{t('motion.stage.coverAxis')}</div>
+              <div className="mcovertrack">
+                {coverScene ? (
+                  <>
+                    <button
+                      className={`mcoverclip${cover ? ' on' : ''}`}
+                      aria-pressed={cover}
+                      onClick={() => (pause(), setOnCover(true))}
+                      title={t('motion.stage.coverHint')}
+                    >
+                      <span className="mname">{t('motion.stage.cover')}</span>
+                      <span className="mlen">{coverScene}</span>
+                    </button>
+                    <button className="mcoverx" aria-label={t('motion.stage.coverRemove')} title={t('motion.stage.coverRemoveHint')} onClick={removeCover}>
+                      ×
+                    </button>
+                  </>
+                ) : (
                   <button
-                    key={w.id}
-                    className={`mscene${!cover && current?.id === w.id ? ' on' : ''}${w.transition.kind !== 'cut' ? ' blend' : ''}`}
-                    style={{ left: `${(w.start / timeline.duration) * 100}%`, width: `${((end - w.start) / timeline.duration) * 100}%` }}
-                    onClick={() => seek(w.start / rate)}
-                    title={
-                      w.transition.kind !== 'cut'
-                        ? t('motion.stage.sceneHintTransition', { scene: w.id, time: secs(w.duration / rate), transition: w.transition.kind })
-                        : t('motion.stage.sceneHint', { scene: w.id, time: secs(w.duration / rate) })
-                    }
+                    className="mcoverclip add"
+                    onClick={() => {
+                      pause();
+                      addCover();
+                      setOnCover(true);
+                    }}
+                    title={t('motion.stage.coverAddHint')}
                   >
-                    <span className="mname">{w.id}</span>
-                    <span className="mlen">{secs(w.duration / rate)}s</span>
+                    {t('motion.stage.coverAdd')}
                   </button>
-                );
-              })}
+                )}
+              </div>
             </div>
-            {!cover && duration > 0 && <div className="mhead" style={{ left: `${(time / duration) * 100}%` }} />}
+            <div className="maxis" ref={lanesRef}>
+              <div className="mruler">
+                {ticks.map((ms) => (
+                  <i key={ms} className={ms % labelStep === 0 ? 'major' : undefined} style={{ left: `${(ms / axis) * 100}%` }}>
+                    {ms % labelStep === 0 && <span>{ms / 1000}s</span>}
+                  </i>
+                ))}
+                <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(time)} onChange={(e) => seek(Number(e.target.value))} aria-label={t('motion.stage.time')} />
+              </div>
+              <div className="mscenes" aria-label={t('motion.stage.scenes')}>
+                {timeline.scenes.map((w, i) => {
+                  // a scene's clip runs to where the next one takes over, so clips and playhead share one axis
+                  const end = timeline.scenes[i + 1]?.start ?? timeline.duration;
+                  const hint = w.transition.kind !== 'cut'
+                    ? t('motion.stage.sceneJumpTransition', { scene: w.id, time: secs(w.duration / rate), transition: w.transition.kind })
+                    : t('motion.stage.sceneJump', { scene: w.id, time: secs(w.duration / rate) });
+                  return (
+                    <Fragment key={w.id}>
+                      <button
+                        className={`mscene${!cover && current?.id === w.id ? ' on' : ''}${w.transition.kind !== 'cut' ? ' blend' : ''}`}
+                        style={{ left: `${(w.start / axisMs) * 100}%`, width: `${((end - w.start) / axisMs) * 100}%` }}
+                        onClick={() => seek(w.start / rate)}
+                        onDoubleClick={() => seek(Math.max(w.start, end - 1000 / (motion.fps || 30)) / rate)}
+                        title={hint}
+                      >
+                        <span className="mname">{w.id}</span>
+                        <span className="mlen">{secs(w.duration / rate)}s</span>
+                      </button>
+                      <span
+                        className="mgrip"
+                        role="separator"
+                        aria-orientation="vertical"
+                        tabIndex={0}
+                        aria-label={t('motion.stage.sceneEdge', { scene: w.id })}
+                        title={t('motion.stage.sceneEdge', { scene: w.id })}
+                        style={{ left: `${(end / axisMs) * 100}%` }}
+                        onPointerDown={(e) => dragEdge(e, w.id, w.duration)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSceneDuration(w.id, snapSceneMs(w.duration + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1000 : 100)));
+                        }}
+                      />
+                    </Fragment>
+                  );
+                })}
+              </div>
+              {!cover && axis > 0 && <div className="mhead" style={{ left: `${(time / axis) * 100}%` }} />}
+            </div>
           </div>
         </div>
         {issuesOpen && (
