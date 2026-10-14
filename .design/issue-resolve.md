@@ -33,6 +33,14 @@ tingly-design 的 issue 一部分来自团队，一部分来自外部用户。�
 
 评论是用用户本人的 GitHub 账号发的，作者区分不出是人还是 Claude，所以以标记为准：没有标记的评论都算人的。
 
+### 表单与标签
+
+issue 通过 `.github/ISSUE_TEMPLATE` 的四种表单提交：Feature / Bug / Feedback / Other，第一项都是"领域"（canvas、slides、design system、dashboard、docs、motion、editor、server，或不确定）。表单只能给固定标签和固定标题前缀，不能随下拉框变，所以 `.github/workflows/issue-area.yml` 在 issue 创建时读出所选领域，加上 `area/<领域>` 标签，并把标题从 `feat: …` 改成 `feat(motion): …`；类型标签是 `enhancement` / `bug` / `feedback` / `other`。
+
+skill 只读这些标签：类型决定走哪条路径，领域决定先读哪一类的代码和笔记，不用再靠标题猜。Feedback 是专给体验和打磨类意见的一类，和 Feature、Bug 可能重叠，这是有意的：已有的很多反馈 issue 就是这样写的。工作流在 issue 里改标签和标题，是对所有人一视同仁的表单整理，不属于 skill"外部 issue 不改标签"的范围。
+
+领域下拉框必填；选了"不确定"就没有领域标签，也不改标题。
+
 ### 节奏和上限
 
 - 每 5 小时一轮，拉取窗口 6 小时，多出的一小时用来容忍定时漂移；重复拉到的 issue 被标记规则过滤掉。

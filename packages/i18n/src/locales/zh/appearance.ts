@@ -6,6 +6,7 @@ export default {
   titleWith: '外观：{{name}}',
   theme: '主题',
   language: '语言',
+  languageWith: '语言：{{name}}',
   mode: {
     system: '跟随系统',
     systemHint: '浅色 / 深色',

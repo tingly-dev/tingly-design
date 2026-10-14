@@ -33,6 +33,12 @@ export default {
     shortcutList: 'V 选择 · H 抓手 · T 文字 · A 画板 · N 便签 · P 画笔 · R 矩形 · O 椭圆 · L 直线 · ⇧1 适应全部 · ⇧2 缩放到选中 · Esc 取消选中 · ⇧↵ 选中上一级 · ↵ 选中下一级',
   },
   layers: {
+    hide: '隐藏',
+    show: '显示',
+    hideInherited: '外层图层已隐藏',
+    lock: '锁定',
+    unlock: '解锁',
+    lockInherited: '外层图层已锁定',
     label: '图层',
     collapse: '收起',
     expand: '展开',
@@ -60,6 +66,7 @@ export default {
     table: '表格',
     notes: '备注',
     slide: '幻灯片',
+    scene: '场景',
   },
   item: {
     title: '标题',

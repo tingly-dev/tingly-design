@@ -29,6 +29,7 @@ const SYSTEM = `You are editing a design canvas stored as files. A canvas folder
 Before you change any file, read .claude/skills/dc-canvas/SKILL.md in the current directory: it is the full format reference.
 Edit only files inside the canvas folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
 Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements inside <x-dc>.
+The layers panel's hide and lock are written as data-hide and data-lock on elements (and hidden / locked on canvas.json entries); keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 const SLIDES_SYSTEM = `You are editing a slide deck stored as files. A deck folder holds deck.json (title, slide order, sections, typefaces) and one slides/<id>.html per slide: exactly one <section id="<id>"> on a fixed 1920x1080 canvas, every style inline, in a closed subset of HTML and CSS.
@@ -36,6 +37,7 @@ Before you change any file, read .claude/skills/slides/SKILL.md in the current d
 Edit only files inside the deck folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
 To add a slide, write its file and add its id to "order" in deck.json; to remove one, take it out of "order" and tell the person to delete the file in the editor (you cannot delete files).
 Ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements of the slide file; they are never in the files.
+The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 const DS_SYSTEM = `You are editing a design system stored as files. A system folder holds design-system.json (the index: title, namespace, asset groups), tokens.json (colours per theme, type, spacing, radius, shadow), README.md (the brand book) and other *.md sections, components/<Comp>/README.md and preview.html, components/bundle.js and bundle.css, assets/<Group>/ and fonts/.
@@ -63,6 +65,7 @@ const MOTION_SYSTEM = `You are editing a motion piece (an animated video) stored
 Before you change any file, read .claude/skills/motion/SKILL.md in the current directory: it is the full format reference.
 Edit only files inside the motion folder you are given, with your Edit and Write tools. Change only what the request asks; read each file right before you edit it.
 Write timing at reading pace; to make the whole piece faster or slower, change "speed" in motion.json instead of every attribute. To add a scene, write its file and add its id to "order"; a cover scene is named by "cover" and stays out of "order".
+The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Running Claude Code processes by run id, stopped with the server. */
@@ -90,7 +93,12 @@ export interface DelegateRequest {
   context?: string;
   /** files attached to the request, kept in the project's uploads/ (checked by the route) */
   attachments?: { name: string; path: string }[];
+  /** a Claude Code session to continue (the `session` an earlier run reported) instead of starting a fresh one */
+  resume?: string;
 }
+
+/** A Claude Code session id is a UUID; anything else is not passed on to the command line. */
+export const isSessionId = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s);
 
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en'): string {
   const id = randomUUID().slice(0, 8);
@@ -128,12 +136,14 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--append-system-prompt',
     slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM,
   ];
+  const resume = isSessionId(req.resume) ? req.resume : undefined;
+  if (resume) args.push('--resume', resume);
   if (process.env.DC_DELEGATE_MODEL) args.push('--model', process.env.DC_DELEGATE_MODEL);
   // a host keeps the projects in its own data folder: let Claude Code edit there too
   if (!PROJECTS_INSIDE_ROOT) args.push('--add-dir', PROJECTS_DIR);
 
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
-  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now() });
+  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });
 
   const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
@@ -151,6 +161,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   let buf = '';
   let final = '';
   let stderr = '';
+  let session = '';
   child.stdout.setEncoding('utf8');
   child.stdout.on('data', (chunk: string) => {
     buf += chunk;
@@ -161,6 +172,11 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
       if (!line) continue;
       try {
         const msg = JSON.parse(line);
+        // told once, so the next request can continue this conversation
+        if (!session && isSessionId(msg.session_id)) {
+          session = msg.session_id;
+          publish(project, { type: 'delegate', id, state: 'progress', session });
+        }
         if (msg.type === 'assistant') {
           for (const part of msg.message?.content ?? []) {
             if (part.type === 'text' && part.text?.trim()) {
