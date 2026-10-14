@@ -54,6 +54,7 @@ Rules of thumb:
 - Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `LayerTree`, `attachments.ts`, `ImportHere`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
+- Every frontend change comes back with screenshots: capture the changed UI in a real browser, attach the images to the thread reply and put them in the PR (on the `pr-assets` branch).
 
 # Layout
 
