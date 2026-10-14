@@ -66,7 +66,8 @@ packages/import   HTML and SVG → canvas importer (see .design/import-external-
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
 projects/         sample projects, one per kind
-.claude/skills/   format references Claude Code reads before every delegated task, one per kind
+.claude/skills/   format references Claude Code reads before every delegated task, one per kind;
+                  plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)
 docs/en, docs/zh  guides and how-it-works pages, both languages
 e2e/              Playwright suites per kind and per cross-kind feature, a mock model
@@ -84,6 +85,10 @@ pnpm bundle         # dist/tingly-design/, the folder a host ships
 ```
 
 End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
+
+# Issues
+
+A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` over this repository's issues: team issues (owners, members, collaborators) go to analysis and a draft PR, external issues get one short evaluation comment and wait for a maintainer. Its stage lives in a hidden `<!-- issue-resolve stage=… -->` marker on its comments. See `.design/issue-resolve.md`.
 
 # Pull requests
 
