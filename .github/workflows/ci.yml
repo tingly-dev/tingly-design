@@ -1,0 +1,43 @@
+name: CI
+
+# Every PR and every push to main: unit tests, typecheck, and the bundle a host
+# ships, started the way a host starts it. The tag release (release.yml) runs
+# the same checks before it publishes anything.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Test, typecheck, bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Bundle
+        run: pnpm bundle
+
+      - name: Start the bundle like a host
+        run: .github/scripts/smoke-bundle.sh dist/tingly-design
+
+      - name: List what the npm package would contain
+        working-directory: dist/tingly-design
+        run: npm pack --dry-run

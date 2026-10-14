@@ -30,6 +30,8 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 
 这个文件夹可以拷到任何地方，不需要本仓库，也不需要 `node_modules`。
 
+发布过的版本有现成的：GitHub release 上的 `tingly-design-<ver>.tgz` 和它的 `.sha256`，或者 npm 包 `@tingly-dev/tingly-design`（同一个文件）。解开后是 `package/`，就是这个文件夹，另外带 `LICENSE`、`NOTICE` 和 `THIRD_PARTY_LICENSES.txt`。
+
 ## 2. 启动
 
 用下面这些环境变量运行 `node <包>/server.mjs`：

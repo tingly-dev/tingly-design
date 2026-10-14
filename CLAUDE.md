@@ -81,8 +81,10 @@ pnpm dev            # server + editor
 pnpm test           # core, import and i18n unit tests
 pnpm typecheck
 pnpm build
-pnpm bundle         # dist/tingly-design/, the folder a host ships
+pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm package)
 ```
+
+CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on every PR. Releases are tag-driven: a `vX.Y.Z` tag matching `package.json` builds the bundle once and ships that tarball to a GitHub release and to npm as `@tingly-dev/tingly-design` (`release.yml`, `.design/release.md`). Never publish or push a release tag without a maintainer asking. Anything added to the bundle ships to npm: `scripts/bundle.mjs` copies only what it names, keep it that way. Shell shared by workflows lives in `.github/scripts/`; lint with `actionlint` and `shellcheck` as Tingly Box's `.github/workflows/AGENTS.md` says.
 
 End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
 

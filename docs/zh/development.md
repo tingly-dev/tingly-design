@@ -38,6 +38,12 @@ python3 e2e/mock_anthropic.py &
 ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 ```
 
+## 发版
+
+推一个 `vX.Y.Z` tag 就发布这个版本；tag 必须和根 `package.json` 的 `version` 一致，所以先在 main 上改版本。`.github/workflows/release.yml` 跑单元测试和 typecheck，打出 bundle，像宿主那样启动一次（`.github/scripts/smoke-bundle.sh`），再打成 `tingly-design-<ver>.tgz`。这一个文件连同它的 `.sha256` 附到 tag 上的 GitHub release，同时以 `@tingly-dev/tingly-design` 发到 npm。`v0.2.0-rc.1` 这样的 tag 发预发布版，npm dist-tag 是 `next`。
+
+`.github/workflows/ci.yml` 在每个 PR 上跑同样的检查，再用 `npm pack --dry-run` 列出包里会有什么。为什么这样做、npm 发布怎么鉴权，见 `.design/release.md`。
+
 ---
 
 返回 [README](../../README.zh-CN.md)
