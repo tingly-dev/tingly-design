@@ -41,6 +41,20 @@ Stages: `triaged` (external, evaluated, waiting for the team), `needs-info` (wai
 
 Comments are posted from the user's own GitHub account, so authorship does not tell this skill's comments apart from theirs: **the marker does**. A comment without the marker is a person's, even from the same login.
 
+## Labels from the issue forms
+
+Issues filed through `.github/ISSUE_TEMPLATE` carry labels and a title scope (`.github/workflows/issue-area.yml` sets them from the form). Use them instead of guessing:
+
+| Label | Meaning | What the sweep does with it |
+|---|---|---|
+| `bug` | Bug form | Path A bug route: reproduce first. |
+| `enhancement` | Feature form | Small feature or design-sized proposal, per the classification below. |
+| `feedback` | Feedback form (UX, wording, rough edges; may overlap the other two) | Judge against `.design/ux-principles.md`; fix the plainly small ones, write a proposal for the rest. |
+| `other` | Other form | Usually a question: answer it (stage `answered`) or skip if it is meta. |
+| `area/<name>` | The area picked: `canvas`, `slides`, `design-system`, `dashboard`, `docs`, `motion`, `editor`, `server` | Start reading in that kind's code, skill and `.design/` note; no label means the reporter was not sure, so find the area yourself. |
+
+The title reads `feat(motion): …`, `bug(canvas): …`. Name PR branches and titles after the same type and scope. The sweep reads these labels and never writes them; the `claude` and `no-claude` labels stay as above.
+
 ## The sweep
 
 1. **Collect.** `list_issues` with `state: OPEN`, `since` = 6 hours before now (overlap with the 5-hour schedule is deliberate), ordered by `UPDATED_AT`. Add issues a team member labelled `claude` since the baseline.
