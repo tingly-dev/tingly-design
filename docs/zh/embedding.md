@@ -44,6 +44,7 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 | `DC_PROJECTS` | 宿主数据目录里的一个文件夹，如 `~/.tingly-box/design/projects`。不存在时会先放入示例项目（`DC_SAMPLES=0` 则从空开始）。 |
 | `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` | 宿主的模型网关和它的令牌。快速 AI 直接调它；「交给 Claude Code」用同样的环境运行 `claude`，所以两者都经过宿主。 |
 | `DC_FAST_MODEL`、`DC_DELEGATE_MODEL` | 网关认识的模型名。 |
+| `DC_LOG_LEVEL`、`DC_LOG_FORMAT` | 服务端日志：`error`、`warn`、`info`（默认）、`debug` 或 `silent`；`json` 表示 stderr 每行一个对象。见[开发](./development.md#服务端日志)。 |
 | `DC_THEME` | 用户还没挑主题时的默认外观（预设名或 JSON，见[主题](theming.md)）。 |
 | `DC_LANG` | 链接和用户都没定语言时的界面语言（`en` 或 `zh`，也认 `zh-CN` 这类写法）。不设时跟随浏览器，再退回英文。 |
 | `DC_EXIT_WITH_STDIN` | 设为 `1`，并把 stdin 接成宿主一直开着的管道：管道一关服务端就退出，宿主崩溃也不会留下孤儿进程。 |

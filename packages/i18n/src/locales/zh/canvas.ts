@@ -69,6 +69,12 @@ export default {
   journal: {
     title: '改动记录',
     commit: '提交到 git',
+    undoTitle: '撤销 / 重做：',
+    undoHelp: '⌘Z 撤回你的上一次改动，⌘⇧Z 再做回来。只撤销你自己的改动，别人在同一文件里的改动会保留。只在本次打开期间有效，关掉编辑器就清空。Claude Code 的一次运行，用它结果上的按钮整体撤销。',
+    lineTitle: '下面的每一行：',
+    lineHelp: '是一次保存到文件的改动，记着谁改的、什么时候、让 AI 做了什么。它是记录，不是快照，不能回到某一行。',
+    commitTitle: '提交到 git：',
+    commitHint: '把这个项目现在的样子存进 git 历史，附一句你写的说明。撤销不会改动已有的提交，提交也不会清掉撤销。',
     commitPrompt: '提交说明',
     empty: '每次改动都会记在这里：谁改的（手改、快速 AI、Claude Code、外部编辑）、改了哪个画板、改了什么。',
   },

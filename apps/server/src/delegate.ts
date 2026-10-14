@@ -7,6 +7,7 @@ import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
 import { projectDir } from './store';
 import { publish } from './hub';
+import { logDebug, logInfo, logWarn } from './log';
 
 /**
  * The slow agent: Claude Code, run headless in this repository (or the
@@ -135,6 +136,10 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
   publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now() });
 
+  const started = Date.now();
+  let steps = 0;
+  const meta = { run: id, project, kind, model: process.env.DC_DELEGATE_MODEL ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0 };
+  logInfo('delegate.start', meta);
   const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
   children.set(id, {
@@ -166,6 +171,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
             if (part.type === 'text' && part.text?.trim()) {
               publish(project, { type: 'delegate', id, state: 'progress', text: part.text.trim().slice(0, 300) });
             } else if (part.type === 'tool_use') {
+              steps++;
+              logDebug('delegate.step', { run: id, tool: String(part.name ?? ''), n: steps });
               const step = describeTool(String(part.name ?? ''), part.input ?? {}, ROOT, absDir);
               publish(project, { type: 'delegate', id, state: 'progress', step });
             }
@@ -194,6 +201,10 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
       if (n <= 0) activeDelegates.delete(project);
       else activeDelegates.set(project, n);
     }, 1500);
+    const outcome = stopped ? 'stopped' : ok ? 'done' : 'error';
+    const fields = { ...meta, outcome, ms: Date.now() - started, steps };
+    if (outcome === 'error') logWarn('delegate.finish', { ...fields, error: text.slice(0, 300) });
+    else logInfo('delegate.finish', fields);
     publish(project, { type: 'delegate', id, state: stopped ? 'stopped' : ok ? 'done' : 'error', text: stopped ? undefined : text });
   };
   child.on('error', (e) => finish(false, e.message));
