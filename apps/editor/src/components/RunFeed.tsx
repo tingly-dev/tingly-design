@@ -49,7 +49,7 @@ export function RunFeed({ onReuse, onOpen }: { onReuse?: (prompt: string) => voi
   }, []);
 
   if (hidden || !lastRun) return null;
-  if (lastRun.kind === 'delegate' && delegate) return <DelegateRun d={delegate} onReuse={onReuse} onOpen={onOpen} />;
+  if (lastRun.kind === 'delegate' && delegate) return <DelegateRun key={delegate.id} d={delegate} onReuse={onReuse} onOpen={onOpen} />;
   if (lastRun.kind === 'fast' && fast.status !== 'idle' && fast.status !== 'delegated') return <FastRun f={fast} onReuse={onReuse} />;
   return null;
 }
@@ -132,7 +132,9 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
   const [open, setOpen] = useState(false);
   const list = useRef<HTMLOListElement>(null);
   const onScroll = useFollow(list, d.log.length);
-  const showSteps = running || open;
+  // steps are folded by default, even while running: the newest one stays in view as a single line
+  const shown = open ? d.log : running ? d.log.slice(-1) : [];
+  const firstShown = d.log.length - shown.length;
   const last = d.log.at(-1);
   const quiet = running ? Math.floor((now - (last?.at ?? d.startedAt)) / 1000) : 0;
   const took = elapsedLabel(t, (d.endedAt ?? now) - d.startedAt);
@@ -159,7 +161,7 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
         <span className="run-state">{running ? <Spinner size={16} /> : d.state === 'done' ? <Done /> : <Failed />}</span>
         <b>{title}</b>
         <span className="run-time">{running ? t('prompt.run.elapsedSoFar', { took }) : t('prompt.run.took', { took })}</span>
-        {!running && d.log.length > 0 && (
+        {d.log.some((e) => 'step' in e) && (
           <button className="run-link" aria-expanded={open} onClick={() => setOpen(!open)}>
             {t('prompt.run.steps', { count: d.log.filter((e) => 'step' in e).length })} <Chevron open={open} />
           </button>
@@ -184,10 +186,10 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
           )}
         </span>
       </header>
-      {showSteps && (d.log.length > 0 || running) && (
-        <ol className="run-steps" ref={list} onScroll={onScroll}>
-          {d.log.map((e, i) => (
-            <Entry key={i} e={e} current={running && i === d.log.length - 1 && 'step' in e} />
+      {(shown.length > 0 || running) && (
+        <ol className={`run-steps${open ? '' : ' folded'}`} ref={list} onScroll={onScroll}>
+          {shown.map((e, i) => (
+            <Entry key={firstShown + i} e={e} current={running && firstShown + i === d.log.length - 1 && 'step' in e} />
           ))}
           {running && (!last || 'say' in last || quiet >= 8) && (
             <li className="run-wait">

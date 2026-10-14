@@ -70,6 +70,7 @@ export function MotionApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const panelOpen = useStore((s) => s.panelOpen);
+  const barCollapsed = useStore((s) => s.barCollapsed);
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const base = project ? api.rawBase(project) : '';
@@ -478,7 +479,7 @@ export function MotionApp() {
             )}
           </div>
         )}
-        <div className="mprompt">
+        <div className={`mprompt${barCollapsed ? ' collapsed' : ''}`}>
           <PromptBar
             onOpen={(f) => {
               const w = timeline.scenes.find((x) => sceneFile(x.id) === f);

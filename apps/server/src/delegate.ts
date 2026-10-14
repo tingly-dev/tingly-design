@@ -90,7 +90,12 @@ export interface DelegateRequest {
   context?: string;
   /** files attached to the request, kept in the project's uploads/ (checked by the route) */
   attachments?: { name: string; path: string }[];
+  /** a Claude Code session to continue (the `session` an earlier run reported) instead of starting a fresh one */
+  resume?: string;
 }
+
+/** A Claude Code session id is a UUID; anything else is not passed on to the command line. */
+export const isSessionId = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s);
 
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en'): string {
   const id = randomUUID().slice(0, 8);
@@ -128,12 +133,14 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--append-system-prompt',
     slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM,
   ];
+  const resume = isSessionId(req.resume) ? req.resume : undefined;
+  if (resume) args.push('--resume', resume);
   if (process.env.DC_DELEGATE_MODEL) args.push('--model', process.env.DC_DELEGATE_MODEL);
   // a host keeps the projects in its own data folder: let Claude Code edit there too
   if (!PROJECTS_INSIDE_ROOT) args.push('--add-dir', PROJECTS_DIR);
 
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
-  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now() });
+  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });
 
   const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
@@ -151,6 +158,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   let buf = '';
   let final = '';
   let stderr = '';
+  let session = '';
   child.stdout.setEncoding('utf8');
   child.stdout.on('data', (chunk: string) => {
     buf += chunk;
@@ -161,6 +169,11 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
       if (!line) continue;
       try {
         const msg = JSON.parse(line);
+        // told once, so the next request can continue this conversation
+        if (!session && isSessionId(msg.session_id)) {
+          session = msg.session_id;
+          publish(project, { type: 'delegate', id, state: 'progress', session });
+        }
         if (msg.type === 'assistant') {
           for (const part of msg.message?.content ?? []) {
             if (part.type === 'text' && part.text?.trim()) {
