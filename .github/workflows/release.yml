@@ -6,16 +6,18 @@ name: Release
 #            pack it into tingly-design-<ver>.tgz plus its sha256
 #   github   a GitHub release on the tag with both files attached
 #   npm      the same bundle published as @tingly-dev/tingly-design and as
-#            tingly-design, behind the `npm` environment; a prerelease goes to
-#            the `next` dist-tag
+#            tingly-design, behind the `production` environment; a prerelease
+#            goes to the `next` dist-tag
 #
 # The release asset and the npm package are one tarball, so a host can pin a
 # version and its sha256 and fetch it from either place. See .design/release.md.
 #
-# npm auth: Trusted Publishing (OIDC) bound to this file name and the `npm`
-# environment; do not rename either. NPM_TOKEN, when the secret is set, is used
-# instead (only needed for the very first publish, before the package exists
-# and a trusted publisher can be added to it).
+# npm auth: Trusted Publishing only. The job's GitHub OIDC id-token is exchanged
+# for a credential good for one publish; there is no NPM_TOKEN and no
+# NODE_AUTH_TOKEN. The npm side is bound to this file name and the `production`
+# environment, so do not rename either. Both packages are set to require 2FA and
+# disallow tokens: outside this workflow only a maintainer with a one-time
+# password can publish (scripts/npm-bootstrap.sh, .design/release.md).
 
 on:
   push:
@@ -122,7 +124,7 @@ jobs:
     name: Publish to npm
     needs: [build, github]
     runs-on: ubuntu-latest
-    environment: npm
+    environment: production
     permissions:
       contents: read
       id-token: write
@@ -139,9 +141,19 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Check npm supports trusted publishing
+        run: |
+          npm --version
+          node -e 'const [a,b,c]=process.argv[1].split(".").map(Number); if (a<11||(a===11&&(b<5||(b===5&&c<1)))) { console.error("npm >= 11.5.1 required for OIDC trusted publishing"); process.exit(1) }' "$(npm --version)"
+
+      # npm silently falls back to token auth (and then fails with E404) when
+      # the OIDC exchange is rejected; do the same exchange here first so the
+      # registry's reason is visible in the log. Fails before anything is published.
+      - name: Verify npm OIDC trusted-publisher exchange
+        run: .github/scripts/npm-oidc-check.sh @tingly-dev/tingly-design tingly-design
+
       - name: Publish @tingly-dev/tingly-design and tingly-design
         env:
           VERSION: ${{ needs.build.outputs.version }}
           DIST_TAG: ${{ needs.build.outputs.dist_tag }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: .github/scripts/npm-publish.sh "out/tingly-design-$VERSION.tgz" "$DIST_TAG" @tingly-dev/tingly-design tingly-design

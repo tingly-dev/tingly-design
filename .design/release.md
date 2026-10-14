@@ -32,19 +32,30 @@
 
 1. **build**：单元测试、typecheck、`pnpm bundle`，再像宿主那样启动一次 bundle（`.github/scripts/smoke-bundle.sh`：`PORT=0`、`/design` 前缀、空的项目目录，等就绪行，查 `/api/health` 的版本、编辑器和沙箱能访问、示例已放入），然后打包、算 sha256。
 2. **github**：在 tag 上建 release，附上两个文件；release 已经存在就只补文件。
-3. **npm**：在 `npm` environment 里用 `.github/scripts/npm-publish.sh` 把同一个 tgz 以两个名字发布，带 provenance。某个名字的这个版本已在 npm 上就跳过，所以发了一半失败后重跑是安全的。
+3. **npm**：在 `production` environment 里先确认 npm ≥ 11.5.1、预先做一次 OIDC 交换（被拒时把 npm 给的原因打出来，什么都还没发），再用 `.github/scripts/npm-publish.sh` 把同一个 tgz 以两个名字发布，带 provenance。某个名字的这个版本已在 npm 上就跳过，所以发了一半失败后重跑是安全的。
 
 npm 排在 GitHub release 后面：npm 发出去就撤不回，前面任何一步失败都不该走到这里。
 
 `ci.yml` 在每个 PR 和 main 上跑同样的检查（不打包、不发布，只 `npm pack --dry-run` 列出包内容），让发版时不出意外。
 
-## 鉴权
+## 鉴权：只走 Trusted Publishing，其余要一次性密码
 
-用 npm Trusted Publishing（OIDC），不在仓库里放长期 token。它绑定 workflow 文件名 `release.yml` 和 environment `npm`，这两个名字不要改。
+和 Tingly Box 的 `npm.yml` 一样，仓库里不放任何 npm token，workflow 里也没有 `NPM_TOKEN` / `NODE_AUTH_TOKEN`。npm job 申请 GitHub Actions 的 OIDC id-token（`id-token: write`），npm ≥ 11.5.1 拿它换一个只能用于这一次发布的凭据，带 provenance。
 
-包第一次发布之前，npm 上还没有这个包，无法给它配 trusted publisher，所以第一个版本要用一个短期的 granular token：放到仓库 secret `NPM_TOKEN`，发完后在 npmjs.com 两个包的设置里各加一个 trusted publisher（org `tingly-dev`、repo `tingly-design`、workflow `release.yml`、environment `npm`，允许 `npm publish`），再删掉这个 secret。`NPM_TOKEN` 存在时 npm 用它，不存在时走 OIDC。
+- **npm 那边**：两个包各有一条 trusted publisher：GitHub Actions、org `tingly-dev`、repo `tingly-design`、workflow `release.yml`、environment `production`，允许 `npm publish`（2026-09-03 之后新建的配置默认只允许 stage publish，那样 `npm publish` 会报笼统的 "package not found"）。字段都是精确匹配，改 workflow 文件名或 environment 名都会让发布失败，直到 npm 上同步改。
+- **发布权限**：两个包都设为 "Require two-factor authentication and disallow tokens"（`npm access set mfa=publish`）。CI 之外，只有开了 2FA 的维护者在本机输入一次性密码才能发；泄露的 token 发不了包。
+- **为什么不用 token**：npm 已经停用 classic token，granular token 最长 90 天，"bypass 2FA" 也在取消，放在 GitHub secret 里的 token 迟早发不了，还多一个泄露面。
+- **`production` environment**：建议在 GitHub 上配 required reviewers，每次发 npm 前有人点一下。
 
-`npm` environment 建议配 required reviewers，这样每次发布 npm 前有人点一下。
+### 第一次发布前：手工占位
+
+trusted publisher 只能加在已经存在的包上，而 CI 只能用 OIDC 发布，所以新包名要先由维护者在本机占位。`scripts/npm-bootstrap.sh` 做完这三步，每一步 npm 都会要一次性密码：
+
+1. 给两个名字各发一个空的 `0.0.0` 占位版本（dist-tag `placeholder`），只为让包名存在；
+2. `npm trust github` 加上面那条 trusted publisher（需要 npm ≥ 11.15）；
+3. `npm access set mfa=publish`。
+
+之后每个真实版本都由 CI 发布，占位版本不再碰。脚本可以重跑：已存在的包不再发，已有的 trusted publisher 不重复加。
 
 ## 许可证
 

@@ -42,6 +42,8 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 推一个 `vX.Y.Z` tag 就发布这个版本；tag 必须和根 `package.json` 的 `version` 一致，所以先在 main 上改版本。`.github/workflows/release.yml` 跑单元测试和 typecheck，打出 bundle，像宿主那样启动一次（`.github/scripts/smoke-bundle.sh`），再打成 `tingly-design-<ver>.tgz`。这一个文件连同它的 `.sha256` 附到 tag 上的 GitHub release，同时以 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字发到 npm（内容相同）。`v0.2.0-rc.1` 这样的 tag 发预发布版，npm dist-tag 是 `next`。
 
+npm 发布只走 Trusted Publishing：哪里都不存 token，两个包也拒绝 token，所以 CI 之外只有维护者输入一次性密码才能发。第一次发版前，维护者在自己机器上跑一次 `scripts/npm-bootstrap.sh`（占位版本、trusted publisher、要求 2FA），并在 GitHub 上建好 `production` environment。
+
 `.github/workflows/ci.yml` 在每个 PR 上跑同样的检查，再用 `npm pack --dry-run` 列出包里会有什么。为什么这样做、npm 发布怎么鉴权，见 `.design/release.md`。
 
 ---
