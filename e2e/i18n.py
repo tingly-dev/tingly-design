@@ -71,7 +71,8 @@ async def main():
         # --- the appearance menu -------------------------------------------------------------------
         await pg.goto(BASE + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
-        await pg.locator('button[aria-label="Appearance"]').click()
+        check('the language button shows the language in use', (await pg.locator('button[data-language]').inner_text()).strip() == 'English')
+        await pg.locator('button[aria-label="Language"]').click()
         langs = await pg.locator('.menu .alang').evaluate_all('bs => bs.map(b => [b.dataset.lang, b.textContent.trim()])')
         check('the menu lists each language by its own name', langs == [['en', 'English'], ['zh', '中文']], str(langs))
         await pg.locator('.menu .alang[data-lang="zh"]').click()

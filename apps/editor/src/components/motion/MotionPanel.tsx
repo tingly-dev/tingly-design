@@ -18,7 +18,7 @@ import {
 import { display, editElement, parsed, useStore } from '../../store';
 import { FORMAT_PRESETS, addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from '../../motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
-import { SlideLayers } from '../slides/SlidePanel';
+import { ElementLayers } from '../panel/LayerTree';
 
 
 function useMotion() {
@@ -306,5 +306,5 @@ export function MotionLayers() {
     [source, view, m, t],
   );
   if (!file) return <div className="layers" />;
-  return <SlideLayers file={file} away={away} />;
+  return <ElementLayers file={file} away={away} />;
 }

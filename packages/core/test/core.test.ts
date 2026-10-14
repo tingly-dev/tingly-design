@@ -239,4 +239,14 @@ describe('structural ops', () => {
     expect(rep.role).toBe('Repeating group');
     expect(rep.children[0].repeated).toBe(true);
   });
+
+  it('reads hide and lock from the element', async () => {
+    const { layerTree, parseDc: p, HIDE_ATTR, LOCK_ATTR } = await import('../src');
+    const tree = layerTree(p(`<x-dc><div style="display:flex"><p ${HIDE_ATTR}>a</p><p ${LOCK_ATTR}="">b</p><p>c</p></div></x-dc>`));
+    expect(tree[0].children.map((c) => [c.hidden, c.locked])).toEqual([
+      [true, false],
+      [false, true],
+      [false, false],
+    ]);
+  });
 });

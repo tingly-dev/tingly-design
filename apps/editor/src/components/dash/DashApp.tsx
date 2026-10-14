@@ -25,12 +25,13 @@ import {
   dashImport,
 } from '../../dash';
 import { ImportHere } from '../ImportHere';
+import { ProjectMenu } from '../ProjectMenu';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
 import { replaceUrl } from '../../host';
-import { BASE, SERVER } from '../../base';
+import { SERVER } from '../../base';
 import { currentLanguage, htmlLang } from '../../i18n';
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
@@ -232,9 +233,7 @@ export function DashApp() {
   return (
     <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title={t('dash.bar.allProjects')}>
-          ←
-        </a>
+        <ProjectMenu />
         <Title />
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('dash.bar.saving') : t('dash.bar.connected')) : t('dash.bar.offline')} />
         <Filters />

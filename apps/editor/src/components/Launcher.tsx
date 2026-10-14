@@ -5,10 +5,11 @@ import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutD
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
 import { toast } from '../store';
-import { Appearance } from './Appearance';
+import { Appearance, LanguageMenu } from './Appearance';
+import { ISSUES_URL, REPO_URL } from '../links';
 import { goTo } from '../host';
 import { SERVER } from '../base';
-import { NAME_RE, slugOf } from '../projectName';
+import { NAME_RE, freeName, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
@@ -28,7 +29,7 @@ const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<Project
 
 const RECENT_KEY = 'dc:recent-projects';
 
-function readRecent(): string[] {
+export function readRecent(): string[] {
   try {
     const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
@@ -37,7 +38,7 @@ function readRecent(): string[] {
   }
 }
 
-function open(name: string) {
+export function open(name: string) {
   try {
     localStorage.setItem(RECENT_KEY, JSON.stringify([name, ...readRecent().filter((n) => n !== name)].slice(0, 20)));
   } catch {
@@ -342,30 +343,25 @@ function ImportTile({ onClick }: { onClick: () => void }) {
   );
 }
 
-function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: Set<string>; onClose: () => void }) {
+export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: Set<string>; onClose: () => void }) {
   const { t } = useTranslation();
   const [kind, setKind] = useState<ProjectKind>(initial);
   const [title, setTitle] = useState('');
-  const [folder, setFolder] = useState('');
-  const [touched, setTouched] = useState(false);
+  const [folder, setFolder] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
   useEffect(() => titleRef.current?.focus(), []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [onClose]);
-  const name = touched ? folder : slugOf(title);
-  const problem = !name
-    ? title.trim()
-      ? t('launcher.new.noSlug')
-      : ''
-    : !NAME_RE.test(name)
-      ? t('launcher.new.folderInvalid')
-      : taken.has(name)
-        ? t('launcher.new.folderTaken', { name })
-        : '';
+  // the folder is a detail: it follows the title, falls back to the type's name for a title with no
+  // letters (Chinese, say), and steps aside for a name that is taken, until the person edits it
+  const auto = freeName(slugOf(title) || kind, taken);
+  const name = folder ?? auto;
+  const problem = !name ? '' : !NAME_RE.test(name) ? t('launcher.new.folderInvalid') : taken.has(name) ? t('launcher.new.folderTaken', { name }) : '';
   const submit = async () => {
     if (!name || problem || busy) return;
     setBusy(true);
@@ -396,43 +392,38 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
         </header>
         <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
           {KINDS.map((k) => (
-            <button
-              type="button"
-              key={k.kind}
-              role="radio"
-              aria-checked={kind === k.kind}
-              data-kind={k.kind}
-              className={`kopt t-${k.tone}`}
-              onClick={() => setKind(k.kind)}
-            >
-              <span className="ic">
-                <KindIcon kind={k.kind} size={20} />
-              </span>
+            <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind} data-kind={k.kind} className={`kopt t-${k.tone}`} onClick={() => setKind(k.kind)}>
+              <KindIcon kind={k.kind} size={16} />
               <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
-              <span className="blurb">{t(`launcher.kind.${k.kind}.blurb`)}</span>
             </button>
           ))}
         </div>
-        <label className="field">
-          <span>{t('launcher.new.titleField')}</span>
-          <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>{t('launcher.new.folder')}</span>
-          <span className="folder">
-            <span className="pre">projects/</span>
-            <input
-              className="input"
-              placeholder="onboarding"
-              aria-label={t('launcher.new.folderLabel')}
-              value={name}
-              onChange={(e) => {
-                setTouched(true);
-                setFolder(e.target.value.trim());
-              }}
-            />
-          </span>
-        </label>
+        <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
+        <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <div className="where">
+          {folder === null ? (
+            <>
+              <span className="path" data-folder={name}>
+                projects/{name}
+              </span>
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => {
+                  setFolder(name);
+                  setTimeout(() => folderRef.current?.focus());
+                }}
+              >
+                {t('launcher.new.folderEdit')}
+              </button>
+            </>
+          ) : (
+            <span className="folder">
+              <span className="pre">projects/</span>
+              <input ref={folderRef} className="input" aria-label={t('launcher.new.folderLabel')} value={folder} onChange={(e) => setFolder(e.target.value.trim())} />
+            </span>
+          )}
+        </div>
         <div className={`problem${problem ? ' on' : ''}`} role="alert">
           {problem}
         </div>
@@ -558,7 +549,9 @@ export function Launcher() {
     >
       <header className="lhead">
         <div className="brand">
-          <Mark />
+          <a className="mark" href={REPO_URL} target="_blank" rel="noopener noreferrer" title={t('launcher.brand.title')} aria-label={t('launcher.brand.title')}>
+            <Mark />
+          </a>
           <div>
             <h1>Tingly Design</h1>
             <div className="sub">{list ? t('launcher.subtitle', { count: list.length }) : t('launcher.subtitleLoading')}</div>
@@ -584,6 +577,7 @@ export function Launcher() {
             <option value="recent">{t('launcher.sort.recent')}</option>
             <option value="name">{t('launcher.sort.name')}</option>
           </select>
+          <LanguageMenu className="btn lbtn" />
           <Appearance className="btn lbtn" />
           <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
             <IconPlus size={15} stroke={2} aria-hidden="true" /> {t('launcher.new.title')}
@@ -635,6 +629,14 @@ export function Launcher() {
           </section>
         )}
       </main>
+      <footer className="lfoot">
+        <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
+          {t('launcher.links.report')}
+        </a>
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+          {t('launcher.links.star')}
+        </a>
+      </footer>
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} onClose={() => setCreating(null)} />}
     </div>

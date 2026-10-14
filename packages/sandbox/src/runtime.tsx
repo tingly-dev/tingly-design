@@ -12,6 +12,8 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
   DEFAULT_SCENE_MS,
+  HIDE_CSS,
+  LOCK_ATTR,
   SLIDE_BASE_CSS,
   attrsForFormat,
   parseTime,
@@ -456,6 +458,9 @@ function Committed({ source }: { source: string }) {
   return null;
 }
 
+// hidden elements go everywhere, canvas artboards included (slides and scenes carry it in SLIDE_BASE_CSS)
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: HIDE_CSS }));
+
 // slides: the subset's base styles once, the deck's typefaces whenever they change
 let slideStyles: HTMLStyleElement | null = null;
 let facesHtml = '';
@@ -610,7 +615,7 @@ function drawBoxes() {
         if (els.length === 1 && !drag?.active) {
           const can = resizable(current.selected);
           if (can && !resize) spots = handleSpots(r);
-          const corners = can ? handleSpots(r) : handleSpots(r).filter((h) => h.at.length === 2);
+          const corners = can ? handleSpots(r) : isLocked(els[0]) ? [] : handleSpots(r).filter((h) => h.at.length === 2);
           for (const { x, y } of corners) {
             out.push(box({ left: x - 3.5, top: y - 3.5, width: 7, height: 7 }, `background:#fff;border:1.5px solid ${BLUE}`));
           }
@@ -634,11 +639,17 @@ function drawBoxes() {
   requestAnimationFrame(loop);
 })();
 
+/** What a click lands on: the element under the pointer, or the nearest one outside a locked branch. */
 function tidOf(target: EventTarget | null): number | null {
-  const el = (target as Element | null)?.closest?.('[data-dc-tid]');
+  let el = (target as Element | null)?.closest?.('[data-dc-tid]') ?? null;
+  const locked = el?.closest(`[${LOCK_ATTR}]`);
+  if (locked) el = locked.parentElement?.closest('[data-dc-tid]') ?? null;
   if (!el) return null;
   return Number(el.getAttribute('data-dc-tid'));
 }
+
+/** Locked elements (and what's inside them) are not moved, resized or retyped on the stage. */
+const isLocked = (el: Element | undefined | null) => !!el?.closest(`[${LOCK_ATTR}]`);
 
 // ---------------------------------------------------------------- inspect
 
@@ -760,7 +771,7 @@ function draggable(tid: number): boolean {
   const el = doc.elements[tid];
   if (!el || !el.parent) return false; // top-level: the artboard itself
   for (let a: DcElement | null = el.parent; a; a = a.parent) if (a.tag === 'sc-for') return false;
-  return instances(tid).length === 1;
+  return instances(tid).length === 1 && !isLocked(instances(tid)[0]);
 }
 
 /** The source-level sibling of `tid` that contains the rendered element `domTid`. */
@@ -1218,7 +1229,7 @@ document.addEventListener(
     const el = (e.target as Element).closest?.('[data-dc-tid]') as HTMLElement | null;
     if (!el) return;
     const tid = Number(el.getAttribute('data-dc-tid'));
-    if (!editableTids().has(tid)) return;
+    if (!editableTids().has(tid) || isLocked(el)) return;
     beginText(el);
   },
   true,

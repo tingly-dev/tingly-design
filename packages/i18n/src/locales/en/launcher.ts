@@ -87,7 +87,6 @@ export default {
     blurb: 'Turn an existing web page or SVG copied from Figma into an editable canvas.',
   },
   new: {
-    noSlug: 'The title has no letters or digits to use as a folder name; enter a folder name.',
     folderInvalid: 'A folder name can only use letters, digits, - and _, and must start with a letter or digit.',
     folderTaken: 'projects/{{name}} already exists.',
     title: 'New project',
@@ -95,6 +94,19 @@ export default {
     titleField: 'Title',
     folder: 'Folder',
     folderLabel: 'New project name',
+    folderEdit: 'Change folder',
+  },
+  brand: {
+    title: 'Tingly Design on GitHub',
+  },
+  links: {
+    report: 'Report an issue',
+    star: 'Star on GitHub',
+  },
+  projectMenu: {
+    home: 'All projects',
+    switch: 'Switch project',
+    jump: 'Open another project',
   },
   dropHint: 'Drop to import this page or SVG',
   dropNoEntry: 'The dropped files contain no .html page or .svg drawing.',

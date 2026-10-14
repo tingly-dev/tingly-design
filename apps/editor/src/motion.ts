@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { DEFAULT_SCENE_MS, MOTION_FILE, FORMAT_NAME_RE, formatTime, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { DEFAULT_SCENE_MS, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from './api';
 import { insertHtml } from './actions';
 import { filesOf, type ImportTarget } from './components/ImportHere';
@@ -113,6 +113,36 @@ export function removeFormat(name: string): void {
   editMotion((raw) => void delete formatsOf(raw)[name], t('motion.journal.formatRemoved', { name }));
   const view = get().motionView;
   if (view?.format === name) useStore.setState({ motionView: { ...view, format: names[0] } });
+}
+
+/** A scene's length (`data-duration`, before playback speed), written on its section. */
+export function setSceneDuration(id: string, ms: number): boolean {
+  const f = sceneFile(id);
+  const root = rootElement(parsed(display(get(), f) ?? ''));
+  if (!root) return false;
+  return editElement(f, [{ kind: 'attr', tid: root.tid, name: 'data-duration', value: formatTime(snapSceneMs(ms, 1)) }]);
+}
+
+/**
+ * Give the piece a cover: a scene outside `order` that stands for the video
+ * (thumbnail, first frame, the page before playing). A cover left behind by
+ * "remove" is taken back as it was rather than overwritten.
+ */
+export function addCover(): string {
+  const s = get();
+  const m = motionOf(s);
+  const files = sceneFiles().map((f) => sceneIdOf(f)!);
+  const id = files.includes('poster') && !m.order.includes('poster') ? 'poster' : uniqueSlideId(files, 'poster');
+  if (!files.includes(id)) {
+    edit(sceneFile(id), () => newCoverScene(id, m.title, t('starter.coverHint')), { actor: 'human', summary: t('motion.journal.coverCreated'), undoable: false });
+  }
+  editMotion((raw) => void (raw.cover = id), t('motion.journal.coverSet', { id }));
+  return id;
+}
+
+/** The piece goes back to showing its first frame; the cover's scene file stays, in case it comes back. */
+export function removeCover(): void {
+  editMotion((raw) => void delete raw.cover, t('motion.journal.coverRemoved'));
 }
 
 /** A scene's own length and the file's id, for the stage when the playhead is on it. */

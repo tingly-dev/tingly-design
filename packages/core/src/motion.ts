@@ -100,6 +100,26 @@ export function newMotion(title: string, hint = 'Edit scenes/*.html with Claude 
   };
 }
 
+/** A cover scene to start from: one still page in the starter's look, with no timing (a cover is read standing still). */
+export function newCoverScene(id: string, title: string, hint: string): string {
+  const safe = (v: string) => v.replace(/[<&>]/g, '');
+  return (
+    `<section id="${id}" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">\n` +
+    `<h1 style="font-size:160px;font-weight:800;line-height:1.05">${safe(title)}</h1>\n` +
+    `<p style="font-size:48px;color:#a9a59c">${safe(hint)}</p>\n` +
+    `</section>\n`
+  );
+}
+
+export const MIN_SCENE_MS = 500;
+export const MAX_SCENE_MS = 600_000;
+
+/** A length dragged or typed, as a scene length: whole `step` ms, never below half a second. */
+export function snapSceneMs(ms: number, step = 100): number {
+  if (!Number.isFinite(ms)) return DEFAULT_SCENE_MS;
+  return Math.min(MAX_SCENE_MS, Math.max(MIN_SCENE_MS, Math.round(ms / step) * step));
+}
+
 export function sceneFile(id: string): string {
   return `scenes/${id}.html`;
 }

@@ -81,7 +81,6 @@ export default {
     blurb: '把现成的网页或 Figma 里复制的 SVG 变成可以编辑的画布。',
   },
   new: {
-    noSlug: '标题里没有可用作文件夹名的字母或数字，请填写文件夹名。',
     folderInvalid: '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。',
     folderTaken: 'projects/{{name}} 已经存在。',
     title: '新建项目',
@@ -89,6 +88,19 @@ export default {
     titleField: '标题',
     folder: '文件夹',
     folderLabel: '新项目名称',
+    folderEdit: '改文件夹',
+  },
+  brand: {
+    title: 'Tingly Design 的 GitHub 主页',
+  },
+  links: {
+    report: '反馈问题',
+    star: '在 GitHub 上点星',
+  },
+  projectMenu: {
+    home: '全部项目',
+    switch: '切换项目',
+    jump: '打开其他项目',
   },
   dropHint: '松开，导入这个页面或 SVG',
   dropNoEntry: '拖进来的文件里没有 .html 页面或 .svg 图形。',

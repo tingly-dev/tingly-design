@@ -94,6 +94,8 @@ At most 200 elements on a slide.
 
 ## Keeping it editable
 
+- `data-hide` on an element hides it (the slide, the export and the stage all skip it); `data-lock` stops it being picked, moved or retyped on the stage. They are the layers panel's eye and lock: keep them, and use `data-hide` rather than deleting what was only asked to be hidden. They are not `hidden` on the `<section>`, which skips the slide.
+
 - Change only what was asked; keep everything else byte for byte (the editor writes back minimal text patches, and so should you).
 - The editor checks each slide against the subset and shows what's outside it; keep your slides clean.
 - Ids such as `dc12` in a request are handles the editor numbered depth-first over the slide's elements; they are never in the files.

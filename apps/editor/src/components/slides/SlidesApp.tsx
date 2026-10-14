@@ -28,6 +28,7 @@ import { Menu, MenuItem } from '../Menu';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
+import { ProjectMenu } from '../ProjectMenu';
 import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
 import { exportDeck } from './exportDeck';
 import { ImportHere } from '../ImportHere';
@@ -146,6 +147,9 @@ function Strip() {
   let n = 0;
   return (
     <aside className="strip" aria-label={t('slides.strip.label')}>
+      <div className="stripbar">
+        <ProjectMenu />
+      </div>
       <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
         {groups.map((g, gi) => (
           <div key={g.key || gi} className="sgroup">

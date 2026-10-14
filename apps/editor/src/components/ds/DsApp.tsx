@@ -4,6 +4,7 @@ import { AskClaude } from '../AskClaude';
 import { display, edit, isSaving, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
 import { ImportHere } from '../ImportHere';
+import { ProjectMenu } from '../ProjectMenu';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
@@ -181,6 +182,7 @@ export function DsApp() {
     <div className="app ds" data-theme={theme}>
       <style>{pageCss}</style>
       <nav className="dsnav" aria-label={tr('ds.app.label')}>
+        <ProjectMenu />
         {renaming ? (
           <input
             className="dstitle"

@@ -1,0 +1,37 @@
+name: Bug
+description: Something is broken or behaves differently from what you expect
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of Tingly Design is this about? It becomes a label and the scope of the title, such as bug(motion).
+      options:
+        - Canvas
+        - Slides
+        - Design system
+        - Dashboard
+        - Docs
+        - Motion
+        - Editor (launcher, prompt bar, panels)
+        - Server (fast AI, Claude Code, files)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected and what you got. Paste the project file or error text if you can.
+      placeholder: I did ... and expected ... but got ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Package version, or the commit if you run from source.
+      placeholder: 0.1.0
+

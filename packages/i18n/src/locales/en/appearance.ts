@@ -3,6 +3,7 @@ export default {
   titleWith: 'Appearance: {{name}}',
   theme: 'Theme',
   language: 'Language',
+  languageWith: 'Language: {{name}}',
   mode: {
     system: 'Match system',
     systemHint: 'Light / Dark',
