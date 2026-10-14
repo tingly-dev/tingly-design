@@ -47,6 +47,9 @@ jobs:
       - name: Build the motion runtime
         run: pnpm --filter @dc/sandbox build
 
+      - name: Install ffmpeg
+        run: sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Install Chromium
         run: |
           export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/pw"
