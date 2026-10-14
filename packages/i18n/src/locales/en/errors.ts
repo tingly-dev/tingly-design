@@ -25,6 +25,8 @@ export default {
   promptMissing: 'Write what you want first',
   taskFinished: 'This task has already finished.',
   noFastModel: 'The server has no ANTHROPIC_API_KEY, so fast AI is unavailable (you can write statements directly in jQuery mode).',
+  noRenderer: 'This machine has no Chrome or Edge together with ffmpeg, so it cannot draw this video exactly.',
+  renderFailed: 'The video could not be rendered: {{detail}}',
   noClaudeCli: 'There is no claude CLI on this machine, so the work cannot be handed to Claude Code.',
   nothingToCommit: 'There are no changes to commit.',
   notGitRepo: 'The projects folder {{dir}} is not in a git repository, so there is nowhere to commit.',

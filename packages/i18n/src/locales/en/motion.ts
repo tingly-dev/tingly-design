@@ -41,7 +41,8 @@ export default {
     noH264: 'This browser can’t write MP4 (it has no H.264 encoder), so this is a WebM. Chrome, Edge and Safari can write MP4',
     noAac: 'This browser can’t write AAC sound, so this is a WebM with Opus sound. Chrome, Edge and Safari can write MP4 with sound',
     noEncoder: 'This browser can’t encode video. Use a current Chrome, Edge or Safari',
-    embeds: 'These scenes hold an embed, which comes out blank in a video made here: {{scenes}}. node scripts/motion-render.mjs draws them',
+    viaServer: 'These scenes hold an embed or a video, so Chrome on this machine draws the video: {{scenes}}',
+    embeds: 'These scenes hold an embed, which comes out blank in a video made here: {{scenes}}. This machine has no Chrome or Edge with ffmpeg to draw them; node scripts/motion-render.mjs on one that has does',
     failed: 'The video could not be made: {{message}}',
   },
   stage: {

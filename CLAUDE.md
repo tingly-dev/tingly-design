@@ -68,7 +68,7 @@ packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), lang
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
-apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
+apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
 projects/         sample projects, one per kind
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;

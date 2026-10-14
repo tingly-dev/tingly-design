@@ -7,7 +7,7 @@ import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
 import { display, isSaving, toast, useStore } from '../../store';
 import { download } from '@dc/export';
-import { exportInputs } from '../../motionExport';
+import { exactScenes, exportInputs } from '../../motionExport';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
@@ -263,15 +263,25 @@ export function MotionApp() {
     pause();
     setExporting({ done: 0, total: 1 });
     try {
-      const inputs = await exportInputs(motion, playScenes, base);
-      const r = await control.current!.exportVideo({ format: 'auto', scale: 1, ...inputs }, (done, total) => setExporting({ done, total }), ctl.signal);
-      const name = `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}.${r.ext}`;
-      download(name, r.blob);
-      toast(t('motion.export.done', { name }));
-      if (r.note) toast(t(r.note === 'no-aac' ? 'motion.export.noAac' : 'motion.export.noH264'), 'info');
-      if (r.embeds.length) toast(t('motion.export.embeds', { scenes: r.embeds.join(', ') }), 'info');
+      const name = (ext: string) => `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}.${ext}`;
+      // a piece with an embed or a video layer is drawn by the server's Chrome when it has one; the browser cannot draw those
+      const exact = exactScenes(playScenes);
+      const caps = exact.length && project ? await api.renderCapabilities().catch(() => null) : null;
+      if (project && caps?.chrome && caps.ffmpeg) {
+        toast(t('motion.export.viaServer', { scenes: exact.join(', ') }));
+        const path = await api.renderMotion(project, fmt, (done, total) => setExporting({ done, total }), ctl.signal);
+        download(name('mp4'), await (await fetch(api.renderedUrl(project, path), { signal: ctl.signal })).blob());
+        toast(t('motion.export.done', { name: name('mp4') }));
+      } else {
+        const inputs = await exportInputs(motion, playScenes, base);
+        const r = await control.current!.exportVideo({ format: 'auto', scale: 1, ...inputs }, (done, total) => setExporting({ done, total }), ctl.signal);
+        download(name(r.ext), r.blob);
+        toast(t('motion.export.done', { name: name(r.ext) }));
+        if (r.note) toast(t(r.note === 'no-aac' ? 'motion.export.noAac' : 'motion.export.noH264'), 'info');
+        if (r.embeds.length) toast(t('motion.export.embeds', { scenes: r.embeds.join(', ') }), 'info');
+      }
     } catch (e) {
-      const code = e instanceof MotionExportError ? e.code : 'failed';
+      const code = e instanceof MotionExportError ? e.code : (e as { name?: string }).name === 'AbortError' ? 'aborted' : (e as { code?: string }).code === 'aborted' ? 'aborted' : 'failed';
       toast(code === 'aborted' ? t('motion.export.cancelled') : code === 'no-encoder' ? t('motion.export.noEncoder') : t('motion.export.failed', { message: (e as Error).message }), code === 'aborted' ? 'info' : 'error');
     } finally {
       exportCtl.current = null;

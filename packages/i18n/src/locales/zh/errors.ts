@@ -27,6 +27,8 @@ export default {
   promptMissing: '先写下要做什么',
   taskFinished: '这个任务已经结束了。',
   noFastModel: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用（可以改用 jQuery 模式直接写语句）。',
+  noRenderer: '本机没有 Chrome 或 Edge 加 ffmpeg，没法精确地渲染这条视频。',
+  renderFailed: '视频没能渲染：{{detail}}',
   noClaudeCli: '本机没有可用的 claude CLI，无法委托。',
   nothingToCommit: '没有需要提交的改动。',
   notGitRepo: '项目文件夹 {{dir}} 不在 git 仓库里，没有可提交的地方。',

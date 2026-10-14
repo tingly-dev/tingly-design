@@ -42,7 +42,8 @@ export default {
     noH264: '这个浏览器写不了 MP4（没有 H.264 编码器），所以存成了 WebM。Chrome、Edge 和 Safari 可以写 MP4',
     noAac: '这个浏览器写不了 AAC 声音，所以存成了带 Opus 声音的 WebM。Chrome、Edge 和 Safari 可以写带声音的 MP4',
     noEncoder: '这个浏览器不能编码视频。请用较新的 Chrome、Edge 或 Safari',
-    embeds: '这些场景里有嵌入内容，在这里导出的视频中会是空白：{{scenes}}。用 node scripts/motion-render.mjs 可以画出它们',
+    viaServer: '这些场景里有嵌入内容或视频，所以由本机的 Chrome 来画这条视频：{{scenes}}',
+    embeds: '这些场景里有嵌入内容，在这里导出的视频中会是空白：{{scenes}}。本机没有 Chrome 或 Edge 加 ffmpeg 来画它们；在有的机器上用 node scripts/motion-render.mjs 可以',
     failed: '视频没能生成：{{message}}',
   },
   stage: {
