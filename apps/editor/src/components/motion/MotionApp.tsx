@@ -5,7 +5,9 @@ import { api } from '../../api';
 import { addCover, motionImport, removeCover, setSceneDuration } from '../../motion';
 import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
-import { display, isSaving, useStore } from '../../store';
+import { display, isSaving, toast, useStore } from '../../store';
+import { download } from '@dc/export';
+import { exportInputs } from '../../motionExport';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
@@ -13,7 +15,7 @@ import { Panel, PauseFilled, PlayFilled } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
-import { MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
+import { MotionExportError, MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -121,6 +123,8 @@ export function MotionApp() {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
+  const [exporting, setExporting] = useState<{ done: number; total: number } | null>(null);
+  const exportCtl = useRef<AbortController | null>(null);
   const [stageRef, box] = useBox();
 
   // the player reloads in the background once edits settle, so typing never waits on it
@@ -251,6 +255,31 @@ export function MotionApp() {
     if (current && Number.isFinite(v) && v > 0) setSceneDuration(current.id, snapSceneMs(v * 1000 * rate, 1));
   };
 
+  const exportVideo = async () => {
+    if (exportCtl.current || !info) return;
+    const ctl = new AbortController();
+    exportCtl.current = ctl;
+    const back = tRef.current;
+    pause();
+    setExporting({ done: 0, total: 1 });
+    try {
+      const inputs = await exportInputs(motion, playScenes, base);
+      const r = await control.current!.exportVideo({ format: 'auto', scale: 1, ...inputs }, (done, total) => setExporting({ done, total }), ctl.signal);
+      const name = `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}.${r.ext}`;
+      download(name, r.blob);
+      toast(t('motion.export.done', { name }));
+      if (r.note) toast(t(r.note === 'no-aac' ? 'motion.export.noAac' : 'motion.export.noH264'), 'info');
+      if (r.embeds.length) toast(t('motion.export.embeds', { scenes: r.embeds.join(', ') }), 'info');
+    } catch (e) {
+      const code = e instanceof MotionExportError ? e.code : 'failed';
+      toast(code === 'aborted' ? t('motion.export.cancelled') : code === 'no-encoder' ? t('motion.export.noEncoder') : t('motion.export.failed', { message: (e as Error).message }), code === 'aborted' ? 'info' : 'error');
+    } finally {
+      exportCtl.current = null;
+      setExporting(null);
+      control.current?.seek(back);
+    }
+  };
+
   const errors = info?.issues.filter((i) => i.level === 'error').length ?? 0;
   const [W, H] = motion.formats[fmt]?.size ?? [1920, 1080];
   const scale = Math.max(0.01, Math.min(box.w / W, box.h / H));
@@ -287,6 +316,15 @@ export function MotionApp() {
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
           {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
+        {exporting ? (
+          <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={t('motion.export.cancelHint')}>
+            {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })} · {t('motion.export.cancel')}
+          </button>
+        ) : (
+          <button className="btn ghost" disabled={!info} onClick={() => void exportVideo()} title={t('motion.bar.exportVideoHint')}>
+            {t('motion.bar.exportVideo')}
+          </button>
+        )}
         <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
           {t('motion.bar.journal')}
         </button>
@@ -299,7 +337,7 @@ export function MotionApp() {
           {!motion.order.length && <div className="lhint">{t('motion.stage.noScenes')}</div>}
           {box.w > 0 && motion.order.length > 0 && (
             <div className="mstack" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
-              <div className={`mlayer${playing ? ' on' : ''}`} aria-hidden={!playing}>
+              <div className={`mlayer${playing || exporting ? ' on' : ''}`} aria-hidden={!playing && !exporting}>
                 <MotionFrame
                   motion={player.motion}
                   scenes={player.scenes}

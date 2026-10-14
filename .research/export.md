@@ -1,6 +1,6 @@
 # Export: motion video, and every kind in several formats
 
-Status: **research**, no product code. Answers issues #55 (a low-dependency way to export motion) and #56 (multi-format export for every kind, without heavy local installs). Both issue bodies are title-only, so the scope below is read from the titles and from `.design/motion.md` §8. Once a decision lands, the conclusion moves into `.design/`.
+Status: **research**. The decision (browser first, as its own package) is recorded in `.design/export.md`; this note keeps the options weighed. Answers issues #55 (a low-dependency way to export motion) and #56 (multi-format export for every kind, without heavy local installs). Both issue bodies are title-only, so the scope below is read from the titles and from `.design/motion.md` §8. Once a decision lands, the conclusion moves into `.design/`.
 
 ## 1. Where we are
 

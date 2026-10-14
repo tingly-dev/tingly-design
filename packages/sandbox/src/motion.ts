@@ -9,6 +9,8 @@
 import { resolveSrc, urlsAgainst } from './urls';
 import { attrsForFormat, drawSlideArt, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
+import type { ExportOutcome, ExportRequest } from './motionExport';
+import type { AudioClip } from '@dc/export';
 
 export interface MountOptions {
   motion: MotionJson;
@@ -48,6 +50,26 @@ interface Embed {
 const EMBED_HEAD = '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style>';
 
 let seekCounter = 0;
+
+/** The file this script was loaded from, so the exporter beside it can be fetched when needed. */
+const SELF = typeof document !== 'undefined' ? (document.currentScript as HTMLScriptElement | null)?.src : undefined;
+let exporter: Promise<(stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome>> | null = null;
+
+/** The video exporter, fetched on first use: it carries the encoders, which a player never needs. */
+function loadExporter() {
+  const w = window as unknown as { dcMotionExport?: { exportVideo: (stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome> } };
+  exporter ??= new Promise((resolve, reject) => {
+    if (w.dcMotionExport) return resolve(w.dcMotionExport.exportVideo);
+    if (!SELF) return reject(new Error('the exporter is not loaded'));
+    const el = document.createElement('script');
+    el.src = SELF.replace(/[^/]*$/, 'export.js');
+    el.onload = () => (w.dcMotionExport ? resolve(w.dcMotionExport.exportVideo) : reject(new Error('the exporter did not start')));
+    el.onerror = () => ((exporter = null), reject(new Error('the exporter could not be loaded')));
+    document.head.appendChild(el);
+  });
+  return exporter;
+}
+const exportVideo = async (stage: MotionStage, root: HTMLElement, req: ExportRequest) => (await loadExporter())(stage, root, req);
 
 export async function mount(opts: MountOptions): Promise<MotionStage> {
   const { motion, root } = opts;
@@ -293,7 +315,7 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
   });
 }
 
-(window as unknown as { dcMotion: unknown }).dcMotion = { mount };
+(window as unknown as { dcMotion: unknown }).dcMotion = { mount, exportVideo };
 
 /**
  * In the editor the runtime runs in a sandboxed frame (`sandboxDoc(origin, 'motion')`)
@@ -303,18 +325,39 @@ type HostMsg =
   | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
-  | { dcm: 'pause' };
+  | { dcm: 'pause' }
+  | { dcm: 'export'; id: string; format?: 'auto' | 'mp4' | 'webm'; scale?: number; fontCss?: string; audio?: AudioClip[] }
+  | { dcm: 'export-cancel'; id: string };
 
 if (typeof document !== 'undefined' && document.getElementById('dc-app') && window.parent !== window) {
   const root = document.getElementById('dc-app') as HTMLElement;
   let stage: MotionStage | null = null;
+  let stageBox: HTMLElement | null = null;
   let loading = 0;
+  const exporting = new Map<string, AbortController>();
   const post = (m: Record<string, unknown>) => window.parent.postMessage(m, '*');
   window.addEventListener('message', async (e: MessageEvent) => {
     if (e.source !== window.parent) return;
     const m = e.data as HostMsg;
     if (!m || typeof m !== 'object' || !('dcm' in m)) return;
-    if (m.dcm === 'load') {
+    if (m.dcm === 'export-cancel') {
+      exporting.get(m.id)?.abort();
+    } else if (m.dcm === 'export') {
+      if (!stage) return post({ dcm: 'export-error', id: m.id, code: 'no-stage' });
+      const ctl = new AbortController();
+      exporting.set(m.id, ctl);
+      const req: ExportRequest = { format: m.format, scale: m.scale, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
+      try {
+        const r = await exportVideo(stage, stageBox!, req);
+        const { blob, ...rest } = r;
+        post({ dcm: 'exported', id: m.id, blob, ...rest });
+      } catch (err) {
+        const name = err instanceof Error ? err.name : '';
+        post({ dcm: 'export-error', id: m.id, code: name === 'AbortError' ? 'aborted' : name === 'NoEncoderError' ? 'no-encoder' : 'failed', message: err instanceof Error ? err.message : String(err) });
+      } finally {
+        exporting.delete(m.id);
+      }
+    } else if (m.dcm === 'load') {
       const n = ++loading;
       // loads overlap while files are still being written (a generation saves scene after scene);
       // each mounts into its own box, so a stale one finishing late can't wipe the newer one
@@ -328,6 +371,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
         }
         stage?.destroy();
         stage = s;
+        stageBox = box;
         for (const el of Array.from(root.children)) if (el !== box) el.remove();
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));
         if (at) await s.seek(at);

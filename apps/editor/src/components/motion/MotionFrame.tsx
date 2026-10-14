@@ -14,10 +14,35 @@ export interface MotionInfo {
   issues: { scene: string; message: string; level: string }[];
 }
 
+export interface MotionExportRequest {
+  format?: 'auto' | 'mp4' | 'webm';
+  scale?: number;
+  fontCss?: string;
+  audio?: { data: ArrayBuffer; start: number; gain: number }[];
+}
+
+export interface MotionExportResult {
+  blob: Blob;
+  ext: string;
+  container: 'mp4' | 'webm';
+  /** Why this is not the MP4 that was asked for, if it is not. */
+  note?: 'no-h264' | 'no-aac';
+  /** Scenes the in-browser route cannot draw (an embed comes out blank). */
+  embeds: string[];
+}
+
+export class MotionExportError extends Error {
+  constructor(public code: 'aborted' | 'no-encoder' | 'no-stage' | 'failed', message = '') {
+    super(message || code);
+  }
+}
+
 export interface MotionControl {
   seek(t: number): void;
   play(from?: number): void;
   pause(): void;
+  /** Render the loaded piece to a video in the frame and hand the file back. */
+  exportVideo(req: MotionExportRequest, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<MotionExportResult>;
 }
 
 /**
@@ -63,6 +88,7 @@ export function MotionFrame({
   cb.current = { onLoaded, onTime, onEnded, onError };
   const atRef = useRef(at);
   atRef.current = at;
+  const exports = useRef(new Map<string, { ok: (r: MotionExportResult) => void; fail: (e: MotionExportError) => void; progress?: (done: number, total: number) => void }>());
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -77,6 +103,9 @@ export function MotionFrame({
       } else if (m.dcm === 'time' && typeof m.t === 'number') cb.current.onTime?.(m.t);
       else if (m.dcm === 'ended') cb.current.onEnded?.();
       else if (m.dcm === 'error') cb.current.onError?.(String(m.message ?? ''));
+      else if (m.dcm === 'export-progress') exports.current.get(String(m.id))?.progress?.(Number(m.done), Number(m.total));
+      else if (m.dcm === 'exported') exports.current.get(String(m.id))?.ok(m as unknown as MotionExportResult);
+      else if (m.dcm === 'export-error') exports.current.get(String(m.id))?.fail(new MotionExportError(m.code as MotionExportError['code'], String(m.message ?? '')));
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
@@ -89,6 +118,20 @@ export function MotionFrame({
       seek: (t) => post({ dcm: 'seek', t }),
       play: (from) => post({ dcm: 'play', from }),
       pause: () => post({ dcm: 'pause' }),
+      exportVideo: (req, onProgress, signal) =>
+        new Promise((resolve, reject) => {
+          const id = Math.random().toString(36).slice(2);
+          const done = () => (exports.current.delete(id), signal?.removeEventListener('abort', cancel));
+          const cancel = () => post({ dcm: 'export-cancel', id });
+          exports.current.set(id, {
+            ok: (r) => (done(), resolve(r)),
+            fail: (e) => (done(), reject(e)),
+            progress: onProgress,
+          });
+          if (signal?.aborted) return cancel();
+          signal?.addEventListener('abort', cancel);
+          post({ dcm: 'export', id, ...req });
+        }),
     };
     return () => {
       control.current = null;
