@@ -1,0 +1,147 @@
+name: Release
+
+# Push a tag vX.Y.Z (or vX.Y.Z-rc.N) whose version matches package.json:
+#
+#   build    tests, typecheck, `pnpm bundle`, start the bundle like a host,
+#            pack it into tingly-design-<ver>.tgz plus its sha256
+#   github   a GitHub release on the tag with both files attached
+#   npm      the same bundle published as @tingly-dev/tingly-design and as
+#            tingly-design, behind the `npm` environment; a prerelease goes to
+#            the `next` dist-tag
+#
+# The release asset and the npm package are one tarball, so a host can pin a
+# version and its sha256 and fetch it from either place. See .design/release.md.
+#
+# npm auth: Trusted Publishing (OIDC) bound to this file name and the `npm`
+# environment; do not rename either. NPM_TOKEN, when the secret is set, is used
+# instead (only needed for the very first publish, before the package exists
+# and a trusted publisher can be added to it).
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and check the bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      dist_tag: ${{ steps.version.outputs.dist_tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the tag matches package.json and a license is set
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          PKG="$(node -p 'require("./package.json").version')"
+          if [ "$VERSION" != "$PKG" ]; then
+            echo "❌ tag $TAG does not match package.json version $PKG: bump package.json, then tag v$PKG"
+            exit 1
+          fi
+          if [ -z "$(node -p 'require("./package.json").license || ""')" ]; then
+            echo "❌ package.json has no license; pick one (and add LICENSE) before releasing, see .design/release.md"
+            exit 1
+          fi
+          case "$VERSION" in
+            *-*) DIST_TAG=next ;;
+            *) DIST_TAG=latest ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION (npm dist-tag $DIST_TAG)"
+
+      - uses: ./.github/actions/setup
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Bundle
+        run: pnpm bundle
+
+      - name: Start the bundle like a host
+        run: .github/scripts/smoke-bundle.sh dist/tingly-design "${{ steps.version.outputs.version }}"
+
+      - name: Pack
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p out
+          (cd dist/tingly-design && npm pack --pack-destination "$GITHUB_WORKSPACE/out")
+          mv "out/tingly-dev-tingly-design-$VERSION.tgz" "out/tingly-design-$VERSION.tgz"
+          (cd out && sha256sum "tingly-design-$VERSION.tgz" > "tingly-design-$VERSION.tgz.sha256" && cat ./*.sha256)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tingly-design-${{ steps.version.outputs.version }}
+          path: out/
+          if-no-files-found: error
+
+  github:
+    name: GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: tingly-design-${{ needs.build.outputs.version }}
+          path: out
+
+      - name: Create the release with the bundle attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          DIST_TAG: ${{ needs.build.outputs.dist_tag }}
+        run: |
+          PRERELEASE=()
+          [ "$DIST_TAG" = latest ] || PRERELEASE=(--prerelease)
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber -- out/*
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
+              --generate-notes "${PRERELEASE[@]}" -- out/*
+          fi
+
+  npm:
+    name: Publish to npm
+    needs: [build, github]
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: tingly-design-${{ needs.build.outputs.version }}
+          path: out
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish @tingly-dev/tingly-design and tingly-design
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          DIST_TAG: ${{ needs.build.outputs.dist_tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: .github/scripts/npm-publish.sh "out/tingly-design-$VERSION.tgz" "$DIST_TAG" @tingly-dev/tingly-design tingly-design

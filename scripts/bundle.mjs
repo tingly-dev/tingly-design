@@ -6,6 +6,8 @@
 //   editor/  sandbox/    the built editor and the artboard runtime
 //   samples/             the sample projects, copied into a projects folder that does not exist yet
 //   scripts/  .claude/   what Claude Code reads and runs when work is handed to it
+//   package.json         the npm package @tingly-dev/tingly-design; README, LICENSE and NOTICE (when the repo has them),
+//                        THIRD_PARTY_LICENSES (the notices of every dependency bundled in) beside it
 //
 // Usage: pnpm bundle   (builds the editor and sandbox first). See docs/en/embedding.md.
 import { execFileSync } from 'node:child_process';
@@ -54,7 +56,44 @@ writeFileSync(
   join(out, 'tingly-design.json'),
   JSON.stringify({ name: 'tingly-design', version: pkg.version, protocol, entry: 'server.mjs', node: pkg.engines?.node ?? '>=20.11' }, null, 2) + '\n',
 );
-// so `node server.mjs` reads it as an ES module whatever folder it lands in
-writeFileSync(join(out, 'package.json'), JSON.stringify({ name: 'tingly-design-bundle', private: true, type: 'module' }, null, 2) + '\n');
+// The folder is the npm package and the GitHub release asset as it stands (see .design/release.md).
+// type: module so `node server.mjs` reads it as an ES module whatever folder it lands in.
+writeFileSync(
+  join(out, 'package.json'),
+  JSON.stringify(
+    {
+      name: '@tingly-dev/tingly-design',
+      version: pkg.version,
+      description: pkg.description,
+      license: pkg.license,
+      type: 'module',
+      engines: pkg.engines,
+      repository: pkg.repository,
+      homepage: pkg.homepage,
+    },
+    null,
+    2,
+  ) + '\n',
+);
+for (const f of ['LICENSE', 'NOTICE']) if (existsSync(join(root, f))) copy(f, f);
+writeFileSync(
+  join(out, 'README.md'),
+  `# Tingly Design ${pkg.version}\n\nThe bundle a host such as Tingly Box ships and runs: \`node server.mjs\`. ` +
+    `Launch variables, the ready line and the host messages are in [Embedding](${pkg.homepage}/blob/main/docs/en/embedding.md).\n`,
+);
+writeFileSync(join(out, 'THIRD_PARTY_LICENSES.txt'), thirdPartyNotices());
+
+/** The license text of every production dependency, since server.mjs, editor/ and sandbox/ bundle their code in. */
+function thirdPartyNotices() {
+  const byLicense = JSON.parse(execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], { cwd: root, encoding: 'utf8', maxBuffer: 64 << 20 }));
+  const deps = Object.values(byLicense).flat().sort((a, b) => a.name.localeCompare(b.name));
+  const parts = deps.map((d) => {
+    const dir = d.paths[0];
+    const file = ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'license', 'license.md', 'LICENSE-MIT'].find((f) => existsSync(join(dir, f)));
+    const text = file ? readFileSync(join(dir, file), 'utf8').trim() : `License: ${d.license}`;
+    return `${d.name} ${d.versions.join(', ')} (${d.license})\n\n${text}`;
+  });
+  return `Tingly Design bundles code from the packages below.\n\n${parts.join('\n\n' + '-'.repeat(72) + '\n\n')}\n`;
+}
 
 console.log(`bundled tingly-design ${pkg.version} (protocol ${protocol}) into ${out}`);

@@ -2,6 +2,13 @@
   "name": "tingly-design",
   "private": true,
   "version": "0.1.0",
+  "description": "A design editor with two-way editing: canvases, slides, design systems, dashboards, docs and motion pieces as plain files.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tingly-dev/tingly-design.git"
+  },
+  "homepage": "https://github.com/tingly-dev/tingly-design",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "engines": {

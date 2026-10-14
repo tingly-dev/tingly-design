@@ -43,6 +43,7 @@
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
 | [tingly-box-integration.md](./tingly-box-integration.md) | 将来在 Tingly Box 里接入编辑器 | 方案，未实施；TB 仓库未改 |
+| [release.md](./release.md) | 发版：tag 触发测试、打包，发 GitHub release 和 npm 包 `@tingly-dev/tingly-design` 和 `tingly-design`；同一份 bundle、许可证、npm 鉴权 | 已实施；还没发过第一个版本 |
 
 Tingly Box 那边相关的说明：[ux-principles.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/ux-principles.md)（UX 判断标准，做功能前必读）、[theme.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/theme.md)（TB 主题调色板的取舍；本仓库的主题由 `scripts/sync-tingly-box-theme.mjs` 从 TB 的 `@tingly/ui` 同步）、[gui-host-bridge.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/gui-host-bridge.md)（宿主桥接）。
 

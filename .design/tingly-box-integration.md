@@ -117,7 +117,7 @@ TB 侧的引用路径都相对 tingly-box 仓库。
 
 TB 是单个 Go 二进制，桌面版也不带 Node，所以不把 tingly-design 打进 TB：
 
-- **发布**：tingly-design 发版时把 `dist/tingly-design/` 打成 `tingly-design-<ver>.tgz`，放到 GitHub release，同时发一个 npm 包，和 TB 的 npm 方案一致。包本身与平台无关，只有一份。
+- **发布**：tingly-design 发版时把 `dist/tingly-design/` 打成 `tingly-design-<ver>.tgz`，放到 GitHub release，同时发一个 npm 包 `@tingly-dev/tingly-design`（另以 `tingly-design` 发布），和 TB 的 npm 方案一致。包本身与平台无关，只有一份；两边是同一个文件（见 [release.md](./release.md)）。
 - **版本**：TB 在代码里钉一个版本和 sha256（比如 `internal/server/module/design/version.go`），升级 tingly-design 就是在 TB 里改这一行。
 - **下载**：第一次启用时下载到 `~/.cache/tingly-box/design/<ver>/`，按 sha256 校验后解压，和 `.design/npm.md` 里二进制缓存的位置并列。下载走 TB 已有的代理设置。
 - **Node 运行时**：
@@ -204,7 +204,7 @@ TB 是单个 Go 二进制，桌面版也不带 Node，所以不把 tingly-design
 
 ### tingly-design（可以先做，都不改 protocol）
 
-- 发版流程：GitHub release 附上 `tingly-design-<ver>.tgz` 和 sha256，并发布 npm 包。
+- 发版流程：GitHub release 附上 `tingly-design-<ver>.tgz` 和 sha256，并发布 npm 包。已实施，见 [release.md](./release.md)。
 - 嵌入时隐藏外观菜单（§4.6）。
 - 服务端响应加上 `Referrer-Policy: same-origin`，作为 TB 代理之外的第二道防线。
 - `embedding.md` 补上能力前缀的写法，把示例前缀改成 `/apps/design/<key>`，并说明这时 `/sandbox` 和 `/raw` 不需要单独放行。

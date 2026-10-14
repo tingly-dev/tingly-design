@@ -1,0 +1,38 @@
+name: Set up the workspace
+description: >-
+  Node, pnpm (corepack), a cached pnpm store and `pnpm install --frozen-lockfile`.
+  Shared by ci.yml and release.yml so the PR check and the release build the
+  same way. Needs a checkout.
+inputs:
+  node-version:
+    description: Node.js version
+    required: false
+    default: '24'
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Enable pnpm
+      shell: bash
+      run: corepack enable
+
+    - name: Locate the pnpm store
+      id: store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache the pnpm store
+      uses: actions/cache@v6
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

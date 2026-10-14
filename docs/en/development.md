@@ -38,6 +38,12 @@ python3 e2e/mock_anthropic.py &
 ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 ```
 
+## Releasing
+
+Pushing a tag `vX.Y.Z` releases that version; the tag has to match `version` in the root `package.json`, so bump it on main first. `.github/workflows/release.yml` runs the unit tests and typecheck, builds the bundle, starts it the way a host does (`.github/scripts/smoke-bundle.sh`), and packs it into `tingly-design-<ver>.tgz`. That one file, with its `.sha256`, is attached to a GitHub release on the tag and published to npm as `@tingly-dev/tingly-design` and as `tingly-design` (the same contents under both names). A tag such as `v0.2.0-rc.1` makes a prerelease on the `next` dist-tag.
+
+`.github/workflows/ci.yml` runs the same checks on every pull request, plus `npm pack --dry-run` to list what the package would contain. Why it is built this way, and how npm publishing is authorised: `.design/release.md`.
+
 ---
 
 Back to the [README](../../README.md)
