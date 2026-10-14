@@ -40,7 +40,7 @@
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
-| [issue-resolve.md](./issue-resolve.md) | Issue 自动跟进：每 5 小时拉取，团队的直接推进到 draft PR，外部的先评估回复、等维护者放行；阶段记在 issue 评论里 | 已实施；skill 在 `.claude/skills/issue-resolve/` |
+| [issue-resolve.md](./issue-resolve.md) | Issue 自动跟进：每 5 小时拉取并分析，整理成任务组交给主线程分派，巡检自己不开 PR；外部的先评估回复、等维护者放行；阶段记在 issue 评论里 | 已实施；skill 在 `.claude/skills/issue-resolve/` |
 
 ## 宿主与 Tingly Box
 

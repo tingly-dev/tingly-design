@@ -98,7 +98,7 @@ End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `la
 
 # Issues
 
-A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` over this repository's issues: team issues (owners, members, collaborators) go to analysis and a draft PR, external issues get one short evaluation comment and wait for a maintainer. Its stage lives in a hidden `<!-- issue-resolve stage=… -->` marker on its comments. Issues come in through the forms in `.github/ISSUE_TEMPLATE` (Feature / Bug / Feedback / Other plus an area); `issue-area.yml` turns the area into an `area/<name>` label and a `feat(motion):` title, and the sweep reads those labels. See `.design/issue-resolve.md`.
+A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` over this repository's issues. It only analyzes: team issues (owners, members, collaborators) get an analysis comment, external issues one short evaluation comment and a wait for a maintainer, and the analyzed issues are sorted into task groups (`/mnt/project-files/issue-triage/sweep-<time>.md`) handed to the project's coordinator, which starts the threads that build them. The sweep never branches or opens a PR. Its stage lives in a hidden `<!-- issue-resolve stage=… -->` marker on its comments. Issues come in through the forms in `.github/ISSUE_TEMPLATE` (Feature / Bug / Feedback / Other plus an area); `issue-area.yml` turns the area into an `area/<name>` label and a `feat(motion):` title, and the sweep reads those labels. See `.design/issue-resolve.md`.
 
 # Pull requests
 
