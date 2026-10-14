@@ -4581,8 +4581,150 @@ input.dashtitle {
   font-variant-numeric: tabular-nums;
 }
 .mlanes {
-  position: relative;
+  display: flex;
+  gap: 12px;
   margin-top: 4px;
+}
+/* the axis: ruler, clips and playhead share it, 0 s at its left edge */
+.maxis {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+/* before 0 s: the cover's own slot, always there so adding one moves nothing */
+.mcoverslot {
+  flex: none;
+  width: 84px;
+  padding-right: 12px;
+  border-right: 1px dashed var(--line-2);
+}
+.mcoverhead {
+  height: 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 20px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.mcovertrack {
+  position: relative;
+  height: 40px;
+  margin-top: 8px;
+}
+.mcoverclip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+.mcoverclip .mname {
+  font-size: 11px;
+  font-weight: 500;
+}
+.mcoverclip .mlen {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--faint);
+}
+.mcoverclip:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.mcoverclip.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.mcoverclip.add {
+  align-items: center;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+.mcoverx {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+.mcovertrack:hover .mcoverx,
+.mcoverx:focus-visible {
+  opacity: 1;
+}
+.mcoverx:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+/* a clip's right edge: drag to set the scene's length */
+.mgrip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  margin-left: -6px;
+  z-index: 1;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.mgrip::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+.mgrip:hover::after,
+.mgrip:focus-visible::after {
+  opacity: 0.8;
+}
+.mdur {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.mdur .input {
+  width: 52px;
+  height: 24px;
+  padding: 0 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .mruler {
   position: relative;

@@ -12,12 +12,14 @@ import {
   motionTimeline,
   parseAnim,
   parseKeys,
+  newCoverScene,
   parseCover,
   parseMotion,
   parseTime,
   planScene,
   sceneBaseCss,
   sceneIdOf,
+  snapSceneMs,
   speedOf,
   SLIDE_BASE_CSS,
 } from '../src';
@@ -163,6 +165,22 @@ describe('motion: project and timeline', () => {
     expect(parseCover(3)).toBeUndefined();
     expect(parseMotion('{"cover":"poster","coverFirstFrame":false}')).toMatchObject({ cover: { scene: 'poster' }, coverFirstFrame: false });
     expect(parseMotion('{}').cover).toBeUndefined();
+  });
+
+  it('snaps a dragged or typed scene length to 0.1 s, within a sane range', () => {
+    expect(snapSceneMs(4040)).toBe(4000);
+    expect(snapSceneMs(4060)).toBe(4100);
+    expect(snapSceneMs(12)).toBe(500);
+    expect(snapSceneMs(10_000_000)).toBe(600_000);
+    expect(snapSceneMs(NaN)).toBe(4000);
+    expect(snapSceneMs(1234, 1)).toBe(1234);
+  });
+
+  it('writes a cover scene that is one still page, with no timing', () => {
+    const src = newCoverScene('poster', 'A <b>&', 'Hint');
+    expect(src).toContain('<section id="poster"');
+    expect(src).not.toMatch(/data-(in|out|duration|keys)/);
+    expect(src).toContain('A b');
   });
 
   it('overlaps scenes by their transitions', () => {
