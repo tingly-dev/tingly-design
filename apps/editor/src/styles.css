@@ -5514,6 +5514,7 @@ body.filedrag iframe {
   .glance {
     grid-template-columns: 1fr;
   }
+}
 
 /* the way out of a project: home, then a menu to switch, start, report */
 .pmenu {
