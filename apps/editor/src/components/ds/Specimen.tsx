@@ -4,20 +4,18 @@ import { useTranslation } from 'react-i18next';
 
 const FALLBACK = { paper: '#f4f3ef', surface: '#ffffff', ink: '#1d1d1b', accent: '#9a9892' };
 
-/**
- * A system's look on one small poster: its page, a card with its radius and shadow, a headline in its
- * display face, a line of body text and a button in its brand colour. Two systems differ here at a glance.
- * Used by the launcher card and the design-system overview, so both say the same thing.
- */
-export function Specimen({ glance: g, title, className = '' }: { glance: DsGlance; title: string; className?: string }) {
+function Pane({ glance: g, title, label }: { glance: DsGlance; title: string; label?: string }) {
   const { t: tr } = useTranslation();
   const paper = g.paper ?? FALLBACK.paper;
-  const surface = g.surface ?? (g.paper ? g.paper : FALLBACK.surface);
-  const ink = g.ink ?? FALLBACK.ink;
-  const accent = g.accent ?? FALLBACK.accent;
-  const style = { '--sp-paper': paper, '--sp-surface': surface, '--sp-ink': ink, '--sp-accent': accent, '--sp-radius': g.radius ?? '8px' } as CSSProperties;
+  const style = {
+    '--sp-paper': paper,
+    '--sp-surface': g.surface ?? (g.paper ? g.paper : FALLBACK.surface),
+    '--sp-ink': g.ink ?? FALLBACK.ink,
+    '--sp-accent': g.accent ?? FALLBACK.accent,
+    '--sp-radius': g.radius ?? '8px',
+  } as CSSProperties;
   return (
-    <div className={`specimen ${className}`} style={style} role="img" aria-label={tr('ds.glance.specimen', { title })}>
+    <div className="sp-pane" style={style}>
       <div className={`sp-card ${g.shadow ? 'raised' : ''}`}>
         <div className="sp-head" style={{ fontFamily: g.headingFont }}>
           {title}
@@ -34,6 +32,23 @@ export function Specimen({ glance: g, title, className = '' }: { glance: DsGlanc
           </span>
         </div>
       </div>
+      {label && <span className="sp-theme">{label}</span>}
+    </div>
+  );
+}
+
+/**
+ * A system's look on one small poster: its page, a card with its radius and shadow, a headline in its
+ * display face, a line of body text and a button in its brand colour. A second theme sits beside the
+ * first, so light and dark are both seen. Two systems differ here at a glance. Used by the launcher card
+ * and the design-system overview, so both say the same thing.
+ */
+export function Specimen({ glance, alt, themeName, title, className = '' }: { glance: DsGlance; alt?: { name: string; glance: DsGlance }; themeName?: string; title: string; className?: string }) {
+  const { t: tr } = useTranslation();
+  return (
+    <div className={`specimen ${alt ? 'two' : ''} ${className}`} role="img" aria-label={tr('ds.glance.specimen', { title })}>
+      <Pane glance={glance} title={title} label={alt ? themeName : undefined} />
+      {alt && <Pane glance={alt.glance} title={title} label={alt.name} />}
     </div>
   );
 }

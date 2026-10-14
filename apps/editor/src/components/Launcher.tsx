@@ -149,8 +149,24 @@ function Minimap({ boards }: { boards: { x: number; y: number; w: number; h: num
   );
 }
 
+/** The typefaces a system's sample is set in, loaded once for the launcher page. */
+function useHostedFonts(hrefs: string) {
+  useEffect(() => {
+    for (const href of hrefs.split('\n').filter(Boolean)) {
+      if (document.head.querySelector(`link[data-ds-font="${CSS.escape(href)}"]`)) continue;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.dataset.dsFont = href;
+      document.head.appendChild(link);
+    }
+  }, [hrefs]);
+}
+
 function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
   const { t } = useTranslation();
+  const hosted = p.kind === 'design-system' ? p.hosted.join('\n') : '';
+  useHostedFonts(hosted);
   const [ref, near] = useNear<HTMLDivElement>();
   let body: ReactNode;
   if (p.kind === 'design') {
@@ -173,16 +189,22 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
   } else if (p.kind === 'design-system') {
     body = (
       <div className="lp-ds">
-        <Specimen glance={p.glance} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
+        <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
         <div className="sw">
-          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 8).map((c, i) => (
+          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 10).map((c, i) => (
             <span key={i} style={{ background: c }} />
           ))}
         </div>
-        <div className="facts">
-          {t('launcher.preview.dsFacts', { colors: p.glance.colors, type: p.glance.typeStyles, components: p.components.length })}
-          {p.glance.themes.length > 1 && ` · ${p.glance.themes.join(' / ')}`}
+        <div className="faces">
+          {[p.glance.headingFont, p.glance.bodyFont]
+            .filter((f, i, a) => f && a.indexOf(f) === i)
+            .map((f) => (
+              <span key={f} style={{ fontFamily: f }}>
+                {f!.split(',')[0].replace(/["']/g, '').trim()}
+              </span>
+            ))}
         </div>
+        <div className="facts">{t('launcher.preview.dsFacts', { colors: p.glance.colors, type: p.glance.typeStyles, components: p.components.length })}</div>
       </div>
     );
   } else if (p.kind === 'dashboard') {

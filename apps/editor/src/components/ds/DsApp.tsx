@@ -73,12 +73,13 @@ function Overview({ theme }: { theme: string }) {
   }, [files]);
   const bundle = useStore((s) => display(s, 'components/bundle.js'));
   const glance = useMemo(() => dsGlance(t), [t]);
+  const alt = useMemo(() => (t.themes[1] ? { name: t.themes[1].name, glance: dsGlance(t, t.themes[1].id) } : undefined), [t]);
   const components = useMemo(() => componentNames(Object.keys(files), bundle).length, [files, bundle]);
   const stack = (f?: string) => f?.split(',')[0].replace(/["']/g, '').trim();
   return (
     <section className="dsview" aria-label={tr('ds.nav.overview')}>
       <div className="glance">
-        <Specimen glance={glance} title={index.title} />
+        <Specimen glance={glance} alt={alt} themeName={t.themes[0]?.name} title={index.title} />
         <div className="gfacts">
           <p>{tr('ds.glance.what')}</p>
           <dl>

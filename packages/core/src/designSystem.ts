@@ -512,8 +512,8 @@ const saturation = (hex: string): number => {
 };
 
 /** Pick the roles that make a system recognisable, by the names brand books use; falls back to the colours themselves. */
-export function dsGlance(t: DsTokens): DsGlance {
-  const theme = t.themes[0]?.id;
+export function dsGlance(t: DsTokens, themeId?: string): DsGlance {
+  const theme = themeId ?? t.themes[0]?.id;
   const value = (c?: DsColor) => (c && theme ? c.values[theme] : undefined) ?? (c ? Object.values(c.values)[0] : undefined);
   const find = (re: RegExp) => value(t.colors.find((c) => re.test(c.name)));
   const paper = find(/^(paper|background|bg|page|canvas|base)\b/i) ?? find(/(paper|background|^bg)/i);
