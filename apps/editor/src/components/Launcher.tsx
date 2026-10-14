@@ -190,19 +190,21 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
     body = (
       <div className="lp-ds">
         <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
-        <div className="sw">
-          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 12).map((c, i) => (
-            <span key={i} style={{ background: c }} />
-          ))}
-        </div>
-        <div className="faces">
-          {[p.glance.headingFont, p.glance.bodyFont]
-            .filter((f, i, a) => f && a.indexOf(f) === i)
-            .map((f) => (
-              <span key={f} style={{ fontFamily: f }}>
-                {f!.split(',')[0].replace(/["']/g, '').trim()}
-              </span>
+        <div className="foot">
+          <div className="faces">
+            {[p.glance.headingFont, p.glance.bodyFont]
+              .filter((f, i, a) => f && a.indexOf(f) === i)
+              .map((f) => (
+                <span key={f} style={{ fontFamily: f }}>
+                  {f!.split(',')[0].replace(/["']/g, '').trim()}
+                </span>
+              ))}
+          </div>
+          <div className="sw">
+            {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 6).map((c, i) => (
+              <span key={i} style={{ background: c }} />
             ))}
+          </div>
         </div>
       </div>
     );
