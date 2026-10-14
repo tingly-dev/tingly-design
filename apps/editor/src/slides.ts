@@ -15,6 +15,7 @@ import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slide
 import { replaceUrl } from './host';
 import { filesOf, type ImportTarget } from './components/ImportHere';
 import { t } from './i18n';
+import { appendNote, type NoteTarget } from './noteTarget';
 
 /**
  * Deck commands: slides are files placed by deck.json `order`, so adding,
@@ -167,6 +168,9 @@ export function removeSection(key: string): void {
 
 // ---------------------------------------------------------------- notes
 
+/** The longest note a slide or scene keeps. */
+export const NOTE_MAX = 4000;
+
 export function notesOf(source: string | undefined): string {
   if (!source) return '';
   const root = rootElement(parsed(source));
@@ -193,7 +197,7 @@ export function setNotesIn(file: string, text: string): void {
   const root = rootElement(parsed(src));
   if (!root) return;
   const aside = root.children.find((c): c is DcElement => c.kind === 'el' && c.tag === 'aside');
-  const body = text.slice(0, 4000);
+  const body = text.slice(0, NOTE_MAX);
   if (aside) {
     if (!body.trim()) editElement(file, [{ kind: 'remove', tid: aside.tid }]);
     else editElement(file, [{ kind: 'text', tid: aside.tid, text: body }]);
@@ -202,6 +206,25 @@ export function setNotesIn(file: string, text: string): void {
     editElement(file, [{ kind: 'insert', target: root.tid, where: 'last', html: `<aside>${esc}</aside>` }]);
   }
 }
+
+/** Add text after what a slide or scene file's note already says. Throws a reason the person can read when it doesn't fit. */
+export function appendNoteIn(file: string, text: string): void {
+  const src = display(get(), file);
+  if (src === undefined) throw new Error(t('prompt.run.keepNoPlace'));
+  const next = appendNote(notesOf(src), text);
+  if (next.length > NOTE_MAX) throw new Error(t('prompt.run.keepTooLong'));
+  setNotesIn(file, next);
+}
+
+/** "Keep as note" in a deck: the current slide's speaker notes. */
+export const slideNoteTarget: NoteTarget = {
+  keep: (text) => {
+    const id = get().slide;
+    if (!id) throw new Error(t('prompt.run.keepNoSlide'));
+    appendNoteIn(slideFile(id), text);
+    return t('prompt.run.keptSlide', { n: slideIds(get()).indexOf(id) + 1 });
+  },
+};
 
 // ---------------------------------------------------------------- inserting
 

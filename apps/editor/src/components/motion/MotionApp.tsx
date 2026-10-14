@@ -2,9 +2,10 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, snapSceneMs, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { addCover, motionImport, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
+import { addCover, motionImport, motionNoteTarget, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
 import { notesOf, setNotesIn } from '../../slides';
 import { NoteBox } from '../NoteBox';
+import { registerNoteTarget } from '../../noteTarget';
 import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
 import { display, isSaving, useStore } from '../../store';
@@ -68,6 +69,7 @@ function useBox(): [React.RefObject<HTMLDivElement | null>, { w: number; h: numb
  * playhead, stopped at that time and editable like a slide.
  */
 export function MotionApp() {
+  useEffect(() => registerNoteTarget(motionNoteTarget), []);
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);

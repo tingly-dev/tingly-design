@@ -2,12 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import { elapsed, type AgentStep } from '@dc/core';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { undo, undoDelegate, useStore, type DelegateEntry, type DelegateState, type FastState } from '../store';
+import { useNoteTarget } from '../noteTarget';
+import { toast, undo, undoDelegate, useStore, type DelegateEntry, type DelegateState, type FastState } from '../store';
 import {
   Chevron,
   Close,
   Done,
   Failed,
+  KeepNote,
   Reuse,
   Spinner,
   StepEdit,
@@ -52,6 +54,34 @@ export function RunFeed({ onReuse, onOpen }: { onReuse?: (prompt: string) => voi
   if (lastRun.kind === 'delegate' && delegate) return <DelegateRun key={delegate.id} d={delegate} onReuse={onReuse} onOpen={onOpen} />;
   if (lastRun.kind === 'fast' && fast.status !== 'idle' && fast.status !== 'delegated') return <FastRun f={fast} onReuse={onReuse} />;
   return null;
+}
+
+/**
+ * "Keep as note": the agent's answer saved where this kind keeps notes, so it outlives the feed.
+ * Shown only when the kind registered a place and the run left words behind.
+ */
+function KeepButton({ text }: { text: string | undefined }) {
+  const { t } = useTranslation();
+  const target = useNoteTarget((s) => s.target);
+  const [kept, setKept] = useState(false);
+  if (!target || !text?.trim()) return null;
+  return (
+    <button
+      className="btn outline sm"
+      disabled={kept}
+      title={t('prompt.run.keepNoteHint')}
+      onClick={() => {
+        try {
+          toast(target.keep(text));
+          setKept(true);
+        } catch (e) {
+          toast((e as Error).message, 'error');
+        }
+      }}
+    >
+      <KeepNote /> {kept ? t('prompt.run.kept') : t('prompt.run.keepNote')}
+    </button>
+  );
 }
 
 const close = () => useStore.setState({ runHidden: true });
@@ -174,6 +204,7 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
                   <UndoAll /> {t('prompt.run.undoAll')}
                 </button>
               )}
+              {d.state === 'done' && <KeepButton text={result} />}
               {d.state !== 'done' && onReuse && (
                 <button className="btn outline sm" onClick={() => onReuse(d.prompt)} title={t('prompt.run.reuseHint')}>
                   <Reuse /> {t('prompt.run.reuse')}
@@ -270,6 +301,7 @@ function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }
                   <Undo size={14} /> {t('common.undo')}
                 </button>
               )}
+              {f.status === 'done' && !jq && <KeepButton text={f.note} />}
               {f.status === 'error' && !jq && f.prompt && onReuse && (
                 <button className="btn outline sm" onClick={() => onReuse(f.prompt!)} title={t('prompt.run.reuseHint')}>
                   <Reuse /> {t('prompt.run.reuse')}

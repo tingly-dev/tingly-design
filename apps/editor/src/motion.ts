@@ -8,6 +8,8 @@ import { insertHtml } from './actions';
 import { filesOf, type ImportTarget } from './components/ImportHere';
 import { display, edit, editElement, parsed, toast, useStore } from './store';
 import { t } from './i18n';
+import type { NoteTarget } from './noteTarget';
+import { appendNoteIn } from './slides';
 
 const get = useStore.getState;
 
@@ -210,3 +212,13 @@ export function setPieceNote(text: string): void {
     t('motion.journal.pieceNote'),
   );
 }
+
+/** "Keep as note" in a motion piece: the note of the scene under the playhead. */
+export const motionNoteTarget: NoteTarget = {
+  keep: (text) => {
+    const id = useStore.getState().motionView?.scene;
+    if (!id) throw new Error(t('prompt.run.keepNoScene'));
+    appendNoteIn(sceneFile(id), text);
+    return t('prompt.run.keptScene', { id });
+  },
+};

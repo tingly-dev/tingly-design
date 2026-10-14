@@ -15,6 +15,7 @@ import {
   isHidden,
   moveSlide,
   notesOf,
+  slideNoteTarget,
   removeSection,
   renameSection,
   setNotes,
@@ -24,6 +25,7 @@ import {
   slidesImport,
 } from '../../slides';
 import { NoteBox } from '../NoteBox';
+import { registerNoteTarget } from '../../noteTarget';
 import { SlideFrame } from './SlideFrame';
 import { Menu, MenuItem } from '../Menu';
 import { RightPanel } from '../panel/RightPanel';
@@ -527,6 +529,8 @@ export function SlidesApp() {
   const slide = useStore((s) => s.slide);
   const ids = useSlideIds();
   const { t } = useTranslation();
+
+  useEffect(() => registerNoteTarget(slideNoteTarget), []);
 
   // keep the stage on a slide that exists (another editor may delete it)
   useEffect(() => {

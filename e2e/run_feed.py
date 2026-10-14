@@ -151,6 +151,15 @@ async def main():
             check('a finished run shows Claude Code\'s answer', '改好了标题。' in text, text)
             changed = await feed.locator('.file-chip').all_inner_texts()
             check('a finished run lists the files it changed', len(changed) == 1 and changed[0].endswith('.dc.html'), changed)
+            # keep the answer as a note: on a canvas, a sticky note in the middle of the view
+            keep = feed.get_by_role('button', name='留作便签')
+            await keep.click()
+            await expect(feed.get_by_role('button', name='已留下')).to_be_disabled()
+            for _ in range(50):
+                if '改好了标题。' in read('box-console', 'canvas.json'): break
+                await pg.wait_for_timeout(100)
+            notes = json.loads(read('box-console', 'canvas.json'))['notes']
+            check('canvas: “留作便签” saves the answer as a sticky note', any(n.get('text') == '改好了标题。' for n in notes.values()), notes)
             await feed.get_by_role('button', name='步').click()
             check('the steps fold away on request', await feed.locator('.run-steps').count() == 0)
             await feed.get_by_role('button', name='步').click()
@@ -204,6 +213,18 @@ async def main():
                 await expect(feed).to_contain_text('Claude Code 完成', timeout=15000)
                 chips = await feed.locator('.file-chip').all_inner_texts()
                 check(f'{kind}: the feed shows the run and the file it changed', any(c.startswith(unit) for c in chips), chips)
+                keep = feed.get_by_role('button', name='留作便签')
+                if kind in ('design-system', 'dashboard'):
+                    check(f'{kind}: no “留作便签” (nowhere to put a note)', await keep.count() == 0)
+                else:
+                    await keep.click()
+                    where = {'slides': ('slides', '.html'), 'motion': ('scenes', '.html'), 'docs': ('.', 'comments.json')}[kind]
+                    ok = False
+                    for _ in range(50):
+                        files = [f for f in (os.listdir(os.path.join(projects, proj, where[0])) if where[0] != '.' else ['comments.json']) if f.endswith(where[1])]
+                        if any('改好了标题。' in read(proj, os.path.join(where[0], f)) for f in files): ok = True; break
+                        await pg.wait_for_timeout(100)
+                    check(f'{kind}: “留作便签” keeps the answer in its note place', ok)
                 if kind == 'motion':
                     sent = lines(claude_log)[n]['prompt']
                     check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', 'into scene' in sent and 'scene' not in await feed.locator('.run-ask').inner_text(), sent[:300])

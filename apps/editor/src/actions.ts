@@ -3,6 +3,7 @@ import {
   getStyle,
   isShape,
   newBoardSource,
+  noteBox,
   nextBoardPosition,
   rootElement,
   uniqueBoardName,
@@ -26,12 +27,14 @@ import {
   parsed,
   setClip,
   slideIds,
+  toCanvas,
   toast,
   useStore,
 } from './store';
 import { deleteSlide, duplicateSlide, moveSlide } from './slides';
 import { slideIdOf } from '@dc/core';
 import { currentLanguage, t } from './i18n';
+import type { NoteTarget } from './noteTarget';
 
 /**
  * Commands on the current selection, shared by the context menu, the
@@ -326,6 +329,30 @@ export function addNote(note: NoteEntry): string {
   set({ selection: { kind: 'note', id }, tool: 'select' });
   return id;
 }
+
+/** "Keep as note" on a canvas: a new sticky note to the right of what is selected, else at the middle of the view. */
+export const canvasNoteTarget: NoteTarget = {
+  keep: (text) => {
+    const s = get();
+    const c = canvasOf(s);
+    const sel = s.selection;
+    let at: { x: number; y: number } | null = null;
+    if (sel && (sel.kind === 'board' || sel.kind === 'el') && c.boards[sel.file]) {
+      const b = c.boards[sel.file];
+      at = { x: b.x + b.w + 40, y: b.y };
+    } else if (sel?.kind === 'note' && c.notes[sel.id]) {
+      const b = noteBox(c.notes[sel.id]);
+      at = { x: b.x + b.w + 40, y: b.y };
+    }
+    const where = at ? t('prompt.run.keptCanvasNext') : t('prompt.run.keptCanvas');
+    if (!at) {
+      const mid = toCanvas(s.viewport.w / 2, s.viewport.h / 2);
+      at = { x: mid.x - 120, y: mid.y - 60 };
+    }
+    addNote({ x: Math.round(at.x), y: Math.round(at.y), w: 240, text: text.trim() });
+    return where;
+  },
+};
 
 export function updateNote(id: string, patch: Partial<NoteEntry> | ((n: NoteEntry) => void), what = 'changed'): void {
   editCanvas((c) => {
