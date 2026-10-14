@@ -59,6 +59,12 @@ The title reads `feat(motion): …`, `bug(canvas): …`. Name PR branches and ti
 
 1. **Collect.** `list_issues` with `state: OPEN`, `since` = 6 hours before now (overlap with the 5-hour schedule is deliberate), ordered by `UPDATED_AT`. Add issues a team member labelled `claude` since the baseline.
 2. **Decide what is new.** For each issue read the comments. Find this skill's latest stage comment. The issue needs work when there is no stage comment yet, or when a non-marker comment, an edit of the body, or a label change came after it. Otherwise skip it silently: the issue already shows where it stands.
+   Also skip silently, without a stage comment, an issue someone else already owns:
+   - an open or merged PR references it (`closed_by_pull_requests`, or `#<n>` in a PR body);
+   - another thread of this project is working on it (`list_thread_sessions`; titles name the area);
+   - a team member's own comment says to defer it ("later", "not now").
+
+   These go in the run report, not on the issue. GitHub already shows the PR link, and a comment from this skill would only add noise.
 3. **Order and cap.** Team and cleared issues first, then external, oldest activity first. Start at most **2** new implementations (`pr`) per sweep; further team issues get stage `analysis` this sweep and are picked up by the next one. There is no cap on short external evaluations.
 4. **Work each issue** by the paths below.
 5. **Report** (see the end).
@@ -67,9 +73,9 @@ The title reads `feat(motion): …`, `bug(canvas): …`. Name PR branches and ti
 
 1. **Understand.** Read the issue and every comment, related issues and PRs (`closed_by_pull_requests`, a search for `#<n>` in PRs), and the code it points at. Read `CLAUDE.md`, `.design/README.md` and the notes it points to before touching a subsystem; for anything a project kind can reach, `.design/project-kinds.md`.
 2. **Classify** into one of:
-   - **Bug.** Reproduce it: a failing unit or integration test, a harness run, or a minimal script under `.research/issue-<n>/`. Find the root cause, not the symptom. Fix it, keep the test, run the repo's own checks: `pnpm test`, `pnpm typecheck`, and the e2e suite of each kind the change touches (listed in `docs/en/development.md`). Open a **draft** PR.
+   - **Bug.** Reproduce it: a failing unit or integration test, a harness run, or a minimal script kept with the test or next to the fix. Find the root cause, not the symptom. Fix it, keep the test, run the repo's own checks: `pnpm test`, `pnpm typecheck`, and the e2e suite of each kind the change touches (listed in `docs/en/development.md`). Open a **draft** PR.
    - **Small, well-specified feature.** Check it against Tingly Box's `.design/ux-principles.md`, implement in every kind it claims to support, test, draft PR. UI strings go into both `en` and `zh` bundles.
-   - **Design-sized feature, a new project kind, or anything that changes a file format, protocol, the embedding contract or a UX shape.** Do not build it. Write the investigation (options, trade-offs, a recommendation, any spike code) under `.research/issue-<n>/` on a branch, open a draft PR that carries only that write-up, and post stage `proposal` with the recommendation and the decision needed. Implementation waits for a team member's answer.
+   - **Design-sized feature, a new project kind, or anything that changes a file format, protocol, the embedding contract or a UX shape.** Do not build it. Write the investigation (options, trade-offs, a recommendation, any spike code) as `.research/<topic>.md` (spike code in `.research/<topic>-spike/`), following `.research/README.md` when it exists, including its index row, on a branch `claude/issue-<n>-<slug>`, open a draft PR that carries only that write-up, and post stage `proposal` with the recommendation and the decision needed. Implementation waits for a team member's answer.
    - **Question.** Answer from the code and docs, citing `file:line`. Stage `answered`.
    - **Not reproducible / missing facts.** Say what was tried and what is needed. Stage `needs-info`.
    - **Announcement, tracking or meta issue.** Skip it without a comment.
