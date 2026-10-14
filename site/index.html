@@ -28,12 +28,14 @@
   .btn { padding:10px 18px; border-radius:8px; border:1px solid var(--line); color:var(--fg); text-decoration:none; }
   .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   video, img { width:100%; height:auto; border-radius:12px; border:1px solid var(--line); background:var(--card); display:block; }
-  .videos { display:grid; grid-template-columns:16fr 9fr; gap:16px; align-items:end; }
-  @media (max-width:640px) { .videos { grid-template-columns:1fr; } .videos video:last-child { max-width:260px; margin:0 auto; } }
-  .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:12px; align-items:center; }
-  .flow .arrow { font-size:28px; color:var(--accent); text-align:center; }
-  .flow .file { border-color:var(--accent); }
-  @media (max-width:760px) { .flow { grid-template-columns:1fr; } .flow .arrow { transform:rotate(90deg); } }
+  .videos { --h:400px; display:flex; justify-content:center; align-items:flex-end; gap:16px; }
+  .videos figure { margin:0; }
+  .videos video { height:var(--h); width:auto; max-width:100%; }
+  .screen-wide video { aspect-ratio:16/9; }
+  .screen-tall video { aspect-ratio:9/16; }
+  .videos figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; text-align:center; }
+  @media (max-width:1000px) { .screen-wide { display:none; } }
+  @media (max-width:420px) { .videos { --h:min(400px, 70vh); } }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
   .card h3 { margin:0 0 6px; font-size:17px; }
@@ -71,16 +73,22 @@
   </div>
 
   <div class="videos">
-    <video controls playsinline preload="metadata" poster="media/design-motion-wide-cover.png" aria-label="16:9">
-      <source src="media/design-motion-wide.mp4" type="video/mp4">
-    </video>
-    <video controls playsinline preload="metadata" poster="media/design-motion-tall-cover.png" aria-label="9:16">
-      <source src="media/design-motion-tall.mp4" type="video/mp4">
-    </video>
+    <figure class="screen-wide">
+      <video controls playsinline preload="none" poster="media/design-motion-wide-cover.png" aria-label="16:9">
+        <source src="media/design-motion-wide.mp4" type="video/mp4">
+      </video>
+      <figcaption><span lang="en">Large screen · 16:9</span><span lang="zh">大屏 · 16:9</span></figcaption>
+    </figure>
+    <figure class="screen-tall">
+      <video controls playsinline preload="metadata" poster="media/design-motion-tall-cover.png" aria-label="9:16">
+        <source src="media/design-motion-tall.mp4" type="video/mp4">
+      </video>
+      <figcaption><span lang="en">Small screen · 9:16</span><span lang="zh">小屏 · 9:16</span></figcaption>
+    </figure>
   </div>
   <p style="color:var(--muted);font-size:14px">
-    <span lang="en">One motion project, two formats: 16:9 and 9:16 come from the same scenes. Rendered by CI from <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a>.</span>
-    <span lang="zh">同一个动效项目，同一组场景，输出 16:9 和 9:16 两种画幅，由 CI 从 <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a> 渲染。</span>
+    <span lang="en">One motion project, two formats from the same scenes, rendered by CI from <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a>. On a narrow window only the small-screen version is shown.</span>
+    <span lang="zh">同一个动效项目、同一组场景输出两种画幅，由 CI 从 <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a> 渲染。窗口较窄时只显示小屏版本。</span>
   </p>
 
   <h2 lang="en">Two-way editing, one file in the middle</h2>
