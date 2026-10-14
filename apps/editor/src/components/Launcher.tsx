@@ -4,15 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutDashboard, IconMovie, IconPlus, IconPresentation, IconSearch, type IconProps } from '@tabler/icons-react';
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
-import { toast } from '../store';
-import { Appearance } from './Appearance';
+import { toast, useStore } from '../store';
+import { Sliders } from './icons';
+import { Appearance, LanguageMenu } from './Appearance';
+import { ISSUES_URL, REPO_URL } from '../links';
 import { goTo } from '../host';
 import { SERVER } from '../base';
-import { NAME_RE, slugOf } from '../projectName';
+import { NAME_RE, freeName, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
+import { SizePicker } from './motion/SizePicker';
+import { readSizes, rememberSize, type Size } from '../motionSizes';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
+import { Specimen } from './ds/Specimen';
 
 /** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
 export const KINDS: { kind: ProjectKind; tone: string }[] = [
@@ -27,7 +32,7 @@ const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<Project
 
 const RECENT_KEY = 'dc:recent-projects';
 
-function readRecent(): string[] {
+export function readRecent(): string[] {
   try {
     const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
@@ -36,7 +41,7 @@ function readRecent(): string[] {
   }
 }
 
-function open(name: string) {
+export function open(name: string) {
   try {
     localStorage.setItem(RECENT_KEY, JSON.stringify([name, ...readRecent().filter((n) => n !== name)].slice(0, 20)));
   } catch {
@@ -148,8 +153,24 @@ function Minimap({ boards }: { boards: { x: number; y: number; w: number; h: num
   );
 }
 
+/** The typefaces a system's sample is set in, loaded once for the launcher page. */
+function useHostedFonts(hrefs: string) {
+  useEffect(() => {
+    for (const href of hrefs.split('\n').filter(Boolean)) {
+      if (document.head.querySelector(`link[data-ds-font="${CSS.escape(href)}"]`)) continue;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.dataset.dsFont = href;
+      document.head.appendChild(link);
+    }
+  }, [hrefs]);
+}
+
 function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
   const { t } = useTranslation();
+  const hosted = p.kind === 'design-system' ? p.hosted.join('\n') : '';
+  useHostedFonts(hosted);
   const [ref, near] = useNear<HTMLDivElement>();
   let body: ReactNode;
   if (p.kind === 'design') {
@@ -172,17 +193,22 @@ function Preview({ p, project, width }: { p: ProjectPreview; project: string; wi
   } else if (p.kind === 'design-system') {
     body = (
       <div className="lp-ds">
-        <div className="sw">
-          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).map((c, i) => (
-            <span key={i} style={{ background: c }} />
-          ))}
-        </div>
-        {p.fonts.length > 0 && <div className="aa" style={{ fontFamily: p.fonts[0] }}>Aa {p.fonts[0]}</div>}
-        <div className="chips">
-          {p.components.map((c) => (
-            <span key={c}>{c}</span>
-          ))}
-          {!p.components.length && <span className="faint">{t('launcher.preview.noComponents')}</span>}
+        <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
+        <div className="foot">
+          <div className="faces">
+            {[p.glance.headingFont, p.glance.bodyFont]
+              .filter((f, i, a) => f && a.indexOf(f) === i)
+              .map((f) => (
+                <span key={f} style={{ fontFamily: f }}>
+                  {f!.split(',')[0].replace(/["']/g, '').trim()}
+                </span>
+              ))}
+          </div>
+          <div className="sw">
+            {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 6).map((c, i) => (
+              <span key={i} style={{ background: c }} />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -320,35 +346,34 @@ function ImportTile({ onClick }: { onClick: () => void }) {
   );
 }
 
-function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: Set<string>; onClose: () => void }) {
+export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: Set<string>; onClose: () => void }) {
   const { t } = useTranslation();
   const [kind, setKind] = useState<ProjectKind>(initial);
   const [title, setTitle] = useState('');
-  const [folder, setFolder] = useState('');
-  const [touched, setTouched] = useState(false);
+  const [folder, setFolder] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // a motion piece starts in the size last used (16:9 the first time)
+  const [size, setSize] = useState<Size | null>(() => readSizes().last ?? [1920, 1080]);
   const titleRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
   useEffect(() => titleRef.current?.focus(), []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [onClose]);
-  const name = touched ? folder : slugOf(title);
-  const problem = !name
-    ? title.trim()
-      ? t('launcher.new.noSlug')
-      : ''
-    : !NAME_RE.test(name)
-      ? t('launcher.new.folderInvalid')
-      : taken.has(name)
-        ? t('launcher.new.folderTaken', { name })
-        : '';
+  // the folder is a detail: it follows the title, falls back to the type's name for a title with no
+  // letters (Chinese, say), and steps aside for a name that is taken, until the person edits it
+  const auto = freeName(slugOf(title) || kind, taken);
+  const name = folder ?? auto;
+  const sizeBad = kind === 'motion' && !size;
+  const problem = !name ? '' : !NAME_RE.test(name) ? t('launcher.new.folderInvalid') : taken.has(name) ? t('launcher.new.folderTaken', { name }) : '';
   const submit = async () => {
-    if (!name || problem || busy) return;
+    if (!name || problem || busy || sizeBad) return;
     setBusy(true);
     try {
-      await api.createProject(name, title.trim() || name, kind);
+      await api.createProject(name, title.trim() || name, kind, kind === 'motion' && size ? size : undefined);
+      if (kind === 'motion' && size) rememberSize(size);
       open(name);
     } catch (err) {
       setBusy(false);
@@ -374,43 +399,39 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
         </header>
         <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
           {KINDS.map((k) => (
-            <button
-              type="button"
-              key={k.kind}
-              role="radio"
-              aria-checked={kind === k.kind}
-              data-kind={k.kind}
-              className={`kopt t-${k.tone}`}
-              onClick={() => setKind(k.kind)}
-            >
-              <span className="ic">
-                <KindIcon kind={k.kind} size={20} />
-              </span>
+            <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind} data-kind={k.kind} className={`kopt t-${k.tone}`} onClick={() => setKind(k.kind)}>
+              <KindIcon kind={k.kind} size={16} />
               <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
-              <span className="blurb">{t(`launcher.kind.${k.kind}.blurb`)}</span>
             </button>
           ))}
         </div>
-        <label className="field">
-          <span>{t('launcher.new.titleField')}</span>
-          <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>{t('launcher.new.folder')}</span>
-          <span className="folder">
-            <span className="pre">projects/</span>
-            <input
-              className="input"
-              placeholder="onboarding"
-              aria-label={t('launcher.new.folderLabel')}
-              value={name}
-              onChange={(e) => {
-                setTouched(true);
-                setFolder(e.target.value.trim());
-              }}
-            />
-          </span>
-        </label>
+        <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
+        <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
+        <div className="where">
+          {folder === null ? (
+            <>
+              <span className="path" data-folder={name}>
+                projects/{name}
+              </span>
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => {
+                  setFolder(name);
+                  setTimeout(() => folderRef.current?.focus());
+                }}
+              >
+                {t('launcher.new.folderEdit')}
+              </button>
+            </>
+          ) : (
+            <span className="folder">
+              <span className="pre">projects/</span>
+              <input ref={folderRef} className="input" aria-label={t('launcher.new.folderLabel')} value={folder} onChange={(e) => setFolder(e.target.value.trim())} />
+            </span>
+          )}
+        </div>
         <div className={`problem${problem ? ' on' : ''}`} role="alert">
           {problem}
         </div>
@@ -418,7 +439,7 @@ function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: S
           <button type="button" className="btn" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button className="btn primary" type="submit" disabled={!name || !!problem || busy}>
+          <button className="btn primary" type="submit" disabled={!name || !!problem || busy || sizeBad}>
             {t(`launcher.kind.${kind}.create`)}
           </button>
         </footer>
@@ -536,7 +557,9 @@ export function Launcher() {
     >
       <header className="lhead">
         <div className="brand">
-          <Mark />
+          <a className="mark" href={REPO_URL} target="_blank" rel="noopener noreferrer" title={t('launcher.brand.title')} aria-label={t('launcher.brand.title')}>
+            <Mark />
+          </a>
           <div>
             <h1>Tingly Design</h1>
             <div className="sub">{list ? t('launcher.subtitle', { count: list.length }) : t('launcher.subtitleLoading')}</div>
@@ -562,6 +585,10 @@ export function Launcher() {
             <option value="recent">{t('launcher.sort.recent')}</option>
             <option value="name">{t('launcher.sort.name')}</option>
           </select>
+          <LanguageMenu className="btn lbtn" />
+          <button className="btn lbtn" aria-label={t('aiSettings.menu')} title={t('aiSettings.menu')} onClick={() => useStore.setState({ aiSettingsOpen: true })}>
+            <Sliders />
+          </button>
           <Appearance className="btn lbtn" />
           <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
             <IconPlus size={15} stroke={2} aria-hidden="true" /> {t('launcher.new.title')}
@@ -613,6 +640,14 @@ export function Launcher() {
           </section>
         )}
       </main>
+      <footer className="lfoot">
+        <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
+          {t('launcher.links.report')}
+        </a>
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+          {t('launcher.links.star')}
+        </a>
+      </footer>
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} onClose={() => setCreating(null)} />}
     </div>

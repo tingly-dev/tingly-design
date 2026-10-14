@@ -3,6 +3,7 @@ import type { Locale } from '../../types';
 
 export default {
   badProjectName: '项目名只能用字母、数字、- 和 _',
+  badSize: '尺寸是宽和高两个像素值，各在 1 到 7680 之间',
   notProjectFile: '不是项目里的文件：{{path}}',
   notAssetPath: '不是素材路径：{{path}}',
   noProject: '没有叫 {{name}} 的项目',
@@ -26,7 +27,8 @@ export default {
   dashboardIsClaudeCode: '看板的页面交给 Claude Code 写',
   promptMissing: '先写下要做什么',
   taskFinished: '这个任务已经结束了。',
-  noFastModel: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用（可以改用 jQuery 模式直接写语句）。',
+  noFastModel: '快速 AI 还没有密钥，请先在「AI 模型设置」里配置（也可以改用 jQuery 模式直接写语句）。',
+  badBaseUrl: '地址要以 http:// 或 https:// 开头。',
   noClaudeCli: '本机没有可用的 claude CLI，无法委托。',
   nothingToCommit: '没有需要提交的改动。',
   notGitRepo: '项目文件夹 {{dir}} 不在 git 仓库里，没有可提交的地方。',

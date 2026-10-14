@@ -483,6 +483,73 @@ export function resolveTokens(input: unknown): DsTokens {
   return { name: typeof json.name === 'string' ? json.name : undefined, themes, colors, families, fonts, hosted, groups, others, issues };
 }
 
+/** What tells one design system from another at a glance: its roles, faces and shape. */
+export interface DsGlance {
+  /** the page, a card, the text and the brand colour, in the first theme; unset when the system has none */
+  paper?: string;
+  surface?: string;
+  ink?: string;
+  accent?: string;
+  /** full font stacks */
+  headingFont?: string;
+  bodyFont?: string;
+  /** the first radius token, e.g. 14px */
+  radius?: string;
+  shadow: boolean;
+  themes: string[];
+  colors: number;
+  typeStyles: number;
+  /** spacing, radius, shadow and other plain tokens */
+  tokens: number;
+}
+
+const saturation = (hex: string): number => {
+  const m = /^#([0-9a-f]{6})/i.exec(hex);
+  if (!m) return 0;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  return max === 0 ? 0 : (max - Math.min(r, g, b)) / max;
+};
+
+/** Pick the roles that make a system recognisable, by the names brand books use; falls back to the colours themselves. */
+export function dsGlance(t: DsTokens, themeId?: string): DsGlance {
+  const theme = themeId ?? t.themes[0]?.id;
+  const value = (c?: DsColor) => (c && theme ? c.values[theme] : undefined) ?? (c ? Object.values(c.values)[0] : undefined);
+  const find = (re: RegExp) => value(t.colors.find((c) => re.test(c.name)));
+  const paper = find(/^(paper|background|bg|page|canvas|base)\b/i) ?? find(/(paper|background|^bg)/i);
+  const surface = find(/^(surface|card|panel|elevated)\b/i);
+  const ink = find(/^(ink|text|foreground|fg|content)(?!.*(muted|faint|soft|secondary|subtle))/i);
+  const named = find(/^(brand|primary|accent)$/i);
+  const accent =
+    named ??
+    t.colors
+      .map(value)
+      .filter((v): v is string => !!v)
+      .sort((a, b) => saturation(b) - saturation(a))[0];
+  const stacks = Object.values(t.families);
+  const groupFamily = (re: RegExp) => {
+    const g = t.groups.find((x) => re.test(x.name));
+    return g ? styleFamily(t, g.styles[0] ?? ({} as DsTypeStyle), g) : undefined;
+  };
+  const headingFont = t.families.display ?? t.families.heading ?? groupFamily(/display|head|title/i) ?? stacks[0];
+  const bodyFont = t.families.sans ?? t.families.body ?? groupFamily(/body|text|ui/i) ?? stacks[1] ?? stacks[0];
+  const radius = t.others.find((f) => f.key === 'radius')?.tokens[0]?.value;
+  return {
+    paper,
+    surface,
+    ink,
+    accent,
+    headingFont,
+    bodyFont,
+    radius,
+    shadow: !!t.others.find((f) => f.key === 'shadow')?.tokens.length,
+    themes: t.themes.map((x) => x.name),
+    colors: t.colors.length,
+    typeStyles: t.groups.reduce((n, g) => n + g.styles.length, 0),
+    tokens: t.others.reduce((n, f) => n + f.tokens.length, 0),
+  };
+}
+
 /** A token name as a CSS custom property (`.` escaped). */
 export function cssVar(name: string): string {
   return '--' + name.replace(/\./g, '\\.');

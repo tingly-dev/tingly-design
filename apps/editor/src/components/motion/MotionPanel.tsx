@@ -257,7 +257,7 @@ export function MotionProps() {
       {adding ? (
         <div className="maddfmt">
           {free.map((p) => (
-            <button key={p.name} className="btn outline" onClick={() => add(p.name, p.size)}>
+            <button key={p.name} className="btn outline" title={t(`motion.presetFor.${p.name}`)} onClick={() => add(p.name, p.size)}>
               {t(`motion.preset.${p.name}`)} <span className="faint">{sizeLabel(p.size)}</span>
             </button>
           ))}

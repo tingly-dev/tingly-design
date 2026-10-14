@@ -2,15 +2,17 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, snapSceneMs, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { addCover, motionImport, removeCover, setSceneDuration } from '../../motion';
+import { addCover, motionImport, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
+import { notesOf, setNotesIn } from '../../slides';
+import { NoteBox } from '../NoteBox';
 import { ImportHere } from '../ImportHere';
+import { ProjectMenu } from '../ProjectMenu';
 import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { Panel, PauseFilled, PlayFilled } from '../icons';
 import { replaceUrl } from '../../host';
-import { BASE } from '../../base';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
 import { MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
@@ -121,6 +123,7 @@ export function MotionApp() {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [stageRef, box] = useBox();
 
   // the player reloads in the background once edits settle, so typing never waits on it
@@ -258,9 +261,7 @@ export function MotionApp() {
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
       <header className="dashbar">
-        <a className="btn ghost back" href={BASE} title={t('motion.bar.allProjects')}>
-          ←
-        </a>
+        <ProjectMenu />
         <span className="dashtitle">{motion.title}</span>
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('motion.bar.saving') : t('motion.bar.connected')) : t('motion.bar.offline')} />
         <div className="grow" />
@@ -286,6 +287,10 @@ export function MotionApp() {
           </select>
         </label>
         <ImportHere target={motionImport} label={t('motion.bar.importLabel')} />
+        <button className={`btn ghost${notesOpen ? ' on' : ''}`} aria-pressed={notesOpen} onClick={() => setNotesOpen(!notesOpen)} title={t('motion.notes.hint')} data-notes-toggle>
+          {t('motion.notes.toggle')}
+          {motion.note || Object.values(scenes).some((src) => notesOf(src)) ? <i className="mnotedot" /> : null}
+        </button>
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
           {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
@@ -390,7 +395,10 @@ export function MotionApp() {
                       onClick={() => (pause(), setOnCover(true))}
                       title={t('motion.stage.coverHint')}
                     >
-                      <span className="mname">{t('motion.stage.cover')}</span>
+                      <span className="mname">
+                        {t('motion.stage.cover')}
+                        {notesOf(scenes[coverScene]) && <i className="mnotedot" title={t('motion.notes.onScene')} />}
+                      </span>
                       <span className="mlen">{coverScene}</span>
                     </button>
                     <button className="mcoverx" aria-label={t('motion.stage.coverRemove')} title={t('motion.stage.coverRemoveHint')} onClick={removeCover}>
@@ -437,7 +445,10 @@ export function MotionApp() {
                         onDoubleClick={() => seek(Math.max(w.start, end - 1000 / (motion.fps || 30)) / rate)}
                         title={hint}
                       >
-                        <span className="mname">{w.id}</span>
+                        <span className="mname">
+                          {w.id}
+                          {notesOf(scenes[w.id]) && <i className="mnotedot" title={t('motion.notes.onScene')} />}
+                        </span>
                         <span className="mlen">{secs(w.duration / rate)}s</span>
                       </button>
                       <span
@@ -464,6 +475,35 @@ export function MotionApp() {
             </div>
           </div>
         </div>
+        {notesOpen && (
+          <div className="mnotes">
+            <label>
+              <span>{t('motion.notes.piece')}</span>
+              <NoteBox
+                className="snotes"
+                saved={motion.note ?? ''}
+                current={() => motionOf().note ?? ''}
+                onSave={setPieceNote}
+                placeholder={t('motion.notes.piecePlaceholder')}
+                label={t('motion.notes.pieceLabel')}
+              />
+            </label>
+            {stage.id && scenes[stage.id] !== undefined && (
+              <label>
+                <span>{t('motion.notes.scene', { id: stage.id })}</span>
+                <NoteBox
+                  key={stage.id}
+                  className="snotes"
+                  saved={notesOf(scenes[stage.id])}
+                  current={() => notesOf(display(useStore.getState(), sceneFile(stage.id!)))}
+                  onSave={(v) => setNotesIn(sceneFile(stage.id!), v)}
+                  placeholder={t('motion.notes.scenePlaceholder')}
+                  label={t('motion.notes.sceneLabel', { id: stage.id })}
+                />
+              </label>
+            )}
+          </div>
+        )}
         {issuesOpen && (
           <div className="missues">
             {info?.issues.length ? (

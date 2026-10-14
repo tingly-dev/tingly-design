@@ -23,11 +23,13 @@ import {
   uploadImage,
   slidesImport,
 } from '../../slides';
+import { NoteBox } from '../NoteBox';
 import { SlideFrame } from './SlideFrame';
 import { Menu, MenuItem } from '../Menu';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
+import { ProjectMenu } from '../ProjectMenu';
 import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
 import { exportDeck } from './exportDeck';
 import { ImportHere } from '../ImportHere';
@@ -146,6 +148,9 @@ function Strip() {
   let n = 0;
   return (
     <aside className="strip" aria-label={t('slides.strip.label')}>
+      <div className="stripbar">
+        <ProjectMenu />
+      </div>
       <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
         {groups.map((g, gi) => (
           <div key={g.key || gi} className="sgroup">
@@ -335,38 +340,14 @@ function useFit(ref: React.RefObject<HTMLElement | null>, padX: number, padY: nu
 
 function Notes({ id }: { id: string }) {
   const source = useStore((s) => display(s, slideFile(id)));
-  const saved = notesOf(source);
-  const [text, setText] = useState(saved);
-  const focused = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t } = useTranslation();
-  useEffect(() => {
-    if (!focused.current) setText(saved);
-  }, [saved]);
-  // save as you type (a click on the slide never blurs this box: the frame keeps focus where it is)
-  const save = (v: string) => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      if (v !== notesOf(display(useStore.getState(), slideFile(id)))) setNotes(id, v);
-    }, 700);
-  };
-  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   return (
-    <textarea
-      className="snotes"
-      value={text}
+    <NoteBox
+      saved={notesOf(source)}
+      current={() => notesOf(display(useStore.getState(), slideFile(id)))}
+      onSave={(v) => setNotes(id, v)}
       placeholder={t('slides.stage.notesPlaceholder')}
-      aria-label={t('slides.stage.notesLabel')}
-      onFocus={() => (focused.current = true)}
-      onChange={(e) => {
-        setText(e.target.value);
-        save(e.target.value);
-      }}
-      onKeyDown={(e) => e.stopPropagation()}
-      onBlur={() => {
-        focused.current = false;
-      }}
+      label={t('slides.stage.notesLabel')}
     />
   );
 }

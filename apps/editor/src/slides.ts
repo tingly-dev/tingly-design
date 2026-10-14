@@ -183,7 +183,11 @@ export function notesOf(source: string | undefined): string {
 
 /** Speaker notes are one <aside>, the section's last child. */
 export function setNotes(id: string, text: string): void {
-  const file = slideFile(id);
+  setNotesIn(slideFile(id), text);
+}
+
+/** The same <aside> in any scene or slide file: a motion scene keeps its note there too. */
+export function setNotesIn(file: string, text: string): void {
   const src = display(get(), file);
   if (src === undefined) return;
   const root = rootElement(parsed(src));
