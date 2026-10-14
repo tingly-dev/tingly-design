@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tingly Design</title>
-<meta name="description" content="An open-source design tool where people and AI edit the same files.">
+<meta name="description" content="Open-source design with two-way editing: people and AI co-design in the editor or in plain files, and each side sees the other's changes at once.">
 <meta property="og:title" content="Tingly Design">
-<meta property="og:description" content="An open-source design tool where people and AI edit the same files.">
+<meta property="og:description" content="Open-source design with two-way editing: people and AI co-design in the editor or in plain files.">
 <meta property="og:image" content="media/design-motion-wide-cover.png">
 <style>
   :root { --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#e4e0d8; --card:#fff; --accent:#0f6fff; }
@@ -21,6 +21,8 @@
   nav b { color:var(--fg); font-size:18px; }
   h1 { font-size:clamp(34px,6vw,60px); line-height:1.1; margin:48px 0 16px; letter-spacing:-.02em; }
   h2 { font-size:26px; margin:64px 0 16px; }
+  .kicker { margin:48px 0 0; color:var(--accent); font-weight:600; letter-spacing:.04em; }
+  .kicker + h1 { margin-top:8px; }
   p.lead { font-size:20px; color:var(--muted); max-width:720px; }
   .cta { display:flex; gap:12px; flex-wrap:wrap; margin:28px 0; }
   .btn { padding:10px 18px; border-radius:8px; border:1px solid var(--line); color:var(--fg); text-decoration:none; }
@@ -28,6 +30,10 @@
   video, img { width:100%; height:auto; border-radius:12px; border:1px solid var(--line); background:var(--card); display:block; }
   .videos { display:grid; grid-template-columns:16fr 9fr; gap:16px; align-items:end; }
   @media (max-width:640px) { .videos { grid-template-columns:1fr; } .videos video:last-child { max-width:260px; margin:0 auto; } }
+  .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:12px; align-items:center; }
+  .flow .arrow { font-size:28px; color:var(--accent); text-align:center; }
+  .flow .file { border-color:var(--accent); }
+  @media (max-width:760px) { .flow { grid-template-columns:1fr; } .flow .arrow { transform:rotate(90deg); } }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
   .card h3 { margin:0 0 6px; font-size:17px; }
@@ -53,10 +59,12 @@
     </span>
   </nav>
 
-  <h1 lang="en">People and AI edit the same design files.</h1>
-  <h1 lang="zh">人和 AI，改的是同一份设计文件。</h1>
-  <p class="lead" lang="en">Tingly Design is an open-source design tool. Canvases, slides, design systems, dashboards, docs and motion pieces are plain files; click and drag on screen, let a fast model rewrite a line, or hand a whole task to Claude Code. Every edit writes back only the characters that changed.</p>
-  <p class="lead" lang="zh">Tingly Design 是开源的设计工具。画布、幻灯片、设计系统、仪表盘、文档和动效都是普通文件：在屏幕上点选拖拽，让快速模型改一行，或者把整个任务交给 Claude Code。每次编辑只写回变了的那几个字符。</p>
+  <p class="kicker" lang="en">Open-source design tool</p>
+  <p class="kicker" lang="zh">开源设计工具</p>
+  <h1 lang="en">Co-design with AI.<br>Edit it both ways.</h1>
+  <h1 lang="zh">人机协同设计，<br>双向编辑。</h1>
+  <p class="lead" lang="en">Drag on the canvas, or let a model and Claude Code change the file: whichever side you edit, the other updates at once. Canvases, slides, design systems, dashboards, docs and motion are all plain files, and every edit writes back only the characters that changed.</p>
+  <p class="lead" lang="zh">在画布上点选拖拽，或者让 AI 和 Claude Code 直接改文件：改哪一边，另一边立刻同步。画布、幻灯片、设计系统、仪表盘、文档、动效，都是普通文件，每次编辑只写回真正变了的那几个字符。</p>
   <div class="cta">
     <a class="btn primary" href="https://github.com/tingly-dev/tingly-design#quick-start"><span lang="en">Get started</span><span lang="zh">开始使用</span></a>
     <a class="btn" href="https://github.com/tingly-dev/tingly-design">GitHub</a>
@@ -75,18 +83,22 @@
     <span lang="zh">同一个动效项目，同一组场景，输出 16:9 和 9:16 两种画幅，由 CI 从 <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a> 渲染。</span>
   </p>
 
-  <h2 lang="en">One source, three editors</h2>
-  <h2 lang="zh">一份源文件，三种编辑方式</h2>
-  <div class="grid">
-    <div class="card"><h3 lang="en">Direct manipulation</h3><h3 lang="zh">直接操作</h3>
-      <p lang="en">Click, drag and retype on screen. Instant.</p><p lang="zh">在屏幕上点选、拖拽、改字，即时生效。</p></div>
-    <div class="card"><h3 lang="en">Fast AI</h3><h3 lang="zh">快速 AI</h3>
-      <p lang="en">A model rewrites what you point at in seconds, line by line.</p><p lang="zh">指到哪改到哪，几秒内逐行重写。</p></div>
-    <div class="card"><h3 lang="en">Claude Code</h3><h3 lang="zh">Claude Code</h3>
-      <p lang="en">Whole files, several at once, edited directly on disk.</p><p lang="zh">直接在磁盘上改整份文件，可以同时改好几份。</p></div>
-    <div class="card"><h3 lang="en">Minimal write-back</h3><h3 lang="zh">最小写回</h3>
-      <p lang="en">Template holes and your own formatting survive; the git diff is one line.</p><p lang="zh">模板占位和你的排版都保留，git diff 只有一行。</p></div>
+  <h2 lang="en">Two-way editing, one file in the middle</h2>
+  <h2 lang="zh">双向编辑，中间只有一份文件</h2>
+  <div class="flow">
+    <div class="card"><h3 lang="en">In the editor</h3><h3 lang="zh">在编辑器里</h3>
+      <p lang="en">Click, drag and retype. The change is written into the file as a minimal patch.</p><p lang="zh">点选、拖动、改字。改动以最小补丁写进文件。</p></div>
+    <div class="arrow" aria-hidden="true">⇄</div>
+    <div class="card file"><h3 lang="en">The plain file</h3><h3 lang="zh">普通文件</h3>
+      <p lang="en">HTML and JSON under <code>projects/</code>. Readable, diffable, yours to keep in git.</p><p lang="zh"><code>projects/</code> 下的 HTML 和 JSON。能读、能 diff、能放进 git。</p></div>
+    <div class="arrow" aria-hidden="true">⇄</div>
+    <div class="card"><h3 lang="en">Fast AI, Claude Code, you</h3><h3 lang="zh">快速 AI、Claude Code、你自己</h3>
+      <p lang="en">Rewrite a line in seconds, or whole files in minutes, or edit by hand. The editor follows live.</p><p lang="zh">几秒改一行，几分钟改整份文件，或者自己手改。编辑器实时跟上。</p></div>
   </div>
+  <p style="color:var(--muted)">
+    <span lang="en">Every change, from any side, lands in one journal: who changed what and when, with undo.</span>
+    <span lang="zh">无论谁改的，每次改动都记进同一份记录：谁、改了什么、什么时候，都能撤销。</span>
+  </p>
 
   <h2 lang="en">Six project kinds</h2>
   <h2 lang="zh">六种项目类型</h2>
