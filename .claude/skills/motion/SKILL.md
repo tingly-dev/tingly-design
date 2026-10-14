@@ -27,7 +27,7 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) plays the piece and rel
 }
 ```
 
-- `formats`: the first is the primary one. Names are lower-case letters and digits.
+- `formats`: the first is the primary one. Names are lower-case letters and digits. A new piece is made in the size its owner picked (`wide` 1920×1080, `tall` 1080×1920, `square` 1080×1080, `portrait` 1080×1350, `upright` 1080×1440, `classic` 1440×1080, or `s<w>x<h>` for a custom one); the starter scene is laid out for it, so don't assume 16:9.
 - `speed` (0.25 to 4, default 1) plays all timing faster or slower. Write timing at reading pace and change `speed` to change the pace; never retime every attribute.
 - `order`: the scenes, in play order. Adding a scene means writing its file and adding its id here.
 - `note` (optional): a note on the whole piece, plain text up to 4000 characters, written by the person (what it is for, who watches it, the tone). Read it before you edit; never draw it, keep it unless asked to change it, and write it only when asked.

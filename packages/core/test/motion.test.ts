@@ -16,6 +16,10 @@ import {
   parseCover,
   parseMotion,
   checkScene,
+  MOTION_SIZES,
+  newMotion,
+  sizeName,
+  validSize,
   parseTime,
   planScene,
   sceneBaseCss,
@@ -254,5 +258,34 @@ describe('notes', () => {
   it('accepts a scene note (an aside) without a finding', () => {
     const doc = parseDc('<section id="a" data-duration="2s"><h1 data-in="fade">Hi</h1><aside>Open on the logo.</aside></section>');
     expect(checkScene(doc, 'a').filter((i) => i.level === 'error')).toEqual([]);
+  });
+});
+
+describe('a new piece in a chosen size', () => {
+  it('names the format by its shape and keeps the 16:9 default', () => {
+    expect(newMotion('T').motion.formats).toEqual({ wide: { size: [1920, 1080] } });
+    expect(newMotion('T', undefined, { size: [1080, 1920] }).motion.formats).toEqual({ tall: { size: [1080, 1920] } });
+    for (const p of MOTION_SIZES) expect(Object.keys(newMotion('T', undefined, { size: [...p.size] }).motion.formats)).toEqual([p.name]);
+  });
+
+  it('gives a custom size a name the format rules accept, or the one asked for', () => {
+    const m = parseMotion(JSON.stringify(newMotion('T', undefined, { size: [1280, 720] }).motion));
+    expect(Object.keys(m.formats)).toEqual([sizeName([1280, 720])]);
+    expect(Object.keys(newMotion('T', undefined, { size: [1280, 720], format: 'x720' }).motion.formats)).toEqual(['x720']);
+  });
+
+  it('refuses sizes outside 1 to 7680 and falls back to 16:9', () => {
+    expect(validSize([0, 100])).toBeNull();
+    expect(validSize([7681, 100])).toBeNull();
+    expect(validSize(['1080', '1920'])).toEqual([1080, 1920]);
+    expect(newMotion('T', undefined, { size: [0, 5] }).motion.formats.wide.size).toEqual([1920, 1080]);
+  });
+
+  it('draws the starter scene to the size: the type follows the short side', () => {
+    const wide = newMotion('T').scenes.title;
+    const small = newMotion('T', undefined, { size: [540, 960] }).scenes.title;
+    expect(wide).toContain('font-size:112px');
+    expect(small).toContain('font-size:56px');
+    expect(small).toContain('padding:64px');
   });
 });

@@ -1,6 +1,7 @@
 /** What the server answers when it refuses a request, and other failures shown to people. */
 export default {
   badProjectName: 'A project name can only use letters, digits, - and _',
+  badSize: 'A size is a width and a height in pixels, each from 1 to 7680',
   notProjectFile: 'Not a project file: {{path}}',
   notAssetPath: 'Not an asset path: {{path}}',
   noProject: 'No project named {{name}}',

@@ -36,6 +36,7 @@ import {
   resolveTokens,
   type Actor,
   type DsRecord,
+  validSize,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -116,9 +117,16 @@ app.get('/api/health', (c) => {
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 app.post('/api/projects', async (c) => {
-  const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: string }>();
+  const { name, title, kind, size } = await c.req.json<{ name: string; title?: string; kind?: string; size?: unknown }>();
   if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
-  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design', langOf(c));
+  if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  await createProject(
+    name,
+    title || name,
+    kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
+    langOf(c),
+    kind === 'motion' && size !== undefined ? { size: validSize(size)! } : {},
+  );
   return c.json({ ok: true });
 });
 
