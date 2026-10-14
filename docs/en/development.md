@@ -46,7 +46,7 @@ npm publishing uses Trusted Publishing only: no token is stored anywhere, and bo
 
 `.github/workflows/ci.yml` runs the same checks on every pull request, plus `npm pack --dry-run` to list what the package would contain. Why it is built this way, and how npm publishing is authorised: `.design/release.md`.
 
-`.github/workflows/pages.yml` builds the homepage (`site/`) and, on main, deploys it to GitHub Pages. The design-motion promo on it is rendered by that job from `projects/design-motion` (`scripts/build-site.sh`), never committed. A maintainer turns Pages on once: Settings → Pages → Source: GitHub Actions. Issues are filed through the forms in `.github/ISSUE_TEMPLATE`; `.github/workflows/issue-area.yml` turns the chosen area into an `area/<name>` label and a `feat(motion):`-style title.
+`.github/workflows/pages.yml` builds the homepage (`site/`) and, on main, deploys it to GitHub Pages. The design-motion promo on it is rendered by that job from `projects/design-motion` (`scripts/build-site.sh`), never committed. A maintainer turns Pages on once: Settings → Pages → Source: GitHub Actions.
 
 ---
 

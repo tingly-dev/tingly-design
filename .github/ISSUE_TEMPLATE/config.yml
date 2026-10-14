@@ -1,5 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Tingly Box issues
-    url: https://github.com/tingly-dev/tingly-box/issues
-    about: The AI gateway Tingly Design can run inside. Problems with the gateway itself belong there.
