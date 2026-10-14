@@ -81,6 +81,7 @@ import {
   IconBug,
   IconLanguage,
   IconExternalLink,
+  IconAdjustmentsHorizontal,
   type IconProps,
 } from '@tabler/icons-react';
 
@@ -124,6 +125,7 @@ export const Home = tabler(IconHome);
 export const Star = tabler(IconStar, 14);
 export const Bug = tabler(IconBug, 14);
 export const Language = tabler(IconLanguage, 15);
+export const Sliders = tabler(IconAdjustmentsHorizontal, 15);
 export const External = tabler(IconExternalLink, 12);
 export const Check = tabler(IconCheck, 14);
 export const Trash = tabler(IconTrash, 14);

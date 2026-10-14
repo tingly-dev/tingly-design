@@ -20,6 +20,10 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 - No UI text in code. Every string a person sees (labels, `aria-label`, `title`, placeholders, toasts, empty states, server errors, starter copy written into new projects) is a key in `packages/i18n/src/locales/en/<area>.ts` with its twin in `zh/<area>.ts`. Components use `useTranslation()`; other editor code imports `t` from `apps/editor/src/i18n.ts`; the server uses `trOf(c)` / `HttpError(status, key, params)`. English is the default and fallback, Chinese is the other shipped language. Write the English and the Chinese together; keep core free of wording (return data such as `AgentStep.op`, let the editor say it). Model-facing prompts and `.claude/skills/` stay English. `pnpm test` fails on a missing key, a mismatched placeholder, or a Chinese string outside the bundles. See `.design/i18n.md`.
 - The editor's look is theme tokens (`apps/editor/src/theme.ts`, synced from Tingly Box's `@tingly/ui` palettes by `scripts/sync-tingly-box-theme.mjs`); use tokens, not raw colours, in editor chrome. Work inside canvases, slides and dashboards keeps its own colours.
 
+## AI model settings
+
+Which model answers is set in one dialog (`apps/editor/src/components/AiSettings.tsx`, opened from the launcher, `ProjectMenu` and the prompt bar's hint): one connection (Tingly Box suggested, Anthropic, or another address) shared by fast AI and Claude Code, a model name for each, and Claude Code's own sign-in as the alternative. The values resolve environment > saved > default in `packages/core/src/aiConfig.ts`; the server (`apps/server/src/aiconfig.ts`) owns the file and the key. A new model-using feature (image generation, #32) joins this dialog, not a new place. See `.design/ai-settings.md`.
+
 ## Files people bring in
 
 What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.

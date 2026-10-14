@@ -75,7 +75,8 @@ export default {
     },
   },
   bar: {
-    noFastModel: 'The server has no ANTHROPIC_API_KEY configured, so Fast AI is unavailable.',
+    noFastModel: 'Fast AI has no key yet.',
+    setUp: 'Set up AI',
     noClaudeCli: 'There is no claude command on this machine, so nothing can be handed over.',
     label: 'Ask AI to edit',
     who: 'Hand to',
