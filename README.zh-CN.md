@@ -62,3 +62,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 | **[开发与测试](docs/zh/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |
 | **[与原版的差别](docs/zh/comparison.md)** | 哪些和 Claude 的 artifact 类型一致，哪些还没有 |
 | **[设计说明](.design/README.md)** | 每个子系统为什么这样做，一个功能一份；以及每种项目类型都要支持的功能 |
+
+## 许可证
+
+[Apache License 2.0](LICENSE)。

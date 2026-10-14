@@ -64,3 +64,7 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 | **[Development and tests](docs/en/development.md)** | Unit tests, typecheck and the Playwright end-to-end suites |
 | **[Compared with the original](docs/en/comparison.md)** | What matches Claude's artifact types and what is not there yet |
 | **[Design notes](.design/README.md)** | Why each subsystem is built the way it is, one note per feature, and which features every project kind must support (mostly in Chinese) |
+
+## License
+
+[Apache License 2.0](LICENSE).

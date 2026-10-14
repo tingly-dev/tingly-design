@@ -13,7 +13,7 @@
 - **npm**：`@tingly-dev/tingly-design`。用 `@tingly-dev` 作用域，和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起；仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
 - **GitHub release**：`tingly-design-<ver>.tgz` 和 `tingly-design-<ver>.tgz.sha256`。这个 tgz 就是 `npm pack` 的产物改了名，所以 release 上的文件和 npm 上的包字节相同，TB 钉一个 sha256 从哪边下载都能校验。解开后顶层是 `package/`（npm 的打包格式），宿主解压时去掉这一层。
 
-包里不放源码、`.design/`、`docs/`、`e2e/`，只有 bundle 本来就有的东西，加上 `README.md`、`THIRD_PARTY_LICENSES.txt`，以及仓库根目录有的 `LICENSE`、`NOTICE`。最后这个是必须的：`server.mjs`、`editor/`、`sandbox/` 把依赖打进了同一个文件，构建时又去掉了许可证注释（`legalComments: 'none'`），MIT/ISC/BSD 要求随副本附上版权声明，所以 `scripts/bundle.mjs` 从 `pnpm licenses list --prod` 收集每个生产依赖的许可证全文。
+包里不放源码、`.design/`、`docs/`、`e2e/`，只有 bundle 本来就有的东西，加上 `README.md`、`LICENSE`、`NOTICE` 和 `THIRD_PARTY_LICENSES.txt`。最后这个是必须的：`server.mjs`、`editor/`、`sandbox/` 把依赖打进了同一个文件，构建时又去掉了许可证注释（`legalComments: 'none'`），MIT/ISC/BSD 要求随副本附上版权声明，所以 `scripts/bundle.mjs` 从 `pnpm licenses list --prod` 收集每个生产依赖的许可证全文。
 
 不发的东西要靠 bundle 的白名单式复制保证：`scripts/bundle.mjs` 只复制它点名的目录，`issue-resolve` skill 也被排除。私有参考材料不在这个仓库里，不会进包。
 
@@ -47,11 +47,12 @@ npm 排在 GitHub release 后面：npm 发出去就撤不回，前面任何一�
 
 ## 许可证
 
-还没定。没有许可证的包等于保留所有权利，所以 release 的 build 一步在根 `package.json` 没有 `license` 时直接失败，不会发出去。定下来之后在根目录放 `LICENSE`（需要的话加 `NOTICE`），并在 `package.json` 写上 `license`，bundle 会把它们带进包里。
+Apache-2.0（`LICENSE`、`NOTICE`）。目标是让编辑器传得快、谁都能拿去用和改：比 MPL-2.0 少了"改过的文件要开源"的义务，又比 MIT 多了专利授权条款，企业用起来顾虑更少。Tingly Box 本身仍是 MPL-2.0 加商业授权，两个仓库各自独立。
+
+release 的 build 一步在根 `package.json` 没有 `license` 时直接失败，保证不会发出没有许可证的包。
 
 ## 还开着的
 
-- 许可证（见上）。
 - TB 那边的下载、校验和缓存（tingly-box-integration.md §4.4）还没做。
 - 变更说明现在用 GitHub 自动生成的 release notes，没有手写的 changelog。
 - 默认项目目录改到用户数据目录之后，可以给包加 `bin`，支持 `npx @tingly-dev/tingly-design`。
