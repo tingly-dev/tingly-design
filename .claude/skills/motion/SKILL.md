@@ -69,6 +69,25 @@ A person can import an artboard of a canvas project into a piece (import menu �
 
 Files people brought in (attachments, imported pictures) live under `uploads/`. A scene shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; the editor, the player and the renderer all resolve it. Don't move or rename them.
 
+## Shader effects
+
+For light, noise, grain or glow that CSS cannot draw, put a GLSL ES 3.0 fragment shader in a seekable embed (see `projects/motion-effects/` and copy its runtime script as is):
+
+```html
+<x-embed data-seek style="position:absolute;left:0;top:0;width:100%;height:100%">
+  <canvas data-quality="0.5"></canvas>
+  <script type="x-shader/x-fragment">/* uniforms: float time (s), float aspect; in vec2 uv (top-left origin) */</script>
+  <script>/* the WebGL2 runtime from the sample */</script>
+</x-embed>
+```
+
+- The frame must depend only on `time` and `aspect`: no clock, no animation loop, no randomness.
+- Output premultiplied alpha; `a = 1` for a background, less for a layer between elements (its DOM position is its place in the stack).
+- Work in units of the short side, `(uv - c) * vec2(aspect, 1) / min(aspect, 1)`, so one shader serves wide and tall. When the light wraps an element, give the element the same numbers in both formats.
+- `data-quality="0.5"` for soft fields, `1` for anything with a sharp edge.
+- Avoid the `fract(sin(x) * 43758.5)` hash where the picture must match across machines; use an integer hash.
+- Give the light a job (an edge glow around a card that is "working"), keep it to a few brand colours on near-black, move it slower than the text, and fade it in with the element it frames. See `.design/motion-effects.md`.
+
 ## Several formats
 
 Scenes are shared by all formats; elements that need a different layout carry overrides named after the format:

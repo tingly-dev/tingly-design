@@ -1,0 +1,61 @@
+<section id="outro" data-duration="4s" style="background:#05070f;color:#ffffff;font-family:'Inter', Arial, sans-serif;padding:120px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:36px;position:relative;overflow:hidden" data-tall="padding:80px 56px">
+<x-embed data-seek style="position:absolute;left:0;top:0;width:100%;height:100%;display:block"><canvas data-quality="0.5" style="display:block;width:100%;height:100%"></canvas><script type="x-shader/x-fragment">
+#version 300 es
+precision highp float;
+uniform float time;
+uniform float aspect;
+in vec2 uv;
+out vec4 color;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p), s = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), s.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), s.x), s.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; }
+  return v;
+}
+void main() {
+  float t = time * 0.22;
+  vec2 p = vec2(uv.x * aspect, uv.y) * 1.8;
+  vec2 q = vec2(fbm(p + vec2(0.0, t)), fbm(p + vec2(5.2, 1.3) - t));
+  vec2 r = vec2(fbm(p + 3.0 * q + vec2(1.7, 9.2) + 0.6 * t), fbm(p + 3.0 * q + vec2(8.3, 2.8) - 0.4 * t));
+  float f = fbm(p + 3.0 * r);
+  vec3 c = mix(vec3(0.02, 0.03, 0.09), vec3(0.15, 0.39, 0.92), clamp(f * f * 2.4, 0.0, 1.0));
+  c = mix(c, vec3(0.52, 0.30, 0.95), clamp(length(q) * 0.7 - 0.2, 0.0, 1.0) * 0.55);
+  c = mix(c, vec3(1.0, 0.56, 0.46), clamp(r.x * r.x * 1.6 - 0.35, 0.0, 1.0) * 0.75);
+  c *= 1.0 - 0.55 * distance(uv, vec2(0.5));
+  color = vec4(c, 1.0);
+}
+</script><script>
+(function () {
+  // a shader layer for motion: a GLSL fragment shader drawn with WebGL2, a function of the seek time only
+  var cv = document.querySelector('canvas'), src = document.querySelector('script[type="x-shader/x-fragment"]').textContent;
+  var q = +(cv.dataset.quality || 0.5), g = cv.getContext('webgl2', { premultipliedAlpha: true, preserveDrawingBuffer: true }), ut, ua;
+  function compile(type, s) { var x = g.createShader(type); g.shaderSource(x, s); g.compileShader(x); if (!g.getShaderParameter(x, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(x)); return x; }
+  if (g) {
+    var pr = g.createProgram();
+    g.attachShader(pr, compile(g.VERTEX_SHADER, '#version 300 es\nout vec2 uv;\nvoid main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
+    g.attachShader(pr, compile(g.FRAGMENT_SHADER, src.trim()));
+    g.linkProgram(pr); g.useProgram(pr);
+    ut = g.getUniformLocation(pr, 'time'); ua = g.getUniformLocation(pr, 'aspect');
+  }
+  window.seek = function (t) {
+    if (!g) return;
+    var r = devicePixelRatio || 1, w = Math.max(1, Math.round(innerWidth * r * q)), h = Math.max(1, Math.round(innerHeight * r * q));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    g.viewport(0, 0, w, h); g.clearColor(0, 0, 0, 0); g.clear(g.COLOR_BUFFER_BIT);
+    g.uniform1f(ut, t / 1000); g.uniform1f(ua, w / h); g.drawArrays(g.TRIANGLES, 0, 3);
+    // a canvas that just came into view presents a frame late: wait until this one is on screen
+    return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+  };
+  // draw once at load, so the canvas already has a layer on screen when its scene first shows
+  window.seek(0);
+})();
+</script></x-embed>
+<svg data-in="spin 600ms @0.2s" aria-label="Tingly mark" width="140" height="140" viewBox="0 0 88 88" style="position:relative;width:140px;height:140px"><rect width="88" height="88" rx="28" fill="#ffffff"/><rect x="25" y="25" width="38" height="9" rx="2" fill="#16181d"/><rect x="39.5" y="25" width="9" height="39" rx="2" fill="#16181d"/></svg>
+<h1 data-in="wipe 800ms @0.6s ease-in-out" style="position:relative;font-family:'Instrument Serif', Georgia, serif;font-size:200px;font-weight:400;line-height:1;letter-spacing:-4px;text-align:center" data-tall="font-size:150px">Tingly Design</h1>
+<p data-in="rise 600ms @1.4s" style="position:relative;font-size:40px;font-weight:700;text-align:center;color:rgba(255,255,255,0.85)" data-tall="width:880px">Same shader, same frame, every render.</p>
+<aside>Close: the aurora again, name and promise.</aside>
+</section>
