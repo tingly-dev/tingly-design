@@ -1,17 +1,49 @@
 <p align="right"><a href="README.md">English</a> · <b>简体中文</b></p>
 
-# Tingly Design
+<p align="center">
+  <img src="docs/images/readme/cover.png" alt="Tingly Design" width="640">
+</p>
 
-**人和 AI 改同一份文件的开源设计工具。**
+<h3 align="center">人和 AI 改同一份文件的开源设计工具。</h3>
 
-画布、幻灯片、设计系统、数据看板、文档和动效，全部存成 `projects/` 下的普通文件。你在界面上点选、拖动、改字；快速 AI 在几秒内逐行改出结果；Claude Code 直接编辑文件。三方改的是同一份源码，每次只回写真正变了的那几个字符，所以这些文件可以放进 git、做 code review，也可以手写。
+<p align="center">
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#六种项目一个工作区">六种项目</a> ·
+  <a href="#文档">文档</a> ·
+  <a href="LICENSE">Apache-2.0</a>
+</p>
 
-![画布：Tingly Box 控制台的四个画板，右侧是图层与属性面板](docs/images/canvas.png)
+<p align="center">
+  <img src="docs/images/readme/hero.gif" alt="描述一个落地页，手动改一行标题，再让 AI 继续改：全在同一份设计里" width="800">
+</p>
 
-- **一份源码，三种编辑者**：界面手改（秒级）、快速 AI（秒级，逐行 jQuery，边写边显示）、Claude Code（分钟级，改文件、跨文件）。改动实时同步到所有打开的编辑器，并记进同一份改动记录。
-- **最小补丁回写**：模板里的 `{{占位}}`、循环和你的排版原样保留；勾一个待办、改一个颜色，git diff 只有一行。
-- **六种项目**：其中五种文件格式沿用 Claude 的 Design / Slides / Design System / Dashboard / Docs 类型，Tingly Design 是其双向编辑机制的开源复刻；第六种“动效”是我们自己加的：按时间播放的场景，可导出视频。
-- **数字可核对**：看板上每个数字都标明来自哪份数据的哪一格，对不上就报出来。
+<p align="center"><sub>这段动画就是用 Tingly Design 做的：<a href="projects/design-motion"><code>projects/design-motion</code></a> 是一个动效项目，由应用自带的导出渲染。</sub></p>
+
+## 一份设计，三种改法
+
+画布、幻灯片、设计系统、数据看板、文档和动效，全部存成 `projects/` 下的普通文件。你在界面上点选、拖动、改字；快速 AI 在几秒内改出你指的地方；Claude Code 直接编辑文件。三方改的是同一份源码，每次只回写真正变了的那几个字符，所以这些文件可以放进 git、做 code review，也可以手写。
+
+| | |
+|---|---|
+| **界面手改** | 点任意文字直接打字，拖动、缩放都在舞台上完成。秒回。 |
+| **快速 AI** | 指着某处说想怎么改；逐行 jQuery，边写边显示。秒级。 |
+| **Claude Code** | 改整份文件、跨文件，从提示栏或终端发起。分钟级。 |
+| **最小补丁回写** | 模板里的 `{{占位}}`、循环和你的排版原样保留；勾一个待办、改一个颜色，git diff 只有一行。 |
+| **数字可核对** | 看板上每个数字都标明来自哪份数据的哪一格，对不上就报出来。 |
+
+## 六种项目，一个工作区
+
+<p align="center">
+  <img src="docs/images/readme/kinds.gif" alt="六种项目巡礼：画布、幻灯片、设计系统、看板、文档和动效" width="800">
+</p>
+
+其中五种文件格式沿用 Claude 的 Design / Slides / Design System / Dashboard / Docs 类型，Tingly Design 是其双向编辑机制的开源复刻；第六种“动效”是我们自己加的：按时间播放的场景，可导出视频。点图片看对应的使用指南。
+
+<table>
+<tr><td width="50%"><a href="docs/zh/guide/canvas.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/zh/canvas-dark.webp"><img src="docs/images/readme/zh/canvas-light.webp" alt="画布"></picture></a><br><sub><b>画布</b> · 界面、流程和组件并排放在一块画板上</sub></td><td width="50%"><a href="docs/zh/guide/slides.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/zh/slides-dark.webp"><img src="docs/images/readme/zh/slides-light.webp" alt="幻灯片"></picture></a><br><sub><b>幻灯片</b> · 全屏演示，可导出 PDF</sub></td></tr>
+<tr><td width="50%"><a href="docs/zh/guide/design-system.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/zh/design-system-dark.webp"><img src="docs/images/readme/zh/design-system-light.webp" alt="设计系统"></picture></a><br><sub><b>设计系统</b> · 每个项目都能装入的 token 和组件</sub></td><td width="50%"><a href="docs/zh/guide/dashboard.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/zh/dashboard-dark.webp"><img src="docs/images/readme/zh/dashboard-light.webp" alt="看板"></picture></a><br><sub><b>看板</b> · 实时图表，每个数字都能追到来源</sub></td></tr>
+<tr><td width="50%"><a href="docs/zh/guide/docs.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/zh/docs-dark.webp"><img src="docs/images/readme/zh/docs-light.webp" alt="文档"></picture></a><br><sub><b>文档</b> · 多人协作、带评论的纯 Markdown</sub></td><td width="50%"><a href="docs/zh/guide/motion.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/readme/zh/motion-dark.webp"><img src="docs/images/readme/zh/motion-light.webp" alt="动效"></picture></a><br><sub><b>动效</b> · 宣传片和动画，导出 MP4 或 GIF</sub></td></tr>
+</table>
 
 ## 示例工作区
 
