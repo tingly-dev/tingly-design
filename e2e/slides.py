@@ -27,6 +27,15 @@ async def wait_for(pred, timeout=6.0):
         await asyncio.sleep(0.1)
     return False
 
+async def wait_for_async(count, timeout=6.0):
+    t = time.time()
+    while time.time() - t < timeout:
+        try:
+            if await count(): return True
+        except Exception: pass
+        await asyncio.sleep(0.1)
+    return False
+
 results = []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
@@ -71,6 +80,9 @@ async def main():
         check('the stage shows the slide in the URL', await pg.locator('.thumb.on').get_attribute('data-slide') == 'box')
         check('embeds run on the stage', await pg.frame_locator(f'{STAGE} iframe').locator('x-embed iframe').count() == 1)
         check('thumbnails keep embeds still', await pg.frame_locator('.thumb[data-slide="box"] iframe').locator('x-embed iframe').count() == 0)
+        # a frame that loads again (reloaded or moved in the DOM) is drawn again, not left blank
+        await pg.locator('.thumb[data-slide="team"] iframe').evaluate("f => { const d = f.srcdoc; f.srcdoc = ''; f.srcdoc = d; }")
+        check('a reloaded thumbnail is drawn again', await wait_for_async(lambda: pg.frame_locator('.thumb[data-slide="team"] iframe').locator('section').count()))
         await pg.screenshot(path=OUT + 's1-deck.png')
 
         # --- selection and text ------------------------------------------------------
