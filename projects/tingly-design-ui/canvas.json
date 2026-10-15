@@ -1,0 +1,29 @@
+{
+  "v": 3,
+  "title": "Tingly Design UI",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 420,
+      "title": "Top bar anatomy"
+    },
+    "Kinds.dc.html": {
+      "x": 0,
+      "y": 540,
+      "w": 1164,
+      "h": 760,
+      "title": "Top bar in six kinds"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Kinds.dc.html"
+  ],
+  "notes": {}
+}

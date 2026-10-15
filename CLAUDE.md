@@ -76,7 +76,7 @@ packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
-projects/         sample projects, one per kind
+projects/         sample projects, one per kind; `tingly-design-ui` is a canvas that mocks the editor's own UI (design shell changes there first)
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Top bar anatomy</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#16181d;-webkit-font-smoothing:antialiased}
+</style>
+</helmet>
+<div style="width:1200px;height:420px;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:20px;background:#f7f7f4">
+<h2 style="margin:0;font-size:22px">Top bar anatomy</h2>
+  <div style="width:1136px;height:44px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:0 12px;background:#ffffff;border:1px solid #e5e5e0;border-radius:10px">
+    <span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6b7080;font-size:15px">⌂</span><span style="margin-left:-6px;color:#a8acb4;font-size:11px">▾</span>
+    <span style="font-size:15px;font-weight:600">Project name</span>
+    <span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6b7080;font-size:15px">↺<span style="width:7px;height:7px;border-radius:50%;background:#1a8a4a;margin:-12px 0 0 -4px"></span></span>
+    <span style="flex:1"></span><span style="font-size:13px;color:#2f6fed;padding:0 6px;white-space:nowrap">kind actions</span><span style="font-size:13px;color:#2f6fed;padding:0 6px;white-space:nowrap">Import / Export</span>
+    <span style="width:1px;height:20px;background:#e5e5e0;margin:0 4px"></span>
+    <span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6b7080;font-size:15px">🐞</span><span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6b7080;font-size:15px">☆</span><span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6b7080;font-size:15px">文</span><span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6b7080;font-size:15px">◐</span>
+  </div>
+<div style="display:flex;gap:12px;width:1136px">
+<div style="flex:3;border-radius:10px;padding:14px;background:#e8f0ff;font-size:13px;line-height:1.5"><b>Start · where am I</b><div style="color:#4a4f5a;margin-top:4px">Home and switch project, the name (double-click renames), the save state as a history icon with a dot. Same in every kind.</div></div>
+<div style="flex:3;border-radius:10px;padding:14px;background:#f0efe8;font-size:13px;line-height:1.5"><b>Middle · this kind</b><div style="color:#4a4f5a;margin-top:4px">View switches, data mode, layout, comments, speed. Import / Export is always the last of them.</div></div>
+<div style="flex:2;border-radius:10px;padding:14px;background:#e6f4ea;font-size:13px;line-height:1.5"><b>End · the product</b><div style="color:#4a4f5a;margin-top:4px">Report an issue, star, language, look. Muted icons, tooltip on hover, never a label or a colour.</div></div>
+</div>
+<div style="font-size:13px;color:#4a4f5a;line-height:1.6;max-width:900px">Floating bars on the canvas and the slide stage keep only tools. Below about 900 px the middle collapses into one overflow menu (open question). Present mode hides the bar.</div>
+</div>
+</x-dc>
+</body>
+</html>
