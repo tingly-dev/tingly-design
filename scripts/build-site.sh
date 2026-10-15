@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Assemble the GitHub Pages site into $1 (default _site): the static page in
-# site/, the screenshots from docs/images, and the design-motion promo rendered
+# site/, the README screenshots (docs/images/readme), and the design-motion promo rendered
 # from the project (needs the sandbox build, Chromium and ffmpeg).
 set -euo pipefail
 
@@ -10,7 +10,8 @@ mkdir -p "$out/media"
 out="$(cd "$out" && pwd)"
 
 cp -r "$root/site/." "$out/"
-cp "$root"/docs/images/*.png "$out/media/"
+mkdir -p "$out/media/readme"
+cp -r "$root"/docs/images/readme/en "$root"/docs/images/readme/zh "$root"/docs/images/readme/cover.png "$out/media/readme/"
 
 # Chromium comes from PLAYWRIGHT_BROWSERS_PATH (CI) or DC_CHROME (local).
 if [[ -z "${DC_CHROME:-}" && -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
