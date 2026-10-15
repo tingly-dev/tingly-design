@@ -11,7 +11,7 @@ out="$(cd "$out" && pwd)"
 
 cp -r "$root/site/." "$out/"
 mkdir -p "$out/media/readme"
-cp -r "$root"/docs/images/readme/en "$root"/docs/images/readme/zh "$root"/docs/images/readme/cover.png "$out/media/readme/"
+cp -r "$root"/docs/images/readme/en "$root"/docs/images/readme/zh "$root"/docs/images/readme/cover.png "$root"/docs/images/readme/hero.gif "$root"/docs/images/readme/kinds.gif "$out/media/readme/"
 
 # Chromium comes from PLAYWRIGHT_BROWSERS_PATH (CI) or DC_CHROME (local).
 if [[ -z "${DC_CHROME:-}" && -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
