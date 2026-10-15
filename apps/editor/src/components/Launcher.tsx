@@ -16,6 +16,8 @@ import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { SizePicker } from './motion/SizePicker';
 import { readSizes, rememberSize, type Size } from '../motionSizes';
+import { BOARD_PRESETS, DEFAULT_BOARD_SIZE } from '../boardPresets';
+import { applyNewOptions, checkDataFile, type NewOptions } from '../newProject';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
 import { Specimen } from './ds/Specimen';
@@ -463,9 +465,18 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
   const [busy, setBusy] = useState(false);
   // a motion piece starts in the size last used (16:9 the first time)
   const [size, setSize] = useState<Size | null>(() => readSizes().last ?? [1920, 1080]);
+  // the rest is optional: a design system (canvas, slides), a board size (canvas), a table (dashboard)
+  const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
+  const [designSystem, setDesignSystem] = useState('');
+  const [board, setBoard] = useState(DEFAULT_BOARD_SIZE.join('x'));
+  const [dataFile, setDataFile] = useState<{ file: File; rows: number } | null>(null);
+  const [dataError, setDataError] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   useEffect(() => titleRef.current?.focus(), []);
+  useEffect(() => {
+    api.projects().then((l) => setSystems(l.filter((p) => p.kind === 'design-system')), () => setSystems([]));
+  }, []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', key);
@@ -481,8 +492,14 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
     if (!name || problem || busy || sizeBad) return;
     setBusy(true);
     try {
-      await api.createProject(name, title.trim() || name, kind, kind === 'motion' && size ? size : undefined);
+      const boardSize = board.split('x').map(Number) as Size;
+      await api.createProject(name, title.trim() || name, kind, kind === 'motion' && size ? size : kind === 'design' && board !== DEFAULT_BOARD_SIZE.join('x') ? boardSize : undefined);
       if (kind === 'motion' && size) rememberSize(size);
+      const opts: NewOptions = {
+        designSystem: (kind === 'design' || kind === 'slides') && designSystem ? designSystem : undefined,
+        dataFile: kind === 'dashboard' ? dataFile?.file : undefined,
+      };
+      for (const m of await applyNewOptions(name, opts)) toast(m, 'error');
       open(name);
     } catch (err) {
       setBusy(false);
@@ -517,6 +534,69 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
         <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
         <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
         {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
+        {(kind === 'design' || kind === 'slides' || kind === 'dashboard') && (
+          <div className="nopts" data-options={kind}>
+            <span className="nopt-h">{t('launcher.new.options')}</span>
+            {(kind === 'design' || kind === 'slides') && (
+              <label className="nopt">
+                <span>{t('launcher.new.ds')}</span>
+                <select className="input" value={designSystem} onChange={(e) => setDesignSystem(e.target.value)} aria-label={t('launcher.new.ds')}>
+                  <option value="">{t('launcher.new.dsNone')}</option>
+                  {systems.map((s) => (
+                    <option key={s.name} value={s.name}>
+                      {s.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {kind === 'design' && (
+              <label className="nopt">
+                <span>{t('launcher.new.boardSize')}</span>
+                <select className="input" value={board} onChange={(e) => setBoard(e.target.value)} aria-label={t('launcher.new.boardSize')}>
+                  {BOARD_PRESETS.map((p) => (
+                    <option key={p.size.join('x')} value={p.size.join('x')}>
+                      {p.key ? t(p.key, { w: p.size[0], h: p.size[1] }) : p.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {kind === 'dashboard' && (
+              <div className="nopt">
+                <span>{t('launcher.new.dataFile')}</span>
+                <span className="nopt-file">
+                  <label className="btn ghost">
+                    {dataFile ? dataFile.file.name : t('launcher.new.dataPick')}
+                    <input
+                      type="file"
+                      hidden
+                      accept=".csv,.tsv,.json"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!f) return;
+                        const r = await checkDataFile(f);
+                        if ('error' in r) return setDataError(r.error), setDataFile(null);
+                        setDataError('');
+                        setDataFile({ file: f, rows: r.rows });
+                      }}
+                    />
+                  </label>
+                  {dataFile && (
+                    <>
+                      <span className="hint">{t('launcher.new.dataRows', { count: dataFile.rows })}</span>
+                      <button type="button" className="linkish" onClick={() => setDataFile(null)}>
+                        {t('launcher.new.dataClear')}
+                      </button>
+                    </>
+                  )}
+                </span>
+                {dataError && <span className="nopt-err">{dataError}</span>}
+              </div>
+            )}
+          </div>
+        )}
         <div className="where">
           {folder === null ? (
             <>

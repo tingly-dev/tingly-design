@@ -7,7 +7,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
-MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b']
+MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales']
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
@@ -208,6 +208,36 @@ async def main():
         await pg.goto(BASE + '/')
         await expect(pg.locator('.lcard[data-project="zz-launch-deck"] .ltitle .name')).to_have_text('ZZ Launch deck')
         check('the new project is listed', True)
+
+        # --- optional first choices in the dialog ---------------------------------------------------
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="design"] .mi').click()
+        opts = {}
+        for k in ('design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'):
+            await dlg.locator(f'[role=radio][data-kind="{k}"]').click()
+            opts[k] = await dlg.locator('.nopts').count()
+        check('options show for canvas, slides and dashboard only; the rest has nothing to ask', opts == {'design': 1, 'slides': 1, 'design-system': 0, 'dashboard': 1, 'docs': 0, 'motion': 0}, str(opts))
+        await dlg.locator('[role=radio][data-kind="design"]').click()
+        await dlg.locator('input[aria-label="标题"]').fill('ZZ Phone')
+        await dlg.locator('.nopts select').first.select_option('tingly-ds')
+        await dlg.locator('.nopts select').nth(1).select_option('390x844')
+        await dlg.locator('button[type=submit]').click()
+        await pg.wait_for_url('**/?p=zz-phone')
+        canvas = json.load(open(os.path.join(REPO, 'projects/zz-phone/canvas.json'), encoding='utf-8'))
+        check('a canvas starts at the board size picked, with the design system installed', list(canvas['boards'].values())[0]['w'] == 390 and any(r.get('namespace') == 'tingly' for r in canvas.get('designSystems', [])), json.dumps(canvas)[:200])
+        csv = os.path.join(REPO, 'projects/.zz-sales.csv')
+        open(csv, 'w').write('month,revenue\n2026-01,120\n2026-02,150\n')
+        await pg.goto(BASE + '/')
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="dashboard"] .mi').click()
+        await dlg.locator('input[aria-label="标题"]').fill('ZZ Sales')
+        await dlg.locator('.nopts input[type=file]').set_input_files(csv)
+        await expect(dlg.locator('.nopts .hint')).to_contain_text('2 行')
+        await dlg.locator('button[type=submit]').click()
+        await pg.wait_for_url('**/?p=zz-sales')
+        ds = os.path.join(REPO, 'projects/zz-sales/datasets/zz-sales.json')
+        check('a dashboard starts with the table as a dataset, its file kept under data/', os.path.exists(ds) and os.path.exists(os.path.join(REPO, 'projects/zz-sales/data/zz-sales.csv')))
+        os.remove(csv)
 
         # --- the logo, the feedback entries, leaving a project -------------------------------------
         await pg.goto(BASE + '/')

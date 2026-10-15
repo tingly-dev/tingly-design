@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
 import { duplicateBoard, updateBoard, updateNote } from '../../actions';
+import { BOARD_PRESETS } from '../../boardPresets';
 import { deleteBoard, display, edit, useStore } from '../../store';
 import { TEXT_COLORS, sizeOf } from '../Item';
 import { frames } from '../Board';
@@ -34,13 +35,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
             value=""
             options={[
               { value: '', label: t('panel.board.presetPlaceholder') },
-              { value: '390x844', label: t('panel.board.presetPhone', { w: 390, h: 844 }) },
-              { value: '1280x800', label: t('panel.board.presetDesktop', { w: 1280, h: 800 }) },
-              { value: '1440x900', label: t('panel.board.presetDesktop', { w: 1440, h: 900 }) },
-              { value: '1200x760', label: t('panel.board.presetArtboard', { w: 1200, h: 760 }) },
-              { value: '1080x1080', label: t('panel.board.presetSocial', { w: 1080, h: 1080 }) },
-              { value: '816x1056', label: 'Letter 816 × 1056' },
-              { value: '794x1123', label: 'A4 794 × 1123' },
+              ...BOARD_PRESETS.map((p) => ({ value: `${p.size[0]}x${p.size[1]}`, label: p.key ? t(p.key, { w: p.size[0], h: p.size[1] }) : p.label! })),
             ]}
             onChange={(v) => {
               const [w, h] = v.split('x').map(Number);
