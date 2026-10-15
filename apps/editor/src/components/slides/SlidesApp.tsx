@@ -244,7 +244,14 @@ function TopLeft() {
 function SlidesTopBar() {
   const deck = useDeck();
   const direct = useDirectPdf();
+  const panelOpen = useStore((s) => s.panelOpen);
+  const [menu, setMenu] = useState<null | 'play'>(null);
+  const playBtn = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
+  const at = (b: HTMLElement | null) => {
+    const r = b?.getBoundingClientRect();
+    return { x: r?.right ?? 0, y: (r?.bottom ?? 0) + 8, align: 'right' as const };
+  };
   return (
     <TopBar
       title={
@@ -256,28 +263,10 @@ function SlidesTopBar() {
         />
       }
     >
-      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} button="text" />
-    </TopBar>
-  );
-}
-
-function TopRight() {
-  const panelOpen = useStore((s) => s.panelOpen);
-  const [menu, setMenu] = useState<null | 'play'>(null);
-  const playBtn = useRef<HTMLButtonElement>(null);
-  const { t } = useTranslation();
-  const at = (b: HTMLElement | null) => {
-    const r = b?.getBoundingClientRect();
-    return { x: r?.right ?? 0, y: (r?.bottom ?? 0) + 8, align: 'right' as const };
-  };
-  return (
-    <div className="bar right" role="toolbar" aria-label={t('slides.toolbar.slides')}>
-      <button ref={playBtn} className="tb text" aria-haspopup="menu" aria-label={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
+      <button ref={playBtn} className="btn ghost" aria-haspopup="menu" aria-label={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
         <Play /> {t('slides.toolbar.present')}
-        <span className="caret">
-          <Caret />
-        </span>
       </button>
+      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} button="text" />
       <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
         <Panel />
       </button>
@@ -288,7 +277,7 @@ function TopRight() {
           <MenuItem label={t('slides.toolbar.presentWithNotes')} onSelect={() => (setMenu(null), startPresent(null, true))} />
         </Menu>
       )}
-    </div>
+    </TopBar>
   );
 }
 
@@ -526,7 +515,6 @@ export function SlidesApp() {
       <Strip />
       <main className="stage">
         <TopLeft />
-        <TopRight />
         <Stage />
         {loaded && !present && <PromptBar />}
         <JournalPopover />
