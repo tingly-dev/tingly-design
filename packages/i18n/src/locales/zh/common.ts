@@ -30,6 +30,7 @@ export default {
   stop: '停止',
   undo: '撤销',
   topbar: {
+    more: '更多',
     rename: '双击改名',
     label: '项目栏',
   },

@@ -28,6 +28,7 @@ export default {
   undo: 'Undo',
   untitled: 'Untitled',
   topbar: {
+    more: 'More',
     rename: 'Double-click to rename',
     label: 'Project bar',
   },

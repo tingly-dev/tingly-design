@@ -83,6 +83,7 @@ import {
   IconCornerLeftUp,
   IconHome,
   IconStar,
+  IconDots,
   IconRefresh,
   IconMoon,
   IconSun,
@@ -142,6 +143,7 @@ export const Minus = tabler(IconMinus, 14);
 export const Close = tabler(IconX, 14);
 export const Home = tabler(IconHome);
 export const Star = tabler(IconStar, 14);
+export const More = tabler(IconDots);
 export const Refresh = tabler(IconRefresh);
 export const Moon = tabler(IconMoon);
 export const Sun = tabler(IconSun);

@@ -146,9 +146,12 @@ async def main():
             await pg.locator('.pmenu').wait_for()
             check(f'{name}: the editor has a one-click way home', await pg.locator('.pmenu a.tb').get_attribute('href') in ('/', BASE + '/'))
             bar = pg.locator('header.topbar')
-            check(f'{name}: one top bar, with the save state, Import / Export, report, star, language and look', await bar.count() == 1 and await bar.locator('.syncchip').count() == 1
-                  and await bar.locator('button[aria-label="导入 / 导出"]').count() == 1 and await bar.locator('a[data-link=report]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design/issues/new/choose'
-                  and await bar.locator('a[data-link=star]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design' and await bar.locator('[data-language]').count() == 1 and await bar.locator('.tend button').count() == 2)
+            check(f'{name}: one top bar, with the save state, Import / Export and one more-menu', await bar.count() == 1 and await bar.locator('.syncchip').count() == 1
+                  and await bar.locator('button[aria-label="导入 / 导出"]').count() == 1 and await bar.locator('button[data-more]').count() == 1)
+            await bar.locator('button[data-more]').click()
+            check(f'{name}: the more-menu has report, star, language and look', await pg.locator('.menu a[data-link=report]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design/issues/new/choose'
+                  and await pg.locator('.menu a[data-link=star]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design' and await pg.locator('.menu [data-lang]').count() == 2 and await pg.locator('.menu .head').count() == 2)
+            await pg.keyboard.press('Escape')
         await pg.goto(f'{BASE}/?p=box-console')
         await pg.locator('.pmenu button.tb').click()
         await pg.wait_for_function("document.querySelectorAll('.menu button.mi').length > 3")
