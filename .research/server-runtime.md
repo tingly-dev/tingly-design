@@ -1,6 +1,6 @@
 # 服务端用什么跑：Node、Go 还是两者分工
 
-状态：**研究，待定**。现行实现是 Node（`apps/server`，Hono）。本文比较几条路，给出倾向和迁移步骤，供决定前讨论；决定之前代码不动。图见 [server-runtime.pencil.md](./server-runtime.pencil.md)，文字和图冲突时以本文为准。和 [tingly-box-integration.md](../.design/tingly-box-integration.md) 的关系见 §8。
+状态：**研究，有了倾向**（§11）：保持 TS 服务端，独立产品优先。现行实现是 Node（`apps/server`，Hono）。本文比较几条路，给出倾向和迁移步骤，供决定前讨论；决定之前代码不动。图见 [server-runtime.pencil.md](./server-runtime.pencil.md)，文字和图冲突时以本文为准。和 [tingly-box-integration.md](../.design/tingly-box-integration.md) 的关系见 §8。
 
 **一句话**：倾向取决于要不要和 TB 融合，见 §10。如果融合：倾向把服务端改成 Go 写的"薄宿主"，只管文件、事件、模型和子进程，不理解任何项目格式；理解格式的逻辑全部放在浏览器的 JS 里。这样 TB 和桌面版都能保持单个二进制，前端仍是 JS，和团队现有的 Go + JS 一致。
 
@@ -127,3 +127,12 @@ tingly-design 现在前后端都是 TypeScript，服务端跑在 Node 上。单�
   - 有一台远程主机（自己的电脑或服务器）做重活，手机是 WebView 里的瘦客户端；这时 TB 正好是现成的主机，融合的理由变强。
   - 不要云端，App 内直接调模型、读写本地文件，自己跑一个工具调用循环充当 agent（Claude Code 给的工具只有 Read、Edit、Write、Glob、Grep 五个）。服务端的职责变成 App 里的一层，按平台接 Node 文件系统、Capacitor 文件接口或浏览器 OPFS。这一层只能是 JS/TS，Go 在手机上基本用不上。
 - **团队就是要统一到 Go**：界面和运行时仍然只能是 JS（画布、幻灯片、动效本身是 HTML），"全平台 Go"指界面以外的逻辑。格式逻辑改写成 Go，原生编进服务端，或编成 WASM 给浏览器。文档类型的实测见 [docs-go.md](./docs-go.md)，画布和幻灯片回写依赖的源码位置见 [parse5.md](./parse5.md)。动效的时间轴和画面留在浏览器，能换成 Go 的只有存文件和导出调度，见 [motion-go.md](./motion-go.md)。按当前代码列出的、服务端换成 Go 时各处要改什么，见 [go-backend.md](./go-backend.md)。
+
+## 11. 当前倾向：独立产品，TB 负责引流
+
+讨论下来的判断：用户大多是独立来做设计的人，专门为了设计去装 TB 的会很少；TB 的作用是引流，而不是宿主。
+
+- **服务端保持 TS。** 贡献者多半来自前端和设计工具，一种语言、一份格式逻辑，门槛最低。改 Go 会让服务端用到的格式逻辑有两份（见 [go-backend.md](./go-backend.md) §3），新功能要两边一起写。
+- **普通用户的安装问题靠分发解决，不靠换语言。** 桌面安装包、npm 包都能藏住运行时；真正的门槛是 Claude Code 登录、本机 Chrome 和 ffmpeg、模型设置，换 Go 也还在。
+- **和 TB 的连接走两条已有的路**：模型设置里把 TB 作为推荐的连接（设计工具的用户由此认识 TB）；TB 按 protocol 1 以子进程带上设计工具（TB 的用户由此用到设计工具）。两条都不要求服务端换语言。
+- **什么时候重新考虑 Go**：设计工具主要以 TB 的一个模块被使用，或者要做不带 Node 的移动端宿主。到那时按 go-backend.md 的清单走。

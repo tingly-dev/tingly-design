@@ -1,6 +1,6 @@
 # 后端一定要换成 Go：要改哪些
 
-状态：**研究**，按当前 main 的代码盘点，不改产品代码。为什么要不要换、换了值不值，见 [server-runtime.md](./server-runtime.md)；本文接受"服务端一定是 Go"这个前提，只回答：服务端、编辑器、打包发布、Claude Code 那一侧、测试，各要动什么，哪些不用动。文档类型的移植实测见 [docs-go.md](./docs-go.md)，动效见 [motion-go.md](./motion-go.md)。
+状态：**研究**，按当前 main 的代码盘点，不改产品代码。目前的倾向是不换（见 server-runtime.md §11），本文留作将来需要时的清单。为什么要不要换、换了值不值，见 [server-runtime.md](./server-runtime.md)；本文接受"服务端一定是 Go"这个前提，只回答：服务端、编辑器、打包发布、Claude Code 那一侧、测试，各要动什么，哪些不用动。文档类型的移植实测见 [docs-go.md](./docs-go.md)，动效见 [motion-go.md](./motion-go.md)。
 
 标"实测"的是读代码或统计出来的，标"推断"的是没有验证的判断。
 
