@@ -154,6 +154,9 @@ export default {
     what: '图片和 SVG 放到当前这张幻灯片上，原文件留在项目的 uploads/ 里。',
     placedOne: '已放上 {{name}}。',
     placedMany: '已放上 {{count}} 张图片。',
+    boardWhat: '画板会复制进这份幻灯片，放到当前这一页。会动的画板（特效）铺满整页、放在最底层，放映时播放；参数在面板里改。',
+    boardPlaced: '已把 {{title}} 导入到这一页。',
+    noSlide: '先打开一页幻灯片再导入。',
   },
   export: {
     noNotes: '（无备注）',

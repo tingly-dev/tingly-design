@@ -5,6 +5,7 @@ import { display, parsed, useCanvas, useStore } from '../../store';
 import { Close } from '../icons';
 import { CodeTab } from './CodeTab';
 import { ElementProps } from './ElementProps';
+import { BoardEmbedProps, isBoardEmbedEl } from './BoardEmbedProps';
 import { LayerTree } from './LayerTree';
 import { BoardProps, ItemProps, Tweaks } from './OtherProps';
 import { Field, Row } from './fields';
@@ -54,6 +55,7 @@ export function RightPanel() {
       body = (
         <>
           <FormatNote file={file} el={el} />
+          {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
           <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
         </>
       );
@@ -62,6 +64,7 @@ export function RightPanel() {
   } else if (slides && sel?.kind === 'el' && file && doc && el && tab !== 'code') {
     body = (
       <>
+        {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
         <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
         <BuildRow file={file} tid={el.tid} />
       </>

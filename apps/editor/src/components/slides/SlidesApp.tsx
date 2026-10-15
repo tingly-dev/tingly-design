@@ -233,7 +233,7 @@ function TopLeft() {
           if (f) void uploadImage(f);
         }}
       />
-      <ImportHere target={slidesImport} label={t('slides.toolbar.importLabel')} button={false} />
+      <ImportHere target={slidesImport} label={t('slides.toolbar.importLabel')} />
       <button className="tb" aria-label={t('slides.toolbar.insertTable')} title={t('slides.toolbar.insertTable')} onClick={() => insertOnSlide(INSERTS.table, false)}>
         <IconTable size={16} stroke={1.6} aria-hidden="true" />
       </button>

@@ -28,10 +28,17 @@ export default {
     button: '导入',
     chooseFiles: '选择文件…',
     chooseFolder: '选择文件夹…',
+    fromProject: '从项目导入…',
     drag: '也可以把文件拖进来。',
     dragOrPaste: '也可以把文件拖进来，或直接粘贴。',
     dropInto: '松开，导入到这个{{label}}',
     busy: '正在导入 {{name}}…',
+  },
+  board: {
+    title: '从画布导入画板',
+    none: '还没有哪个画布里有画板。先在画布里做一张（特效就是会随时间变化的画板），再到这里导入。',
+    pick: '导入 {{title}}',
+    moving: '会动',
   },
   dialog: {
     step: {

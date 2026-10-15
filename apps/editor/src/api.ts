@@ -1,4 +1,4 @@
-import type { Actor, AgentStep, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, BoardImport, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
 
@@ -126,6 +126,14 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ from }),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
+
+  /** Copy a canvas's artboard into this deck or motion piece (uploads/<from>-<board>/…); the caller puts the embed on the page. */
+  importBoard: (p: string, from: string, board: string) =>
+    call(at(`api/projects/${enc(p)}/import-board`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from, board }),
+    }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
 
   uninstallDs: (p: string, namespace: string) =>
     call(at(`api/projects/${enc(p)}/design-systems?namespace=${enc(namespace)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),

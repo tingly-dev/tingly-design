@@ -5,7 +5,7 @@
  * so selection, dragging and the panel treat it like any other element.
  */
 import React from 'react';
-import { connectorArt, iconArt, parseStyle, shapeArt, styleObject } from '@dc/core';
+import { boardFrameDoc, boardSize, connectorArt, coverFit, iconArt, parseDc, parseStyle, shapeArt, styleObject } from '@dc/core';
 
 type Props = Record<string, unknown> & { style?: Record<string, string> };
 
@@ -72,6 +72,107 @@ export function XEmbed({ props, html, mode, still }: { props: Props; html: strin
       tabIndex={-1}
       title="embed"
       style={{ display: 'block', width: '100%', height: '100%', border: 0, background: 'transparent', pointerEvents: mode === 'play' ? 'auto' : 'none' }}
+    />,
+  );
+}
+
+/**
+ * `<x-embed src="uploads/…/X.dc.html">`: an artboard imported from a canvas,
+ * run by the artboard runtime in its own frame and scaled to cover the embed.
+ * `files` holds it and the siblings it mounts. On a motion stage the runtime
+ * seeks it with the playhead (the frame is the embed's direct child, as
+ * `showTime` expects); presenting a slide, it is given the time since the
+ * slide appeared, so a moving artboard loops; otherwise it stands at its still.
+ */
+export function XBoard({
+  props,
+  src,
+  files,
+  tweaks,
+  base,
+  mode,
+  still,
+  live,
+}: {
+  props: Props;
+  src: string;
+  files: Record<string, string>;
+  tweaks: Record<string, unknown>;
+  base: string;
+  mode: string;
+  still?: boolean;
+  /** run the artboard's clock (presenting a slide) */
+  live?: boolean;
+}) {
+  const host = React.useRef<HTMLElement>(null);
+  const ref = React.useRef<HTMLIFrameElement>(null);
+  const [ready, setReady] = React.useState(false);
+  const [box, setBox] = React.useState<[number, number]>([0, 0]);
+  const source = files[src];
+  const size = React.useMemo(() => (source ? boardSize(parseDc(source).props) : null) ?? [1280, 720], [source]) as [number, number];
+  const doc = React.useMemo(() => boardFrameDoc({ src: `${RUNTIME_DIR}runtime.js` }), []);
+  React.useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const measure = () => setBox([el.offsetWidth, el.offsetHeight]);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  React.useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.source === ref.current?.contentWindow && e.data?.dc === 'ready') setReady(true);
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  React.useEffect(() => {
+    if (!ready || source === undefined) return;
+    ref.current?.contentWindow?.postMessage({ dc: 'render', file: src, source, files, props: tweaks, mode: 'play', selected: null, base: base || undefined }, '*');
+  }, [ready, src, source, files, tweaks, base]);
+  React.useEffect(() => {
+    if (!ready || !live) return;
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = () => {
+      ref.current?.contentWindow?.postMessage({ dcMotion: 'seek', t: performance.now() - t0, n: -1 }, '*');
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [ready, live]);
+  const style = { ...(props.style ?? {}), overflow: 'hidden' } as Record<string, string>;
+  if (still || source === undefined) {
+    return React.createElement(
+      'x-embed',
+      { ...props, ref: host, style },
+      <div style={{ width: '100%', height: '100%', background: 'repeating-linear-gradient(45deg, rgba(127,127,127,.18) 0 12px, rgba(127,127,127,.08) 12px 24px)' }} />,
+    );
+  }
+  const fit = coverFit(size, box[0] && box[1] ? box : size);
+  return React.createElement(
+    'x-embed',
+    { ...props, ref: host, style },
+    <iframe
+      ref={ref}
+      srcDoc={doc}
+      sandbox="allow-scripts"
+      referrerPolicy="no-referrer"
+      tabIndex={-1}
+      title={src}
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: size[0],
+        height: size[1],
+        border: 0,
+        background: 'transparent',
+        transform: `translate(${fit.x}px, ${fit.y}px) scale(${fit.scale})`,
+        transformOrigin: '0 0',
+        pointerEvents: mode === 'play' ? 'auto' : 'none',
+      }}
     />,
   );
 }

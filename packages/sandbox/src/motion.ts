@@ -7,7 +7,7 @@
  * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
  */
 import { resolveSrc, urlsAgainst } from './urls';
-import { attrsForFormat, drawSlideArt, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
+import { attrsForFormat, boardFrameDoc, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 
 export interface MountOptions {
@@ -20,7 +20,20 @@ export interface MountOptions {
   speed?: number;
   /** Where the project's files are served: relative src and url() (uploads/…) resolve against it. */
   base?: string;
+  /** Artboards the scenes embed (`<x-embed src="uploads/…/X.dc.html">`) and the siblings they mount, by path. */
+  files?: Record<string, string>;
+  /** Where those artboards' runtime comes from: its URL (default: runtime.js beside this script) or its text, for a page that stands alone. */
+  boardRuntime?: { src: string } | { inline: string };
 }
+
+/** The folder this script was loaded from, where runtime.js sits too. */
+const SCRIPT_DIR = (() => {
+  try {
+    return new URL('.', (document.currentScript as HTMLScriptElement | null)?.src ?? location.href).href;
+  } catch {
+    return '';
+  }
+})();
 
 export interface MotionStage {
   width: number;
@@ -141,6 +154,12 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       const frame = document.createElement('iframe');
       frame.setAttribute('sandbox', 'allow-scripts');
       frame.setAttribute('title', 'embed');
+      const src = x.getAttribute('src') ?? '';
+      if (isBoardEmbedPath(src)) {
+        const board = mountBoard(x as HTMLElement, frame, src, opts);
+        if (board) embeds.push({ frame, sceneStart: win.start, ready: board });
+        continue;
+      }
       const seekable = x.hasAttribute('data-seek');
       const ready = seekable
         ? new Promise<void>((resolve) => {
@@ -285,6 +304,8 @@ function applyFormat(section: Element, format: string, formats: string[]) {
 function resolveUrls(section: Element, base: string) {
   for (const el of [section, ...Array.from(section.querySelectorAll('*'))]) {
     for (const name of ['src', 'poster', 'href']) {
+      // an artboard embed's src names a project file the frame is handed, not a URL
+      if (name === 'src' && el.tagName.toLowerCase() === 'x-embed') continue;
       const v = el.getAttribute(name);
       if (v === null || (name === 'href' && el.tagName.toLowerCase() !== 'image')) continue;
       const r = resolveSrc(v, base) as string;
@@ -296,6 +317,42 @@ function resolveUrls(section: Element, base: string) {
       if (r !== style) el.setAttribute('style', r);
     }
   }
+}
+
+/**
+ * An artboard embed: the artboard runtime in the frame, given the artboard and
+ * the embed's tweaks once it is up, scaled to cover the embed. Resolves when it
+ * can be sought (a still artboard never asks to be, so the wait is short).
+ */
+function mountBoard(x: HTMLElement, frame: HTMLIFrameElement, src: string, opts: MountOptions): Promise<void> | null {
+  const files = opts.files ?? {};
+  const source = files[src];
+  if (source === undefined) return null;
+  const size = boardSize(parseDc(source).props) ?? [1280, 720];
+  const box: [number, number] = [x.offsetWidth || parseFloat(x.style.width) || size[0], x.offsetHeight || parseFloat(x.style.height) || size[1]];
+  const fit = coverFit(size, box);
+  x.style.overflow = 'hidden';
+  frame.style.cssText = `position:absolute;left:0;top:0;width:${size[0]}px;height:${size[1]}px;border:0;background:transparent;transform:translate(${fit.x}px,${fit.y}px) scale(${fit.scale});transform-origin:0 0`;
+  const ready = new Promise<void>((resolve) => {
+    let rendered = false;
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== frame.contentWindow) return;
+      if (e.data?.dc === 'ready' && !rendered) {
+        rendered = true;
+        frame.contentWindow?.postMessage({ dc: 'render', file: src, source, files, props: embedProps(x.getAttribute('data-props') ?? undefined), mode: 'play', selected: null, base: opts.base }, '*');
+        // a still artboard never says embed-ready: give it a moment to draw
+        setTimeout(resolve, 600);
+      } else if (e.data?.dcMotion === 'embed-ready') {
+        window.removeEventListener('message', onMsg);
+        resolve();
+      }
+    };
+    window.addEventListener('message', onMsg);
+    setTimeout(resolve, 5000);
+  });
+  frame.srcdoc = boardFrameDoc(opts.boardRuntime ?? { src: `${SCRIPT_DIR}runtime.js` });
+  x.appendChild(frame);
+  return ready;
 }
 
 function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
@@ -322,7 +379,7 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
  * and the editor drives it over postMessage: load a project, seek, play, pause.
  */
 type HostMsg =
-  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
+  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; files?: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' }
@@ -352,7 +409,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       const box = document.createElement('div');
       root.appendChild(box);
       try {
-        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root: box, base: m.base });
+        const s = await mount({ motion: m.motion, scenes: m.scenes, files: m.files, format: m.format, speed: m.speed, root: box, base: m.base });
         if (n !== loading) {
           s.destroy();
           return box.remove();

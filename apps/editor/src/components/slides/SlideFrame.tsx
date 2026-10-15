@@ -6,6 +6,7 @@ import { frames, post } from '../Board';
 import { handleKey } from '../../shortcuts';
 import { SERVER } from '../../base';
 import { htmlLang } from '../../i18n';
+import { useBoardFiles } from '../../boards';
 
 export type FrameUse = 'stage' | 'thumb' | 'present';
 
@@ -48,6 +49,7 @@ export const SlideFrame = memo(function SlideFrame({
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const source = useStore((s) => display(s, file));
+  const boards = useBoardFiles([file]);
   const project = useStore((s) => s.project);
   const deckHead = useStore((s) => (scene ? '' : faceMarkup(deckOf(s))));
   const faces = scene?.faces;
@@ -147,8 +149,8 @@ export const SlideFrame = memo(function SlideFrame({
   useEffect(() => {
     if (!ready || source === undefined) return;
     const motion = drawn ? info.current : undefined;
-    frame.current?.contentWindow?.postMessage({ dc: 'render', file, source, files: {}, props: {}, mode, selected, slide, motion }, '*');
-  }, [ready, source, mode, file, selected, slide, drawn]);
+    frame.current?.contentWindow?.postMessage({ dc: 'render', file, source, files: boards, props: {}, mode, selected, slide, motion }, '*');
+  }, [ready, source, boards, mode, file, selected, slide, drawn]);
 
   // moving the playhead only seeks: the scene is not drawn again
   useEffect(() => {

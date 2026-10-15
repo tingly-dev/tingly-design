@@ -81,8 +81,21 @@ Elements:
 | `x-icon name style` | `Activity Book Chart Chat Check CheckCircle Clock Cloud Code Database Globe GraduationCap Home Key Lightbulb Lightning Link Lock PaperPlane Play Search Settings Star ThumbsUp Tool Trust Users Verified Warning Wrench`; `color`, `width`, `height` |
 | `x-connector x1 y1 x2 y2 head route style` | an arrow in slide coordinates: `head="end|both|none"`, `route="straight|hv|vh|elbow"`, `style="color;border-width;border-style"` |
 | `x-embed style` | a live mini page (HTML/CSS/JS, ≤ 16 KB, ≤ 8 per slide), a **direct, pinned** child of the section; runs sandboxed with no network; the deck's fonts don't reach it |
+| `x-embed src data-props style` | an artboard imported from a canvas (see below): empty, `src` is its copy under `uploads/`, `data-props` a JSON object of its tweaks |
 
 At most 200 elements on a slide.
+
+### Artboards imported from a canvas (effects)
+
+A person can import an artboard of a canvas project into a deck (import menu → From a project). The server copies it, with the sibling artboards it mounts and the pictures it shows, to `uploads/<canvas>-<board>/`, records it in `deck.json` `imports` (`{path, from, board, copiedAt}`), and the editor puts an embed on the slide:
+
+```html
+<x-embed src="uploads/box-console-Glow/Glow.dc.html" data-props='{"accent":"#7c3aed"}' style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>
+```
+
+- The artboard is drawn by the canvas runtime, scaled to cover the embed. An artboard that declares `"$time"` moves: it loops while presenting and stands at its still otherwise. A moving one usually fills the slide as the first child, so everything paints over it.
+- `data-props` sets the artboard's tweaks (the keys of its own `data-props`, without `$…`); leave a key out to use the artboard's default. Change the look through `data-props`, never by editing the copy under `uploads/`: importing again overwrites it.
+- To reuse an imported artboard on another slide, write another embed with the same `src`. Don't point `src` anywhere else; to bring in a new artboard, ask the person to import it.
 
 ## Craft
 

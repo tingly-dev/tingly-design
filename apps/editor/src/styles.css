@@ -5791,3 +5791,83 @@ body.filedrag iframe {
   color: var(--accent);
   white-space: nowrap;
 }
+
+/* importing an artboard from a project: the picker, and the selected embed's panel */
+.ldialog.bpick {
+  width: min(760px, 100%);
+}
+.bpick .hint {
+  margin: -6px 0 0;
+}
+.bpick-group h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bpick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 10px;
+}
+.bpick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.bpick-item:hover,
+.bpick-item:focus-visible {
+  border-color: var(--accent);
+}
+.bpick-thumb {
+  position: relative;
+  display: block;
+  width: 196px;
+  max-height: 196px;
+  overflow: hidden;
+  border-radius: calc(var(--r) - 2px);
+  background: var(--panel-2);
+}
+.bpick-thumb iframe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.bpick-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.bpick-item .faint {
+  font: 11px var(--mono);
+  color: var(--faint);
+}
+.bembed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bembed h3 {
+  margin: 0;
+}
+.bembed-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bembed-a a.btn {
+  text-decoration: none;
+}

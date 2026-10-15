@@ -1,5 +1,6 @@
 import { attr, type DcDoc, type DcElement } from './parse';
 import { parseStyle } from './style';
+import { isBoardEmbedPath } from './boardEmbed';
 
 /**
  * The slide subset (the original Slides type's `format.md`), as a checker.
@@ -167,6 +168,19 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
         if (text.length > MAX_EMBED) add(el, 'error', `This <x-embed> is ${Math.round(text.length / 1024)} KB; at most 16 KB.`);
         if (el.parent !== section) add(el, 'error', '<x-embed> must be a direct child of <section>.');
         if (!isPinned(el)) add(el, 'error', '<x-embed> must be pinned: position:absolute with left/top and width/height.');
+        const src = attr(el, 'src');
+        if (src !== undefined) {
+          if (!isBoardEmbedPath(src)) add(el, 'error', `<x-embed src="${src}"> must name an artboard imported under uploads/ (uploads/<from>-<board>/X.dc.html).`);
+          if (el.inner && doc.source.slice(el.inner.start, el.inner.end).trim()) add(el, 'error', '<x-embed src> shows the artboard; it holds no markup of its own.');
+          if (attr(el, 'data-props') !== undefined) {
+            try {
+              const v = JSON.parse(attr(el, 'data-props')!);
+              if (!v || typeof v !== 'object' || Array.isArray(v)) throw 0;
+            } catch {
+              add(el, 'error', "<x-embed data-props> must be a JSON object of the artboard's tweaks.");
+            }
+          }
+        }
         return;
       }
       case 'x-shape': {

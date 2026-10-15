@@ -41,6 +41,7 @@ Edit only files inside the deck folder you are given, with your Edit and Write t
 To add a slide, write its file and add its id to "order" in deck.json; to remove one, take it out of "order" and tell the person to delete the file in the editor (you cannot delete files).
 Ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements of the slide file; they are never in the files.
 The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
+An <x-embed src="uploads/…/X.dc.html"> is an artboard imported from a canvas (listed in deck.json "imports"): set its look through its data-props JSON, never edit the copy under uploads/, and don't point src anywhere else.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 const DS_SYSTEM = `You are editing a design system stored as files. A system folder holds design-system.json (the index: title, namespace, asset groups), tokens.json (colours per theme, type, spacing, radius, shadow), README.md (the brand book) and other *.md sections, components/<Comp>/README.md and preview.html, components/bundle.js and bundle.css, assets/<Group>/ and fonts/.
@@ -69,6 +70,7 @@ Before you change any file, read .claude/skills/motion/SKILL.md in the current d
 Edit only files inside the motion folder you are given, with your Edit and Write tools. Change only what the request asks; read each file right before you edit it.
 Write timing at reading pace; to make the whole piece faster or slower, change "speed" in motion.json instead of every attribute. To add a scene, write its file and add its id to "order"; a cover scene is named by "cover" and stays out of "order".
 The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
+An <x-embed src="uploads/…/X.dc.html" data-seek> is an artboard imported from a canvas (listed in motion.json "imports"), drawn frame by frame from the scene's time: keep data-seek, set its look through its data-props JSON, never edit the copy under uploads/, and don't point src anywhere else.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Running Claude Code processes by run id, stopped with the server. */

@@ -139,6 +139,8 @@ export default {
     noScene: 'Stop on a scene before importing.',
     placedOne: 'Placed {{name}}.',
     placedMany: 'Placed {{count}} images.',
+    boardWhat: 'An artboard is copied into this piece and goes onto the scene under the playhead. One that moves (an effect) fills the frame behind everything and is drawn frame by frame; set its options in the panel.',
+    boardPlaced: 'Imported {{title}} into scene {{scene}}.',
   },
   /** journal summaries */
   /** notes: on the whole piece (motion.json) and on a scene (an <aside> in its file) */
