@@ -204,6 +204,8 @@ interface State {
   feeds: number;
   /** the prompt bar folded to a pill (kept across sessions) */
   barCollapsed: boolean;
+  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column on the right edge that hides until the pointer comes (`auto`) or stays open (`pinned`) */
+  barMode: BarMode;
   /** the list of earlier requests open above the bar */
   historyOpen: boolean;
   /** every request of this editor session, oldest first */
@@ -261,6 +263,14 @@ export const useStore = create<State>(() => ({
       return localStorage.getItem('dc.barCollapsed') === '1';
     } catch {
       return false;
+    }
+  })(),
+  barMode: (() => {
+    try {
+      const m = localStorage.getItem('dc.barMode');
+      return m === 'pinned' || m === 'auto' ? m : 'float';
+    } catch {
+      return 'float';
     }
   })(),
   historyOpen: false,
@@ -465,6 +475,18 @@ export function recordRun(history: RunRecord[], rec: RunRecord, end?: RunRecord[
 /** The Claude Code session the next request would continue: that of the newest run that finished. */
 export function continuable(delegates: DelegateState[]): DelegateState | undefined {
   return [...delegates].reverse().find((d) => d.session && d.state === 'done');
+}
+
+export type BarMode = 'auto' | 'pinned' | 'float';
+
+/** Where the prompt lives (kept across sessions, the same in every kind). */
+export function setBarMode(mode: BarMode): void {
+  try {
+    localStorage.setItem('dc.barMode', mode);
+  } catch {
+    // private window
+  }
+  set({ barMode: mode, historyOpen: false });
 }
 
 export function setBarCollapsed(on: boolean): void {
