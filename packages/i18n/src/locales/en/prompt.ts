@@ -91,8 +91,8 @@ export default {
   dock: {
     pin: 'Keep open beside the work',
     unpin: 'Back to hiding at the edge',
-    float: 'Float over the work',
-    dock: 'Dock to the side',
+    float: 'Move to the bottom',
+    dock: 'Move to the right side',
     tab: 'Ask AI (hover or Ctrl/⌘ J)',
   },
   pill: {

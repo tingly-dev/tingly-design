@@ -89,8 +89,8 @@ export default {
   dock: {
     pin: '固定在侧边',
     unpin: '恢复自动隐藏',
-    float: '浮在画面上',
-    dock: '停靠到侧边',
+    float: '移到底部',
+    dock: '移到右侧',
     tab: '让 AI 修改（移上来或 Ctrl/⌘ J）',
   },
   pill: {

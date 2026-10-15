@@ -1,4 +1,5 @@
-"""End-to-end checks for the prompt as a side dock: hidden on the right edge with only its tab showing, opened by
+"""End-to-end checks for where the prompt lives: the bar at the bottom by default (its run card one line until the pointer is on it),
+moved to the right as a side dock: hidden on the right edge with only its tab showing, opened by
 the pointer on the tab or the cursor in the box, let go of when the person clicks the work, pinned open with the
 editor given the rest of the width, floating (the old bar), and the choice remembered. One run in every kind.
 Run after `pnpm build`: python3 e2e/dock.py  (DC_CHROME=/path/to/chrome to use another Chromium)
@@ -58,11 +59,33 @@ async def main():
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
 
-            # hidden at the edge: only the tab shows, and the work is not covered
-            check('the prompt starts as a dock on the right edge', await dock.count() == 1 and 'auto' in await dock.get_attribute('class'))
+            # the default is the bar at the bottom, as it always was; its run card folds to one line when the person goes back to the work
+            check('the prompt starts as the bar at the bottom of the stage', await pg.locator('.prompt:not(.agent-dock)').count() == 1 and await dock.count() == 0)
+            bar = pg.locator('.prompt')
+            await pg.get_by_role('button', name='Claude Code', exact=True).click()
+            await bar.locator('textarea').fill('把标题改短')
+            await bar.locator('textarea').press('Enter')
+            await expect(pg.locator('.runfeed')).to_contain_text('Claude Code 完成', timeout=15000)
+            check('with the cursor in the box the card shows the answer', '改好了标题。' in await pg.locator('.runfeed').inner_text())
+            await pg.mouse.click(400, 300)
+            await pg.mouse.move(400, 300)
+            await pg.wait_for_function("!document.querySelector('.runfeed .run-say') || getComputedStyle(document.querySelector('.runfeed .run-say')).display === 'none' || !document.querySelector('.runfeed .run-say').offsetParent", timeout=3000)
+            check('a click on the work folds the card to its one line', 'Claude Code 完成' in await pg.locator('.runfeed .run-head').inner_text() and await pg.locator('.runfeed').evaluate('e => e.getBoundingClientRect().height') < 70)
+            await bar.hover()
+            await expect(pg.locator('.runfeed')).to_contain_text('改好了标题。', timeout=3000)
+            check('the pointer on the bar brings the answer back', True)
+            await pg.mouse.move(400, 300)
+            await pg.locator('.runfeed').get_by_role('button', name='撤销这次改动').click()
+            await pg.wait_for_timeout(600)
+
+            # moved to the right: a dock, hidden at the edge with only its tab showing
+            await pg.get_by_role('button', name='移到右侧').click()
+            await expect(dock).to_have_count(1)
+            await pg.mouse.move(300, 300)
+            await pg.wait_for_function("document.querySelector('.agent-dock').getBoundingClientRect().left > 1270", timeout=3000)
+            check('moving it to the right makes a dock on the right edge', 'auto' in await dock.get_attribute('class'))
             check('hidden, it is off the screen but for its tab', await x(dock) >= 1279 and await x(pg.locator('.dock-tab')) < 1280 - 20)
             check('no floating bar over the stage', await pg.locator('.prompt:not(.agent-dock)').count() == 0)
-            tab_before = await pg.locator('.dock-tab').get_attribute('class')
 
             # the pointer on the tab opens it, leaving closes it
             await pg.locator('.dock-tab').hover()
@@ -90,8 +113,7 @@ async def main():
 
             # a run: the tab shows it going and how it ended, the dock is not forced open
             await pg.locator('.dock-tab').hover()
-            await pg.get_by_role('button', name='Claude Code', exact=True).click()
-            await box.fill('把标题改短')
+            await box.fill('把标题再改短')
             await box.press('Enter')
             await pg.mouse.click(400, 300)
             await expect(pg.locator('.dock-tab.running')).to_have_count(1, timeout=8000)
@@ -122,19 +144,19 @@ async def main():
 
             # floating: the old bar, and the fold to a pill
             await pg.locator('.dock-tab').hover()
-            await dock.get_by_role('button', name='浮在画面上').click()
+            await dock.get_by_role('button', name='移到底部').click()
             await expect(pg.locator('.prompt:not(.agent-dock)')).to_have_count(1)
-            check('floating puts the bar back over the stage', await pg.locator('.agent-dock').count() == 0)
+            check('moving it to the bottom puts the bar back', await pg.locator('.agent-dock').count() == 0)
             await pg.reload(); await pg.wait_for_selector('.board')
             check('floating is remembered', await pg.locator('.prompt:not(.agent-dock)').count() == 1)
-            await pg.get_by_role('button', name='停靠到侧边').click()
+            await pg.get_by_role('button', name='移到右侧').click()
             await expect(pg.locator('.agent-dock')).to_have_count(1)
             check('docking again from the floating bar', True)
 
             # a narrow window floats whatever was chosen, and the dock button is not offered
             await pg.set_viewport_size({'width': 900, 'height': 700})
             await expect(pg.locator('.prompt:not(.agent-dock)')).to_have_count(1)
-            check('a narrow window floats the bar', await pg.get_by_role('button', name='停靠到侧边').count() == 0)
+            check('a narrow window floats the bar', await pg.get_by_role('button', name='移到右侧').count() == 0)
             await pg.set_viewport_size({'width': 1280, 'height': 800})
             await expect(pg.locator('.agent-dock')).to_have_count(1)
             check('and widening brings the dock back', True)

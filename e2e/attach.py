@@ -116,7 +116,6 @@ async def main():
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
-            await pg.add_init_script("try{localStorage.setItem('dc.barMode','float')}catch(e){}")  # the floating bar; e2e/dock.py covers the side dock
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(base + '/?p=box-console')

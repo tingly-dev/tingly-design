@@ -6005,3 +6005,9 @@ body.filedrag iframe {
 .agent-dock .run-head {
   flex-wrap: wrap;
 }
+/* the floating bar's run card is one line (what it is doing, how it ended, undo) until the pointer is on the bar or the cursor is in the box:
+   the answer and steps are one hover away and stop covering the work the moment the person goes back to it */
+.prompt:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head),
+.dsask:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head) {
+  display: none;
+}

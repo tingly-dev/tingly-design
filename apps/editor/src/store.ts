@@ -204,7 +204,7 @@ interface State {
   feeds: number;
   /** the prompt bar folded to a pill (kept across sessions) */
   barCollapsed: boolean;
-  /** where the prompt lives: a strip on the right edge that opens on hover, the same column pinned open, or the floating bar */
+  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column on the right edge that hides until the pointer comes (`auto`) or stays open (`pinned`) */
   barMode: BarMode;
   /** the list of earlier requests open above the bar */
   historyOpen: boolean;
@@ -268,9 +268,9 @@ export const useStore = create<State>(() => ({
   barMode: (() => {
     try {
       const m = localStorage.getItem('dc.barMode');
-      return m === 'pinned' || m === 'float' ? m : 'auto';
+      return m === 'pinned' || m === 'auto' ? m : 'float';
     } catch {
-      return 'auto';
+      return 'float';
     }
   })(),
   historyOpen: false,

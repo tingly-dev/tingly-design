@@ -9,7 +9,6 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
         pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
-        await pg.add_init_script("try{localStorage.setItem('dc.barMode','float')}catch(e){}")  # the floating bar; e2e/dock.py covers the side dock
         await pg.goto(BASE + '/?p=box-console')
         await pg.wait_for_timeout(2500)
         flow = pg.frame_locator('[data-board="Flow.dc.html"] iframe')

@@ -41,7 +41,7 @@ export function useDockPad(pinned: boolean): void {
   }, [pinned]);
 }
 
-/** Ctrl/⌘ J puts the cursor in the request box, opening the dock or the folded bar on the way; Esc in the box lets an auto-hidden dock go. */
+/** Ctrl/⌘ J puts the cursor in the request box, opening the dock or the folded bar on the way; Esc in the box lets an auto-hidden dock go; a click on the work lets go of the box, which folds the run card of the floating bar and hides the dock. */
 export function useDockKeys(box: RefObject<HTMLTextAreaElement | null>): void {
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -52,12 +52,12 @@ export function useDockKeys(box: RefObject<HTMLTextAreaElement | null>): void {
     };
     // a click anywhere outside lets an auto-hidden dock go: the canvas may keep focus where it is, so let go of it here
     const letGo = () => {
-      const dock = box.current?.closest('.agent-dock.auto');
+      const dock = box.current?.closest('.agent-dock.auto, .prompt:not(.agent-dock), .dsask:not(.agent-dock)');
       if (dock && dock.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
     };
     // a click inside an artboard never reaches this document, but it selects something (or moves focus into its frame)
     const away = (e: PointerEvent) => {
-      if (!box.current?.closest('.agent-dock')?.contains(e.target as Node)) letGo();
+      if (!box.current?.closest('.agent-dock, .prompt, .dsask')?.contains(e.target as Node)) letGo();
     };
     const unselect = useStore.subscribe((s, prev) => {
       if (s.selection !== prev.selection) letGo();
