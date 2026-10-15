@@ -105,6 +105,8 @@ End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `la
 
 A scheduled sweep every 5 hours runs `.claude/skills/issue-resolve/SKILL.md` over this repository's issues: team issues (owners, members, collaborators) go to analysis and a draft PR, external issues get one short evaluation comment and wait for a maintainer. Its stage lives in a hidden `<!-- issue-resolve stage=… -->` marker on its comments. Issues come in through the forms in `.github/ISSUE_TEMPLATE` (Feature / Bug / Feedback / Other plus an area); `issue-area.yml` turns the area into an `area/<name>` label and a `feat(motion):` title, and the sweep reads those labels. See `.design/issue-resolve.md`.
 
+The homepage on GitHub Pages is `site/`, built and deployed by `.github/workflows/pages.yml`; the design-motion promo on it is rendered in CI by `scripts/build-site.sh`, not committed. See `.design/release.md`.
+
 # Pull requests
 
 Follow `.github/pull_request_template.md` (the same as Tingly Box's) for PR title and description. The title is `type(scope): what changed`. The description starts at `## Summary` with no header above it, then `## Key Changes`, within the template's length caps. Everything that is not about the change (requester, thread / session links, hidden markers) goes in a short, plain footer after a `---` rule; no badges, banners or "Generated with" lines.

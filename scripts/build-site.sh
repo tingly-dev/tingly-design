@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Assemble the GitHub Pages site into $1 (default _site): the static page in
+# site/, the screenshots from docs/images, and the design-motion promo rendered
+# from the project (needs the sandbox build, Chromium and ffmpeg).
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+out="${1:-_site}"
+mkdir -p "$out/media"
+out="$(cd "$out" && pwd)"
+
+cp -r "$root/site/." "$out/"
+cp "$root"/docs/images/*.png "$out/media/"
+
+# Chromium comes from PLAYWRIGHT_BROWSERS_PATH (CI) or DC_CHROME (local).
+if [[ -z "${DC_CHROME:-}" && -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
+  DC_CHROME="$(find "$PLAYWRIGHT_BROWSERS_PATH" -type f -name chrome -path '*chromium-*' | sort | tail -n 1)"
+  export DC_CHROME
+fi
+
+node "$root/scripts/motion-render.mjs" design-motion --format wide,tall --out "$out/media"
+
+ls "$out/media"

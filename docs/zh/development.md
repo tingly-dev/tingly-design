@@ -53,6 +53,8 @@ npm 发布只走 Trusted Publishing：哪里都不存 token，两个包也拒绝
 
 `.github/workflows/ci.yml` 在每个 PR 上跑同样的检查，再用 `npm pack --dry-run` 列出包里会有什么。为什么这样做、npm 发布怎么鉴权，见 `.design/release.md`。
 
+`.github/workflows/pages.yml` 构建主页（`site/`），在 main 上部署到 GitHub Pages。主页上的 design-motion 宣传片由这个任务从 `projects/design-motion` 渲染（`scripts/build-site.sh`），不提交进仓库。维护者需要手动开启一次 Pages：Settings → Pages → Source 选 GitHub Actions。
+
 ## 服务端日志
 
 服务端把每个事件写成一行输出到 stderr，不用打开编辑器就能看到快速 AI 和 Claude Code 在做什么：
