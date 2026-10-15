@@ -29,6 +29,8 @@ async def save(pg, name, click, minw=100, minh=100):
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PIECE = os.path.join(REPO, 'projects/zz-export-image')
+BOARD = os.path.join(REPO, 'projects/zz-export-board')
+PNG1 = bytes.fromhex('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8cfc0f01f0005000201a5f645400000000049454e44ae426082')
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
@@ -42,6 +44,27 @@ async def main():
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
+
+        # canvas: an artboard with a PNG and an SVG from uploads/ (and one picture that is missing: the toast names it)
+        shutil.rmtree(BOARD, ignore_errors=True)
+        os.makedirs(BOARD + '/uploads')
+        open(BOARD + '/uploads/pic.png', 'wb').write(PNG1)
+        open(BOARD + '/uploads/logo.svg', 'w').write('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="36" fill="#e05"/></svg>')
+        open(BOARD + '/canvas.json', 'w').write(json.dumps({'v': 3, 'title': 'zz', 'launch': {'view': 'canvas'}, 'pages': [], 'boards': {'Main.dc.html': {'x': 0, 'y': 0, 'w': 400, 'h': 300, 'title': 'Main'}}}))
+        page = lambda extra: '<!doctype html><html><head><meta charset="utf-8"><script src="./support.js"></script></head><body><x-dc><div style="width:400px;height:300px;background:#fff"><img src="uploads/pic.png" width="100"><img src="uploads/logo.svg" width="100">' + extra + '</div></x-dc></body></html>'
+        open(BOARD + '/Main.dc.html', 'w').write(page(''))
+        await pg.goto(BASE + '/?p=zz-export-board')
+        await pg.wait_for_selector('iframe', timeout=20000)
+        await pg.wait_for_timeout(2000)
+        await pg.get_by_label('Export Main').click()
+        await save(pg, 'img-canvas.png', lambda: pg.get_by_role('menuitem', name='PNG', exact=True).click(), 400, 300)
+        open(BOARD + '/Main.dc.html', 'w').write(page('<img src="uploads/missing.png">'))
+        await pg.wait_for_timeout(2000)
+        await pg.get_by_label('Export Main').click()
+        await pg.get_by_role('menuitem', name='PNG', exact=True).click()
+        await expect(pg.get_by_text('missing.png').first).to_be_visible(timeout=10000)
+        check('canvas: a missing picture is named in the error', True)
+        shutil.rmtree(BOARD, ignore_errors=True)
 
         # docs: this tab
         await pg.goto(BASE + '/?p=design-guide')

@@ -27,6 +27,8 @@
 
 沙箱框架没有网络，所以网页字体要由编辑器先内联成 data URL（`fontCss`，只取用到的 unicode-range）；离屏框架和编辑器页面本身可以直接取。
 
+画布的画板框架例外地留了一个口子：`connect-src` 只开服务端的 `/api/`（文件带 CORS 头），因为 html-to-image 要读每张 `<img>` 的字节来内联，`uploads/` 里的 PNG、SVG 都走这条路；外网图片仍然取不到。取不到时错误里写出是哪张图（html-to-image 自己只抛一个没有 message 的 load Event，会显示成 `[object Event]`）。
+
 ## 4. 画不到的
 
 foreignObject 画不到：`<x-embed>`（单独的框架）、`<video>` 层、WebGL 和 WebGPU 的 canvas、个别 CSS（backdrop-filter、少数混合模式）；设计系统的组件预览在各自的沙箱框架里，图片里是空白。没有像视频那样自动改走服务端，因为一张图的代价小、空白也一眼看得出来。
