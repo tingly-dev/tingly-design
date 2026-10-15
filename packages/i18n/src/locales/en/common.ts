@@ -27,4 +27,12 @@ export default {
   stop: 'Stop',
   undo: 'Undo',
   untitled: 'Untitled',
+  image: {
+    save: 'Save as image',
+    saveHint: 'Download a PNG picture of what is on the page',
+    saved: 'Saved {{name}}',
+    failed: 'The picture could not be made: {{message}}',
+    making: 'Making the picture…',
+    fileSlide: '{{name}}-slide-{{n}}.png',
+  },
 };

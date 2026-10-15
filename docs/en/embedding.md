@@ -45,6 +45,7 @@ Run `node <bundle>/server.mjs` with these variables:
 | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` | The host's model gateway and a token for it. Fast AI calls it; "hand to Claude Code" runs `claude` with the same environment, so both go through the host. |
 | `DC_FAST_MODEL`, `DC_DELEGATE_MODEL` | Model names the gateway understands. |
 | `DC_LOG_LEVEL`, `DC_LOG_FORMAT` | Server log: `error`, `warn`, `info` (default), `debug` or `silent`; `json` for one object per line on stderr. See [development](./development.md#server-log). |
+| `DC_CONFIG` | Where the editor's AI model settings are saved (default: `.tingly-design/ai.json` beside `DC_PROJECTS`). Anything the host sets above wins over it, and the settings dialog shows that field as set by the host and read-only. |
 | `DC_THEME` | The default look when the person has not picked one (a preset name or JSON, see [Themes](theming.md)). |
 | `DC_LANG` | The UI language when neither the link nor the person chose one (`en` or `zh`; tags such as `zh-CN` work too). Unset, it follows the browser, then English. |
 | `DC_EXIT_WITH_STDIN` | `1`, with stdin a pipe the host holds open: the server exits when the pipe closes, so it never outlives a host that crashed. |

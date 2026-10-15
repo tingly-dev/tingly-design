@@ -26,6 +26,9 @@ importers:
       '@dc/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@dc/export':
+        specifier: workspace:*
+        version: link:../../packages/export
       '@dc/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -150,6 +153,16 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@26.6.5)(happy-dom@20.14.6)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
 
+  packages/export:
+    dependencies:
+      html-to-image:
+        specifier: ^1.11.13
+        version: 1.11.13
+    devDependencies:
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@26.6.5)(happy-dom@20.14.6)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
+
   packages/i18n:
     dependencies:
       i18next:
@@ -199,6 +212,9 @@ importers:
       '@dc/core':
         specifier: workspace:*
         version: link:../core
+      '@dc/export':
+        specifier: workspace:*
+        version: link:../export
       d3:
         specifier: 7.9.0
         version: 7.9.0

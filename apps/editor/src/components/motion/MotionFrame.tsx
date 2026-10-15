@@ -18,6 +18,8 @@ export interface MotionControl {
   seek(t: number): void;
   play(from?: number): void;
   pause(): void;
+  /** One frame at time `t` as a PNG, drawn in the frame. */
+  snapshot(req: { t: number; scale?: number; fontCss?: string }): Promise<Blob>;
 }
 
 /**
@@ -60,6 +62,7 @@ export function MotionFrame({
   const [shown, setShown] = useState(false);
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'motion'), []);
   const cb = useRef({ onLoaded, onTime, onEnded, onError });
+  const snaps = useRef(new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>());
   cb.current = { onLoaded, onTime, onEnded, onError };
   const atRef = useRef(at);
   atRef.current = at;
@@ -77,6 +80,8 @@ export function MotionFrame({
       } else if (m.dcm === 'time' && typeof m.t === 'number') cb.current.onTime?.(m.t);
       else if (m.dcm === 'ended') cb.current.onEnded?.();
       else if (m.dcm === 'error') cb.current.onError?.(String(m.message ?? ''));
+      else if (m.dcm === 'snapshot-done') snaps.current.get(String(m.id))?.ok(m.blob as Blob);
+      else if (m.dcm === 'snapshot-error') snaps.current.get(String(m.id))?.fail(new Error(String(m.message ?? '')));
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
@@ -89,6 +94,12 @@ export function MotionFrame({
       seek: (t) => post({ dcm: 'seek', t }),
       play: (from) => post({ dcm: 'play', from }),
       pause: () => post({ dcm: 'pause' }),
+      snapshot: (req) =>
+        new Promise((resolve, reject) => {
+          const id = Math.random().toString(36).slice(2);
+          snaps.current.set(id, { ok: (b) => (snaps.current.delete(id), resolve(b)), fail: (e) => (snaps.current.delete(id), reject(e)) });
+          post({ dcm: 'snapshot', id, ...req });
+        }),
     };
     return () => {
       control.current = null;

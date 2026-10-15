@@ -6,7 +6,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE, stream } from 'hono/streaming';
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
 import chokidar from 'chokidar';
 import { createHash } from 'node:crypto';
 import {
@@ -21,6 +21,9 @@ import {
   FAST_EDIT_DOCS,
   DASH_RUNS,
   checkUploads,
+  fastReady,
+  sanitizeSaved,
+  validBaseUrl,
   isKeptPath,
   isUploadPath,
   checkMessages,
@@ -33,6 +36,7 @@ import {
   resolveTokens,
   type Actor,
   type DsRecord,
+  validSize,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -64,13 +68,13 @@ import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
+import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 
 const PORT = Number(process.env.PORT ?? 8787);
 /** DC_HOST: the address to listen on; loopback unless you mean to share the editor on your network */
 const HOST = process.env.DC_HOST?.trim() || '127.0.0.1';
-const FAST_MODEL = process.env.DC_FAST_MODEL ?? 'claude-haiku-5-5';
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
 const run = promisify(execFile);
 /** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, sunlit, system), inline JSON, or a .json file */
@@ -99,8 +103,8 @@ app.get('/api/health', (c) => {
   if (cliChecked === null) cliChecked = claudeAvailable();
   return c.json({
     ok: true,
-    fastEdit: Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN),
-    fastModel: FAST_MODEL,
+    fastEdit: fastReady(aiResolved()),
+    fastModel: aiResolved().fastModel.value,
     claudeCli: cliChecked,
     projectsDir: fromRoot(PROJECTS_DIR),
     theme: DC_THEME,
@@ -114,9 +118,16 @@ app.get('/api/health', (c) => {
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 app.post('/api/projects', async (c) => {
-  const { name, title, kind } = await c.req.json<{ name: string; title?: string; kind?: string }>();
+  const { name, title, kind, size } = await c.req.json<{ name: string; title?: string; kind?: string; size?: unknown }>();
   if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
-  await createProject(name, title || name, kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design', langOf(c));
+  if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  await createProject(
+    name,
+    title || name,
+    kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
+    langOf(c),
+    kind === 'motion' && size !== undefined ? { size: validSize(size)! } : {},
+  );
   return c.json({ ok: true });
 });
 
@@ -418,13 +429,13 @@ app.get('/api/projects/:p/events', (c) => {
 
 // ---------------------------------------------------------------- fast edit
 
-let anthropic: Anthropic | null = null;
 app.post('/api/projects/:p/fast-edit', async (c) => {
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
-    logWarn('fast.unavailable', { project: c.req.param('p'), reason: 'no ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN' });
+  const anthropic = fastClient();
+  if (!anthropic) {
+    logWarn('fast.unavailable', { project: c.req.param('p'), reason: 'no fast model configured' });
     return c.json({ error: trOf(c)('errors.noFastModel') }, 501);
   }
-  anthropic ??= new Anthropic();
+  const model = aiResolved().fastModel.value;
   const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
   const bad = checkMessages(body.messages);
   if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
@@ -440,11 +451,11 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
   const lang = replyLanguage(langOf(c));
   const project = c.req.param('p');
   const started = Date.now();
-  const meta = { project, kind: body.kind ?? 'design', model: FAST_MODEL, messages: body.messages.length };
+  const meta = { project, kind: body.kind ?? 'design', model, messages: body.messages.length };
   logInfo('fast.start', meta);
   return stream(c, async (s) => {
-    const ms = anthropic!.messages.stream({
-      model: FAST_MODEL,
+    const ms = anthropic.messages.stream({
+      model,
       max_tokens: 4096,
       system: system + '\n\n' + lang,
       messages: body.messages as Anthropic.MessageParam[],
@@ -470,6 +481,34 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
       }
     }
   });
+});
+
+// ---------------------------------------------------------------- AI settings
+
+/** What the settings dialog shows. The key never leaves the server: only whether one is set, and where it came from. */
+app.get('/api/ai-config', async (c) => {
+  if (cliChecked === null) cliChecked = claudeAvailable();
+  const [boxUp] = await Promise.all([boxReachable()]);
+  return c.json({ ...aiResolved(), claudeCli: cliChecked, box: { reachable: boxUp } });
+});
+
+const aiDraft = (b: Record<string, unknown>) => {
+  const d = sanitizeSaved(b);
+  if (b.baseUrl && !validBaseUrl(d.baseUrl ?? '')) throw new HttpError(400, 'badBaseUrl');
+  return d;
+};
+
+app.put('/api/ai-config', async (c) => {
+  const b = await c.req.json<Record<string, unknown>>();
+  await saveAi(aiDraft(b), { key: b.clearKey !== true && !b.apiKey });
+  return c.json({ ok: true });
+});
+
+/** Tries the fast model with what is in the dialog, saved or not. */
+app.post('/api/ai-config/test', async (c) => {
+  const b = await c.req.json<Record<string, unknown>>();
+  const res = await testFast(aiDraft(b));
+  return c.json(res.error === 'noKey' ? { ...res, error: trOf(c)('errors.noFastModel') } : res);
 });
 
 // ---------------------------------------------------------------- delegate

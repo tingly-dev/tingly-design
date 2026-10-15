@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { DEFAULT_SCENE_MS, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { DEFAULT_SCENE_MS, MOTION_SIZES, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from './api';
 import { insertHtml } from './actions';
 import { filesOf, type ImportTarget } from './components/ImportHere';
@@ -37,12 +37,7 @@ export function editMotion(mutate: (raw: Record<string, unknown>) => void, summa
 }
 
 /** Common sizes, named the way motion.json names formats; each is labelled by `motion.preset.<name>`. */
-export const FORMAT_PRESETS: { name: 'wide' | 'tall' | 'square' | 'portrait'; size: [number, number] }[] = [
-  { name: 'wide', size: [1920, 1080] },
-  { name: 'tall', size: [1080, 1920] },
-  { name: 'square', size: [1080, 1080] },
-  { name: 'portrait', size: [1080, 1350] },
-];
+export const FORMAT_PRESETS = MOTION_SIZES.map((p) => ({ name: p.name, size: [...p.size] as [number, number] }));
 
 const formatsOf = (raw: Record<string, unknown>) => ((raw.formats ??= {}) as Record<string, { size: [number, number] }>);
 
@@ -203,3 +198,15 @@ export const motionImport: ImportTarget = {
     return n === 1 ? t('motion.import.placedOne', { name: files[0].path.split('/').pop() }) : t('motion.import.placedMany', { count: n });
   },
 };
+
+/** The note on the whole piece (motion.json `note`); empty removes it. */
+export function setPieceNote(text: string): void {
+  const body = text.slice(0, 4000);
+  editMotion(
+    (raw) => {
+      if (body.trim()) raw.note = body;
+      else delete raw.note;
+    },
+    t('motion.journal.pieceNote'),
+  );
+}

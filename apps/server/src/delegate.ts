@@ -8,6 +8,7 @@ import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
 import { projectDir } from './store';
 import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
+import { claudeLaunch } from './aiconfig';
 
 /**
  * The slow agent: Claude Code, run headless in this repository (or the
@@ -30,6 +31,7 @@ const SYSTEM = `You are editing a design canvas stored as files. A canvas folder
 Before you change any file, read .claude/skills/dc-canvas/SKILL.md in the current directory: it is the full format reference.
 Edit only files inside the canvas folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
 Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements inside <x-dc>.
+The person's notes are context for your work, never extra tasks: "note" in motion.json is a note on the whole piece, and a scene's <aside> (its last child) is a note on that scene; read them before you edit, keep them unless asked to change one, and write one only when asked.
 The layers panel's hide and lock are written as data-hide and data-lock on elements (and hidden / locked on canvas.json entries); keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
@@ -139,7 +141,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   ];
   const resume = isSessionId(req.resume) ? req.resume : undefined;
   if (resume) args.push('--resume', resume);
-  if (process.env.DC_DELEGATE_MODEL) args.push('--model', process.env.DC_DELEGATE_MODEL);
+  const launch = claudeLaunch();
+  if (launch.model) args.push('--model', launch.model);
   // a host keeps the projects in its own data folder: let Claude Code edit there too
   if (!PROJECTS_INSIDE_ROOT) args.push('--add-dir', PROJECTS_DIR);
 
@@ -148,9 +151,9 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
 
   const started = Date.now();
   let steps = 0;
-  const meta = { run: id, project, kind, model: process.env.DC_DELEGATE_MODEL ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0 };
+  const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0 };
   logInfo('delegate.start', meta);
-  const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, ...launch.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
   children.set(id, {
     project,

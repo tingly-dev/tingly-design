@@ -342,7 +342,7 @@ export async function removeFile(name: string, rel: string): Promise<void> {
 }
 
 /** A new project, its starter copy in `lang`: the language of whoever created it. */
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en'): Promise<void> {
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number] } = {}): Promise<void> {
   const t: TFunction = translator(lang);
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
@@ -361,7 +361,7 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     return;
   }
   if (kind === 'motion') {
-    const { motion, scenes } = newMotion(title, t('starter.motionHint'));
+    const { motion, scenes } = newMotion(title, t('starter.motionHint'), opts);
     for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
     await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
     return;

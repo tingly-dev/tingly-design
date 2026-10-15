@@ -18,7 +18,7 @@ projects/<name>/
 - **Insert**: text, images (uploaded to `assets/`), tables, shapes (rectangle, rounded, ellipse, diamond, four arrows, line), connectors and icons.
 - **Format check**: every slide is checked against the subset of the original `format.md` (unknown tags, `margin`, `z-index`, `em`, `var()`, an unpinned `<x-embed>`…). Counts show above the stage and on thumbnails, and clicking an issue selects the element. If a fast AI edit introduces a new violation, it is undone and the model is told why and asked again.
 - **Present**: F5 from the start, ⇧F5 from the current slide; → / Space / click plays the slide's builds (`data-build-in`) and then advances; `fade` and `push` transitions (`magic` falls back to fade); N toggles speaker notes; F for full screen; Esc to leave.
-- **Download**: a single HTML file (images inlined, embeds sandboxed and running, arrow keys to page), print to PDF, or the speaker notes as text.
+- **Download**: a single HTML file (images inlined, embeds sandboxed and running, arrow keys to page), print to PDF, or the speaker notes as text. The same menu saves this slide, or every slide, as PNG pictures at the slide's size (an embed comes out empty in a picture).
 - **Importing pictures**: drop or paste pictures or SVGs into the editor and they go onto the open slide (kept in `uploads/`, like Insert image).
 
 Rendering follows the original's rules: a `<div>` with no `display` is a flex column; children paint in source order, with all flow content painted as one layer where the first flow child sits (so a full-bleed backdrop written first stays behind the text); `<x-embed>` runs in its own sandboxed page with no network and a different origin.

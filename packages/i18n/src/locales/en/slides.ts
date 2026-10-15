@@ -104,6 +104,8 @@ export default {
     presentWithNotes: 'Present with speaker notes',
     downloadPdf: 'PDF (print)',
     downloadHtml: 'Single HTML file',
+    downloadImage: 'This slide (PNG)',
+    downloadImages: 'Every slide (PNG files)',
     downloadNotes: 'Speaker notes (.txt)',
   },
   shape: {
@@ -160,6 +162,7 @@ export default {
     noNotes: '(No notes)',
     notesFile: '{{name}} notes.txt',
     popupBlocked: 'The browser blocked the print window. Allow pop-ups and try again.',
+    imagesDone: 'Saved {{total}} slide images',
     savePdf: 'Choose “Save as PDF” in the print window.',
   },
   /** journal summaries */

@@ -187,6 +187,11 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
             </button>
           ))}
         </div>
+        {why && (
+          <button className="tb setup" onClick={() => useStore.setState({ aiSettingsOpen: true })}>
+            {t('prompt.bar.setUp')}
+          </button>
+        )}
         <BarTools />
       </div>
       <AttachTray items={attach.items} onRemove={attach.remove} />

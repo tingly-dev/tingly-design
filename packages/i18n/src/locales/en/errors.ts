@@ -1,6 +1,7 @@
 /** What the server answers when it refuses a request, and other failures shown to people. */
 export default {
   badProjectName: 'A project name can only use letters, digits, - and _',
+  badSize: 'A size is a width and a height in pixels, each from 1 to 7680',
   notProjectFile: 'Not a project file: {{path}}',
   notAssetPath: 'Not an asset path: {{path}}',
   noProject: 'No project named {{name}}',
@@ -24,7 +25,8 @@ export default {
   dashboardIsClaudeCode: 'A dashboard page is written by Claude Code',
   promptMissing: 'Write what you want first',
   taskFinished: 'This task has already finished.',
-  noFastModel: 'The server has no ANTHROPIC_API_KEY, so fast AI is unavailable (you can write statements directly in jQuery mode).',
+  noFastModel: 'Fast AI has no key yet. Set it up in AI settings (you can also write statements directly in jQuery mode).',
+  badBaseUrl: 'The address must start with http:// or https://.',
   noClaudeCli: 'There is no claude CLI on this machine, so the work cannot be handed to Claude Code.',
   nothingToCommit: 'There are no changes to commit.',
   notGitRepo: 'The projects folder {{dir}} is not in a git repository, so there is nowhere to commit.',

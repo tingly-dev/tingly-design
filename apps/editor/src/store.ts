@@ -163,6 +163,8 @@ interface State {
   motionView: { format: string; primary: string; scene: string | null; at: number; landed: boolean } | null;
   present: Present | null;
   health: Health | null;
+  /** the AI settings dialog (components/AiSettings.tsx), opened from the launcher, the project menu and the prompt bar */
+  aiSettingsOpen: boolean;
   connected: boolean;
   loaded: boolean;
   files: Record<string, FileEntry>;
@@ -220,6 +222,7 @@ export const useStore = create<State>(() => ({
   motionView: null,
   present: null,
   health: null,
+  aiSettingsOpen: false,
   connected: false,
   loaded: false,
   files: {},

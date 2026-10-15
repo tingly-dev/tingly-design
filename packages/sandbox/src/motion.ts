@@ -49,6 +49,28 @@ const EMBED_HEAD = '<!doctype html><meta charset="utf-8"><style>html,body{margin
 
 let seekCounter = 0;
 
+/** The file this script was loaded from, so the exporter beside it can be fetched when needed. */
+const SELF = typeof document !== 'undefined' ? (document.currentScript as HTMLScriptElement | null)?.src : undefined;
+type FrameRequest = { t: number; scale?: number; fontCss?: string };
+type Exporter = { exportFrame: (stage: MotionStage, root: HTMLElement, req: FrameRequest) => Promise<Blob> };
+let exporter: Promise<Exporter> | null = null;
+
+/** The picture exporter, fetched on first use so a player never carries it. */
+function loadExporter(): Promise<Exporter> {
+  const w = window as unknown as { dcMotionExport?: Exporter };
+  exporter ??= new Promise((resolve, reject) => {
+    if (w.dcMotionExport) return resolve(w.dcMotionExport);
+    if (!SELF) return reject(new Error('the exporter is not loaded'));
+    const el = document.createElement('script');
+    el.src = SELF.replace(/[^/]*$/, 'export.js');
+    el.onload = () => (w.dcMotionExport ? resolve(w.dcMotionExport) : reject(new Error('the exporter did not start')));
+    el.onerror = () => ((exporter = null), reject(new Error('the exporter could not be loaded')));
+    document.head.appendChild(el);
+  });
+  return exporter;
+}
+const exportFrame = async (stage: MotionStage, root: HTMLElement, req: FrameRequest) => (await loadExporter()).exportFrame(stage, root, req);
+
 export async function mount(opts: MountOptions): Promise<MotionStage> {
   const { motion, root } = opts;
   const formats = Object.keys(motion.formats);
@@ -303,18 +325,27 @@ type HostMsg =
   | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
-  | { dcm: 'pause' };
+  | { dcm: 'pause' }
+  | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
 
 if (typeof document !== 'undefined' && document.getElementById('dc-app') && window.parent !== window) {
   const root = document.getElementById('dc-app') as HTMLElement;
   let stage: MotionStage | null = null;
+  let stageBox: HTMLElement | null = null;
   let loading = 0;
   const post = (m: Record<string, unknown>) => window.parent.postMessage(m, '*');
   window.addEventListener('message', async (e: MessageEvent) => {
     if (e.source !== window.parent) return;
     const m = e.data as HostMsg;
     if (!m || typeof m !== 'object' || !('dcm' in m)) return;
-    if (m.dcm === 'load') {
+    if (m.dcm === 'snapshot') {
+      if (!stage) return post({ dcm: 'snapshot-error', id: m.id, message: 'nothing is loaded' });
+      try {
+        post({ dcm: 'snapshot-done', id: m.id, blob: await exportFrame(stage, stageBox!, { t: m.t, scale: m.scale, fontCss: m.fontCss }) });
+      } catch (err) {
+        post({ dcm: 'snapshot-error', id: m.id, message: err instanceof Error ? err.message : String(err) });
+      }
+    } else if (m.dcm === 'load') {
       const n = ++loading;
       // loads overlap while files are still being written (a generation saves scene after scene);
       // each mounts into its own box, so a stale one finishing late can't wipe the newer one
@@ -328,6 +359,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
         }
         stage?.destroy();
         stage = s;
+        stageBox = box;
         for (const el of Array.from(root.children)) if (el !== box) el.remove();
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));
         if (at) await s.seek(at);

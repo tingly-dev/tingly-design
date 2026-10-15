@@ -18,7 +18,7 @@
     "dev": "pnpm --filter @dc/sandbox build && concurrently -k -n sandbox,server,editor -c magenta,blue,green \"pnpm --filter @dc/sandbox dev\" \"pnpm --filter @dc/server dev\" \"pnpm --filter @dc/editor dev\"",
     "build": "pnpm --filter @dc/sandbox build && pnpm --filter @dc/editor build",
     "start": "pnpm build && pnpm --filter @dc/server start",
-    "test": "pnpm --filter @dc/core --filter @dc/import --filter @dc/i18n test",
+    "test": "pnpm --filter @dc/core --filter @dc/import --filter @dc/i18n --filter @dc/export test",
     "typecheck": "pnpm -r typecheck",
     "bundle": "node scripts/bundle.mjs",
     "dc-import": "node packages/import/bin/dc-import.mjs"
