@@ -112,6 +112,12 @@ export default {
     scenes: 'Scenes',
     noIssues: 'No problems found.',
   },
+  /** a shader layer (WebGL2 embed) that could not draw; the piece plays on without it */
+  effect: {
+    noWebgl2: 'The effect in {{scenes}} is off: this browser could not start WebGL2. In Chrome, turn on “Use graphics acceleration” (Settings › System) and reload. The piece plays without it.',
+    shader: 'The effect in {{scenes}} is off: its shader does not compile. {{detail}}',
+    draw: 'The effect in {{scenes}} stopped drawing: {{detail}}',
+  },
   away: {
     notInFormat: 'Not in {{format}}',
     entersAt: 'Enters at {{time}}',

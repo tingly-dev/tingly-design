@@ -112,6 +112,12 @@ export default {
     scenes: '场景',
     noIssues: '没有发现问题。',
   },
+  /** a shader layer (WebGL2 embed) that could not draw; the piece plays on without it */
+  effect: {
+    noWebgl2: '{{scenes}} 里的特效没有生效：这个浏览器无法启动 WebGL2。请在 Chrome 的“设置 › 系统”里打开“使用图形加速”后刷新。作品会在没有特效的情况下继续播放。',
+    shader: '{{scenes}} 里的特效没有生效：着色器无法编译。{{detail}}',
+    draw: '{{scenes}} 里的特效停止绘制：{{detail}}',
+  },
   away: {
     notInFormat: '不在 {{format}}',
     entersAt: '{{time}} 入场',

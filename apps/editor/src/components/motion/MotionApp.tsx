@@ -133,6 +133,17 @@ export function MotionApp() {
   tRef.current = time;
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [effectErrors, setEffectErrors] = useState<{ scene: string; code: string; detail: string }[]>([]);
+  // one hint per cause, naming every scene it hits
+  const effectErrorGroups = useMemo(() => {
+    const out: { code: string; detail: string; scenes: string[] }[] = [];
+    for (const e of effectErrors) {
+      const g = out.find((x) => x.code === e.code && x.detail === e.detail);
+      if (g) g.scenes.push(e.scene);
+      else out.push({ code: e.code, detail: e.detail, scenes: [e.scene] });
+    }
+    return out;
+  }, [effectErrors]);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const [exporting, setExporting] = useState<{ done: number; total: number; route: 'browser' | 'server'; startedAt: number } | null>(null);
   const exportCtl = useRef<AbortController | null>(null);
@@ -444,11 +455,13 @@ export function MotionApp() {
                   onLoaded={(i) => {
                     setInfo(i);
                     setError(null);
+                    setEffectErrors(i.effectErrors ?? []);
                     setPlaying(false);
                   }}
                   onTime={(v) => keys.current.playing && setTime(v)}
                   onEnded={() => setPlaying(false)}
                   onError={setError}
+                  onEffectError={(e) => setEffectErrors((p) => (p.some((x) => x.scene === e.scene && x.code === e.code && x.detail === e.detail) ? p : [...p, e]))}
                 />
               </div>
               {/* the player is a frame, so clicks on it never reach here: a clear layer pauses instead */}
@@ -466,6 +479,11 @@ export function MotionApp() {
             </div>
           )}
           {error && <div className="dashhint">{error}</div>}
+          {effectErrorGroups.map((g) => (
+            <div key={`${g.code}:${g.detail}`} className="dashhint">
+              {t(g.code === 'no-webgl2' ? 'motion.effect.noWebgl2' : g.code === 'shader' ? 'motion.effect.shader' : 'motion.effect.draw', { scenes: g.scenes.map((x) => `“${x}”`).join(', '), detail: g.detail })}
+            </div>
+          ))}
         </div>
         <div className="mtimeline">
           <div className="mbar">
