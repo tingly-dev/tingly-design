@@ -1747,6 +1747,18 @@ button.file-chip:hover {
 .journal-pop header .btn {
   margin-left: auto;
 }
+.journal-pop .jhelp {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.journal-pop .jhelp b {
+  color: var(--text);
+  font-weight: 600;
+}
 .journal {
   overflow: auto;
   padding: 4px 12px 12px;

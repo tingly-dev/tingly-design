@@ -49,6 +49,30 @@ npm publishing uses Trusted Publishing only: no token is stored anywhere, and bo
 
 `.github/workflows/ci.yml` runs the same checks on every pull request, plus `npm pack --dry-run` to list what the package would contain. Why it is built this way, and how npm publishing is authorised: `.design/release.md`.
 
+## Server log
+
+The server writes one line per event to stderr, so you can see what the fast AI and Claude Code are doing without opening the editor:
+
+```
+2026-10-14T09:12:03.120Z INFO  fast.start project=demo kind=design model=claude-haiku-5-5 messages=3
+2026-10-14T09:12:04.870Z INFO  fast.done project=demo kind=design model=claude-haiku-5-5 messages=3 ms=1750 chars=212 inputTokens=4120 outputTokens=96
+2026-10-14T09:12:30.004Z INFO  delegate.start run=3f9a project=demo kind=slides model=default promptChars=48 attachments=0
+2026-10-14T09:12:58.331Z INFO  delegate.finish run=3f9a project=demo kind=slides outcome=done ms=28327 steps=6
+```
+
+| Event | Level | Fields |
+|---|---|---|
+| `fast.start` / `fast.done` / `fast.aborted` / `fast.error` | info (error for `fast.error`) | project, kind, model, messages, ms, chars, token counts, error |
+| `fast.unavailable`, `delegate.unavailable` | warn | project, reason (no API key, no `claude` CLI) |
+| `delegate.start` / `delegate.finish` | info (warn when `outcome=error`) | run, project, kind, model, promptChars, attachments, outcome (`done`, `stopped`, `error`), ms, steps, error |
+| `delegate.step` | debug | run, tool, n |
+| `request.failed`, `watcher.failed` | error | method, path, file, error |
+
+Prompts and replies are never logged, only their length. Settings (environment variables):
+
+- `DC_LOG_LEVEL`: `error`, `warn`, `info` (default), `debug` or `silent`.
+- `DC_LOG_FORMAT=json`: one JSON object per line (`at`, `level`, `event`, fields), for a host that collects logs.
+
 ---
 
 Back to the [README](../../README.md)

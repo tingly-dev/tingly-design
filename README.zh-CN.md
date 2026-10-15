@@ -43,6 +43,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 |---|---|
 | `ANTHROPIC_API_KEY` | 开启快速 AI（服务端用 Anthropic SDK 调模型）。也支持 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`。 |
 | `DC_FAST_MODEL` | 快速 AI 用的模型，默认 `claude-haiku-5-5`。 |
+| `DC_LOG_LEVEL` | 服务端日志级别（输出到 stderr）：`error`、`warn`、`info`（默认）、`debug`、`silent`；见[开发](docs/zh/development.md#服务端日志)。 |
 | `DC_DELEGATE_MODEL` | 交给 Claude Code 时用的模型（不设则用 CLI 默认）。 |
 | `DC_PROJECTS` | 项目目录，默认仓库里的 `projects/`。 |
 | `PORT` | 服务端端口，默认 8787。 |

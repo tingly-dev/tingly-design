@@ -49,6 +49,30 @@ npm 发布只走 Trusted Publishing：哪里都不存 token，两个包也拒绝
 
 `.github/workflows/ci.yml` 在每个 PR 上跑同样的检查，再用 `npm pack --dry-run` 列出包里会有什么。为什么这样做、npm 发布怎么鉴权，见 `.design/release.md`。
 
+## 服务端日志
+
+服务端把每个事件写成一行输出到 stderr，不用打开编辑器就能看到快速 AI 和 Claude Code 在做什么：
+
+```
+2026-10-14T09:12:03.120Z INFO  fast.start project=demo kind=design model=claude-haiku-5-5 messages=3
+2026-10-14T09:12:04.870Z INFO  fast.done project=demo kind=design model=claude-haiku-5-5 messages=3 ms=1750 chars=212 inputTokens=4120 outputTokens=96
+2026-10-14T09:12:30.004Z INFO  delegate.start run=3f9a project=demo kind=slides model=default promptChars=48 attachments=0
+2026-10-14T09:12:58.331Z INFO  delegate.finish run=3f9a project=demo kind=slides outcome=done ms=28327 steps=6
+```
+
+| 事件 | 级别 | 字段 |
+|---|---|---|
+| `fast.start` / `fast.done` / `fast.aborted` / `fast.error` | info（`fast.error` 为 error） | project、kind、model、messages、ms、chars、token 数、error |
+| `fast.unavailable`、`delegate.unavailable` | warn | project、reason（没有 API key、没有 `claude` 命令） |
+| `delegate.start` / `delegate.finish` | info（`outcome=error` 时 warn） | run、project、kind、model、promptChars、attachments、outcome（`done`、`stopped`、`error`）、ms、steps、error |
+| `delegate.step` | debug | run、tool、n |
+| `request.failed`、`watcher.failed` | error | method、path、file、error |
+
+提示词和回复从不写进日志，只记长度。用环境变量设置：
+
+- `DC_LOG_LEVEL`：`error`、`warn`、`info`（默认）、`debug` 或 `silent`。
+- `DC_LOG_FORMAT=json`：每行一个 JSON 对象（`at`、`level`、`event` 加字段），方便宿主收集。
+
 ---
 
 返回 [README](../../README.zh-CN.md)

@@ -250,13 +250,20 @@ export function JournalPopover() {
     <section className="journal-pop" aria-label={t('canvas.journal.title')}>
       <header>
         {t('canvas.journal.title')}
-        <button className="btn" onClick={commit}>
+        <button className="btn" title={t('canvas.journal.commitHint')} onClick={commit}>
           {t('canvas.journal.commit')}
         </button>
         <button className="ib" aria-label={t('common.close')} onClick={() => useStore.setState({ journalOpen: false })}>
           <Close />
         </button>
       </header>
+      <p className="jhelp">
+        <b>{t('canvas.journal.undoTitle')}</b> {t('canvas.journal.undoHelp')}
+        <br />
+        <b>{t('canvas.journal.lineTitle')}</b> {t('canvas.journal.lineHelp')}
+        <br />
+        <b>{t('canvas.journal.commitTitle')}</b> {t('canvas.journal.commitHint')}
+      </p>
       <div className="journal" aria-live="polite">
         {!journal.length && <div className="empty">{t('canvas.journal.empty')}</div>}
         {[...journal].reverse().map((j) => (
