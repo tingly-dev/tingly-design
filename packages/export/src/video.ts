@@ -1,4 +1,6 @@
 import { AudioBufferSource, BufferTarget, CanvasSource, Mp4OutputFormat, Output, QUALITY_HIGH, QUALITY_LOW, QUALITY_MEDIUM, WebMOutputFormat } from 'mediabunny';
+import type { Frame } from './frames';
+import { Clock, type ExportReport } from './timing';
 import { planVideo, type Container, type VideoNote, type VideoPlan } from './capabilities';
 
 export interface VideoOptions {
@@ -12,10 +14,18 @@ export interface VideoOptions {
   /** How much bitrate to spend: `high` (the default) keeps fine text clean, `low` makes the smallest file. */
   quality?: 'low' | 'medium' | 'high';
   /** Paints frame `i` (video time `ms`) onto `canvas`, which is `width` × `height`. */
-  renderFrame(canvas: HTMLCanvasElement | OffscreenCanvas, ms: number, i: number): Promise<void> | void;
+  renderFrame?(canvas: HTMLCanvasElement | OffscreenCanvas, ms: number, i: number): Promise<void> | void;
+  /**
+   * Instead of `renderFrame`: does the part of frame `i` that needs the page to stand still (seek, copy the tree)
+   * and returns a frame that finishes by itself. The next frame is prepared while the browser decodes this one and
+   * the encoder takes the one before, so a frame costs the longest of the three, not their sum.
+   */
+  prepareFrame?(ms: number, i: number): Promise<Frame>;
   /** The finished mix, if the piece has sound (see `mixAudio`). */
   audio?: AudioBuffer;
   onProgress?(done: number, total: number): void;
+  /** Collects the time of each stage; `renderFrame` times its own stages (seek, raster, paint) on the same clock; encoding and finishing are timed here. */
+  clock?: Clock;
   signal?: AbortSignal;
 }
 
@@ -27,6 +37,7 @@ export interface VideoResult {
   videoCodec: string;
   audioCodec: string | null;
   frames: number;
+  report: ExportReport;
   note?: VideoNote;
 }
 
@@ -39,6 +50,7 @@ export class NoEncoderError extends Error {
 
 /** Frames in, a video file out: seek and paint each frame, encode with WebCodecs, mux in memory. */
 export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
+  const clock = o.clock ?? new Clock();
   const plan: VideoPlan | null = await planVideo({ width: o.width, height: o.height, sound: !!o.audio, format: o.format });
   if (!plan) throw new NoEncoderError();
   const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(o.width, o.height) : Object.assign(document.createElement('canvas'), { width: o.width, height: o.height });
@@ -53,16 +65,39 @@ export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
   try {
     await out.start();
     if (audio && o.audio) await audio.add(o.audio);
+    // the frame prepared last, waiting for the browser to decode it; and the encoder's answer to the frame before
+    let waiting: { frame: Frame; i: number } | null = null;
+    let encoding: Promise<void> = Promise.resolve();
+    const finishFrame = async () => {
+      if (!waiting) return;
+      const { frame, i } = waiting;
+      waiting = null;
+      await clock.time('decode', () => frame.ready);
+      await clock.time('encode', () => encoding);
+      frame.draw(canvas);
+      // the encoder has taken a copy of the canvas by the time add() returns its promise, so the next frame may be drawn right away
+      encoding = video.add(i / o.fps, 1 / o.fps);
+      encoding.catch(() => {});
+      o.onProgress?.(i + 1, total);
+    };
     for (let i = 0; i < total; i++) {
       if (o.signal?.aborted) throw new DOMException('aborted', 'AbortError');
       const ms = (i * 1000) / o.fps;
-      await o.renderFrame(canvas, ms, i);
-      await video.add(i / o.fps, 1 / o.fps);
-      o.onProgress?.(i + 1, total);
+      if (o.prepareFrame) {
+        const frame = await o.prepareFrame(ms, i);
+        await finishFrame();
+        waiting = { frame, i };
+      } else {
+        await o.renderFrame!(canvas, ms, i);
+        await clock.time('encode', () => video.add(i / o.fps, 1 / o.fps));
+        o.onProgress?.(i + 1, total);
+      }
     }
+    await finishFrame();
+    await clock.time('encode', () => encoding);
     video.close();
     audio?.close();
-    await out.finalize();
+    await clock.time('finish', () => out.finalize());
   } catch (e) {
     await out.cancel().catch(() => {});
     throw e;
@@ -76,6 +111,7 @@ export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
     videoCodec: plan.videoCodec,
     audioCodec: plan.audioCodec,
     frames: total,
+    report: clock.report({ route: 'browser', frames: total, width: o.width, height: o.height }),
     note: plan.note,
   };
 }

@@ -1,4 +1,5 @@
 import type { Actor, AgentStep, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
 
@@ -141,9 +142,9 @@ export const api = {
   },
   /**
    * Render a motion piece on the server. Progress arrives as lines; resolves to the video's file name
-   * (fetch it with `renderedUrl`). Aborting the signal stops the render.
+   * (fetch it with `renderedUrl`) and where the time went. Aborting the signal stops the render.
    */
-  renderMotion: async (p: string, format: string, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<string> => {
+  renderMotion: async (p: string, format: string, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<{ file: string; report: ExportReport }> => {
     const res = await call(at(`api/projects/${enc(p)}/render`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format }), signal });
     if (!res.ok || !res.body) return json<never>(res);
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -153,15 +154,18 @@ export const api = {
       if (value) buf += value;
       let i: number;
       while ((i = buf.indexOf('\n')) >= 0) {
-        const msg = JSON.parse(buf.slice(0, i)) as { progress?: [number, number]; done?: string; error?: string; code?: string };
+        const msg = JSON.parse(buf.slice(0, i)) as { progress?: [number, number]; done?: string; report?: ExportReport; error?: string; code?: string };
         buf = buf.slice(i + 1);
         if (msg.progress) onProgress(msg.progress[0], msg.progress[1]);
-        else if (msg.done) return msg.done;
+        else if (msg.done) return { file: msg.done, report: msg.report! };
         else if (msg.code) throw Object.assign(new Error(msg.error ?? ''), { code: msg.code });
       }
       if (done) throw new Error('the render ended without a file');
     }
   },
+  /** An export made in the browser tells the server how it went, so the log has both routes. */
+  logExport: (p: string, report: ExportReport, why?: string) =>
+    void call(at(`api/projects/${enc(p)}/export-report`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ report, why }) }).catch(() => {}),
   renderedUrl: (p: string, file: string) => `${SERVER}/api/projects/${enc(p)}/render/${enc(file)}`,
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
 

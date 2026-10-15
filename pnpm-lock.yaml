@@ -114,6 +114,9 @@ importers:
       '@dc/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@dc/export':
+        specifier: workspace:*
+        version: link:../../packages/export
       '@dc/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n

@@ -13,6 +13,8 @@ import { frameFonts } from '../../motionImage';
 import { display, isSaving, toast, useStore } from '../../store';
 import { download } from '@dc/export';
 import { exactScenes, exportInputs } from '../../motionExport';
+import { pace, slowestStage } from '../../exportReport';
+import type { ExportReport } from '@dc/export/timing';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
@@ -128,7 +130,7 @@ export function MotionApp() {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
-  const [exporting, setExporting] = useState<{ done: number; total: number } | null>(null);
+  const [exporting, setExporting] = useState<{ done: number; total: number; route: 'browser' | 'server'; startedAt: number } | null>(null);
   const exportCtl = useRef<AbortController | null>(null);
   // the export dialog, and whether the server's Chrome will draw this piece (it holds an embed or a video layer)
   const [exportDialog, setExportDialog] = useState<{ viaServer: string[] | null } | null>(null);
@@ -271,27 +273,60 @@ export function MotionApp() {
     setExportDialog({ viaServer: caps?.chrome && caps.ffmpeg ? exact : null });
   };
 
+  const where = (route: 'browser' | 'server') => (route === 'server' ? t('motion.export.where.server') : t('motion.export.where.browser'));
+  const stepName = (id: string) => {
+    const names: Record<string, string> = {
+      audio: t('motion.export.steps.audio'),
+      launch: t('motion.export.steps.launch'),
+      seek: t('motion.export.steps.seek'),
+      snapshot: t('motion.export.steps.snapshot'),
+      decode: t('motion.export.steps.decode'),
+      paint: t('motion.export.steps.paint'),
+      capture: t('motion.export.steps.capture'),
+      write: t('motion.export.steps.write'),
+      encode: t('motion.export.steps.encode'),
+      finish: t('motion.export.steps.finish'),
+    };
+    return names[id] ?? id;
+  };
+  /** "Saved x.mp4", then which route made it, how long it took and what took longest: the answer to "why is this slow". */
+  const doneMessage = (file: string, r: ExportReport) => {
+    const top = slowestStage(r);
+    return t('motion.export.doneDetail', {
+      name: file,
+      where: where(r.route),
+      seconds: Math.max(1, Math.round(r.wallMs / 1000)),
+      fps: r.fps,
+      step: top ? stepName(top.id) : '',
+      percent: top?.percent ?? 0,
+    });
+  };
+
   const exportVideo = async (o: VideoExportOptions, viaServer: string[] | null) => {
     if (exportCtl.current || !info) return;
     const ctl = new AbortController();
     exportCtl.current = ctl;
     const back = tRef.current;
     pause();
-    setExporting({ done: 0, total: 1 });
+    const route = project && viaServer ? 'server' : 'browser';
+    const startedAt = performance.now();
+    const progress = (done: number, total: number) => setExporting({ done, total, route, startedAt });
+    progress(0, 1);
     try {
       const [W0, H0] = motion.formats[fmt]?.size ?? [info.width, info.height];
       const name = (ext: string) =>
         `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}${o.height !== H0 && !viaServer ? `-${o.height}p` : ''}${o.from !== undefined && !viaServer ? `-${sceneName(o.from)}` : ''}.${ext}`;
       if (project && viaServer) {
         toast(t('motion.export.viaServer', { scenes: viaServer.join(', ') }));
-        const path = await api.renderMotion(project, fmt, (done, total) => setExporting({ done, total }), ctl.signal);
-        download(name('mp4'), await (await fetch(api.renderedUrl(project, path), { signal: ctl.signal })).blob());
-        toast(t('motion.export.done', { name: name('mp4') }));
+        const { file, report } = await api.renderMotion(project, fmt, progress, ctl.signal);
+        download(name('mp4'), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
+        toast(doneMessage(name('mp4'), report));
       } else {
         const inputs = await exportInputs(motion, playScenes, base);
-        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs }, (done, total) => setExporting({ done, total }), ctl.signal);
+        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs }, progress, ctl.signal);
         download(name(r.ext), r.blob);
-        toast(t('motion.export.done', { name: name(r.ext) }));
+        toast(doneMessage(name(r.ext), r.report));
+        if (project) api.logExport(project, r.report, exactScenes(playScenes).length ? 'no-server-renderer' : undefined);
         if (r.note) toast(t(r.note === 'no-aac' ? 'motion.export.noAac' : 'motion.export.noH264'), 'info');
         if (r.embeds.length) toast(t('motion.export.embeds', { scenes: r.embeds.join(', ') }), 'info');
       }
@@ -356,8 +391,13 @@ export function MotionApp() {
           {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
         {exporting && (
-          <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={t('motion.export.cancelHint')}>
-            {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })} · {t('motion.export.cancel')}
+          <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={`${where(exporting.route)}. ${t('motion.export.cancelHint')}`}>
+            {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })}
+            {(() => {
+              const p = pace(exporting.done, exporting.total, exporting.startedAt);
+              return p ? ` · ${t('motion.export.pace', { fps: p.fps, left: p.left })}` : '';
+            })()}{' '}
+            · {t('motion.export.cancel')}
           </button>
         )}
         <FileMenu
