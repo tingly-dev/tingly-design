@@ -102,6 +102,14 @@ Cross-kind matrix impact: `.design/project-kinds.md` gains an "Export" column wi
 2. A 30 s piece through Mediabunny to WebM and to MP4 in desktop Chrome, with audio; memory use.
 3. Chrome/Edge detection on macOS, Windows and Linux for B, and the failure message.
 
+## 7. What others do, and what we measured (after the build)
+
+- **Per-frame capture in a real Chrome is the industry default.** Remotion and HyperFrames seek the page to a time, screenshot it and pipe frames to ffmpeg, the same loop as our server route. HyperFrames uses `chrome-headless-shell` with `HeadlessExperimental.beginFrame` on Linux and falls back to `Page.captureScreenshot` elsewhere; long renders are split over several Chrome processes and the chunks concatenated ([HeyGen](https://www.heygen.com/research/html-to-video)).
+- **Their speed levers:** JPEG frames (PNG only for transparency), H.264 rather than VP8/VP9, concurrency tuned per machine (more is not always faster), lower resolution ([Remotion render speed](https://genmotion.dev/answers/remotion-render-is-slow)).
+- **The foreignObject-in-the-tab route is the zero-install fallback everywhere it appears**, with the same limits as ours: no embeds or video layers, slow on layout-heavy pages ([motion-anything](https://github.com/nexu-io/motion-anything/blob/main/HTML-TO-VIDEO.md)).
+- **Measured here (4 cores, no GPU), 36 s piece at 1080p:** server route about 110 s (PNG frames) and about 95 s with JPEG frames in one tab; tab route about 10 min (1.8 to 3.8 fps). Two tabs of one Chrome stalled in a first attempt and were dropped, since the server route is already the fast one. `projects/harness-motion` (2 s) renders in about 5 s for quick checks.
+- **Decision (YZ):** keep both routes as built; the server route is the fast one and needs Chrome and ffmpeg, the tab route needs nothing. More video routes are researched separately, without blocking this work.
+
 ## Sources
 
 - [Mediabunny: introduction](https://mediabunny.dev/guide/introduction), [supported formats and codecs](https://mediabunny.dev/guide/supported-formats-and-codecs)

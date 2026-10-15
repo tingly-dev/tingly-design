@@ -9,6 +9,12 @@ export interface RasterOptions {
   /** @font-face CSS with fonts as data: URLs, built once (see `fontCss`) so frames don't fetch them again. */
   fontEmbedCSS?: string;
   backgroundColor?: string;
+  /** Let html-to-image read the page's own stylesheets and inline the fonts they name (for a one-off picture of a live page; frames use `fontEmbedCSS`). */
+  embedFonts?: boolean;
+  /** Styles forced on the root of the picture (a `margin: auto` is copied as the pixels it resolved to, so a node laid out in a wider page needs `margin: '0'`). */
+  style?: Partial<CSSStyleDeclaration>;
+  /** Return false to leave a node out of the picture. */
+  filter?: (node: Node) => boolean;
 }
 
 /** A picture of a DOM tree on a canvas: the tree goes into an SVG foreignObject, which the browser draws. */
@@ -18,10 +24,17 @@ export function rasterize(node: HTMLElement, o: RasterOptions = {}): Promise<HTM
     height: o.height,
     pixelRatio: o.pixelRatio ?? 1,
     fontEmbedCSS: o.fontEmbedCSS ?? '',
-    skipFonts: o.fontEmbedCSS === undefined,
+    skipFonts: !o.embedFonts && o.fontEmbedCSS === undefined,
+    filter: o.filter,
+    style: o.style as Record<string, string> | undefined,
     backgroundColor: o.backgroundColor,
     cacheBust: false,
   });
+}
+
+/** A canvas as a PNG file. */
+export function canvasPng(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('the picture could not be encoded'))), 'image/png'));
 }
 
 const FONT_MIME: Record<string, string> = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };

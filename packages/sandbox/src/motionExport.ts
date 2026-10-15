@@ -4,7 +4,7 @@
  * Nothing leaves the browser. What a foreignObject cannot draw is reported, not
  * hidden: an <x-embed> is a separate frame and comes out blank.
  */
-import { encodeVideo, mixAudio, rasterize, type AudioClip, type Container, type VideoResult } from '@dc/export';
+import { canvasPng, encodeVideo, mixAudio, rasterize, type AudioClip, type Container, type VideoResult } from '@dc/export';
 import type { MotionStage } from './motion';
 
 // Built as its own file (dist/export.js) and loaded when someone exports, so the player doesn't carry the encoder.
@@ -52,4 +52,12 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   return { ...result, embeds };
 }
 
-(window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo };
+/** A frame of the piece as a PNG: the picture at one moment, at the size on screen. */
+export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { t: number; scale?: number; fontCss?: string }): Promise<Blob> {
+  stage.pause();
+  await stage.seek(req.t);
+  const canvas = await rasterize(root, { width: stage.width, height: stage.height, pixelRatio: Math.max(1, Math.min(3, req.scale ?? 1)), fontEmbedCSS: req.fontCss ?? '' });
+  return canvasPng(canvas);
+}
+
+(window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo, exportFrame };

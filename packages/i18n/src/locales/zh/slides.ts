@@ -104,6 +104,8 @@ export default {
     presentWithNotes: '放映并显示演讲者备注',
     downloadPdf: 'PDF（打印）',
     downloadHtml: '单个 HTML 文件',
+    downloadImage: '当前这页（PNG）',
+    downloadImages: '每一页（多个 PNG）',
     downloadNotes: '演讲者备注（.txt）',
   },
   shape: {
@@ -157,6 +159,7 @@ export default {
     noNotes: '（无备注）',
     notesFile: '{{name}} 备注.txt',
     popupBlocked: '浏览器拦截了打印窗口，请允许弹出窗口后重试。',
+    imagesDone: '已保存 {{total}} 页图片',
     savePdf: '在打印窗口里选择“存储为 PDF”。',
   },
   journal: {

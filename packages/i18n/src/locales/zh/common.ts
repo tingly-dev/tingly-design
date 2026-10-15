@@ -29,5 +29,13 @@ export default {
   send: '发送',
   stop: '停止',
   undo: '撤销',
+  image: {
+    save: '保存为图片',
+    saveHint: '把当前页面下载成 PNG 图片',
+    saved: '已保存 {{name}}',
+    failed: '没能生成图片：{{message}}',
+    making: '正在生成图片…',
+    fileSlide: '{{name}}-第{{n}}页.png',
+  },
   untitled: '未命名',
 } satisfies Locale<typeof en>;

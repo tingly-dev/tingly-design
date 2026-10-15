@@ -53,23 +53,29 @@ let seekCounter = 0;
 
 /** The file this script was loaded from, so the exporter beside it can be fetched when needed. */
 const SELF = typeof document !== 'undefined' ? (document.currentScript as HTMLScriptElement | null)?.src : undefined;
-let exporter: Promise<(stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome>> | null = null;
+type FrameRequest = { t: number; scale?: number; fontCss?: string };
+type Exporter = {
+  exportVideo: (stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome>;
+  exportFrame: (stage: MotionStage, root: HTMLElement, req: FrameRequest) => Promise<Blob>;
+};
+let exporter: Promise<Exporter> | null = null;
 
-/** The video exporter, fetched on first use: it carries the encoders, which a player never needs. */
-function loadExporter() {
-  const w = window as unknown as { dcMotionExport?: { exportVideo: (stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome> } };
+/** The exporter (video and picture), fetched on first use: it carries the encoders, which a player never needs. */
+function loadExporter(): Promise<Exporter> {
+  const w = window as unknown as { dcMotionExport?: Exporter };
   exporter ??= new Promise((resolve, reject) => {
-    if (w.dcMotionExport) return resolve(w.dcMotionExport.exportVideo);
+    if (w.dcMotionExport) return resolve(w.dcMotionExport);
     if (!SELF) return reject(new Error('the exporter is not loaded'));
     const el = document.createElement('script');
     el.src = SELF.replace(/[^/]*$/, 'export.js');
-    el.onload = () => (w.dcMotionExport ? resolve(w.dcMotionExport.exportVideo) : reject(new Error('the exporter did not start')));
+    el.onload = () => (w.dcMotionExport ? resolve(w.dcMotionExport) : reject(new Error('the exporter did not start')));
     el.onerror = () => ((exporter = null), reject(new Error('the exporter could not be loaded')));
     document.head.appendChild(el);
   });
   return exporter;
 }
-const exportVideo = async (stage: MotionStage, root: HTMLElement, req: ExportRequest) => (await loadExporter())(stage, root, req);
+const exportVideo = async (stage: MotionStage, root: HTMLElement, req: ExportRequest) => (await loadExporter()).exportVideo(stage, root, req);
+const exportFrame = async (stage: MotionStage, root: HTMLElement, req: FrameRequest) => (await loadExporter()).exportFrame(stage, root, req);
 
 export async function mount(opts: MountOptions): Promise<MotionStage> {
   const { motion, root } = opts;
@@ -327,7 +333,8 @@ type HostMsg =
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' }
   | { dcm: 'export'; id: string; format?: 'auto' | 'mp4' | 'webm'; scale?: number; fontCss?: string; audio?: AudioClip[] }
-  | { dcm: 'export-cancel'; id: string };
+  | { dcm: 'export-cancel'; id: string }
+  | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
 
 if (typeof document !== 'undefined' && document.getElementById('dc-app') && window.parent !== window) {
   const root = document.getElementById('dc-app') as HTMLElement;
@@ -356,6 +363,13 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
         post({ dcm: 'export-error', id: m.id, code: name === 'AbortError' ? 'aborted' : name === 'NoEncoderError' ? 'no-encoder' : 'failed', message: err instanceof Error ? err.message : String(err) });
       } finally {
         exporting.delete(m.id);
+      }
+    } else if (m.dcm === 'snapshot') {
+      if (!stage) return post({ dcm: 'snapshot-error', id: m.id, message: 'nothing is loaded' });
+      try {
+        post({ dcm: 'snapshot-done', id: m.id, blob: await exportFrame(stage, stageBox!, { t: m.t, scale: m.scale, fontCss: m.fontCss }) });
+      } catch (err) {
+        post({ dcm: 'snapshot-error', id: m.id, message: err instanceof Error ? err.message : String(err) });
       }
     } else if (m.dcm === 'load') {
       const n = ++loading;

@@ -27,9 +27,10 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) plays the piece and rel
 }
 ```
 
-- `formats`: the first is the primary one. Names are lower-case letters and digits.
+- `formats`: the first is the primary one. Names are lower-case letters and digits. A new piece is made in the size its owner picked (`wide` 1920×1080, `tall` 1080×1920, `square` 1080×1080, `portrait` 1080×1350, `upright` 1080×1440, `classic` 1440×1080, or `s<w>x<h>` for a custom one); the starter scene is laid out for it, so don't assume 16:9.
 - `speed` (0.25 to 4, default 1) plays all timing faster or slower. Write timing at reading pace and change `speed` to change the pace; never retime every attribute.
 - `order`: the scenes, in play order. Adding a scene means writing its file and adding its id here.
+- `note` (optional): a note on the whole piece, plain text up to 4000 characters, written by the person (what it is for, who watches it, the tone). Read it before you edit; never draw it, keep it unless asked to change it, and write it only when asked.
 - `cover` (optional): the still that stands for the video (thumbnail, first frame, the player before play): the id of a scene file that is **not** in `order`, designed to be read standing still, usually with no timing attributes. The editor shows it as its own clip before 0 s on the timeline. Leave `cover` out for none, and the video's first frame stands in. A time such as `"2.2s"` (a frame of the video) is still read in older files, but don't write one.
 
 ## Timing attributes
@@ -46,6 +47,8 @@ On any element:
 - Presets: `fade rise drop left right scale pop zoom slam spin blur wipe type count`. `type` reveals text left to right in steps; `count` counts a number up (keeps grouping, decimals and units).
 - `data-keys="x: 0@0 120@2s ease-in-out; scale: 1@2s 1.2@3s"` — keyframe tracks on `x`, `y` (px), `scale`, `rotate` (deg) and `opacity`; the easing after a key eases the segment arriving at it; `steps(1)` makes a jump.
 - Times are `500ms`, `0.5s` or `2` (seconds), measured from the start of the scene.
+
+A scene's note is one `<aside>`, the section's last child, plain text up to 4000 characters, the same as speaker notes in a slide (see the slides skill). It is the person's note on that scene: the editor never draws or renders it, so it is safe to keep, and you read it as context, not as extra tasks.
 
 `data-hide` hides an element for the whole scene (in every format, the player and the render too) and `data-lock` stops it being picked or moved on the stage; they are the layers panel's eye and lock, set by hand or by the editor. Keep them.
 

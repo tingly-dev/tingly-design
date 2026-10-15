@@ -73,7 +73,8 @@ export default {
     },
   },
   bar: {
-    noFastModel: '服务端没有配置 ANTHROPIC_API_KEY，快速 AI 不可用。',
+    noFastModel: '快速 AI 还没有密钥。',
+    setUp: '去设置',
     noClaudeCli: '本机找不到 claude 命令，无法委托。',
     label: '让 AI 修改',
     who: '交给谁',

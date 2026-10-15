@@ -70,6 +70,7 @@ export default {
     tabMarkdown: 'This tab (Markdown)',
     docMarkdown: 'Whole doc (Markdown)',
     docHtml: 'Whole doc (HTML)',
+    tabImage: 'This tab (PNG image)',
     print: 'Print / save as PDF',
   },
   settings: {

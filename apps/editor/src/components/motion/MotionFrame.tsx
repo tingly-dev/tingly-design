@@ -43,6 +43,8 @@ export interface MotionControl {
   pause(): void;
   /** Render the loaded piece to a video in the frame and hand the file back. */
   exportVideo(req: MotionExportRequest, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<MotionExportResult>;
+  /** One frame at time `t` as a PNG, drawn in the frame. */
+  snapshot(req: { t: number; scale?: number; fontCss?: string }): Promise<Blob>;
 }
 
 /**
@@ -85,6 +87,7 @@ export function MotionFrame({
   const [shown, setShown] = useState(false);
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'motion'), []);
   const cb = useRef({ onLoaded, onTime, onEnded, onError });
+  const snaps = useRef(new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>());
   cb.current = { onLoaded, onTime, onEnded, onError };
   const atRef = useRef(at);
   atRef.current = at;
@@ -106,6 +109,8 @@ export function MotionFrame({
       else if (m.dcm === 'export-progress') exports.current.get(String(m.id))?.progress?.(Number(m.done), Number(m.total));
       else if (m.dcm === 'exported') exports.current.get(String(m.id))?.ok(m as unknown as MotionExportResult);
       else if (m.dcm === 'export-error') exports.current.get(String(m.id))?.fail(new MotionExportError(m.code as MotionExportError['code'], String(m.message ?? '')));
+      else if (m.dcm === 'snapshot-done') snaps.current.get(String(m.id))?.ok(m.blob as Blob);
+      else if (m.dcm === 'snapshot-error') snaps.current.get(String(m.id))?.fail(new Error(String(m.message ?? '')));
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
@@ -131,6 +136,12 @@ export function MotionFrame({
           if (signal?.aborted) return cancel();
           signal?.addEventListener('abort', cancel);
           post({ dcm: 'export', id, ...req });
+        }),
+      snapshot: (req) =>
+        new Promise((resolve, reject) => {
+          const id = Math.random().toString(36).slice(2);
+          snaps.current.set(id, { ok: (b) => (snaps.current.delete(id), resolve(b)), fail: (e) => (snaps.current.delete(id), reject(e)) });
+          post({ dcm: 'snapshot', id, ...req });
         }),
     };
     return () => {

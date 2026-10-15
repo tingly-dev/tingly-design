@@ -25,11 +25,14 @@
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
+| [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome；其余类型的格式和共用菜单 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建 | 已实施 |
+| [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [agent-panel.md](./agent-panel.md) | 请求栏的布局：卡片浮在栏上不挤舞台、收成药丸、请求历史、"新对话 / 接着"标记 | 已实施；§5 是没做的 |
+| [ai-settings.md](./ai-settings.md) | AI 模型设置：快速 AI 和 Claude Code 共用一个连接、各有模型名；环境变量 > 已保存 > 默认；Tingly Box 为推荐；图片生成将来接在同一处 | 已实施；§6 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |

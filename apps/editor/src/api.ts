@@ -30,6 +30,31 @@ export interface Health {
   lang?: string;
 }
 
+export type AiSource = 'env' | 'saved' | 'default';
+
+/** GET /api/ai-config: what is in force and where each value came from (the key itself stays on the server). */
+export interface AiConfig {
+  preset: 'tingly-box' | 'anthropic' | 'custom';
+  baseUrl: { value: string; source: AiSource };
+  key: { set: boolean; source: AiSource | 'none' };
+  fastModel: { value: string; source: AiSource };
+  claudeModel: { value: string; source: AiSource };
+  claudeRoute: { value: 'shared' | 'login'; source: AiSource };
+  claudeCli: boolean;
+  box: { reachable: boolean };
+}
+
+/** What the dialog saves; a blank field falls back to its default. */
+export interface AiDraft {
+  baseUrl: string;
+  apiKey?: string;
+  clearKey?: boolean;
+  fastModel: string;
+  claudeModel: string;
+  /** left out until the person chooses: the default follows whether there is a key */
+  claudeRoute?: 'shared' | 'login';
+}
+
 export type ServerEvent =
   | { type: 'file'; path: string; content: string; version: string; actor: Actor }
   | { type: 'delete'; path: string; actor: Actor }
@@ -47,9 +72,14 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => call(at('api/health')).then((r) => json<Health>(r)),
+  aiConfig: () => call(at('api/ai-config')).then((r) => json<AiConfig>(r)),
+  saveAiConfig: (d: AiDraft) =>
+    call(at('api/ai-config'), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: true }>(r)),
+  testAiConfig: (d: AiDraft) =>
+    call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
-  createProject: (name: string, title: string, kind: ProjectKind = 'design') =>
-    call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind }) }).then((r) =>
+  createProject: (name: string, title: string, kind: ProjectKind = 'design', size?: [number, number]) =>
+    call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind, ...(size ? { size } : {}) }) }).then((r) =>
       json<{ ok: true }>(r),
     ),
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),

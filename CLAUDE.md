@@ -20,6 +20,10 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 - No UI text in code. Every string a person sees (labels, `aria-label`, `title`, placeholders, toasts, empty states, server errors, starter copy written into new projects) is a key in `packages/i18n/src/locales/en/<area>.ts` with its twin in `zh/<area>.ts`. Components use `useTranslation()`; other editor code imports `t` from `apps/editor/src/i18n.ts`; the server uses `trOf(c)` / `HttpError(status, key, params)`. English is the default and fallback, Chinese is the other shipped language. Write the English and the Chinese together; keep core free of wording (return data such as `AgentStep.op`, let the editor say it). Model-facing prompts and `.claude/skills/` stay English. `pnpm test` fails on a missing key, a mismatched placeholder, or a Chinese string outside the bundles. See `.design/i18n.md`.
 - The editor's look is theme tokens (`apps/editor/src/theme.ts`, synced from Tingly Box's `@tingly/ui` palettes by `scripts/sync-tingly-box-theme.mjs`); use tokens, not raw colours, in editor chrome. Work inside canvases, slides and dashboards keeps its own colours.
 
+## AI model settings
+
+Which model answers is set in one dialog (`apps/editor/src/components/AiSettings.tsx`, opened from the launcher, `ProjectMenu` and the prompt bar's hint): one connection (Tingly Box suggested, Anthropic, or another address) shared by fast AI and Claude Code, a model name for each, and Claude Code's own sign-in as the alternative. The values resolve environment > saved > default in `packages/core/src/aiConfig.ts`; the server (`apps/server/src/aiconfig.ts`) owns the file and the key. A new model-using feature (image generation, #32) joins this dialog, not a new place. See `.design/ai-settings.md`.
+
 ## Frontend changes come back with screenshots
 
 A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description as `https://github.com/tingly-dev/tingly-design/blob/pr-assets/<path>?raw=true` (`raw.githubusercontent.com` links do not render in this private repository), and the thread that did the work attaches them to its reply.
@@ -55,7 +59,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar`, `LayerTree`, `attachments.ts`, `ImportHere`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar`, `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -63,7 +67,7 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
-packages/export   exporting from the browser with nothing to install (picture of a DOM tree, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write); no dependency on the editor, server or core (see .design/export.md)
+packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
@@ -91,7 +95,7 @@ pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm 
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on every PR. Releases are tag-driven: a `vX.Y.Z` tag matching `package.json` builds the bundle once and ships that tarball to a GitHub release and to npm as both `@tingly-dev/tingly-design` and `tingly-design` (`release.yml`, `.design/release.md`). The project is Apache-2.0 (`LICENSE`, `NOTICE`); the release fails if `package.json` has no `license`. npm publishing is Trusted Publishing only (environment `production`, no token anywhere; the packages refuse tokens, so only a maintainer with a one-time password can publish outside CI; first-time setup is `scripts/npm-bootstrap.sh`). Never publish or push a release tag without a maintainer asking. Anything added to the bundle ships to npm: `scripts/bundle.mjs` copies only what it names, keep it that way. Shell shared by workflows lives in `.github/scripts/`; lint with `actionlint` and `shellcheck` as Tingly Box's `.github/workflows/AGENTS.md` says.
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`); add new suites to both language versions of that table.
 
 # Issues
 
