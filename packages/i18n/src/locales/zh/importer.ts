@@ -13,6 +13,7 @@ export default {
   skipped_other: '{{count}} 个文件类型不能保存在项目里，没有留存：{{files}}',
   skippedMore_other: '{{count}} 个文件类型不能保存在项目里，没有留存：{{files}} 等',
   listSeparator: '、',
+  materialShort: { page: 'HTML', drawing: 'SVG', image: '图片', markdown: 'Markdown', data: 'CSV / JSON', font: '字体' },
   material: {
     page: '网页（.html，连同它的文件夹）',
     drawing: 'SVG',
@@ -26,8 +27,8 @@ export default {
     accepts: '这里能导入的是：{{list}}。',
     into: '导入到这个{{label}}',
     button: '导入',
-    chooseFiles: '选择文件…',
-    chooseFolder: '选择文件夹…',
+    importFiles: '导入 {{list}}…',
+    importFolder: '导入文件夹…',
     fromProject: '从项目导入…',
     drag: '也可以把文件拖进来。',
     dragOrPaste: '也可以把文件拖进来，或直接粘贴。',

@@ -333,27 +333,47 @@ select:not([multiple]) {
   color: var(--faint);
   font-size: 12px;
 }
-.menu .mi.two {
-  height: auto;
-  min-height: 36px;
-  padding-top: 5px;
-  padding-bottom: 5px;
+.menu .mi {
+  position: relative;
 }
-.menu .mi .mt {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+/* the detail of an item: an info mark, and the sentence on hover or keyboard focus */
+.menu .mi .mi-info {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--faint);
+  opacity: 0.7;
+}
+.menu .mi .k + .mi-info {
+  margin-left: 8px;
+}
+.menu .mi:hover .mi-info,
+.menu .mi:focus-visible .mi-info {
+  opacity: 1;
 }
 .menu .mi .mh {
-  font-size: 11.5px;
-  line-height: 1.35;
-  color: var(--faint);
+  position: absolute;
+  z-index: 2;
+  left: 28px;
+  top: calc(100% + 2px);
+  width: max-content;
+  max-width: 250px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--panel);
+  font-size: 12px;
+  line-height: 1.4;
   white-space: normal;
-  max-width: 240px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s var(--ease) 0s;
 }
-.menu .mi:disabled .mh {
-  color: var(--faint);
+.menu .mi:hover .mh,
+.menu .mi:focus-visible .mh {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.35s;
 }
 .menu .mi.danger {
   color: var(--danger);

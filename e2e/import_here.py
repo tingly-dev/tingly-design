@@ -120,7 +120,7 @@ async def main():
             check('…which says what a canvas takes', await pg.locator('.menu .mh', has_text='网页和 SVG 变成新的画板').count() == 1)
             await pg.screenshot(path=OUT + 'import-here-menu.png')
             async with pg.expect_file_chooser() as fc:
-                await pg.locator('.menu .mi', has_text='选择文件夹').click()
+                await pg.locator('.menu .mi', has_text='导入文件夹').click()
             await (await fc.value).set_files(folder)
             check('canvas: importing a folder says so', await toast(pg, '已导入 index.html'))
             ok = await wait_for(lambda: 'SpringLaunch.dc.html' in json.loads(read('box-console', 'canvas.json'))['boards'])
@@ -195,7 +195,7 @@ async def main():
             tabs = len(json.loads(read('design-guide', 'doc.json'))['tabs'])
             await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
             async with pg.expect_file_chooser() as fc:
-                await pg.locator('.menu .mi', has_text='选择文件夹').click()
+                await pg.locator('.menu .mi', has_text='导入文件夹').click()
             await (await fc.value).set_files(notes)
             check('docs: importing Markdown says so', await toast(pg, '已把 notes.md 加成新的标签页'))
             doc = json.loads(read('design-guide', 'doc.json'))
