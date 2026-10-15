@@ -841,12 +841,22 @@ export function Launcher() {
         <Menu x={newMenu.right} y={newMenu.bottom + 6} align="right" onClose={() => setNewMenu(null)} label={t('launcher.new.title')}>
           {KINDS.map((k) => (
             <div key={k.kind} data-new={k.kind} className="mwrap">
-              <MenuItem label={t(`launcher.kind.${k.kind}.new`)} icon={<KindIcon kind={k.kind} size={15} />} onSelect={() => (setNewMenu(null), setCreating(k.kind))} />
+              <MenuItem label={t(`launcher.kind.${k.kind}.new`)} icon={
+                  <span className={`kic t-${k.tone}`}>
+                    <KindIcon kind={k.kind} size={14} />
+                  </span>
+                }
+                onSelect={() => (setNewMenu(null), setCreating(k.kind))} />
             </div>
           ))}
           <div className="msep" role="separator" />
           <div data-new="import" className="mwrap">
-            <MenuItem label={t('launcher.importTile.name')} icon={<IconFileImport size={15} stroke={1.7} aria-hidden="true" />} onSelect={() => (setNewMenu(null), setImporting({}))} />
+            <MenuItem label={t('launcher.importTile.name')} icon={
+                <span className="kic t-blue">
+                  <IconFileImport size={14} stroke={1.7} aria-hidden="true" />
+                </span>
+              }
+              onSelect={() => (setNewMenu(null), setImporting({}))} />
           </div>
         </Menu>
       )}

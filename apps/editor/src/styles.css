@@ -2014,6 +2014,13 @@ button.file-chip:hover {
   color: var(--muted);
   font-size: 12px;
 }
+.menu .kic {
+  flex: none;
+  margin-right: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
 .menu .mwrap {
   display: contents;
 }
@@ -2775,7 +2782,7 @@ button.file-chip:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.lrow .kic {
+.launcher .kic {
   display: grid;
   place-items: center;
   flex: none;
