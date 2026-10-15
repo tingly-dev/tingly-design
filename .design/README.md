@@ -20,20 +20,27 @@
 | [five-kinds.md](./five-kinds.md) | 从 Design 扩展到幻灯片、设计系统、看板、文档 | 前半是当初的方案，"进度"一节是实施结论 |
 | [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；已登记为类型，编辑舞台和播放器已实施 |
 | [motion-editing.md](./motion-editing.md) | 动效的细粒度编辑：为什么场景原来点不动，舞台点选、尺寸覆盖、时间轴、关键帧的交互和实现（图：[motion-editing.pencil.md](./motion-editing.pencil.md)） | 第一期已实施（点选、改字、缩放、尺寸、快速 AI）；时间轴、关键帧是方案 |
+| [motion-effects.md](./motion-effects.md) | 动效里的着色器特效层：可 seek 的 embed 装一个 GLSL 片元着色器，WebGL2 在页面里画；输入、单位、确定性，以及什么样的特效好看 | 契约和 WebGL2 运行时已实施（示例 `projects/motion-effects/`）；注入运行时、检查器报错、预设库是方案；WebGPU / vgpu 的调研在 `.research/motion-effects.md` |
 
 ## 编辑器功能
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
+| [top-bar.md](./top-bar.md) | 顶栏：六种类型共用的一条栏——项目名、同步状态、导入 / 导出放哪，反馈、点星、语言、外观为什么在最右；浮栏只留工具 | 已实施 |
+| [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
+| [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
-| [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建 | 已实施 |
+| [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome；其余类型的格式和共用菜单；速度怎么量、慢在哪、怎么看见 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
+| [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
-| [agent-panel.md](./agent-panel.md) | 请求栏的布局：卡片浮在栏上不挤舞台、收成药丸、请求历史、"新对话 / 接着"标记 | 已实施；§5 是没做的 |
+| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或右侧边栏（自动隐藏）、请求历史、"新对话 / 接着"标记 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：快速 AI 和 Claude Code 共用一个连接、各有模型名；环境变量 > 已保存 > 默认；Tingly Box 为推荐；图片生成将来接在同一处 | 已实施；§6 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
+| [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |
+| [import-from-project.md](./import-from-project.md) | 从项目导入：把画布的画板复制进幻灯片和动效、嵌入、记来源、可更新；会动的画板（`$time`）就是特效 | 第一期已实施（画布 → 幻灯片、动效）；§5 是没做的 |
 | [i18n.md](./i18n.md) | 界面语言：词条放哪、用什么库、语言从哪来，服务端报错、新建文案、模型回复和沙箱各用哪种语言 | 已实施（英文、中文）；§6 是没做的 |
 
 ## 工程协作

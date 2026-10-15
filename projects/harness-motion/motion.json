@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "title": "Harness motion",
+  "formats": {
+    "wide": { "size": [1280, 720] },
+    "tall": { "size": [720, 1280] }
+  },
+  "fps": 30,
+  "order": ["one", "two"],
+  "audio": []
+}

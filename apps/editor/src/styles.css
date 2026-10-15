@@ -171,9 +171,12 @@ select:not([multiple]) {
 
 /* ------------------------------------------------------------- shell */
 
+:root {
+  --topbar-h: 44px;
+}
 .app {
   position: fixed;
-  inset: 0;
+  inset: var(--topbar-h) 0 0 0;
   display: grid;
   grid-template-columns: 1fr auto;
 }
@@ -253,25 +256,34 @@ select:not([multiple]) {
   min-width: 44px;
   text-align: right;
 }
-.sync {
-  display: inline-flex;
-  align-items: center;
+.syncchip {
   gap: 6px;
   color: var(--muted);
   font-size: 12px;
 }
-.sync .dot {
+.syncchip .hist {
+  position: relative;
+  display: inline-flex;
+  line-height: 0;
+}
+.syncchip .dot {
+  position: absolute;
+  right: -2px;
+  top: -2px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--ok);
-  box-shadow: 0 0 0 3px var(--ok-soft);
+  box-shadow: 0 0 0 2px var(--panel);
 }
-.sync .dot.off {
+.syncchip .dot.off {
   background: var(--danger);
 }
-.sync .dot.busy {
+.syncchip .dot.busy {
   background: var(--accent);
+}
+.syncchip[data-state='off'] {
+  color: var(--danger);
 }
 
 /* menus and popovers */
@@ -319,6 +331,48 @@ select:not([multiple]) {
   margin-left: auto;
   color: var(--faint);
   font-size: 12px;
+}
+.menu .mi {
+  position: relative;
+}
+/* the detail of an item: an info mark, and the sentence on hover or keyboard focus */
+.menu .mi .mi-info {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--faint);
+  opacity: 0.7;
+}
+.menu .mi .k + .mi-info {
+  margin-left: 8px;
+}
+.menu .mi:hover .mi-info,
+.menu .mi:focus-visible .mi-info {
+  opacity: 1;
+}
+.menu .mi .mh {
+  position: absolute;
+  z-index: 2;
+  left: 28px;
+  top: calc(100% + 2px);
+  width: max-content;
+  max-width: 250px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--panel);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s var(--ease) 0s;
+}
+.menu .mi:hover .mh,
+.menu .mi:focus-visible .mh {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.35s;
 }
 .menu .mi.danger {
   color: var(--danger);
@@ -1747,6 +1801,18 @@ button.file-chip:hover {
 .journal-pop header .btn {
   margin-left: auto;
 }
+.journal-pop .jhelp {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.journal-pop .jhelp b {
+  color: var(--text);
+  font-weight: 600;
+}
 .journal {
   overflow: auto;
   padding: 4px 12px 12px;
@@ -1966,6 +2032,38 @@ button.file-chip:hover {
 .lhead .sub {
   color: var(--muted);
   font-size: 12px;
+}
+.menu .kic {
+  flex: none;
+  margin-right: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.menu .mwrap {
+  display: contents;
+}
+.menu .msep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--hairline);
+}
+.lbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.lmain .lbar h2 {
+  margin: 0;
+}
+.ltools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .lhead .tools {
   display: flex;
@@ -2563,6 +2661,267 @@ button.file-chip:hover {
   justify-content: flex-end;
   gap: 8px;
 }
+/* launcher: groups, list view, row menu */
+.lview {
+  display: inline-flex;
+  height: 32px;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.lview button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.lview button:hover {
+  color: var(--ink);
+}
+.lview button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.lcell {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.lcell > .lcard,
+.lcell > .lrow {
+  flex: 1;
+  min-width: 0;
+}
+.lmore {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--muted);
+  box-shadow: 0 0 0 1px var(--hairline);
+  cursor: pointer;
+}
+.lcell:hover .lmore,
+.lcell:focus-within .lmore {
+  color: var(--ink);
+}
+.lmore:hover {
+  color: var(--ink);
+  background: var(--panel);
+}
+.lsection + .lsection {
+  margin-top: 22px;
+}
+.lmain h3 {
+  margin: 0 0 10px;
+}
+.lghead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px 2px 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.lghead:hover {
+  background: var(--panel-2);
+}
+.lghead .n {
+  font-weight: 400;
+  color: var(--muted);
+}
+.lgroup {
+  font-family: var(--font-ui, inherit);
+  color: var(--ink-2);
+}
+.llist {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--hairline), 0 1px 2px var(--tint);
+  overflow: hidden;
+}
+.lrow,
+.lrowhead {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) minmax(0, 1fr) 110px 124px 44px;
+  align-items: center;
+  column-gap: 14px;
+}
+.lrow {
+  height: 44px;
+  padding: 0 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.llist .lcell:last-child .lrow {
+  border-bottom: 0;
+}
+.lrow:hover,
+.lrow:focus-visible {
+  background: var(--panel-2);
+}
+.lrow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.lrow .c-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.lrow .name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.launcher .kic {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+.lrow .recent {
+  flex: none;
+  font-size: 11px;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+.lnogroup .lrow,
+.lnogroup .lrowhead {
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) 110px 124px 44px;
+}
+.lnogroup .c-group {
+  display: none;
+}
+.lrow .c-path {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.lrow .c-path,
+.lrow .c-group,
+.lrow .c-size,
+.lrow .c-when {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lrow .c-group,
+.lrow .c-size,
+.lrow .c-when {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.lrowhead {
+  height: 32px;
+  padding: 0 0 0 14px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.lrowhead button {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.lrowhead button[aria-pressed='true'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.lrowhead .c-title {
+  padding-left: 36px;
+}
+.llist .lmore {
+  top: 8px;
+  right: 8px;
+  box-shadow: none;
+  background: none;
+}
+.llist .lmore:hover {
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+.lgrid.ltail {
+  margin-top: 14px;
+}
+.menu-form {
+  padding: 4px 4px 6px;
+  min-width: 220px;
+}
+.menu-input {
+  width: 100%;
+}
+.menu-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.toast-act {
+  pointer-events: auto;
+  margin-left: 12px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .lrow,
+  .lrowhead {
+    grid-template-columns: minmax(0, 1fr) 124px 44px;
+  }
+  .lrow .c-path,
+  .lrow .c-group,
+  .lrowhead .c-path,
+  .lrowhead .c-group {
+    display: none;
+  }
+  .lrow .c-size,
+  .lrowhead .c-size {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   .lhead .tools,
   .lsearch {
@@ -2633,9 +2992,6 @@ button.file-chip:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-.slides .stripbar {
-  padding: 8px 6px 0 17px;
 }
 .slides .slist {
   flex: 1;
@@ -2860,17 +3216,6 @@ button.file-chip:hover {
 .issue-list li.warning::before {
   background: var(--warn);
 }
-.slides .bar .dtitle {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.slides .bar input.dtitle {
-  height: 28px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 0 6px;
-}
 .iconpick {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3045,17 +3390,6 @@ button.file-chip:hover {
   padding: 16px 10px 10px;
   gap: 2px;
   min-height: 0;
-}
-.dsnav .dstitle {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 6px;
-  line-height: 1.3;
-}
-.dsnav input.dstitle {
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 2px 6px;
 }
 .dsnav .ns {
   margin: 2px 6px 14px;
@@ -3526,12 +3860,14 @@ textarea.dsin {
   font-size: 14px;
   background: transparent;
 }
-.app.ds .journal-pop {
+.app.ds .journal-pop,
+.app.dash .journal-pop,
+.app.docs .journal-pop {
   position: fixed;
-  left: 230px;
-  right: auto;
-  bottom: 60px;
-  top: auto;
+  top: calc(var(--topbar-h) + 8px);
+  right: 12px;
+  left: auto;
+  bottom: auto;
 }
 .colorfield {
   position: relative;
@@ -3643,14 +3979,13 @@ textarea.dsin {
 
 .app.dash {
   grid-template-columns: 1fr;
-  grid-template-rows: 48px 1fr;
+  grid-template-rows: 1fr;
   background: var(--panel-2);
 }
 .app.dash.with-side {
   grid-template-columns: 1fr 400px;
 }
 .dashbar {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3658,6 +3993,54 @@ textarea.dsin {
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   min-width: 0;
+}
+/* the one top bar of every editor (TopBar.tsx) */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  z-index: 25;
+  box-sizing: border-box;
+}
+.topbar .tsep {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 4px;
+  flex: none;
+}
+.topbar .tend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  flex: none;
+}
+.topbar .tb {
+  position: relative;
+  color: var(--muted);
+  text-decoration: none;
+}
+.topbar .tb:hover,
+.topbar .tb[aria-expanded='true'] {
+  color: var(--ink);
+}
+.topbar .tb[aria-pressed='true'] {
+  color: var(--accent);
+}
+.topbar .tb .badge,
+.topbar .tb .mnotedot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+}
+.topbar .tend .tb span[lang] {
+  display: none;
+}
+.topbar .dashtitle {
+  flex: 0 1 auto;
 }
 .dashbar .grow {
   flex: 1;
@@ -3997,7 +4380,7 @@ input.dashtitle {
 
 .app.docs {
   grid-template-columns: 220px 1fr;
-  grid-template-rows: 48px 1fr;
+  grid-template-rows: 1fr;
   background: var(--panel-2);
   --doc-sans: system-ui, -apple-system, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
   --doc-serif: 'Source Serif 4', Georgia, 'Songti SC', 'Noto Serif SC', serif;
@@ -5202,6 +5585,9 @@ input.dashtitle {
 .mprompt.collapsed {
   height: 36px;
 }
+.mprompt.docked {
+  display: none;
+}
 .mprompt .prompt {
   bottom: 0;
 }
@@ -5537,9 +5923,6 @@ body.filedrag iframe {
 .menu .mi .k svg {
   display: block;
 }
-.dsnav .pmenu {
-  margin: 0 0 6px 7px;
-}
 .dashbar .pmenu {
   margin-left: 7px;
 }
@@ -5778,4 +6161,269 @@ body.filedrag iframe {
 .prompt .head .setup {
   color: var(--accent);
   white-space: nowrap;
+}
+
+/* importing an artboard from a project: the picker, and the selected embed's panel */
+.ldialog.bpick {
+  width: min(760px, 100%);
+}
+.bpick .hint {
+  margin: -6px 0 0;
+}
+.bpick-group h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bpick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 10px;
+}
+.bpick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.bpick-item:hover,
+.bpick-item:focus-visible {
+  border-color: var(--accent);
+}
+.bpick-thumb {
+  position: relative;
+  display: block;
+  width: 196px;
+  max-height: 196px;
+  overflow: hidden;
+  border-radius: calc(var(--r) - 2px);
+  background: var(--panel-2);
+}
+.bpick-thumb iframe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.bpick-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.bpick-item .faint {
+  font: 11px var(--mono);
+  color: var(--faint);
+}
+.bembed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bembed h3 {
+  margin: 0;
+}
+.bembed-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bembed-a a.btn {
+  text-decoration: none;
+}
+/* ------------------------------------------------------------ export video dialog */
+.vexport {
+  width: min(520px, 100%);
+}
+.vexport .vsummary {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--hover);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.vexport .note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.vexport .vmore {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.vexport .vopts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vexport .vopts label {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.vexport .vopts label > span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.vexport footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ------------------------------------------- the prompt as a side dock (AgentBar.tsx)
+   A column on the right edge: hidden with only its tab showing, opened by the pointer on the
+   tab or the cursor in the box.
+   It is a child of <body>, so nothing in a kind's own layout moves when it opens. */
+
+:root {
+  --dock-w: 360px;
+}
+.prompt.agent-dock,
+.dsask.agent-dock {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  transform: none;
+  width: min(var(--dock-w), 100vw);
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  border-radius: 0;
+  border-left: 1px solid var(--line);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  z-index: 40;
+}
+.prompt.agent-dock.auto,
+.dsask.agent-dock.auto {
+  transform: translateX(100%);
+  pointer-events: none;
+  transition: transform 0.18s var(--ease) 0.35s, box-shadow 0.18s var(--ease) 0.35s;
+}
+.prompt.agent-dock.auto:hover,
+.dsask.agent-dock.auto:hover,
+.prompt.agent-dock.auto:has(:focus-visible),
+.dsask.agent-dock.auto:has(:focus-visible) {
+  transform: none;
+  pointer-events: auto;
+  box-shadow: var(--lift-shadow);
+  transition-delay: 0.12s;
+}
+.prompt.agent-dock:focus-within,
+.dsask.agent-dock:focus-within {
+  box-shadow: none;
+}
+.prompt.agent-dock.auto:hover,
+.dsask.agent-dock.auto:hover,
+.prompt.agent-dock.auto:has(:focus-visible),
+.dsask.agent-dock.auto:has(:focus-visible) {
+  box-shadow: var(--lift-shadow);
+}
+.dock-tab {
+  position: absolute;
+  left: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px 0 0 10px;
+  background: var(--panel);
+  color: var(--ink-2);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.dock-tab:hover {
+  color: var(--ink);
+}
+.dock-tab.running {
+  color: var(--actor-claude);
+}
+.dock-tab.done svg {
+  color: var(--ok, var(--accent));
+}
+.dock-tab.failed svg {
+  color: var(--bad, #d14343);
+}
+/* head on top, the run (and the earlier requests) filling the middle, the box at the bottom */
+.agent-dock > .head {
+  order: 0;
+  flex-wrap: wrap;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.agent-dock > .runfeed,
+.agent-dock > .run-history {
+  position: static;
+  order: 1;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: none;
+  margin: 8px;
+  box-shadow: none;
+  background: var(--panel-2);
+  border-radius: 10px;
+  overflow: auto;
+}
+.agent-dock > .attach-tray {
+  order: 2;
+}
+.agent-dock > .body {
+  order: 3;
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+.agent-dock .prompt-hint {
+  order: 4;
+}
+.agent-dock > .drop-hint {
+  position: absolute;
+  inset: 0;
+}
+.dsask:not(.agent-dock) > .body {
+  display: contents;
+}
+.dsask.agent-dock textarea,
+.prompt.agent-dock textarea {
+  flex: 1;
+  min-width: 0;
+}
+.agent-dock .run-head {
+  flex-wrap: wrap;
+}
+/* the floating bar's run card is one line (what it is doing, how it ended, undo) until the pointer is on the bar or the cursor is in the box:
+   the answer and steps are one hover away and stop covering the work the moment the person goes back to it */
+.prompt:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head),
+.dsask:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head) {
+  display: none;
 }

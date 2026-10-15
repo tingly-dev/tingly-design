@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectCard, projectKind } from '../src';
+import { INDEX_FILE, cleanGroup, parseCanvas, parseDash, parseDeck, parseDoc, parseDsIndex, parseMotion, projectCard, projectKind, retitle } from '../src';
 
 const reader = (files: Record<string, string>) => async (rel: string) => files[rel];
 
@@ -82,5 +82,34 @@ describe('projectCard', () => {
     expect(c.preview).toMatchObject({ kind: 'motion', seconds: 3, formats: [{ name: 'wide', w: 1920, h: 1080 }, { name: 'tall', w: 1080, h: 1920 }], still: { id: 'poster' } });
     const noCover = await projectCard('promo', 'motion', Object.keys(files), reader({ ...files, 'motion.json': JSON.stringify({ order: ['a', 'b'] }) }));
     expect(noCover.preview).toMatchObject({ seconds: 6, still: { id: 'a' } });
+  });
+});
+
+describe('retitle and cleanGroup', () => {
+  it('changes only the title of an index file, whatever the kind', () => {
+    const out = retitle(JSON.stringify({ title: 'Old', order: ['a'], speed: 2 }), 'New');
+    expect(JSON.parse(out!)).toEqual({ title: 'New', order: ['a'], speed: 2 });
+    expect(retitle('not json', 'x')).toBeUndefined();
+    expect(retitle('[1]', 'x')).toBeUndefined();
+  });
+  it('every kind\'s index file reads its title back after a retitle', () => {
+    const parsed = {
+      design: (s: string) => parseCanvas(s).title,
+      slides: (s: string) => parseDeck(s).title,
+      'design-system': (s: string) => parseDsIndex(s).title,
+      dashboard: (s: string) => parseDash(s).title,
+      docs: (s: string) => parseDoc(s).title,
+      motion: (s: string) => parseMotion(s).title,
+    };
+    for (const [kind, read] of Object.entries(parsed)) {
+      expect(INDEX_FILE[kind as keyof typeof INDEX_FILE]).toMatch(/\.json$/);
+      expect(read(retitle('{}', 'Renamed')!)).toBe('Renamed');
+    }
+  });
+  it('a group name is one trimmed line of at most 40 characters', () => {
+    expect(cleanGroup('  Q3   review \n')).toBe('Q3 review');
+    expect(cleanGroup('x'.repeat(60))).toHaveLength(40);
+    expect(cleanGroup(undefined)).toBe('');
+    expect(cleanGroup(3)).toBe('');
   });
 });

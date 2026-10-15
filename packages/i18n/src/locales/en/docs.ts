@@ -8,7 +8,6 @@ export default {
     words_other: '{{count}} words',
     importLabel: 'Doc',
     layout: 'Layout',
-    export: 'Export',
     comments: 'Comments',
     journal: 'History',
     tabs: 'Tabs',
@@ -65,12 +64,6 @@ export default {
     link: 'Link',
     linkPrompt: 'Link address',
     comment: 'Comment',
-  },
-  export: {
-    tabMarkdown: 'This tab (Markdown)',
-    docMarkdown: 'Whole doc (Markdown)',
-    docHtml: 'Whole doc (HTML)',
-    print: 'Print / save as PDF',
   },
   settings: {
     headingFont: 'Heading font',

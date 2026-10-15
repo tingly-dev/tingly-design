@@ -204,7 +204,8 @@ async def main():
         # --- a new piece, in the size picked -----------------------------------------------------------
         await pg.goto(BASE + '/')
         await pg.evaluate("localStorage.removeItem('dc.motionSizes')")
-        await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="motion"] .mi').click()
         dlg = pg.locator('[role=dialog]')
         check('the new-motion dialog asks for a size, 16:9 the first time', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')
         check('the sizes are the presets and a custom one', await dlg.locator('.szopt').count() == 7)
@@ -227,7 +228,8 @@ async def main():
 
         # the last size is the next default; a custom one is kept in the person's own
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="motion"] .mi').click()
         check('the next piece starts in the size used last', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'tall')
         await dlg.locator('.szopt[data-size=custom]').click()
         await dlg.locator('input[aria-label="宽（像素）"]').fill('1280')
@@ -239,7 +241,8 @@ async def main():
         made = json.load(open(os.path.join(REPO, 'projects/zz-motion-2/motion.json')))
         check('a custom size is written as its own format', made['formats'] == {'s1280x720': {'size': [1280, 720]}}, str(made['formats']))
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="motion"] .mi').click()
         check('and kept as the person\'s own size, picked by default', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'mine')
         await dlg.locator('.szx').click()
         check('which they can remove', await dlg.locator('.szmine').count() == 0 and await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')

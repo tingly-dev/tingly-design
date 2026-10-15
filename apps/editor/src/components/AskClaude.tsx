@@ -6,7 +6,7 @@ import { keepAttachments, useAttachments } from '../attachments';
 import { toast, useStore } from '../store';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
-import { BarPill, BarTools, ContextChip, HistoryList } from './AgentBar';
+import { BarPill, BarTools, ContextChip, DockHost, DockTab, HistoryList, useDock, useDockKeys } from './AgentBar';
 import { Send, Stop } from './icons';
 
 /**
@@ -35,6 +35,8 @@ export function AskClaude({
   const collapsed = useStore((s) => s.barCollapsed);
   const historyOpen = useStore((s) => s.historyOpen);
   const box = useRef<HTMLTextAreaElement>(null);
+  const { docked, mode } = useDock();
+  useDockKeys(box);
   useAutoGrow(box, text);
   const active = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
   const [keeping, setKeeping] = useState(false);
@@ -73,61 +75,67 @@ export function AskClaude({
     setText(p);
     requestAnimationFrame(() => box.current?.focus());
   };
-  if (collapsed)
+  if (collapsed && !docked)
     return (
       <div className="dsask collapsed" role="region" aria-label={t('prompt.askClaude.label')}>
         <BarPill />
       </div>
     );
   return (
-    <div
-      className={`dsask${attach.over ? ' dropping' : ''}`}
-      role="region"
-      aria-label={t('prompt.askClaude.label')}
-      onDragOver={attach.handlers.onDragOver}
-      onDragLeave={attach.handlers.onDragLeave}
-      onDrop={attach.handlers.onDrop}
-    >
-      {historyOpen ? <HistoryList onReuse={reuse} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />}
-      <div className="head">
-        <ContextChip target="claude" />
-        <BarTools />
-      </div>
-      <AttachTray items={attach.items} onRemove={attach.remove} />
-      <AttachButton onFiles={(f) => void attach.add(f)} />
-      <textarea
-        ref={box}
-        rows={1}
-        value={text}
-        placeholder={health?.claudeCli === false ? t('prompt.bar.noClaudeCli') : (placeholder ?? t('prompt.askClaude.placeholder'))}
-        aria-label={t('prompt.bar.request')}
-        onChange={(e) => setText(e.target.value)}
-        onPaste={attach.handlers.onPaste}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            void send();
-          }
-        }}
-      />
-      {active ? (
-        <button className="btn outline" onClick={() => stopRun({ kind: 'delegate', id: active.id })}>
-          <Stop /> {t('common.stop')}
-        </button>
-      ) : (
-        <button className="btn primary" onClick={() => void send()} disabled={!text.trim() || keeping || health?.claudeCli === false}>
-          <Send /> {t('common.send')}
-        </button>
-      )}
-      {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
-      {blocked ? (
-        <div className="prompt-hint warn" role="status">
-          {t('prompt.bar.busyClaude')}
+    <DockHost docked={docked}>
+      <div
+        className={`dsask${docked ? ` agent-dock ${mode}` : ''}${attach.over ? ' dropping' : ''}`}
+        role="region"
+        aria-label={t('prompt.askClaude.label')}
+        onDragOver={attach.handlers.onDragOver}
+        onDragLeave={attach.handlers.onDragLeave}
+        onDrop={attach.handlers.onDrop}
+      >
+        {docked && mode === 'auto' && <DockTab />}
+        {historyOpen ? <HistoryList onReuse={reuse} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />}
+        <div className="head">
+          <ContextChip target="claude" />
+          <BarTools />
         </div>
-      ) : (
-        text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
-      )}
-    </div>
+        <AttachTray items={attach.items} onRemove={attach.remove} />
+        <div className="body">
+          <AttachButton onFiles={(f) => void attach.add(f)} />
+          <textarea
+            ref={box}
+            rows={1}
+            value={text}
+            placeholder={health?.claudeCli === false ? t('prompt.bar.noClaudeCli') : (placeholder ?? t('prompt.askClaude.placeholder'))}
+            aria-label={t('prompt.bar.request')}
+            onChange={(e) => setText(e.target.value)}
+            onPaste={attach.handlers.onPaste}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Escape' && docked && mode === 'auto') e.currentTarget.blur();
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+          />
+          {active ? (
+            <button className="btn outline" onClick={() => stopRun({ kind: 'delegate', id: active.id })}>
+              <Stop /> {t('common.stop')}
+            </button>
+          ) : (
+            <button className="btn primary" onClick={() => void send()} disabled={!text.trim() || keeping || health?.claudeCli === false}>
+              <Send /> {t('common.send')}
+            </button>
+          )}
+        </div>
+        {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
+        {blocked ? (
+          <div className="prompt-hint warn" role="status">
+            {t('prompt.bar.busyClaude')}
+          </div>
+        ) : (
+          text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
+        )}
+      </div>
+    </DockHost>
   );
 }

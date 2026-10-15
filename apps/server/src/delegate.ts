@@ -7,6 +7,7 @@ import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
 import { projectDir } from './store';
 import { publish } from './hub';
+import { logDebug, logInfo, logWarn } from './log';
 import { claudeLaunch } from './aiconfig';
 
 /**
@@ -40,6 +41,7 @@ Edit only files inside the deck folder you are given, with your Edit and Write t
 To add a slide, write its file and add its id to "order" in deck.json; to remove one, take it out of "order" and tell the person to delete the file in the editor (you cannot delete files).
 Ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements of the slide file; they are never in the files.
 The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
+An <x-embed src="uploads/…/X.dc.html"> is an artboard imported from a canvas (listed in deck.json "imports"): set its look through its data-props JSON, never edit the copy under uploads/, and don't point src anywhere else.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 const DS_SYSTEM = `You are editing a design system stored as files. A system folder holds design-system.json (the index: title, namespace, asset groups), tokens.json (colours per theme, type, spacing, radius, shadow), README.md (the brand book) and other *.md sections, components/<Comp>/README.md and preview.html, components/bundle.js and bundle.css, assets/<Group>/ and fonts/.
@@ -68,6 +70,7 @@ Before you change any file, read .claude/skills/motion/SKILL.md in the current d
 Edit only files inside the motion folder you are given, with your Edit and Write tools. Change only what the request asks; read each file right before you edit it.
 Write timing at reading pace; to make the whole piece faster or slower, change "speed" in motion.json instead of every attribute. To add a scene, write its file and add its id to "order"; a cover scene is named by "cover" and stays out of "order".
 The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
+An <x-embed src="uploads/…/X.dc.html" data-seek> is an artboard imported from a canvas (listed in motion.json "imports"), drawn frame by frame from the scene's time: keep data-seek, set its look through its data-props JSON, never edit the copy under uploads/, and don't point src anywhere else.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Running Claude Code processes by run id, stopped with the server. */
@@ -148,6 +151,10 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
   publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });
 
+  const started = Date.now();
+  let steps = 0;
+  const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0 };
+  logInfo('delegate.start', meta);
   const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, ...launch.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
   children.set(id, {
@@ -185,6 +192,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
             if (part.type === 'text' && part.text?.trim()) {
               publish(project, { type: 'delegate', id, state: 'progress', text: part.text.trim().slice(0, 300) });
             } else if (part.type === 'tool_use') {
+              steps++;
+              logDebug('delegate.step', { run: id, tool: String(part.name ?? ''), n: steps });
               const step = describeTool(String(part.name ?? ''), part.input ?? {}, ROOT, absDir);
               publish(project, { type: 'delegate', id, state: 'progress', step });
             }
@@ -213,6 +222,10 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
       if (n <= 0) activeDelegates.delete(project);
       else activeDelegates.set(project, n);
     }, 1500);
+    const outcome = stopped ? 'stopped' : ok ? 'done' : 'error';
+    const fields = { ...meta, outcome, ms: Date.now() - started, steps };
+    if (outcome === 'error') logWarn('delegate.finish', { ...fields, error: text.slice(0, 300) });
+    else logInfo('delegate.finish', fields);
     publish(project, { type: 'delegate', id, state: stopped ? 'stopped' : ok ? 'done' : 'error', text: stopped ? undefined : text });
   };
   child.on('error', (e) => finish(false, e.message));

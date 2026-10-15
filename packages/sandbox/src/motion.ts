@@ -7,8 +7,10 @@
  * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
  */
 import { resolveSrc, urlsAgainst } from './urls';
-import { attrsForFormat, drawSlideArt, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
+import { attrsForFormat, boardFrameDoc, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
+import type { ExportOutcome, ExportRequest } from './motionExport';
+import type { AudioClip } from '@dc/export';
 
 export interface MountOptions {
   motion: MotionJson;
@@ -20,7 +22,20 @@ export interface MountOptions {
   speed?: number;
   /** Where the project's files are served: relative src and url() (uploads/…) resolve against it. */
   base?: string;
+  /** Artboards the scenes embed (`<x-embed src="uploads/…/X.dc.html">`) and the siblings they mount, by path. */
+  files?: Record<string, string>;
+  /** Where those artboards' runtime comes from: its URL (default: runtime.js beside this script) or its text, for a page that stands alone. */
+  boardRuntime?: { src: string } | { inline: string };
 }
+
+/** The folder this script was loaded from, where runtime.js sits too. */
+const SCRIPT_DIR = (() => {
+  try {
+    return new URL('.', (document.currentScript as HTMLScriptElement | null)?.src ?? location.href).href;
+  } catch {
+    return '';
+  }
+})();
 
 export interface MotionStage {
   width: number;
@@ -32,6 +47,8 @@ export interface MotionStage {
   speed: number;
   scenes: SceneWindow[];
   issues: { scene: string; message: string; level: string }[];
+  /** shader layers that could not draw (code: no-webgl2, shader, draw), as they report in */
+  effectErrors: { scene: string; code: string; detail: string }[];
   /** `ms` is video time; the authored time shown is `ms × speed`. */
   seek(ms: number): Promise<void>;
   play(from?: number, onTime?: (ms: number) => void): void;
@@ -48,6 +65,32 @@ interface Embed {
 const EMBED_HEAD = '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style>';
 
 let seekCounter = 0;
+
+/** The file this script was loaded from, so the exporter beside it can be fetched when needed. */
+const SELF = typeof document !== 'undefined' ? (document.currentScript as HTMLScriptElement | null)?.src : undefined;
+type FrameRequest = { t: number; scale?: number; fontCss?: string };
+type Exporter = {
+  exportVideo: (stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome>;
+  exportFrame: (stage: MotionStage, root: HTMLElement, req: FrameRequest) => Promise<Blob>;
+};
+let exporter: Promise<Exporter> | null = null;
+
+/** The exporter (video and picture), fetched on first use: it carries the encoders, which a player never needs. */
+function loadExporter(): Promise<Exporter> {
+  const w = window as unknown as { dcMotionExport?: Exporter };
+  exporter ??= new Promise((resolve, reject) => {
+    if (w.dcMotionExport) return resolve(w.dcMotionExport);
+    if (!SELF) return reject(new Error('the exporter is not loaded'));
+    const el = document.createElement('script');
+    el.src = SELF.replace(/[^/]*$/, 'export.js');
+    el.onload = () => (w.dcMotionExport ? resolve(w.dcMotionExport) : reject(new Error('the exporter did not start')));
+    el.onerror = () => ((exporter = null), reject(new Error('the exporter could not be loaded')));
+    document.head.appendChild(el);
+  });
+  return exporter;
+}
+const exportVideo = async (stage: MotionStage, root: HTMLElement, req: ExportRequest) => (await loadExporter()).exportVideo(stage, root, req);
+const exportFrame = async (stage: MotionStage, root: HTMLElement, req: FrameRequest) => (await loadExporter()).exportFrame(stage, root, req);
 
 export async function mount(opts: MountOptions): Promise<MotionStage> {
   const { motion, root } = opts;
@@ -96,6 +139,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
   const anims: SceneAnim[] = [];
   const embeds: Embed[] = [];
   const issues: MotionStage['issues'] = [];
+  const effectErrors: MotionStage['effectErrors'] = [];
 
   parsed.forEach(({ id, section }, i) => {
     const win = timeline.scenes[i];
@@ -119,6 +163,12 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       const frame = document.createElement('iframe');
       frame.setAttribute('sandbox', 'allow-scripts');
       frame.setAttribute('title', 'embed');
+      const src = x.getAttribute('src') ?? '';
+      if (isBoardEmbedPath(src)) {
+        const board = mountBoard(x as HTMLElement, frame, src, opts);
+        if (board) embeds.push({ frame, sceneStart: win.start, ready: board });
+        continue;
+      }
       const seekable = x.hasAttribute('data-seek');
       const ready = seekable
         ? new Promise<void>((resolve) => {
@@ -132,7 +182,27 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
             setTimeout(resolve, 3000);
           })
         : Promise.resolve();
-      frame.srcdoc = EMBED_HEAD + html + (seekable ? SEEK_BRIDGE : '');
+      // a shader layer that cannot draw says why: the editor words it, the piece plays on without the layer
+      if (seekable) {
+        window.addEventListener('message', (e) => {
+          if (e.source !== frame.contentWindow || e.data?.dcMotion !== 'effect-error') return;
+          const err = { scene: id, code: String(e.data.code ?? ''), detail: String(e.data.detail ?? '') };
+          effectErrors.push(err);
+          window.parent.postMessage({ dcm: 'effect-error', ...err }, '*');
+        });
+      }
+      const markup = html + (seekable ? SEEK_BRIDGE : '');
+      if (/^https?:/.test(SCRIPT_DIR)) {
+        // the stage's own CSP forbids inline scripts and a srcdoc frame inherits it, so a shader's runtime never ran:
+        // the embed lives in its own page (inline scripts, no network) and is handed its markup once it is up, as in slides
+        frame.src = `${SCRIPT_DIR}embed.html`;
+        const onUp = (e: MessageEvent) => {
+          if (e.source !== frame.contentWindow || e.data?.dcEmbed !== 'ready') return;
+          window.removeEventListener('message', onUp);
+          frame.contentWindow?.postMessage({ dcEmbed: 'html', html: markup }, '*');
+        };
+        window.addEventListener('message', onUp);
+      } else frame.srcdoc = EMBED_HEAD + markup;
       x.appendChild(frame);
       if (seekable) embeds.push({ frame, sceneStart: win.start, ready });
     }
@@ -167,6 +237,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     speed,
     scenes: timeline.scenes,
     issues,
+    effectErrors,
     async seek(ms) {
       const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
@@ -263,6 +334,8 @@ function applyFormat(section: Element, format: string, formats: string[]) {
 function resolveUrls(section: Element, base: string) {
   for (const el of [section, ...Array.from(section.querySelectorAll('*'))]) {
     for (const name of ['src', 'poster', 'href']) {
+      // an artboard embed's src names a project file the frame is handed, not a URL
+      if (name === 'src' && el.tagName.toLowerCase() === 'x-embed') continue;
       const v = el.getAttribute(name);
       if (v === null || (name === 'href' && el.tagName.toLowerCase() !== 'image')) continue;
       const r = resolveSrc(v, base) as string;
@@ -274,6 +347,42 @@ function resolveUrls(section: Element, base: string) {
       if (r !== style) el.setAttribute('style', r);
     }
   }
+}
+
+/**
+ * An artboard embed: the artboard runtime in the frame, given the artboard and
+ * the embed's tweaks once it is up, scaled to cover the embed. Resolves when it
+ * can be sought (a still artboard never asks to be, so the wait is short).
+ */
+function mountBoard(x: HTMLElement, frame: HTMLIFrameElement, src: string, opts: MountOptions): Promise<void> | null {
+  const files = opts.files ?? {};
+  const source = files[src];
+  if (source === undefined) return null;
+  const size = boardSize(parseDc(source).props) ?? [1280, 720];
+  const box: [number, number] = [x.offsetWidth || parseFloat(x.style.width) || size[0], x.offsetHeight || parseFloat(x.style.height) || size[1]];
+  const fit = coverFit(size, box);
+  x.style.overflow = 'hidden';
+  frame.style.cssText = `position:absolute;left:0;top:0;width:${size[0]}px;height:${size[1]}px;border:0;background:transparent;transform:translate(${fit.x}px,${fit.y}px) scale(${fit.scale});transform-origin:0 0`;
+  const ready = new Promise<void>((resolve) => {
+    let rendered = false;
+    const onMsg = (e: MessageEvent) => {
+      if (e.source !== frame.contentWindow) return;
+      if (e.data?.dc === 'ready' && !rendered) {
+        rendered = true;
+        frame.contentWindow?.postMessage({ dc: 'render', file: src, source, files, props: embedProps(x.getAttribute('data-props') ?? undefined), mode: 'play', selected: null, base: opts.base }, '*');
+        // a still artboard never says embed-ready: give it a moment to draw
+        setTimeout(resolve, 600);
+      } else if (e.data?.dcMotion === 'embed-ready') {
+        window.removeEventListener('message', onMsg);
+        resolve();
+      }
+    };
+    window.addEventListener('message', onMsg);
+    setTimeout(resolve, 5000);
+  });
+  frame.srcdoc = boardFrameDoc(opts.boardRuntime ?? { src: `${SCRIPT_DIR}runtime.js` });
+  x.appendChild(frame);
+  return ready;
 }
 
 function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
@@ -293,45 +402,75 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
   });
 }
 
-(window as unknown as { dcMotion: unknown }).dcMotion = { mount };
+(window as unknown as { dcMotion: unknown }).dcMotion = { mount, exportVideo };
 
 /**
  * In the editor the runtime runs in a sandboxed frame (`sandboxDoc(origin, 'motion')`)
  * and the editor drives it over postMessage: load a project, seek, play, pause.
  */
 type HostMsg =
-  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
+  | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; files?: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
-  | { dcm: 'pause' };
+  | { dcm: 'pause' }
+  | ({ dcm: 'export'; id: string; fontCss?: string; audio?: AudioClip[] } & Pick<ExportRequest, 'format' | 'width' | 'height' | 'fps' | 'quality' | 'from' | 'to'>)
+  | { dcm: 'export-cancel'; id: string }
+  | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
 
 if (typeof document !== 'undefined' && document.getElementById('dc-app') && window.parent !== window) {
   const root = document.getElementById('dc-app') as HTMLElement;
   let stage: MotionStage | null = null;
+  let stageBox: HTMLElement | null = null;
   let loading = 0;
+  const exporting = new Map<string, AbortController>();
   const post = (m: Record<string, unknown>) => window.parent.postMessage(m, '*');
   window.addEventListener('message', async (e: MessageEvent) => {
     if (e.source !== window.parent) return;
     const m = e.data as HostMsg;
     if (!m || typeof m !== 'object' || !('dcm' in m)) return;
-    if (m.dcm === 'load') {
+    if (m.dcm === 'export-cancel') {
+      exporting.get(m.id)?.abort();
+    } else if (m.dcm === 'export') {
+      if (!stage) return post({ dcm: 'export-error', id: m.id, code: 'no-stage' });
+      const ctl = new AbortController();
+      exporting.set(m.id, ctl);
+      const req: ExportRequest = { format: m.format, width: m.width, height: m.height, fps: m.fps, quality: m.quality, from: m.from, to: m.to, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
+      try {
+        const r = await exportVideo(stage, stageBox!, req);
+        const { blob, ...rest } = r;
+        post({ dcm: 'exported', id: m.id, blob, ...rest });
+      } catch (err) {
+        const name = err instanceof Error ? err.name : '';
+        post({ dcm: 'export-error', id: m.id, code: name === 'AbortError' ? 'aborted' : name === 'NoEncoderError' ? 'no-encoder' : 'failed', message: err instanceof Error ? err.message : String(err) });
+      } finally {
+        exporting.delete(m.id);
+      }
+    } else if (m.dcm === 'snapshot') {
+      if (!stage) return post({ dcm: 'snapshot-error', id: m.id, message: 'nothing is loaded' });
+      try {
+        post({ dcm: 'snapshot-done', id: m.id, blob: await exportFrame(stage, stageBox!, { t: m.t, fontCss: m.fontCss }) });
+      } catch (err) {
+        post({ dcm: 'snapshot-error', id: m.id, message: err instanceof Error ? err.message : String(err) });
+      }
+    } else if (m.dcm === 'load') {
       const n = ++loading;
       // loads overlap while files are still being written (a generation saves scene after scene);
       // each mounts into its own box, so a stale one finishing late can't wipe the newer one
       const box = document.createElement('div');
       root.appendChild(box);
       try {
-        const s = await mount({ motion: m.motion, scenes: m.scenes, format: m.format, speed: m.speed, root: box, base: m.base });
+        const s = await mount({ motion: m.motion, scenes: m.scenes, files: m.files, format: m.format, speed: m.speed, root: box, base: m.base });
         if (n !== loading) {
           s.destroy();
           return box.remove();
         }
         stage?.destroy();
         stage = s;
+        stageBox = box;
         for (const el of Array.from(root.children)) if (el !== box) el.remove();
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));
         if (at) await s.seek(at);
-        post({ dcm: 'loaded', width: s.width, height: s.height, duration: s.duration, speed: s.speed, fps: s.fps, scenes: s.scenes, issues: s.issues, t: at });
+        post({ dcm: 'loaded', width: s.width, height: s.height, duration: s.duration, speed: s.speed, fps: s.fps, scenes: s.scenes, issues: s.issues, effectErrors: s.effectErrors, t: at });
       } catch (err) {
         box.remove();
         if (n === loading) post({ dcm: 'error', message: err instanceof Error ? err.message : String(err) });

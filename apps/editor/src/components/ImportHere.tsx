@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { importErrorText } from '@dc/import';
-import { clipText, toast } from '../store';
+import { clipText, toast, useStore } from '../store';
+import { api } from '../api';
 import { t as tNow } from '../i18n';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { Menu, MenuItem } from './Menu';
-import { FileText, ImportI } from './icons';
+import { BoardPicker } from './BoardPicker';
+import { FileText, Frame, ImportI } from './icons';
 
 /**
  * Bringing outside material into the project that is open: one button, a
@@ -42,11 +45,26 @@ export function filesOf(picked: Picked, ...kinds: Material[]): Picked['files'] {
 export interface ImportTarget {
   /** what this kind takes; a pick holding none of it is refused with this list */
   accepts: Material[];
+  /**
+   * What this kind takes from another project: an artboard of a canvas, copied
+   * in by the server and then put on the page by `place` (see
+   * .design/import-from-project.md). Absent: the kind takes nothing from projects.
+   */
+  board?: {
+    /** one line, said where people pick an artboard */
+    readonly what: string;
+    /** put the imported copy on the page; resolves to what to tell the person */
+    place: (path: string, info: { size: [number, number]; moving: boolean; title: string }) => string;
+  };
   /** one line, said where people choose: what each material becomes here (in the language showing: a getter over t()) */
   what: string;
   /** do it; resolves to what to tell the person when it is done. `at` is where a drop landed, in screen px */
   run: (picked: Picked, at?: { x: number; y: number }) => Promise<string>;
 }
+
+/** The first item of an import menu: what it takes, by name ("Import HTML, SVG, image…"), not "Choose files…". */
+export const importFilesLabel = (t: TFunction, accepts: Material[]) =>
+  t('importer.here.importFiles', { list: accepts.map((m) => t(`importer.materialShort.${m}`)).join(t('importer.listSeparator')) });
 
 const busyText = (p: Picked) =>
   p.entry ? p.entry.split('/').pop()! : p.files.length === 1 ? p.files[0].path.split('/').pop()! : tNow('importer.here.files', { count: p.files.length });
@@ -63,11 +81,20 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
  * `label` is the open project's kind as a noun in the language showing
  * ("canvas" / "画布"), said as "Import into this {label}".
  */
-export function ImportHere({ target, label, button = 'icon' }: { target: ImportTarget; label: string; button?: 'icon' | 'text' | false }) {
+/** What a shared menu needs to start an import without drawing the button: open the pickers, say whether one is running. */
+export interface ImportControls {
+  chooseFiles(): void;
+  chooseFolder(): void;
+  /** open the artboard picker (only for a target with `board`) */
+  pickProject(): void;
+}
+
+export function ImportHere({ target, label, button = 'icon', controls }: { target: ImportTarget; label: string; button?: 'icon' | 'text' | false; controls?: MutableRefObject<ImportControls | null> }) {
   const { t: tr } = useTranslation();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dropping, setDropping] = useState(false);
   const [busy, setBusy] = useState('');
+  const [picking, setPicking] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dirRef = useRef<HTMLInputElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -96,6 +123,13 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
   };
 
   useEffect(() => dirRef.current?.setAttribute('webkitdirectory', ''), []);
+  useEffect(() => {
+    if (!controls) return;
+    controls.current = { chooseFiles: () => fileRef.current?.click(), chooseFolder: () => dirRef.current?.click(), pickProject: () => setPicking(true) };
+    return () => {
+      controls.current = null;
+    };
+  }, [controls]);
   useEffect(() => {
     let depth = 0;
     const end = () => {
@@ -185,9 +219,9 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
       {menu && (
         <Menu x={menu.x} y={menu.y} label={tr('importer.here.button')} onClose={() => setMenu(null)}>
           <div className="head">{tr('importer.here.into', { label })}</div>
-          <div className="mhint">{target.what}</div>
           <MenuItem
-            label={tr('importer.here.chooseFiles')}
+            label={importFilesLabel(tr, target.accepts)}
+            hint={`${target.what} ${target.accepts.includes('drawing') || target.accepts.includes('image') ? tr('importer.here.dragOrPaste') : tr('importer.here.drag')}`}
             icon={<FileText />}
             onSelect={() => {
               setMenu(null);
@@ -196,7 +230,7 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
           />
           {(target.accepts.includes('page') || target.accepts.includes('markdown')) && (
             <MenuItem
-              label={tr('importer.here.chooseFolder')}
+              label={tr('importer.here.importFolder')}
               icon={<FileText />}
               onSelect={() => {
                 setMenu(null);
@@ -204,7 +238,16 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
               }}
             />
           )}
-          <div className="mhint faint">{target.accepts.includes('drawing') || target.accepts.includes('image') ? tr('importer.here.dragOrPaste') : tr('importer.here.drag')}</div>
+          {target.board && (
+            <MenuItem
+              label={tr('importer.here.fromProject')}
+              icon={<Frame />}
+              onSelect={() => {
+                setMenu(null);
+                setPicking(true);
+              }}
+            />
+          )}
         </Menu>
       )}
       <input ref={fileRef} type="file" multiple hidden accept={accept} onChange={(e) => fromInput(e.currentTarget)} />
@@ -216,6 +259,26 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
             <span>{target.what}</span>
           </div>
         </div>
+      )}
+      {picking && target.board && (
+        <BoardPicker
+          what={target.board.what}
+          onClose={() => setPicking(false)}
+          onPick={async (from, board, title, moving) => {
+            setPicking(false);
+            setBusy(title);
+            try {
+              const project = useStore.getState().project;
+              if (!project) return;
+              const r = await api.importBoard(project, from, board);
+              toast(live.current.target.board!.place(r.record.path, { size: r.size, moving, title }));
+            } catch (e) {
+              toast((e as Error).message, 'error');
+            } finally {
+              setBusy('');
+            }
+          }}
+        />
       )}
       {busy && (
         <div className="importbusy" role="status">

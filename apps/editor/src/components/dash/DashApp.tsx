@@ -24,8 +24,11 @@ import {
   want,
   dashImport,
 } from '../../dash';
-import { ImportHere } from '../ImportHere';
-import { ProjectMenu } from '../ProjectMenu';
+import { FileMenu } from '../FileMenu';
+import { Picture } from '../icons';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
+import { CodeI, Database, Moon, Refresh, Sun, Target } from '../icons';
+import { fileStem, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
@@ -33,6 +36,18 @@ import { CodePanel } from './CodePanel';
 import { replaceUrl } from '../../host';
 import { SERVER } from '../../base';
 import { currentLanguage, htmlLang } from '../../i18n';
+
+const imageWaits = new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>();
+
+/** The page as drawn now, as a PNG, made inside its frame. */
+function pageImage(scale = 2): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const id = Math.random().toString(36).slice(2);
+    const timer = setTimeout(() => (imageWaits.delete(id), reject(new Error('timeout'))), 20000);
+    imageWaits.set(id, { ok: (b) => (clearTimeout(timer), resolve(b)), fail: (e) => (clearTimeout(timer), reject(e)) });
+    postFrame({ dc: 'dash-export', id, scale });
+  });
+}
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
 function PageFrame() {
@@ -103,6 +118,13 @@ function PageFrame() {
         case 'dash-pick':
           useDash.setState({ pick: m.pick, open: m.pick.sources[0] ?? null, side: 'sources' });
           break;
+        case 'dash-exported': {
+          const w = imageWaits.get(m.id);
+          imageWaits.delete(m.id);
+          if (m.blob) w?.ok(m.blob);
+          else w?.fail(new Error(m.error ?? 'failed'));
+          break;
+        }
         case 'key':
           if (m.key === 'Escape' && d.mode === 'data') setMode('page');
           break;
@@ -152,30 +174,8 @@ function Watch() {
 function Title() {
   const { t } = useTranslation();
   const index = useDashIndex();
-  const [renaming, setRenaming] = useState(false);
-  if (renaming)
-    return (
-      <input
-        className="dashtitle"
-        autoFocus
-        defaultValue={index.title}
-        aria-label={t('dash.title.nameLabel')}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setRenaming(false);
-        }}
-        onBlur={(e) => {
-          setRenaming(false);
-          const v = e.currentTarget.value.trim();
-          if (v && v !== index.title) editDash((d) => (d.title = v), 'dashboard renamed');
-        }}
-      />
-    );
   return (
-    <h1 className="dashtitle" title={t('dash.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
-      {index.title}
-    </h1>
+    <ProjectTitle value={index.title} label={t('dash.title.nameLabel')} hint={t('dash.title.renameHint')} onRename={(v) => editDash((d) => (d.title = v), 'dashboard renamed')} />
   );
 }
 
@@ -232,33 +232,27 @@ export function DashApp() {
 
   return (
     <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('dash.bar.saving') : t('dash.bar.connected')) : t('dash.bar.offline')} />
+      <TopBar title={<Title />}>
         <Filters />
-        <div className="grow" />
-        <ImportHere target={dashImport} label={t('dash.kind')} button="text" />
-        <button className="btn ghost" onClick={refreshAll} title={t('dash.bar.refreshAllTitle')}>
-          {t('dash.bar.refresh')}
-        </button>
-        <button className={`btn ghost${mode === 'data' ? ' on' : ''}`} aria-pressed={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} title={t('dash.bar.dataModeTitle')}>
-          {t('dash.bar.dataMode')}
-        </button>
-        <button className="btn ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={t('dash.bar.toggleTheme')}>
-          {theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')}
-        </button>
-        <button className={`btn ghost${side === 'sources' ? ' on' : ''}`} aria-pressed={side === 'sources'} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })}>
-          {t('dash.sources.label')}
-          {problems ? <span className="badge">{problems}</span> : null}
-        </button>
-        <button className={`btn ghost${side === 'code' ? ' on' : ''}`} aria-pressed={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })}>
-          {t('dash.bar.code')}
-        </button>
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('dash.bar.journal')}
-        </button>
-      </header>
+        <BarButton icon={<Refresh />} label={t('dash.bar.refresh')} title={t('dash.bar.refreshAllTitle')} onClick={refreshAll} />
+        <BarButton icon={<Target />} label={t('dash.bar.dataMode')} title={t('dash.bar.dataModeTitle')} on={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} />
+        <BarButton icon={theme === 'dark' ? <Sun /> : <Moon />} label={t('dash.bar.toggleTheme')} title={theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+        <FileMenu
+          target={dashImport}
+          label={t('dash.kind')}
+          items={[
+            {
+              id: 'png',
+              label: t('common.transfer.label.png'),
+              hint: t('common.transfer.hint.dashPage'),
+              icon: <Picture />,
+              run: async () => void (await saveImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())),
+            },
+          ]}
+        />
+        <BarButton icon={<Database />} label={t('dash.sources.label')} on={side === 'sources'} badge={problems ? <span className="badge">{problems}</span> : null} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })} />
+        <BarButton icon={<CodeI />} label={t('dash.bar.code')} on={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })} />
+      </TopBar>
       <main className="dashmain">
         {mode === 'data' && <div className="dashhint">{t('dash.bar.dataModeHint')}</div>}
         <PageFrame />

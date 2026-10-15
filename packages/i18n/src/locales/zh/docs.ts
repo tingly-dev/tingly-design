@@ -10,7 +10,6 @@ export default {
     words_other: '{{count}} 字',
     importLabel: '文档',
     layout: '版式',
-    export: '导出',
     comments: '评论',
     journal: '记录',
     tabs: '标签页',
@@ -67,12 +66,6 @@ export default {
     link: '链接',
     linkPrompt: '链接地址',
     comment: '评论',
-  },
-  export: {
-    tabMarkdown: '这个标签页（Markdown）',
-    docMarkdown: '整个文档（Markdown）',
-    docHtml: '整个文档（HTML）',
-    print: '打印 / 存为 PDF',
   },
   settings: {
     headingFont: '标题字体',

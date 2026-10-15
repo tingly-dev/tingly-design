@@ -16,7 +16,11 @@ import {
   LOCK_ATTR,
   SLIDE_BASE_CSS,
   attrsForFormat,
+  boardTime,
+  embedProps,
+  isBoardEmbedPath,
   parseTime,
+  timeSpec,
   sceneBaseCss,
   paintLayer,
   parseDc,
@@ -32,7 +36,7 @@ import {
   type MotionStageInfo,
   type ToRuntime,
 } from '@dc/core';
-import { BUILD_CSS, XArt, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
+import { BUILD_CSS, XArt, XBoard, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
 import { urlsAgainst } from './urls';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 import { msg } from './msg';
@@ -268,7 +272,22 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
       case 'x-icon':
       case 'x-connector':
         return <XArt key={key} tag={el.tag} props={sp()} attrs={Object.fromEntries(el.attrs.map((x) => [x.name, String(interp(x.value, scope) ?? '')]))} />;
-      case 'x-embed':
+      case 'x-embed': {
+        const src = a('src');
+        if (src && isBoardEmbedPath(src))
+          return (
+            <XBoard
+              key={key}
+              props={sp()}
+              src={src}
+              files={ctx.files}
+              tweaks={embedProps(a('data-props'))}
+              base={ctx.slide.base}
+              mode={ctx.mode}
+              still={ctx.slide.still}
+              live={ctx.mode === 'play' && !ctx.motion}
+            />
+          );
         return (
           <XEmbed
             key={key}
@@ -278,6 +297,7 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
             still={ctx.slide.still}
           />
         );
+      }
       case 'img': {
         const p = sp();
         p.src = resolveSrc(p.src, ctx.slide.base);
@@ -415,6 +435,8 @@ interface State {
   step: number;
   /** a motion scene on the editor stage */
   motion: MotionStageInfo | null;
+  /** an artboard that moves with time, drawn inside an embed: the time its host last sought (null = its still) */
+  time: number | null;
   ctx(): Ctx;
 }
 
@@ -432,6 +454,7 @@ const current: State = {
   base: '',
   step: 0,
   motion: null,
+  time: null,
   ctx() {
     return {
       tagged: true,
@@ -453,6 +476,11 @@ let committedSource = '';
 function Committed({ source }: { source: string }) {
   React.useLayoutEffect(() => {
     committedSource = source;
+    if (!boardReady && window.parent !== window && !current.slide && timeSpec(docFor(source).props)) {
+      // a moving artboard inside an embed: its host may seek it now
+      boardReady = true;
+      post({ dcMotion: 'embed-ready' } as unknown as FromRuntime);
+    }
     if (current.slide && current.mode === 'play') post({ dc: 'steps', total: showSteps(mount, current.step) });
   }, [source]);
   return null;
@@ -492,7 +520,10 @@ function render() {
   const doc = docFor(current.source);
   post({ dc: 'error', message: doc.errors.length ? doc.errors.join('\n') : null });
   if (doc.slide) slideHead();
-  const body = <DcComponent key={current.source} source={current.source} file={current.file} props={current.props} ctx={current.ctx()} />;
+  // an artboard that declares $time draws from a time prop: the one its host sought, else what the editor set, else its still
+  const spec = doc.slide ? null : timeSpec(doc.props);
+  const props = spec ? { ...current.props, time: boardTime(spec, current.time ?? (current.props.time as number | undefined)) } : current.props;
+  const body = <DcComponent key={current.source} source={current.source} file={current.file} props={props} ctx={current.ctx()} />;
   const tree = (
     <Boundary key={renderKey} file={current.file}>
       {doc.slide ? <div className="dc-slide-host">{body}</div> : body}
@@ -1302,19 +1333,28 @@ window.addEventListener(
 
 // ----------------------------------------------------------------- export
 
+/** What went wrong in a picture: html-to-image rejects with the failing <img>'s load Event, which has no message of its own. */
+function exportError(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  return typeof err === 'string' && err ? err : 'the picture could not be made';
+}
+
 async function exportPng(id: string, scale: number) {
+  const prevSel = current.selected;
   try {
     const node = mount.querySelector('[data-dc-tid]') as HTMLElement | null;
     if (!node) throw new Error('nothing to export');
+    const broken = [...node.querySelectorAll('img')].find((i) => i.complete && !i.naturalWidth && i.getAttribute('src'));
+    if (broken) throw new Error(`could not load the picture ${broken.getAttribute('src')!.slice(0, 120)}`);
     const { toPng } = await import('html-to-image');
-    const prevSel = current.selected;
     current.selected = null;
     overlay.innerHTML = '';
     const dataUrl = await toPng(node, { pixelRatio: scale, skipFonts: true, cacheBust: false });
-    current.selected = prevSel;
     post({ dc: 'exported', id, dataUrl });
   } catch (err) {
-    post({ dc: 'exported', id, error: (err as Error).message || String(err) });
+    post({ dc: 'exported', id, error: exportError(err) });
+  } finally {
+    current.selected = prevSel;
   }
 }
 
@@ -1378,8 +1418,22 @@ function onMessage(m: ToRuntime) {
   }
 }
 
+/**
+ * An artboard drawn inside an embed (a slide's or a motion scene's): its host
+ * seeks it like any seekable embed. It draws that time at once and answers
+ * once the frame has it, so a render waits for the right picture.
+ */
+let boardReady = false;
+function seekBoard(t: number, n: number) {
+  current.time = t;
+  if (current.source && !docFor(current.source).slide) flushSync(render);
+  requestAnimationFrame(() => post({ dcMotion: 'seeked', n } as unknown as FromRuntime));
+}
+
 window.addEventListener('message', (e) => {
   if (e.source !== window.parent) return;
+  const d = e.data as { dcMotion?: string; t?: unknown; n?: unknown } | null;
+  if (d && d.dcMotion === 'seek' && typeof d.t === 'number') return seekBoard(d.t, typeof d.n === 'number' ? d.n : -1);
   const m = e.data as ToRuntime;
   if (!m || typeof m !== 'object' || !('dc' in m)) return;
   onMessage(m);

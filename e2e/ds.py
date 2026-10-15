@@ -53,7 +53,7 @@ async def main():
 
         # --- overview -------------------------------------------------------------
         await pg.goto(BASE + '/?p=tingly-ds&v=overview')
-        await expect(pg.locator('.dsnav h1')).to_have_text('Tingly Design System')
+        await expect(pg.locator('.topbar h1.dashtitle')).to_have_text('Tingly Design System')
         await expect(pg.locator('.md h1').first).to_have_text('Tingly Design System')
         await expect(pg.locator('.glance .specimen')).to_be_visible()
         check('the overview shows the palette by token name', await pg.locator('.gpalette .gsw').count() == 12)
@@ -140,11 +140,12 @@ async def main():
 
         # --- a new system from the picker ---------------------------------------------------
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="design-system"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="design-system"] .mi').click()
         await pg.locator('[role=dialog] .where .linkish').click()
         await pg.locator('[role=dialog] input[aria-label="新项目名称"]').fill('zz-ds')
         await pg.locator('[role=dialog] button[type="submit"]').click()
-        await expect(pg.locator('.dsnav h1')).to_have_text('zz-ds')
+        await expect(pg.locator('.topbar h1.dashtitle')).to_have_text('zz-ds')
         check('a new system starts small and clean', await pg.locator('.navi.warn').count() == 0 and os.path.exists(os.path.join(REPO, 'projects/zz-ds/tokens.css')))
 
         # --- installing into the deck -----------------------------------------------------

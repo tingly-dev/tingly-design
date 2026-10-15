@@ -6,7 +6,7 @@ import { delegateToClaude, runFastEdit, stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
-import { BarPill, BarTools, ContextChip, HistoryList } from './AgentBar';
+import { BarPill, BarTools, ContextChip, DockHost, DockTab, HistoryList, useDock, useDockKeys } from './AgentBar';
 import { Send, Stop } from './icons';
 import { slideIdOf } from '@dc/core';
 
@@ -27,6 +27,8 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
   const attach = useAttachments();
   const collapsed = useStore((s) => s.barCollapsed);
   const historyOpen = useStore((s) => s.historyOpen);
+  const { docked, mode } = useDock();
+  useDockKeys(box);
 
   useEffect(() => {
     if (health && !health.fastEdit && health.claudeCli && target === 'ai') setTarget('claude');
@@ -135,7 +137,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     else if (canvas.boards[f]) focusBoard(f);
   };
 
-  if (collapsed)
+  if (collapsed && !docked)
     return (
       <div className="prompt collapsed" role="region" aria-label={t('prompt.bar.label')}>
         <BarPill />
@@ -143,14 +145,16 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     );
 
   return (
+    <DockHost docked={docked}>
     <div
-      className={`prompt${attach.over ? ' dropping' : ''}`}
+      className={`prompt${docked ? ` agent-dock ${mode}` : ''}${attach.over ? ' dropping' : ''}`}
       role="region"
       aria-label={t('prompt.bar.label')}
       onDragOver={attach.handlers.onDragOver}
       onDragLeave={attach.handlers.onDragLeave}
       onDrop={attach.handlers.onDrop}
     >
+      {docked && mode === 'auto' && <DockTab />}
       {historyOpen ? <HistoryList onReuse={reuse} /> : <RunFeed onReuse={reuse} onOpen={open} />}
       <div className="head">
         <span className="target" title={label}>
@@ -207,6 +211,7 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
           onPaste={attach.handlers.onPaste}
           onKeyDown={(e) => {
             e.stopPropagation();
+            if (e.key === 'Escape' && docked && mode === 'auto') e.currentTarget.blur();
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void submit();
@@ -232,5 +237,6 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
         text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
       )}
     </div>
+    </DockHost>
   );
 }

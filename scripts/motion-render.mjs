@@ -81,12 +81,36 @@ const coverScene = coverAt == null && typeof coverOpt === 'string' && /^[a-z0-9]
 const coverHtml = coverScene ? inlineFiles(readFileSync(join(dir, 'scenes', `${coverScene}.html`), 'utf8').replace(NOTES, '')) : null;
 if (coverOpt && coverAt == null && !coverScene) console.error(`cover "${coverOpt}" is neither a time nor a scene file; no cover`);
 const hasCover = coverAt != null || !!coverScene;
+/**
+ * Artboards the scenes embed (imported from a canvas: <x-embed src="uploads/…/X.dc.html">)
+ * and the siblings they mount, with their pictures inlined; the player runs each with the
+ * artboard runtime, written into the page (see .design/import-from-project.md).
+ */
+const boardFiles = {};
+{
+  const todo = [];
+  for (const html of [...Object.values(scenes), coverHtml ?? '']) for (const m of html.matchAll(/<x-embed\b[^>]*?\bsrc\s*=\s*"(uploads\/[^"]+\.dc\.html)"/g)) todo.push(m[1]);
+  while (todo.length) {
+    const f = todo.pop();
+    const p = resolve(dir, f);
+    if (f in boardFiles || !p.startsWith(dir + '/') || !existsSync(p)) continue;
+    const src = readFileSync(p, 'utf8');
+    boardFiles[f] = inlineFiles(src);
+    const at = f.slice(0, f.lastIndexOf('/') + 1);
+    for (const m of src.matchAll(/<dc-import\b[^>]*\bname\s*=\s*"([^"{}]+)"/g)) {
+      const n = m[1].trim();
+      todo.push(n.startsWith('/') ? `${n.slice(1)}.dc.html` : `${at}${n}.dc.html`);
+    }
+  }
+}
 const runtimePath = join(REPO, 'packages/sandbox/dist/motion.js');
 if (!existsSync(runtimePath)) {
   console.error('packages/sandbox/dist/motion.js is missing: run `pnpm --filter @dc/sandbox build` first');
   process.exit(1);
 }
 const runtime = readFileSync(runtimePath, 'utf8');
+const boardRuntimePath = join(REPO, 'packages/sandbox/dist/runtime.js');
+const boardRuntime = Object.keys(boardFiles).length && existsSync(boardRuntimePath) ? { inline: readFileSync(boardRuntimePath, 'utf8') } : undefined;
 const formats = (opt('format', '') || Object.keys(motion.formats ?? { wide: 1 }).join(',')).split(',').filter(Boolean);
 const scale = Math.max(1, Math.min(4, Number(opt('scale', '1')) || 1));
 const speed = opt('speed', '') ? Number(opt('speed', '')) : undefined;
@@ -115,15 +139,15 @@ function pageHtml(player) {
     ? `body{margin:0;background:#111;color:#ddd;font:14px system-ui;display:flex;flex-direction:column;height:100vh}#wrap{flex:1;display:grid;place-items:center;overflow:hidden}#root,#dc-cover{grid-area:1/1}#bar{display:flex;gap:12px;align-items:center;padding:10px 16px;background:#1b1b1b}#scrub{flex:1}#issues{color:#f5a524;padding:0 16px 8px;white-space:pre-wrap}`
     : `html,body{margin:0;background:transparent}`;
   const boot = player
-    ? `const motion=${json(motion)},scenes=${json(scenes)},coverAt=${json(coverAt)},coverScene=${json(coverScene)},coverHtml=${json(coverHtml)};let stage,cover,started=false;const coverRoot=document.getElementById('dc-cover');const wrap=document.getElementById('wrap'),root=document.getElementById('root');
+    ? `const motion=${json(motion)},scenes=${json(scenes)},files=${json(boardFiles)},boardRuntime=${json(boardRuntime ?? null)}||undefined,coverAt=${json(coverAt)},coverScene=${json(coverScene)},coverHtml=${json(coverHtml)};let stage,cover,started=false;const coverRoot=document.getElementById('dc-cover');const wrap=document.getElementById('wrap'),root=document.getElementById('root');
 const fmt=document.getElementById('fmt'),scrub=document.getElementById('scrub'),time=document.getElementById('time'),play=document.getElementById('play');
 const spd=document.getElementById('spd'),base=motion.speed||1;for(const v of [...new Set([base,0.75,1,1.25,1.5,2])].sort((a,b)=>a-b)){const o=document.createElement('option');o.value=v;o.textContent=v+'×'+(v===base?' (project)':'');o.selected=v===base;spd.appendChild(o)}
 for(const f of Object.keys(motion.formats)){const o=document.createElement('option');o.value=f;o.textContent=f+' '+motion.formats[f].size.join('×');fmt.appendChild(o)}
 function fit(){if(!stage)return;const s=Math.min(wrap.clientWidth/stage.width,wrap.clientHeight/stage.height);for(const r of [root,coverRoot]){r.style.transform='scale('+s+')';r.style.transformOrigin='center'}}
 const uncover=()=>{if(!started){started=true;coverRoot.style.display='none'}};
 const show=t=>{scrub.value=t;time.textContent=(t/1000).toFixed(2)+' s / '+(stage.duration/1000).toFixed(2)+' s'};let playing=false;
-async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,format:f,speed:+spd.value,root});scrub.max=stage.duration;
-if(!started&&coverScene){cover=await dcMotion.mount({motion:{...motion,order:[coverScene]},scenes:{[coverScene]:coverHtml},format:f,root:coverRoot});cover.seek(cover.duration)}
+async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,files,boardRuntime,format:f,speed:+spd.value,root});scrub.max=stage.duration;
+if(!started&&coverScene){cover=await dcMotion.mount({motion:{...motion,order:[coverScene]},scenes:{[coverScene]:coverHtml},files,boardRuntime,format:f,root:coverRoot});cover.seek(cover.duration)}
 if(!started&&coverAt!=null)stage.seek(coverAt);fit();show(0);
 document.getElementById('issues').textContent=stage.issues.map(i=>i.level+': '+i.scene+' '+i.message).join('\\n')}
 fmt.onchange=spd.onchange=()=>{playing=false;play.textContent='Play';load(fmt.value)};addEventListener('resize',fit);
@@ -151,6 +175,7 @@ function encodeArgs(fps, w, h, seconds, file) {
   const a = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-'];
   const audio = (motion.audio ?? []).filter((x) => existsSync(join(dir, x.src)));
   for (const x of audio) a.push('-i', join(dir, x.src));
+  if (!audio.length) a.push('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo');
   const filters = [`[0:v]${scale > 1 ? `scale=${w}:${h}:flags=lanczos,` : ''}format=yuv420p[v]`];
   audio.forEach((x, i) => {
     const ms = Math.round((x.start ?? 0) * 1000);
@@ -158,7 +183,9 @@ function encodeArgs(fps, w, h, seconds, file) {
   });
   if (audio.length) filters.push(`${audio.map((_, i) => `[a${i}]`).join('')}amix=inputs=${audio.length}:normalize=0[a]`);
   a.push('-filter_complex', filters.join(';'), '-map', '[v]');
+  // no sound still gets a silent track: some platforms refuse a video without one
   if (audio.length) a.push('-map', '[a]', '-c:a', 'aac', '-b:a', '192k');
+  else a.push('-map', '1:a', '-c:a', 'aac', '-b:a', '128k');
   a.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', String(fps), '-t', seconds.toFixed(3), '-movflags', '+faststart', file);
   return a;
 }
@@ -205,11 +232,11 @@ try {
     page.on('pageerror', (e) => console.error(`[page] ${e.message}`));
     await page.setContent(pageHtml(false), { waitUntil: 'load' });
     const info = await page.evaluate(
-      async ({ motion, scenes, format, speed }) => {
-        window.__stage = await window.dcMotion.mount({ motion, scenes, format, speed, root: document.getElementById('root') });
+      async ({ motion, scenes, files, boardRuntime, format, speed }) => {
+        window.__stage = await window.dcMotion.mount({ motion, scenes, files, boardRuntime, format, speed, root: document.getElementById('root') });
         return { duration: window.__stage.duration, fps: window.__stage.fps, speed: window.__stage.speed, issues: window.__stage.issues };
       },
-      { motion, scenes, format, speed },
+      { motion, scenes, files: boardFiles, boardRuntime, format, speed },
     );
     for (const i of info.issues) console.log(`  ${i.level}: ${format} ${i.scene} ${i.message}`);
     const cdp = await page.context().newCDPSession(page);
@@ -250,11 +277,11 @@ try {
       const cp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: scale });
       await cp.setContent(pageHtml(false), { waitUntil: 'load' });
       await cp.evaluate(
-        async ({ motion, id, html, format }) => {
-          const s = await window.dcMotion.mount({ motion: { ...motion, order: [id] }, scenes: { [id]: html }, format, root: document.getElementById('root') });
+        async ({ motion, id, html, files, boardRuntime, format }) => {
+          const s = await window.dcMotion.mount({ motion: { ...motion, order: [id] }, scenes: { [id]: html }, files, boardRuntime, format, root: document.getElementById('root') });
           await s.seek(s.duration);
         },
-        { motion, id: coverScene, html: coverHtml, format },
+        { motion, id: coverScene, html: coverHtml, files: boardFiles, boardRuntime, format },
       );
       coverPng = await cp.screenshot({ type: 'png' });
       await cp.close();

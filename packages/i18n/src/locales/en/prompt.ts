@@ -88,6 +88,11 @@ export default {
     unfold: 'Open the prompt',
     enterHint: 'Enter to send, Shift + Enter for a new line',
   },
+  dock: {
+    float: 'Move to the bottom',
+    dock: 'Move to the right side',
+    tab: 'Ask AI (hover or Ctrl/⌘ J)',
+  },
   pill: {
     idle: 'Ask AI',
     working: '{{who}} is working…',

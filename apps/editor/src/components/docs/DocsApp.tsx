@@ -24,12 +24,17 @@ import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core'
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
+import { htmlToPng, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
-import { ImportHere } from '../ImportHere';
-import { ProjectMenu } from '../ProjectMenu';
+import { FileMenu, type ExportItem } from '../FileMenu';
+import { FilePdf, FileText, Picture } from '../icons';
+import { t as tNow } from '../../i18n';
+import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
+import { LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
@@ -203,42 +208,52 @@ img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;paddin
 </style></head><body>${parts.join('\n')}</body></html>`;
 }
 
-function ExportMenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
-  const d = useDocIndex();
-  const tab = useCurrentTab();
+/** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
+function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
   const s = useStore.getState();
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
-  return (
-    <div className="popmenu" onMouseLeave={onClose}>
-      <button onClick={() => (onClose(), download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'))}>{t('docs.export.tabMarkdown')}</button>
-      <button
-        onClick={() => {
-          onClose();
-          const all = tabOrder(d)
+  return [
+    {
+      id: 'pdf',
+      label: tNow('common.transfer.label.pdf'),
+      hint: pdfHint(tNow('common.transfer.hint.docWhole'), direct),
+      icon: <FilePdf />,
+      run: () => savePdf(`${name}.pdf`, { html: docHtml(d), paper: 'a4', print: () => void printWindow(docHtml(d), true) }),
+    },
+    {
+      id: 'md',
+      label: tNow('common.transfer.label.markdown'),
+      hint: tNow('common.transfer.hint.docTab'),
+      icon: <FileText />,
+      disabled: !tab,
+      rule: true,
+      run: () => download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'),
+    },
+    {
+      id: 'mdAll',
+      label: tNow('common.transfer.label.markdown'),
+      hint: tNow('common.transfer.hint.docWhole'),
+      icon: <FileText />,
+      run: () =>
+        download(
+          `${name}.md`,
+          tabOrder(d)
             .map((x) => display(s, tabFile(x.id)) ?? '')
-            .join('\n\n---\n\n');
-          download(`${name}.md`, all, 'text/markdown');
-        }}
-      >
-        {t('docs.export.docMarkdown')}
-      </button>
-      <button onClick={() => (onClose(), download(`${name}.html`, docHtml(d), 'text/html'))}>{t('docs.export.docHtml')}</button>
-      <button
-        onClick={() => {
-          onClose();
-          const w = window.open('', '_blank');
-          if (!w) return;
-          w.document.write(docHtml(d));
-          w.document.close();
-          w.onload = () => w.print();
-          setTimeout(() => w.print(), 600);
-        }}
-      >
-        {t('docs.export.print')}
-      </button>
-    </div>
-  );
+            .join('\n\n---\n\n'),
+          'text/markdown',
+        ),
+    },
+    { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
+    {
+      id: 'png',
+      label: tNow('common.transfer.label.png'),
+      hint: tNow('common.transfer.hint.docTab'),
+      icon: <Picture />,
+      disabled: !tab,
+      rule: true,
+      run: async () => void (await saveImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }))),
+    },
+  ];
 }
 
 function Settings({ onClose }: { onClose: () => void }) {
@@ -278,43 +293,20 @@ function Settings({ onClose }: { onClose: () => void }) {
 function Title() {
   const { t } = useTranslation();
   const d = useDocIndex();
-  const [renaming, setRenaming] = useState(false);
-  if (renaming)
-    return (
-      <input
-        className="dashtitle"
-        autoFocus
-        defaultValue={d.title}
-        aria-label={t('docs.title.label')}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setRenaming(false);
-        }}
-        onBlur={(e) => {
-          setRenaming(false);
-          const v = e.currentTarget.value.trim();
-          if (v && v !== d.title) editDoc((x) => (x.title = v), 'doc renamed');
-        }}
-      />
-    );
-  return (
-    <h1 className="dashtitle" title={t('docs.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
-      {d.title}
-    </h1>
-  );
+  return <ProjectTitle value={d.title} label={t('docs.title.label')} hint={t('docs.title.renameHint')} onRename={(v) => editDoc((x) => (x.title = v), 'doc renamed')} />;
 }
 
 export function DocsApp() {
   const { t } = useTranslation();
   const d = useDocIndex();
   const tab = useCurrentTab();
+  const direct = useDirectPdf();
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useDocs((s) => s.rail);
   const comments = useComments();
-  const [pop, setPop] = useState<'export' | 'settings' | null>(null);
+  const [pop, setPop] = useState<'settings' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
   const open = comments.threads.filter((x) => x.tab === tab && !x.resolved).length;
@@ -330,33 +322,15 @@ export function DocsApp() {
   const order = tabOrder(d);
   return (
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('docs.app.saving') : t('docs.app.saved')) : t('docs.app.offline')} />
-        <span className="hint">{saving ? t('docs.app.saving') : t('docs.app.saved')}</span>
-        <div className="grow" />
+      <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
-        <ImportHere target={docsImport} label={t('docs.app.importLabel')} button="text" />
         <div className="popwrap">
-          <button className={`btn ghost${pop === 'settings' ? ' on' : ''}`} onClick={() => setPop(pop === 'settings' ? null : 'settings')}>
-            {t('docs.app.layout')}
-          </button>
+          <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
         </div>
-        <div className="popwrap">
-          <button className={`btn ghost${pop === 'export' ? ' on' : ''}`} onClick={() => setPop(pop === 'export' ? null : 'export')}>
-            {t('docs.app.export')}
-          </button>
-          {pop === 'export' && tab && <ExportMenu onClose={() => setPop(null)} />}
-        </div>
-        <button className={`btn ghost${rail ? ' on' : ''}`} aria-pressed={rail} onClick={() => useDocs.setState({ rail: !rail })}>
-          {t('docs.app.comments')}{open ? <span className="badge blue">{open}</span> : null}
-        </button>
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('docs.app.journal')}
-        </button>
-      </header>
+        <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} />
+        <BarButton icon={<Message />} label={t('docs.app.comments')} on={rail} badge={open ? <span className="badge blue">{open}</span> : null} onClick={() => useDocs.setState({ rail: !rail })} />
+      </TopBar>
       <aside className="doctabs" aria-label={t('docs.app.tabs')}>
         <h3>{t('docs.app.tabs')}</h3>
         <ul>

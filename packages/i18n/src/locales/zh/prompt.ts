@@ -86,6 +86,11 @@ export default {
     unfold: '展开输入栏',
     enterHint: 'Enter 发送，Shift + Enter 换行',
   },
+  dock: {
+    float: '移到底部',
+    dock: '移到右侧',
+    tab: '让 AI 修改（移上来或 Ctrl/⌘ J）',
+  },
   pill: {
     idle: '让 AI 修改',
     working: '{{who}} 正在处理…',

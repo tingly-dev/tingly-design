@@ -67,6 +67,12 @@ export default {
   journal: {
     title: 'Change log',
     commit: 'Commit to git',
+    undoTitle: 'Undo / redo:',
+    undoHelp: '⌘Z steps back your last change, ⌘⇧Z brings it back. It only undoes your own changes, so what others changed in the same file stays. It covers this session; closing the editor clears it. A Claude Code run is undone as a whole from the button on its result.',
+    lineTitle: 'A line below:',
+    lineHelp: 'one change saved to a file, with who made it, when, and what was asked. It is a record, not a snapshot; you cannot go back to a line.',
+    commitTitle: 'Commit to git:',
+    commitHint: 'saves a snapshot of this project in git history, with a message you write. Undo does not change commits, and committing does not clear undo.',
     commitPrompt: 'Commit message',
     empty: 'Every change is recorded here: who made it (by hand, Fast AI, Claude Code, an outside editor), which artboard, and what changed.',
   },

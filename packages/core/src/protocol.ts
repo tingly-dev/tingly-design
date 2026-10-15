@@ -102,7 +102,9 @@ export type ToDash =
   | { dc: 'dash-mode'; mode: 'page' | 'data' }
   /** light up the marks of these sources (Sources hovered or opened) */
   | { dc: 'dash-spot'; ids: string[] }
-  | { dc: 'dash-call-result'; call: number; answer?: unknown; error?: string };
+  | { dc: 'dash-call-result'; call: number; answer?: unknown; error?: string }
+  /** draw the whole page as a PNG and send it back */
+  | { dc: 'dash-export'; id: string; scale: number };
 
 export interface DashPick {
   sources: string[];
@@ -124,6 +126,7 @@ export type FromDash =
   | { dc: 'dash-report'; report: DashReport; derived: Record<string, DataState> }
   | { dc: 'dash-call'; call: number; id: string; tool: string; args: Record<string, unknown> }
   | { dc: 'dash-pick'; pick: DashPick }
+  | { dc: 'dash-exported'; id: string; blob?: Blob; error?: string }
   | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean };
 
 export function cspFor(origin: string, kind: 'runtime' | 'executor' | 'dash' | 'motion'): string {
@@ -140,6 +143,8 @@ export function cspFor(origin: string, kind: 'runtime' | 'executor' | 'dash' | '
     `style-src 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src https://fonts.gstatic.com ${origin}/api/ data:`,
     `frame-src ${origin}/sandbox/`,
+    // html-to-image reads each picture's bytes to inline it; only the server's own files, which carry CORS headers
+    `connect-src ${origin}/api/`,
     `img-src * data: blob:`,
     `media-src * data: blob:`,
   ].join('; ');

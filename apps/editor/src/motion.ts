@@ -6,6 +6,7 @@ import { DEFAULT_SCENE_MS, MOTION_SIZES, MOTION_FILE, FORMAT_NAME_RE, formatTime
 import { api } from './api';
 import { insertHtml } from './actions';
 import { filesOf, type ImportTarget } from './components/ImportHere';
+import { boardEmbed } from './boards';
 import { display, edit, editElement, parsed, toast, useStore } from './store';
 import { t } from './i18n';
 
@@ -196,6 +197,30 @@ export const motionImport: ImportTarget = {
     for (const [i, f] of files.entries()) if (await placeOnScene(new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), i)) n++;
     if (!n) return t('motion.import.noScene');
     return n === 1 ? t('motion.import.placedOne', { name: files[0].path.split('/').pop() }) : t('motion.import.placedMany', { count: n });
+  },
+  board: {
+    get what() {
+      return t('motion.import.boardWhat');
+    },
+    place: (path, { size, moving, title }) => {
+      const s = get();
+      const view = s.motionView;
+      if (!view?.scene) return t('motion.import.noScene');
+      const f = sceneFile(view.scene);
+      const src = display(s, f) ?? '';
+      const root = rootElement(parsed(src));
+      if (!root) return t('motion.import.noScene');
+      const m = motionOf(s);
+      const frame = m.formats[primaryFormat(m)]?.size ?? [1920, 1080];
+      // an effect runs with the scene from its start, behind everything; a still artboard enters at the playhead like a picture
+      const length = parseTime(sceneTiming(src).duration) ?? DEFAULT_SCENE_MS;
+      const at = view.landed ? 0 : Math.max(0, Math.min(Math.round(view.at), length - 300));
+      const { html, back } = boardEmbed(path, frame, size, moving, moving ? 'data-seek' : `data-seek data-in="fade 300ms @${formatTime(at)}"`);
+      const tid = insertHtml(f, root.tid, back ? 'first' : 'last', html);
+      if (tid === null) return t('motion.import.noScene');
+      useStore.setState({ selection: { kind: 'el', file: f, tid } });
+      return t('motion.import.boardPlaced', { title, scene: view.scene });
+    },
   },
 };
 

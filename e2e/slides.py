@@ -27,6 +27,15 @@ async def wait_for(pred, timeout=6.0):
         await asyncio.sleep(0.1)
     return False
 
+async def wait_for_async(count, timeout=6.0):
+    t = time.time()
+    while time.time() - t < timeout:
+        try:
+            if await count(): return True
+        except Exception: pass
+        await asyncio.sleep(0.1)
+    return False
+
 results = []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
@@ -71,6 +80,9 @@ async def main():
         check('the stage shows the slide in the URL', await pg.locator('.thumb.on').get_attribute('data-slide') == 'box')
         check('embeds run on the stage', await pg.frame_locator(f'{STAGE} iframe').locator('x-embed iframe').count() == 1)
         check('thumbnails keep embeds still', await pg.frame_locator('.thumb[data-slide="box"] iframe').locator('x-embed iframe').count() == 0)
+        # a frame that loads again (reloaded or moved in the DOM) is drawn again, not left blank
+        await pg.locator('.thumb[data-slide="team"] iframe').evaluate("f => { const d = f.srcdoc; f.srcdoc = ''; f.srcdoc = d; }")
+        check('a reloaded thumbnail is drawn again', await wait_for_async(lambda: pg.frame_locator('.thumb[data-slide="team"] iframe').locator('section').count()))
         await pg.screenshot(path=OUT + 's1-deck.png')
 
         # --- selection and text ------------------------------------------------------
@@ -181,9 +193,9 @@ async def main():
         await expect(pg.locator('.present')).to_have_count(0)
 
         # --- export -------------------------------------------------------------------
-        await pg.locator('.bar.right [aria-label="下载"]').click()
+        await pg.locator('.topbar [aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:
-            await pg.get_by_role('menuitem', name='单个 HTML 文件').click()
+            await pg.get_by_role('menuitem', name='HTML 网页').click()
         path = await (await dl.value).path()
         html = open(path, encoding='utf-8').read()
         check('HTML export holds every slide, embeds sandboxed, images inline',

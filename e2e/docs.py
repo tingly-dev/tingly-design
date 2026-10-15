@@ -150,7 +150,7 @@ async def main():
         await pg.locator('.tabmenu button', has_text='删除').click()
         ok = await wait_for(lambda: len(index()['tabs']) == 4 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
         check('deleting a tab removes its file', ok)
-        await pg.locator('.dashbar button', has_text='版式').click()
+        await pg.locator('.dashbar button[aria-label="版式"]').click()
         await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
         ok = await wait_for(lambda: index()['settings']['width'] == 'wide')
         check('layout settings write doc.json', ok and await pg.locator('.app.docs[data-width=wide]').count() == 1)
@@ -169,15 +169,16 @@ async def main():
             print('SKIP AI rewrite (no ANTHROPIC_API_KEY on the server)')
 
         # --- export -------------------------------------------------------------------------------
-        await pg.locator('.dashbar button', has_text='导出').click()
+        await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:
-            await pg.locator('.popmenu button', has_text='整个文档（HTML）').click()
+            await pg.get_by_role('menuitem', name='HTML 网页').click()
         html = read(await (await dl.value).path())
         check('export the whole doc as HTML', '<h1>Project kinds</h1>' in html and '<table>' in html)
 
         # --- a new doc ----------------------------------------------------------------------------
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="docs"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="docs"] .mi').click()
         await pg.locator('[role=dialog] .where .linkish').click()
         await pg.locator('[role=dialog] input[aria-label="新项目名称"]').fill('zz-doc')
         await pg.locator('[role=dialog] button[type="submit"]').click()

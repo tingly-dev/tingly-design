@@ -1,9 +1,12 @@
 import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NOTE_SIZES, setPropDefault, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
+import { NOTE_SIZES, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
 import { duplicateBoard, updateBoard, updateNote } from '../../actions';
 import { deleteBoard, display, edit, useStore } from '../../store';
 import { TEXT_COLORS, sizeOf } from '../Item';
+import { frames } from '../Board';
+import { PauseFilled, PlayFilled } from '../icons';
 import { ColorField, Field, Row, Seg, Select, px, toLength } from './fields';
 
 // ---------------------------------------------------------------- artboard
@@ -73,14 +76,18 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
 // ---------------------------------------------------------------- tweaks
 
 function TweakField({ file, name, spec }: { file: string; name: string; spec: PropSpec }) {
-  const { t } = useTranslation();
   const setV = (value: unknown) => edit(file, (src) => setPropDefault(src, name, value).source, { actor: 'human', summary: `tweak ${name} → ${JSON.stringify(value)}` });
-  const v = spec.default;
+  return <TweakControl name={name} spec={spec} value={spec.default} onSet={setV} />;
+}
+
+/** One tweak's control, by its editor: an artboard's own default, or what an embed of it sets. */
+export function TweakControl({ name, spec, value: v, onSet: setV }: { name: string; spec: PropSpec; value: unknown; onSet: (value: unknown) => void }) {
+  const { t } = useTranslation();
   let control: React.ReactElement;
   switch (spec.editor) {
     case 'color':
       control = (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
           {Array.isArray(spec.options) && (
             <div className="swatches">
               {(spec.options as string[]).map((o) => (
@@ -125,14 +132,71 @@ function TweakField({ file, name, spec }: { file: string; name: string; spec: Pr
 export function Tweaks({ file, doc }: { file: string; doc: DcDoc }) {
   const { t } = useTranslation();
   const tweaks = Object.entries(doc.props).filter(([k, s]) => !k.startsWith('$') && s && s.editor);
+  const time = timeSpec(doc.props);
   return (
     <div className="sec">
+      {time && <TimeScrub key={file} file={file} spec={time} />}
       {tweaks.length ? (
         tweaks.map(([k, s]) => <TweakField key={k} file={file} name={k} spec={s} />)
       ) : (
         <span className="hint">{t('panel.tweaks.empty')}</span>
       )}
     </div>
+  );
+}
+
+/**
+ * An artboard that moves with time (`$time`): look at it at any moment, or
+ * play it. Only the frame on the canvas changes; the file keeps its still.
+ */
+function TimeScrub({ file, spec }: { file: string; spec: TimeSpec }) {
+  const { t } = useTranslation();
+  const span = spec.loop ?? Math.max(6000, spec.still * 2);
+  const [at, setAt] = useState(spec.still);
+  const [playing, setPlaying] = useState(false);
+  const seek = (ms: number) => frames.get(file)?.contentWindow?.postMessage({ dcMotion: 'seek', t: ms, n: -1 }, '*');
+  const atRef = useRef(at);
+  atRef.current = at;
+  useEffect(() => {
+    if (!playing) return;
+    const t0 = performance.now() - atRef.current;
+    let raf = 0;
+    const tick = () => {
+      const ms = (performance.now() - t0) % span;
+      setAt(Math.round(ms));
+      seek(ms);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, span, file]);
+  // back to the still when the panel goes
+  useEffect(() => () => seek(spec.still), [file, spec.still]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Row label={t('panel.tweaks.time')}>
+      <button className="tb" aria-label={playing ? t('panel.tweaks.pause') : t('panel.tweaks.play')} aria-pressed={playing} onClick={() => setPlaying(!playing)}>
+        {playing ? <PauseFilled /> : <PlayFilled />}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={span}
+        step={10}
+        value={at}
+        aria-label={t('panel.tweaks.time')}
+        onChange={(e) => {
+          setPlaying(false);
+          const ms = Number(e.currentTarget.value);
+          setAt(ms);
+          seek(ms);
+        }}
+        style={{ flex: 1, minWidth: 0 }}
+      />
+      <span className="faint" style={{ font: '11px var(--mono)', minWidth: 40, textAlign: 'right' }}>
+        {formatTime(at)}
+      </span>
+    </Row>
   );
 }
 

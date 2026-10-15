@@ -20,3 +20,4 @@ export * from './attachments';
 export * from './motion';
 export * from './activity';
 export * from './aiConfig';
+export * from './boardEmbed';

@@ -29,6 +29,8 @@ jobs:
               'Docs': 'docs',
               'Motion': 'motion',
               'Editor (launcher, prompt bar, panels)': 'editor',
+              'UI/UX': 'ui-ux',
+              'Import/Export': 'import-export',
               'Server (fast AI, Claude Code, files)': 'server',
             };
             const TYPES = { feat: 'enhancement', bug: 'bug', feedback: 'feedback', other: 'other' };

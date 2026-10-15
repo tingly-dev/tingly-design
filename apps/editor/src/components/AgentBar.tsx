@@ -1,6 +1,67 @@
+import { useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { continuable, setBarCollapsed, useStore, type RunRecord } from '../store';
-import { Chevron, Done, Failed, History as HistoryIcon, Reuse, Sparkle, Spinner } from './icons';
+import { continuable, setBarCollapsed, setBarMode, useStore, type RunRecord } from '../store';
+import { Chevron, Done, DockRight, Failed, Floating, History as HistoryIcon, Reuse, Sparkle, Spinner } from './icons';
+
+/** Narrower than this the side dock would take too much of the work, so the bar floats. */
+const DOCK_MIN_WIDTH = 1000;
+
+/**
+ * Whether the bar is a column on the right edge (hidden until the pointer
+ * comes to it) rather than the bar at the bottom. The choice is the
+ * person's, remembered and shared by every kind; a narrow window always floats.
+ */
+export function useDock(): { docked: boolean; mode: 'auto' | 'float'; wide: boolean } {
+  const mode = useStore((s) => s.barMode);
+  const [wide, setWide] = useState(() => window.innerWidth >= DOCK_MIN_WIDTH);
+  useEffect(() => {
+    const q = window.matchMedia(`(min-width: ${DOCK_MIN_WIDTH}px)`);
+    const on = () => setWide(q.matches);
+    on();
+    q.addEventListener('change', on);
+    return () => q.removeEventListener('change', on);
+  }, []);
+  return { docked: wide && mode !== 'float', mode, wide };
+}
+
+/** The bar, as the column when docked (outside the stage's layout, so nothing in a kind's own view moves), else where it is. */
+export function DockHost({ docked, children }: { docked: boolean; children: ReactNode }) {
+  return docked ? createPortal(children, document.body) : <>{children}</>;
+}
+
+/** Ctrl/⌘ J puts the cursor in the request box, opening the dock or the folded bar on the way; Esc in the box lets an auto-hidden dock go; a click on the work lets go of the box, which folds the run card of the floating bar and hides the dock. */
+export function useDockKeys(box: RefObject<HTMLTextAreaElement | null>): void {
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'j') return;
+      e.preventDefault();
+      if (useStore.getState().barCollapsed) setBarCollapsed(false);
+      requestAnimationFrame(() => box.current?.focus());
+    };
+    // a click anywhere outside lets an auto-hidden dock go: the canvas may keep focus where it is, so let go of it here
+    const letGo = () => {
+      const dock = box.current?.closest('.agent-dock.auto, .prompt:not(.agent-dock), .dsask:not(.agent-dock)');
+      if (dock && dock.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+    };
+    // a click inside an artboard never reaches this document, but it selects something (or moves focus into its frame)
+    const away = (e: PointerEvent) => {
+      if (!box.current?.closest('.agent-dock, .prompt, .dsask')?.contains(e.target as Node)) letGo();
+    };
+    const unselect = useStore.subscribe((s, prev) => {
+      if (s.selection !== prev.selection) letGo();
+    });
+    window.addEventListener('keydown', on);
+    window.addEventListener('pointerdown', away, true);
+    window.addEventListener('blur', letGo);
+    return () => {
+      unselect();
+      window.removeEventListener('keydown', on);
+      window.removeEventListener('pointerdown', away, true);
+      window.removeEventListener('blur', letGo);
+    };
+  }, [box]);
+}
 
 /**
  * The parts of the request bar that every kind shares, whether it is the
@@ -15,6 +76,7 @@ export function BarTools() {
   const { t } = useTranslation();
   const open = useStore((s) => s.historyOpen);
   const count = useStore((s) => s.history.length);
+  const { docked, wide } = useDock();
   return (
     <span className="bar-tools">
       <button
@@ -27,16 +89,30 @@ export function BarTools() {
       >
         <HistoryIcon />
       </button>
-      <button className="ib sm" aria-label={t('prompt.bar.fold')} title={t('prompt.bar.fold')} onClick={() => setBarCollapsed(true)}>
-        <Chevron />
-      </button>
+      {docked ? (
+        <>
+          <button className="ib sm" aria-label={t('prompt.dock.float')} title={t('prompt.dock.float')} onClick={() => setBarMode('float')}>
+            <Floating />
+          </button>
+        </>
+      ) : (
+        <>
+          {wide && (
+            <button className="ib sm" aria-label={t('prompt.dock.dock')} title={t('prompt.dock.dock')} onClick={() => setBarMode('auto')}>
+              <DockRight />
+            </button>
+          )}
+          <button className="ib sm" aria-label={t('prompt.bar.fold')} title={t('prompt.bar.fold')} onClick={() => setBarCollapsed(true)}>
+            <Chevron />
+          </button>
+        </>
+      )}
     </span>
   );
 }
 
-/** The bar folded to a pill: one click opens it again, and it still says whether a run is going or how it ended. */
-export function BarPill() {
-  const { t } = useTranslation();
+/** What the last run is doing, for the pill and the dock's edge tab. */
+export function useRunState(): { state: 'idle' | 'running' | 'done' | 'failed'; claude: boolean } {
   const lastRun = useStore((s) => s.lastRun);
   const hidden = useStore((s) => s.runHidden);
   const fast = useStore((s) => s.fast);
@@ -59,13 +135,37 @@ export function BarPill() {
           : fast.status === 'error'
             ? 'failed'
             : 'idle';
+  return { state, claude };
+}
+
+function StateIcon({ state }: { state: 'idle' | 'running' | 'done' | 'failed' }) {
+  return state === 'running' ? <Spinner size={14} /> : state === 'done' ? <Done /> : state === 'failed' ? <Failed /> : <Sparkle />;
+}
+
+/** The bar folded to a pill: one click opens it again, and it still says whether a run is going or how it ended. */
+export function BarPill() {
+  const { t } = useTranslation();
+  const { state, claude } = useRunState();
   const who = claude ? 'Claude Code' : t('prompt.bar.fastAi');
   const label =
     state === 'idle' ? t('prompt.pill.idle') : state === 'running' ? t('prompt.pill.working', { who }) : state === 'done' ? t('prompt.pill.done', { who }) : t('prompt.pill.failed', { who });
   return (
     <button className={`bar-pill ${state}`} aria-label={`${t('prompt.bar.unfold')}: ${label}`} title={t('prompt.bar.unfold')} onClick={() => setBarCollapsed(false)}>
-      {state === 'running' ? <Spinner size={14} /> : state === 'done' ? <Done /> : state === 'failed' ? <Failed /> : <Sparkle />}
+      <StateIcon state={state} />
       <span>{label}</span>
+    </button>
+  );
+}
+
+/** The dock's handle while it is hidden: always on the edge, it shows a run going, done or failed, and the pointer on it opens the dock. */
+export function DockTab() {
+  const { t } = useTranslation();
+  const { state, claude } = useRunState();
+  const who = claude ? 'Claude Code' : t('prompt.bar.fastAi');
+  const label = state === 'idle' ? t('prompt.dock.tab') : state === 'running' ? t('prompt.pill.working', { who }) : state === 'done' ? t('prompt.pill.done', { who }) : t('prompt.pill.failed', { who });
+  return (
+    <button className={`dock-tab ${state}`} aria-label={t('prompt.bar.label')} title={label} tabIndex={-1} onClick={(e) => (e.currentTarget.closest('.agent-dock')?.querySelector('textarea') as HTMLElement | null)?.focus()}>
+      <StateIcon state={state} />
     </button>
   );
 }

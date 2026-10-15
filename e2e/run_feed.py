@@ -236,7 +236,7 @@ async def main():
             await box.press('Enter')
             await expect(feed).to_contain_text('Claude Code 完成', timeout=15000)
             check('a request marked as new starts a fresh session', lines(claude_log)[n]['resume'] is None, lines(claude_log)[n])
-            await pg.locator('.bar-tools button').nth(1).click()
+            await pg.get_by_role('button', name='收起输入栏').click()
             check('the bar folds to a pill', await pg.locator('.bar-pill').count() == 1 and await box.count() == 0)
             await pg.reload()
             await pg.wait_for_selector('.bar-pill')

@@ -15,7 +15,7 @@
 | `docs` | 文档 | `doc.json` | `tabs/<id>.md` | `components/docs/` | `docs` | `design-guide` |
 | `motion` | 动效 | `motion.json` | `scenes/<id>.html` | `components/motion/`（编辑舞台和播放器叠放） | `motion` | `design-motion` |
 
-motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./motion-editing.md)；舞台上点选、改字、缩放和改尺寸已经能做，时间轴拖动、关键帧和在编辑器里导出还没做。
+motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./motion-editing.md)；舞台上点选、改字、缩放和改尺寸已经能做，关键帧还没做；导出视频在编辑器里已能做（[export.md](./export.md)）。
 
 ## 2. 一种类型要在哪些地方登记
 
@@ -51,27 +51,30 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 快速 AI（jQuery 写回） | `PromptBar`、`fastedit.ts`、`/fast-edit` | ✓ | ✓（越出幻灯片子集会撤回并说明） | ✗ | ✗（页面交给 Claude Code 写，服务端拒绝） | ✓ 选中段落改写，走 `FAST_EDIT_DOCS` | ✓ 播放头所在场景，走 `FAST_EDIT_MOTION`，用 `checkScene` 检查；非主尺寸里的样式写成覆盖 | |
 | 交给 Claude Code | `AskClaude`（`AskClaude.tsx`）、`PromptBar` 的 `askClaude()`、`delegate.ts` | ✓ | ✓ | ✓ | ✓（可跑 `scripts/dash-query.mjs`） | ✓ | ✓ | |
 | 运行反馈（[agent-feedback.md](./agent-feedback.md)） | `RunFeed`（挂在 `PromptBar` 和 `AskClaude` 里）、core 的 `describeTool`、`DELETE …/delegate/:id` | ✓ 改动文件可定位画板；运行中画板有徽标 | ✓ 定位到那一页 | ✓ 文件只列不跳（没有单一视图可定位） | ✓ 打开数据来源或代码面板 | ✓ 切到那个标签页 | ✓ 跳到那个场景 | |
-| 请求栏面板（[agent-panel.md](./agent-panel.md)） | `AgentBar.tsx`（收起、药丸、历史、新对话/接着标记）、`delegate.ts` 的 `--resume` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 槽位固定高度，卡片浮在舞台上 | 六种都走同一份部件；"接着"只对 Claude Code，快速 AI 每次从头开始 |
+| 请求栏面板（[agent-panel.md](./agent-panel.md)） | `AgentBar.tsx`（位置：底部默认 / 右侧边栏的自动隐藏、药丸、历史、新对话/接着标记）、`delegate.ts` 的 `--resume` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ 在右侧时不占槽位（`.mprompt` 隐藏），在底部时槽位固定高度 | 六种都走同一份部件，面板挂在 `<body>` 上，位置的选择各类型共用；"接着"只对 Claude Code，快速 AI 每次从头开始 |
 | 手写 jQuery（“代码”面板，[agent-feedback.md](./agent-feedback.md) §4） | `panel/JQueryBox.tsx`、`runJQuery`，运行卡片的“在 jQuery 里改” | ✓ 元素或画板 | ✓ 没选中时用舞台上那一页 | ✗ 没有 jQuery 执行器 | ✗ 同左 | ✗ 快速 AI 改的是段落文字，不是语句 | ✓ 没选中时用舞台上那个场景 | 高级入口，不在请求栏上 |
 | 附件（[attachments.md](./attachments.md)） | `attachments.ts`、`Attachments.tsx` | ✓ 发给模型；画板可用 `src="uploads/…"` 显示，画布图片项 `src: "uploads/…"` | ✓ 可用 `src="uploads/…"` 显示 | ✓ | ✓ | ✓ Claude Code 栏可附；段落改写不带附件；标签页用 `../uploads/…` | ✓ 发给模型；场景可用 `src="uploads/…"` 显示 | `design-system`、`dashboard` 技能还没写 `uploads/` |
 | 版本、409 重放、协作 | `apps/server`、编辑队列 | ✓ | ✓ | ✓ | ✓ | ✓ 按块合并（`docs.ts` `mergeBlocks`） | ✓ | |
 | 日志（journal） | `JournalPopover`、`Journal` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
 | 撤销自己的改动 | 编辑队列 + `rebase.ts` 定位 | ✓ | ✓ | ✓ | 未核实 | 编辑器内撤销（tiptap），写回标记 `undoable: false` | ✓ 场景文件和 `motion.json` | |
 | 界面语言（[i18n.md](./i18n.md)） | `@dc/i18n`（每个区域一份词条）、编辑器 `i18n.ts`、外观菜单、服务端 `x-dc-lang` | ✓ `canvas`、`panel` | ✓ `slides` | ✓ `ds` | ✓ `dash` | ✓ `docs` | ✓ `motion` | 共用部件的文字在 `common`、`prompt`、`app`、`importer`；新建时的占位文案在 `starter`，按新建者的语言写进文件；新类型要加自己的区域文件，测试会查出漏掉的汉字和缺的键 |
-| 编辑器主题（[theming](../docs/zh/theming.md)） | `theme.ts`、CSS 变量 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只改编辑器外壳，**不改**作品本身的颜色；外观菜单只在启动页 |
+| 编辑器主题（[theming](../docs/zh/theming.md)） | `theme.ts`、CSS 变量 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只改编辑器外壳，**不改**作品本身的颜色；外观菜单在启动页，编辑器里在顶栏最右的"更多"菜单里（[top-bar.md](./top-bar.md)） |
 | 宿主消息（[embedding](../docs/zh/embedding.md)） | `host.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `location` 只带 `?p=`，不分类型 |
-| 离开项目：回首页、切换、新建、反馈（[launcher.md](./launcher.md) §4） | `ProjectMenu`（各类型自己的栏里放一份） | ✓ 左浮栏 | ✓ 缩略图栏顶部 | ✓ 侧栏顶部 | ✓ 顶栏 | ✓ 顶栏 | ✓ 顶栏 | 没有共用顶栏，所以组件共用、位置各自；新类型要自己放进去 |
+| 顶栏：项目名、同步状态和改动记录、导入 / 导出、"更多"（反馈、点星、语言、外观）（[top-bar.md](./top-bar.md)） | `TopBar`、`ProjectTitle`、`SyncStatus`（历史图标加状态点，常态下不多一个字） | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 六种是同一条栏，同样的位置和顺序；类型自己的动作放在 `TopBar` 的子节点里；画布和幻灯片的浮栏只剩工具；放映 / 播放时幻灯片不画顶栏 |
+| 离开项目：回首页、切换、新建（[launcher.md](./launcher.md) §5） | `ProjectMenu`（`TopBar` 最左，自带） | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 新类型用 `TopBar` 就有；反馈和点星在顶栏最右的"更多"菜单里，不在项目菜单里 |
 | 新建时选尺寸（[motion-editing.md](./motion-editing.md) §3.7） | `SizePicker`（新建对话框里选了动效才出现）、`motionSizes.ts`（浏览器里记上次和自己的尺寸）、核心 `MOTION_SIZES` / `newMotion` | — | — | — | — | — | ✓ 预设、自定义、上次用的 | 只有动效有"尺寸"这个概念：幻灯片固定 1920×1080，画布的画板有自己的宽高字段，其余随窗口 |
 | AI 模型设置（[ai-settings.md](./ai-settings.md)） | `AiSettings.tsx`（启动页按钮、`ProjectMenu`、请求栏“去设置”都打开同一个）、`apps/server/src/aiconfig.ts`、`packages/core/src/aiConfig.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 全局设置，不属于某个项目，所以各类型一样；快速 AI 用不上的类型（看板）仍用 Claude Code 那一项 |
 | 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
+| 启动页分组、列表视图、重命名（[launcher.md](./launcher.md) §3） | `projects/.groups.json`、`PATCH /api/projects/:p`、`INDEX_FILE`、`Launcher.tsx` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 启动页层面的功能，六种一样；只有重命名随类型变（标题在各自的索引文件里，`INDEX_FILE`）。列表视图不画预览 |
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
-| 导出 | 各自实现 | ✓ `Board.tsx` | ✓ `exportDeck.ts` | ✗ | ✗ | ✓ HTML | ✗ 编辑器里没有；`scripts/motion-render.mjs` 命令行渲染 | 没有共用的导出部件 |
+| 导入 / 导出（[export-menu.md](./export-menu.md)；视频底层 [export.md](./export.md)；图片 [export-image.md](./export-image.md)） | `FileMenu`（栏里唯一的“导入 / 导出”按钮，内含 `ImportHere`）、各类型交出 `ExportItem` 列表；PDF 共用 `pdfExport.ts`（服务端 `POST /api/pdf`，没有 Chrome 时回到打印窗口）；图片的画法和提示共用 `imageExport.ts`；视频的编码、取图、字体、下载在 `packages/export`（`@dc/export`） | ✓ PNG、PNG @2x、这一页的每个画板、源文件（`Board.tsx` 的 `canvasExportItems`；画板名称条上的下载图标保留） | ✓ PDF、PNG（这一页、每一页）、HTML、备注（`exportDeck.tsx`） | ✓ PNG（当前视图；组件预览是空白） | ✓ PNG（整页） | ✓ PDF（A4）、Markdown（标签页、整篇）、HTML、PNG（当前标签页） | ✓ 视频…、GIF…（对话框：默认一键，选项折起来：格式含 GIF、尺寸、帧率、质量、范围），含 embed、video 的作品自动改由服务端的 Chrome 画（`render.ts`，出 MP4 或 GIF，选项同对话框）；PNG（播放头所在的帧）；`scripts/motion-render.mjs` 命令行另出封面、播放器 | 画布和看板没有 PDF（画板、页面各在沙箱框架里，分页没有意义）；PPTX 没有 |
 | 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | ✓ 播放器 | 三种各自实现，没有共用的播放部件 |
 | 图层树（[layers-tree.md](./layers-tree.md)） | `panel/LayerTree.tsx`（`LayerRow`、`ElementRows`）；隐藏/锁定写进文件，runtime 认 `data-hide`、`data-lock` | ✓ 画板、画布上的项、画板里的元素 | ✓ 当前这一页的元素 | ✗ 没有元素树，是令牌和组件的列表 | ✗ 页面是一份代码，没有可选的元素 | ✗ 用大纲（标题导航）；段落不是图层，隐藏和锁定对文档没有意义 | ✓ 播放头所在场景的元素，另标"何时入场" | 同一棵树、同一行（箭头、图标、名称、“文字”、隐藏、锁定）；幻灯片/场景自己的那一行没有开关（跳过一页是另一个开关）|
 | 批注 / 备注（[motion-editing.md](./motion-editing.md) §3.8.1） | 画布的便签项；幻灯片和动效场景的 `<aside>`（共用 `NoteBox` 输入框、`notesOf` / `setNotesIn`）；动效另有作品级的 `motion.json` 的 `note` | ✓ 便签（画布上的项，不是文字批注） | ✓ 演讲者备注，放映时给演讲者看 | ✗ 没有这个粒度：令牌和组件自己有说明 | ✗ 页面是一份代码，说明写在代码注释里 | ✗ 用评论（钉在文字上，见文档指南） | ✓ 作品一层、场景一层，不画进画面、不渲染；给 Claude Code 读 | 动效的批注是写给人和 AI 看的背景，不是指令；渲染和导出的播放器会去掉 |
 | 元素缩放手柄 | `runtime.tsx` 的 `resize` 消息 | ✓ | ✓ | — | 待定：元素尺寸多由网格决定 | 待定：只有图片宽度值得做 | ✓ 非主尺寸里写进覆盖 | 八个手柄、吸附、W×H；看板和文档见 [motion-editing.md](./motion-editing.md) §3.7 |
 | 新建时导入（[import](./import-external-material.md)） | `packages/import`、`ImportDialog` | ✓ HTML、SVG | ✗ PPT 评估中 | — | ✗ 还不能从 CSV 新建 | ✗ 还不能从 Markdown 新建 | — | 启动页的入口，结果总是新画布 |
-| 往打开的项目里导入（[import-into-project](./import-into-project.md)） | `ImportHere`（按钮、拖放、粘贴）+ 各类型的 `ImportTarget` | ✓ 网页、SVG → 新画板；图片 → 画布上的图片 | ✓ 图片、SVG → 当前幻灯片（只拖放和粘贴，按钮仍是"插入图片"）；网页不收 | ✓ 字体 → 字体，图片、SVG → 素材 | ✓ CSV/TSV/JSON → 数据集 | ✓ Markdown → 新标签页 | ✓ 图片、SVG → 播放头所在场景，从播放头入场 | 原文件放 `uploads/`；看板数据在 `data/`、设计系统的字体和素材在它自己的目录 |
+| 往打开的项目里导入（[import-into-project](./import-into-project.md)） | `ImportHere`（按钮、拖放、粘贴）+ 各类型的 `ImportTarget` | ✓ 网页、SVG → 新画板；图片 → 画布上的图片 | ✓ 图片、SVG → 当前幻灯片；网页不收 | ✓ 字体 → 字体，图片、SVG → 素材 | ✓ CSV/TSV/JSON → 数据集 | ✓ Markdown → 新标签页 | ✓ 图片、SVG → 播放头所在场景，从播放头入场 | 原文件放 `uploads/`；看板数据在 `data/`、设计系统的字体和素材在它自己的目录 |
+| 从项目导入（[import-from-project](./import-from-project.md)） | `ImportHere` 菜单的"从项目导入…"、`BoardPicker`、`POST …/import-board`、`<x-embed src>`（`XBoard`、播放器的 `mountBoard`）、`BoardEmbedProps` | 来源：画板（会动的带 `$time`）；Tweaks 有时间滑块。不收：画布之间直接复制画板就行，用不着嵌入 | ✓ 当前这一页；放映时循环；HTML 导出带运行时 | ✗ 第一期没做：组件可以是来源，但装入设计系统已经覆盖"用别人的组件" | ✗ 看板页面是一份代码，没有可嵌入的位置 | ✗ 文档正文是 Markdown，没有嵌入块 | ✓ 播放头所在场景，`data-seek` 逐帧；播放器、命令行渲染都画 | 副本在 `uploads/<来源>-<画板>/`，来源记在索引的 `imports`；启动页预览、PNG 导出不画嵌入的画板 |
 
 ## 4. 做跨类型功能时
 
@@ -85,9 +88,9 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 
 不是缺陷单，是现在的取舍或欠账，动手前先确认是否仍然成立。
 
-- motion 在编辑器里还不能新建、复制、删除、排序场景，没有时间条和关键帧，不能导出，也不能装入设计系统；剩下的分期见 [motion-editing.md](./motion-editing.md) §5。
+- motion 在编辑器里还不能新建、复制、删除、排序场景，没有时间条和关键帧，也不能装入设计系统；剩下的分期见 [motion-editing.md](./motion-editing.md) §5。
 - `design-system`、`dashboard` 两个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
-- 导出各写各的，设计系统和看板没有导出。
-- 外观菜单和语言按钮只在启动页，进入编辑器后改主题或语言要回启动页（或由宿主、URL 传入）。
+- 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。
+- 导出菜单共用了；只导出一个场景时没有声音；PPTX、画布和看板的 PDF 没有（[export-menu.md](./export-menu.md) §7）。

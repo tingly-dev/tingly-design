@@ -1,4 +1,5 @@
-import type { Actor, AgentStep, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, BoardImport, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
 
@@ -82,6 +83,9 @@ export const api = {
     call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind, ...(size ? { size } : {}) }) }).then((r) =>
       json<{ ok: true }>(r),
     ),
+  /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
+  patchProject: (p: string, patch: { title?: string; group?: string }) =>
+    call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
   journal: (p: string) => call(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 
@@ -127,10 +131,53 @@ export const api = {
       body: JSON.stringify({ from }),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
 
+  /** Copy a canvas's artboard into this deck or motion piece (uploads/<from>-<board>/…); the caller puts the embed on the page. */
+  importBoard: (p: string, from: string, board: string) =>
+    call(at(`api/projects/${enc(p)}/import-board`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from, board }),
+    }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
+
   uninstallDs: (p: string, namespace: string) =>
     call(at(`api/projects/${enc(p)}/design-systems?namespace=${enc(namespace)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
 
   /** Where a project's assets are served (for slide frames). */
+  /** Can this machine render a motion piece exactly (Chrome or Edge, and ffmpeg)? */
+  renderCapabilities: () => call(at('api/render')).then((r) => json<{ chrome: boolean; ffmpeg: boolean }>(r)),
+  /** A page as a PDF, printed by the server's Chrome; rejects with status 501 when the machine has none. */
+  renderPdf: async (html: string, paper: 'page' | 'a4', signal?: AbortSignal): Promise<Blob> => {
+    const res = await call(at('api/pdf'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ html, paper }), signal });
+    if (!res.ok) return json<never>(res);
+    return res.blob();
+  },
+  /**
+   * Render a motion piece on the server. Progress arrives as lines; resolves to the video's file name
+   * (fetch it with `renderedUrl`) and where the time went. Aborting the signal stops the render.
+   */
+  renderMotion: async (p: string, format: string, opts: { container?: 'mp4' | 'gif'; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number }, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<{ file: string; report: ExportReport }> => {
+    const res = await call(at(`api/projects/${enc(p)}/render`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format, ...opts }), signal });
+    if (!res.ok || !res.body) return json<never>(res);
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value) buf += value;
+      let i: number;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const msg = JSON.parse(buf.slice(0, i)) as { progress?: [number, number]; done?: string; report?: ExportReport; error?: string; code?: string };
+        buf = buf.slice(i + 1);
+        if (msg.progress) onProgress(msg.progress[0], msg.progress[1]);
+        else if (msg.done) return { file: msg.done, report: msg.report! };
+        else if (msg.code) throw Object.assign(new Error(msg.error ?? ''), { code: msg.code });
+      }
+      if (done) throw new Error('the render ended without a file');
+    }
+  },
+  /** An export made in the browser tells the server how it went, so the log has both routes. */
+  logExport: (p: string, report: ExportReport, why?: string) =>
+    void call(at(`api/projects/${enc(p)}/export-report`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ report, why }) }).catch(() => {}),
+  renderedUrl: (p: string, file: string) => `${SERVER}/api/projects/${enc(p)}/render/${enc(file)}`,
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
 
   fastEdit: (p: string, messages: ModelMessage[], signal: AbortSignal, kind?: string) =>

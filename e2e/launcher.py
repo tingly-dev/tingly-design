@@ -7,10 +7,15 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
-MADE = ['zz-launch', 'zz-launch-deck']
+MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b']
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
+    gf = os.path.join(REPO, 'projects', '.groups.json')
+    if os.path.exists(gf):
+        kept = {k: v for k, v in json.load(open(gf, encoding='utf-8')).items() if k not in MADE}
+        if kept: json.dump(kept, open(gf, 'w', encoding='utf-8'))
+        else: os.remove(gf)
 
 results = []
 def check(name, ok, extra=''):
@@ -35,10 +40,15 @@ async def main():
         check('a tab for all and for each of the six kinds', tabs == ['all', 'design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'], str(tabs))
         listed = await pg.locator('.lcard[data-project]').evaluate_all('cs => Object.fromEntries(cs.map(c => [c.dataset.project, c.dataset.kind]))')
         check('every sample project is listed with its kind', all(listed.get(n) == k for n, k in SAMPLES.items()), json.dumps(listed))
-        news = await pg.locator('.lstrip [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
-        check('a new-project tile for each kind, and one to import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
+        await pg.locator('.lnewbtn').click()
+        news = await pg.locator('.menu [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
+        check('the New project menu lists each kind, then import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
+        check('the strip of new-project tiles is gone', await pg.locator('.lstrip').count() == 0)
+        await pg.keyboard.press('Escape')
+        bar = await pg.locator('.lbar .lsearch').count() == 1 and await pg.locator('.lbar [data-view]').count() == 2 and await pg.locator('.lbar .lsort').count() == 1
+        check('search, view toggle and sort sit on the project list\'s own title row', bar)
         await expect(pg.locator('.lcard[data-project="tingly-intro"] .lmeta')).to_contain_text('8 页')
-        await expect(pg.locator('.lcard[data-project="box-console"] .lmeta')).to_contain_text('4 个画板')
+        await expect(pg.locator('.lcard[data-project="box-console"] .lmeta')).to_contain_text('5 个画板')
         check('cards say how big each project is', True)
 
         # --- previews -----------------------------------------------------------------------
@@ -48,9 +58,9 @@ async def main():
         board = pg.frame_locator('.lcard[data-project="box-console"] .lframe iframe')
         await expect(board.locator('h1').first).to_have_text('Team settings')
         check('the canvas card renders the board it opens on', True)
-        check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 4)
-        check('the design system card shows its swatches and components',
-              await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Button' in await pg.locator('.lcard[data-project="tingly-ds"] .chips').inner_text())
+        check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 5)
+        check('the design system card shows its swatches and a specimen',
+              await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Instrument Serif' in await pg.locator('.lcard[data-project="tingly-ds"] .lp-ds').inner_text())
         await expect(pg.locator('.lcard[data-project="box-usage"] .lp-dash li').first).to_have_text('September provider budgets')
         await expect(pg.locator('.lcard[data-project="design-guide"] .lp-doc li').nth(2)).to_have_attribute('style', 'padding-left: 10px;')
         check('dashboard and doc cards show datasets and the tab outline', True)
@@ -94,8 +104,72 @@ async def main():
         names = await pg.locator('.lall .lcard[data-project] .ltitle .name').all_inner_texts()
         check('sorting by name', names == sorted(names, key=str.lower) or names == sorted(names), str(names))
 
+        # --- groups, list view, rename ------------------------------------------------------------
+        for n in ('zz-grp-a', 'zz-grp-b'):
+            await pg.request.post(BASE + '/api/projects', data={'name': n, 'title': 'ZZ ' + n, 'kind': 'docs'})
+        await pg.goto(BASE + '/')
+        await pg.locator('.lcard[data-project="zz-grp-a"]').wait_for()
+        check('with no groups the list is one flat grid', await pg.locator('.lsection h3').count() == 0)
+        check('a project has a ⋯ next to its card, not inside it', await pg.locator('[data-more="zz-grp-a"]').count() == 1 and await pg.locator('.lcard[data-project="zz-grp-a"] [data-more]').count() == 0)
+        await pg.locator('.lcell:has([data-project="zz-grp-a"])').hover()
+        await pg.locator('[data-more="zz-grp-a"]').click()
+        await pg.get_by_role('menuitem', name='移到分组').click()
+        await pg.keyboard.type('ZZ Team')
+        await pg.get_by_role('menuitem', name='新建分组“ZZ Team”').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard[data-project="zz-grp-a"]')).to_have_count(1)
+        check('typing a new group name files the project there and the grid falls into sections', True)
+        await expect(pg.locator('.toast-act')).to_have_text('撤销')
+        await pg.locator('.toast-act').click()
+        await expect(pg.locator('.lsection h3')).to_have_count(0)
+        check('the toast undoes the move, and an empty group disappears', True)
+        await pg.locator('.lcell:has([data-project="zz-grp-a"])').hover()
+        await pg.locator('[data-more="zz-grp-a"]').click()
+        await pg.get_by_role('menuitem', name='移到分组').click()
+        await pg.keyboard.type('ZZ Team')
+        await pg.keyboard.press('Enter')
+        await pg.locator('.lcell:has([data-project="zz-grp-b"])').hover()
+        await pg.locator('[data-more="zz-grp-b"]').click()
+        await pg.get_by_role('menuitem', name='移到分组').click()
+        await pg.get_by_role('menuitemcheckbox', name='ZZ Team').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard[data-project]')).to_have_count(2)
+        check('Enter files under the typed name, and an existing group is one click', True)
+        groups = json.load(open(os.path.join(REPO, 'projects/.groups.json'), encoding='utf-8'))
+        check('the grouping is kept in projects/.groups.json, outside any project', groups.get('zz-grp-a') == 'ZZ Team' and not os.path.exists(os.path.join(REPO, 'projects/zz-grp-a/.groups.json')))
+        await pg.locator('.lsection[data-group="ZZ Team"] .lghead').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard')).to_have_count(0)
+        await pg.reload()
+        await pg.locator('.lsection[data-group="ZZ Team"]').wait_for()
+        check('a folded group stays folded after a reload', await pg.locator('.lsection[data-group="ZZ Team"] .lcard').count() == 0)
+        await pg.locator('.lsection[data-group="ZZ Team"] .lghead').click()
+
+        await pg.locator('[data-view="list"]').click()
+        check('the list view has a row per project, with no live preview', await pg.locator('.lrow[data-project]').count() >= 10 and await pg.locator('.lrow iframe').count() == 0)
+        await pg.reload()
+        await pg.locator('.lrow[data-project]').first.wait_for()
+        check('the chosen view is remembered', await pg.locator('[data-view="list"][aria-pressed=true]').count() == 1)
+        await pg.locator('input[aria-label="搜索项目"]').fill('ZZ Team')
+        shown = await pg.locator('.lrow[data-project]').evaluate_all('cs => cs.map(c => c.dataset.project).sort()')
+        check('search matches a group name and flattens the sections, showing the group column', shown == ['zz-grp-a', 'zz-grp-b'] and await pg.locator('.lsection h3').count() == 0 and await pg.locator('.lrow .c-group').first.is_visible())
+        await pg.locator('input[aria-label="搜索项目"]').fill('')
+
+        await pg.locator('.lcell:has([data-project="zz-grp-a"])').hover()
+        await pg.locator('[data-more="zz-grp-a"]').click()
+        await pg.get_by_role('menuitem', name='重命名').click()
+        box = pg.locator('.menu-input')
+        await box.fill('ZZ Renamed')
+        await box.press('Enter')
+        await expect(pg.locator('.lrow[data-project="zz-grp-a"] .name')).to_have_text('ZZ Renamed')
+        doc = json.load(open(os.path.join(REPO, 'projects/zz-grp-a/doc.json'), encoding='utf-8'))
+        check('rename changes the title in the project\'s own file and keeps the folder', doc['title'] == 'ZZ Renamed' and os.path.isdir(os.path.join(REPO, 'projects/zz-grp-a')))
+        await pg.reload()
+        await expect(pg.locator('.lrow[data-project="zz-grp-a"] .name')).to_have_text('ZZ Renamed')
+        check('and the new title is what the launcher lists next time', True)
+        await pg.locator('[data-view="grid"]').click()
+        await pg.locator('.lcard[data-project]').first.wait_for()
+
         # --- new project dialog ---------------------------------------------------------------
         await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="design"] .mi').click()
         dlg = pg.locator('[role=dialog]')
         check('the dialog offers all six kinds', await dlg.locator('[role=radio]').count() == 6)
         await expect(dlg.locator('input[aria-label="标题"]')).to_be_focused()
@@ -120,7 +194,8 @@ async def main():
         await expect(dlg).to_have_count(0)
         check('Escape closes the dialog', True)
 
-        await pg.locator('.lstrip [data-new="slides"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="slides"] .mi').click()
         check('a kind tile opens the dialog on that kind', await dlg.locator('[role=radio][aria-checked=true]').get_attribute('data-kind') == 'slides')
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Launch deck')
         await dlg.locator('[role=radio][data-kind="design"]').click()
@@ -145,11 +220,18 @@ async def main():
             await pg.goto(f'{BASE}/?p={name}')
             await pg.locator('.pmenu').wait_for()
             check(f'{name}: the editor has a one-click way home', await pg.locator('.pmenu a.tb').get_attribute('href') in ('/', BASE + '/'))
+            bar = pg.locator('header.topbar')
+            check(f'{name}: one top bar, with the save state, Import / Export and one more-menu', await bar.count() == 1 and await bar.locator('.syncchip').count() == 1
+                  and await bar.locator('button[aria-label="导入 / 导出"]').count() == 1 and await bar.locator('button[data-more]').count() == 1)
+            await bar.locator('button[data-more]').click()
+            check(f'{name}: the more-menu has report, star, language and look', await pg.locator('.menu a[data-link=report]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design/issues/new/choose'
+                  and await pg.locator('.menu a[data-link=star]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design' and await pg.locator('.menu [data-lang]').count() == 2 and await pg.locator('.menu .head').count() == 2)
+            await pg.keyboard.press('Escape')
         await pg.goto(f'{BASE}/?p=box-console')
         await pg.locator('.pmenu button.tb').click()
         await pg.wait_for_function("document.querySelectorAll('.menu button.mi').length > 3")
         items = await pg.locator('.menu a.mi, .menu button.mi').all_inner_texts()
-        check('the project menu lists other projects, new, report and star', len(items) >= 6 and not any('box-console' in i.lower() for i in items), str(items))
+        check('the project menu lists other projects, new and the AI settings', len(items) >= 5 and not any('box-console' in i.lower() for i in items), str(items))
         await pg.locator('.menu button.mi').nth(1).click()
         await pg.wait_for_function("location.search !== '?p=box-console'")
         check('picking a project in the menu switches to it without the launcher', True)

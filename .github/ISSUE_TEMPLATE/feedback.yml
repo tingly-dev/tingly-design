@@ -16,6 +16,8 @@ body:
         - Docs
         - Motion
         - Editor (launcher, prompt bar, panels)
+        - UI/UX
+        - Import/Export
         - Server (fast AI, Claude Code, files)
         - Not sure
     validations:

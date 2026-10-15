@@ -3,7 +3,7 @@ import { IconTable } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { t } from '../../i18n';
 import { SLIDE_H, SLIDE_W, checkSlide, sectionsOf, slideFile, ICON_NAMES } from '@dc/core';
-import { deckOf, display, editDeck, isSaving, parsed, slideIds, toast, useDeck, useSlideIds, useStore } from '../../store';
+import { deckOf, display, editDeck, parsed, slideIds, toast, useDeck, useSlideIds, useStore } from '../../store';
 import {
   INSERTS,
   addSection,
@@ -29,10 +29,11 @@ import { Menu, MenuItem } from '../Menu';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
-import { ProjectMenu } from '../ProjectMenu';
-import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
-import { exportDeck } from './exportDeck';
-import { ImportHere } from '../ImportHere';
+import { TopBar, ProjectTitle } from '../TopBar';
+import { Caret, Panel, Picture, Presentation, Shapes, TextT } from '../icons';
+import { slidesExportItems } from './exportDeck';
+import { FileMenu } from '../FileMenu';
+import { useDirectPdf } from '../../pdfExport';
 
 // ------------------------------------------------------------------ strip
 
@@ -148,9 +149,6 @@ function Strip() {
   let n = 0;
   return (
     <aside className="strip" aria-label={t('slides.strip.label')}>
-      <div className="stripbar">
-        <ProjectMenu />
-      </div>
       <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
         {groups.map((g, gi) => (
           <div key={g.key || gi} className="sgroup">
@@ -181,9 +179,7 @@ function Strip() {
 const SHAPES = ['rect', 'rounded', 'ellipse', 'diamond', 'arrow-right', 'arrow-left', 'arrow-up', 'arrow-down', 'line'] as const;
 
 function TopLeft() {
-  const deck = useDeck();
   const [menu, setMenu] = useState<null | 'shapes' | 'icons'>(null);
-  const [renaming, setRenaming] = useState(false);
   const shapesBtn = useRef<HTMLButtonElement>(null);
   const file = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
@@ -193,29 +189,6 @@ function TopLeft() {
   };
   return (
     <div className="bar left" role="toolbar" aria-label={t('slides.toolbar.insert')}>
-      {renaming ? (
-        <input
-          className="dtitle"
-          autoFocus
-          defaultValue={deck.title}
-          aria-label={t('slides.toolbar.deckName')}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') e.currentTarget.blur();
-            if (e.key === 'Escape') setRenaming(false);
-          }}
-          onBlur={(e) => {
-            setRenaming(false);
-            const v = e.currentTarget.value.trim();
-            if (v && v !== deck.title) editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }));
-          }}
-        />
-      ) : (
-        <button className="tb text dtitle" title={t('slides.toolbar.renameHint')} onDoubleClick={() => setRenaming(true)}>
-          {deck.title}
-        </button>
-      )}
-      <span className="sep" />
       <button className="tb" aria-label={t('slides.toolbar.insertText')} title={t('slides.toolbar.insertText')} onClick={() => insertOnSlide(INSERTS.text, true)}>
         <TextT />
       </button>
@@ -233,7 +206,6 @@ function TopLeft() {
           if (f) void uploadImage(f);
         }}
       />
-      <ImportHere target={slidesImport} label={t('slides.toolbar.importLabel')} button={false} />
       <button className="tb" aria-label={t('slides.toolbar.insertTable')} title={t('slides.toolbar.insertTable')} onClick={() => insertOnSlide(INSERTS.table, false)}>
         <IconTable size={16} stroke={1.6} aria-hidden="true" />
       </button>
@@ -268,39 +240,38 @@ function TopLeft() {
   );
 }
 
-function TopRight() {
+/** The deck's top bar: its name, the save state, and Import / Export; the tools float over the stage. */
+function SlidesTopBar() {
+  const deck = useDeck();
+  const direct = useDirectPdf();
   const panelOpen = useStore((s) => s.panelOpen);
-  const connected = useStore((s) => s.connected);
-  const saving = useStore(isSaving);
-  const journalOpen = useStore((s) => s.journalOpen);
-  const [menu, setMenu] = useState<null | 'play' | 'download'>(null);
+  const [menu, setMenu] = useState<null | 'play'>(null);
   const playBtn = useRef<HTMLButtonElement>(null);
-  const dlBtn = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
   const at = (b: HTMLElement | null) => {
     const r = b?.getBoundingClientRect();
     return { x: r?.right ?? 0, y: (r?.bottom ?? 0) + 8, align: 'right' as const };
   };
   return (
-    <div className="bar right" role="toolbar" aria-label={t('slides.toolbar.slides')}>
-      <button ref={playBtn} className="tb text" aria-haspopup="menu" aria-label={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
-        <Play /> {t('slides.toolbar.present')}
+    <TopBar
+      title={
+        <ProjectTitle
+          value={deck.title}
+          label={t('slides.toolbar.deckName')}
+          hint={t('slides.toolbar.renameHint')}
+          onRename={(v) => editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }))}
+        />
+      }
+    >
+      <button ref={playBtn} className="tb" aria-haspopup="menu" aria-expanded={menu === 'play'} aria-label={t('slides.toolbar.present')} title={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
+        <Presentation />
         <span className="caret">
           <Caret />
         </span>
       </button>
-      <button ref={dlBtn} className="tb" aria-haspopup="menu" aria-label={t('slides.toolbar.download')} title={t('slides.toolbar.download')} onClick={() => setMenu('download')}>
-        <Download />
-      </button>
+      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
       <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
         <Panel />
-      </button>
-      <span className="sep" />
-      <button className="tb" aria-pressed={journalOpen} aria-label={t('slides.toolbar.sync')} onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
-        <span className="sync">
-          <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-          {!connected ? t('slides.toolbar.offline') : saving ? t('slides.toolbar.saving') : t('slides.toolbar.synced')}
-        </span>
       </button>
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
@@ -309,14 +280,7 @@ function TopRight() {
           <MenuItem label={t('slides.toolbar.presentWithNotes')} onSelect={() => (setMenu(null), startPresent(null, true))} />
         </Menu>
       )}
-      {menu === 'download' && (
-        <Menu {...at(dlBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.download')}>
-          <MenuItem label={t('slides.toolbar.downloadPdf')} onSelect={() => (setMenu(null), void exportDeck('pdf'))} />
-          <MenuItem label={t('slides.toolbar.downloadHtml')} onSelect={() => (setMenu(null), void exportDeck('html'))} />
-          <MenuItem label={t('slides.toolbar.downloadNotes')} onSelect={() => (setMenu(null), void exportDeck('notes'))} />
-        </Menu>
-      )}
-    </div>
+    </TopBar>
   );
 }
 
@@ -548,11 +512,12 @@ export function SlidesApp() {
   });
 
   return (
+    <>
+    {!present && <SlidesTopBar />}
     <div className="app slides" data-mode={present ? 'play' : 'edit'}>
       <Strip />
       <main className="stage">
         <TopLeft />
-        <TopRight />
         <Stage />
         {loaded && !present && <PromptBar />}
         <JournalPopover />
@@ -561,5 +526,6 @@ export function SlidesApp() {
       <ContextMenu />
       {present && <Present />}
     </div>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -32,11 +32,20 @@ import {
   type ModelMessage,
   isDataPath,
   dsFolderOf,
+  boardDeps,
+  importedBoardDir,
+  isBoardFile,
+  parseCanvas,
+  MOTION_FILE,
+  type BoardImport,
   parseDsIndex,
   resolveTokens,
   type Actor,
   type DsRecord,
   validSize,
+  INDEX_FILE,
+  cleanGroup,
+  retitle,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -48,6 +57,8 @@ import {
   kindOf,
   listAssets,
   listProjects,
+  readGroups,
+  setGroup,
   regenTokensCss,
   removeAsset,
   ownWrites,
@@ -67,6 +78,10 @@ import {
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
+import { logError, logInfo, logWarn } from './log';
+import { PdfError, printPdf } from './pdf';
+import type { ExportReport } from '@dc/export/timing';
+import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
@@ -84,7 +99,7 @@ const DC_THEME: unknown = await (async () => {
   try {
     return JSON.parse(await readFile(v, 'utf8'));
   } catch (e) {
-    console.warn(`DC_THEME: cannot read ${v}: ${(e as Error).message}`);
+    logWarn('theme.unreadable', { file: v, error: (e as Error).message });
     return null;
   }
 })();
@@ -93,7 +108,7 @@ const app = new Hono();
 
 app.onError((err, c) => {
   if (err instanceof HttpError) return c.json({ error: trOf(c)(`errors.${err.key}`, err.params), code: err.key }, err.status as 400);
-  console.error(err);
+  logError('request.failed', { method: c.req.method, path: c.req.path, error: err.message });
   return c.json({ error: err.message }, 500);
 });
 
@@ -128,6 +143,30 @@ app.post('/api/projects', async (c) => {
     kind === 'motion' && size !== undefined ? { size: validSize(size)! } : {},
   );
   return c.json({ ok: true });
+});
+
+/** Rename a project's title and/or file it under a launcher group ('' takes it out of its group). The folder name stays. */
+app.patch('/api/projects/:p', async (c) => {
+  const p = c.req.param('p');
+  const body = await c.req.json<{ title?: unknown; group?: unknown }>();
+  const kind = await kindOf(projectDir(p));
+  if (!kind) throw new HttpError(404, 'noProject', { name: p });
+  if (body.title !== undefined) {
+    const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim() : '';
+    if (!title) throw new HttpError(400, 'emptyTitle');
+    await withLock(p, async () => {
+      const rel = INDEX_FILE[kind];
+      const cur = await readOne(p, rel);
+      const content = retitle(cur?.content, title);
+      if (content === undefined) throw new HttpError(400, 'badIndex', { file: rel });
+      if (cur?.content === content) return;
+      const version = await writeAtomic(p, rel, content);
+      publish(p, { type: 'file', path: rel, content, version, actor: 'human' });
+      await record(p, { actor: 'human', file: rel, summary: lineDiffSummary(cur?.content, content).slice(0, 400), version });
+    });
+  }
+  if (body.group !== undefined) await setGroup(p, cleanGroup(body.group));
+  return c.json({ ok: true, groups: await readGroups() });
 });
 
 app.get('/api/projects/:p/files', async (c) => c.json({ files: await readProject(c.req.param('p')) }));
@@ -289,6 +328,72 @@ app.delete('/api/projects/:p/design-systems', async (c) => {
   });
 });
 
+// ------------------------------------------------------- import from a project
+
+/**
+ * Import an artboard of a canvas into a slide deck or a motion piece: the
+ * artboard, the siblings it mounts and the files it shows are copied in (the
+ * artboards under uploads/<from>-<board>/, keeping their paths; its uploads/
+ * and assets/ files at the same paths), and the index records where it came
+ * from, so importing it again updates the copy every embed points at. The
+ * editor then puts the `<x-embed src>` on the slide or scene.
+ */
+app.post('/api/projects/:p/import-board', async (c) => {
+  const p = c.req.param('p');
+  const { from, board } = await c.req.json<{ from: string; board: string }>();
+  if (!isProjectName(from ?? '')) throw new HttpError(400, 'badProjectName');
+  const kind = await kindOf(projectDir(p));
+  if (kind !== 'slides' && kind !== 'motion') throw new HttpError(400, 'importBoardInto');
+  if ((await kindOf(projectDir(from))) !== 'design') throw new HttpError(404, 'notCanvas', { name: from });
+  const canvas = parseCanvas((await readOne(from, CANVAS_FILE))?.content);
+  if (!isBoardFile(board ?? '') || !canvas.boards[board] || !(await readOne(from, board))) throw new HttpError(404, 'noBoard', { name: from, board: String(board ?? '') });
+  const dir = importedBoardDir(from, board);
+  return withLock(p, async () => {
+    // the artboard and every sibling it mounts, as found in the source project
+    const boards = new Map<string, string>();
+    const files = new Set<string>();
+    const todo = [board];
+    while (todo.length) {
+      const f = todo.pop()!;
+      if (boards.has(f)) continue;
+      const src = await readOne(from, f);
+      if (!src) continue;
+      boards.set(f, src.content);
+      const deps = boardDeps(src.content, f);
+      todo.push(...deps.boards);
+      for (const x of deps.files) files.add(x);
+    }
+    for (const [f, content] of boards) {
+      const rel = `${dir}/${f}`;
+      const cur = await readOne(p, rel);
+      if (cur?.content === content) continue;
+      const version = await writeAtomic(p, rel, content);
+      publish(p, { type: 'file', path: rel, content, version, actor: 'human' });
+      await record(p, { actor: 'human', file: rel, summary: `artboard ${board} imported from ${from}`, version });
+    }
+    // what it shows keeps its path, so the artboard's own references still hold
+    for (const f of files) {
+      const bytes = await readAsset(from, f).catch(() => null);
+      if (bytes && !(await readAsset(p, f).catch(() => null))) await writeAsset(p, f, new Uint8Array(bytes));
+    }
+    if (files.size) publish(p, { type: 'assets' });
+    const rec: BoardImport = { path: `${dir}/${board}`, from: `projects/${from}`, board, copiedAt: new Date().toISOString() };
+    await editIndex(
+      p,
+      kind === 'slides' ? DECK_FILE : MOTION_FILE,
+      (json) => {
+        const list = (Array.isArray(json.imports) ? json.imports : []) as BoardImport[];
+        const at = list.findIndex((r) => r && r.path === rec.path);
+        if (at >= 0) list[at] = rec;
+        else list.push(rec);
+        json.imports = list;
+      },
+      `artboard ${board} imported from ${from}`,
+    );
+    return c.json({ record: rec, size: [canvas.boards[board].w, canvas.boards[board].h] });
+  });
+});
+
 // ---------------------------------------------------------------- assets
 
 const MAX_ASSET = 20 * 1024 * 1024;
@@ -430,7 +535,10 @@ app.get('/api/projects/:p/events', (c) => {
 
 app.post('/api/projects/:p/fast-edit', async (c) => {
   const anthropic = fastClient();
-  if (!anthropic) return c.json({ error: trOf(c)('errors.noFastModel') }, 501);
+  if (!anthropic) {
+    logWarn('fast.unavailable', { project: c.req.param('p'), reason: 'no fast model configured' });
+    return c.json({ error: trOf(c)('errors.noFastModel') }, 501);
+  }
   const model = aiResolved().fastModel.value;
   const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
   const bad = checkMessages(body.messages);
@@ -445,6 +553,10 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
           ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES + '\n\n' + FAST_EDIT_MOTION
           : FAST_EDIT_SYSTEM;
   const lang = replyLanguage(langOf(c));
+  const project = c.req.param('p');
+  const started = Date.now();
+  const meta = { project, kind: body.kind ?? 'design', model, messages: body.messages.length };
+  logInfo('fast.start', meta);
   return stream(c, async (s) => {
     const ms = anthropic.messages.stream({
       model,
@@ -452,13 +564,25 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
       system: system + '\n\n' + lang,
       messages: body.messages as Anthropic.MessageParam[],
     });
-    s.onAbort(() => ms.abort());
+    let chars = 0;
+    s.onAbort(() => {
+      logInfo('fast.aborted', { ...meta, ms: Date.now() - started, chars });
+      ms.abort();
+    });
     try {
       for await (const ev of ms) {
-        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') await s.write(ev.delta.text);
+        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
+          chars += ev.delta.text.length;
+          await s.write(ev.delta.text);
+        }
       }
+      const usage = await ms.finalMessage().then((m) => m.usage).catch(() => null);
+      logInfo('fast.done', { ...meta, ms: Date.now() - started, chars, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens });
     } catch (e) {
-      if (!s.aborted) await s.write(`\n__ERROR__ ${(e as Error).message}\n`);
+      if (!s.aborted) {
+        logError('fast.error', { ...meta, ms: Date.now() - started, chars, error: (e as Error).message });
+        await s.write(`\n__ERROR__ ${(e as Error).message}\n`);
+      }
     }
   });
 });
@@ -497,7 +621,10 @@ app.post('/api/projects/:p/delegate', async (c) => {
   const p = c.req.param('p');
   projectDir(p);
   if (cliChecked === null) cliChecked = claudeAvailable();
-  if (!cliChecked) return c.json({ error: trOf(c)('errors.noClaudeCli') }, 501);
+  if (!cliChecked) {
+    logWarn('delegate.unavailable', { project: p, reason: 'claude CLI not found' });
+    return c.json({ error: trOf(c)('errors.noClaudeCli') }, 501);
+  }
   const req = await c.req.json<DelegateRequest>();
   if (!req.prompt?.trim()) throw new HttpError(400, 'promptMissing');
   const bad = checkUploads(req.attachments);
@@ -510,6 +637,92 @@ app.delete('/api/projects/:p/delegate/:id', (c) => {
   projectDir(p);
   if (!stopDelegate(p, c.req.param('id'))) throw new HttpError(404, 'taskFinished');
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------- render
+
+/** Whether this machine can render a motion piece exactly (Chrome and ffmpeg), so the editor knows where to send one that holds an embed. */
+app.get('/api/render', async (c) => c.json(await renderCapabilities()));
+
+/**
+ * Render a motion piece with the machine's own Chrome and ffmpeg. The answer is a
+ * stream of JSON lines: {"progress":[done,total]} while it works, then {"done":"renders/x.mp4"}
+ * (served from the project's raw files) or {"error":"…","code":"…"}. Closing the request stops it.
+ */
+app.post('/api/projects/:p/render', async (c) => {
+  const p = c.req.param('p');
+  const dir = projectDir(p);
+  if ((await kindOf(dir)) !== 'motion') throw new HttpError(400, 'badRequest', { detail: 'not a motion piece' });
+  const caps = await renderCapabilities();
+  if (!caps.chrome || !caps.ffmpeg) throw new HttpError(501, 'noRenderer');
+  type Body = { format?: string; speed?: number; container?: string; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number };
+  const body = await c.req.json<Body>().catch(() => ({}) as Body);
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
+  const t = trOf(c);
+  const ctl = new AbortController();
+  logInfo('render.start', { project: basename(dir), format: body.format, container: body.container, why: 'embed-or-video' });
+  return stream(c, async (s) => {
+    s.onAbort(() => ctl.abort());
+    c.header('content-type', 'application/x-ndjson');
+    const line = (v: unknown) => s.write(JSON.stringify(v) + '\n');
+    try {
+      const { file, report } = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, container: body.container === 'gif' ? 'gif' : 'mp4', width: num(body.width), height: num(body.height), fps: num(body.fps), quality: body.quality === 'low' || body.quality === 'medium' ? body.quality : 'high', from: num(body.from), to: num(body.to), signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
+      await line({ done: basename(file), report });
+    } catch (e) {
+      const code = e instanceof RenderError ? e.code : 'failed';
+      if (code !== 'aborted') logError('render.failed', { project: basename(dir), error: (e as Error).message });
+      await line({ code, error: code === 'aborted' ? '' : t('errors.renderFailed', { detail: (e as Error).message }) });
+    }
+  });
+});
+
+/**
+ * A page to PDF with the machine's own Chrome: the editor builds the page (a deck one slide per page,
+ * a doc), the answer is the PDF. 501 when there is no Chrome, so the editor can fall back to the print dialog.
+ */
+app.post('/api/pdf', async (c) => {
+  const body = await c.req.json<{ html?: string; paper?: string }>().catch(() => ({}) as { html?: string; paper?: string });
+  if (typeof body.html !== 'string' || !body.html) throw new HttpError(400, 'badRequest', { detail: 'html' });
+  if (!(await renderCapabilities()).chrome) throw new HttpError(501, 'noPdf');
+  const t = trOf(c);
+  const started = Date.now();
+  try {
+    const pdf = await printPdf({ html: body.html, origin: new URL(c.req.url).origin, paper: body.paper === 'a4' ? 'a4' : 'page', signal: c.req.raw.signal });
+    logInfo('pdf.done', { ms: Date.now() - started, bytes: pdf.length, paper: body.paper === 'a4' ? 'a4' : 'page' });
+    return c.body(new Uint8Array(pdf), 200, { 'content-type': 'application/pdf', 'cache-control': 'no-store' });
+  } catch (e) {
+    logError('pdf.failed', { ms: Date.now() - started, error: (e as Error).message });
+    throw new HttpError(500, 'pdfFailed', { detail: (e as Error).message });
+  }
+});
+
+/** An export made in the browser reports how it went, so the server log shows both routes next to each other (render.done is the other one). */
+app.post('/api/projects/:p/export-report', async (c) => {
+  const dir = projectDir(c.req.param('p'));
+  const body = await c.req.json<{ report?: ExportReport; why?: string }>().catch(() => ({}) as { report?: ExportReport; why?: string });
+  const r = body.report;
+  if (!r || typeof r.wallMs !== 'number' || typeof r.frames !== 'number') throw new HttpError(400, 'badRequest', { detail: 'no report' });
+  logInfo('export.done', {
+    project: basename(dir),
+    route: 'browser',
+    why: typeof body.why === 'string' ? body.why.slice(0, 40) : undefined,
+    size: `${Number(r.width)}x${Number(r.height)}`,
+    frames: r.frames,
+    wall_ms: r.wallMs,
+    fps: r.fps,
+    ...Object.fromEntries(Object.entries(r.stages ?? {}).map(([k, v]) => [`${k}_ms`, Number((v as { ms: number }).ms)])),
+  });
+  return c.json({ ok: true });
+});
+
+/** A video rendered above, by the name the stream gave. Only files in the project's renders/ folder, only MP4 or GIF. */
+app.get('/api/projects/:p/render/:file', async (c) => {
+  const dir = projectDir(c.req.param('p'));
+  const file = c.req.param('file');
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,120}\.(mp4|gif)$/.test(file) || file.includes('..')) throw new HttpError(400, 'notAssetPath', { path: file });
+  const bytes = await readFile(join(dir, 'renders', file)).catch(() => null);
+  if (!bytes) return c.json({ error: 'not found' }, 404);
+  return c.body(new Uint8Array(bytes), 200, { 'content-type': file.endsWith('.gif') ? 'image/gif' : 'video/mp4', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
 });
 
 // ---------------------------------------------------------------- git
@@ -551,7 +764,7 @@ if (process.env.NODE_ENV === 'production' || BUNDLED) {
 
 // ---------------------------------------------------------------- watcher
 
-if (await seedSamples()) console.log(`copied the sample projects into ${PROJECTS_DIR}`);
+if (await seedSamples()) logInfo('samples.copied', { dir: PROJECTS_DIR });
 
 /** Last content seen per file, for diff summaries of outside edits. */
 const seen = new Map<string, string>();
@@ -607,7 +820,7 @@ async function onChange(event: string, abs: string): Promise<void> {
   if (at.rel === DS_TOKENS) await afterTokens(at.project, actor);
 }
 // one failed event (a file gone mid-read, a race on tokens.css) must not take the server down
-watcher.on('all', (event, abs) => void onChange(event, abs).catch((e) => console.error(`watcher: ${abs}:`, e)));
+watcher.on('all', (event, abs) => void onChange(event, abs).catch((e) => logError('watcher.failed', { file: abs, error: (e as Error).message })));
 
 // ---------------------------------------------------------------- serve
 

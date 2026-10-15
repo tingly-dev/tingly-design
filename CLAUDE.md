@@ -32,6 +32,8 @@ A PR that changes anything a person sees (the editor, the launcher, the homepage
 
 What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.
 
+Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
+
 # Keep these in sync (read this before every change)
 
 Three things drift silently when a session forgets them. Each PR that touches one of them updates it in the same PR, not in a follow-up.
@@ -59,7 +61,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar`, `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar` (the prompt at the bottom by default, or moved to a right-edge dock that hides until the pointer comes, `.design/agent-panel.md`), `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `TopBar` (the one top bar of every kind: `ProjectMenu`, the name, `SyncStatus`, the kind's own actions, then one "more" menu with report an issue, star, language and look; floating bars keep only tools, `.design/top-bar.md`), `FileMenu` (the one Import / Export menu each kind hands its export list to, placed in the `TopBar`), `SyncStatus`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -67,13 +69,14 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
+packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, `FrameRasterizer` for the frames of a video, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write, `Clock` / `ExportReport` timing every stage of an export); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
-apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
+apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
-projects/         sample projects, one per kind
+projects/         sample projects, one per kind; `tingly-design-ui` is a canvas that mocks the editor's own UI (design shell changes there first)
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)
@@ -94,7 +97,9 @@ pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm 
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on every PR. Releases are tag-driven: a `vX.Y.Z` tag matching `package.json` builds the bundle once and ships that tarball to a GitHub release and to npm as both `@tingly-dev/tingly-design` and `tingly-design` (`release.yml`, `.design/release.md`). The project is Apache-2.0 (`LICENSE`, `NOTICE`); the release fails if `package.json` has no `license`. npm publishing is Trusted Publishing only (environment `production`, no token anywhere; the packages refuse tokens, so only a maintainer with a one-time password can publish outside CI; first-time setup is `scripts/npm-bootstrap.sh`). Never publish or push a release tag without a maintainer asking. Anything added to the bundle ships to npm: `scripts/bundle.mjs` copies only what it names, keep it that way. Shell shared by workflows lives in `.github/scripts/`; lint with `actionlint` and `shellcheck` as Tingly Box's `.github/workflows/AGENTS.md` says.
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
+Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
+
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
 
 # Issues
 
