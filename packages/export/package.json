@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "description": "Export from the browser with nothing to install: a picture of a DOM tree (PNG) and the web fonts it needs, inlined.",
+  "description": "Export from the browser with nothing to install: pictures of a DOM tree, video (MP4 or WebM) and GIF from frames, and a list of what each browser can write.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -15,7 +15,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "html-to-image": "^1.11.13"
+    "gifenc": "^1.0.3",
+    "html-to-image": "^1.11.13",
+    "mediabunny": "^1.61.4"
   },
   "devDependencies": {
     "vitest": "^5.0.3"

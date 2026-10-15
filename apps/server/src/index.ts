@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -68,6 +68,7 @@ import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
+import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
@@ -533,6 +534,50 @@ app.delete('/api/projects/:p/delegate/:id', (c) => {
   projectDir(p);
   if (!stopDelegate(p, c.req.param('id'))) throw new HttpError(404, 'taskFinished');
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------- render
+
+/** Whether this machine can render a motion piece exactly (Chrome and ffmpeg), so the editor knows where to send one that holds an embed. */
+app.get('/api/render', async (c) => c.json(await renderCapabilities()));
+
+/**
+ * Render a motion piece with the machine's own Chrome and ffmpeg. The answer is a
+ * stream of JSON lines: {"progress":[done,total]} while it works, then {"done":"renders/x.mp4"}
+ * (served from the project's raw files) or {"error":"…","code":"…"}. Closing the request stops it.
+ */
+app.post('/api/projects/:p/render', async (c) => {
+  const p = c.req.param('p');
+  const dir = projectDir(p);
+  if ((await kindOf(dir)) !== 'motion') throw new HttpError(400, 'badRequest', { detail: 'not a motion piece' });
+  const caps = await renderCapabilities();
+  if (!caps.chrome || !caps.ffmpeg) throw new HttpError(501, 'noRenderer');
+  const body = await c.req.json<{ format?: string; speed?: number }>().catch(() => ({}) as { format?: string; speed?: number });
+  const t = trOf(c);
+  const ctl = new AbortController();
+  return stream(c, async (s) => {
+    s.onAbort(() => ctl.abort());
+    c.header('content-type', 'application/x-ndjson');
+    const line = (v: unknown) => s.write(JSON.stringify(v) + '\n');
+    try {
+      const file = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
+      await line({ done: basename(file) });
+    } catch (e) {
+      const code = e instanceof RenderError ? e.code : 'failed';
+      if (code !== 'aborted') logError('render.failed', { project: basename(dir), error: (e as Error).message });
+      await line({ code, error: code === 'aborted' ? '' : t('errors.renderFailed', { detail: (e as Error).message }) });
+    }
+  });
+});
+
+/** A video rendered above, by the name the stream gave. Only files in the project's renders/ folder, only MP4. */
+app.get('/api/projects/:p/render/:file', async (c) => {
+  const dir = projectDir(c.req.param('p'));
+  const file = c.req.param('file');
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,120}\.mp4$/.test(file) || file.includes('..')) throw new HttpError(400, 'notAssetPath', { path: file });
+  const bytes = await readFile(join(dir, 'renders', file)).catch(() => null);
+  if (!bytes) return c.json({ error: 'not found' }, 404);
+  return c.body(new Uint8Array(bytes), 200, { 'content-type': 'video/mp4', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
 });
 
 // ---------------------------------------------------------------- git
