@@ -25,7 +25,7 @@ KINDS = {
     'design system': ('tingly-ds', ['PNG image']),
     'dashboard': ('box-usage', ['PNG image']),
     'docs': ('design-guide', ['PDF', 'Markdown', 'HTML page', 'PNG image']),
-    'motion': ('design-motion', ['Video…', 'PNG image']),
+    'motion': ('design-motion', ['Video…', 'GIF…', 'PNG image']),
 }
 
 async def main():

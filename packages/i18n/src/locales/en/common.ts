@@ -61,6 +61,7 @@ export default {
       source: 'Source file',
       notes: 'Speaker notes',
       video: 'Video…',
+      gif: 'GIF…',
       frame: 'Picture of this frame',
     },
     hint: {
@@ -77,6 +78,7 @@ export default {
       docPage: 'The whole doc as one page',
       dashPage: 'The page as it is now',
       dsView: 'The view on screen',
+      motionGif: '256 colours, no sound · small and looping, starts at 15 fps',
       motionVideo: '{{size}} · {{fps}} fps · MP4 or WebM, more in the next step',
       motionFrame: 'The frame at the playhead',
     },

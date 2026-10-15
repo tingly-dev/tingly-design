@@ -626,16 +626,18 @@ app.post('/api/projects/:p/render', async (c) => {
   if ((await kindOf(dir)) !== 'motion') throw new HttpError(400, 'badRequest', { detail: 'not a motion piece' });
   const caps = await renderCapabilities();
   if (!caps.chrome || !caps.ffmpeg) throw new HttpError(501, 'noRenderer');
-  const body = await c.req.json<{ format?: string; speed?: number }>().catch(() => ({}) as { format?: string; speed?: number });
+  type Body = { format?: string; speed?: number; container?: string; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number };
+  const body = await c.req.json<Body>().catch(() => ({}) as Body);
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
   const t = trOf(c);
   const ctl = new AbortController();
-  logInfo('render.start', { project: basename(dir), format: body.format, why: 'embed-or-video' });
+  logInfo('render.start', { project: basename(dir), format: body.format, container: body.container, why: 'embed-or-video' });
   return stream(c, async (s) => {
     s.onAbort(() => ctl.abort());
     c.header('content-type', 'application/x-ndjson');
     const line = (v: unknown) => s.write(JSON.stringify(v) + '\n');
     try {
-      const { file, report } = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
+      const { file, report } = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, container: body.container === 'gif' ? 'gif' : 'mp4', width: num(body.width), height: num(body.height), fps: num(body.fps), quality: body.quality === 'low' || body.quality === 'medium' ? body.quality : 'high', from: num(body.from), to: num(body.to), signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
       await line({ done: basename(file), report });
     } catch (e) {
       const code = e instanceof RenderError ? e.code : 'failed';
@@ -684,14 +686,14 @@ app.post('/api/projects/:p/export-report', async (c) => {
   return c.json({ ok: true });
 });
 
-/** A video rendered above, by the name the stream gave. Only files in the project's renders/ folder, only MP4. */
+/** A video rendered above, by the name the stream gave. Only files in the project's renders/ folder, only MP4 or GIF. */
 app.get('/api/projects/:p/render/:file', async (c) => {
   const dir = projectDir(c.req.param('p'));
   const file = c.req.param('file');
-  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,120}\.mp4$/.test(file) || file.includes('..')) throw new HttpError(400, 'notAssetPath', { path: file });
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,120}\.(mp4|gif)$/.test(file) || file.includes('..')) throw new HttpError(400, 'notAssetPath', { path: file });
   const bytes = await readFile(join(dir, 'renders', file)).catch(() => null);
   if (!bytes) return c.json({ error: 'not found' }, 404);
-  return c.body(new Uint8Array(bytes), 200, { 'content-type': 'video/mp4', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+  return c.body(new Uint8Array(bytes), 200, { 'content-type': file.endsWith('.gif') ? 'image/gif' : 'video/mp4', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
 });
 
 // ---------------------------------------------------------------- git

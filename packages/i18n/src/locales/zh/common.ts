@@ -63,6 +63,7 @@ export default {
       source: '源文件',
       notes: '演讲者备注',
       video: '视频…',
+      gif: 'GIF…',
       frame: '这一帧的图片',
     },
     hint: {
@@ -79,6 +80,7 @@ export default {
       docPage: '整篇文档合成一页',
       dashPage: '页面现在的样子',
       dsView: '屏幕上的这个视图',
+      motionGif: '256 色、没有声音 · 小而循环，默认 15 帧/秒',
       motionVideo: '{{size}} · {{fps}} 帧/秒 · MP4 或 WebM，下一步可调',
       motionFrame: '播放头所在的那一帧',
     },
