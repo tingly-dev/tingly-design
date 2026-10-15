@@ -37,10 +37,6 @@ export default {
     nameLabel: 'Design system name',
     renameHint: 'Double-click to rename',
     theme: 'Theme',
-    journal: 'Sync status and change history',
-    offline: 'Offline',
-    saving: 'Saving',
-    synced: 'Synced',
   },
   section: {
     editLabel: 'Edit {{path}}',

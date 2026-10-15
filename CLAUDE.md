@@ -59,7 +59,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar`, `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar`, `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `FileMenu` (the one Import / Export menu each kind hands its export list to), `SyncStatus`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -72,7 +72,7 @@ packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), lang
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
-apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`)
+apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
 projects/         sample projects, one per kind
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
@@ -97,7 +97,7 @@ CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
 
 # Issues
 
