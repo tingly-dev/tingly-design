@@ -27,6 +27,11 @@ export default {
   stop: 'Stop',
   undo: 'Undo',
   untitled: 'Untitled',
+  topbar: {
+    more: 'More',
+    rename: 'Double-click to rename',
+    label: 'Project bar',
+  },
   sync: {
     ok: 'Synced',
     busy: 'Saving…',

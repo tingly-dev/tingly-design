@@ -2,7 +2,7 @@ import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addPage, renamePage } from '../actions';
-import { fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
+import { editCanvas, fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
 import { Menu, MenuItem } from './Menu';
 import {
   ArrowI,
@@ -21,10 +21,9 @@ import {
   TextT,
 } from './icons';
 import { FileMenu } from './FileMenu';
-import { SyncStatus } from './SyncStatus';
 import { canvasExportItems } from './Board';
 import { canvasImport } from '../canvasImport';
-import { ProjectMenu } from './ProjectMenu';
+import { TopBar, ProjectTitle, BarButton } from './TopBar';
 
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },
@@ -107,6 +106,37 @@ function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: numbe
   );
 }
 
+/** The canvas's top bar: its name, the save state, and Import / Export; the tools float over the canvas. */
+export function CanvasTopBar() {
+  const { t } = useTranslation();
+  const canvas = useCanvas();
+  const mode = useStore((s) => s.mode);
+  const panelOpen = useStore((s) => s.panelOpen);
+  return (
+    <TopBar
+      title={<ProjectTitle value={canvas.title} label={t('panel.canvas.nameLabel')} hint={t('common.topbar.rename')} onRename={(v) => editCanvas((c) => (c.title = v), `title → ${v}`)} />}
+    >
+      <BarButton
+        icon={<Play />}
+        label={mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
+        title={t('app.view.playHint')}
+        on={mode === 'play'}
+        onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
+      />
+      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
+      <button
+        className="tb"
+        aria-pressed={panelOpen}
+        aria-label={t('app.view.panel')}
+        title={t('app.view.panelHint')}
+        onClick={() => useStore.setState({ panelOpen: !panelOpen })}
+      >
+        <Panel />
+      </button>
+    </TopBar>
+  );
+}
+
 export function LeftBar() {
   const { t } = useTranslation();
   const canvas = useCanvas();
@@ -123,8 +153,6 @@ export function LeftBar() {
   };
   return (
     <div className="bar left" role="toolbar" aria-label={t('app.tool.bar')}>
-      <ProjectMenu />
-      <span className="sep" />
       <button ref={pagesBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.pages.button', { name: pageName })} onClick={() => setMenu('pages')}>
         {pageName}
         <span className="caret">
@@ -187,8 +215,6 @@ export function LeftBar() {
 
 export function RightBar() {
   const { t } = useTranslation();
-  const mode = useStore((s) => s.mode);
-  const panelOpen = useStore((s) => s.panelOpen);
   const zoom = useStore((s) => s.view.zoom);
   const viewport = useStore((s) => s.viewport);
   const [zoomMenu, setZoomMenu] = useState(false);
@@ -203,35 +229,12 @@ export function RightBar() {
   };
   return (
     <div className="bar right" role="toolbar" aria-label={t('app.view.bar')}>
-      <button
-        className="tb"
-        aria-pressed={mode === 'play'}
-        aria-label={mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
-        title={t('app.view.playHint')}
-        onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
-      >
-        <Play />
-      </button>
-      <button
-        className="tb"
-        aria-pressed={panelOpen}
-        aria-label={t('app.view.panel')}
-        title={t('app.view.panelHint')}
-        onClick={() => useStore.setState({ panelOpen: !panelOpen })}
-      >
-        <Panel />
-      </button>
-      <span className="sep" />
-      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
-      <span className="sep" />
       <button ref={zoomBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.view.zoomButton', { zoom: Math.round(zoom * 100) })} onClick={() => setZoomMenu(true)}>
         <span className="zoomval">{Math.round(zoom * 100)}%</span>
         <span className="caret">
           <Caret />
         </span>
       </button>
-      <span className="sep" />
-      <SyncStatus />
       {zoomMenu && (
         <Menu x={(r?.right ?? 0)} y={(r?.bottom ?? 0) + 8} align="right" onClose={() => setZoomMenu(false)} label={t('app.view.zoom')}>
           <MenuItem label={t('app.view.zoomIn')} keys="⌘+" onSelect={() => zoomAt(1.25, viewport.w / 2, viewport.h / 2)} />

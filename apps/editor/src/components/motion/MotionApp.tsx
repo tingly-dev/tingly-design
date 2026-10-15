@@ -7,7 +7,7 @@ import { notesOf, setNotesIn } from '../../slides';
 import { NoteBox } from '../NoteBox';
 import { FileMenu } from '../FileMenu';
 import { VideoExportDialog, type ScenePick, type VideoExportOptions } from './VideoExportDialog';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar, BarButton } from '../TopBar';
 import { fileStem, saveImage } from '../../imageExport';
 import { frameFonts } from '../../motionImage';
 import { display, isSaving, toast, useStore } from '../../store';
@@ -19,7 +19,7 @@ import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { useDock } from '../AgentBar';
-import { Film, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
+import { Checklist, Film, Note, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
@@ -361,11 +361,7 @@ export function MotionApp() {
 
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <span className="dashtitle">{motion.title}</span>
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('motion.bar.saving') : t('motion.bar.connected')) : t('motion.bar.offline')} />
-        <div className="grow" />
+      <TopBar title={<span className="dashtitle">{motion.title}</span>}>
         {formats.length > 1 && (
           <div className="mseg" role="radiogroup" aria-label={t('motion.bar.formats')}>
             {formats.map((f) => (
@@ -387,13 +383,23 @@ export function MotionApp() {
               ))}
           </select>
         </label>
-        <button className={`btn ghost${notesOpen ? ' on' : ''}`} aria-pressed={notesOpen} onClick={() => setNotesOpen(!notesOpen)} title={t('motion.notes.hint')} data-notes-toggle>
-          {t('motion.notes.toggle')}
-          {motion.note || Object.values(scenes).some((src) => notesOf(src)) ? <i className="mnotedot" /> : null}
-        </button>
-        <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
-          {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
-        </button>
+        <BarButton
+          icon={<Note />}
+          label={t('motion.notes.toggle')}
+          title={t('motion.notes.hint')}
+          on={notesOpen}
+          badge={motion.note || Object.values(scenes).some((src) => notesOf(src)) ? <i className="mnotedot" /> : null}
+          onClick={() => setNotesOpen(!notesOpen)}
+          data-notes-toggle=""
+        />
+        <BarButton
+          icon={<Checklist />}
+          label={t('motion.bar.issues')}
+          title={t('motion.bar.issuesHint')}
+          on={issuesOpen}
+          badge={info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
+          onClick={() => setIssuesOpen(!issuesOpen)}
+        />
         {exporting && (
           <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={`${where(exporting.route)}. ${t('motion.export.cancelHint')}`}>
             {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })}
@@ -407,19 +413,15 @@ export function MotionApp() {
         <FileMenu
           target={motionImport}
           label={t('motion.bar.importLabel')}
-          button="text"
           items={[
             { id: 'video', label: t('common.transfer.label.video'), hint: t('common.transfer.hint.motionVideo', { size: `${W}×${H}`, fps: info?.fps ?? motion.fps }), icon: <Film />, disabled: !info || !!exporting, run: openExportDialog },
             { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
           ]}
         />
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('motion.bar.journal')}
-        </button>
         <button className="tb" aria-pressed={panelOpen} aria-label={t('motion.bar.panel')} title={t('motion.bar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
           <Panel />
         </button>
-      </header>
+      </TopBar>
       <main className="mmain">
         <div ref={stageRef} className="mstage" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
           {!motion.order.length && <div className="lhint">{t('motion.stage.noScenes')}</div>}

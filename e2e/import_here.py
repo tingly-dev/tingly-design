@@ -114,7 +114,7 @@ async def main():
             await pg.wait_for_timeout(2500)
             before = json.loads(read('box-console', 'canvas.json'))
             right = max(bd['x'] + bd['w'] for bd in before['boards'].values())
-            btn = pg.locator('.bar.right button[aria-label="导入 / 导出"]')
+            btn = pg.locator('.topbar button[aria-label="导入 / 导出"]')
             check('canvas: one import / export button in the top bar', await btn.count() == 1)
             await btn.click()
             check('…which says what a canvas takes', await pg.locator('.menu .mh', has_text='网页和 SVG 变成新的画板').count() == 1)

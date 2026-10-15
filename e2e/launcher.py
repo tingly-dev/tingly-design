@@ -38,7 +38,7 @@ async def main():
         news = await pg.locator('.lstrip [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
         check('a new-project tile for each kind, and one to import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
         await expect(pg.locator('.lcard[data-project="tingly-intro"] .lmeta')).to_contain_text('8 页')
-        await expect(pg.locator('.lcard[data-project="box-console"] .lmeta')).to_contain_text('4 个画板')
+        await expect(pg.locator('.lcard[data-project="box-console"] .lmeta')).to_contain_text('5 个画板')
         check('cards say how big each project is', True)
 
         # --- previews -----------------------------------------------------------------------
@@ -48,7 +48,7 @@ async def main():
         board = pg.frame_locator('.lcard[data-project="box-console"] .lframe iframe')
         await expect(board.locator('h1').first).to_have_text('Team settings')
         check('the canvas card renders the board it opens on', True)
-        check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 4)
+        check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 5)
         check('the design system card shows its swatches and components',
               await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Button' in await pg.locator('.lcard[data-project="tingly-ds"] .chips').inner_text())
         await expect(pg.locator('.lcard[data-project="box-usage"] .lp-dash li').first).to_have_text('September provider budgets')
@@ -145,11 +145,18 @@ async def main():
             await pg.goto(f'{BASE}/?p={name}')
             await pg.locator('.pmenu').wait_for()
             check(f'{name}: the editor has a one-click way home', await pg.locator('.pmenu a.tb').get_attribute('href') in ('/', BASE + '/'))
+            bar = pg.locator('header.topbar')
+            check(f'{name}: one top bar, with the save state, Import / Export and one more-menu', await bar.count() == 1 and await bar.locator('.syncchip').count() == 1
+                  and await bar.locator('button[aria-label="导入 / 导出"]').count() == 1 and await bar.locator('button[data-more]').count() == 1)
+            await bar.locator('button[data-more]').click()
+            check(f'{name}: the more-menu has report, star, language and look', await pg.locator('.menu a[data-link=report]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design/issues/new/choose'
+                  and await pg.locator('.menu a[data-link=star]').get_attribute('href') == 'https://github.com/tingly-dev/tingly-design' and await pg.locator('.menu [data-lang]').count() == 2 and await pg.locator('.menu .head').count() == 2)
+            await pg.keyboard.press('Escape')
         await pg.goto(f'{BASE}/?p=box-console')
         await pg.locator('.pmenu button.tb').click()
         await pg.wait_for_function("document.querySelectorAll('.menu button.mi').length > 3")
         items = await pg.locator('.menu a.mi, .menu button.mi').all_inner_texts()
-        check('the project menu lists other projects, new, report and star', len(items) >= 6 and not any('box-console' in i.lower() for i in items), str(items))
+        check('the project menu lists other projects, new and the AI settings', len(items) >= 5 and not any('box-console' in i.lower() for i in items), str(items))
         await pg.locator('.menu button.mi').nth(1).click()
         await pg.wait_for_function("location.search !== '?p=box-console'")
         check('picking a project in the menu switches to it without the launcher', True)

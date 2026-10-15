@@ -61,7 +61,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar` (the prompt at the bottom by default, or moved to a right-edge dock that hides or pins, `.design/agent-panel.md`), `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `FileMenu` (the one Import / Export menu each kind hands its export list to), `SyncStatus`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar` (the prompt at the bottom by default, or moved to a right-edge dock that hides or pins, `.design/agent-panel.md`), `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `TopBar` (the one top bar of every kind: `ProjectMenu`, the name, `SyncStatus`, the kind's own actions, then one "more" menu with report an issue, star, language and look; floating bars keep only tools, `.design/top-bar.md`), `FileMenu` (the one Import / Export menu each kind hands its export list to, placed in the `TopBar`), `SyncStatus`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -76,7 +76,7 @@ packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
-projects/         sample projects, one per kind
+projects/         sample projects, one per kind; `tingly-design-ui` is a canvas that mocks the editor's own UI (design shell changes there first)
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)
