@@ -29,11 +29,10 @@ import { Menu, MenuItem } from '../Menu';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar, ProjectTitle } from '../TopBar';
 import { Caret, Panel, Picture, Play, Shapes, TextT } from '../icons';
 import { slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
-import { SyncStatus } from '../SyncStatus';
 import { useDirectPdf } from '../../pdfExport';
 
 // ------------------------------------------------------------------ strip
@@ -150,9 +149,6 @@ function Strip() {
   let n = 0;
   return (
     <aside className="strip" aria-label={t('slides.strip.label')}>
-      <div className="stripbar">
-        <ProjectMenu />
-      </div>
       <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
         {groups.map((g, gi) => (
           <div key={g.key || gi} className="sgroup">
@@ -183,9 +179,7 @@ function Strip() {
 const SHAPES = ['rect', 'rounded', 'ellipse', 'diamond', 'arrow-right', 'arrow-left', 'arrow-up', 'arrow-down', 'line'] as const;
 
 function TopLeft() {
-  const deck = useDeck();
   const [menu, setMenu] = useState<null | 'shapes' | 'icons'>(null);
-  const [renaming, setRenaming] = useState(false);
   const shapesBtn = useRef<HTMLButtonElement>(null);
   const file = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
@@ -195,29 +189,6 @@ function TopLeft() {
   };
   return (
     <div className="bar left" role="toolbar" aria-label={t('slides.toolbar.insert')}>
-      {renaming ? (
-        <input
-          className="dtitle"
-          autoFocus
-          defaultValue={deck.title}
-          aria-label={t('slides.toolbar.deckName')}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') e.currentTarget.blur();
-            if (e.key === 'Escape') setRenaming(false);
-          }}
-          onBlur={(e) => {
-            setRenaming(false);
-            const v = e.currentTarget.value.trim();
-            if (v && v !== deck.title) editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }));
-          }}
-        />
-      ) : (
-        <button className="tb text dtitle" title={t('slides.toolbar.renameHint')} onDoubleClick={() => setRenaming(true)}>
-          {deck.title}
-        </button>
-      )}
-      <span className="sep" />
       <button className="tb" aria-label={t('slides.toolbar.insertText')} title={t('slides.toolbar.insertText')} onClick={() => insertOnSlide(INSERTS.text, true)}>
         <TextT />
       </button>
@@ -269,11 +240,31 @@ function TopLeft() {
   );
 }
 
+/** The deck's top bar: its name, the save state, and Import / Export; the tools float over the stage. */
+function SlidesTopBar() {
+  const deck = useDeck();
+  const direct = useDirectPdf();
+  const { t } = useTranslation();
+  return (
+    <TopBar
+      title={
+        <ProjectTitle
+          value={deck.title}
+          label={t('slides.toolbar.deckName')}
+          hint={t('slides.toolbar.renameHint')}
+          onRename={(v) => editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }))}
+        />
+      }
+    >
+      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} button="text" />
+    </TopBar>
+  );
+}
+
 function TopRight() {
   const panelOpen = useStore((s) => s.panelOpen);
   const [menu, setMenu] = useState<null | 'play'>(null);
   const playBtn = useRef<HTMLButtonElement>(null);
-  const direct = useDirectPdf();
   const { t } = useTranslation();
   const at = (b: HTMLElement | null) => {
     const r = b?.getBoundingClientRect();
@@ -287,12 +278,9 @@ function TopRight() {
           <Caret />
         </span>
       </button>
-      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
       <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
         <Panel />
       </button>
-      <span className="sep" />
-      <SyncStatus />
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />
@@ -532,6 +520,8 @@ export function SlidesApp() {
   });
 
   return (
+    <>
+    {!present && <SlidesTopBar />}
     <div className="app slides" data-mode={present ? 'play' : 'edit'}>
       <Strip />
       <main className="stage">
@@ -545,5 +535,6 @@ export function SlidesApp() {
       <ContextMenu />
       {present && <Present />}
     </div>
+    </>
   );
 }

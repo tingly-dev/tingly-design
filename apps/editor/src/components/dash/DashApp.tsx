@@ -26,7 +26,7 @@ import {
 } from '../../dash';
 import { FileMenu } from '../FileMenu';
 import { Picture } from '../icons';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar, ProjectTitle } from '../TopBar';
 import { fileStem, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
@@ -173,30 +173,8 @@ function Watch() {
 function Title() {
   const { t } = useTranslation();
   const index = useDashIndex();
-  const [renaming, setRenaming] = useState(false);
-  if (renaming)
-    return (
-      <input
-        className="dashtitle"
-        autoFocus
-        defaultValue={index.title}
-        aria-label={t('dash.title.nameLabel')}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setRenaming(false);
-        }}
-        onBlur={(e) => {
-          setRenaming(false);
-          const v = e.currentTarget.value.trim();
-          if (v && v !== index.title) editDash((d) => (d.title = v), 'dashboard renamed');
-        }}
-      />
-    );
   return (
-    <h1 className="dashtitle" title={t('dash.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
-      {index.title}
-    </h1>
+    <ProjectTitle value={index.title} label={t('dash.title.nameLabel')} hint={t('dash.title.renameHint')} onRename={(v) => editDash((d) => (d.title = v), 'dashboard renamed')} />
   );
 }
 
@@ -253,12 +231,8 @@ export function DashApp() {
 
   return (
     <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('dash.bar.saving') : t('dash.bar.connected')) : t('dash.bar.offline')} />
+      <TopBar title={<Title />}>
         <Filters />
-        <div className="grow" />
         <FileMenu
           target={dashImport}
           label={t('dash.kind')}
@@ -289,10 +263,7 @@ export function DashApp() {
         <button className={`btn ghost${side === 'code' ? ' on' : ''}`} aria-pressed={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })}>
           {t('dash.bar.code')}
         </button>
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('dash.bar.journal')}
-        </button>
-      </header>
+      </TopBar>
       <main className="dashmain">
         {mode === 'data' && <div className="dashhint">{t('dash.bar.dataModeHint')}</div>}
         <PageFrame />

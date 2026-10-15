@@ -29,6 +29,10 @@ export default {
   send: '发送',
   stop: '停止',
   undo: '撤销',
+  topbar: {
+    rename: '双击改名',
+    label: '项目栏',
+  },
   sync: {
     ok: '已同步',
     busy: '保存中…',

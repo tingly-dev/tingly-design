@@ -3,7 +3,7 @@ import { api } from './api';
 import { canvasOf, fitAll, focusBoard, openProject, toast, useStore } from './store';
 import { installShortcuts } from './shortcuts';
 import { Canvas } from './components/Canvas';
-import { LeftBar, RightBar } from './components/Bars';
+import { CanvasTopBar, LeftBar, RightBar } from './components/Bars';
 import { RightPanel } from './components/panel/RightPanel';
 import { PromptBar } from './components/PromptBar';
 import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './components/Overlays';
@@ -109,6 +109,8 @@ export function App() {
       </>
     );
   return (
+    <>
+    <CanvasTopBar />
     <div className={`app ${mode}`} data-tool={tool} data-mode={mode}>
       <main className="stage">
         <Canvas />
@@ -123,5 +125,6 @@ export function App() {
       <FocusView />
       <Toasts />
     </div>
+    </>
   );
 }

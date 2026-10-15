@@ -4,8 +4,7 @@ import { AskClaude } from '../AskClaude';
 import { display, edit, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
 import { FileMenu } from '../FileMenu';
-import { SyncStatus } from '../SyncStatus';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar, ProjectTitle } from '../TopBar';
 import { Picture } from '../icons';
 import { fileStem, nodeToPng, saveImage } from '../../imageExport';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
@@ -164,7 +163,6 @@ export function DsApp() {
   const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('v') as View) || 'overview');
   // previews open in the system's dark theme when the editor itself is dark
   const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|\u6697|\u6df1/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
-  const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     if (!t.themes.some((x) => x.id === theme)) setTheme(t.themes[0].id);
   }, [t, theme]);
@@ -179,32 +177,30 @@ export function DsApp() {
   // the system's own faces and tokens, for samples on this page
   const pageCss = useMemo(() => compileTokensCss({ ...t, colors: [], others: [], groups: [] }), [t]);
   return (
+    <>
+    <TopBar title={<ProjectTitle value={index.title} label={tr('ds.app.nameLabel')} hint={tr('ds.app.renameHint')} onRename={(v) => editDsIndex((d) => (d.title = v), `title → ${v}`)} />}>
+  <FileMenu
+        target={dsImport}
+        label={tr('ds.app.label')}
+        button="text"
+        items={[
+          {
+            id: 'png',
+            label: tr('common.transfer.label.png'),
+            hint: tr('common.transfer.hint.dsView'),
+            icon: <Picture />,
+            run: async () => {
+              const node = document.querySelector<HTMLElement>('.dsmain .dsview');
+              const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
+              if (node) await saveImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
+            },
+          },
+        ]}
+      />
+    </TopBar>
     <div className="app ds" data-theme={theme}>
       <style>{pageCss}</style>
       <nav className="dsnav" aria-label={tr('ds.app.label')}>
-        <ProjectMenu />
-        {renaming ? (
-          <input
-            className="dstitle"
-            autoFocus
-            defaultValue={index.title}
-            aria-label={tr('ds.app.nameLabel')}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === 'Enter') e.currentTarget.blur();
-              if (e.key === 'Escape') setRenaming(false);
-            }}
-            onBlur={(e) => {
-              setRenaming(false);
-              const v = e.currentTarget.value.trim();
-              if (v && v !== index.title) editDsIndex((d) => (d.title = v), `title → ${v}`);
-            }}
-          />
-        ) : (
-          <h1 className="dstitle" title={tr('ds.app.renameHint')} onDoubleClick={() => setRenaming(true)}>
-            {index.title}
-          </h1>
-        )}
         <div className="hint ns">window.{index.namespace}</div>
         {VIEWS.map((v) => (
           <button key={v} className="navi" aria-current={view === v ? 'page' : undefined} onClick={() => setView(v)}>
@@ -232,24 +228,6 @@ export function DsApp() {
               </select>
             </label>
           )}
-          <FileMenu
-            target={dsImport}
-            label={tr('ds.app.label')}
-            items={[
-              {
-                id: 'png',
-                label: tr('common.transfer.label.png'),
-                hint: tr('common.transfer.hint.dsView'),
-                icon: <Picture />,
-                run: async () => {
-                  const node = document.querySelector<HTMLElement>('.dsmain .dsview');
-                  const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
-                  if (node) await saveImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
-                },
-              },
-            ]}
-          />
-          <SyncStatus />
         </div>
       </nav>
       <main className="dsmain">
@@ -264,5 +242,6 @@ export function DsApp() {
         <JournalPopover />
       </main>
     </div>
+    </>
   );
 }

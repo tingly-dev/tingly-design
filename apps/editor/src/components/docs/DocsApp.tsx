@@ -33,7 +33,7 @@ import { FileMenu, type ExportItem } from '../FileMenu';
 import { FilePdf, FileText, Picture } from '../icons';
 import { t as tNow } from '../../i18n';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar, ProjectTitle } from '../TopBar';
 import { useTranslation } from 'react-i18next';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
@@ -292,31 +292,7 @@ function Settings({ onClose }: { onClose: () => void }) {
 function Title() {
   const { t } = useTranslation();
   const d = useDocIndex();
-  const [renaming, setRenaming] = useState(false);
-  if (renaming)
-    return (
-      <input
-        className="dashtitle"
-        autoFocus
-        defaultValue={d.title}
-        aria-label={t('docs.title.label')}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setRenaming(false);
-        }}
-        onBlur={(e) => {
-          setRenaming(false);
-          const v = e.currentTarget.value.trim();
-          if (v && v !== d.title) editDoc((x) => (x.title = v), 'doc renamed');
-        }}
-      />
-    );
-  return (
-    <h1 className="dashtitle" title={t('docs.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
-      {d.title}
-    </h1>
-  );
+  return <ProjectTitle value={d.title} label={t('docs.title.label')} hint={t('docs.title.renameHint')} onRename={(v) => editDoc((x) => (x.title = v), 'doc renamed')} />;
 }
 
 export function DocsApp() {
@@ -345,12 +321,7 @@ export function DocsApp() {
   const order = tabOrder(d);
   return (
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('docs.app.saving') : t('docs.app.saved')) : t('docs.app.offline')} />
-        <span className="hint">{saving ? t('docs.app.saving') : t('docs.app.saved')}</span>
-        <div className="grow" />
+      <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
         <div className="popwrap">
           <button className={`btn ghost${pop === 'settings' ? ' on' : ''}`} onClick={() => setPop(pop === 'settings' ? null : 'settings')}>
@@ -362,10 +333,7 @@ export function DocsApp() {
         <button className={`btn ghost${rail ? ' on' : ''}`} aria-pressed={rail} onClick={() => useDocs.setState({ rail: !rail })}>
           {t('docs.app.comments')}{open ? <span className="badge blue">{open}</span> : null}
         </button>
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('docs.app.journal')}
-        </button>
-      </header>
+      </TopBar>
       <aside className="doctabs" aria-label={t('docs.app.tabs')}>
         <h3>{t('docs.app.tabs')}</h3>
         <ul>

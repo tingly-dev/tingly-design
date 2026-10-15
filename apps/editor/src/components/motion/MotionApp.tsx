@@ -7,7 +7,7 @@ import { notesOf, setNotesIn } from '../../slides';
 import { NoteBox } from '../NoteBox';
 import { FileMenu } from '../FileMenu';
 import { VideoExportDialog, type ScenePick, type VideoExportOptions } from './VideoExportDialog';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar } from '../TopBar';
 import { fileStem, saveImage } from '../../imageExport';
 import { frameFonts } from '../../motionImage';
 import { display, isSaving, toast, useStore } from '../../store';
@@ -361,11 +361,7 @@ export function MotionApp() {
 
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <span className="dashtitle">{motion.title}</span>
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('motion.bar.saving') : t('motion.bar.connected')) : t('motion.bar.offline')} />
-        <div className="grow" />
+      <TopBar title={<span className="dashtitle">{motion.title}</span>}>
         {formats.length > 1 && (
           <div className="mseg" role="radiogroup" aria-label={t('motion.bar.formats')}>
             {formats.map((f) => (
@@ -413,13 +409,10 @@ export function MotionApp() {
             { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
           ]}
         />
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('motion.bar.journal')}
-        </button>
         <button className="tb" aria-pressed={panelOpen} aria-label={t('motion.bar.panel')} title={t('motion.bar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
           <Panel />
         </button>
-      </header>
+      </TopBar>
       <main className="mmain">
         <div ref={stageRef} className="mstage" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
           {!motion.order.length && <div className="lhint">{t('motion.stage.noScenes')}</div>}

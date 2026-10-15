@@ -181,7 +181,7 @@ async def main():
         await expect(pg.locator('.present')).to_have_count(0)
 
         # --- export -------------------------------------------------------------------
-        await pg.locator('.bar.right [aria-label="导入 / 导出"]').click()
+        await pg.locator('.topbar [aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:
             await pg.get_by_role('menuitem', name='HTML 网页').click()
         path = await (await dl.value).path()
