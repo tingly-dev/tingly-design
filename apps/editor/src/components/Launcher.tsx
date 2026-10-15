@@ -31,17 +31,6 @@ export const KINDS: { kind: ProjectKind; tone: string }[] = [
 ];
 const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<ProjectKind, (typeof KINDS)[number]>;
 
-/** A group's colour: one of the launcher's six tones, picked from its name so it is the same every time and needs no setting. */
-function groupTone(name: string): string {
-  let h = 2166136261;
-  for (const ch of name) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return KINDS[h % KINDS.length].tone;
-}
-
-function GroupDot({ name }: { name: string }) {
-  return <span className={`gdot t-${groupTone(name)}`} aria-hidden="true" />;
-}
-
 const RECENT_KEY = 'dc:recent-projects';
 const VIEW_KEY = 'dc:launcher-view';
 const FOLDED_KEY = 'dc:launcher-folded-groups';
@@ -351,13 +340,7 @@ function Card({ p, recent, flat, onMore }: { p: ProjectCard; recent: boolean; fl
           </div>
           <div className="lpath">
             projects/{p.name}
-            {flat && p.group && (
-              <span className="lgroup">
-                {' · '}
-                <GroupDot name={p.group} />
-                {p.group}
-              </span>
-            )}
+            {flat && p.group && <span className="lgroup"> · {p.group}</span>}
           </div>
         </div>
       </button>
@@ -382,10 +365,7 @@ function Row({ p, recent, onMore }: { p: ProjectCard; recent: boolean; onMore: (
           {recent && <span className="recent">{t('launcher.card.recent')}</span>}
         </span>
         <span className="c-path">projects/{p.name}</span>
-        <span className="c-group">
-          {p.group && <GroupDot name={p.group} />}
-          {p.group ?? ''}
-        </span>
+        <span className="c-group">{p.group ?? ''}</span>
         <span className="c-size">{t(`launcher.kind.${p.kind}.count`, { count: p.count })}</span>
         <span className="c-when">{p.updatedAt ? ago(t, p.updatedAt) : ''}</span>
       </button>
@@ -449,7 +429,7 @@ function ProjectActions({ p, at, groups, onClose, onRename, onMove }: { p: Proje
             />
           </div>
           {matches.map((g) => (
-            <MenuItem key={g} label={g} icon={<GroupDot name={g} />} checked={g === p.group} onSelect={() => (onMove(g), onClose())} />
+            <MenuItem key={g} label={g} icon={<GroupFolder />} checked={g === p.group} onSelect={() => (onMove(g), onClose())} />
           ))}
           {typed && !exact && <MenuItem label={t('launcher.group.create', { name: typed })} icon={<GroupFolder />} onSelect={() => (onMove(typed), onClose())} />}
           {p.group && <MenuItem label={t('launcher.group.remove')} onSelect={() => (onMove(''), onClose())} />}
@@ -830,7 +810,6 @@ export function Launcher() {
                     <h3>
                       <button className="lghead" aria-expanded={!shut} aria-label={t(shut ? 'launcher.group.expand' : 'launcher.group.collapse', { name: sec.name })} onClick={() => fold(key)}>
                         <Chevron open={!shut} />
-                        {sec.key && <GroupDot name={sec.name} />}
                         <span className="gname">{sec.name}</span>
                         <span className="n">{sec.items.length}</span>
                       </button>
