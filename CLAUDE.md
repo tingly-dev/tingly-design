@@ -95,6 +95,8 @@ pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm 
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on every PR. Releases are tag-driven: a `vX.Y.Z` tag matching `package.json` builds the bundle once and ships that tarball to a GitHub release and to npm as both `@tingly-dev/tingly-design` and `tingly-design` (`release.yml`, `.design/release.md`). The project is Apache-2.0 (`LICENSE`, `NOTICE`); the release fails if `package.json` has no `license`. npm publishing is Trusted Publishing only (environment `production`, no token anywhere; the packages refuse tokens, so only a maintainer with a one-time password can publish outside CI; first-time setup is `scripts/npm-bootstrap.sh`). Never publish or push a release tag without a maintainer asking. Anything added to the bundle ships to npm: `scripts/bundle.mjs` copies only what it names, keep it that way. Shell shared by workflows lives in `.github/scripts/`; lint with `actionlint` and `shellcheck` as Tingly Box's `.github/workflows/AGENTS.md` says.
 
+Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
+
 End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`); add new suites to both language versions of that table.
 
 # Issues

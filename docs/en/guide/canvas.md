@@ -23,10 +23,18 @@ The top left holds the page menu and the tools; the top right holds play, the pa
 | ⌘G / ⌘⇧G / ⇧A | Group / ungroup / wrap in a flex container |
 | [ ] | Bring to front / send to back |
 | ⇧H ⇧V | Flip horizontally / vertically |
-| ⌘Z ⌘⇧Z | Undo / redo |
+| ⌘Z ⌘⇧Z | Undo / redo (see below) |
 | ⌘= ⌘- ⌘0 ⇧1 ⇧2 | Zoom in, zoom out, 100%, fit all, zoom to selection |
 
 </details>
+
+## Undo, redo and the change log
+
+Every kind works the same way.
+
+- **Undo / redo** (`⌘Z`, `⌘⇧Z`) steps back your own last change and brings it back. It finds your change by its context, so it still works after someone else (a fast AI run, Claude Code, an outside editor) changed other parts of the same file, and what they changed stays. The history lives in this editor session (the last 100 changes) and is cleared when you close or switch the project. A Claude Code run can also be undone as a whole from the button on its result.
+- **The change log** (the sync log at the top right) is a record: one line per change saved to a file, with who made it (by hand, fast AI, Claude Code, an outside editor, undo), when, and what was asked. A line is not a snapshot; you cannot jump back to it.
+- **Commit to git** (in the change log) is the snapshot: it commits this project's folder to the git history in your projects folder, with a message you write. It is how you keep a version you can return to with git. Undo does not change commits, and committing does not clear undo.
 
 Format reference: [`.claude/skills/dc-canvas/SKILL.md`](../../../.claude/skills/dc-canvas/SKILL.md)
 

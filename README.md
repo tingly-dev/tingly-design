@@ -45,6 +45,7 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 |---|---|
 | `ANTHROPIC_API_KEY` | Turns on fast AI (the server calls the model through the Anthropic SDK). `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` work too. Without these you can set the connection in the editor instead: **AI model settings** (launcher or project menu), with Tingly Box suggested. A variable wins over what was saved there. |
 | `DC_FAST_MODEL` | The fast AI model; defaults to `claude-haiku-5-5`. |
+| `DC_LOG_LEVEL` | Server log level on stderr: `error`, `warn`, `info` (default), `debug`, `silent`; see [development](docs/en/development.md#server-log). |
 | `DC_DELEGATE_MODEL` | The model for "hand to Claude Code" (the CLI's default when unset). |
 | `DC_CONFIG` | The file AI model settings are saved in (holds the key; owner-only); defaults to `.tingly-design/ai.json` beside the projects folder. |
 | `DC_PROJECTS` | The projects folder; defaults to `projects/` in this repository. |

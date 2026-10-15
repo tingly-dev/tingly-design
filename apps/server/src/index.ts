@@ -67,6 +67,7 @@ import {
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
+import { logError, logInfo, logWarn } from './log';
 import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
@@ -85,7 +86,7 @@ const DC_THEME: unknown = await (async () => {
   try {
     return JSON.parse(await readFile(v, 'utf8'));
   } catch (e) {
-    console.warn(`DC_THEME: cannot read ${v}: ${(e as Error).message}`);
+    logWarn('theme.unreadable', { file: v, error: (e as Error).message });
     return null;
   }
 })();
@@ -94,7 +95,7 @@ const app = new Hono();
 
 app.onError((err, c) => {
   if (err instanceof HttpError) return c.json({ error: trOf(c)(`errors.${err.key}`, err.params), code: err.key }, err.status as 400);
-  console.error(err);
+  logError('request.failed', { method: c.req.method, path: c.req.path, error: err.message });
   return c.json({ error: err.message }, 500);
 });
 
@@ -431,7 +432,10 @@ app.get('/api/projects/:p/events', (c) => {
 
 app.post('/api/projects/:p/fast-edit', async (c) => {
   const anthropic = fastClient();
-  if (!anthropic) return c.json({ error: trOf(c)('errors.noFastModel') }, 501);
+  if (!anthropic) {
+    logWarn('fast.unavailable', { project: c.req.param('p'), reason: 'no fast model configured' });
+    return c.json({ error: trOf(c)('errors.noFastModel') }, 501);
+  }
   const model = aiResolved().fastModel.value;
   const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
   const bad = checkMessages(body.messages);
@@ -446,6 +450,10 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
           ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES + '\n\n' + FAST_EDIT_MOTION
           : FAST_EDIT_SYSTEM;
   const lang = replyLanguage(langOf(c));
+  const project = c.req.param('p');
+  const started = Date.now();
+  const meta = { project, kind: body.kind ?? 'design', model, messages: body.messages.length };
+  logInfo('fast.start', meta);
   return stream(c, async (s) => {
     const ms = anthropic.messages.stream({
       model,
@@ -453,13 +461,25 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
       system: system + '\n\n' + lang,
       messages: body.messages as Anthropic.MessageParam[],
     });
-    s.onAbort(() => ms.abort());
+    let chars = 0;
+    s.onAbort(() => {
+      logInfo('fast.aborted', { ...meta, ms: Date.now() - started, chars });
+      ms.abort();
+    });
     try {
       for await (const ev of ms) {
-        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') await s.write(ev.delta.text);
+        if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
+          chars += ev.delta.text.length;
+          await s.write(ev.delta.text);
+        }
       }
+      const usage = await ms.finalMessage().then((m) => m.usage).catch(() => null);
+      logInfo('fast.done', { ...meta, ms: Date.now() - started, chars, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens });
     } catch (e) {
-      if (!s.aborted) await s.write(`\n__ERROR__ ${(e as Error).message}\n`);
+      if (!s.aborted) {
+        logError('fast.error', { ...meta, ms: Date.now() - started, chars, error: (e as Error).message });
+        await s.write(`\n__ERROR__ ${(e as Error).message}\n`);
+      }
     }
   });
 });
@@ -498,7 +518,10 @@ app.post('/api/projects/:p/delegate', async (c) => {
   const p = c.req.param('p');
   projectDir(p);
   if (cliChecked === null) cliChecked = claudeAvailable();
-  if (!cliChecked) return c.json({ error: trOf(c)('errors.noClaudeCli') }, 501);
+  if (!cliChecked) {
+    logWarn('delegate.unavailable', { project: p, reason: 'claude CLI not found' });
+    return c.json({ error: trOf(c)('errors.noClaudeCli') }, 501);
+  }
   const req = await c.req.json<DelegateRequest>();
   if (!req.prompt?.trim()) throw new HttpError(400, 'promptMissing');
   const bad = checkUploads(req.attachments);
@@ -541,7 +564,7 @@ app.post('/api/projects/:p/render', async (c) => {
       await line({ done: basename(file) });
     } catch (e) {
       const code = e instanceof RenderError ? e.code : 'failed';
-      if (code !== 'aborted') console.error('render:', (e as Error).message);
+      if (code !== 'aborted') logError('render.failed', { project: basename(dir), error: (e as Error).message });
       await line({ code, error: code === 'aborted' ? '' : t('errors.renderFailed', { detail: (e as Error).message }) });
     }
   });
@@ -596,7 +619,7 @@ if (process.env.NODE_ENV === 'production' || BUNDLED) {
 
 // ---------------------------------------------------------------- watcher
 
-if (await seedSamples()) console.log(`copied the sample projects into ${PROJECTS_DIR}`);
+if (await seedSamples()) logInfo('samples.copied', { dir: PROJECTS_DIR });
 
 /** Last content seen per file, for diff summaries of outside edits. */
 const seen = new Map<string, string>();
@@ -652,7 +675,7 @@ async function onChange(event: string, abs: string): Promise<void> {
   if (at.rel === DS_TOKENS) await afterTokens(at.project, actor);
 }
 // one failed event (a file gone mid-read, a race on tokens.css) must not take the server down
-watcher.on('all', (event, abs) => void onChange(event, abs).catch((e) => console.error(`watcher: ${abs}:`, e)));
+watcher.on('all', (event, abs) => void onChange(event, abs).catch((e) => logError('watcher.failed', { file: abs, error: (e as Error).message })));
 
 // ---------------------------------------------------------------- serve
 
