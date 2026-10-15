@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tingly Design</title>
+<meta name="description" content="Open-source design with two-way editing: people and AI co-design in the editor or in plain files, and each side sees the other's changes at once.">
+<meta property="og:title" content="Tingly Design">
+<meta property="og:description" content="Open-source design with two-way editing: people and AI co-design in the editor or in plain files.">
+<meta property="og:image" content="media/design-motion-wide-cover.png">
+<style>
+  :root { --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#e4e0d8; --card:#fff; --accent:#0f6fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12110f; --fg:#f2efe9; --muted:#a29c92; --line:#2a2824; --card:#1a1917; --accent:#6ea8ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 Inter, system-ui, sans-serif; }
+  main { max-width:1040px; margin:0 auto; padding:0 24px 64px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:20px 0; }
+  nav a, nav button { color:var(--muted); text-decoration:none; font:inherit; margin-left:16px; background:none; border:0; cursor:pointer; }
+  nav b { color:var(--fg); font-size:18px; white-space:nowrap; }
+  h1 { font-size:clamp(34px,6vw,60px); line-height:1.1; margin:48px 0 16px; letter-spacing:-.02em; }
+  h2 { font-size:26px; margin:64px 0 16px; }
+  .kicker { margin:48px 0 0; color:var(--accent); font-weight:600; letter-spacing:.04em; }
+  .kicker + h1 { margin-top:8px; }
+  p.lead { font-size:20px; color:var(--muted); max-width:720px; }
+  .cta { display:flex; gap:12px; flex-wrap:wrap; margin:28px 0; }
+  .btn { padding:10px 18px; border-radius:8px; border:1px solid var(--line); color:var(--fg); text-decoration:none; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  video, img { width:100%; height:auto; border-radius:12px; border:1px solid var(--line); background:var(--card); display:block; }
+  .videos { --h:400px; display:flex; justify-content:center; align-items:flex-end; gap:16px; }
+  .videos figure { margin:0; }
+  .videos video { height:var(--h); width:auto; max-width:100%; }
+  .screen-wide video { aspect-ratio:16/9; }
+  .screen-tall video { aspect-ratio:9/16; }
+  .videos figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; text-align:center; }
+  @media (max-width:1000px) {
+    .screen-wide { display:none; }
+    .screen-tall { width:min(100%, 420px); }
+    .screen-tall video { width:100%; height:auto; }
+  }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .card h3 { margin:0 0 6px; font-size:17px; }
+  .card p { margin:0; color:var(--muted); font-size:15px; }
+  .kinds figure { margin:0; }
+  .kinds figcaption { padding:8px 2px; color:var(--muted); font-size:14px; }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow:auto; }
+  footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); padding-top:20px; margin-top:64px; }
+  footer a { color:inherit; }
+  body [lang=zh] { display:none; }
+  html.zh body [lang=en] { display:none; }
+  html.zh body [lang=zh] { display:revert; }
+</style>
+</head>
+<body>
+<main>
+  <nav>
+    <b>Tingly Design</b>
+    <span>
+      <a href="https://github.com/tingly-dev/tingly-design#documentation"><span lang="en">Docs</span><span lang="zh">文档</span></a>
+      <a href="https://github.com/tingly-dev/tingly-design">GitHub</a>
+      <button id="lang" type="button" aria-label="Language">中文 / EN</button>
+    </span>
+  </nav>
+
+  <p class="kicker" lang="en">Open-source design tool</p>
+  <p class="kicker" lang="zh">开源设计工具</p>
+  <h1 lang="en">Co-design with AI.<br>Edit it both ways.</h1>
+  <h1 lang="zh">人机协同设计，<br>双向编辑。</h1>
+  <p class="lead" lang="en">Drag on the canvas, or let a model and Claude Code change the file: whichever side you edit, the other updates at once. Canvases, slides, design systems, dashboards, docs and motion are all plain files, and every edit writes back only the characters that changed.</p>
+  <p class="lead" lang="zh">在画布上点选拖拽，或者让 AI 和 Claude Code 直接改文件：改哪一边，另一边立刻同步。画布、幻灯片、设计系统、仪表盘、文档、动效，都是普通文件，每次编辑只写回真正变了的那几个字符。</p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/tingly-dev/tingly-design#quick-start"><span lang="en">Get started</span><span lang="zh">开始使用</span></a>
+    <a class="btn" href="https://github.com/tingly-dev/tingly-design">GitHub</a>
+  </div>
+
+  <div class="videos">
+    <figure class="screen-wide">
+      <video controls playsinline preload="none" poster="media/design-motion-wide-cover.png" aria-label="16:9">
+        <source src="media/design-motion-wide.mp4" type="video/mp4">
+      </video>
+      <figcaption><span lang="en">Large screen · 16:9</span><span lang="zh">大屏 · 16:9</span></figcaption>
+    </figure>
+    <figure class="screen-tall">
+      <video controls playsinline preload="metadata" poster="media/design-motion-tall-cover.png" aria-label="9:16">
+        <source src="media/design-motion-tall.mp4" type="video/mp4">
+      </video>
+      <figcaption><span lang="en">Small screen · 9:16</span><span lang="zh">小屏 · 9:16</span></figcaption>
+    </figure>
+  </div>
+  <p style="color:var(--muted);font-size:14px">
+    <span lang="en">One motion project, two formats from the same scenes, rendered by CI from <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a>. On a narrow window only the small-screen version is shown.</span>
+    <span lang="zh">同一个动效项目、同一组场景输出两种画幅，由 CI 从 <a href="https://github.com/tingly-dev/tingly-design/tree/main/projects/design-motion"><code>projects/design-motion</code></a> 渲染。窗口较窄时只显示小屏版本。</span>
+  </p>
+
+  <h2 lang="en">Two-way editing, one file in the middle</h2>
+  <h2 lang="zh">双向编辑，中间只有一份文件</h2>
+  <div class="flow">
+    <div class="card"><h3 lang="en">In the editor</h3><h3 lang="zh">在编辑器里</h3>
+      <p lang="en">Click, drag and retype. The change is written into the file as a minimal patch.</p><p lang="zh">点选、拖动、改字。改动以最小补丁写进文件。</p></div>
+    <div class="arrow" aria-hidden="true">⇄</div>
+    <div class="card file"><h3 lang="en">The plain file</h3><h3 lang="zh">普通文件</h3>
+      <p lang="en">HTML and JSON under <code>projects/</code>. Readable, diffable, yours to keep in git.</p><p lang="zh"><code>projects/</code> 下的 HTML 和 JSON。能读、能 diff、能放进 git。</p></div>
+    <div class="arrow" aria-hidden="true">⇄</div>
+    <div class="card"><h3 lang="en">Fast AI, Claude Code, you</h3><h3 lang="zh">快速 AI、Claude Code、你自己</h3>
+      <p lang="en">Rewrite a line in seconds, or whole files in minutes, or edit by hand. The editor follows live.</p><p lang="zh">几秒改一行，几分钟改整份文件，或者自己手改。编辑器实时跟上。</p></div>
+  </div>
+  <p style="color:var(--muted)">
+    <span lang="en">Every change, from any side, lands in one journal: who changed what and when, with undo.</span>
+    <span lang="zh">无论谁改的，每次改动都记进同一份记录：谁、改了什么、什么时候，都能撤销。</span>
+  </p>
+
+  <h2 lang="en">Six project kinds</h2>
+  <h2 lang="zh">六种项目类型</h2>
+  <div class="grid kinds">
+    <figure><img loading="lazy" src="media/canvas.png" alt="Canvas"><figcaption>Canvas</figcaption></figure>
+    <figure><img loading="lazy" src="media/slides.png" alt="Slides"><figcaption>Slides</figcaption></figure>
+    <figure><img loading="lazy" src="media/design-system.png" alt="Design system"><figcaption>Design system</figcaption></figure>
+    <figure><img loading="lazy" src="media/dashboard.png" alt="Dashboard"><figcaption>Dashboard</figcaption></figure>
+    <figure><img loading="lazy" src="media/docs.png" alt="Docs"><figcaption>Docs</figcaption></figure>
+    <figure><img loading="lazy" src="media/motion.png" alt="Motion"><figcaption>Motion</figcaption></figure>
+  </div>
+
+  <h2 lang="en">Try it</h2>
+  <h2 lang="zh">试一试</h2>
+  <pre>pnpm install
+pnpm dev   # editor at http://localhost:5173</pre>
+
+  <footer>
+    Apache-2.0 ·
+    <a href="https://github.com/tingly-dev/tingly-design">tingly-dev/tingly-design</a> ·
+    <a href="https://github.com/tingly-dev/tingly-box">Tingly Box</a>
+  </footer>
+</main>
+<script>
+  (function () {
+    var root = document.documentElement, key = 'td-lang', saved = null;
+    try { saved = localStorage.getItem(key); } catch (e) {}
+    var zh = saved ? saved === 'zh' : /^zh/i.test(navigator.language || '');
+    function apply() { root.classList.toggle('zh', zh); root.lang = zh ? 'zh' : 'en'; }
+    apply();
+    document.getElementById('lang').onclick = function () {
+      zh = !zh; apply();
+      try { localStorage.setItem(key, zh ? 'zh' : 'en'); } catch (e) {}
+    };
+  })();
+</script>
+</body>
+</html>
