@@ -18,7 +18,7 @@
   main { max-width:1040px; margin:0 auto; padding:0 24px 64px; }
   nav { display:flex; justify-content:space-between; align-items:center; padding:20px 0; }
   nav a, nav button { color:var(--muted); text-decoration:none; font:inherit; margin-left:16px; background:none; border:0; cursor:pointer; }
-  nav b { color:var(--fg); font-size:18px; }
+  nav b { color:var(--fg); font-size:18px; white-space:nowrap; }
   h1 { font-size:clamp(34px,6vw,60px); line-height:1.1; margin:48px 0 16px; letter-spacing:-.02em; }
   h2 { font-size:26px; margin:64px 0 16px; }
   .kicker { margin:48px 0 0; color:var(--accent); font-weight:600; letter-spacing:.04em; }
@@ -34,8 +34,11 @@
   .screen-wide video { aspect-ratio:16/9; }
   .screen-tall video { aspect-ratio:9/16; }
   .videos figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; text-align:center; }
-  @media (max-width:1000px) { .screen-wide { display:none; } }
-  @media (max-width:420px) { .videos { --h:min(400px, 70vh); } }
+  @media (max-width:1000px) {
+    .screen-wide { display:none; }
+    .screen-tall { width:min(100%, 420px); }
+    .screen-tall video { width:100%; height:auto; }
+  }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
   .card h3 { margin:0 0 6px; font-size:17px; }
