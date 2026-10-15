@@ -2722,6 +2722,19 @@ button.file-chip:hover {
   font-weight: 400;
   color: var(--muted);
 }
+.gdot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--tone, var(--muted));
+  vertical-align: 1px;
+}
+.menu .gdot {
+  margin: 0 3px;
+}
 .lgroup {
   font-family: var(--font-ui, inherit);
   color: var(--ink-2);
