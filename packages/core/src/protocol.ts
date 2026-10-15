@@ -143,6 +143,8 @@ export function cspFor(origin: string, kind: 'runtime' | 'executor' | 'dash' | '
     `style-src 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src https://fonts.gstatic.com ${origin}/api/ data:`,
     `frame-src ${origin}/sandbox/`,
+    // html-to-image reads each picture's bytes to inline it; only the server's own files, which carry CORS headers
+    `connect-src ${origin}/api/`,
     `img-src * data: blob:`,
     `media-src * data: blob:`,
   ].join('; ');
