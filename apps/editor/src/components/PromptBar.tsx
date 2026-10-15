@@ -6,7 +6,7 @@ import { delegateToClaude, runFastEdit, stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
-import { BarPill, BarTools, ContextChip, DockHost, DockTab, HistoryList, useDock, useDockKeys, useDockPad } from './AgentBar';
+import { BarPill, BarTools, ContextChip, DockHost, DockTab, HistoryList, useDock, useDockKeys } from './AgentBar';
 import { Send, Stop } from './icons';
 import { slideIdOf } from '@dc/core';
 
@@ -28,7 +28,6 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
   const collapsed = useStore((s) => s.barCollapsed);
   const historyOpen = useStore((s) => s.historyOpen);
   const { docked, mode } = useDock();
-  useDockPad(docked && mode === 'pinned');
   useDockKeys(box);
 
   useEffect(() => {

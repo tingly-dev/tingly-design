@@ -1,7 +1,6 @@
 """End-to-end checks for where the prompt lives: the bar at the bottom by default (its run card one line until the pointer is on it),
 moved to the right as a side dock: hidden on the right edge with only its tab showing, opened by
-the pointer on the tab or the cursor in the box, let go of when the person clicks the work, pinned open with the
-editor given the rest of the width, floating (the old bar), and the choice remembered. One run in every kind.
+the pointer on the tab or the cursor in the box, let go of when the person clicks the work, floating (the old bar), and the choice remembered. One run in every kind.
 Run after `pnpm build`: python3 e2e/dock.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh projects folder, with the mock model and a
 stand-in `claude`, so it needs neither `pnpm dev` nor an API key."""
@@ -125,22 +124,6 @@ async def main():
             await expect(dock.locator('.runfeed')).to_contain_text('Claude Code 完成', timeout=5000)
             check('opening the dock shows the answer', '改好了标题。' in await dock.locator('.runfeed').inner_text())
             await pg.mouse.move(300, 300)
-
-            # pinned: the editor gives up the width, nothing is covered
-            app_w = await pg.locator('.app').evaluate('e => e.getBoundingClientRect().width')
-            await pg.locator('.dock-tab').hover()
-            await dock.get_by_role('button', name='固定在侧边').click()
-            await pg.mouse.move(300, 300)
-            await pg.wait_for_timeout(500)
-            check('pinned, the dock stays', await x(dock) < 1280 - 300 and 'pinned' in await dock.get_attribute('class'))
-            check('and the editor is narrower by the dock', await pg.locator('.app').evaluate('e => e.getBoundingClientRect().width') <= app_w - 340)
-            check('the dock does not overlap the editor', await pg.locator('.app').evaluate('e => e.getBoundingClientRect().right') <= await x(dock) + 1)
-            await pg.reload(); await pg.wait_for_selector('.board'); await pg.wait_for_timeout(600)
-            check('pinned is remembered', 'pinned' in (await dock.get_attribute('class') or ''))
-            await dock.get_by_role('button', name='恢复自动隐藏').click()
-            await pg.mouse.move(300, 300)
-            await pg.wait_for_function("document.querySelector('.agent-dock').getBoundingClientRect().left > 1270", timeout=3000)
-            check('unpinning goes back to hiding and gives the width back', await pg.locator('.app').evaluate('e => e.getBoundingClientRect().width') >= app_w - 1)
 
             # floating: the old bar, and the fold to a pill
             await pg.locator('.dock-tab').hover()

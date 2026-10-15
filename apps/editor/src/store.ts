@@ -206,7 +206,7 @@ interface State {
   feeds: number;
   /** the prompt bar folded to a pill (kept across sessions) */
   barCollapsed: boolean;
-  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column on the right edge that hides until the pointer comes (`auto`) or stays open (`pinned`) */
+  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column on the right edge that hides until the pointer comes (`auto`) */
   barMode: BarMode;
   /** the list of earlier requests open above the bar */
   historyOpen: boolean;
@@ -270,7 +270,7 @@ export const useStore = create<State>(() => ({
   barMode: (() => {
     try {
       const m = localStorage.getItem('dc.barMode');
-      return m === 'pinned' || m === 'auto' ? m : 'float';
+      return m === 'auto' ? m : 'float';
     } catch {
       return 'float';
     }
@@ -479,7 +479,7 @@ export function continuable(delegates: DelegateState[]): DelegateState | undefin
   return [...delegates].reverse().find((d) => d.session && d.state === 'done');
 }
 
-export type BarMode = 'auto' | 'pinned' | 'float';
+export type BarMode = 'auto' | 'float';
 
 /** Where the prompt lives (kept across sessions, the same in every kind). */
 export function setBarMode(mode: BarMode): void {
