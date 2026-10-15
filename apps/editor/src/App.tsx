@@ -24,6 +24,17 @@ function Toasts() {
       {toasts.map((t) => (
         <div key={t.id} className={`toast ${t.kind}`}>
           {t.text}
+          {t.action && (
+            <button
+              className="toast-act"
+              onClick={() => {
+                t.action!.run();
+                useStore.setState((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) }));
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

@@ -5,7 +5,8 @@ import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutD
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api } from '../api';
 import { toast, useStore } from '../store';
-import { Sliders } from './icons';
+import { Chevron, GridLayout, GroupFolder, ListLayout, More, Rename, Sliders } from './icons';
+import { Menu, MenuItem } from './Menu';
 import { Appearance, LanguageMenu } from './Appearance';
 import { ISSUES_URL, REPO_URL } from '../links';
 import { goTo } from '../host';
@@ -31,6 +32,23 @@ export const KINDS: { kind: ProjectKind; tone: string }[] = [
 const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<ProjectKind, (typeof KINDS)[number]>;
 
 const RECENT_KEY = 'dc:recent-projects';
+const VIEW_KEY = 'dc:launcher-view';
+const FOLDED_KEY = 'dc:launcher-folded-groups';
+
+function stored(key: string): string {
+  try {
+    return localStorage.getItem(key) ?? '';
+  } catch {
+    return '';
+  }
+}
+function store(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // private mode: nothing to remember
+  }
+}
 
 export function readRecent(): string[] {
   try {
@@ -288,30 +306,136 @@ function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] 
   return [ref, w];
 }
 
-function Card({ p, recent }: { p: ProjectCard; recent: boolean }) {
+/** The ⋯ beside a card or row: it sits next to the card, not inside it, since a card is itself a button. */
+function MoreButton({ p, onMore }: { p: ProjectCard; onMore: (name: string, at: DOMRect) => void }) {
+  const { t } = useTranslation();
+  return (
+    <button className="lmore" aria-label={t('launcher.rowMenu', { title: p.title || p.name })} data-more={p.name} onClick={(e) => onMore(p.name, e.currentTarget.getBoundingClientRect())}>
+      <More />
+    </button>
+  );
+}
+
+function Card({ p, recent, flat, onMore }: { p: ProjectCard; recent: boolean; flat: boolean; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
   const [ref, width] = useWidth<HTMLButtonElement>();
   const k = KIND[p.kind];
   const kindName = t(`launcher.kind.${p.kind}.name`);
   return (
-    <button ref={ref} className={`lcard t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={t('launcher.card.open', { title: p.title, kind: kindName })}>
-      <Preview p={p.preview} project={p.name} width={width} />
-      <div className="lbody">
-        <div className="ltitle">
+    <div className="lcell">
+      <button ref={ref} className={`lcard t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={t('launcher.card.open', { title: p.title, kind: kindName })}>
+        <Preview p={p.preview} project={p.name} width={width} />
+        <div className="lbody">
+          <div className="ltitle">
+            <span className="name">{p.title || p.name}</span>
+            {recent && <span className="recent">{t('launcher.card.recent')}</span>}
+          </div>
+          <div className="lmeta">
+            <span className="kbadge">
+              <KindIcon kind={p.kind} size={12} />
+              {kindName}
+            </span>
+            <span>{t(`launcher.kind.${p.kind}.count`, { count: p.count })}</span>
+            {p.updatedAt && <span>{ago(t, p.updatedAt)}</span>}
+          </div>
+          <div className="lpath">
+            projects/{p.name}
+            {flat && p.group && <span className="lgroup"> · {p.group}</span>}
+          </div>
+        </div>
+      </button>
+      <MoreButton p={p} onMore={onMore} />
+    </div>
+  );
+}
+
+/** One project as a line: no preview, so a long list stays light. */
+function Row({ p, recent, onMore }: { p: ProjectCard; recent: boolean; onMore: (name: string, at: DOMRect) => void }) {
+  const { t } = useTranslation();
+  const k = KIND[p.kind];
+  const kindName = t(`launcher.kind.${p.kind}.name`);
+  return (
+    <div className="lcell lrowcell">
+      <button className={`lrow t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={t('launcher.card.open', { title: p.title, kind: kindName })}>
+        <span className="c-title">
+          <span className="kic" title={kindName}>
+            <KindIcon kind={p.kind} size={15} />
+          </span>
           <span className="name">{p.title || p.name}</span>
           {recent && <span className="recent">{t('launcher.card.recent')}</span>}
+        </span>
+        <span className="c-path">projects/{p.name}</span>
+        <span className="c-group">{p.group ?? ''}</span>
+        <span className="c-size">{t(`launcher.kind.${p.kind}.count`, { count: p.count })}</span>
+        <span className="c-when">{p.updatedAt ? ago(t, p.updatedAt) : ''}</span>
+      </button>
+      <MoreButton p={p} onMore={onMore} />
+    </div>
+  );
+}
+
+/** A small text box inside a menu: rename a title, or name a group. */
+function MenuInput({ value, onChange, onEnter, label, placeholder }: { value: string; onChange: (v: string) => void; onEnter: () => void; label: string; placeholder?: string }) {
+  return (
+    <input
+      className="input menu-input"
+      autoFocus
+      aria-label={label}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          onEnter();
+        }
+      }}
+    />
+  );
+}
+
+/** What a project's ⋯ opens: its actions, then the rename box or the group list. */
+function ProjectActions({ p, at, groups, onClose, onRename, onMove }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void }) {
+  const { t } = useTranslation();
+  const [step, setStep] = useState<'menu' | 'rename' | 'group'>('menu');
+  const [text, setText] = useState(p.title || p.name);
+  const typed = text.trim();
+  const matches = step === 'group' ? groups.filter((g) => g.toLowerCase().includes(typed.toLowerCase())) : [];
+  const exact = groups.find((g) => g.toLowerCase() === typed.toLowerCase());
+  const label = step === 'rename' ? t('launcher.rename.label') : step === 'group' ? t('launcher.group.moveTo') : t('launcher.rowMenu', { title: p.title || p.name });
+  return (
+    <Menu x={at.x} y={at.y} align="right" onClose={onClose} label={label}>
+      {step === 'menu' && (
+        <>
+          <MenuItem label={t('launcher.rename.menu')} icon={<Rename />} onSelect={() => setStep('rename')} />
+          <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />
+        </>
+      )}
+      {step === 'rename' && (
+        <div className="menu-form">
+          <MenuInput label={t('launcher.rename.label')} value={text} onChange={setText} onEnter={() => typed && (onRename(typed), onClose())} />
+          <div className="menu-note">{t('launcher.rename.hint')}</div>
         </div>
-        <div className="lmeta">
-          <span className="kbadge">
-            <KindIcon kind={p.kind} size={12} />
-            {kindName}
-          </span>
-          <span>{t(`launcher.kind.${p.kind}.count`, { count: p.count })}</span>
-          {p.updatedAt && <span>{ago(t, p.updatedAt)}</span>}
-        </div>
-        <div className="lpath">projects/{p.name}</div>
-      </div>
-    </button>
+      )}
+      {step === 'group' && (
+        <>
+          <div className="menu-form">
+            <MenuInput
+              label={t('launcher.group.pick')}
+              placeholder={t('launcher.group.pick')}
+              value={text}
+              onChange={setText}
+              onEnter={() => typed && (onMove(exact ?? typed), onClose())}
+            />
+          </div>
+          {matches.map((g) => (
+            <MenuItem key={g} label={g} icon={<GroupFolder />} checked={g === p.group} onSelect={() => (onMove(g), onClose())} />
+          ))}
+          {typed && !exact && <MenuItem label={t('launcher.group.create', { name: typed })} icon={<GroupFolder />} onSelect={() => (onMove(typed), onClose())} />}
+          {p.group && <MenuItem label={t('launcher.group.remove')} onSelect={() => (onMove(''), onClose())} />}
+        </>
+      )}
+    </Menu>
   );
 }
 
@@ -451,7 +575,7 @@ export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; t
 /** Move focus between cards with the arrow keys, by where they sit on screen. */
 function arrowNav(e: React.KeyboardEvent<HTMLElement>) {
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-  const cards = [...e.currentTarget.querySelectorAll<HTMLElement>('.lcard')];
+  const cards = [...e.currentTarget.querySelectorAll<HTMLElement>('.lcard, .lrow')];
   const i = cards.indexOf(document.activeElement as HTMLElement);
   if (i < 0) return;
   e.preventDefault();
@@ -478,6 +602,9 @@ export function Launcher() {
   const [tab, setTab] = useState<ProjectKind | 'all'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
+  const [view, setView] = useState<'grid' | 'list'>(() => (stored(VIEW_KEY) === 'list' ? 'list' : 'grid'));
+  const [folded, setFolded] = useState<Set<string>>(() => new Set(stored(FOLDED_KEY).split('\n').filter(Boolean)));
+  const [acting, setActing] = useState<{ name: string; x: number; y: number } | null>(null);
   const [creating, setCreating] = useState<ProjectKind | null>(null);
   const [importing, setImporting] = useState<{ picked?: Picked } | null>(null);
   const [dropping, setDropping] = useState(false);
@@ -526,7 +653,7 @@ export function Launcher() {
       return i < 0 ? Infinity : i;
     };
     return (list ?? [])
-      .filter((p) => (tab === 'all' || p.kind === tab) && (!needle || p.title.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle) || t(`launcher.kind.${p.kind}.name`).toLowerCase().includes(needle)))
+      .filter((p) => (tab === 'all' || p.kind === tab) && (!needle || p.title.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle) || (p.group ?? '').toLowerCase().includes(needle) || t(`launcher.kind.${p.kind}.name`).toLowerCase().includes(needle)))
       .sort((a, b) =>
         sort === 'name'
           ? (a.title || a.name).localeCompare(b.title || b.name)
@@ -535,6 +662,49 @@ export function Launcher() {
   }, [list, tab, q, sort, recent, t]);
   const taken = useMemo(() => new Set((list ?? []).map((p) => p.name)), [list]);
   const lastOpened = recent.find((n) => taken.has(n));
+  const groups = useMemo(() => [...new Set((list ?? []).map((p) => p.group).filter((g): g is string => !!g))].sort((a, b) => a.localeCompare(b)), [list]);
+  // with groups, the list falls into one section per group (the most recent first, or by name), the loose ones last; a search flattens it
+  const sections = useMemo(() => {
+    if (!groups.length || q.trim()) return [{ key: '', name: '', items: shown }];
+    const by = new Map<string, ProjectCard[]>();
+    for (const p of shown) by.set(p.group ?? '', [...(by.get(p.group ?? '') ?? []), p]);
+    const names = [...by.keys()].filter(Boolean);
+    return [...names.map((n) => ({ key: n, name: n, items: by.get(n)! })), ...(by.has('') ? [{ key: '', name: t('launcher.group.ungrouped'), items: by.get('')! }] : [])];
+  }, [shown, groups, q, t]);
+  const flat = sections.length === 1 && !sections[0].name;
+  const apply = (name: string, patch: { title?: string; group?: string }) => {
+    const before = list?.find((p) => p.name === name);
+    if (!before) return;
+    const next = (p: ProjectCard, v: { title?: string; group?: string }): ProjectCard => ({ ...p, ...(v.title !== undefined ? { title: v.title } : {}), ...(v.group !== undefined ? { group: v.group || undefined } : {}) });
+    setList((l) => l && l.map((p) => (p.name === name ? next(p, patch) : p)));
+    api.patchProject(name, patch).then(
+      () => {
+        if (patch.group === undefined) return;
+        const title = before.title || before.name;
+        const undo = { label: t('launcher.group.undo'), run: () => apply(name, { group: before.group ?? '' }) };
+        if (patch.group) toast(t('launcher.group.moved', { title, group: patch.group }), 'info', undo);
+        else toast(t('launcher.group.removed', { title, group: before.group ?? '' }), 'info', undo);
+      },
+      (e: Error) => {
+        setList((l) => l && l.map((p) => (p.name === name ? before : p)));
+        toast(e.message, 'error');
+      },
+    );
+  };
+  const setViewTo = (v: 'grid' | 'list') => {
+    setView(v);
+    store(VIEW_KEY, v);
+  };
+  const fold = (key: string) =>
+    setFolded((f) => {
+      const n = new Set(f);
+      if (!n.delete(key)) n.add(key);
+      store(FOLDED_KEY, [...n].join('\n'));
+      return n;
+    });
+  const onMore = (name: string, r: DOMRect) => setActing({ name, x: r.right, y: r.bottom + 4 });
+  const acted = acting ? list?.find((p) => p.name === acting.name) : undefined;
+  const compact = (list?.length ?? 0) > 6;
 
   return (
     <div
@@ -581,6 +751,13 @@ export function Launcher() {
             />
             <kbd>/</kbd>
           </label>
+          <div className="lview" role="group" aria-label={t('launcher.view.label')}>
+            {(['grid', 'list'] as const).map((v) => (
+              <button key={v} data-view={v} aria-pressed={view === v} title={t(`launcher.view.${v}`)} aria-label={t(`launcher.view.${v}`)} onClick={() => setViewTo(v)}>
+                {v === 'grid' ? <GridLayout /> : <ListLayout />}
+              </button>
+            ))}
+          </div>
           <select className="lsort" aria-label={t('launcher.sort.label')} value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'name')}>
             <option value="recent">{t('launcher.sort.recent')}</option>
             <option value="name">{t('launcher.sort.name')}</option>
@@ -611,7 +788,7 @@ export function Launcher() {
         {tab === 'all' && !q.trim() && (
           <section className="lstart" aria-label={t('launcher.start')}>
             <h2>{t('launcher.start')}</h2>
-            <div className="lstrip">
+            <div className={`lstrip${compact ? ' compact' : ''}`}>
               {KINDS.map((k) => (
                 <NewTile key={k.kind} kind={k.kind} onClick={() => setCreating(k.kind)} />
               ))}
@@ -628,14 +805,48 @@ export function Launcher() {
           </div>
         )}
         {list !== null && (
-          <section className="lall" aria-label={t('launcher.projects')}>
+          <section className={`lall${flat && groups.length ? '' : ' lnogroup'}`} aria-label={t('launcher.projects')}>
             <h2>{tab === 'all' ? t('launcher.allProjects') : t(`launcher.kind.${tab}.name`)}</h2>
-            <div className="lgrid">
-              {shown.map((p) => (
-                <Card key={p.name} p={p} recent={p.name === lastOpened} />
-              ))}
-              {tab !== 'all' && <NewTile kind={tab} onClick={() => setCreating(tab)} />}
-            </div>
+            {view === 'list' && shown.length > 0 && (
+              <div className="lrowhead" aria-hidden="false">
+                <button className="c-title" data-sort="name" aria-pressed={sort === 'name'} onClick={() => setSort('name')}>
+                  {t('launcher.list.name')}
+                </button>
+                <span className="c-path">{t('launcher.list.folder')}</span>
+                <span className="c-group">{t('launcher.list.group')}</span>
+                <span className="c-size">{t('launcher.list.size')}</span>
+                <button className="c-when" data-sort="recent" aria-pressed={sort === 'recent'} onClick={() => setSort('recent')}>
+                  {t('launcher.list.modified')}
+                </button>
+                <span className="c-more" />
+              </div>
+            )}
+            {sections.map((sec, i) => {
+              const key = sec.key || (sec.name ? '\u0000' : '');
+              const shut = !!sec.name && folded.has(key);
+              const last = i === sections.length - 1;
+              const tile = tab !== 'all' && <NewTile kind={tab} onClick={() => setCreating(tab)} />;
+              return (
+                <div key={key} className="lsection" data-group={sec.name || undefined}>
+                  {sec.name && (
+                    <h3>
+                      <button className="lghead" aria-expanded={!shut} aria-label={t(shut ? 'launcher.group.expand' : 'launcher.group.collapse', { name: sec.name })} onClick={() => fold(key)}>
+                        <Chevron open={!shut} />
+                        <span className="gname">{sec.name}</span>
+                        <span className="n">{sec.items.length}</span>
+                      </button>
+                    </h3>
+                  )}
+                  {!shut && (
+                    <div className={view === 'grid' ? 'lgrid' : 'llist'}>
+                      {sec.items.map((p) => (view === 'grid' ? <Card key={p.name} p={p} recent={p.name === lastOpened} flat={flat || !!q.trim()} onMore={onMore} /> : <Row key={p.name} p={p} recent={p.name === lastOpened} onMore={onMore} />))}
+                      {view === 'grid' && last && tile}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {view === 'list' && tab !== 'all' && <div className="lgrid ltail"><NewTile kind={tab} onClick={() => setCreating(tab)} /></div>}
             {!shown.length && <div className="lhint">{q.trim() ? t('launcher.notFound', { q: q.trim() }) : tab === 'all' ? t('launcher.noProjects') : t(`launcher.kind.${tab}.empty`)}</div>}
           </section>
         )}
@@ -648,6 +859,7 @@ export function Launcher() {
           {t('launcher.links.star')}
         </a>
       </footer>
+      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} />}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} onClose={() => setCreating(null)} />}
     </div>

@@ -83,6 +83,9 @@ export const api = {
     call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind, ...(size ? { size } : {}) }) }).then((r) =>
       json<{ ok: true }>(r),
     ),
+  /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
+  patchProject: (p: string, patch: { title?: string; group?: string }) =>
+    call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
   journal: (p: string) => call(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 

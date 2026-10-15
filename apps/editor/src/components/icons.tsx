@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { IconFolder, IconLayoutList } from '@tabler/icons-react';
 import {
   IconAlignCenter,
   IconAlignJustified,
@@ -159,6 +160,10 @@ export const Language = tabler(IconLanguage, 15);
 export const Sliders = tabler(IconAdjustmentsHorizontal, 15);
 export const External = tabler(IconExternalLink, 12);
 export const Check = tabler(IconCheck, 14);
+export const Rename = tabler(IconPencil, 14);
+export const GroupFolder = tabler(IconFolder, 14);
+export const ListLayout = tabler(IconLayoutList, 16);
+export const GridLayout = tabler(IconLayoutGrid, 16);
 export const Trash = tabler(IconTrash, 14);
 export const Undo = tabler(IconArrowBackUp);
 export const Redo = tabler(IconArrowForwardUp);

@@ -43,6 +43,9 @@ import {
   type Actor,
   type DsRecord,
   validSize,
+  INDEX_FILE,
+  cleanGroup,
+  retitle,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -54,6 +57,8 @@ import {
   kindOf,
   listAssets,
   listProjects,
+  readGroups,
+  setGroup,
   regenTokensCss,
   removeAsset,
   ownWrites,
@@ -138,6 +143,30 @@ app.post('/api/projects', async (c) => {
     kind === 'motion' && size !== undefined ? { size: validSize(size)! } : {},
   );
   return c.json({ ok: true });
+});
+
+/** Rename a project's title and/or file it under a launcher group ('' takes it out of its group). The folder name stays. */
+app.patch('/api/projects/:p', async (c) => {
+  const p = c.req.param('p');
+  const body = await c.req.json<{ title?: unknown; group?: unknown }>();
+  const kind = await kindOf(projectDir(p));
+  if (!kind) throw new HttpError(404, 'noProject', { name: p });
+  if (body.title !== undefined) {
+    const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim() : '';
+    if (!title) throw new HttpError(400, 'emptyTitle');
+    await withLock(p, async () => {
+      const rel = INDEX_FILE[kind];
+      const cur = await readOne(p, rel);
+      const content = retitle(cur?.content, title);
+      if (content === undefined) throw new HttpError(400, 'badIndex', { file: rel });
+      if (cur?.content === content) return;
+      const version = await writeAtomic(p, rel, content);
+      publish(p, { type: 'file', path: rel, content, version, actor: 'human' });
+      await record(p, { actor: 'human', file: rel, summary: lineDiffSummary(cur?.content, content).slice(0, 400), version });
+    });
+  }
+  if (body.group !== undefined) await setGroup(p, cleanGroup(body.group));
+  return c.json({ ok: true, groups: await readGroups() });
 });
 
 app.get('/api/projects/:p/files', async (c) => c.json({ files: await readProject(c.req.param('p')) }));

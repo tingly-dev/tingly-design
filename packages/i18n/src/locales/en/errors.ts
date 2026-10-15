@@ -5,6 +5,8 @@ export default {
   notProjectFile: 'Not a project file: {{path}}',
   notAssetPath: 'Not an asset path: {{path}}',
   noProject: 'No project named {{name}}',
+  emptyTitle: 'A title cannot be empty',
+  badIndex: '{{file}} is not valid JSON, so it cannot be renamed here',
   projectExists: 'A project named {{name}} already exists',
   contentMissing: 'The request has no content',
   invalidJson: '{{path}} is not valid JSON',

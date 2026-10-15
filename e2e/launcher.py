@@ -7,10 +7,15 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
-MADE = ['zz-launch', 'zz-launch-deck']
+MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b']
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
+    gf = os.path.join(REPO, 'projects', '.groups.json')
+    if os.path.exists(gf):
+        kept = {k: v for k, v in json.load(open(gf, encoding='utf-8')).items() if k not in MADE}
+        if kept: json.dump(kept, open(gf, 'w', encoding='utf-8'))
+        else: os.remove(gf)
 
 results = []
 def check(name, ok, extra=''):
@@ -49,8 +54,8 @@ async def main():
         await expect(board.locator('h1').first).to_have_text('Team settings')
         check('the canvas card renders the board it opens on', True)
         check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 5)
-        check('the design system card shows its swatches and components',
-              await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Button' in await pg.locator('.lcard[data-project="tingly-ds"] .chips').inner_text())
+        check('the design system card shows its swatches and a specimen',
+              await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Instrument Serif' in await pg.locator('.lcard[data-project="tingly-ds"] .lp-ds').inner_text())
         await expect(pg.locator('.lcard[data-project="box-usage"] .lp-dash li').first).to_have_text('September provider budgets')
         await expect(pg.locator('.lcard[data-project="design-guide"] .lp-doc li').nth(2)).to_have_attribute('style', 'padding-left: 10px;')
         check('dashboard and doc cards show datasets and the tab outline', True)
@@ -93,6 +98,69 @@ async def main():
         await pg.locator('.lsort').select_option('name')
         names = await pg.locator('.lall .lcard[data-project] .ltitle .name').all_inner_texts()
         check('sorting by name', names == sorted(names, key=str.lower) or names == sorted(names), str(names))
+
+        # --- groups, list view, rename ------------------------------------------------------------
+        for n in ('zz-grp-a', 'zz-grp-b'):
+            await pg.request.post(BASE + '/api/projects', data={'name': n, 'title': 'ZZ ' + n, 'kind': 'docs'})
+        await pg.goto(BASE + '/')
+        await pg.locator('.lcard[data-project="zz-grp-a"]').wait_for()
+        check('with no groups the list is one flat grid', await pg.locator('.lsection h3').count() == 0)
+        check('a project has a ⋯ next to its card, not inside it', await pg.locator('[data-more="zz-grp-a"]').count() == 1 and await pg.locator('.lcard[data-project="zz-grp-a"] [data-more]').count() == 0)
+        await pg.locator('.lcell:has([data-project="zz-grp-a"])').hover()
+        await pg.locator('[data-more="zz-grp-a"]').click()
+        await pg.get_by_role('menuitem', name='移到分组').click()
+        await pg.keyboard.type('ZZ Team')
+        await pg.get_by_role('menuitem', name='新建分组“ZZ Team”').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard[data-project="zz-grp-a"]')).to_have_count(1)
+        check('typing a new group name files the project there and the grid falls into sections', True)
+        await expect(pg.locator('.toast-act')).to_have_text('撤销')
+        await pg.locator('.toast-act').click()
+        await expect(pg.locator('.lsection h3')).to_have_count(0)
+        check('the toast undoes the move, and an empty group disappears', True)
+        await pg.locator('.lcell:has([data-project="zz-grp-a"])').hover()
+        await pg.locator('[data-more="zz-grp-a"]').click()
+        await pg.get_by_role('menuitem', name='移到分组').click()
+        await pg.keyboard.type('ZZ Team')
+        await pg.keyboard.press('Enter')
+        await pg.locator('.lcell:has([data-project="zz-grp-b"])').hover()
+        await pg.locator('[data-more="zz-grp-b"]').click()
+        await pg.get_by_role('menuitem', name='移到分组').click()
+        await pg.get_by_role('menuitemcheckbox', name='ZZ Team').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard[data-project]')).to_have_count(2)
+        check('Enter files under the typed name, and an existing group is one click', True)
+        groups = json.load(open(os.path.join(REPO, 'projects/.groups.json'), encoding='utf-8'))
+        check('the grouping is kept in projects/.groups.json, outside any project', groups.get('zz-grp-a') == 'ZZ Team' and not os.path.exists(os.path.join(REPO, 'projects/zz-grp-a/.groups.json')))
+        await pg.locator('.lsection[data-group="ZZ Team"] .lghead').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard')).to_have_count(0)
+        await pg.reload()
+        await pg.locator('.lsection[data-group="ZZ Team"]').wait_for()
+        check('a folded group stays folded after a reload', await pg.locator('.lsection[data-group="ZZ Team"] .lcard').count() == 0)
+        await pg.locator('.lsection[data-group="ZZ Team"] .lghead').click()
+
+        await pg.locator('[data-view="list"]').click()
+        check('the list view has a row per project, with no live preview', await pg.locator('.lrow[data-project]').count() >= 10 and await pg.locator('.lrow iframe').count() == 0)
+        await pg.reload()
+        await pg.locator('.lrow[data-project]').first.wait_for()
+        check('the chosen view is remembered', await pg.locator('[data-view="list"][aria-pressed=true]').count() == 1)
+        await pg.locator('input[aria-label="搜索项目"]').fill('ZZ Team')
+        shown = await pg.locator('.lrow[data-project]').evaluate_all('cs => cs.map(c => c.dataset.project).sort()')
+        check('search matches a group name and flattens the sections, showing the group column', shown == ['zz-grp-a', 'zz-grp-b'] and await pg.locator('.lsection h3').count() == 0 and await pg.locator('.lrow .c-group').first.is_visible())
+        await pg.locator('input[aria-label="搜索项目"]').fill('')
+
+        await pg.locator('.lcell:has([data-project="zz-grp-a"])').hover()
+        await pg.locator('[data-more="zz-grp-a"]').click()
+        await pg.get_by_role('menuitem', name='重命名').click()
+        box = pg.locator('.menu-input')
+        await box.fill('ZZ Renamed')
+        await box.press('Enter')
+        await expect(pg.locator('.lrow[data-project="zz-grp-a"] .name')).to_have_text('ZZ Renamed')
+        doc = json.load(open(os.path.join(REPO, 'projects/zz-grp-a/doc.json'), encoding='utf-8'))
+        check('rename changes the title in the project\'s own file and keeps the folder', doc['title'] == 'ZZ Renamed' and os.path.isdir(os.path.join(REPO, 'projects/zz-grp-a')))
+        await pg.reload()
+        await expect(pg.locator('.lrow[data-project="zz-grp-a"] .name')).to_have_text('ZZ Renamed')
+        check('and the new title is what the launcher lists next time', True)
+        await pg.locator('[data-view="grid"]').click()
+        await pg.locator('.lcard[data-project]').first.wait_for()
 
         # --- new project dialog ---------------------------------------------------------------
         await pg.locator('.lnewbtn').click()
