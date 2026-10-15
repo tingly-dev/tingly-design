@@ -2,17 +2,17 @@ import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { continuable, setBarCollapsed, setBarMode, useStore, type RunRecord } from '../store';
-import { Chevron, Done, DockRight, Failed, Floating, History as HistoryIcon, Pin, Pinned, Reuse, Sparkle, Spinner } from './icons';
+import { Chevron, Done, DockRight, Failed, Floating, History as HistoryIcon, Reuse, Sparkle, Spinner } from './icons';
 
 /** Narrower than this the side dock would take too much of the work, so the bar floats. */
 const DOCK_MIN_WIDTH = 1000;
 
 /**
  * Whether the bar is a column on the right edge (hidden until the pointer
- * comes to it, or pinned open) rather than the floating bar. The choice is the
+ * comes to it) rather than the bar at the bottom. The choice is the
  * person's, remembered and shared by every kind; a narrow window always floats.
  */
-export function useDock(): { docked: boolean; mode: 'auto' | 'pinned' | 'float'; wide: boolean } {
+export function useDock(): { docked: boolean; mode: 'auto' | 'float'; wide: boolean } {
   const mode = useStore((s) => s.barMode);
   const [wide, setWide] = useState(() => window.innerWidth >= DOCK_MIN_WIDTH);
   useEffect(() => {
@@ -28,17 +28,6 @@ export function useDock(): { docked: boolean; mode: 'auto' | 'pinned' | 'float';
 /** The bar, as the column when docked (outside the stage's layout, so nothing in a kind's own view moves), else where it is. */
 export function DockHost({ docked, children }: { docked: boolean; children: ReactNode }) {
   return docked ? createPortal(children, document.body) : <>{children}</>;
-}
-
-/** While the dock is pinned the editor leaves its width to it. */
-export function useDockPad(pinned: boolean): void {
-  useEffect(() => {
-    if (!pinned) return;
-    document.documentElement.style.setProperty('--dock-pad', 'var(--dock-w)');
-    return () => {
-      document.documentElement.style.removeProperty('--dock-pad');
-    };
-  }, [pinned]);
 }
 
 /** Ctrl/⌘ J puts the cursor in the request box, opening the dock or the folded bar on the way; Esc in the box lets an auto-hidden dock go; a click on the work lets go of the box, which folds the run card of the floating bar and hides the dock. */
@@ -87,7 +76,7 @@ export function BarTools() {
   const { t } = useTranslation();
   const open = useStore((s) => s.historyOpen);
   const count = useStore((s) => s.history.length);
-  const { docked, mode, wide } = useDock();
+  const { docked, wide } = useDock();
   return (
     <span className="bar-tools">
       <button
@@ -102,15 +91,6 @@ export function BarTools() {
       </button>
       {docked ? (
         <>
-          <button
-            className={`ib sm${mode === 'pinned' ? ' on' : ''}`}
-            aria-pressed={mode === 'pinned'}
-            aria-label={mode === 'pinned' ? t('prompt.dock.unpin') : t('prompt.dock.pin')}
-            title={mode === 'pinned' ? t('prompt.dock.unpin') : t('prompt.dock.pin')}
-            onClick={() => setBarMode(mode === 'pinned' ? 'auto' : 'pinned')}
-          >
-            {mode === 'pinned' ? <Pinned /> : <Pin />}
-          </button>
           <button className="ib sm" aria-label={t('prompt.dock.float')} title={t('prompt.dock.float')} onClick={() => setBarMode('float')}>
             <Floating />
           </button>

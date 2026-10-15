@@ -34,7 +34,7 @@
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建 | 已实施 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
-| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或右侧边栏（自动隐藏 / 钉住）、请求历史、"新对话 / 接着"标记 | 已实施；§5 是没做的 |
+| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或右侧边栏（自动隐藏）、请求历史、"新对话 / 接着"标记 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：快速 AI 和 Claude Code 共用一个连接、各有模型名；环境变量 > 已保存 > 默认；Tingly Box 为推荐；图片生成将来接在同一处 | 已实施；§6 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
 | [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |

@@ -177,7 +177,6 @@ select:not([multiple]) {
 .app {
   position: fixed;
   inset: var(--topbar-h) 0 0 0;
-  right: var(--dock-pad, 0px);
   display: grid;
   grid-template-columns: 1fr auto;
 }
@@ -3553,7 +3552,7 @@ textarea.dsin {
 .app.docs .journal-pop {
   position: fixed;
   top: calc(var(--topbar-h) + 8px);
-  right: calc(var(--dock-pad, 0px) + 12px);
+  right: 12px;
   left: auto;
   bottom: auto;
 }
@@ -3687,7 +3686,7 @@ textarea.dsin {
   position: fixed;
   top: 0;
   left: 0;
-  right: var(--dock-pad, 0px);
+  right: 0;
   height: var(--topbar-h);
   z-index: 25;
   box-sizing: border-box;
@@ -5979,7 +5978,7 @@ body.filedrag iframe {
 
 /* ------------------------------------------- the prompt as a side dock (AgentBar.tsx)
    A column on the right edge: hidden with only its tab showing, opened by the pointer on the
-   tab or the cursor in the box, or pinned open with the editor given the rest of the width.
+   tab or the cursor in the box.
    It is a child of <body>, so nothing in a kind's own layout moves when it opens. */
 
 :root {

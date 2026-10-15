@@ -6,7 +6,7 @@ import { keepAttachments, useAttachments } from '../attachments';
 import { toast, useStore } from '../store';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
-import { BarPill, BarTools, ContextChip, DockHost, DockTab, HistoryList, useDock, useDockKeys, useDockPad } from './AgentBar';
+import { BarPill, BarTools, ContextChip, DockHost, DockTab, HistoryList, useDock, useDockKeys } from './AgentBar';
 import { Send, Stop } from './icons';
 
 /**
@@ -36,7 +36,6 @@ export function AskClaude({
   const historyOpen = useStore((s) => s.historyOpen);
   const box = useRef<HTMLTextAreaElement>(null);
   const { docked, mode } = useDock();
-  useDockPad(docked && mode === 'pinned');
   useDockKeys(box);
   useAutoGrow(box, text);
   const active = [...delegates].reverse().find((d) => d.state === 'start' || d.state === 'progress');
