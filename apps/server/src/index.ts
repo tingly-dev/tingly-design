@@ -140,7 +140,7 @@ app.post('/api/projects', async (c) => {
     title || name,
     kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
     langOf(c),
-    kind === 'motion' && size !== undefined ? { size: validSize(size)! } : {},
+    (kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {},
   );
   return c.json({ ok: true });
 });

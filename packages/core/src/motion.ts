@@ -115,10 +115,18 @@ export function sizeName(size: [number, number]): string {
   return `s${size[0]}x${size[1]}`;
 }
 
-/** A new motion project: one title scene in the size asked for (16:9 when none), laid out to that size. */
+/** The page a new scene starts on: light and plain, so neither a person nor an agent reads it as a chosen style. */
+const STARTER_BG = '#fbfbf8';
+const STARTER_FG = '#1d1d1b';
+const STARTER_MUTED = '#6b6a66';
+
+/**
+ * A new motion project: one title scene in the size asked for (16:9 when none), laid out to that size.
+ * The scene is a light page holding the title; `hint`, when given, adds a line under it.
+ */
 export function newMotion(
   title: string,
-  hint = 'Edit scenes/*.html with Claude Code; timing goes on data-in, data-out and data-keys.',
+  hint = '',
   opts: { format?: string; size?: [number, number] } = {},
 ): { motion: MotionJson; scenes: Record<string, string> } {
   const safe = title.replace(/[<&>]/g, '');
@@ -132,21 +140,23 @@ export function newMotion(
     motion: { v: 1, title, formats: { [format]: { size } }, fps: 30, order: ['title'], audio: [], faces: {} },
     scenes: {
       title:
-        `<section id="title" data-duration="4s" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:${px(128)}px;display:flex;flex-direction:column;justify-content:center;gap:${px(32)}px">\n` +
+        `<section id="title" data-duration="4s" style="background:${STARTER_BG};color:${STARTER_FG};font-family:'Noto Sans SC', Arial, sans-serif;padding:${px(128)}px;display:flex;flex-direction:column;justify-content:center;gap:${px(32)}px">\n` +
         `<h1 data-in="rise 700ms" style="font-size:${px(112)}px;font-weight:800;line-height:1.05">${safe}</h1>\n` +
-        `<p data-in="fade 600ms" style="font-size:${px(40)}px;color:#a9a59c">${hint.replace(/[<&>]/g, '')}</p>\n` +
+        (hint
+          ? `<p data-in="fade 600ms" style="font-size:${px(40)}px;color:${STARTER_MUTED}">${hint.replace(/[<&>]/g, '')}</p>\n`
+          : '') +
         `</section>\n`,
     },
   };
 }
 
-/** A cover scene to start from: one still page in the starter's look, with no timing (a cover is read standing still). */
-export function newCoverScene(id: string, title: string, hint: string): string {
+/** A cover scene to start from: one still light page holding the title, with no timing (a cover is read standing still). */
+export function newCoverScene(id: string, title: string, hint = ''): string {
   const safe = (v: string) => v.replace(/[<&>]/g, '');
   return (
-    `<section id="${id}" style="background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">\n` +
+    `<section id="${id}" style="background:${STARTER_BG};color:${STARTER_FG};font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px">\n` +
     `<h1 style="font-size:160px;font-weight:800;line-height:1.05">${safe(title)}</h1>\n` +
-    `<p style="font-size:48px;color:#a9a59c">${safe(hint)}</p>\n` +
+    (hint ? `<p style="font-size:48px;color:${STARTER_MUTED}">${safe(hint)}</p>\n` : '') +
     `</section>\n`
   );
 }

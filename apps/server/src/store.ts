@@ -393,7 +393,7 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     return;
   }
   if (kind === 'motion') {
-    const { motion, scenes } = newMotion(title, t('starter.motionHint'), opts);
+    const { motion, scenes } = newMotion(title, '', opts);
     for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
     await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
     return;
@@ -416,20 +416,20 @@ export async function createProject(name: string, title: string, kind: ProjectKi
       designSystems: [],
     }));
     await writeAtomic(name, slideFile('cover'), newSlideSource('cover', {
-      like: "background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px",
       title,
-      body: t('starter.deckHint'),
+      body: '',
     }).replace('font-size:72px', 'font-size:112px'));
     await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
     return;
   }
+  const [boardW, boardH] = opts.size ?? [1200, 760];
   const canvas = parseCanvas(JSON.stringify({
     v: 3,
     title,
     createdOnFiles: { v: 1, at: new Date().toISOString() },
-    boards: { 'Main.dc.html': { x: 0, y: 0, w: 1200, h: 760, title } },
+    boards: { 'Main.dc.html': { x: 0, y: 0, w: boardW, h: boardH, title } },
     order: ['Main.dc.html'],
   }));
   await writeAtomic(name, CANVAS_FILE, stringifyCanvas(canvas));
-  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: 1200, h: 760, lang, hint: t('starter.canvasHint') }));
+  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: boardW, h: boardH, lang, hint: t('starter.canvasHint') }));
 }

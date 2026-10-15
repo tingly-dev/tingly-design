@@ -26,7 +26,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | `packages/core/src/deck.ts` `ProjectKind`、`projectKind(files)` | 类型名；按文件判断类型 | 类型检查不过，或前端认不出 |
 | `apps/server/src/store.ts` `kindOf` | 按索引文件判断目录是什么类型（**有先后**：`deck.json` 先于 `canvas.json`） | 启动页不列、接口按画布处理 |
 | `apps/server/src/store.ts` `createProject` | 新建时写出最小的索引和第一个内容单元 | 新建出空目录 |
-| `apps/server/src/index.ts` `POST /api/projects` | 允许的 `kind` 白名单；动效还收一个可选的 `size`（宽高，核心的 `validSize` 校验） | 新建对话框建出来的是画布；动效总是 16:9 |
+| `apps/server/src/index.ts` `POST /api/projects` | 允许的 `kind` 白名单；动效和画布还收一个可选的 `size`（宽高，核心的 `validSize` 校验；画布是第一块画板的大小） | 新建对话框建出来的是画布；动效总是 16:9，画布总是 1200×760 |
 | `apps/server/src/index.ts` `/fast-edit` | 选快速 AI 的系统提示（`FAST_EDIT_*`） | 快速 AI 按画布规则改 |
 | `apps/server/src/delegate.ts` `startDelegate` | 交给 Claude Code 时的开场说明、附件路径写法、系统提示、允许的工具 | Claude Code 按画布规则改文件 |
 | `packages/core/src/prompt.ts` | 快速 AI 的系统提示正文（`FAST_EDIT_SYSTEM`、`FAST_EDIT_SLIDES`、`FAST_EDIT_DOCS`）；Claude Code 的在 `delegate.ts`（`SLIDES_SYSTEM` 等） | 同上 |
