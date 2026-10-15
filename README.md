@@ -47,6 +47,7 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 | `DC_FAST_MODEL` | The fast AI model; defaults to `claude-haiku-5-5`. |
 | `DC_LOG_LEVEL` | Server log level on stderr: `error`, `warn`, `info` (default), `debug`, `silent`; see [development](docs/en/development.md#server-log). |
 | `DC_DELEGATE_MODEL` | The model for "hand to Claude Code" (the CLI's default when unset). |
+| `DC_IMAGE_BASE_URL`, `DC_IMAGE_MODEL`, `DC_IMAGE_API_KEY` | Image generation through an OpenAI-style `…/v1/images/generations` address (Claude Code makes a picture when a request needs one). Without them the editor's **AI model settings** has an Image generation section: Tingly Box fills in its own address, Anthropic has none. The key defaults to the connection's. |
 | `DC_CONFIG` | The file AI model settings are saved in (holds the key; owner-only); defaults to `.tingly-design/ai.json` beside the projects folder. |
 | `DC_PROJECTS` | The projects folder; defaults to `projects/` in this repository. |
 | `PORT` | The server port; defaults to 8787. |

@@ -44,6 +44,7 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 | `DC_PROJECTS` | 宿主数据目录里的一个文件夹，如 `~/.tingly-box/design/projects`。不存在时会先放入示例项目（`DC_SAMPLES=0` 则从空开始）。 |
 | `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` | 宿主的模型网关和它的令牌。快速 AI 直接调它；「交给 Claude Code」用同样的环境运行 `claude`，所以两者都经过宿主。 |
 | `DC_FAST_MODEL`、`DC_DELEGATE_MODEL` | 网关认识的模型名。 |
+| `DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY` | 可选：OpenAI 风格的图片网关（`<base>/images/generations`、`<base>/images/edits`）、它的模型名和密钥。Tingly Box 的是 `http://localhost:12580/tingly/imagegen/v1`。不设时，连接是 Tingly Box 就跟着它走；密钥默认用 `ANTHROPIC_AUTH_TOKEN`。 |
 | `DC_LOG_LEVEL`、`DC_LOG_FORMAT` | 服务端日志：`error`、`warn`、`info`（默认）、`debug` 或 `silent`；`json` 表示 stderr 每行一个对象。见[开发](./development.md#服务端日志)。 |
 | `DC_CONFIG` | 编辑器“AI 模型设置”保存到哪个文件（默认是 `DC_PROJECTS` 旁边的 `.tingly-design/ai.json`）。宿主在上面设的值优先于它，设置对话框里那一项显示为“由宿主设定”，不可改。 |
 | `DC_THEME` | 用户还没挑主题时的默认外观（预设名或 JSON，见[主题](theming.md)）。 |

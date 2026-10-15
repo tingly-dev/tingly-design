@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TINGLY_BOX_ANTHROPIC, resolveAi, validBaseUrl } from '@dc/core';
+import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, resolveAi, validBaseUrl } from '@dc/core';
 import { api, type AiConfig, type AiDraft, type AiSource } from '../api';
 import { toast, useStore } from '../store';
 import { External } from './icons';
@@ -17,7 +17,7 @@ export function AiSettingsHost() {
 }
 
 /** A value the environment fixed (a host that embeds the editor) cannot be changed here; say so. */
-const Locked = ({ source }: { source: AiSource | 'none' }) => {
+const Locked = ({ source }: { source: AiSource | 'connection' | 'none' }) => {
   const { t } = useTranslation();
   return source === 'env' ? <span className="lock">{t('aiSettings.fromHost')}</span> : null;
 };
@@ -35,6 +35,9 @@ function AiSettings() {
   const [key, setKey] = useState('');
   const [fastModel, setFastModel] = useState('');
   const [claudeModel, setClaudeModel] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageKey, setImageKey] = useState('');
+  const [imageModel, setImageModel] = useState('');
   // null until the person chooses: then it follows whether there is a key, as the server's default does
   const [chosen, setChosen] = useState<'shared' | 'login' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,6 +57,8 @@ function AiSettings() {
         setCustom(c.preset === 'custom' ? c.baseUrl.value : '');
         setFastModel(c.fastModel.source === 'saved' ? c.fastModel.value : '');
         setClaudeModel(c.claudeModel.source === 'saved' ? c.claudeModel.value : '');
+        setImageUrl(c.image.baseUrl.source === 'saved' ? c.image.baseUrl.value : '');
+        setImageModel(c.image.model.source === 'saved' ? c.image.model.value : '');
         setChosen(c.claudeRoute.source === 'saved' ? c.claudeRoute.value : null);
       },
       (e) => {
@@ -72,7 +77,24 @@ function AiSettings() {
   const dflt = resolveAi({}, { baseUrl });
   const hasKey = keyLocked || cfg.key.set || key.trim() !== '';
   const route = chosen ?? (hasKey ? 'shared' : 'login');
-  const draft = (): AiDraft => ({ baseUrl: urlLocked ? '' : baseUrl, ...(key.trim() ? { apiKey: key.trim() } : {}), fastModel: fastModel.trim(), claudeModel: claudeModel.trim(), ...(chosen ? { claudeRoute: chosen } : {}) });
+  // the image address follows the connection when it can (Tingly Box); otherwise it is typed
+  const imgUrlLocked = cfg.image.baseUrl.source === 'env';
+  const followsBox = preset === 'tingly-box' && !imgUrlLocked;
+  const imgUrl = imgUrlLocked ? cfg.image.baseUrl.value : followsBox ? TINGLY_BOX_IMAGEGEN : imageUrl.trim();
+  const imgKeyLocked = cfg.image.key.source === 'env';
+  const imgProblem = !validBaseUrl(imgUrl) ? t('aiSettings.badUrl') : '';
+  const imgDflt = resolveAi({}, { baseUrl, imageBaseUrl: imgUrl }).image;
+  const imgReady = Boolean(imgUrl) && (imgKeyLocked || cfg.image.key.source === 'saved' || imageKey.trim() !== '' || hasKey) && !imgProblem;
+  const draft = (): AiDraft => ({
+    imageBaseUrl: imgUrlLocked || followsBox ? '' : imgUrl,
+    ...(imageKey.trim() ? { imageKey: imageKey.trim() } : {}),
+    imageModel: imageModel.trim(),
+    baseUrl: urlLocked ? '' : baseUrl,
+    ...(key.trim() ? { apiKey: key.trim() } : {}),
+    fastModel: fastModel.trim(),
+    claudeModel: claudeModel.trim(),
+    ...(chosen ? { claudeRoute: chosen } : {}),
+  });
 
   const runTest = async () => {
     setBusy(true);
@@ -86,7 +108,7 @@ function AiSettings() {
     setBusy(false);
   };
   const save = async () => {
-    if (problem || busy) return;
+    if (problem || imgProblem || busy) return;
     setBusy(true);
     try {
       await api.saveAiConfig(draft());
@@ -199,6 +221,58 @@ function AiSettings() {
           </div>
         </section>
 
+        <section data-image-section>
+          <h3>{t('aiSettings.image')}</h3>
+          <p className="note">{t('aiSettings.imageNote')}</p>
+          <label className="field">
+            <span>{t('aiSettings.address')}</span>
+            {followsBox || imgUrlLocked ? (
+              <code className="addr" data-image-address>
+                {imgUrl}
+              </code>
+            ) : (
+              <input className="input mono" placeholder="https://api.openai.com/v1" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} aria-label={t('aiSettings.image') + ' ' + t('aiSettings.address')} />
+            )}
+            <Locked source={cfg.image.baseUrl.source} />
+          </label>
+          {followsBox && <p className="status">{t('aiSettings.imageBoxNote')}</p>}
+          {preset === 'anthropic' && !imgUrl && <p className="status" data-image-none>{t('aiSettings.imageNoEndpoint')}</p>}
+          {imgUrl && (
+            <>
+              <label className="field">
+                <span>{t('aiSettings.key')}</span>
+                <input
+                  className="input mono"
+                  type="password"
+                  autoComplete="off"
+                  disabled={imgKeyLocked}
+                  placeholder={imgKeyLocked ? '••••••••' : cfg.image.key.source === 'saved' ? t('aiSettings.keyKept') : t('aiSettings.imageKeyShared')}
+                  value={imageKey}
+                  onChange={(e) => setImageKey(e.target.value)}
+                  aria-label={t('aiSettings.image') + ' ' + t('aiSettings.key')}
+                />
+                <Locked source={cfg.image.key.source} />
+              </label>
+              <label className="field">
+                <span>{t('aiSettings.model')}</span>
+                <input
+                  className="input mono"
+                  disabled={cfg.image.model.source === 'env'}
+                  placeholder={imgDflt.model.value}
+                  value={cfg.image.model.source === 'env' ? cfg.image.model.value : imageModel}
+                  onChange={(e) => setImageModel(e.target.value)}
+                  aria-label={t('aiSettings.image') + ' ' + t('aiSettings.model')}
+                />
+                <Locked source={cfg.image.model.source} />
+              </label>
+              <p className={`status ${imgReady ? 'ok' : ''}`} data-image-state={imgReady ? 'ready' : 'off'}>
+                {imgReady ? t('aiSettings.imageReady') : t('aiSettings.imageOff')}
+              </p>
+            </>
+          )}
+          {imgProblem && <p className="status bad">{imgProblem}</p>}
+        </section>
+
         <section>
           <h3>Claude Code</h3>
           <p className="note">{t('aiSettings.claudeNote')}</p>
@@ -236,7 +310,7 @@ function AiSettings() {
           <button type="button" className="btn" onClick={close}>
             {t('common.cancel')}
           </button>
-          <button type="submit" className="btn primary" disabled={busy || !!problem}>
+          <button type="submit" className="btn primary" disabled={busy || !!problem || !!imgProblem}>
             {t('common.save')}
           </button>
         </footer>

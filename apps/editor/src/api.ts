@@ -19,6 +19,8 @@ export interface Health {
   ok: boolean;
   fastEdit: boolean;
   fastModel: string;
+  /** image generation is set up (the server's /images route works) */
+  imageGen?: boolean;
   claudeCli: boolean;
   projectsDir: string;
   version?: string;
@@ -41,6 +43,12 @@ export interface AiConfig {
   fastModel: { value: string; source: AiSource };
   claudeModel: { value: string; source: AiSource };
   claudeRoute: { value: 'shared' | 'login'; source: AiSource };
+  image: {
+    baseUrl: { value: string; source: AiSource };
+    model: { value: string; source: AiSource };
+    key: { set: boolean; source: AiSource | 'connection' | 'none' };
+    ready: boolean;
+  };
   claudeCli: boolean;
   box: { reachable: boolean };
 }
@@ -54,6 +62,10 @@ export interface AiDraft {
   claudeModel: string;
   /** left out until the person chooses: the default follows whether there is a key */
   claudeRoute?: 'shared' | 'login';
+  /** an OpenAI-compatible image address; blank follows the connection */
+  imageBaseUrl?: string;
+  imageKey?: string;
+  imageModel?: string;
 }
 
 export type ServerEvent =

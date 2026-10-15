@@ -22,7 +22,7 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 
 ## AI model settings
 
-Which model answers is set in one dialog (`apps/editor/src/components/AiSettings.tsx`, opened from the launcher, `ProjectMenu` and the prompt bar's hint): one connection (Tingly Box suggested, Anthropic, or another address) shared by fast AI and Claude Code, a model name for each, and Claude Code's own sign-in as the alternative. The values resolve environment > saved > default in `packages/core/src/aiConfig.ts`; the server (`apps/server/src/aiconfig.ts`) owns the file and the key. A new model-using feature (image generation, #32) joins this dialog, not a new place. See `.design/ai-settings.md`.
+Which model answers is set in one dialog (`apps/editor/src/components/AiSettings.tsx`, opened from the launcher, `ProjectMenu` and the prompt bar's hint): one connection (Tingly Box suggested, Anthropic, or another address) shared by fast AI and Claude Code, a model name for each, and Claude Code's own sign-in as the alternative. The values resolve environment > saved > default in `packages/core/src/aiConfig.ts`; the server (`apps/server/src/aiconfig.ts`) owns the file and the key. Image generation is its third job (an OpenAI-style `/images/generations` and `/images/edits` address that follows the connection; Claude Code reaches it through `scripts/image-gen.mjs` and the server's `POST /api/projects/:p/images`, results kept in `uploads/`; `DC_IMAGE_*` override). A new model-using feature joins this dialog, not a new place. See `.design/ai-settings.md` and `.design/image-generation.md`.
 
 ## Frontend changes come back with screenshots
 
@@ -97,7 +97,7 @@ CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `image_gen`); add new suites to both language versions of that table.
 
 # Issues
 
