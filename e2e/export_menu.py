@@ -48,7 +48,7 @@ async def main():
             menu = pg.get_by_role('menu', name='Import / Export')
             await expect(menu).to_be_visible()
             names = [re.sub(r'\s+', ' ', (await i.inner_text()).split('\n')[0]) for i in await menu.get_by_role('menuitem').all()]
-            check(f'{kind}: the menu lists import and export', 'Choose files…' in names and all(w in names for w in wants), names)
+            check(f'{kind}: the menu lists import and export', any(n.startswith('Import ') for n in names) and all(w in names for w in wants), names)
             check(f'{kind}: …under Import and Export headings', await menu.locator('.head', has_text='Import').count() == 1 and await menu.locator('.head', has_text='Export').count() == 1)
             await pg.screenshot(path=OUT + f'menu-{kind.replace(" ", "-")}.png')
             await pg.keyboard.press('Escape')

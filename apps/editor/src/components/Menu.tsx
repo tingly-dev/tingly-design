@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Check } from './icons';
+import { Check, Info } from './icons';
 
 /** A popover menu at a screen point; closes on outside click or Escape. */
 export function Menu({
@@ -78,7 +78,7 @@ export function MenuItem({
   hint,
 }: {
   label: string;
-  /** one line under the label: what choosing it does or why it cannot */
+  /** the detail, shown on hover (and to screen readers) beside a small info mark; the label alone says what it is */
   hint?: string;
   keys?: string;
   icon?: ReactNode;
@@ -89,22 +89,25 @@ export function MenuItem({
 }) {
   return (
     <button
-      className={`mi${danger ? ' danger' : ''}${hint ? ' two' : ''}`}
+      className={`mi${danger ? ' danger' : ''}`}
       role={checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
       aria-checked={checked}
       disabled={disabled}
       onClick={onSelect}
     >
       {(icon || checked !== undefined) && <span className="ic">{checked ? <Check /> : icon}</span>}
-      {hint ? (
-        <span className="mt">
-          {label}
-          <span className="mh">{hint}</span>
-        </span>
-      ) : (
-        label
-      )}
+      {label}
       {keys && <span className="k">{keys}</span>}
+      {hint && (
+        <>
+          <span className="mi-info" aria-hidden="true">
+            <Info />
+          </span>
+          <span className="mh" role="tooltip">
+            {hint}
+          </span>
+        </>
+      )}
     </button>
   );
 }

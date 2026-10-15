@@ -32,6 +32,7 @@ import {
   IconHandStop,
   IconHistory,
   IconGif,
+  IconInfoCircle,
   IconMovie,
   IconLayoutAlignBottom,
   IconLayoutAlignCenter,
@@ -191,6 +192,7 @@ export const ImportI = tabler(IconFileImport);
 export const Transfer = tabler(IconArrowsExchange);
 export const Film = tabler(IconMovie, 14);
 export const Gif = tabler(IconGif, 14);
+export const Info = tabler(IconInfoCircle, 14);
 export const FilePdf = tabler(IconFileTypePdf, 14);
 
 // what an agent is doing (RunFeed)

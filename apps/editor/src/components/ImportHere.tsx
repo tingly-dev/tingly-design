@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { importErrorText } from '@dc/import';
@@ -60,6 +61,10 @@ export interface ImportTarget {
   /** do it; resolves to what to tell the person when it is done. `at` is where a drop landed, in screen px */
   run: (picked: Picked, at?: { x: number; y: number }) => Promise<string>;
 }
+
+/** The first item of an import menu: what it takes, by name ("Import HTML, SVG, image…"), not "Choose files…". */
+export const importFilesLabel = (t: TFunction, accepts: Material[]) =>
+  t('importer.here.importFiles', { list: accepts.map((m) => t(`importer.materialShort.${m}`)).join(t('importer.listSeparator')) });
 
 const busyText = (p: Picked) =>
   p.entry ? p.entry.split('/').pop()! : p.files.length === 1 ? p.files[0].path.split('/').pop()! : tNow('importer.here.files', { count: p.files.length });
@@ -214,9 +219,9 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
       {menu && (
         <Menu x={menu.x} y={menu.y} label={tr('importer.here.button')} onClose={() => setMenu(null)}>
           <div className="head">{tr('importer.here.into', { label })}</div>
-          <div className="mhint">{target.what}</div>
           <MenuItem
-            label={tr('importer.here.chooseFiles')}
+            label={importFilesLabel(tr, target.accepts)}
+            hint={`${target.what} ${target.accepts.includes('drawing') || target.accepts.includes('image') ? tr('importer.here.dragOrPaste') : tr('importer.here.drag')}`}
             icon={<FileText />}
             onSelect={() => {
               setMenu(null);
@@ -225,7 +230,7 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
           />
           {(target.accepts.includes('page') || target.accepts.includes('markdown')) && (
             <MenuItem
-              label={tr('importer.here.chooseFolder')}
+              label={tr('importer.here.importFolder')}
               icon={<FileText />}
               onSelect={() => {
                 setMenu(null);
@@ -243,7 +248,6 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
               }}
             />
           )}
-          <div className="mhint faint">{target.accepts.includes('drawing') || target.accepts.includes('image') ? tr('importer.here.dragOrPaste') : tr('importer.here.drag')}</div>
         </Menu>
       )}
       <input ref={fileRef} type="file" multiple hidden accept={accept} onChange={(e) => fromInput(e.currentTarget)} />

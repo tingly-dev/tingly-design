@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../store';
-import { ImportHere, type ImportControls, type ImportTarget } from './ImportHere';
+import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
 import { Caret, FileText, Frame, Transfer } from './icons';
 
@@ -89,8 +89,8 @@ export function FileMenu({
         <Menu x={pos.x} y={pos.y} align={align} label={name} onClose={close}>
           <div className="head">{t('common.transfer.import')}</div>
           <MenuItem
-            label={t('importer.here.chooseFiles')}
-            hint={target.what}
+            label={importFilesLabel(t, target.accepts)}
+            hint={`${target.what} ${target.accepts.includes('drawing') || target.accepts.includes('image') ? t('importer.here.dragOrPaste') : t('importer.here.drag')}`}
             icon={<FileText />}
             onSelect={() => {
               close();
@@ -99,7 +99,7 @@ export function FileMenu({
           />
           {(target.accepts.includes('page') || target.accepts.includes('markdown')) && (
             <MenuItem
-              label={t('importer.here.chooseFolder')}
+              label={t('importer.here.importFolder')}
               icon={<FileText />}
               onSelect={() => {
                 close();
@@ -118,7 +118,6 @@ export function FileMenu({
               }}
             />
           )}
-          <div className="mhint faint">{target.accepts.includes('drawing') || target.accepts.includes('image') ? t('importer.here.dragOrPaste') : t('importer.here.drag')}</div>
           <hr />
           <div className="head">{t('common.transfer.export')}</div>
           {list.length === 0 && <div className="mhint faint">{t('common.transfer.exportNone')}</div>}
