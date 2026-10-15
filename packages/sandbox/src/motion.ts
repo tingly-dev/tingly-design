@@ -47,6 +47,8 @@ export interface MotionStage {
   speed: number;
   scenes: SceneWindow[];
   issues: { scene: string; message: string; level: string }[];
+  /** shader layers that could not draw (code: no-webgl2, shader, draw), as they report in */
+  effectErrors: { scene: string; code: string; detail: string }[];
   /** `ms` is video time; the authored time shown is `ms × speed`. */
   seek(ms: number): Promise<void>;
   play(from?: number, onTime?: (ms: number) => void): void;
@@ -137,6 +139,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
   const anims: SceneAnim[] = [];
   const embeds: Embed[] = [];
   const issues: MotionStage['issues'] = [];
+  const effectErrors: MotionStage['effectErrors'] = [];
 
   parsed.forEach(({ id, section }, i) => {
     const win = timeline.scenes[i];
@@ -179,7 +182,27 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
             setTimeout(resolve, 3000);
           })
         : Promise.resolve();
-      frame.srcdoc = EMBED_HEAD + html + (seekable ? SEEK_BRIDGE : '');
+      // a shader layer that cannot draw says why: the editor words it, the piece plays on without the layer
+      if (seekable) {
+        window.addEventListener('message', (e) => {
+          if (e.source !== frame.contentWindow || e.data?.dcMotion !== 'effect-error') return;
+          const err = { scene: id, code: String(e.data.code ?? ''), detail: String(e.data.detail ?? '') };
+          effectErrors.push(err);
+          window.parent.postMessage({ dcm: 'effect-error', ...err }, '*');
+        });
+      }
+      const markup = html + (seekable ? SEEK_BRIDGE : '');
+      if (/^https?:/.test(SCRIPT_DIR)) {
+        // the stage's own CSP forbids inline scripts and a srcdoc frame inherits it, so a shader's runtime never ran:
+        // the embed lives in its own page (inline scripts, no network) and is handed its markup once it is up, as in slides
+        frame.src = `${SCRIPT_DIR}embed.html`;
+        const onUp = (e: MessageEvent) => {
+          if (e.source !== frame.contentWindow || e.data?.dcEmbed !== 'ready') return;
+          window.removeEventListener('message', onUp);
+          frame.contentWindow?.postMessage({ dcEmbed: 'html', html: markup }, '*');
+        };
+        window.addEventListener('message', onUp);
+      } else frame.srcdoc = EMBED_HEAD + markup;
       x.appendChild(frame);
       if (seekable) embeds.push({ frame, sceneStart: win.start, ready });
     }
@@ -214,6 +237,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     speed,
     scenes: timeline.scenes,
     issues,
+    effectErrors,
     async seek(ms) {
       const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
@@ -446,7 +470,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
         for (const el of Array.from(root.children)) if (el !== box) el.remove();
         const at = m.at === 'end' ? s.duration : m.at === 'still' ? Math.round(s.duration * 0.85) : Math.max(0, Math.min(m.at ?? 0, s.duration));
         if (at) await s.seek(at);
-        post({ dcm: 'loaded', width: s.width, height: s.height, duration: s.duration, speed: s.speed, fps: s.fps, scenes: s.scenes, issues: s.issues, t: at });
+        post({ dcm: 'loaded', width: s.width, height: s.height, duration: s.duration, speed: s.speed, fps: s.fps, scenes: s.scenes, issues: s.issues, effectErrors: s.effectErrors, t: at });
       } catch (err) {
         box.remove();
         if (n === loading) post({ dcm: 'error', message: err instanceof Error ? err.message : String(err) });

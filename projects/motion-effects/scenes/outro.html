@@ -31,22 +31,39 @@ void main() {
 </script><script>
 (function () {
   // a shader layer for motion: a GLSL fragment shader drawn with WebGL2, a function of the seek time only
-  var cv = document.querySelector('canvas'), src = document.querySelector('script[type="x-shader/x-fragment"]').textContent;
-  var q = +(cv.dataset.quality || 0.5), g = cv.getContext('webgl2', { premultipliedAlpha: true, preserveDrawingBuffer: true }), ut, ua;
-  function compile(type, s) { var x = g.createShader(type); g.shaderSource(x, s); g.compileShader(x); if (!g.getShaderParameter(x, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(x)); return x; }
-  if (g) {
-    var pr = g.createProgram();
-    g.attachShader(pr, compile(g.VERTEX_SHADER, '#version 300 es\nout vec2 uv;\nvoid main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
-    g.attachShader(pr, compile(g.FRAGMENT_SHADER, src.trim()));
-    g.linkProgram(pr); g.useProgram(pr);
-    ut = g.getUniformLocation(pr, 'time'); ua = g.getUniformLocation(pr, 'aspect');
+  var cv = document.querySelector('canvas'), src = document.querySelector('script[type="x-shader/x-fragment"]').textContent.trim();
+  var q = +(cv.dataset.quality || 0.5), g, ut, ua, last = 0;
+  // when the layer cannot draw, say why (the editor shows it, the console keeps it); the scene still plays without the layer
+  function fail(code, detail) { g = null; console.error('[shader] ' + code + (detail ? ': ' + detail : '')); parent.postMessage({ dcMotion: 'effect-error', code: code, detail: detail || '' }, '*'); }
+  function compile(type, s) { var x = g.createShader(type); g.shaderSource(x, s); g.compileShader(x); if (!g.getShaderParameter(x, g.COMPILE_STATUS)) throw { code: 'shader', detail: g.getShaderInfoLog(x) }; return x; }
+  function init() {
+    g = cv.getContext('webgl2', { premultipliedAlpha: true, preserveDrawingBuffer: true });
+    if (!g) return fail('no-webgl2');
+    try {
+      // a GPU without highp in fragment shaders takes mediump
+      var hp = g.getShaderPrecisionFormat(g.FRAGMENT_SHADER, g.HIGH_FLOAT), fs = hp && hp.precision ? src : src.replace('precision highp float', 'precision mediump float');
+      var pr = g.createProgram();
+      g.attachShader(pr, compile(g.VERTEX_SHADER, '#version 300 es\nout vec2 uv;\nvoid main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
+      g.attachShader(pr, compile(g.FRAGMENT_SHADER, fs));
+      g.linkProgram(pr);
+      if (!g.getProgramParameter(pr, g.LINK_STATUS)) throw { code: 'shader', detail: g.getProgramInfoLog(pr) };
+      g.useProgram(pr); g.bindVertexArray(g.createVertexArray());
+      ut = g.getUniformLocation(pr, 'time'); ua = g.getUniformLocation(pr, 'aspect');
+    } catch (e) { fail(e.code || 'shader', e.detail || String(e)); }
   }
+  init();
+  // a lost context (the GPU reset, too many canvases) comes back empty: build it again and draw the last time
+  cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); g = null; console.warn('[shader] WebGL context lost'); });
+  cv.addEventListener('webglcontextrestored', function () { init(); window.seek(last); });
   window.seek = function (t) {
+    last = t;
     if (!g) return;
     var r = devicePixelRatio || 1, w = Math.max(1, Math.round(innerWidth * r * q)), h = Math.max(1, Math.round(innerHeight * r * q));
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    g.viewport(0, 0, w, h); g.clearColor(0, 0, 0, 0); g.clear(g.COLOR_BUFFER_BIT);
-    g.uniform1f(ut, t / 1000); g.uniform1f(ua, w / h); g.drawArrays(g.TRIANGLES, 0, 3);
+    try {
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      g.viewport(0, 0, w, h); g.clearColor(0, 0, 0, 0); g.clear(g.COLOR_BUFFER_BIT);
+      g.uniform1f(ut, t / 1000); g.uniform1f(ua, w / h); g.drawArrays(g.TRIANGLES, 0, 3);
+    } catch (e) { return fail('draw', String(e)); }
     // a canvas that just came into view presents a frame late: wait until this one is on screen
     return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
   };
