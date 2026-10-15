@@ -88,6 +88,13 @@ export default {
     unfold: 'Open the prompt',
     enterHint: 'Enter to send, Shift + Enter for a new line',
   },
+  dock: {
+    pin: 'Keep open beside the work',
+    unpin: 'Back to hiding at the edge',
+    float: 'Float over the work',
+    dock: 'Dock to the side',
+    tab: 'Ask AI (hover or Ctrl/⌘ J)',
+  },
   pill: {
     idle: 'Ask AI',
     working: '{{who}} is working…',

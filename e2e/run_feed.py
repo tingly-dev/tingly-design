@@ -90,6 +90,7 @@ async def main():
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
+            await pg.add_init_script("try{localStorage.setItem('dc.barMode','float')}catch(e){}")  # the floating bar; e2e/dock.py covers the side dock
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             feed = pg.locator('.runfeed')
@@ -178,6 +179,7 @@ async def main():
             await feed.locator('.run-link').click()
             await expect(feed.locator('.run-step', has_text='搜索')).to_have_count(1, timeout=8000)
             pg2 = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
+            await pg2.add_init_script("try{localStorage.setItem('dc.barMode','float')}catch(e){}")  # the floating bar; e2e/dock.py covers the side dock
             await pg2.goto(f'{base}/?p=box-console')
             await expect(pg2.locator('.runfeed .run-ask')).to_have_text('SLOW 改标题', timeout=8000)
             await pg2.locator('.runfeed .run-link').click()
@@ -236,7 +238,7 @@ async def main():
             await box.press('Enter')
             await expect(feed).to_contain_text('Claude Code 完成', timeout=15000)
             check('a request marked as new starts a fresh session', lines(claude_log)[n]['resume'] is None, lines(claude_log)[n])
-            await pg.locator('.bar-tools button').nth(1).click()
+            await pg.get_by_role('button', name='收起输入栏').click()
             check('the bar folds to a pill', await pg.locator('.bar-pill').count() == 1 and await box.count() == 0)
             await pg.reload()
             await pg.wait_for_selector('.bar-pill')

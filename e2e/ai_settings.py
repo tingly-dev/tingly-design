@@ -22,6 +22,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         pg = await b.new_page(locale='en-US', viewport={'width': 1280, 'height': 860})
+        await pg.add_init_script("try{localStorage.setItem('dc.barMode','float')}catch(e){}")  # the floating bar; e2e/dock.py covers the side dock
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         # nothing saved, no key: the prompt bar says so and opens the dialog
