@@ -18,6 +18,9 @@ const env = (): AiEnv => ({
   key: process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
   fastModel: process.env.DC_FAST_MODEL,
   claudeModel: process.env.DC_DELEGATE_MODEL,
+  imageBaseUrl: process.env.DC_IMAGE_BASE_URL,
+  imageKey: process.env.DC_IMAGE_API_KEY,
+  imageModel: process.env.DC_IMAGE_MODEL,
 });
 
 let saved: AiSaved | null = null;
@@ -38,9 +41,10 @@ export const aiResolved = (draft?: AiSaved): AiResolved => resolveAi(env(), { ..
 /** The key in force: the environment's, else the saved one (or a draft's, to test before saving). */
 const keyOf = (draft?: AiSaved): string => (env().key ?? '').trim() || (draft?.apiKey ?? saved?.apiKey ?? '').trim();
 
-export async function saveAi(next: AiSaved, keep: { key: boolean }): Promise<void> {
+export async function saveAi(next: AiSaved, keep: { key: boolean; imageKey?: boolean }): Promise<void> {
   const clean = sanitizeSaved(next);
   if (keep.key && saved?.apiKey && !clean.apiKey) clean.apiKey = saved.apiKey;
+  if (keep.imageKey && saved?.imageKey && !clean.imageKey) clean.imageKey = saved.imageKey;
   saved = clean;
   await mkdir(dirname(FILE), { recursive: true });
   // the key is in it: only the owner reads it
@@ -48,6 +52,15 @@ export async function saveAi(next: AiSaved, keep: { key: boolean }): Promise<voi
   await writeFile(tmp, JSON.stringify(clean, null, 2) + '\n', { mode: 0o600 });
   await rename(tmp, FILE);
   client = null;
+}
+
+/** Where image requests go (an OpenAI-compatible base URL), with which key and model; null while image generation is off. */
+export function imageEndpoint(draft?: AiSaved): { baseUrl: string; key: string; model: string } | null {
+  const r = aiResolved(draft).image;
+  if (!r.ready) return null;
+  const e = env();
+  const key = (e.imageKey ?? '').trim() || (draft?.imageKey ?? saved?.imageKey ?? '').trim() || keyOf(draft);
+  return { baseUrl: r.baseUrl.value, key, model: r.model.value };
 }
 
 let client: { sig: string; sdk: Anthropic } | null = null;
