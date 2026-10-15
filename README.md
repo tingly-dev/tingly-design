@@ -1,19 +1,49 @@
 <p align="right"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-# Tingly Design
+<p align="center">
+  <img src="docs/images/readme/cover.png" alt="Tingly Design" width="640">
+</p>
 
-**An open-source design tool where people and AI edit the same files.**
+<h3 align="center">An open-source design tool where people and AI edit the same files.</h3>
 
-Canvases, slide decks, design systems, dashboards, documents and motion pieces are plain files under `projects/`. You click, drag and retype on screen; a fast model rewrites what you point at in a few seconds, line by line; Claude Code edits the files directly. All three work on the same source, and every edit writes back only the characters that changed, so the files stay reviewable in git and pleasant to write by hand.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#six-kinds-one-workspace">Six kinds</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="LICENSE">Apache-2.0</a>
+</p>
 
-![Canvas: four artboards of the Tingly Box console, with the layers and properties panel on the right](docs/images/canvas.png)
+<p align="center">
+  <img src="docs/images/readme/hero.gif" alt="Describe a landing page, retype a headline by hand, then ask the AI for more: all in the same design" width="800">
+</p>
 
-- **One source, three editors.** Direct manipulation (instant), fast AI (seconds; jQuery statements that run as they stream in) and Claude Code (minutes; whole files, several at once). Every open editor sees every change live, and all of them write to one shared change log.
-- **Minimal write-back.** Template holes like `{{price}}`, loops and your own formatting survive every edit. Tick a checkbox or change a colour, and the git diff is one line.
-- **Six project kinds.** Five file formats follow Claude's Design, Slides, Design System, Dashboard and Docs artifact types, and Tingly Design is an open-source re-creation of their two-way editing. The sixth, Motion, is our own: timed scenes that export to video.
-- **Numbers you can check.** Every figure on a dashboard names the cell it comes from, and anything that disagrees with its data is reported.
+<p align="center"><sub>Made with Tingly Design itself: <a href="projects/design-motion"><code>projects/design-motion</code></a>, a motion project, rendered by the app's own exporter.</sub></p>
 
-> The editor's interface is currently in Simplified Chinese. The sample projects, file formats and these docs are in English.
+## One design, three ways to edit it
+
+Canvases, slide decks, design systems, dashboards, documents and motion pieces are plain files under `projects/`. You click, drag and retype on screen; a fast model rewrites what you point at in a few seconds; Claude Code edits the files directly. All three work on the same source, and every edit writes back only the characters that changed, so the files stay reviewable in git and pleasant to write by hand.
+
+| | |
+|---|---|
+| **Direct manipulation** | Click any text and type, drag to move, resize on the stage. Instant. |
+| **Fast AI** | Point at something and say what you want; jQuery statements run as they stream in. Seconds. |
+| **Claude Code** | Whole files, several at once, from the prompt bar or a terminal. Minutes. |
+| **Minimal write-back** | Template holes like `{{price}}`, loops and your own formatting survive every edit. Tick a checkbox or change a colour and the git diff is one line. |
+| **Numbers you can check** | Every figure on a dashboard names the cell it comes from; anything that disagrees with its data is reported. |
+
+## Six kinds, one workspace
+
+<p align="center">
+  <img src="docs/images/readme/kinds.gif" alt="A tour of the six project kinds: canvas, slides, design systems, dashboards, docs and motion" width="800">
+</p>
+
+Five file formats follow Claude's Design, Slides, Design System, Dashboard and Docs artifact types; Tingly Design is an open-source re-creation of their two-way editing. The sixth, Motion, is our own: timed scenes that export to video. Click a picture for its guide.
+
+<table>
+<tr><td width="50%"><a href="docs/en/guide/canvas.md"><img src="docs/images/readme/en/canvas.webp" alt="Canvas"></a><br><sub><b>Canvas</b> · screens, flows and components side by side</sub></td><td width="50%"><a href="docs/en/guide/slides.md"><img src="docs/images/readme/en/slides.webp" alt="Slides"></a><br><sub><b>Slides</b> · decks that present full screen and export to PDF</sub></td></tr>
+<tr><td width="50%"><a href="docs/en/guide/design-system.md"><img src="docs/images/readme/en/design-system.webp" alt="Design system"></a><br><sub><b>Design systems</b> · tokens and components every project can install</sub></td><td width="50%"><a href="docs/en/guide/dashboard.md"><img src="docs/images/readme/en/dashboard.webp" alt="Dashboard"></a><br><sub><b>Dashboards</b> · live charts, every number traced to its cell</sub></td></tr>
+<tr><td width="50%"><a href="docs/en/guide/docs.md"><img src="docs/images/readme/en/docs.webp" alt="Docs"></a><br><sub><b>Docs</b> · written together, with comments, in plain Markdown</sub></td><td width="50%"><a href="docs/en/guide/motion.md"><img src="docs/images/readme/en/motion.webp" alt="Motion"></a><br><sub><b>Motion</b> · promo videos and animated graphics, MP4 or GIF</sub></td></tr>
+</table>
 
 ## Sample workspace
 
