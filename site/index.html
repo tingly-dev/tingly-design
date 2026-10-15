@@ -79,13 +79,13 @@
 
   <div class="videos">
     <figure class="screen-wide">
-      <video controls playsinline preload="none" poster="media/design-motion-wide-cover.png" aria-label="16:9">
+      <video controls muted loop playsinline preload="none" poster="media/design-motion-wide-cover.png" aria-label="16:9">
         <source src="media/design-motion-wide.mp4" type="video/mp4">
       </video>
       <figcaption><span lang="en">Large screen · 16:9</span><span lang="zh">大屏 · 16:9</span></figcaption>
     </figure>
     <figure class="screen-tall">
-      <video controls playsinline preload="metadata" poster="media/design-motion-tall-cover.png" aria-label="9:16">
+      <video controls muted loop playsinline preload="none" poster="media/design-motion-tall-cover.png" aria-label="9:16">
         <source src="media/design-motion-tall.mp4" type="video/mp4">
       </video>
       <figcaption><span lang="en">Small screen · 9:16</span><span lang="zh">小屏 · 9:16</span></figcaption>
@@ -161,6 +161,12 @@ pnpm dev   # editor at http://localhost:5173</pre>
       try { localStorage.setItem(key, zh ? 'zh' : 'en'); } catch (e) {}
     };
   })();
+</script>
+<script>
+// Autoplay the promo muted, but only the video that is visible at this width.
+document.querySelectorAll('.videos video').forEach(v => {
+  if (v.offsetParent && !matchMedia('(prefers-reduced-motion: reduce)').matches) v.play().catch(() => {});
+});
 </script>
 </body>
 </html>
