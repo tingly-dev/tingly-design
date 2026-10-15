@@ -63,7 +63,7 @@
 
 ## 4. 浏览器路线画不了什么，所以要有第二条路线
 
-foreignObject 画不到：`<x-embed>`（单独的框架，会是空白）、`<video>` 层、WebGL 和 WebGPU 的 canvas 特效、个别 CSS（backdrop-filter、少数混合模式）。这些不能让人自己发现、自己换工具，所以导出前先看作品里有没有 embed 或 video（`exactScenes`），有就换路线。
+foreignObject 画不到：`<x-embed>`（单独的框架，会是空白）、`<video>` 层、WebGL 和 WebGPU 的 canvas 特效、个别 CSS（backdrop-filter、少数混合模式）。这些不能让人自己发现、自己换工具，所以导出前先看作品里有没有 embed 或 video（`exactScenes`），有就换路线。从画布导入的画板（`<x-embed src>`，[import-from-project.md](./import-from-project.md)）也是一个单独的框架，同样走这条路线；服务端渲染把场景用到的画板文件和画板运行时一起交给播放器。
 
 **精确渲染（已实施）**：服务端用本机已有的 Chrome 或 Edge 逐帧截图，交给 ffmpeg 编码，和 `scripts/motion-render.mjs` 是同一个做法，只是不用 Playwright、也不下载浏览器：Chrome 用自带的调试管道（`--remote-debugging-pipe`，NUL 分隔的 JSON）驱动，Node 20 也不需要 WebSocket 库。接口 `POST /api/projects/:p/render` 回一串 JSON 行（进度，最后是文件名），关掉请求就停；成品从 `GET /api/projects/:p/render/:file` 取，只给 `renders/` 里的 MP4。`GET /api/render` 说本机有没有 Chrome 和 ffmpeg，编辑器据此选路线。
 

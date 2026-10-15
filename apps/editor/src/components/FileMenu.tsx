@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from '../store';
 import { ImportHere, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
-import { Caret, FileText, Transfer } from './icons';
+import { Caret, FileText, Frame, Transfer } from './icons';
 
 /**
  * Everything that moves files across the project's edge, in one place: one button in every
@@ -104,6 +104,17 @@ export function FileMenu({
               onSelect={() => {
                 close();
                 controls.current?.chooseFolder();
+              }}
+            />
+          )}
+          {target.board && (
+            <MenuItem
+              label={t('importer.here.fromProject')}
+              hint={target.board.what}
+              icon={<Frame />}
+              onSelect={() => {
+                close();
+                controls.current?.pickProject();
               }}
             />
           )}

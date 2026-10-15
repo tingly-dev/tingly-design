@@ -66,6 +66,7 @@ export interface MotionControl {
 export function MotionFrame({
   motion,
   scenes,
+  files,
   format,
   speed,
   at,
@@ -85,6 +86,8 @@ export function MotionFrame({
   at?: number | 'end' | 'still';
   /** where the project's files are served, for relative image paths in scenes */
   base?: string;
+  /** the artboards the scenes embed (imported from a canvas), and the siblings they mount */
+  files?: Record<string, string>;
   box: { w: number; h: number };
   title: string;
   control?: React.MutableRefObject<MotionControl | null>;
@@ -162,8 +165,8 @@ export function MotionFrame({
 
   useEffect(() => {
     if (!ready) return;
-    frame.current?.contentWindow?.postMessage({ dcm: 'load', motion, scenes, format, speed, at: atRef.current, base }, '*');
-  }, [ready, motion, scenes, format, speed, base]);
+    frame.current?.contentWindow?.postMessage({ dcm: 'load', motion, scenes, files, format, speed, at: atRef.current, base }, '*');
+  }, [ready, motion, scenes, files, format, speed, base]);
 
   const [w, h] = motion.formats[format]?.size ?? [1920, 1080];
   const scale = Math.max(0.01, Math.min(box.w / w, box.h / h));

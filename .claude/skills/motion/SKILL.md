@@ -54,6 +54,17 @@ A scene's note is one `<aside>`, the section's last child, plain text up to 4000
 
 The editor lists problems it finds: an exit before the entry, text on screen under 0.8 s, an `<x-embed>` without `data-seek` (it cannot be exported).
 
+## Artboards imported from a canvas (effects)
+
+A person can import an artboard of a canvas project into a piece (import menu → From a project). The server copies it, with its sibling artboards and pictures, to `uploads/<canvas>-<board>/` and records it in `motion.json` `imports` (`{path, from, board, copiedAt}`); the editor puts it on the scene under the playhead:
+
+```html
+<x-embed src="uploads/box-console-Glow/Glow.dc.html" data-seek data-props='{"accent":"#e8590c"}' style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>
+```
+
+- An artboard that declares `"$time"` is an effect: the player hands it the scene's time on every frame (`data-seek`), so it is drawn frame by frame and renders exactly. Keep `data-seek` on every such embed. A moving one usually fills the frame as the scene's first child, so the scene paints over it; it takes `data-in`/`data-out`/`data-keys` like any element.
+- `data-props` sets the artboard's tweaks; leave a key out for its default. Change the look through `data-props`, never by editing the copy under `uploads/` (importing again overwrites it). Reuse it in another scene with the same `src`; don't point `src` anywhere else.
+
 ## Pictures and files people brought in
 
 Files people brought in (attachments, imported pictures) live under `uploads/`. A scene shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; the editor, the player and the renderer all resolve it. Don't move or rename them.

@@ -8,8 +8,8 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
-import { parseMotion, sceneFile } from '@dc/core';
+import { basename, dirname, join, resolve } from 'node:path';
+import { boardFilesFor, parseMotion, sceneFile } from '@dc/core';
 import { Clock, type ExportReport } from '@dc/export/timing';
 import { logInfo } from './log';
 
@@ -169,6 +169,14 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const scenes = Object.fromEntries(
     motion.order.filter((id) => existsSync(join(o.dir, sceneFile(id)))).map((id) => [id, inlineFiles(readFileSync(join(o.dir, sceneFile(id)), 'utf8'), o.dir)]),
   );
+  // artboards the scenes embed (imported from a canvas), drawn by the artboard runtime written into the player (.design/import-from-project.md)
+  const raw = (f: string) => {
+    const p = resolve(o.dir, f);
+    return p.startsWith(resolve(o.dir) + '/') && existsSync(p) ? readFileSync(p, 'utf8') : undefined;
+  };
+  const files = Object.fromEntries(Object.entries(boardFilesFor(Object.values(scenes), raw)).map(([f, src]) => [f, inlineFiles(src, o.dir)]));
+  const boardJs = join(dirname(o.runtime), 'runtime.js');
+  const boardRuntime = Object.keys(files).length && existsSync(boardJs) ? { inline: readFileSync(boardJs, 'utf8') } : undefined;
   const runtime = readFileSync(o.runtime, 'utf8').replace(/<\/script/gi, '<\\/script');
   const tmp = mkdtempSync(join(tmpdir(), 'dc-render-'));
   const page = join(tmp, 'page.html');
@@ -205,7 +213,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     };
     await evalIn('new Promise(r => document.readyState === "complete" ? r() : addEventListener("load", r))');
     const info = await evalIn<{ duration: number; fps: number }>(
-      `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},format:${json(format)},speed:${o.speed ? Number(o.speed) : 'undefined'},root:document.getElementById('root')});return{duration:window.__stage.duration,fps:window.__stage.fps}})()`,
+      `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},speed:${o.speed ? Number(o.speed) : 'undefined'},root:document.getElementById('root')});return{duration:window.__stage.duration,fps:window.__stage.fps}})()`,
     );
     clock.add('launch', performance.now() - launched);
     const frames = Math.max(1, Math.round((info.duration / 1000) * info.fps));

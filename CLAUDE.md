@@ -32,6 +32,8 @@ A PR that changes anything a person sees (the editor, the launcher, the homepage
 
 What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.
 
+Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
+
 # Keep these in sync (read this before every change)
 
 Three things drift silently when a session forgets them. Each PR that touches one of them updates it in the same PR, not in a follow-up.
@@ -97,7 +99,7 @@ CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
 
 # Issues
 

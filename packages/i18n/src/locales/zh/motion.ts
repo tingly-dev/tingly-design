@@ -181,6 +181,8 @@ export default {
     noScene: '先停在一个场景上再导入。',
     placedOne: '已放上 {{name}}。',
     placedMany: '已放上 {{count}} 张图片。',
+    boardWhat: '画板会复制进这个动效，放到播放头所在的场景。会动的画板（特效）铺满画面、放在最底层，逐帧绘制；参数在面板里改。',
+    boardPlaced: '已把 {{title}} 导入到场景 {{scene}}。',
   },
   notes: {
     toggle: '批注',

@@ -24,6 +24,7 @@ import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
 import { MotionExportError, MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
+import { useBoardFiles } from '../../boards';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -86,6 +87,7 @@ export function MotionApp() {
   const project = useStore((s) => s.project);
   const base = project ? api.rawBase(project) : '';
   const { motionText, scenes } = useSources();
+  const boardFiles = useBoardFiles(Object.keys(scenes).map(sceneFile));
   const motion = useMemo(() => parseMotion(motionText), [motionText]);
   const playScenes = useMemo(() => Object.fromEntries(motion.order.filter((id) => id in scenes).map((id) => [id, scenes[id]])), [motion, scenes]);
   const formats = Object.keys(motion.formats);
@@ -431,6 +433,7 @@ export function MotionApp() {
                   speed={rate}
                   at={playerAt}
                   base={base}
+                  files={boardFiles}
                   box={box}
                   title={t('motion.stage.playerTitle')}
                   control={control}

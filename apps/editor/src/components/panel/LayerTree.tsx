@@ -23,6 +23,7 @@ const ROLE_KEY = {
   Group: 'group',
   Shape: 'shape',
   Embed: 'embed',
+  Artboard: 'artboard',
   Icon: 'icon',
   Connector: 'connector',
   Table: 'table',

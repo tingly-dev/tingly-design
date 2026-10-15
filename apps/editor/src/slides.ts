@@ -14,6 +14,7 @@ import { insertHtml } from './actions';
 import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from './store';
 import { replaceUrl } from './host';
 import { filesOf, type ImportTarget } from './components/ImportHere';
+import { boardEmbed } from './boards';
 import { t } from './i18n';
 
 /**
@@ -291,7 +292,30 @@ export const slidesImport: ImportTarget = {
     for (const [i, f] of files.entries()) await placeImage(new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), i);
     return files.length === 1 ? t('slides.import.placedOne', { name: files[0].path.split('/').pop() }) : t('slides.import.placedMany', { count: files.length });
   },
+  board: {
+    get what() {
+      return t('slides.import.boardWhat');
+    },
+    place: (path, { size, moving, title }) => {
+      const { html, back } = boardEmbed(path, [1920, 1080], size, moving);
+      const tid = back ? insertBehind(html) : insertOnSlide(html, true);
+      return tid === null ? t('slides.import.noSlide') : t('slides.import.boardPlaced', { title });
+    },
+  },
 };
+
+/** Put markup first on the open slide, behind everything else on it (an effect is a backdrop). */
+function insertBehind(html: string): number | null {
+  const s = get();
+  if (!s.slide) return null;
+  const file = slideFile(s.slide);
+  const src = display(s, file);
+  const root = src ? rootElement(parsed(src)) : null;
+  if (!root) return null;
+  const tid = insertHtml(file, root.tid, 'first', html);
+  if (tid !== null) set({ selection: { kind: 'el', file, tid } });
+  return tid;
+}
 
 /** The slide's title for strips and menus: its first heading's words. */
 export function slideTitle(source: string | undefined, id: string): string {

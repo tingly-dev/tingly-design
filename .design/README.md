@@ -39,6 +39,7 @@
 | [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |
+| [import-from-project.md](./import-from-project.md) | 从项目导入：把画布的画板复制进幻灯片和动效、嵌入、记来源、可更新；会动的画板（`$time`）就是特效 | 第一期已实施（画布 → 幻灯片、动效）；§5 是没做的 |
 | [i18n.md](./i18n.md) | 界面语言：词条放哪、用什么库、语言从哪来，服务端报错、新建文案、模型回复和沙箱各用哪种语言 | 已实施（英文、中文）；§6 是没做的 |
 
 ## 工程协作
