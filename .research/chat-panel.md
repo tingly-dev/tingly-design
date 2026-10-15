@@ -92,6 +92,8 @@ Cost: A's work plus the transcript store plus a second container for the same co
 
 ## 5. Recommendation
 
+**Superseded by §5a: dock first, with a switch to the float.** The original reading, **C built as A first**, follows.
+
 **C, built as A first.** The first step is exactly A: collapse the finished run, store answers and steps in history, persist history on the server, merge the chips. It fixes principles 9, 10, 12 on its own and every later layout needs it. The second step adds the pinned conversation tab if people still ask for a long-conversation place after living with A; it reuses the same transcript store and `RunFeed`, so nothing from step one is thrown away. Building B directly would make the quick request, the common one, pay for the long one.
 
 Smaller calls inside the recommendation:
@@ -99,6 +101,26 @@ Smaller calls inside the recommendation:
 - **Persistence:** keep run history per project on the server (a hidden file next to the project, ignored by write-back and by the bundle, in the style of dashboards' `.runs.json`), not in `localStorage`, so it follows the project across browsers and an embedding host. Open: whether it should be undoable like a file (no) and how long it is kept.
 - **Engine switch:** default by the request, not by the person: keep the switch visible only in the bar's overflow menu until a smarter default exists. Open: this changes the AI settings dialog's story ("one dialog, two models").
 - **Failed `--resume`:** show it as "the earlier conversation is gone, start a new one" with the request put back, not as a failed run.
+
+## 5a. Direction after the first review (YZ's feedback)
+
+Answers to §7: the card **blocks** the work, it is **hard to interact with**, and fold/unfold is **too extreme** (all or nothing). The leaning is a side panel, with a way to switch between that and the floating bar. That makes the dock the primary form and the float the alternate, so the order in §5 flips: B's surface with C's switch, A's fixes folded in.
+
+Reference: Tingly Box's Desk page (`frontend/src/components/desk/`: `Transcript`, `Trajectory`, `Composer`, `StatusLine`, a sidebar of sessions, an attention dot from `useDeskAttention`). tingly-project itself is not readable from this session (the repo is outside its scope), so this review leans on Desk, which is built from the same pieces; check the layout against tingly-project before building.
+
+Shape:
+
+- **One conversation, two places.** The same transcript and composer render either docked or floating; a button in the panel header moves it. The choice is remembered per user, not per kind, and is an action ("dock" / "float"), not a settings page.
+- **Graded, not binary.** Three sizes instead of open/fold: *full* (transcript + composer), *compact* (the latest result as one line + composer, no transcript), *rail* (an icon with an attention dot, as Desk does for sessions waiting on you). The pill becomes the rail; a finished run in compact or rail shows its state without opening anything.
+- **Where it docks is the real question**, because the right column is already the inspector (Properties / Code / Tweaks) in canvas, slides and motion:
+  1. a tab in that column: no stage width lost, but chat and inspector cannot be seen together (a person editing an element while asking about it needs both);
+  2. a new column beside it: both visible, but at 1280 px the stage drops from about 970 to about 610 px, which hurts slides and motion most;
+  3. **split the right column vertically**: inspector on top, conversation below with the composer at the bottom; no extra width, both visible, the split is draggable and the conversation collapses to compact. Best fit for the three kinds that already have the column.
+  Docs (comments), dashboards (data sources) and design systems (nothing) need their own answer: a column that opens on demand is the simplest, and the matrix in `.design/project-kinds.md` should record it per kind.
+- **Interaction fixes that come with it:** the transcript scrolls and keeps every turn (request, steps, answer, files, undo, keep as note), the answer text can be selected and copied, a turn can be re-sent or branched from, and a file chip or step selects what changed on the stage. These answer "hard to interact" directly; most are impossible in a card that disappears.
+- **Narrow windows:** below a width threshold the dock cannot exist; it falls back to the float automatically, which is the case for switching that is not a preference.
+
+Still open: whether the split (3) is acceptable at the right column's current 310 px (a transcript with steps wants about 360), and whether the float stays as a permanent second form or only as the narrow-window fallback; a switch that nobody uses is noise (principle 9).
 
 ## 6. Interactions with other work
 
