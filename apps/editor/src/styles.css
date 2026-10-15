@@ -2668,25 +2668,17 @@ button.file-chip:hover {
   border: 0;
   border-radius: 8px;
   background: color-mix(in srgb, var(--panel) 88%, transparent);
-  color: var(--ink-2);
+  color: var(--muted);
   box-shadow: 0 0 0 1px var(--hairline);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s var(--ease);
 }
 .lcell:hover .lmore,
-.lcell:focus-within .lmore,
-.lmore:focus-visible {
-  opacity: 1;
+.lcell:focus-within .lmore {
+  color: var(--ink);
 }
 .lmore:hover {
   color: var(--ink);
   background: var(--panel);
-}
-@media (hover: none) {
-  .lmore {
-    opacity: 1;
-  }
 }
 .lsection + .lsection {
   margin-top: 22px;
