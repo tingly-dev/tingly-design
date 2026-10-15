@@ -7,6 +7,8 @@ import { notesOf, setNotesIn } from '../../slides';
 import { NoteBox } from '../NoteBox';
 import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
+import { fileStem, saveImage } from '../../imageExport';
+import { frameFonts } from '../../motionImage';
 import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
@@ -254,6 +256,13 @@ export function MotionApp() {
     if (current && Number.isFinite(v) && v > 0) setSceneDuration(current.id, snapSceneMs(v * 1000 * rate, 1));
   };
 
+  const saveFrame = async () => {
+    const at = tRef.current;
+    pause();
+    await saveImage(`${fileStem(motion.title, 'motion')}-${fmt}-${Math.round(at)}ms.png`, async () => control.current!.snapshot({ t: at, scale: 1, fontCss: await frameFonts(motion, playScenes, base) }));
+    control.current?.seek(at);
+  };
+
   const errors = info?.issues.filter((i) => i.level === 'error').length ?? 0;
   const [W, H] = motion.formats[fmt]?.size ?? [1920, 1080];
   const scale = Math.max(0.01, Math.min(box.w / W, box.h / H));
@@ -290,6 +299,9 @@ export function MotionApp() {
         <button className={`btn ghost${notesOpen ? ' on' : ''}`} aria-pressed={notesOpen} onClick={() => setNotesOpen(!notesOpen)} title={t('motion.notes.hint')} data-notes-toggle>
           {t('motion.notes.toggle')}
           {motion.note || Object.values(scenes).some((src) => notesOf(src)) ? <i className="mnotedot" /> : null}
+        </button>
+        <button className="btn ghost" disabled={!info} onClick={() => void saveFrame()} title={t('motion.bar.saveFrameHint')}>
+          {t('motion.bar.saveFrame')}
         </button>
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
           {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}

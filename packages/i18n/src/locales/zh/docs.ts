@@ -72,6 +72,7 @@ export default {
     tabMarkdown: '这个标签页（Markdown）',
     docMarkdown: '整个文档（Markdown）',
     docHtml: '整个文档（HTML）',
+    tabImage: '当前标签页（PNG 图片）',
     print: '打印 / 存为 PDF',
   },
   settings: {

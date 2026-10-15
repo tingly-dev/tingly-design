@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
 import { isHidden, notesOf, slideTitle } from '../../slides';
 import { t } from '../../i18n';
+import { fileStem, htmlToPng, saveImage } from '../../imageExport';
 
 /**
  * Downloads: one self-contained HTML file that plays the deck (images inlined,
@@ -132,4 +133,27 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'notes'): Promise<void> 
   } catch (e) {
     toast((e as Error).message, 'error');
   }
+}
+
+/** One slide drawn on its own page, at the slide's size. Embeds are separate frames and come out empty. */
+async function slidePng(id: string, scale: number): Promise<Blob> {
+  const s = useStore.getState();
+  const deck = deckOf(s);
+  const src = display(s, slideFile(id));
+  if (!src) throw new Error(id);
+  const base = s.project ? api.rawBase(s.project) : '';
+  const html = `<!doctype html><html><head><meta charset="utf-8">${faceMarkup(deck)}<style>${SLIDE_BASE_CSS}html,body{margin:0;background:#fff}</style></head><body><div class="dc-slide-host">${await standalone(src, base)}</div></body></html>`;
+  return htmlToPng(html, { width: SLIDE_W, height: SLIDE_H, scale });
+}
+
+/** The slide at `id` (null: the first; true: every shown slide) as PNG files. */
+export async function exportSlideImages(which: string | null | true): Promise<void> {
+  const s = useStore.getState();
+  const stem = fileStem(deckOf(s).title, 'deck');
+  const ids = which === true ? slideIds(s).filter((id) => !isHidden(id)) : [which ?? slideIds(s)[0]];
+  for (const [i, id] of ids.entries()) {
+    const n = which === true ? i + 1 : slideIds(s).indexOf(id) + 1;
+    if (!(await saveImage(t('common.image.fileSlide', { name: stem, n }), () => slidePng(id, 1)))) return;
+  }
+  if (ids.length > 1) toast(t('slides.export.imagesDone', { total: ids.length }));
 }

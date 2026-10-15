@@ -31,7 +31,7 @@ import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { ProjectMenu } from '../ProjectMenu';
 import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
-import { exportDeck } from './exportDeck';
+import { exportDeck, exportSlideImages } from './exportDeck';
 import { ImportHere } from '../ImportHere';
 
 // ------------------------------------------------------------------ strip
@@ -313,6 +313,8 @@ function TopRight() {
         <Menu {...at(dlBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.download')}>
           <MenuItem label={t('slides.toolbar.downloadPdf')} onSelect={() => (setMenu(null), void exportDeck('pdf'))} />
           <MenuItem label={t('slides.toolbar.downloadHtml')} onSelect={() => (setMenu(null), void exportDeck('html'))} />
+          <MenuItem label={t('slides.toolbar.downloadImage')} onSelect={() => (setMenu(null), void exportSlideImages(useStore.getState().slide))} />
+          <MenuItem label={t('slides.toolbar.downloadImages')} onSelect={() => (setMenu(null), void exportSlideImages(true))} />
           <MenuItem label={t('slides.toolbar.downloadNotes')} onSelect={() => (setMenu(null), void exportDeck('notes'))} />
         </Menu>
       )}

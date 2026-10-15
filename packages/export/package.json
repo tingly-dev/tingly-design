@@ -1,0 +1,23 @@
+{
+  "name": "@dc/export",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "Export from the browser with nothing to install: a picture of a DOM tree (PNG) and the web fonts it needs, inlined.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.13"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  }
+}

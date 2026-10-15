@@ -67,6 +67,7 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
+packages/export   exporting from the browser with nothing to install (a picture of a DOM tree, web fonts inlined); no dependency on the editor, server or core (see .design/export-image.md)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
@@ -94,7 +95,7 @@ pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm 
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on every PR. Releases are tag-driven: a `vX.Y.Z` tag matching `package.json` builds the bundle once and ships that tarball to a GitHub release and to npm as both `@tingly-dev/tingly-design` and `tingly-design` (`release.yml`, `.design/release.md`). The project is Apache-2.0 (`LICENSE`, `NOTICE`); the release fails if `package.json` has no `license`. npm publishing is Trusted Publishing only (environment `production`, no token anywhere; the packages refuse tokens, so only a maintainer with a one-time password can publish outside CI; first-time setup is `scripts/npm-bootstrap.sh`). Never publish or push a release tag without a maintainer asking. Anything added to the bundle ships to npm: `scripts/bundle.mjs` copies only what it names, keep it that way. Shell shared by workflows lives in `.github/scripts/`; lint with `actionlint` and `shellcheck` as Tingly Box's `.github/workflows/AGENTS.md` says.
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`); add new suites to both language versions of that table.
 
 # Issues
 

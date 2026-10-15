@@ -65,7 +65,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | AI 模型设置（[ai-settings.md](./ai-settings.md)） | `AiSettings.tsx`（启动页按钮、`ProjectMenu`、请求栏“去设置”都打开同一个）、`apps/server/src/aiconfig.ts`、`packages/core/src/aiConfig.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 全局设置，不属于某个项目，所以各类型一样；快速 AI 用不上的类型（看板）仍用 Claude Code 那一项 |
 | 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
-| 导出 | 各自实现 | ✓ `Board.tsx` | ✓ `exportDeck.ts` | ✗ | ✗ | ✓ HTML | ✗ 编辑器里没有；`scripts/motion-render.mjs` 命令行渲染 | 没有共用的导出部件 |
+| 导出 | 各自的菜单；图片的画法和提示共用 `imageExport.ts`（[export-image.md](./export-image.md)） | ✓ `Board.tsx`（PNG） | ✓ `exportDeck.ts`（HTML、打印 PDF、备注；PNG：这一页、每一页） | ✓ 保存为 PNG（当前页面；组件预览是空白） | ✓ 保存为 PNG（整页） | ✓ HTML；PNG（当前标签页） | ✓ 保存当前帧为 PNG；视频编辑器里还没有，`scripts/motion-render.mjs` 命令行渲染 | 视频、PDF 和共用的导出菜单没有 |
 | 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | ✓ 播放器 | 三种各自实现，没有共用的播放部件 |
 | 图层树（[layers-tree.md](./layers-tree.md)） | `panel/LayerTree.tsx`（`LayerRow`、`ElementRows`）；隐藏/锁定写进文件，runtime 认 `data-hide`、`data-lock` | ✓ 画板、画布上的项、画板里的元素 | ✓ 当前这一页的元素 | ✗ 没有元素树，是令牌和组件的列表 | ✗ 页面是一份代码，没有可选的元素 | ✗ 用大纲（标题导航）；段落不是图层，隐藏和锁定对文档没有意义 | ✓ 播放头所在场景的元素，另标"何时入场" | 同一棵树、同一行（箭头、图标、名称、“文字”、隐藏、锁定）；幻灯片/场景自己的那一行没有开关（跳过一页是另一个开关）|
 | 批注 / 备注（[motion-editing.md](./motion-editing.md) §3.8.1） | 画布的便签项；幻灯片和动效场景的 `<aside>`（共用 `NoteBox` 输入框、`notesOf` / `setNotesIn`）；动效另有作品级的 `motion.json` 的 `note` | ✓ 便签（画布上的项，不是文字批注） | ✓ 演讲者备注，放映时给演讲者看 | ✗ 没有这个粒度：令牌和组件自己有说明 | ✗ 页面是一份代码，说明写在代码注释里 | ✗ 用评论（钉在文字上，见文档指南） | ✓ 作品一层、场景一层，不画进画面、不渲染；给 Claude Code 读 | 动效的批注是写给人和 AI 看的背景，不是指令；渲染和导出的播放器会去掉 |
@@ -89,5 +89,5 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - `design-system`、`dashboard` 两个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
-- 导出各写各的，设计系统和看板没有导出。
+- 导出各写各的菜单；每种类型都能存 PNG，视频、PDF 和共用的菜单还没有。
 - 外观菜单和语言按钮只在启动页，进入编辑器后改主题或语言要回启动页（或由宿主、URL 传入）。

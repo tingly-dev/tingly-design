@@ -21,6 +21,7 @@ projects/<name>/
 - **速度**：时间按阅读节奏来写，`motion.json` 的 `speed` 决定视频播多快。速度菜单可以试别的节奏，不改任何文件。
 - **检查**：列出时间上的问题，比如退场早于入场、文字停留不到 0.8 秒、导不出的嵌入。
 - **AI**：底部输入框针对播放头所在的场景，或选中的元素。小改动选快速 AI，马上落在舞台上；大改动选 Claude Code，它会知道你看的是哪个场景、哪一刻、哪种尺寸。
+- **保存当前帧**：“保存当前帧为图片”把播放头所在的画面按当前尺寸存成 PNG。
 - **导出**：`pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> [--format wide] [--gif] [--player]` 把 MP4、封面 PNG、GIF 和单文件 HTML 播放器写进 `renders/`，需要 Chromium 和 ffmpeg。
 
 时间写在元素上：`<section>` 上的 `data-duration`、`data-transition`，以及里面任意元素的 `data-in` / `data-out` 预设（`rise`、`drop`、`type`、`count`…）和 `data-keys` 关键帧。

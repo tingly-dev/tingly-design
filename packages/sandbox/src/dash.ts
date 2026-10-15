@@ -28,6 +28,7 @@ import {
   type Table,
   type ToDash,
 } from '@dc/core';
+import { canvasPng, rasterize } from '@dc/export';
 import { msg } from './msg';
 
 (window as unknown as { d3: typeof d3 }).d3 = d3;
@@ -614,6 +615,20 @@ addEventListener('message', (e) => {
       mount(m.files);
       redraw();
       break;
+    case 'dash-export': {
+      const id = m.id;
+      const node = document.getElementById('dash-root');
+      if (!node) {
+        post({ dc: 'dash-exported', id, error: 'nothing to export' });
+        break;
+      }
+      const bg = getComputedStyle(document.body).backgroundColor;
+      rasterize(node, { width: node.scrollWidth, height: node.scrollHeight, pixelRatio: m.scale, backgroundColor: bg === 'rgba(0, 0, 0, 0)' ? getComputedStyle(document.documentElement).backgroundColor : bg })
+        .then(canvasPng)
+        .then((blob) => post({ dc: 'dash-exported', id, blob }))
+        .catch((err) => post({ dc: 'dash-exported', id, error: err instanceof Error ? err.message : String(err) }));
+      break;
+    }
     case 'dash-data':
       for (const [id, s] of Object.entries(m.states)) {
         states.set(id, s);

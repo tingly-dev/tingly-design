@@ -37,6 +37,8 @@ export default {
     importLabel: '动效',
     issuesHint: '时间上的问题',
     issues: '检查',
+    saveFrame: '保存当前帧为图片',
+    saveFrameHint: '把播放头所在的画面存成 PNG',
     journal: '记录',
     panel: '属性面板',
     panelHint: '属性面板（⌘\\）',

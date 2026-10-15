@@ -24,6 +24,7 @@ import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core'
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
+import { htmlToPng, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
@@ -223,6 +224,7 @@ function ExportMenu({ onClose }: { onClose: () => void }) {
       >
         {t('docs.export.docMarkdown')}
       </button>
+      <button onClick={() => (onClose(), void saveImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 })))}>{t('docs.export.tabImage')}</button>
       <button onClick={() => (onClose(), download(`${name}.html`, docHtml(d), 'text/html'))}>{t('docs.export.docHtml')}</button>
       <button
         onClick={() => {

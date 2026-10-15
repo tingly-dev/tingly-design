@@ -5,6 +5,8 @@ import { display, edit, isSaving, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
 import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
+import { Picture } from '../icons';
+import { fileStem, nodeToPng, saveImage } from '../../imageExport';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
@@ -233,6 +235,18 @@ export function DsApp() {
             </label>
           )}
           <ImportHere target={dsImport} label={tr('ds.app.label')} />
+          <button
+            className="tb"
+            aria-label={tr('common.image.save')}
+            title={tr('common.image.saveHint')}
+            onClick={() => {
+              const node = document.querySelector<HTMLElement>('.dsmain .dsview');
+              const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
+              if (node) void saveImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
+            }}
+          >
+            <Picture />
+          </button>
           <button className="tb" aria-pressed={journalOpen} aria-label={tr('ds.app.journal')} onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
             <span className="sync">
               <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
