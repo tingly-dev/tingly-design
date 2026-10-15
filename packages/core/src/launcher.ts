@@ -14,7 +14,36 @@ export interface ProjectCard {
   updatedAt: string | null;
   /** one count that says how big it is, e.g. 4 boards */
   count: number;
+  /** the group the person filed it under on the launcher, if any */
+  group?: string;
   preview: ProjectPreview;
+}
+
+/** The file that holds a project's title, per kind. */
+export const INDEX_FILE: Record<ProjectKind, string> = {
+  design: CANVAS_FILE,
+  slides: DECK_FILE,
+  'design-system': DS_INDEX,
+  dashboard: DASH_INDEX,
+  docs: DOC_INDEX,
+  motion: MOTION_FILE,
+};
+
+/** The index file's text with a new title, or undefined when it is not a JSON object. */
+export function retitle(source: string | undefined, title: string): string | undefined {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(source ?? '{}');
+  } catch {
+    return undefined;
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  return JSON.stringify({ ...(raw as Record<string, unknown>), title }, null, 2) + '\n';
+}
+
+/** A group's name as stored: trimmed, one line, at most 40 characters; empty means no group. */
+export function cleanGroup(v: unknown): string {
+  return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
 }
 
 export type ProjectPreview =

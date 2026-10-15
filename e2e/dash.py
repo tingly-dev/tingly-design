@@ -154,7 +154,8 @@ async def main():
         # --- upload and a new dashboard -----------------------------------------------------------------
         restore()
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="dashboard"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="dashboard"] .mi').click()
         await pg.locator('[role=dialog] .where .linkish').click()
         await pg.locator('[role=dialog] input[aria-label="新项目名称"]').fill('zz-dash')
         await pg.locator('[role=dialog] button[type="submit"]').click()

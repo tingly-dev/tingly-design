@@ -47,6 +47,7 @@ import {
   slideFile,
   stringifyCanvas,
   stringifyDeck,
+  cleanGroup,
   projectCard,
   type ProjectCard,
   type ProjectKind,
@@ -197,8 +198,39 @@ export async function seedSamples(): Promise<boolean> {
   return true;
 }
 
+const GROUPS_FILE = '.groups.json';
+
+/** Which launcher group each project is filed under; kept beside the projects, not inside one. */
+export async function readGroups(): Promise<Record<string, string>> {
+  try {
+    const raw = JSON.parse(await readFile(join(PROJECTS_DIR, GROUPS_FILE), 'utf8')) as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw)) if (isProjectName(k) && cleanGroup(v)) out[k] = cleanGroup(v);
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+let groupsWrite: Promise<unknown> = Promise.resolve();
+/** Files a project under a group, or out of every group when `group` is empty. */
+export function setGroup(name: string, group: string): Promise<void> {
+  const next = groupsWrite.then(async () => {
+    const all = await readGroups();
+    if (group) all[name] = group;
+    else delete all[name];
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    const tmp = join(PROJECTS_DIR, `${GROUPS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(all, null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, GROUPS_FILE));
+  });
+  groupsWrite = next.catch(() => {});
+  return next;
+}
+
 export async function listProjects(): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
+  const groups = await readGroups();
   const out: ProjectCard[] = [];
   for (const e of await readdir(PROJECTS_DIR, { withFileTypes: true })) {
     if (!e.isDirectory() || !isProjectName(e.name)) continue;
@@ -217,7 +249,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null));
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name] });
     } catch {
       // unreadable index
     }

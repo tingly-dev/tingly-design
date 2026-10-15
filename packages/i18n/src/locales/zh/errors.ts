@@ -7,6 +7,8 @@ export default {
   notProjectFile: '不是项目里的文件：{{path}}',
   notAssetPath: '不是素材路径：{{path}}',
   noProject: '没有叫 {{name}} 的项目',
+  emptyTitle: '标题不能为空',
+  badIndex: '{{file}} 不是合法的 JSON，没法在这里改名',
   projectExists: '已经有叫 {{name}} 的项目了',
   contentMissing: '请求里没有内容',
   invalidJson: '{{path}} 不是有效的 JSON',

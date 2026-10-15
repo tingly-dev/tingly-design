@@ -138,6 +138,8 @@ export interface Toast {
   id: number;
   text: string;
   kind: 'info' | 'error';
+  /** one thing the toast offers to do, such as undoing what it reports */
+  action?: { label: string; run: () => void };
 }
 
 /** Presenting a deck: which slide, how far its builds have played, how many steps it has. */
@@ -365,10 +367,10 @@ export function useSource(file: string): string | undefined {
 // ----------------------------------------------------------------- toasts
 
 let toastId = 0;
-export function toast(text: string, kind: Toast['kind'] = 'info'): void {
+export function toast(text: string, kind: Toast['kind'] = 'info', action?: Toast['action']): void {
   const id = ++toastId;
-  set((s) => ({ toasts: [...s.toasts, { id, text, kind }].slice(-4) }));
-  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : 3500);
+  set((s) => ({ toasts: [...s.toasts, { id, text, kind, action }].slice(-4) }));
+  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : action ? 6000 : 3500);
 }
 
 // ----------------------------------------------------------------- loading
