@@ -40,8 +40,13 @@ async def main():
         check('a tab for all and for each of the six kinds', tabs == ['all', 'design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'], str(tabs))
         listed = await pg.locator('.lcard[data-project]').evaluate_all('cs => Object.fromEntries(cs.map(c => [c.dataset.project, c.dataset.kind]))')
         check('every sample project is listed with its kind', all(listed.get(n) == k for n, k in SAMPLES.items()), json.dumps(listed))
-        news = await pg.locator('.lstrip [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
-        check('a new-project tile for each kind, and one to import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
+        await pg.locator('.lnewbtn').click()
+        news = await pg.locator('.menu [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
+        check('the New project menu lists each kind, then import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
+        check('the strip of new-project tiles is gone', await pg.locator('.lstrip').count() == 0)
+        await pg.keyboard.press('Escape')
+        bar = await pg.locator('.lbar .lsearch').count() == 1 and await pg.locator('.lbar [data-view]').count() == 2 and await pg.locator('.lbar .lsort').count() == 1
+        check('search, view toggle and sort sit on the project list\'s own title row', bar)
         await expect(pg.locator('.lcard[data-project="tingly-intro"] .lmeta')).to_contain_text('8 页')
         await expect(pg.locator('.lcard[data-project="box-console"] .lmeta')).to_contain_text('5 个画板')
         check('cards say how big each project is', True)
@@ -164,6 +169,7 @@ async def main():
 
         # --- new project dialog ---------------------------------------------------------------
         await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="design"] .mi').click()
         dlg = pg.locator('[role=dialog]')
         check('the dialog offers all six kinds', await dlg.locator('[role=radio]').count() == 6)
         await expect(dlg.locator('input[aria-label="标题"]')).to_be_focused()
@@ -188,7 +194,8 @@ async def main():
         await expect(dlg).to_have_count(0)
         check('Escape closes the dialog', True)
 
-        await pg.locator('.lstrip [data-new="slides"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="slides"] .mi').click()
         check('a kind tile opens the dialog on that kind', await dlg.locator('[role=radio][aria-checked=true]').get_attribute('data-kind') == 'slides')
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Launch deck')
         await dlg.locator('[role=radio][data-kind="design"]').click()

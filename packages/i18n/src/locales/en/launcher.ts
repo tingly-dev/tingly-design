@@ -84,7 +84,6 @@ export default {
   },
   importTile: {
     name: 'Import HTML or SVG',
-    blurb: 'Turn an existing web page or SVG copied from Figma into an editable canvas.',
   },
   new: {
     folderInvalid: 'A folder name can only use letters, digits, - and _, and must start with a letter or digit.',
@@ -166,10 +165,9 @@ export default {
     label: 'Filter by type',
     all: 'All',
   },
-  start: 'New',
   continue: 'Pick up where you left off:',
   projects: 'Projects',
   allProjects: 'All projects',
   notFound: 'Nothing found for “{{q}}”.',
-  noProjects: 'No projects yet. Pick a type above to create one.',
+  noProjects: 'No projects yet. Use New project to create one.',
 };

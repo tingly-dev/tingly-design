@@ -2014,6 +2014,31 @@ button.file-chip:hover {
   color: var(--muted);
   font-size: 12px;
 }
+.menu .mwrap {
+  display: contents;
+}
+.menu .msep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--hairline);
+}
+.lbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.lmain .lbar h2 {
+  margin: 0;
+}
+.ltools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .lhead .tools {
   display: flex;
   gap: 8px;
@@ -2636,16 +2661,6 @@ button.file-chip:hover {
 .lview button[aria-pressed='true'] {
   background: var(--accent-soft);
   color: var(--accent-ink);
-}
-.lstrip.compact {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
-}
-.lstrip.compact .lnew {
-  padding: 8px 12px;
-}
-.lstrip.compact .lnew .blurb {
-  display: none;
 }
 .lcell {
   position: relative;

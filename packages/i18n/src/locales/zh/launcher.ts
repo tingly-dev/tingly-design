@@ -78,7 +78,6 @@ export default {
   },
   importTile: {
     name: '导入 HTML 或 SVG',
-    blurb: '把现成的网页或 Figma 里复制的 SVG 变成可以编辑的画布。',
   },
   new: {
     folderInvalid: '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。',
@@ -159,10 +158,9 @@ export default {
     label: '按类型筛选',
     all: '全部',
   },
-  start: '新建',
   continue: '继续上次的：',
   projects: '项目',
   allProjects: '全部项目',
   notFound: '没有找到“{{q}}”。',
-  noProjects: '还没有项目，从上面选一种类型新建。',
+  noProjects: '还没有项目，点右上角的“新建项目”开始。',
 } satisfies Locale<typeof en>;

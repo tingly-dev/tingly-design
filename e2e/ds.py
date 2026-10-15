@@ -140,7 +140,8 @@ async def main():
 
         # --- a new system from the picker ---------------------------------------------------
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="design-system"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="design-system"] .mi').click()
         await pg.locator('[role=dialog] .where .linkish').click()
         await pg.locator('[role=dialog] input[aria-label="新项目名称"]').fill('zz-ds')
         await pg.locator('[role=dialog] button[type="submit"]').click()

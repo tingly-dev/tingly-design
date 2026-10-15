@@ -455,21 +455,6 @@ function NewTile({ kind, onClick }: { kind: ProjectKind; onClick: () => void }) 
   );
 }
 
-function ImportTile({ onClick }: { onClick: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <button className="lcard lnew t-blue" onClick={onClick} data-new="import">
-      <span className="ic">
-        <IconFileImport size={22} stroke={1.7} />
-      </span>
-      <span className="txt">
-        <span className="name">{t('launcher.importTile.name')}</span>
-        <span className="blurb">{t('launcher.importTile.blurb')}</span>
-      </span>
-    </button>
-  );
-}
-
 export function NewDialog({ initial, taken, onClose }: { initial: ProjectKind; taken: Set<string>; onClose: () => void }) {
   const { t } = useTranslation();
   const [kind, setKind] = useState<ProjectKind>(initial);
@@ -605,6 +590,7 @@ export function Launcher() {
   const [view, setView] = useState<'grid' | 'list'>(() => (stored(VIEW_KEY) === 'list' ? 'list' : 'grid'));
   const [folded, setFolded] = useState<Set<string>>(() => new Set(stored(FOLDED_KEY).split('\n').filter(Boolean)));
   const [acting, setActing] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [newMenu, setNewMenu] = useState<DOMRect | null>(null);
   const [creating, setCreating] = useState<ProjectKind | null>(null);
   const [importing, setImporting] = useState<{ picked?: Picked } | null>(null);
   const [dropping, setDropping] = useState(false);
@@ -704,7 +690,6 @@ export function Launcher() {
     });
   const onMore = (name: string, r: DOMRect) => setActing({ name, x: r.right, y: r.bottom + 4 });
   const acted = acting ? list?.find((p) => p.name === acting.name) : undefined;
-  const compact = (list?.length ?? 0) > 6;
 
   return (
     <div
@@ -736,38 +721,12 @@ export function Launcher() {
           </div>
         </div>
         <div className="tools">
-          <label className="lsearch">
-            <IconSearch size={15} stroke={1.7} aria-hidden="true" />
-            <input
-              ref={search}
-              placeholder={t('launcher.search.placeholder')}
-              aria-label={t('launcher.search.label')}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && shown[0]) open(shown[0].name);
-                if (e.key === 'Escape') setQ('');
-              }}
-            />
-            <kbd>/</kbd>
-          </label>
-          <div className="lview" role="group" aria-label={t('launcher.view.label')}>
-            {(['grid', 'list'] as const).map((v) => (
-              <button key={v} data-view={v} aria-pressed={view === v} title={t(`launcher.view.${v}`)} aria-label={t(`launcher.view.${v}`)} onClick={() => setViewTo(v)}>
-                {v === 'grid' ? <GridLayout /> : <ListLayout />}
-              </button>
-            ))}
-          </div>
-          <select className="lsort" aria-label={t('launcher.sort.label')} value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'name')}>
-            <option value="recent">{t('launcher.sort.recent')}</option>
-            <option value="name">{t('launcher.sort.name')}</option>
-          </select>
           <LanguageMenu className="btn lbtn" />
           <button className="btn lbtn" aria-label={t('aiSettings.menu')} title={t('aiSettings.menu')} onClick={() => useStore.setState({ aiSettingsOpen: true })}>
             <Sliders />
           </button>
           <Appearance className="btn lbtn" />
-          <button className="btn primary lnewbtn" onClick={() => setCreating(tab === 'all' ? 'design' : tab)}>
+          <button className="btn primary lnewbtn" aria-haspopup="menu" data-new-menu onClick={(e) => setNewMenu(e.currentTarget.getBoundingClientRect())}>
             <IconPlus size={15} stroke={2} aria-hidden="true" /> {t('launcher.new.title')}
           </button>
         </div>
@@ -785,17 +744,6 @@ export function Launcher() {
 
       <main className="lmain" onKeyDown={arrowNav}>
         {list === null && <div className="lhint">{t('launcher.loading')}</div>}
-        {tab === 'all' && !q.trim() && (
-          <section className="lstart" aria-label={t('launcher.start')}>
-            <h2>{t('launcher.start')}</h2>
-            <div className={`lstrip${compact ? ' compact' : ''}`}>
-              {KINDS.map((k) => (
-                <NewTile key={k.kind} kind={k.kind} onClick={() => setCreating(k.kind)} />
-              ))}
-              <ImportTile onClick={() => setImporting({})} />
-            </div>
-          </section>
-        )}
         {list !== null && !q.trim() && lastOpened && (tab === 'all' || list.find((p) => p.name === lastOpened)?.kind === tab) && (
           <div className="lcontinue">
             <span>{t('launcher.continue')}</span>
@@ -806,7 +754,37 @@ export function Launcher() {
         )}
         {list !== null && (
           <section className={`lall${flat && groups.length ? '' : ' lnogroup'}`} aria-label={t('launcher.projects')}>
-            <h2>{tab === 'all' ? t('launcher.allProjects') : t(`launcher.kind.${tab}.name`)}</h2>
+            <div className="lbar">
+              <h2>{tab === 'all' ? t('launcher.allProjects') : t(`launcher.kind.${tab}.name`)}</h2>
+              <div className="ltools">
+                <label className="lsearch">
+                  <IconSearch size={15} stroke={1.7} aria-hidden="true" />
+                  <input
+                    ref={search}
+                    placeholder={t('launcher.search.placeholder')}
+                    aria-label={t('launcher.search.label')}
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && shown[0]) open(shown[0].name);
+                      if (e.key === 'Escape') setQ('');
+                    }}
+                  />
+                  <kbd>/</kbd>
+                </label>
+                <div className="lview" role="group" aria-label={t('launcher.view.label')}>
+                  {(['grid', 'list'] as const).map((v) => (
+                    <button key={v} data-view={v} aria-pressed={view === v} title={t(`launcher.view.${v}`)} aria-label={t(`launcher.view.${v}`)} onClick={() => setViewTo(v)}>
+                      {v === 'grid' ? <GridLayout /> : <ListLayout />}
+                    </button>
+                  ))}
+                </div>
+                <select className="lsort" aria-label={t('launcher.sort.label')} value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'name')}>
+                  <option value="recent">{t('launcher.sort.recent')}</option>
+                  <option value="name">{t('launcher.sort.name')}</option>
+                </select>
+              </div>
+            </div>
             {view === 'list' && shown.length > 0 && (
               <div className="lrowhead" aria-hidden="false">
                 <button className="c-title" data-sort="name" aria-pressed={sort === 'name'} onClick={() => setSort('name')}>
@@ -859,6 +837,19 @@ export function Launcher() {
           {t('launcher.links.star')}
         </a>
       </footer>
+      {newMenu && (
+        <Menu x={newMenu.right} y={newMenu.bottom + 6} align="right" onClose={() => setNewMenu(null)} label={t('launcher.new.title')}>
+          {KINDS.map((k) => (
+            <div key={k.kind} data-new={k.kind} className="mwrap">
+              <MenuItem label={t(`launcher.kind.${k.kind}.new`)} icon={<KindIcon kind={k.kind} size={15} />} onSelect={() => (setNewMenu(null), setCreating(k.kind))} />
+            </div>
+          ))}
+          <div className="msep" role="separator" />
+          <div data-new="import" className="mwrap">
+            <MenuItem label={t('launcher.importTile.name')} icon={<IconFileImport size={15} stroke={1.7} aria-hidden="true" />} onSelect={() => (setNewMenu(null), setImporting({}))} />
+          </div>
+        </Menu>
+      )}
       {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} />}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} onClose={() => setCreating(null)} />}
