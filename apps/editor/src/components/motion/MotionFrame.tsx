@@ -14,9 +14,10 @@ export interface MotionInfo {
   issues: { scene: string; message: string; level: string }[];
 }
 
+import type { ExportReport } from '@dc/export/timing';
+
 export interface MotionExportRequest {
   format?: 'auto' | 'mp4' | 'webm' | 'gif';
-  scale?: number;
   /** the file's frame size, same aspect ratio as the piece; its own size when left out */
   width?: number;
   height?: number;
@@ -37,6 +38,8 @@ export interface MotionExportResult {
   note?: 'no-h264' | 'no-aac';
   /** Scenes the in-browser route cannot draw (an embed comes out blank). */
   embeds: string[];
+  /** Where the time went. */
+  report: ExportReport;
 }
 
 export class MotionExportError extends Error {

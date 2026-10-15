@@ -69,6 +69,7 @@ import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
 import { PdfError, printPdf } from './pdf';
+import type { ExportReport } from '@dc/export/timing';
 import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
@@ -556,6 +557,7 @@ app.post('/api/projects/:p/render', async (c) => {
   const body = await c.req.json<{ format?: string; speed?: number }>().catch(() => ({}) as { format?: string; speed?: number });
   const t = trOf(c);
   const ctl = new AbortController();
+  logInfo('render.start', { project: basename(dir), format: body.format, why: 'embed-or-video' });
   return stream(c, async (s) => {
     s.onAbort(() => ctl.abort());
     c.header('content-type', 'application/x-ndjson');
@@ -589,6 +591,25 @@ app.post('/api/pdf', async (c) => {
     logError('pdf.failed', { ms: Date.now() - started, error: (e as Error).message });
     throw new HttpError(500, 'pdfFailed', { detail: (e as Error).message });
   }
+});
+
+/** An export made in the browser reports how it went, so the server log shows both routes next to each other (render.done is the other one). */
+app.post('/api/projects/:p/export-report', async (c) => {
+  const dir = projectDir(c.req.param('p'));
+  const body = await c.req.json<{ report?: ExportReport; why?: string }>().catch(() => ({}) as { report?: ExportReport; why?: string });
+  const r = body.report;
+  if (!r || typeof r.wallMs !== 'number' || typeof r.frames !== 'number') throw new HttpError(400, 'badRequest', { detail: 'no report' });
+  logInfo('export.done', {
+    project: basename(dir),
+    route: 'browser',
+    why: typeof body.why === 'string' ? body.why.slice(0, 40) : undefined,
+    size: `${Number(r.width)}x${Number(r.height)}`,
+    frames: r.frames,
+    wall_ms: r.wallMs,
+    fps: r.fps,
+    ...Object.fromEntries(Object.entries(r.stages ?? {}).map(([k, v]) => [`${k}_ms`, Number((v as { ms: number }).ms)])),
+  });
+  return c.json({ ok: true });
 });
 
 /** A video rendered above, by the name the stream gave. Only files in the project's renders/ folder, only MP4. */

@@ -68,6 +68,8 @@ async def main():
         d = await dl.value
         path = OUT + d.suggested_filename
         await d.save_as(path)
+        done_toast = pg.locator('.toast', has_text='Made in this tab')
+        check('the saved message says which route made the file, how long it took and what took longest', await done_toast.count() >= 1 and 'most time went to' in (await done_toast.first.inner_text()), str(await pg.locator('.toast').all_inner_texts()))
         info = probe(path)
         v = next(s for s in info['streams'] if s.get('width'))
         check('a video file is saved, named for the piece and size', d.suggested_filename.startswith('zz-export-wide.') and d.suggested_filename.split('.')[-1] in ('mp4', 'webm'), d.suggested_filename)
