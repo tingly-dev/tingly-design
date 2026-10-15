@@ -22,7 +22,7 @@
 | `fontCss(sources, text)` | 把网页字体的 `@font-face` 连字体文件内联成 data URL，只取 `text` 用到的 unicode-range。foreignObject 里的图加载不了网络字体，不内联就是后备字体。要在有网络的一侧（编辑器）跑，沙箱框架没有网络 |
 | `planVideo(...)` / `encodeVideo(...)` | 试编码器而不是看 User-Agent：H.264 + AAC 能编就写 MP4，否则写 WebM（VP9、AV1、VP8 + Opus），并带一个 `note` 说清为什么不是 MP4。帧由调用方画，WebCodecs 编码，Mediabunny 封装，全在内存里 |
 | `mixAudio(clips, seconds)` | 把 `motion.json` 的音频按起点和增益混成一轨（OfflineAudioContext） |
-| `encodeGif(...)` | 帧到 GIF（gifenc）。包里有，编辑器还没接 |
+| `encodeGif(...)` | 帧到 GIF（gifenc），编辑器的浏览器路线用它；服务端路线由 ffmpeg 写（见 [export-menu.md](./export-menu.md) §4） |
 | `download(name, blob)` | 交给浏览器的保存对话框 |
 
 依赖：Mediabunny（MPL-2.0，按文件的弱 copyleft，不改它就可以打进来，许可证文本随 bundle 的 `THIRD_PARTY_LICENSES.txt` 走）、html-to-image、gifenc（MIT）。包标了 `sideEffects: false`，编辑器只引用 `fontCss` 和 `download`，编码器不会进编辑器的主包。

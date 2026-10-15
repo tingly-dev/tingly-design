@@ -123,6 +123,18 @@ export interface RenderOptions {
   runtime: string;
   format?: string;
   speed?: number;
+  /** The file to make: an MP4 (the default) or a GIF (no sound, a 256-colour palette made for the whole loop). */
+  container?: 'mp4' | 'gif';
+  /** The file's frame size, same aspect ratio as the piece; the piece's own when left out. */
+  width?: number;
+  height?: number;
+  /** Frames per second of the file; the piece's own when left out. */
+  fps?: number;
+  /** MP4 only: encoder effort, `high` by default. */
+  quality?: 'low' | 'medium' | 'high';
+  /** Only this stretch of the piece, in milliseconds on its timeline (after speed); sound is left out of a stretch. */
+  from?: number;
+  to?: number;
   signal?: AbortSignal;
   onProgress?(done: number, total: number): void;
 }
@@ -138,12 +150,32 @@ export class RenderError extends Error {
   }
 }
 
-/** ffmpeg arguments: PNG frames on stdin, the project's audio mixed in, H.264 out. */
-function encodeArgs(motion: ReturnType<typeof parseMotion>, dir: string, fps: number, seconds: number, file: string): string[] {
-  const a = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-'];
-  const audio = motion.audio.filter((x) => /^[A-Za-z0-9_./-]+$/.test(x.src) && !x.src.includes('..') && existsSync(join(dir, x.src)));
+const CRF = { low: 28, medium: 23, high: 18 } as const;
+const even = (n: number) => Math.max(2, Math.floor(n / 2) * 2);
+
+interface Encode {
+  fps: number;
+  seconds: number;
+  container: 'mp4' | 'gif';
+  /** File size when it differs from the page's. */
+  size?: [number, number];
+  quality: keyof typeof CRF;
+  /** Mix the project's audio in (the whole piece, MP4 only). */
+  sound: boolean;
+}
+
+/** ffmpeg arguments: PNG frames on stdin, the project's audio mixed in, H.264 or a GIF out. */
+function encodeArgs(motion: ReturnType<typeof parseMotion>, dir: string, e: Encode, file: string): string[] {
+  const a = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(e.fps), '-i', '-'];
+  const scale = e.size ? `scale=${e.size[0]}:${e.size[1]}:flags=lanczos,` : '';
+  if (e.container === 'gif') {
+    // one palette for the whole loop (stats from the changed pixels), then dithered with it: far less banding than ffmpeg's default palette
+    a.push('-filter_complex', `[0:v]${scale}split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle[v]`, '-map', '[v]', '-loop', '0', '-t', e.seconds.toFixed(3), '-f', 'gif', file);
+    return a;
+  }
+  const audio = e.sound ? motion.audio.filter((x) => /^[A-Za-z0-9_./-]+$/.test(x.src) && !x.src.includes('..') && existsSync(join(dir, x.src))) : [];
   for (const x of audio) a.push('-i', join(dir, x.src));
-  const filters = ['[0:v]format=yuv420p[v]'];
+  const filters = [`[0:v]${scale}format=yuv420p[v]`];
   audio.forEach((x, i) => {
     const ms = Math.round((x.start ?? 0) * 1000);
     filters.push(`[${i + 1}:a]adelay=${ms}|${ms},volume=${x.gain ?? 0}dB[a${i}]`);
@@ -151,13 +183,13 @@ function encodeArgs(motion: ReturnType<typeof parseMotion>, dir: string, fps: nu
   if (audio.length) filters.push(`${audio.map((_, i) => `[a${i}]`).join('')}amix=inputs=${audio.length}:normalize=0[a]`);
   a.push('-filter_complex', filters.join(';'), '-map', '[v]');
   if (audio.length) a.push('-map', '[a]', '-c:a', 'aac', '-b:a', '192k');
-  a.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', String(fps), '-t', seconds.toFixed(3), '-movflags', '+faststart', file);
+  a.push('-c:v', 'libx264', '-preset', 'medium', '-crf', String(CRF[e.quality]), '-r', String(e.fps), '-t', e.seconds.toFixed(3), '-movflags', '+faststart', file);
   return a;
 }
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
 
-/** Render one format of a motion piece to `renders/<project>-<format>.mp4`; resolves to the file's path and where the time went. */
+/** Render one format of a motion piece to `renders/<project>-<format>.mp4` (or `.gif`); resolves to the file's path and where the time went. */
 export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const clock = new Clock();
   const chrome = findChrome();
@@ -183,8 +215,9 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><script>${runtime}</script></body></html>`);
   const out = join(o.dir, 'renders');
   mkdirSync(out, { recursive: true });
-  const file = join(out, `${basename(o.dir)}-${format}.mp4`);
-  const partial = file.replace(/\.mp4$/, '.part.mp4');
+  const ext = o.container === 'gif' ? 'gif' : 'mp4';
+  const file = join(out, `${basename(o.dir)}-${format}.${ext}`);
+  const partial = file.replace(new RegExp(`\\.${ext}$`), `.part.${ext}`);
 
   const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${join(tmp, 'profile')}`, 'about:blank'];
   if (process.getuid?.() === 0) args.unshift('--no-sandbox');
@@ -216,14 +249,23 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
       `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},speed:${o.speed ? Number(o.speed) : 'undefined'},root:document.getElementById('root')});return{duration:window.__stage.duration,fps:window.__stage.fps}})()`,
     );
     clock.add('launch', performance.now() - launched);
-    const frames = Math.max(1, Math.round((info.duration / 1000) * info.fps));
-    ffmpeg = spawn(ffmpegPath(), encodeArgs(motion, o.dir, info.fps, info.duration / 1000, partial), { stdio: ['pipe', 'ignore', 'pipe'] });
+    const from = Math.max(0, o.from ?? 0);
+    const to = Math.min(info.duration, o.to ?? info.duration);
+    const whole = from === 0 && to >= info.duration;
+    const fps = Math.max(1, Math.min(120, o.fps ?? info.fps));
+    const length = Math.max(1, to - from);
+    const frames = Math.max(1, Math.round((length / 1000) * fps));
+    // the page is w×h; a different size is drawn by ffmpeg from the full-size screenshot, in the same aspect ratio
+    const outW = o.width ? even(o.width) : w;
+    const outH = o.height ? even(o.height) : h;
+    const encode: Encode = { fps, seconds: length / 1000, container: o.container === 'gif' ? 'gif' : 'mp4', size: outW === w && outH === h ? undefined : [outW, outH], quality: o.quality ?? 'high', sound: whole };
+    ffmpeg = spawn(ffmpegPath(), encodeArgs(motion, o.dir, encode, partial), { stdio: ['pipe', 'ignore', 'pipe'] });
     ffmpeg.stderr!.on('data', (d) => (ffmpegErr = (ffmpegErr + d).slice(-2000)));
     const closed = new Promise<number | null>((ok) => ffmpeg!.on('close', ok));
     ffmpeg.stdin!.on('error', () => {});
     for (let i = 0; i < frames; i++) {
       if (o.signal?.aborted) throw new RenderError('aborted');
-      await clock.time('seek', () => evalIn(`window.__stage.seek(${(i * 1000) / info.fps})`));
+      await clock.time('seek', () => evalIn(`window.__stage.seek(${from + (i * 1000) / fps})`));
       const { data } = await clock.time('capture', () => s('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }));
       // ffmpeg's input pipe is full when it is the slower side: this is time spent waiting on the encoder
       await clock.time('write', async () => {
@@ -235,8 +277,8 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     const code = await clock.time('finish', () => closed);
     if (code !== 0) throw new RenderError('failed', `ffmpeg exited ${code}: ${ffmpegErr}`);
     renameSync(partial, file);
-    const report = clock.report({ route: 'server', frames, width: w, height: h });
-    logInfo('render.done', { project: basename(o.dir), format, size: `${w}x${h}`, frames, wall_ms: report.wallMs, fps: report.fps, ...Object.fromEntries(Object.entries(report.stages).map(([k, v]) => [`${k}_ms`, v.ms])) });
+    const report = clock.report({ route: 'server', frames, width: outW, height: outH });
+    logInfo('render.done', { project: basename(o.dir), format, size: `${outW}x${outH}`, container: encode.container, frames, wall_ms: report.wallMs, fps: report.fps, ...Object.fromEntries(Object.entries(report.stages).map(([k, v]) => [`${k}_ms`, v.ms])) });
     return { file, report };
   } catch (e) {
     if (o.signal?.aborted) throw new RenderError('aborted');

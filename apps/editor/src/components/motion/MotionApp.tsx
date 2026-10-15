@@ -19,7 +19,7 @@ import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { useDock } from '../AgentBar';
-import { Checklist, Film, Note, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
+import { Checklist, Film, Gif as GifIcon, Note, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
@@ -137,7 +137,7 @@ export function MotionApp() {
   const [exporting, setExporting] = useState<{ done: number; total: number; route: 'browser' | 'server'; startedAt: number } | null>(null);
   const exportCtl = useRef<AbortController | null>(null);
   // the export dialog, and whether the server's Chrome will draw this piece (it holds an embed or a video layer)
-  const [exportDialog, setExportDialog] = useState<{ viaServer: string[] | null } | null>(null);
+  const [exportDialog, setExportDialog] = useState<{ viaServer: string[] | null; format?: 'gif' } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [stageRef, box] = useBox();
 
@@ -270,11 +270,11 @@ export function MotionApp() {
   };
 
   /** Asked before the dialog: a piece with an embed or a video layer is drawn by the server's Chrome when it has one, which the browser cannot do. */
-  const openExportDialog = async () => {
+  const openExportDialog = async (format?: 'gif') => {
     if (exportCtl.current || !info) return;
     const exact = exactScenes(playScenes);
     const caps = exact.length && project ? await api.renderCapabilities().catch(() => null) : null;
-    setExportDialog({ viaServer: caps?.chrome && caps.ffmpeg ? exact : null });
+    setExportDialog({ viaServer: caps?.chrome && caps.ffmpeg ? exact : null, format });
   };
 
   const where = (route: 'browser' | 'server') => (route === 'server' ? t('motion.export.where.server') : t('motion.export.where.browser'));
@@ -319,12 +319,13 @@ export function MotionApp() {
     try {
       const [W0, H0] = motion.formats[fmt]?.size ?? [info.width, info.height];
       const name = (ext: string) =>
-        `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}${o.height !== H0 && !viaServer ? `-${o.height}p` : ''}${o.from !== undefined && !viaServer ? `-${sceneName(o.from)}` : ''}.${ext}`;
+        `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}${o.height !== H0 ? `-${o.height}p` : ''}${o.from !== undefined ? `-${sceneName(o.from)}` : ''}.${ext}`;
       if (project && viaServer) {
         toast(t('motion.export.viaServer', { scenes: viaServer.join(', ') }));
-        const { file, report } = await api.renderMotion(project, fmt, progress, ctl.signal);
-        download(name('mp4'), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
-        toast(doneMessage(name('mp4'), report));
+        const ext = o.format === 'gif' ? 'gif' : 'mp4';
+        const { file, report } = await api.renderMotion(project, fmt, { container: ext, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to }, progress, ctl.signal);
+        download(name(ext), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
+        toast(doneMessage(name(ext), report));
       } else {
         const inputs = await exportInputs(motion, playScenes, base);
         const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs }, progress, ctl.signal);
@@ -414,7 +415,8 @@ export function MotionApp() {
           target={motionImport}
           label={t('motion.bar.importLabel')}
           items={[
-            { id: 'video', label: t('common.transfer.label.video'), hint: t('common.transfer.hint.motionVideo', { size: `${W}×${H}`, fps: info?.fps ?? motion.fps }), icon: <Film />, disabled: !info || !!exporting, run: openExportDialog },
+            { id: 'video', label: t('common.transfer.label.video'), hint: t('common.transfer.hint.motionVideo', { size: `${W}×${H}`, fps: info?.fps ?? motion.fps }), icon: <Film />, disabled: !info || !!exporting, run: () => void openExportDialog() },
+            { id: 'gif', label: t('common.transfer.label.gif'), hint: t('common.transfer.hint.motionGif'), icon: <GifIcon />, disabled: !info || !!exporting, run: () => void openExportDialog('gif') },
             { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
           ]}
         />
@@ -657,6 +659,7 @@ export function MotionApp() {
           duration={info.duration}
           scene={scenePick}
           viaServer={exportDialog.viaServer}
+          initialFormat={exportDialog.format}
           onClose={() => setExportDialog(null)}
           onStart={(o) => {
             const via = exportDialog.viaServer;

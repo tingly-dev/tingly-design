@@ -105,6 +105,18 @@ async def main():
         v4 = next(s for s in probe(p4)['streams'] if s.get('width'))
         check('…at 480 lines, not the piece\'s 1080', v4['height'] == 480, str(v4))
 
+        # --- the menu's own GIF… entry: the same dialog, GIF already chosen and the options open ---------
+        await menu.click()
+        await pg.get_by_role('menuitem', name='GIF…').click()
+        dlg5 = pg.get_by_role('dialog', name='Export video')
+        check('GIF… opens the dialog with GIF chosen, small and slow by default', await dlg5.get_by_label('Format').input_value() == 'gif' and 'GIF' in await dlg5.locator('[data-summary]').inner_text() and '15 fps' in await dlg5.locator('[data-summary]').inner_text(), await dlg5.locator('[data-summary]').inner_text())
+        async with pg.expect_download(timeout=120000) as dl5:
+            await dlg5.get_by_role('button', name='Export', exact=True).click()
+        d5 = await dl5.value
+        p5 = OUT + d5.suggested_filename
+        await d5.save_as(p5)
+        check('…and exports a GIF in one click', open(p5, 'rb').read(6) in (b'GIF87a', b'GIF89a') and d5.suggested_filename.endswith('-480p.gif'), d5.suggested_filename)
+
         # --- cancel -------------------------------------------------------------------------------
         await start()
         await pg.locator('button', has_text='Cancel').click()
@@ -120,7 +132,10 @@ async def main():
         await menu.click()
         await pg.get_by_role('menuitem', name='Video…').click()
         dlg2 = pg.get_by_role('dialog', name='Export video')
-        check('a piece Chrome draws says so instead of offering options', await dlg2.get_by_role('button', name='More options').count() == 0 and 'Chrome on this machine' in await dlg2.inner_text())
+        check('a piece Chrome draws says so, and still offers the options', 'Chrome on this machine' in await dlg2.inner_text() and await dlg2.get_by_role('button', name='More options').count() == 1)
+        await dlg2.get_by_role('button', name='More options').click()
+        fmts = await dlg2.get_by_label('Format').locator('option').all_inner_texts()
+        check('…MP4 and GIF, no WebM or automatic', fmts == ['MP4', 'GIF'], fmts)
         async with pg.expect_download(timeout=120000) as dl2:
             await dlg2.get_by_role('button', name='Export', exact=True).click()
             await expect(pg.locator('.toast', has_text='Chrome on this machine')).to_be_visible(timeout=15000)
@@ -131,6 +146,34 @@ async def main():
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-ss', '1', '-i', path2, '-frames:v', '1', OUT + 'export-embed-frame.png'])
         px = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-embed-frame.png', '-vf', 'crop=1:1:300:300,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
         check('the embed is on the frame, not blank', len(px) == 3 and px[0] > 180 and px[1] < 100, str(list(px)))
+        # the server route honours size and frame rate, and makes a GIF
+        await menu.click()
+        await pg.get_by_role('menuitem', name='Video…').click()
+        dlg6 = pg.get_by_role('dialog', name='Export video')
+        await dlg6.get_by_role('button', name='More options').click()
+        await dlg6.get_by_label('Format').select_option('mp4')
+        await dlg6.get_by_label('Size').select_option('360')
+        await dlg6.get_by_label('Frame rate').select_option('24')
+        async with pg.expect_download(timeout=120000) as dl7:
+            await dlg6.get_by_role('button', name='Export', exact=True).click()
+        d7 = await dl7.value
+        p7 = OUT + d7.suggested_filename
+        await d7.save_as(p7)
+        v7 = next(s for s in probe(p7)['streams'] if s.get('width'))
+        check('the server route honours size and frame rate', (v7['width'], v7['height']) == (640, 360) and v7['r_frame_rate'] == '24/1' and d7.suggested_filename.endswith('-360p.mp4'), f'{v7} {d7.suggested_filename}')
+        await menu.click()
+        await pg.get_by_role('menuitem', name='GIF…').click()
+        dlg8 = pg.get_by_role('dialog', name='Export video')
+        async with pg.expect_download(timeout=120000) as dl8:
+            await dlg8.get_by_role('button', name='Export', exact=True).click()
+        d8 = await dl8.value
+        p8 = OUT + d8.suggested_filename
+        await d8.save_as(p8)
+        v8 = next(s for s in probe(p8)['streams'] if s.get('width'))
+        check('the server route makes a GIF, 480 lines by default', open(p8, 'rb').read(6) in (b'GIF87a', b'GIF89a') and v8['height'] == 480 and d8.suggested_filename == 'zz-export-embed-wide-480p.gif', f'{v8} {d8.suggested_filename}')
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', p8, '-frames:v', '1', OUT + 'export-embed-gif.png'])
+        px8 = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-embed-gif.png', '-vf', 'crop=1:1:100:100,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
+        check('…with the embed on the GIF\'s frame', len(px8) == 3 and px8[0] > 180 and px8[1] < 100, str(list(px8)))
 
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
