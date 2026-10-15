@@ -7,7 +7,7 @@
 <meta name="description" content="Open-source design with two-way editing: people and AI co-design in the editor or in plain files, and each side sees the other's changes at once.">
 <meta property="og:title" content="Tingly Design">
 <meta property="og:description" content="Open-source design with two-way editing: people and AI co-design in the editor or in plain files.">
-<meta property="og:image" content="media/design-motion-wide-cover.png">
+<meta property="og:image" content="media/readme/cover.png">
 <style>
   :root { --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#e4e0d8; --card:#fff; --accent:#0f6fff; }
   @media (prefers-color-scheme: dark) {
@@ -43,6 +43,8 @@
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
   .card h3 { margin:0 0 6px; font-size:17px; }
   .card p { margin:0; color:var(--muted); font-size:15px; }
+  .loop { margin:0 0 20px; }
+  .loop figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; }
   .kinds figure { margin:0; }
   .kinds figcaption { padding:8px 2px; color:var(--muted); font-size:14px; }
   pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow:auto; }
@@ -77,13 +79,13 @@
 
   <div class="videos">
     <figure class="screen-wide">
-      <video controls playsinline preload="none" poster="media/design-motion-wide-cover.png" aria-label="16:9">
+      <video controls muted loop playsinline preload="none" poster="media/design-motion-wide-cover.png" aria-label="16:9">
         <source src="media/design-motion-wide.mp4" type="video/mp4">
       </video>
       <figcaption><span lang="en">Large screen · 16:9</span><span lang="zh">大屏 · 16:9</span></figcaption>
     </figure>
     <figure class="screen-tall">
-      <video controls playsinline preload="metadata" poster="media/design-motion-tall-cover.png" aria-label="9:16">
+      <video controls muted loop playsinline preload="none" poster="media/design-motion-tall-cover.png" aria-label="9:16">
         <source src="media/design-motion-tall.mp4" type="video/mp4">
       </video>
       <figcaption><span lang="en">Small screen · 9:16</span><span lang="zh">小屏 · 9:16</span></figcaption>
@@ -96,6 +98,10 @@
 
   <h2 lang="en">Two-way editing, one file in the middle</h2>
   <h2 lang="zh">双向编辑，中间只有一份文件</h2>
+  <figure class="loop">
+    <img loading="lazy" src="media/readme/hero.gif" alt="">
+    <figcaption><span lang="en">An idea, a hand edit, then an AI edit, in one loop.</span><span lang="zh">一个想法、一次手改、一次 AI 改动，循环播放。</span></figcaption>
+  </figure>
   <div class="flow">
     <div class="card"><h3 lang="en">In the editor</h3><h3 lang="zh">在编辑器里</h3>
       <p lang="en">Click, drag and retype. The change is written into the file as a minimal patch.</p><p lang="zh">点选、拖动、改字。改动以最小补丁写进文件。</p></div>
@@ -113,13 +119,23 @@
 
   <h2 lang="en">Six project kinds</h2>
   <h2 lang="zh">六种项目类型</h2>
+  <figure class="loop">
+    <img loading="lazy" src="media/readme/kinds.gif" alt="">
+    <figcaption><span lang="en">A quick tour of the six kinds.</span><span lang="zh">六种类型快速看一遍。</span></figcaption>
+  </figure>
   <div class="grid kinds">
-    <figure><img loading="lazy" src="media/canvas.png" alt="Canvas"><figcaption>Canvas</figcaption></figure>
-    <figure><img loading="lazy" src="media/slides.png" alt="Slides"><figcaption>Slides</figcaption></figure>
-    <figure><img loading="lazy" src="media/design-system.png" alt="Design system"><figcaption>Design system</figcaption></figure>
-    <figure><img loading="lazy" src="media/dashboard.png" alt="Dashboard"><figcaption>Dashboard</figcaption></figure>
-    <figure><img loading="lazy" src="media/docs.png" alt="Docs"><figcaption>Docs</figcaption></figure>
-    <figure><img loading="lazy" src="media/motion.png" alt="Motion"><figcaption>Motion</figcaption></figure>
+    <figure><img lang="en" loading="lazy" src="media/readme/en/canvas.webp" alt="Canvas"><img lang="zh" loading="lazy" src="media/readme/zh/canvas.webp" alt="画布">
+      <figcaption><span lang="en"><b>Canvas</b> · screens, flows and components side by side</span><span lang="zh"><b>画布</b> · 界面、流程和组件并排放在一块画板上</span></figcaption></figure>
+    <figure><img lang="en" loading="lazy" src="media/readme/en/slides.webp" alt="Slides"><img lang="zh" loading="lazy" src="media/readme/zh/slides.webp" alt="幻灯片">
+      <figcaption><span lang="en"><b>Slides</b> · decks that present full screen and export to PDF</span><span lang="zh"><b>幻灯片</b> · 全屏演示，可导出 PDF</span></figcaption></figure>
+    <figure><img lang="en" loading="lazy" src="media/readme/en/design-system.webp" alt="Design systems"><img lang="zh" loading="lazy" src="media/readme/zh/design-system.webp" alt="设计系统">
+      <figcaption><span lang="en"><b>Design systems</b> · tokens and components every project can install</span><span lang="zh"><b>设计系统</b> · 每个项目都能装入的 token 和组件</span></figcaption></figure>
+    <figure><img lang="en" loading="lazy" src="media/readme/en/dashboard.webp" alt="Dashboards"><img lang="zh" loading="lazy" src="media/readme/zh/dashboard.webp" alt="看板">
+      <figcaption><span lang="en"><b>Dashboards</b> · live charts, every number traced to its cell</span><span lang="zh"><b>看板</b> · 实时图表，每个数字都能追到来源</span></figcaption></figure>
+    <figure><img lang="en" loading="lazy" src="media/readme/en/docs.webp" alt="Docs"><img lang="zh" loading="lazy" src="media/readme/zh/docs.webp" alt="文档">
+      <figcaption><span lang="en"><b>Docs</b> · written together, with comments, in plain Markdown</span><span lang="zh"><b>文档</b> · 多人协作、带评论的纯 Markdown</span></figcaption></figure>
+    <figure><img lang="en" loading="lazy" src="media/readme/en/motion.webp" alt="Motion"><img lang="zh" loading="lazy" src="media/readme/zh/motion.webp" alt="动效">
+      <figcaption><span lang="en"><b>Motion</b> · promo videos and animated graphics, MP4 or GIF</span><span lang="zh"><b>动效</b> · 宣传片和动画，导出 MP4 或 GIF</span></figcaption></figure>
   </div>
 
   <h2 lang="en">Try it</h2>
@@ -145,6 +161,12 @@ pnpm dev   # editor at http://localhost:5173</pre>
       try { localStorage.setItem(key, zh ? 'zh' : 'en'); } catch (e) {}
     };
   })();
+</script>
+<script>
+// Autoplay the promo muted, but only the video that is visible at this width.
+document.querySelectorAll('.videos video').forEach(v => {
+  if (v.offsetParent && !matchMedia('(prefers-reduced-motion: reduce)').matches) v.play().catch(() => {});
+});
 </script>
 </body>
 </html>
