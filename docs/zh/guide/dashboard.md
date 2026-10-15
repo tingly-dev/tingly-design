@@ -19,6 +19,7 @@ projects/<name>/
 - **页面**：跑在 `sandbox="allow-scripts"`、禁网络的 iframe 里。`dash.data / onData / calc / loader / params / setParams / setLink / colors / refresh` 和原版一致，另有亮暗两套主题 token。
 - **标注核对**：页面上每个带 `data-source` / `data-field` / `data-where` 的数字都会和它指向的单元格比对（认千分位、K/M/B 和万/亿、百分比、显示的精度），表格按 `data-row-key` 逐行核对；对不上的列在“数据来源 → 问题”里，也写进 `.runs.json` 给 Claude Code 看。数字的加载、刷新、失败、空值状态会标在元素上，页面可以用 CSS 画出来。
 - **数据来源面板**：每份数据的状态、行数、更新时间、“未使用”；点开看说明、查询（`{{参数}}` 显示当前值）、结果表、计算的公式；可以改查询、试运行、保存，下载 CSV，把查询“停止自动刷新”（结果存成 `data/<id>.json`）再恢复。
+- **保存为图片**：顶栏的“保存为图片”把整个页面按现在的样子（主题、筛选和已加载的数据都在）存成 PNG。
 - **数据模式**：点页面上的数字、图表或表格单元格，右侧打开它的来源并高亮那一格。
 - **代码**：页面和数据说明也能直接在编辑器里改（原版只允许 Claude 写）；改完页面立即重载。
 - **AI**：交给 Claude Code。它可以用 `node scripts/dash-query.mjs` 只读地查数据库，会先读 `.runs.json`。

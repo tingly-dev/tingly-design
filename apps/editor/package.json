@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@dc/core": "workspace:*",
+    "@dc/export": "workspace:*",
     "@dc/import": "workspace:*",
     "@floating-ui/dom": "1.8.0",
     "@tabler/icons-react": "3.49.0",

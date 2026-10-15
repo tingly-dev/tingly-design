@@ -21,6 +21,7 @@ projects/<name>/
 - **Speed**: timing is written at reading pace and `speed` in `motion.json` sets how fast the video plays. The speed menu tries another pace without touching any file.
 - **Check**: lists timing problems such as an exit before the entry, text on screen for less than 0.8 s, or an embed that cannot be exported.
 - **AI**: the box at the bottom works on the scene under the playhead, or the selected element. Pick the fast AI for a small change, which lands on the stage at once, or Claude Code for a larger one; Claude Code is told which scene, moment and size you are looking at.
+- **Save frame**: “Save frame as image” saves the picture at the playhead, at the size you are looking at, as a PNG.
 - **Export**: `pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> [--format wide] [--gif] [--player]` writes MP4s, the cover PNG, a GIF and a single-file HTML player to `renders/`. It needs Chromium and ffmpeg.
 
 Timing lives on the elements: `data-duration` and `data-transition` on the `<section>`, `data-in` / `data-out` presets (`rise`, `drop`, `type`, `count`…) and `data-keys` keyframe tracks on anything inside.

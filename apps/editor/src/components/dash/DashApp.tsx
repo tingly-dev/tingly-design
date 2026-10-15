@@ -26,6 +26,7 @@ import {
 } from '../../dash';
 import { ImportHere } from '../ImportHere';
 import { ProjectMenu } from '../ProjectMenu';
+import { fileStem, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
@@ -33,6 +34,18 @@ import { CodePanel } from './CodePanel';
 import { replaceUrl } from '../../host';
 import { SERVER } from '../../base';
 import { currentLanguage, htmlLang } from '../../i18n';
+
+const imageWaits = new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>();
+
+/** The page as drawn now, as a PNG, made inside its frame. */
+function pageImage(scale = 2): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const id = Math.random().toString(36).slice(2);
+    const timer = setTimeout(() => (imageWaits.delete(id), reject(new Error('timeout'))), 20000);
+    imageWaits.set(id, { ok: (b) => (clearTimeout(timer), resolve(b)), fail: (e) => (clearTimeout(timer), reject(e)) });
+    postFrame({ dc: 'dash-export', id, scale });
+  });
+}
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
 function PageFrame() {
@@ -103,6 +116,13 @@ function PageFrame() {
         case 'dash-pick':
           useDash.setState({ pick: m.pick, open: m.pick.sources[0] ?? null, side: 'sources' });
           break;
+        case 'dash-exported': {
+          const w = imageWaits.get(m.id);
+          imageWaits.delete(m.id);
+          if (m.blob) w?.ok(m.blob);
+          else w?.fail(new Error(m.error ?? 'failed'));
+          break;
+        }
         case 'key':
           if (m.key === 'Escape' && d.mode === 'data') setMode('page');
           break;
@@ -239,6 +259,9 @@ export function DashApp() {
         <Filters />
         <div className="grow" />
         <ImportHere target={dashImport} label={t('dash.kind')} button="text" />
+        <button className="btn ghost" onClick={() => void saveImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())} title={t('common.image.saveHint')}>
+          {t('common.image.save')}
+        </button>
         <button className="btn ghost" onClick={refreshAll} title={t('dash.bar.refreshAllTitle')}>
           {t('dash.bar.refresh')}
         </button>

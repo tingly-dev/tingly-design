@@ -37,6 +37,8 @@ export default {
     importLabel: 'motion',
     issuesHint: 'Timing problems',
     issues: 'Check',
+    saveFrame: 'Save frame as image',
+    saveFrameHint: 'Save the picture at the playhead as a PNG',
     journal: 'Log',
     panel: 'Properties panel',
     panelHint: 'Properties panel (⌘\\)',
