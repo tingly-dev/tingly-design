@@ -23,9 +23,9 @@
 
 ### 3.1 入口
 
-`ImportHere` 的菜单在"选择文件…"旁边多一项"从项目导入…"（`ImportTarget.board` 存在的类型才有）。点开是一个画板选择器（`BoardPicker.tsx`）：列出每个画布项目的画板，用画板运行时画成缩略图；会动的画板排在前面、带"会动"标记，指针停在上面时播放，所以人是看着效果挑的。
+共用的"导入 / 导出"菜单（`FileMenu`，[export-menu.md](./export-menu.md)）在导入一段的"选择文件…"旁边多一项"从项目导入…"（`ImportTarget.board` 存在的类型才有；`FileMenu` 通过 `ImportControls.pickProject()` 让 `ImportHere` 打开选择器）。点开是一个画板选择器（`BoardPicker.tsx`）：列出每个画布项目的画板，用画板运行时画成缩略图；会动的画板排在前面、带"会动"标记，指针停在上面时播放，所以人是看着效果挑的。
 
-幻灯片原来**没有**导入按钮（图片走"插入图片"），现在有了，因为导入不再只是放图片。
+幻灯片原来没有导入入口（图片走"插入图片"）；现在每种类型都有同一个"导入 / 导出"菜单，幻灯片的导入一段因此不只是放图片。
 
 ### 3.2 复制到哪、记在哪
 
@@ -77,10 +77,10 @@
 | `packages/sandbox/src/motion.ts` `mountBoard` | 播放器里的画板嵌入 |
 | `apps/server/src/index.ts` `import-board` | 复制和记录 |
 | `apps/server/src/render.ts` | 服务端精确渲染带上画板文件和画板运行时 |
-| `apps/editor/src/components/BoardPicker.tsx`、`ImportHere.tsx` | 选择器和入口 |
+| `apps/editor/src/components/BoardPicker.tsx`、`ImportHere.tsx`、`FileMenu.tsx` | 选择器和入口 |
 | `apps/editor/src/boards.ts`、`slides.ts`、`motion.ts` | 嵌入块的写法、放到页面上、给帧准备画板文件 |
 | `apps/editor/src/components/panel/BoardEmbedProps.tsx`、`OtherProps.tsx` | 嵌入块的面板；画布 Tweaks 的时间滑块 |
-| `apps/editor/src/components/slides/exportDeck.ts`、`scripts/motion-render.mjs` | 导出 |
+| `apps/editor/src/components/slides/exportDeck.tsx`、`scripts/motion-render.mjs` | 导出 |
 
 ## 5. 还没做的
 

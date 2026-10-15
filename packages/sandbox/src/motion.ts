@@ -389,7 +389,7 @@ type HostMsg =
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' }
-  | { dcm: 'export'; id: string; format?: 'auto' | 'mp4' | 'webm'; scale?: number; fontCss?: string; audio?: AudioClip[] }
+  | ({ dcm: 'export'; id: string; fontCss?: string; audio?: AudioClip[] } & Pick<ExportRequest, 'format' | 'width' | 'height' | 'fps' | 'quality' | 'from' | 'to'>)
   | { dcm: 'export-cancel'; id: string }
   | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
 
@@ -410,7 +410,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       if (!stage) return post({ dcm: 'export-error', id: m.id, code: 'no-stage' });
       const ctl = new AbortController();
       exporting.set(m.id, ctl);
-      const req: ExportRequest = { format: m.format, scale: m.scale, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
+      const req: ExportRequest = { format: m.format, width: m.width, height: m.height, fps: m.fps, quality: m.quality, from: m.from, to: m.to, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
       try {
         const r = await exportVideo(stage, stageBox!, req);
         const { blob, ...rest } = r;
@@ -424,7 +424,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
     } else if (m.dcm === 'snapshot') {
       if (!stage) return post({ dcm: 'snapshot-error', id: m.id, message: 'nothing is loaded' });
       try {
-        post({ dcm: 'snapshot-done', id: m.id, blob: await exportFrame(stage, stageBox!, { t: m.t, scale: m.scale, fontCss: m.fontCss }) });
+        post({ dcm: 'snapshot-done', id: m.id, blob: await exportFrame(stage, stageBox!, { t: m.t, fontCss: m.fontCss }) });
       } catch (err) {
         post({ dcm: 'snapshot-error', id: m.id, message: err instanceof Error ? err.message : String(err) });
       }

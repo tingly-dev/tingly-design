@@ -3,7 +3,7 @@ import { IconTable } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { t } from '../../i18n';
 import { SLIDE_H, SLIDE_W, checkSlide, sectionsOf, slideFile, ICON_NAMES } from '@dc/core';
-import { deckOf, display, editDeck, isSaving, parsed, slideIds, toast, useDeck, useSlideIds, useStore } from '../../store';
+import { deckOf, display, editDeck, parsed, slideIds, toast, useDeck, useSlideIds, useStore } from '../../store';
 import {
   INSERTS,
   addSection,
@@ -30,9 +30,11 @@ import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { ProjectMenu } from '../ProjectMenu';
-import { Caret, Download, Panel, Picture, Play, Shapes, TextT } from '../icons';
-import { exportDeck, exportSlideImages } from './exportDeck';
-import { ImportHere } from '../ImportHere';
+import { Caret, Panel, Picture, Play, Shapes, TextT } from '../icons';
+import { slidesExportItems } from './exportDeck';
+import { FileMenu } from '../FileMenu';
+import { SyncStatus } from '../SyncStatus';
+import { useDirectPdf } from '../../pdfExport';
 
 // ------------------------------------------------------------------ strip
 
@@ -233,7 +235,6 @@ function TopLeft() {
           if (f) void uploadImage(f);
         }}
       />
-      <ImportHere target={slidesImport} label={t('slides.toolbar.importLabel')} />
       <button className="tb" aria-label={t('slides.toolbar.insertTable')} title={t('slides.toolbar.insertTable')} onClick={() => insertOnSlide(INSERTS.table, false)}>
         <IconTable size={16} stroke={1.6} aria-hidden="true" />
       </button>
@@ -270,12 +271,9 @@ function TopLeft() {
 
 function TopRight() {
   const panelOpen = useStore((s) => s.panelOpen);
-  const connected = useStore((s) => s.connected);
-  const saving = useStore(isSaving);
-  const journalOpen = useStore((s) => s.journalOpen);
-  const [menu, setMenu] = useState<null | 'play' | 'download'>(null);
+  const [menu, setMenu] = useState<null | 'play'>(null);
   const playBtn = useRef<HTMLButtonElement>(null);
-  const dlBtn = useRef<HTMLButtonElement>(null);
+  const direct = useDirectPdf();
   const { t } = useTranslation();
   const at = (b: HTMLElement | null) => {
     const r = b?.getBoundingClientRect();
@@ -289,33 +287,17 @@ function TopRight() {
           <Caret />
         </span>
       </button>
-      <button ref={dlBtn} className="tb" aria-haspopup="menu" aria-label={t('slides.toolbar.download')} title={t('slides.toolbar.download')} onClick={() => setMenu('download')}>
-        <Download />
-      </button>
+      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
       <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
         <Panel />
       </button>
       <span className="sep" />
-      <button className="tb" aria-pressed={journalOpen} aria-label={t('slides.toolbar.sync')} onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
-        <span className="sync">
-          <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-          {!connected ? t('slides.toolbar.offline') : saving ? t('slides.toolbar.saving') : t('slides.toolbar.synced')}
-        </span>
-      </button>
+      <SyncStatus />
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />
           <MenuItem label={t('slides.toolbar.presentFromCurrent')} onSelect={() => (setMenu(null), startPresent(null))} />
           <MenuItem label={t('slides.toolbar.presentWithNotes')} onSelect={() => (setMenu(null), startPresent(null, true))} />
-        </Menu>
-      )}
-      {menu === 'download' && (
-        <Menu {...at(dlBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.download')}>
-          <MenuItem label={t('slides.toolbar.downloadPdf')} onSelect={() => (setMenu(null), void exportDeck('pdf'))} />
-          <MenuItem label={t('slides.toolbar.downloadHtml')} onSelect={() => (setMenu(null), void exportDeck('html'))} />
-          <MenuItem label={t('slides.toolbar.downloadImage')} onSelect={() => (setMenu(null), void exportSlideImages(useStore.getState().slide))} />
-          <MenuItem label={t('slides.toolbar.downloadImages')} onSelect={() => (setMenu(null), void exportSlideImages(true))} />
-          <MenuItem label={t('slides.toolbar.downloadNotes')} onSelect={() => (setMenu(null), void exportDeck('notes'))} />
         </Menu>
       )}
     </div>

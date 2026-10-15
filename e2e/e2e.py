@@ -285,7 +285,7 @@ async def main():
         check('play mode runs artboard logic', ok)
         await pg.keyboard.press('Escape')
 
-        await pg.locator('button[aria-label="同步状态和改动记录"]').click()
+        await pg.locator('.syncchip').click()
         n = await pg.locator('.jline').count()
         check('journal popover lists edits', n >= 3, str(n))
         await pg.screenshot(path=OUT + 'final.png')

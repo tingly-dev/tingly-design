@@ -31,7 +31,35 @@
 
 编码器在沙箱的 `export.js` 里，第一次导出时才加载，播放器的 `motion.js` 不带它。流程：编辑器取字体和音频文件（沙箱没有网络），发 `export` 消息；沙箱里逐帧 `seek` 再 `rasterize` 舞台，交给 `encodeVideo`；进度回传，文件以 Blob 回传，编辑器下载。导出时播放器那一层要显示出来（隐藏的跨源框架浏览器可能不给它画帧），所以画面会在舞台上跑一遍，标签页要留在前台。导出完把播放头放回原处。
 
-测出来的（容器里的 Chromium，没有 GPU）：1920×1080 约 4 帧/秒；开源 Chromium 编不了 H.264 和 AAC，只有 VP9、AV1、Opus，所以 MP4 要 Chrome、Edge 或 Safari；和 CDP 截图逐帧比，肉眼一致，差异是 VP9 压缩带来的。
+开源 Chromium 编不了 H.264 和 AAC，只有 VP9、AV1、Opus，所以 MP4 要 Chrome、Edge 或 Safari；和 CDP 截图逐帧比，肉眼一致，差异是 VP9 压缩带来的。
+
+## 3.1 速度，以及怎么知道慢在哪
+
+问题：1920×1080 约 4 帧/秒，而且人看不到慢在哪、走了哪条路线。
+
+**先量。** 一个计时器 `Clock`（`@dc/export/timing`，纯数据，能随 postMessage 和 JSON 行走）给每个阶段记总时间和次数：`audio`、`seek`、`snapshot`（复制页面）、`decode`（等浏览器把图画出来）、`encode`（等编码器）、`finish`；服务端路线是 `launch`、`seek`、`capture`（截图）、`write`（等 ffmpeg）、`finish`。阶段是固定的 id，编辑器负责措辞，core 不带文案。每次导出结束得到一份 `ExportReport`（路线、总耗时、帧数、实际帧率、各阶段）。
+
+量出来的（容器里的 Chromium，没有 GPU，1080p，60 个节点的场景）：
+
+| 路线 | 做法 | 每帧 | 大头 |
+|---|---|---|---|
+| 浏览器，原来 | html-to-image 逐帧 | 约 120 ms | 复制页面 66%，等图画出来 20% |
+| 浏览器，现在 | 逐帧拷贝 + 流水线 | 约 25 ms（40 帧/秒） | 复制页面 53%，其余被流水线盖住 |
+| 服务端 | Chrome 逐帧截图 + ffmpeg | 约 105 ms（9 帧/秒） | 截图 67% |
+
+**浏览器路线慢在复制页面，不在编码。** Chrome 的 `getComputedStyle().cssText` 是空的，html-to-image 于是对每个节点把约 400 个属性逐个读出来、逐个写回去（每个属性还要查一遍原型链判断是不是 iframe），一个节点要一毫秒多。选择：
+
+- 不改 html-to-image，写自己的 `FrameRasterizer`（`packages/export/src/frames.ts`）：只写与"同一个标签在空白页里"不同的样式；继承来的属性只在与父节点不同、或这个标签自己的默认规则会盖掉它时才写；`width`、`height`、`transform-origin` 这类取决于所在盒子的值永远写。动画、过渡、指针、滚动一类属性不写，样式表和脚本不带（带上 `@keyframes` 的话，图里的动画会重新跑一遍）。空白页的样式放在一个 shadow tree 里读（沙箱页读不进 iframe）。图片只取一次，换成 data: URL 记着；没用到的 `@font-face` 不放进每一帧。
+- 原来的 `rasterize` 留给单张图（画布、幻灯片、文档的 PNG）：一次性的，不值得冒回归的险。
+- 结果比原来更准：同一时刻和页面真实截图比，差异像素 0 到 0.5%，原来是 0.1 到 1.5%（html-to-image 会把小数字号向下取整再减 0.1px）。剩下的是动画中途的亚像素位移。
+- blob URL 做图更快，但 Chrome 把它画出来的 canvas 标为被污染，编码器读不了，所以仍用 data URL。
+- 流水线：`prepareFrame` 只做必须让页面停住的事（seek 加复制），返回的帧自己解码；下一帧复制时，浏览器在解码上一帧、编码器在吃再上一帧，一帧的耗时是三者中最长的，不是三者的和。`VideoSample` 在 `add()` 返回前已经拿到 canvas 的副本，所以可以立刻画下一帧。
+
+**服务端路线慢在截图，不在 ffmpeg**：软件渲染的 Chrome 每帧截图约 70 ms，PNG 换 JPEG 不变，说明耗时在合成而不在编码。有 GPU 的机器会好很多；没有 GPU 的机器，浏览器路线现在更快，所以只有含 embed、视频、WebGL 的作品才走服务端。
+
+**怎么看见**：进度按钮显示百分比、实时帧率和剩余秒数，悬停说明在哪里画；保存后的提示说明走了哪条路线、花了多久、最耗时的是哪一步；服务端日志有 `render.start`（为什么走服务端）、`render.done`（服务端路线的各阶段）和 `export.done`（浏览器路线的各阶段，编辑器导出完成后报给服务端），每行一份 `*_ms`。
+
+没做、仍开着：服务端路线可以不截图，改成让 Chrome 逐帧吐像素；浏览器路线里 `seek` 在很短的作品上占比高，是首帧的字体和布局，没细查；视频层和 WebGL 仍要走服务端。
 
 ## 4. 浏览器路线画不了什么，所以要有第二条路线
 
@@ -45,11 +73,9 @@ foreignObject 画不到：`<x-embed>`（单独的框架，会是空白）、`<vi
 
 ## 5. 没做的
 
-- **共用的导出菜单**：每个类型的 `download()` 换成一份，格式按"想做什么"列，不可用的写原因和办法。
-- **PNG** 给幻灯片、文档、看板、设计系统；**PDF** 一键（需要 `Page.printToPDF`，即有 Chrome 的一侧），现在是浏览器打印；**PPTX**（pptxgenjs，先一页一图）。
+- **PPTX**（pptxgenjs，先一页一图）。共用的导出菜单、PNG、一键 PDF 和视频选项见 [export-menu.md](./export-menu.md)。
 - **封面**：导出的视频还不把封面放在第一帧、也不单独出封面 PNG（命令行会）。
 - **命令行和服务端渲染合成一份**：现在 `motion-render.mjs`（Playwright，带封面、GIF、播放器、`--verify`）和 `apps/server/src/render.ts`（Chrome 调试管道，只出 MP4）各有一份截图循环，该合并，让命令行也不用 Playwright。
 - **服务端渲染的封面**：同样不把封面放在第一帧。
-- **GIF**、**WebM 透明**、**Lottie / 动画 SVG**（见 [motion.md](./motion.md) §8）。
-- **速度**：每帧克隆并序列化一遍 DOM，比 CDP 截图更慢是预期；缓存、只重画变化的层是可做的优化，没测。
+- **WebM 透明**、**Lottie / 动画 SVG**（见 [motion.md](./motion.md) §8）。GIF 已能在编辑器里导出（[export-menu.md](./export-menu.md) §4）。
 - **两条路线逐帧对比的测试**（`motion-render.mjs --verify` 的指标）。

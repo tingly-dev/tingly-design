@@ -10,6 +10,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSy
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { boardFilesFor, parseMotion, sceneFile } from '@dc/core';
+import { Clock, type ExportReport } from '@dc/export/timing';
+import { logInfo } from './log';
 
 export interface RenderCapabilities {
   chrome: boolean;
@@ -54,7 +56,7 @@ export async function renderCapabilities(): Promise<RenderCapabilities> {
 }
 
 /** Chrome's debugging protocol over the pipe it is started with: JSON messages ending in a NUL byte. */
-class Cdp {
+export class Cdp {
   private id = 0;
   private waiting = new Map<number, { ok: (v: any) => void; fail: (e: Error) => void }>();
   private buf = '';
@@ -125,6 +127,11 @@ export interface RenderOptions {
   onProgress?(done: number, total: number): void;
 }
 
+export interface RenderResult {
+  file: string;
+  report: ExportReport;
+}
+
 export class RenderError extends Error {
   constructor(public code: 'no-renderer' | 'no-format' | 'aborted' | 'failed', message = '') {
     super(message || code);
@@ -150,8 +157,9 @@ function encodeArgs(motion: ReturnType<typeof parseMotion>, dir: string, fps: nu
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
 
-/** Render one format of a motion piece to `renders/<project>-<format>.mp4`; resolves to the file's path. */
-export async function renderMotion(o: RenderOptions): Promise<string> {
+/** Render one format of a motion piece to `renders/<project>-<format>.mp4`; resolves to the file's path and where the time went. */
+export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
+  const clock = new Clock();
   const chrome = findChrome();
   if (!chrome || !(await hasFfmpeg())) throw new RenderError('no-renderer');
   const motion = parseMotion(readFileSync(join(o.dir, 'motion.json'), 'utf8'));
@@ -190,6 +198,7 @@ export async function renderMotion(o: RenderOptions): Promise<string> {
   let ffmpegErr = '';
   try {
     if (o.signal?.aborted) throw new RenderError('aborted');
+    const launched = performance.now();
     const cdp = new Cdp(browser);
     const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
@@ -206,6 +215,7 @@ export async function renderMotion(o: RenderOptions): Promise<string> {
     const info = await evalIn<{ duration: number; fps: number }>(
       `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},speed:${o.speed ? Number(o.speed) : 'undefined'},root:document.getElementById('root')});return{duration:window.__stage.duration,fps:window.__stage.fps}})()`,
     );
+    clock.add('launch', performance.now() - launched);
     const frames = Math.max(1, Math.round((info.duration / 1000) * info.fps));
     ffmpeg = spawn(ffmpegPath(), encodeArgs(motion, o.dir, info.fps, info.duration / 1000, partial), { stdio: ['pipe', 'ignore', 'pipe'] });
     ffmpeg.stderr!.on('data', (d) => (ffmpegErr = (ffmpegErr + d).slice(-2000)));
@@ -213,16 +223,21 @@ export async function renderMotion(o: RenderOptions): Promise<string> {
     ffmpeg.stdin!.on('error', () => {});
     for (let i = 0; i < frames; i++) {
       if (o.signal?.aborted) throw new RenderError('aborted');
-      await evalIn(`window.__stage.seek(${(i * 1000) / info.fps})`);
-      const { data } = await s('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
-      if (!ffmpeg.stdin!.write(Buffer.from(data, 'base64'))) await new Promise((r) => ffmpeg!.stdin!.once('drain', r));
+      await clock.time('seek', () => evalIn(`window.__stage.seek(${(i * 1000) / info.fps})`));
+      const { data } = await clock.time('capture', () => s('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }));
+      // ffmpeg's input pipe is full when it is the slower side: this is time spent waiting on the encoder
+      await clock.time('write', async () => {
+        if (!ffmpeg!.stdin!.write(Buffer.from(data, 'base64'))) await new Promise((r) => ffmpeg!.stdin!.once('drain', r));
+      });
       o.onProgress?.(i + 1, frames);
     }
     ffmpeg.stdin!.end();
-    const code = await closed;
+    const code = await clock.time('finish', () => closed);
     if (code !== 0) throw new RenderError('failed', `ffmpeg exited ${code}: ${ffmpegErr}`);
     renameSync(partial, file);
-    return file;
+    const report = clock.report({ route: 'server', frames, width: w, height: h });
+    logInfo('render.done', { project: basename(o.dir), format, size: `${w}x${h}`, frames, wall_ms: report.wallMs, fps: report.fps, ...Object.fromEntries(Object.entries(report.stages).map(([k, v]) => [`${k}_ms`, v.ms])) });
+    return { file, report };
   } catch (e) {
     if (o.signal?.aborted) throw new RenderError('aborted');
     throw e instanceof RenderError ? e : new RenderError('failed', (e as Error).message);

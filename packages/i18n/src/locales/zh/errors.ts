@@ -32,6 +32,8 @@ export default {
   taskFinished: '这个任务已经结束了。',
   noFastModel: '快速 AI 还没有密钥，请先在「AI 模型设置」里配置（也可以改用 jQuery 模式直接写语句）。',
   badBaseUrl: '地址要以 http:// 或 https:// 开头。',
+  noPdf: '这台机器没有 Chrome 或 Edge，不能直接保存 PDF。',
+  pdfFailed: 'PDF 没能生成：{{detail}}',
   noRenderer: '本机没有 Chrome 或 Edge 加 ffmpeg，没法精确地渲染这条视频。',
   renderFailed: '视频没能渲染：{{detail}}',
   noClaudeCli: '本机没有可用的 claude CLI，无法委托。',

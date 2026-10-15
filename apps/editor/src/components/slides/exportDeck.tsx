@@ -6,6 +6,9 @@ import { isHidden, notesOf, slideTitle } from '../../slides';
 import { t } from '../../i18n';
 import { fileStem, htmlToPng, saveImage } from '../../imageExport';
 import { SERVER } from '../../base';
+import { pdfHint, printWindow, savePdf } from '../../pdfExport';
+import type { ExportItem } from '../FileMenu';
+import { FileText, FilePdf, Picture } from '../icons';
 
 /**
  * Downloads: one self-contained HTML file that plays the deck (images inlined,
@@ -127,7 +130,9 @@ async function boardData(sources: string[]): Promise<string> {
   return `<script type="application/json" id="dc-boards">${json}</script>`;
 }
 
-async function buildHtml(print: boolean): Promise<string> {
+/** `player` plays the deck; `print` lays it out one slide per page and prints itself; `pdf` is the same layout without the script, for the server's Chrome. */
+async function buildHtml(mode: 'player' | 'print' | 'pdf'): Promise<string> {
+  const print = mode !== 'player';
   const s = useStore.getState();
   const deck = deckOf(s);
   const base = s.project ? api.rawBase(s.project) : '';
@@ -159,7 +164,7 @@ ${faceMarkup(deck)}
 ${parts.join('\n')}
 </div>
 ${boards ? `${boards}\n<script>${BOARDS}</script>` : ''}
-${print ? '<script>addEventListener("load",function(){setTimeout(function(){print()},800)})</script>' : `<script>${PLAYER}</script>`}
+${mode === 'print' ? '<script>addEventListener("load",function(){setTimeout(function(){print()},800)})</script>' : mode === 'player' ? `<script>${PLAYER}</script>` : ''}
 </body>
 </html>
 `;
@@ -179,14 +184,15 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'notes'): Promise<void> 
         .join('\n');
       return download(t('slides.export.notesFile', { name }), new Blob([text], { type: 'text/plain;charset=utf-8' }));
     }
-    const html = await buildHtml(kind === 'pdf');
-    if (kind === 'html') return download(`${name}.html`, new Blob([html], { type: 'text/html' }));
-    const w = window.open('', '_blank');
-    if (!w) return toast(t('slides.export.popupBlocked'), 'error');
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    toast(t('slides.export.savePdf'));
+    if (kind === 'html') return download(`${name}.html`, new Blob([await buildHtml('player')], { type: 'text/html' }));
+    // Chrome on the machine prints it and the file is saved; with none, the browser's print window opens and the person picks Save as PDF
+    await savePdf(`${name}.pdf`, {
+      html: await buildHtml('pdf'),
+      paper: 'page',
+      print: async () => {
+        if (printWindow(await buildHtml('print'))) toast(t('slides.export.savePdf'));
+      },
+    });
   } catch (e) {
     toast((e as Error).message, 'error');
   }
@@ -213,4 +219,15 @@ export async function exportSlideImages(which: string | null | true): Promise<vo
     if (!(await saveImage(t('common.image.fileSlide', { name: stem, n }), () => slidePng(id, 1)))) return;
   }
   if (ids.length > 1) toast(t('slides.export.imagesDone', { total: ids.length }));
+}
+
+/** What the menu offers for a deck, in the order people ask for it: the one-file PDF first. */
+export function slidesExportItems(direct: boolean | null): ExportItem[] {
+  return [
+    { id: 'pdf', label: t('common.transfer.label.pdf'), hint: pdfHint(t('common.transfer.hint.slidesPdf'), direct), icon: <FilePdf />, run: () => exportDeck('pdf') },
+    { id: 'png', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.slideOne'), icon: <Picture />, run: () => exportSlideImages(useStore.getState().slide) },
+    { id: 'pngs', label: t('common.transfer.label.pngs'), hint: t('common.transfer.hint.slidesEvery'), icon: <Picture />, run: () => exportSlideImages(true) },
+    { id: 'html', label: t('common.transfer.label.html'), hint: t('common.transfer.hint.slidesHtml'), icon: <FileText />, rule: true, run: () => exportDeck('html') },
+    { id: 'notes', label: t('common.transfer.label.notes'), hint: t('common.transfer.hint.slidesNotes'), icon: <FileText />, run: () => exportDeck('notes') },
+  ];
 }

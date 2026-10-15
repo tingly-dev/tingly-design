@@ -17,7 +17,7 @@ def check(name, ok, extra=''):
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
 
 def probe(path):
-    out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_name,width,height,nb_frames:format=duration', '-of', 'json', path], capture_output=True, text=True).stdout
+    out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_name,width,height,nb_frames,r_frame_rate:format=duration', '-of', 'json', path], capture_output=True, text=True).stdout
     return json.loads(out)
 
 async def main():
@@ -39,17 +39,37 @@ async def main():
 
         await pg.goto(BASE + '/?p=zz-export')
         await expect(pg.locator('.dashtitle')).to_have_text('zz-export')
-        btn = pg.locator('button', has_text='Export video')
-        await expect(btn).to_be_enabled(timeout=15000)
+        menu = pg.locator('button[aria-label="Import / Export"]')
+        await expect(menu).to_be_enabled(timeout=15000)
+
+        async def start(extra=None):
+            """Import / Export → Video… → (options) → Export; the dialog opens on one summary line and the options folded."""
+            await menu.click()
+            await pg.get_by_role('menuitem', name='Video…').click()
+            dlg = pg.get_by_role('dialog', name='Export video')
+            await expect(dlg).to_be_visible()
+            if extra: await extra(dlg)
+            await dlg.get_by_role('button', name='Export', exact=True).click()
+
+        # --- the dialog: a summary and nothing else until asked ------------------------------------
+        await menu.click()
+        await pg.get_by_role('menuitem', name='Video…').click()
+        dlg0 = pg.get_by_role('dialog', name='Export video')
+        check('the dialog opens on a summary of the file it will make', 'MP4' in await dlg0.locator('[data-summary]').inner_text() and '1920×1080' in await dlg0.locator('[data-summary]').inner_text())
+        check('…with the options folded away', await dlg0.locator('select').count() == 0)
+        await dlg0.get_by_role('button', name='Cancel').click()
+        await expect(dlg0).to_have_count(0)
 
         # --- export, and the file it makes --------------------------------------------------------
         async with pg.expect_download(timeout=120000) as dl:
-            await btn.click()
+            await start()
             await expect(pg.locator('button', has_text='Exporting')).to_be_visible()
             check('the button shows progress and offers cancel', await pg.locator('button', has_text='Cancel').count() == 1)
         d = await dl.value
         path = OUT + d.suggested_filename
         await d.save_as(path)
+        done_toast = pg.locator('.toast', has_text='Made in this tab')
+        check('the saved message says which route made the file, how long it took and what took longest', await done_toast.count() >= 1 and 'most time went to' in (await done_toast.first.inner_text()), str(await pg.locator('.toast').all_inner_texts()))
         info = probe(path)
         v = next(s for s in info['streams'] if s.get('width'))
         check('a video file is saved, named for the piece and size', d.suggested_filename.startswith('zz-export-wide.') and d.suggested_filename.split('.')[-1] in ('mp4', 'webm'), d.suggested_filename)
@@ -59,23 +79,50 @@ async def main():
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-ss', '0.5', '-i', path, '-frames:v', '1', OUT + 'export-frame.png'])
         sig = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-frame.png', '-vf', 'scale=16:9,format=gray', '-f', 'rawvideo', '-'], capture_output=True).stdout
         check('the frame has something drawn on it', len(set(sig)) > 3, str(sorted(set(sig))[:6]))
-        await expect(pg.locator('button', has_text='Export video')).to_be_enabled()
-        check('the button comes back after saving', True)
+        await expect(pg.locator('button', has_text='Exporting')).to_have_count(0)
+        check('the progress button goes away after saving', True)
+
+        # --- the options: size, frame rate, quality, a single scene, GIF ------------------------------
+        async def pick(dlg, **o):
+            await dlg.get_by_role('button', name='More options').click()
+            for label, value in o.items():
+                await dlg.get_by_label(label.replace('_', ' ')).select_option(value)
+        async with pg.expect_download(timeout=120000) as dl3:
+            await start(lambda dlg: pick(dlg, Format='webm', Size='720', Frame_rate='24', Quality='low'))
+        d3 = await dl3.value
+        p3 = OUT + d3.suggested_filename
+        await d3.save_as(p3)
+        i3 = probe(p3)
+        v3 = next(s for s in i3['streams'] if s.get('width'))
+        check('a smaller size and frame rate are honoured', (v3['width'], v3['height']) == (1280, 720) and v3['r_frame_rate'] == '24/1' and d3.suggested_filename.endswith('-720p.webm'), f'{v3} {d3.suggested_filename}')
+        check('the file is smaller at low quality and 720p', os.path.getsize(p3) < os.path.getsize(path), (os.path.getsize(p3), os.path.getsize(path)))
+        async with pg.expect_download(timeout=120000) as dl4:
+            await start(lambda dlg: pick(dlg, Format='gif'))
+        d4 = await dl4.value
+        p4 = OUT + d4.suggested_filename
+        await d4.save_as(p4)
+        check('GIF makes a real GIF, small by default', open(p4, 'rb').read(6) in (b'GIF87a', b'GIF89a') and d4.suggested_filename.endswith('.gif'), d4.suggested_filename)
+        v4 = next(s for s in probe(p4)['streams'] if s.get('width'))
+        check('…at 480 lines, not the piece\'s 1080', v4['height'] == 480, str(v4))
 
         # --- cancel -------------------------------------------------------------------------------
-        await pg.locator('button', has_text='Export video').click()
+        await start()
         await pg.locator('button', has_text='Cancel').click()
         await expect(pg.locator('.toast', has_text='cancelled')).to_be_visible(timeout=30000)
-        await expect(pg.locator('button', has_text='Export video')).to_be_enabled()
+        await expect(pg.locator('button', has_text='Exporting')).to_have_count(0)
         check('cancel stops the export and says so', True)
 
         # --- a piece with an embed goes to the server's Chrome by itself -------------------------------
         await pg.goto(BASE + '/?p=zz-export-embed')
         await expect(pg.locator('.dashtitle')).to_have_text('zz-export-embed')
-        btn2 = pg.locator('button', has_text='Export video')
-        await expect(btn2).to_be_enabled(timeout=15000)
+        await expect(menu).to_be_enabled(timeout=15000)
+        await pg.wait_for_timeout(1500)
+        await menu.click()
+        await pg.get_by_role('menuitem', name='Video…').click()
+        dlg2 = pg.get_by_role('dialog', name='Export video')
+        check('a piece Chrome draws says so instead of offering options', await dlg2.get_by_role('button', name='More options').count() == 0 and 'Chrome on this machine' in await dlg2.inner_text())
         async with pg.expect_download(timeout=120000) as dl2:
-            await btn2.click()
+            await dlg2.get_by_role('button', name='Export', exact=True).click()
             await expect(pg.locator('.toast', has_text='Chrome on this machine')).to_be_visible(timeout=15000)
         d2 = await dl2.value
         path2 = OUT + d2.suggested_filename

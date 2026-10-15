@@ -2,7 +2,7 @@ import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addPage, renamePage } from '../actions';
-import { fitAll, isSaving, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
+import { fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
 import { Menu, MenuItem } from './Menu';
 import {
   ArrowI,
@@ -20,7 +20,9 @@ import {
   Shapes,
   TextT,
 } from './icons';
-import { ImportHere } from './ImportHere';
+import { FileMenu } from './FileMenu';
+import { SyncStatus } from './SyncStatus';
+import { canvasExportItems } from './Board';
 import { canvasImport } from '../canvasImport';
 import { ProjectMenu } from './ProjectMenu';
 
@@ -162,8 +164,6 @@ export function LeftBar() {
           <Caret />
         </span>
       </button>
-      <span className="sep" />
-      <ImportHere target={canvasImport} label={t('app.importTarget')} />
       {menu === 'pages' && <PagesMenu {...at(pagesBtn.current)} onClose={() => setMenu(null)} />}
       {menu === 'shapes' && (
         <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label={t('app.tool.shapes')}>
@@ -191,9 +191,6 @@ export function RightBar() {
   const panelOpen = useStore((s) => s.panelOpen);
   const zoom = useStore((s) => s.view.zoom);
   const viewport = useStore((s) => s.viewport);
-  const connected = useStore((s) => s.connected);
-  const saving = useStore(isSaving);
-  const journalOpen = useStore((s) => s.journalOpen);
   const [zoomMenu, setZoomMenu] = useState(false);
   const zoomBtn = useRef<HTMLButtonElement>(null);
   const r = zoomBtn.current?.getBoundingClientRect();
@@ -225,6 +222,8 @@ export function RightBar() {
         <Panel />
       </button>
       <span className="sep" />
+      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
+      <span className="sep" />
       <button ref={zoomBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.view.zoomButton', { zoom: Math.round(zoom * 100) })} onClick={() => setZoomMenu(true)}>
         <span className="zoomval">{Math.round(zoom * 100)}%</span>
         <span className="caret">
@@ -232,17 +231,7 @@ export function RightBar() {
         </span>
       </button>
       <span className="sep" />
-      <button
-        className="tb"
-        aria-pressed={journalOpen}
-        aria-label={t('app.view.sync')}
-        onClick={() => useStore.setState({ journalOpen: !journalOpen })}
-      >
-        <span className="sync">
-          <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-          {!connected ? t('app.view.offline') : saving ? t('app.view.saving') : t('app.view.synced')}
-        </span>
-      </button>
+      <SyncStatus />
       {zoomMenu && (
         <Menu x={(r?.right ?? 0)} y={(r?.bottom ?? 0) + 8} align="right" onClose={() => setZoomMenu(false)} label={t('app.view.zoom')}>
           <MenuItem label={t('app.view.zoomIn')} keys="⌘+" onSelect={() => zoomAt(1.25, viewport.w / 2, viewport.h / 2)} />

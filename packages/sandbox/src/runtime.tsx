@@ -1333,19 +1333,28 @@ window.addEventListener(
 
 // ----------------------------------------------------------------- export
 
+/** What went wrong in a picture: html-to-image rejects with the failing <img>'s load Event, which has no message of its own. */
+function exportError(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  return typeof err === 'string' && err ? err : 'the picture could not be made';
+}
+
 async function exportPng(id: string, scale: number) {
+  const prevSel = current.selected;
   try {
     const node = mount.querySelector('[data-dc-tid]') as HTMLElement | null;
     if (!node) throw new Error('nothing to export');
+    const broken = [...node.querySelectorAll('img')].find((i) => i.complete && !i.naturalWidth && i.getAttribute('src'));
+    if (broken) throw new Error(`could not load the picture ${broken.getAttribute('src')!.slice(0, 120)}`);
     const { toPng } = await import('html-to-image');
-    const prevSel = current.selected;
     current.selected = null;
     overlay.innerHTML = '';
     const dataUrl = await toPng(node, { pixelRatio: scale, skipFonts: true, cacheBust: false });
-    current.selected = prevSel;
     post({ dc: 'exported', id, dataUrl });
   } catch (err) {
-    post({ dc: 'exported', id, error: (err as Error).message || String(err) });
+    post({ dc: 'exported', id, error: exportError(err) });
+  } finally {
+    current.selected = prevSel;
   }
 }
 

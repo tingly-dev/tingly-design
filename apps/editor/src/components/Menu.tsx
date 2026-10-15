@@ -75,8 +75,11 @@ export function MenuItem({
   disabled,
   danger,
   checked,
+  hint,
 }: {
   label: string;
+  /** one line under the label: what choosing it does or why it cannot */
+  hint?: string;
   keys?: string;
   icon?: ReactNode;
   onSelect: () => void;
@@ -86,14 +89,21 @@ export function MenuItem({
 }) {
   return (
     <button
-      className={`mi ${danger ? 'danger' : ''}`}
+      className={`mi${danger ? ' danger' : ''}${hint ? ' two' : ''}`}
       role={checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
       aria-checked={checked}
       disabled={disabled}
       onClick={onSelect}
     >
       {(icon || checked !== undefined) && <span className="ic">{checked ? <Check /> : icon}</span>}
-      {label}
+      {hint ? (
+        <span className="mt">
+          {label}
+          <span className="mh">{hint}</span>
+        </span>
+      ) : (
+        label
+      )}
       {keys && <span className="k">{keys}</span>}
     </button>
   );

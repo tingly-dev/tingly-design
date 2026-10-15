@@ -5,17 +5,20 @@ import { api } from '../../api';
 import { addCover, motionImport, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
 import { notesOf, setNotesIn } from '../../slides';
 import { NoteBox } from '../NoteBox';
-import { ImportHere } from '../ImportHere';
+import { FileMenu } from '../FileMenu';
+import { VideoExportDialog, type ScenePick, type VideoExportOptions } from './VideoExportDialog';
 import { ProjectMenu } from '../ProjectMenu';
 import { fileStem, saveImage } from '../../imageExport';
 import { frameFonts } from '../../motionImage';
 import { display, isSaving, toast, useStore } from '../../store';
 import { download } from '@dc/export';
 import { exactScenes, exportInputs } from '../../motionExport';
+import { pace, slowestStage } from '../../exportReport';
+import type { ExportReport } from '@dc/export/timing';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
-import { Panel, PauseFilled, PlayFilled } from '../icons';
+import { Film, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
@@ -129,8 +132,10 @@ export function MotionApp() {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
-  const [exporting, setExporting] = useState<{ done: number; total: number } | null>(null);
+  const [exporting, setExporting] = useState<{ done: number; total: number; route: 'browser' | 'server'; startedAt: number } | null>(null);
   const exportCtl = useRef<AbortController | null>(null);
+  // the export dialog, and whether the server's Chrome will draw this piece (it holds an embed or a video layer)
+  const [exportDialog, setExportDialog] = useState<{ viaServer: string[] | null } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [stageRef, box] = useBox();
 
@@ -262,28 +267,68 @@ export function MotionApp() {
     if (current && Number.isFinite(v) && v > 0) setSceneDuration(current.id, snapSceneMs(v * 1000 * rate, 1));
   };
 
-  const exportVideo = async () => {
+  /** Asked before the dialog: a piece with an embed or a video layer is drawn by the server's Chrome when it has one, which the browser cannot do. */
+  const openExportDialog = async () => {
+    if (exportCtl.current || !info) return;
+    const exact = exactScenes(playScenes);
+    const caps = exact.length && project ? await api.renderCapabilities().catch(() => null) : null;
+    setExportDialog({ viaServer: caps?.chrome && caps.ffmpeg ? exact : null });
+  };
+
+  const where = (route: 'browser' | 'server') => (route === 'server' ? t('motion.export.where.server') : t('motion.export.where.browser'));
+  const stepName = (id: string) => {
+    const names: Record<string, string> = {
+      audio: t('motion.export.steps.audio'),
+      launch: t('motion.export.steps.launch'),
+      seek: t('motion.export.steps.seek'),
+      snapshot: t('motion.export.steps.snapshot'),
+      decode: t('motion.export.steps.decode'),
+      paint: t('motion.export.steps.paint'),
+      capture: t('motion.export.steps.capture'),
+      write: t('motion.export.steps.write'),
+      encode: t('motion.export.steps.encode'),
+      finish: t('motion.export.steps.finish'),
+    };
+    return names[id] ?? id;
+  };
+  /** "Saved x.mp4", then which route made it, how long it took and what took longest: the answer to "why is this slow". */
+  const doneMessage = (file: string, r: ExportReport) => {
+    const top = slowestStage(r);
+    return t('motion.export.doneDetail', {
+      name: file,
+      where: where(r.route),
+      seconds: Math.max(1, Math.round(r.wallMs / 1000)),
+      fps: r.fps,
+      step: top ? stepName(top.id) : '',
+      percent: top?.percent ?? 0,
+    });
+  };
+
+  const exportVideo = async (o: VideoExportOptions, viaServer: string[] | null) => {
     if (exportCtl.current || !info) return;
     const ctl = new AbortController();
     exportCtl.current = ctl;
     const back = tRef.current;
     pause();
-    setExporting({ done: 0, total: 1 });
+    const route = project && viaServer ? 'server' : 'browser';
+    const startedAt = performance.now();
+    const progress = (done: number, total: number) => setExporting({ done, total, route, startedAt });
+    progress(0, 1);
     try {
-      const name = (ext: string) => `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}.${ext}`;
-      // a piece with an embed or a video layer is drawn by the server's Chrome when it has one; the browser cannot draw those
-      const exact = exactScenes(playScenes);
-      const caps = exact.length && project ? await api.renderCapabilities().catch(() => null) : null;
-      if (project && caps?.chrome && caps.ffmpeg) {
-        toast(t('motion.export.viaServer', { scenes: exact.join(', ') }));
-        const path = await api.renderMotion(project, fmt, (done, total) => setExporting({ done, total }), ctl.signal);
-        download(name('mp4'), await (await fetch(api.renderedUrl(project, path), { signal: ctl.signal })).blob());
-        toast(t('motion.export.done', { name: name('mp4') }));
+      const [W0, H0] = motion.formats[fmt]?.size ?? [info.width, info.height];
+      const name = (ext: string) =>
+        `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}${o.height !== H0 && !viaServer ? `-${o.height}p` : ''}${o.from !== undefined && !viaServer ? `-${sceneName(o.from)}` : ''}.${ext}`;
+      if (project && viaServer) {
+        toast(t('motion.export.viaServer', { scenes: viaServer.join(', ') }));
+        const { file, report } = await api.renderMotion(project, fmt, progress, ctl.signal);
+        download(name('mp4'), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
+        toast(doneMessage(name('mp4'), report));
       } else {
         const inputs = await exportInputs(motion, playScenes, base);
-        const r = await control.current!.exportVideo({ format: 'auto', scale: 1, ...inputs }, (done, total) => setExporting({ done, total }), ctl.signal);
+        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs }, progress, ctl.signal);
         download(name(r.ext), r.blob);
-        toast(t('motion.export.done', { name: name(r.ext) }));
+        toast(doneMessage(name(r.ext), r.report));
+        if (project) api.logExport(project, r.report, exactScenes(playScenes).length ? 'no-server-renderer' : undefined);
         if (r.note) toast(t(r.note === 'no-aac' ? 'motion.export.noAac' : 'motion.export.noH264'), 'info');
         if (r.embeds.length) toast(t('motion.export.embeds', { scenes: r.embeds.join(', ') }), 'info');
       }
@@ -296,6 +341,10 @@ export function MotionApp() {
       control.current?.seek(back);
     }
   };
+  // the file name of a stretch: the scene it starts in
+  const sceneName = (from: number) => timeline.scenes.findLast((w) => w.start / rate <= from + 1)?.id ?? 'scene';
+  // the scene under the playhead as a range the dialog may offer (not on the cover, which is before the video)
+  const scenePick: ScenePick | null = !cover && current ? { name: current.id, from: current.start / rate, to: (current.start + current.duration) / rate } : null;
 
   const saveFrame = async () => {
     const at = tRef.current;
@@ -336,26 +385,32 @@ export function MotionApp() {
               ))}
           </select>
         </label>
-        <ImportHere target={motionImport} label={t('motion.bar.importLabel')} />
         <button className={`btn ghost${notesOpen ? ' on' : ''}`} aria-pressed={notesOpen} onClick={() => setNotesOpen(!notesOpen)} title={t('motion.notes.hint')} data-notes-toggle>
           {t('motion.notes.toggle')}
           {motion.note || Object.values(scenes).some((src) => notesOf(src)) ? <i className="mnotedot" /> : null}
         </button>
-        <button className="btn ghost" disabled={!info} onClick={() => void saveFrame()} title={t('motion.bar.saveFrameHint')}>
-          {t('motion.bar.saveFrame')}
-        </button>
         <button className={`btn ghost${issuesOpen ? ' on' : ''}`} aria-pressed={issuesOpen} onClick={() => setIssuesOpen(!issuesOpen)} title={t('motion.bar.issuesHint')}>
           {t('motion.bar.issues')}{info?.issues.length ? <span className={`badge${errors ? '' : ' blue'}`}>{info.issues.length}</span> : null}
         </button>
-        {exporting ? (
-          <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={t('motion.export.cancelHint')}>
-            {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })} · {t('motion.export.cancel')}
-          </button>
-        ) : (
-          <button className="btn ghost" disabled={!info} onClick={() => void exportVideo()} title={t('motion.bar.exportVideoHint')}>
-            {t('motion.bar.exportVideo')}
+        {exporting && (
+          <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={`${where(exporting.route)}. ${t('motion.export.cancelHint')}`}>
+            {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })}
+            {(() => {
+              const p = pace(exporting.done, exporting.total, exporting.startedAt);
+              return p ? ` · ${t('motion.export.pace', { fps: p.fps, left: p.left })}` : '';
+            })()}{' '}
+            · {t('motion.export.cancel')}
           </button>
         )}
+        <FileMenu
+          target={motionImport}
+          label={t('motion.bar.importLabel')}
+          button="text"
+          items={[
+            { id: 'video', label: t('common.transfer.label.video'), hint: t('common.transfer.hint.motionVideo', { size: `${W}×${H}`, fps: info?.fps ?? motion.fps }), icon: <Film />, disabled: !info || !!exporting, run: openExportDialog },
+            { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
+          ]}
+        />
         <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
           {t('motion.bar.journal')}
         </button>
@@ -591,6 +646,21 @@ export function MotionApp() {
           />
         </div>
       </main>
+      {exportDialog && info && (
+        <VideoExportDialog
+          size={[W, H]}
+          fps={info.fps}
+          duration={info.duration}
+          scene={scenePick}
+          viaServer={exportDialog.viaServer}
+          onClose={() => setExportDialog(null)}
+          onStart={(o) => {
+            const via = exportDialog.viaServer;
+            setExportDialog(null);
+            void exportVideo(o, via);
+          }}
+        />
+      )}
       {panelOpen && <RightPanel />}
       <ContextMenu />
       {journalOpen && <JournalPopover />}

@@ -48,8 +48,9 @@ async def board_drawn(pg, timeout=10.0, player=False):
         await asyncio.sleep(0.2)
     return None
 
-async def pick_glow(pg, label):
-    await pg.locator(f'button[aria-label="导入到这个{label}"]').click()
+async def pick_glow(pg):
+    # the shared Import / Export menu every kind's bar carries
+    await pg.locator('button[aria-label="导入 / 导出"]').first.click()
     await pg.locator('.menu .mi', has_text='从项目导入').click()
     await expect(pg.locator('.bpick')).to_be_visible()
     item = pg.locator('.bpick-item[data-pick="Glow.dc.html"]')
@@ -91,7 +92,7 @@ async def main():
             await pg.wait_for_timeout(2000)
             slide_id = json.loads(read('tingly-intro', 'deck.json'))['order'][0]
             slide = lambda: read('tingly-intro', 'slides', f'{slide_id}.html')
-            item = await pick_glow(pg, '幻灯片')
+            item = await pick_glow(pg)
             check('slides: the picker marks an artboard that moves', await item.locator('.badge', has_text='会动').count() == 1)
             check('…and puts moving artboards first', await pg.locator('.bpick-group').first.locator('.bpick-item').first.get_attribute('data-pick') == 'Glow.dc.html')
             await item.hover()
@@ -137,7 +138,7 @@ async def main():
             await pg.wait_for_timeout(2000)
             await pg.locator('.mscene', has_text='kind-slides').click()
             await pg.wait_for_timeout(500)
-            item = await pick_glow(pg, '动效')
+            item = await pick_glow(pg)
             await item.click()
             check('motion: importing says so', await toast(pg, '导入到场景 kind-slides'))
             scene = lambda: read('design-motion', 'scenes', 'kind-slides.html')
