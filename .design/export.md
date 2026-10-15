@@ -20,7 +20,7 @@
 |---|---|
 | `rasterize(node, opts)` | 一棵 DOM 画成 canvas：放进 SVG foreignObject 让浏览器画（html-to-image） |
 | `fontCss(sources, text)` | 把网页字体的 `@font-face` 连字体文件内联成 data URL，只取 `text` 用到的 unicode-range。foreignObject 里的图加载不了网络字体，不内联就是后备字体。要在有网络的一侧（编辑器）跑，沙箱框架没有网络 |
-| `planVideo(...)` / `encodeVideo(...)` | 试编码器而不是看 User-Agent：H.264 + AAC 能编就写 MP4，否则写 WebM（VP9、AV1、VP8 + Opus），并带一个 `note` 说清为什么不是 MP4。帧由调用方画，WebCodecs 编码，Mediabunny 封装，全在内存里 |
+| `planVideo(...)` / `encodeVideo(...)` | 试编码器而不是看 User-Agent：H.264 + AAC 能编就写 MP4，否则写 WebM（VP9、AV1、VP8 + Opus），并带一个 `note` 说清为什么不是 MP4。视频一律带音轨：没有声音的作品写一条等长的静音轨（浏览器路线按秒分块喂给 AudioBufferSource；服务端路线用 ffmpeg 的 `anullsrc`），因为有的平台拒收没有音轨的文件。没做成开关：没有音轨从来不是谁想要的结果，多出来的只是几 KB；AAC 编不了时和有声作品一样退到 WebM + Opus。GIF 不受影响。帧由调用方画，WebCodecs 编码，Mediabunny 封装，全在内存里 |
 | `mixAudio(clips, seconds)` | 把 `motion.json` 的音频按起点和增益混成一轨（OfflineAudioContext） |
 | `encodeGif(...)` | 帧到 GIF（gifenc），编辑器的浏览器路线用它；服务端路线由 ffmpeg 写（见 [export-menu.md](./export-menu.md) §4） |
 | `download(name, blob)` | 交给浏览器的保存对话框 |
