@@ -12,6 +12,8 @@ export interface MotionInfo {
   /** in authored time */
   scenes: SceneWindow[];
   issues: { scene: string; message: string; level: string }[];
+  /** shader layers that could not draw before the piece loaded */
+  effectErrors?: { scene: string; code: string; detail: string }[];
 }
 
 import type { ExportReport } from '@dc/export/timing';
@@ -78,6 +80,7 @@ export function MotionFrame({
   onTime,
   onEnded,
   onError,
+  onEffectError,
 }: {
   motion: MotionJson;
   scenes: Record<string, string>;
@@ -95,14 +98,16 @@ export function MotionFrame({
   onTime?: (t: number) => void;
   onEnded?: () => void;
   onError?: (message: string) => void;
+  /** a shader layer in `scene` could not draw: `code` is no-webgl2, shader or draw */
+  onEffectError?: (e: { scene: string; code: string; detail: string }) => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'motion'), []);
-  const cb = useRef({ onLoaded, onTime, onEnded, onError });
+  const cb = useRef({ onLoaded, onTime, onEnded, onError, onEffectError });
   const snaps = useRef(new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>());
-  cb.current = { onLoaded, onTime, onEnded, onError };
+  cb.current = { onLoaded, onTime, onEnded, onError, onEffectError };
   const atRef = useRef(at);
   atRef.current = at;
   const exports = useRef(new Map<string, { ok: (r: MotionExportResult) => void; fail: (e: MotionExportError) => void; progress?: (done: number, total: number) => void }>());
@@ -120,6 +125,7 @@ export function MotionFrame({
       } else if (m.dcm === 'time' && typeof m.t === 'number') cb.current.onTime?.(m.t);
       else if (m.dcm === 'ended') cb.current.onEnded?.();
       else if (m.dcm === 'error') cb.current.onError?.(String(m.message ?? ''));
+      else if (m.dcm === 'effect-error') cb.current.onEffectError?.({ scene: String(m.scene ?? ''), code: String(m.code ?? ''), detail: String(m.detail ?? '') });
       else if (m.dcm === 'export-progress') exports.current.get(String(m.id))?.progress?.(Number(m.done), Number(m.total));
       else if (m.dcm === 'exported') exports.current.get(String(m.id))?.ok(m as unknown as MotionExportResult);
       else if (m.dcm === 'export-error') exports.current.get(String(m.id))?.fail(new MotionExportError(m.code as MotionExportError['code'], String(m.message ?? '')));
