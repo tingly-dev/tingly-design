@@ -26,7 +26,8 @@ import {
 } from '../../dash';
 import { FileMenu } from '../FileMenu';
 import { Picture } from '../icons';
-import { TopBar, ProjectTitle } from '../TopBar';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
+import { CodeI, Database, Moon, Refresh, Sun, Target } from '../icons';
 import { fileStem, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
@@ -233,19 +234,12 @@ export function DashApp() {
     <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
       <TopBar title={<Title />}>
         <Filters />
-        <button className="btn ghost" onClick={refreshAll} title={t('dash.bar.refreshAllTitle')}>
-          {t('dash.bar.refresh')}
-        </button>
-        <button className={`btn ghost${mode === 'data' ? ' on' : ''}`} aria-pressed={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} title={t('dash.bar.dataModeTitle')}>
-          {t('dash.bar.dataMode')}
-        </button>
-        <button className="btn ghost" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={t('dash.bar.toggleTheme')}>
-          {theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')}
-        </button>
+        <BarButton icon={<Refresh />} label={t('dash.bar.refresh')} title={t('dash.bar.refreshAllTitle')} onClick={refreshAll} />
+        <BarButton icon={<Target />} label={t('dash.bar.dataMode')} title={t('dash.bar.dataModeTitle')} on={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} />
+        <BarButton icon={theme === 'dark' ? <Sun /> : <Moon />} label={t('dash.bar.toggleTheme')} title={theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
         <FileMenu
           target={dashImport}
           label={t('dash.kind')}
-          button="text"
           items={[
             {
               id: 'png',
@@ -256,13 +250,8 @@ export function DashApp() {
             },
           ]}
         />
-        <button className={`btn ghost${side === 'sources' ? ' on' : ''}`} aria-pressed={side === 'sources'} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })}>
-          {t('dash.sources.label')}
-          {problems ? <span className="badge">{problems}</span> : null}
-        </button>
-        <button className={`btn ghost${side === 'code' ? ' on' : ''}`} aria-pressed={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })}>
-          {t('dash.bar.code')}
-        </button>
+        <BarButton icon={<Database />} label={t('dash.sources.label')} on={side === 'sources'} badge={problems ? <span className="badge">{problems}</span> : null} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })} />
+        <BarButton icon={<CodeI />} label={t('dash.bar.code')} on={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })} />
       </TopBar>
       <main className="dashmain">
         {mode === 'data' && <div className="dashhint">{t('dash.bar.dataModeHint')}</div>}

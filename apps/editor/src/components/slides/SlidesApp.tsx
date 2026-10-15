@@ -30,7 +30,7 @@ import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { TopBar, ProjectTitle } from '../TopBar';
-import { Caret, Panel, Picture, Play, Shapes, TextT } from '../icons';
+import { Caret, Panel, Picture, Presentation, Shapes, TextT } from '../icons';
 import { slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
 import { useDirectPdf } from '../../pdfExport';
@@ -263,10 +263,13 @@ function SlidesTopBar() {
         />
       }
     >
-      <button ref={playBtn} className="btn ghost" aria-haspopup="menu" aria-label={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
-        <Play /> {t('slides.toolbar.present')}
+      <button ref={playBtn} className="tb" aria-haspopup="menu" aria-expanded={menu === 'play'} aria-label={t('slides.toolbar.present')} title={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
+        <Presentation />
+        <span className="caret">
+          <Caret />
+        </span>
       </button>
-      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} button="text" />
+      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
       <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
         <Panel />
       </button>

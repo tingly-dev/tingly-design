@@ -23,7 +23,7 @@ import {
 import { FileMenu } from './FileMenu';
 import { canvasExportItems } from './Board';
 import { canvasImport } from '../canvasImport';
-import { TopBar, ProjectTitle } from './TopBar';
+import { TopBar, ProjectTitle, BarButton } from './TopBar';
 
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },
@@ -116,16 +116,14 @@ export function CanvasTopBar() {
     <TopBar
       title={<ProjectTitle value={canvas.title} label={t('panel.canvas.nameLabel')} hint={t('common.topbar.rename')} onRename={(v) => editCanvas((c) => (c.title = v), `title → ${v}`)} />}
     >
-      <button
-        className="btn ghost"
-        aria-pressed={mode === 'play'}
-        aria-label={mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
+      <BarButton
+        icon={<Play />}
+        label={mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
         title={t('app.view.playHint')}
+        on={mode === 'play'}
         onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
-      >
-        <Play /> {mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
-      </button>
-      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} button="text" />
+      />
+      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
       <button
         className="tb"
         aria-pressed={panelOpen}

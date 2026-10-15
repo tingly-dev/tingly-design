@@ -46,6 +46,16 @@ export function ProjectTitle({ value, label, hint, onRename }: { value: string; 
  * star the repository, the language and the look of the editor. Floating tool bars (canvas, slides)
  * keep only tools; nothing about the project lives anywhere else.
  */
+/** An icon button for the bar: grey like every other control in it, lit only while what it opens is open. The name is the tooltip. */
+export function BarButton({ icon, label, title, on, badge, onClick, ...rest }: { icon: ReactNode; label: string; title?: string; on?: boolean; badge?: ReactNode; onClick: () => void } & Record<`data-${string}`, string | undefined>) {
+  return (
+    <button className="tb" aria-pressed={on} aria-label={label} title={title ?? label} onClick={onClick} {...rest}>
+      {icon}
+      {badge}
+    </button>
+  );
+}
+
 export function TopBar({ title, children }: { title: ReactNode; children?: ReactNode }) {
   const { t } = useTranslation();
   return (

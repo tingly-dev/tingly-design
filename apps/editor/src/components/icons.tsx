@@ -83,6 +83,16 @@ import {
   IconCornerLeftUp,
   IconHome,
   IconStar,
+  IconRefresh,
+  IconMoon,
+  IconSun,
+  IconCode,
+  IconDatabase,
+  IconTarget,
+  IconLayoutColumns,
+  IconMessage,
+  IconChecklist,
+  IconPresentation,
   IconBug,
   IconLanguage,
   IconExternalLink,
@@ -132,6 +142,16 @@ export const Minus = tabler(IconMinus, 14);
 export const Close = tabler(IconX, 14);
 export const Home = tabler(IconHome);
 export const Star = tabler(IconStar, 14);
+export const Refresh = tabler(IconRefresh);
+export const Moon = tabler(IconMoon);
+export const Sun = tabler(IconSun);
+export const CodeI = tabler(IconCode);
+export const Database = tabler(IconDatabase);
+export const Target = tabler(IconTarget);
+export const LayoutCols = tabler(IconLayoutColumns);
+export const Message = tabler(IconMessage);
+export const Checklist = tabler(IconChecklist);
+export const Presentation = tabler(IconPresentation);
 export const Bug = tabler(IconBug, 14);
 export const Language = tabler(IconLanguage, 15);
 export const Sliders = tabler(IconAdjustmentsHorizontal, 15);

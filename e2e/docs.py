@@ -150,7 +150,7 @@ async def main():
         await pg.locator('.tabmenu button', has_text='删除').click()
         ok = await wait_for(lambda: len(index()['tabs']) == 4 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
         check('deleting a tab removes its file', ok)
-        await pg.locator('.dashbar button', has_text='版式').click()
+        await pg.locator('.dashbar button[aria-label="版式"]').click()
         await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
         ok = await wait_for(lambda: index()['settings']['width'] == 'wide')
         check('layout settings write doc.json', ok and await pg.locator('.app.docs[data-width=wide]').count() == 1)

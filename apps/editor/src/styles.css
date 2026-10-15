@@ -3705,13 +3705,24 @@ textarea.dsin {
   gap: 0;
   flex: none;
 }
-.topbar .tend .tb {
+.topbar .tb {
+  position: relative;
   color: var(--muted);
   text-decoration: none;
 }
-.topbar .tend .tb:hover,
-.topbar .tend .tb[aria-expanded='true'] {
+.topbar .tb:hover,
+.topbar .tb[aria-expanded='true'] {
   color: var(--ink);
+}
+.topbar .tb[aria-pressed='true'] {
+  color: var(--accent);
+}
+.topbar .tb .badge,
+.topbar .tb .mnotedot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
 }
 .topbar .tend .tb span[lang] {
   display: none;

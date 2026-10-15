@@ -72,7 +72,7 @@ async def main():
         title = await pg.locator('.item.title1').first.evaluate('e => getComputedStyle(e).color')
         check('a canvas title in the default colour stays readable on a dark canvas', title == 'rgb(243, 245, 249)', title)
         await pg.goto(BASE + '/?p=box-usage')
-        await expect(pg.locator('.dashbar button[aria-label="切换明暗"]')).to_have_text('亮色')
+        await expect(pg.locator('.dashbar button[aria-label="切换明暗"]')).to_have_attribute('title', '亮色')
         check('a dashboard opens dark when the editor is dark', True)
 
         # --- ?theme= ------------------------------------------------------------------------------

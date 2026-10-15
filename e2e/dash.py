@@ -72,7 +72,7 @@ async def main():
         check('reset returns to dash.json\'s defaults', await pg.locator('.dashfilters').count() == 0)
 
         # --- data mode -----------------------------------------------------------------------
-        await pg.locator('.dashbar button', has_text='数据模式').click()
+        await pg.locator('.dashbar button[aria-label="数据模式"]').click()
         await fr.locator('#providerBody tr', has_text='OpenAI').locator('td').nth(7).click()
         await expect(pg.locator('.sview h2')).to_have_text('Usage by provider and month')
         check('a clicked table cell opens its source at that cell', await pg.locator('.scard .big').inner_text() == '520.38' and await pg.locator('.stable td.cell').inner_text() == '520.38')
@@ -143,7 +143,7 @@ async def main():
         check('…stamped on its marks', await fr.locator('#takeaway b[data-source=goal]').first.get_attribute('data-dash-source-state') == 'error')
 
         # --- code panel ------------------------------------------------------------------------------
-        await pg.locator('.dashbar button', has_text='代码').click()
+        await pg.locator('.dashbar button[aria-label="代码"]').click()
         ed = pg.locator('textarea.dashcode')
         await ed.fill(read(page).replace('<h1>Gateway usage</h1>', '<h1>Gateway usage overview</h1>'))
         await ed.press('Control+s')
