@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
-import { display, edit, isSaving, toast, useStore } from '../../store';
+import { display, edit, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
-import { ImportHere } from '../ImportHere';
+import { FileMenu } from '../FileMenu';
+import { SyncStatus } from '../SyncStatus';
 import { ProjectMenu } from '../ProjectMenu';
 import { Picture } from '../icons';
 import { fileStem, nodeToPng, saveImage } from '../../imageExport';
@@ -160,9 +161,6 @@ export function DsApp() {
   const { t: tr } = useTranslation();
   const t = useTokens();
   const index = useDsIndex();
-  const connected = useStore((s) => s.connected);
-  const saving = useStore(isSaving);
-  const journalOpen = useStore((s) => s.journalOpen);
   const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('v') as View) || 'overview');
   // previews open in the system's dark theme when the editor itself is dark
   const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|\u6697|\u6df1/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
@@ -234,25 +232,24 @@ export function DsApp() {
               </select>
             </label>
           )}
-          <ImportHere target={dsImport} label={tr('ds.app.label')} />
-          <button
-            className="tb"
-            aria-label={tr('common.image.save')}
-            title={tr('common.image.saveHint')}
-            onClick={() => {
-              const node = document.querySelector<HTMLElement>('.dsmain .dsview');
-              const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
-              if (node) void saveImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
-            }}
-          >
-            <Picture />
-          </button>
-          <button className="tb" aria-pressed={journalOpen} aria-label={tr('ds.app.journal')} onClick={() => useStore.setState({ journalOpen: !journalOpen })}>
-            <span className="sync">
-              <span className={`dot ${!connected ? 'off' : saving ? 'busy' : ''}`} />
-              {!connected ? tr('ds.app.offline') : saving ? tr('ds.app.saving') : tr('ds.app.synced')}
-            </span>
-          </button>
+          <FileMenu
+            target={dsImport}
+            label={tr('ds.app.label')}
+            items={[
+              {
+                id: 'png',
+                label: tr('common.transfer.label.png'),
+                hint: tr('common.transfer.hint.dsView'),
+                icon: <Picture />,
+                run: async () => {
+                  const node = document.querySelector<HTMLElement>('.dsmain .dsview');
+                  const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
+                  if (node) await saveImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
+                },
+              },
+            ]}
+          />
+          <SyncStatus />
         </div>
       </nav>
       <main className="dsmain">

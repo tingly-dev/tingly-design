@@ -46,20 +46,20 @@ async def main():
         # docs: this tab
         await pg.goto(BASE + '/?p=design-guide')
         await pg.wait_for_selector('.app', timeout=20000)
-        await pg.locator('button', has_text='Export').first.click()
-        await save(pg, 'img-docs.png', lambda: pg.locator('.popmenu button', has_text='PNG image').click(), 700, 300)
+        await pg.locator('button[aria-label="Import / Export"]').click()
+        await save(pg, 'img-docs.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 700, 300)
 
         # slides: this slide, then every slide
         await pg.goto(BASE + '/?p=tingly-intro')
         await pg.wait_for_selector('.thumb', timeout=20000)
         await pg.wait_for_timeout(1500)
-        await pg.locator('button[aria-label="Download"], button[title="Download"]').first.click()
-        await save(pg, 'img-slide.png', lambda: pg.locator('[role=menuitem]', has_text='This slide (PNG)').click(), 1920, 1080)
-        await pg.locator('button[aria-label="Download"], button[title="Download"]').first.click()
+        await pg.locator('button[aria-label="Import / Export"]').click()
+        await save(pg, 'img-slide.png', lambda: pg.get_by_role('menuitem', name='PNG image This slide').click(), 1920, 1080)
+        await pg.locator('button[aria-label="Import / Export"]').click()
         n = await pg.locator('.thumb:not(.skipped)').count()
         got = []
         pg.on('download', lambda d: got.append(d.suggested_filename))
-        await pg.locator('[role=menuitem]', has_text='Every slide').click()
+        await pg.get_by_role('menuitem', name='PNG images').click()
         await pg.wait_for_timeout(15000)
         check(f'every slide: {n} files', len(got) >= n, got)
 
@@ -67,19 +67,23 @@ async def main():
         await pg.goto(BASE + '/?p=box-usage')
         await pg.wait_for_selector('.dashframe', timeout=20000)
         await pg.wait_for_timeout(2500)
-        await save(pg, 'img-dash.png', lambda: pg.locator('button', has_text='Save as image').click(), 600, 300)
+        await pg.locator('button[aria-label="Import / Export"]').click()
+        await save(pg, 'img-dash.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 600, 300)
 
         # design system
         await pg.goto(BASE + '/?p=tingly-ds')
         await pg.wait_for_selector('.dsview', timeout=20000)
         await pg.wait_for_timeout(1000)
-        await save(pg, 'img-ds.png', lambda: pg.locator('.dsnav button[aria-label="Save as image"]').click(), 600, 300)
+        await pg.locator('.dsnav button[aria-label="Import / Export"]').click()
+        await save(pg, 'img-ds.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 600, 300)
 
         # motion: frame at the playhead
         await pg.goto(BASE + '/?p=zz-export-image')
-        btn = pg.locator('button', has_text='Save frame as image')
+        btn = pg.locator('button[aria-label="Import / Export"]')
         await expect(btn).to_be_enabled(timeout=20000)
-        await save(pg, 'img-motion.png', lambda: btn.click(), 1280, 720)
+        await pg.wait_for_timeout(1500)
+        await btn.click()
+        await save(pg, 'img-motion.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 1280, 720)
 
         shutil.rmtree(PIECE, ignore_errors=True)
         check('no page errors', not errs, errs)

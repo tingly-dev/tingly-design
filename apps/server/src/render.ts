@@ -54,7 +54,7 @@ export async function renderCapabilities(): Promise<RenderCapabilities> {
 }
 
 /** Chrome's debugging protocol over the pipe it is started with: JSON messages ending in a NUL byte. */
-class Cdp {
+export class Cdp {
   private id = 0;
   private waiting = new Map<number, { ok: (v: any) => void; fail: (e: Error) => void }>();
   private buf = '';

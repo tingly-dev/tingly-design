@@ -169,9 +169,9 @@ async def main():
             print('SKIP AI rewrite (no ANTHROPIC_API_KEY on the server)')
 
         # --- export -------------------------------------------------------------------------------
-        await pg.locator('.dashbar button', has_text='导出').click()
+        await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:
-            await pg.locator('.popmenu button', has_text='整个文档（HTML）').click()
+            await pg.get_by_role('menuitem', name='HTML 网页').click()
         html = read(await (await dl.value).path())
         check('export the whole doc as HTML', '<h1>Project kinds</h1>' in html and '<table>' in html)
 

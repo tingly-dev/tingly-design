@@ -68,6 +68,7 @@ import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
+import { PdfError, printPdf } from './pdf';
 import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
@@ -568,6 +569,26 @@ app.post('/api/projects/:p/render', async (c) => {
       await line({ code, error: code === 'aborted' ? '' : t('errors.renderFailed', { detail: (e as Error).message }) });
     }
   });
+});
+
+/**
+ * A page to PDF with the machine's own Chrome: the editor builds the page (a deck one slide per page,
+ * a doc), the answer is the PDF. 501 when there is no Chrome, so the editor can fall back to the print dialog.
+ */
+app.post('/api/pdf', async (c) => {
+  const body = await c.req.json<{ html?: string; paper?: string }>().catch(() => ({}) as { html?: string; paper?: string });
+  if (typeof body.html !== 'string' || !body.html) throw new HttpError(400, 'badRequest', { detail: 'html' });
+  if (!(await renderCapabilities()).chrome) throw new HttpError(501, 'noPdf');
+  const t = trOf(c);
+  const started = Date.now();
+  try {
+    const pdf = await printPdf({ html: body.html, origin: new URL(c.req.url).origin, paper: body.paper === 'a4' ? 'a4' : 'page', signal: c.req.raw.signal });
+    logInfo('pdf.done', { ms: Date.now() - started, bytes: pdf.length, paper: body.paper === 'a4' ? 'a4' : 'page' });
+    return c.body(new Uint8Array(pdf), 200, { 'content-type': 'application/pdf', 'cache-control': 'no-store' });
+  } catch (e) {
+    logError('pdf.failed', { ms: Date.now() - started, error: (e as Error).message });
+    throw new HttpError(500, 'pdfFailed', { detail: (e as Error).message });
+  }
 });
 
 /** A video rendered above, by the name the stream gave. Only files in the project's renders/ folder, only MP4. */
