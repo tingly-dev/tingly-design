@@ -36,10 +36,6 @@ export default {
     nameLabel: '设计系统名称',
     renameHint: '双击改名',
     theme: '主题',
-    journal: '同步状态和改动记录',
-    offline: '未连接',
-    saving: '保存中',
-    synced: '已同步',
   },
   section: {
     editLabel: '编辑 {{path}}',

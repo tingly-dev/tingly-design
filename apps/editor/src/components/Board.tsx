@@ -2,11 +2,12 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
 import { elementSource, roleOf, rootElement, sandboxDoc, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
-import { display, editElement, focusBoard, parsed, toast, useStore } from '../store';
+import { canvasOf, display, editElement, focusBoard, onPage, parsed, toast, useStore } from '../store';
 import { insertHtml, updateBoard } from '../actions';
 import { handleWheel } from './Canvas';
 import { handleKey } from '../shortcuts';
-import { Download, Expand } from './icons';
+import { Download, Expand, FileText, Picture } from './icons';
+import type { ExportItem } from './FileMenu';
 import { Menu, MenuItem } from './Menu';
 import { SERVER } from '../base';
 import { api } from '../api';
@@ -58,6 +59,38 @@ export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source'
   } catch (e) {
     toast((e as Error).message, 'error');
   }
+}
+
+/**
+ * What the shared menu offers for a canvas: the selected artboard (or the only one on the page) as
+ * a PNG at both sizes and as its source file, and every artboard on the page as PNG files.
+ */
+export function canvasExportItems(): ExportItem[] {
+  const s = useStore.getState();
+  const c = canvasOf(s);
+  const onThisPage = c.order.filter((f) => c.boards[f] && onPage(c, c.boards[f].page, s.page) && !c.boards[f].hidden);
+  const sel = s.selection;
+  const one = sel && (sel.kind === 'board' || sel.kind === 'el') && c.boards[sel.file] ? sel.file : onThisPage.length === 1 ? onThisPage[0] : null;
+  const items: ExportItem[] = [];
+  if (one) {
+    items.push(
+      { id: 'png', label: tr('common.transfer.label.png'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, run: () => exportBoard(one, 'png1') },
+      { id: 'png2', label: tr('common.transfer.label.pngRetina'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, run: () => exportBoard(one, 'png2') },
+    );
+  }
+  if (onThisPage.length > 1) {
+    items.push({
+      id: 'pngs',
+      label: tr('common.transfer.label.pngs'),
+      hint: tr('common.transfer.hint.boardEvery'),
+      icon: <Picture />,
+      run: async () => {
+        for (const f of onThisPage) await exportBoard(f, 'png1');
+      },
+    });
+  }
+  if (one) items.push({ id: 'source', label: tr('common.transfer.label.source'), hint: tr('common.transfer.hint.boardSource'), icon: <FileText />, rule: true, run: () => exportBoard(one, 'source') });
+  return items;
 }
 
 /** After a move the element's tid changes; find it again by its own source text. */

@@ -24,7 +24,8 @@ import {
   want,
   dashImport,
 } from '../../dash';
-import { ImportHere } from '../ImportHere';
+import { FileMenu } from '../FileMenu';
+import { Picture } from '../icons';
 import { ProjectMenu } from '../ProjectMenu';
 import { fileStem, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
@@ -258,10 +259,20 @@ export function DashApp() {
         <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('dash.bar.saving') : t('dash.bar.connected')) : t('dash.bar.offline')} />
         <Filters />
         <div className="grow" />
-        <ImportHere target={dashImport} label={t('dash.kind')} button="text" />
-        <button className="btn ghost" onClick={() => void saveImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())} title={t('common.image.saveHint')}>
-          {t('common.image.save')}
-        </button>
+        <FileMenu
+          target={dashImport}
+          label={t('dash.kind')}
+          button="text"
+          items={[
+            {
+              id: 'png',
+              label: t('common.transfer.label.png'),
+              hint: t('common.transfer.hint.dashPage'),
+              icon: <Picture />,
+              run: async () => void (await saveImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())),
+            },
+          ]}
+        />
         <button className="btn ghost" onClick={refreshAll} title={t('dash.bar.refreshAllTitle')}>
           {t('dash.bar.refresh')}
         </button>

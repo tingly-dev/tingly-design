@@ -114,10 +114,10 @@ async def main():
             await pg.wait_for_timeout(2500)
             before = json.loads(read('box-console', 'canvas.json'))
             right = max(bd['x'] + bd['w'] for bd in before['boards'].values())
-            btn = pg.locator('.bar.left button[aria-label="导入到这个画布"]')
-            check('canvas: an import button in the toolbar', await btn.count() == 1)
+            btn = pg.locator('.bar.right button[aria-label="导入 / 导出"]')
+            check('canvas: one import / export button in the top bar', await btn.count() == 1)
             await btn.click()
-            check('…which says what a canvas takes', await pg.locator('.menu .mhint', has_text='网页和 SVG 变成新的画板').count() == 1)
+            check('…which says what a canvas takes', await pg.locator('.menu .mh', has_text='网页和 SVG 变成新的画板').count() == 1)
             await pg.screenshot(path=OUT + 'import-here-menu.png')
             async with pg.expect_file_chooser() as fc:
                 await pg.locator('.menu .mi', has_text='选择文件夹').click()
@@ -193,7 +193,7 @@ async def main():
             await pg.goto(base + '/?p=design-guide')
             await pg.wait_for_timeout(2500)
             tabs = len(json.loads(read('design-guide', 'doc.json'))['tabs'])
-            await pg.locator('.dashbar button', has_text='导入').click()
+            await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
             async with pg.expect_file_chooser() as fc:
                 await pg.locator('.menu .mi', has_text='选择文件夹').click()
             await (await fc.value).set_files(notes)
@@ -235,7 +235,7 @@ async def main():
             # --- motion: a picture onto the scene under the playhead, entering there --------------------
             await pg.goto(base + '/?p=design-motion')
             await pg.wait_for_timeout(2500)
-            check('motion: an import button in the top bar', await pg.locator('button[aria-label^="导入到这个"]').count() == 1)
+            check('motion: an import / export button in the top bar', await pg.locator('button[aria-label="导入 / 导出"]').count() == 1)
             await pg.locator('.mscene', has_text='kind-slides').click()
             await pg.wait_for_timeout(500)
             await drop(pg, [('still.png', None, 'image/png')])

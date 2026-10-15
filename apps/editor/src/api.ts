@@ -133,6 +133,12 @@ export const api = {
   /** Where a project's assets are served (for slide frames). */
   /** Can this machine render a motion piece exactly (Chrome or Edge, and ffmpeg)? */
   renderCapabilities: () => call(at('api/render')).then((r) => json<{ chrome: boolean; ffmpeg: boolean }>(r)),
+  /** A page as a PDF, printed by the server's Chrome; rejects with status 501 when the machine has none. */
+  renderPdf: async (html: string, paper: 'page' | 'a4', signal?: AbortSignal): Promise<Blob> => {
+    const res = await call(at('api/pdf'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ html, paper }), signal });
+    if (!res.ok) return json<never>(res);
+    return res.blob();
+  },
   /**
    * Render a motion piece on the server. Progress arrives as lines; resolves to the video's file name
    * (fetch it with `renderedUrl`). Aborting the signal stops the render.
