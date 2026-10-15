@@ -174,6 +174,7 @@ select:not([multiple]) {
 .app {
   position: fixed;
   inset: 0;
+  right: var(--dock-pad, 0px);
   display: grid;
   grid-template-columns: 1fr auto;
 }
@@ -5244,6 +5245,9 @@ input.dashtitle {
 .mprompt.collapsed {
   height: 36px;
 }
+.mprompt.docked {
+  display: none;
+}
 .mprompt .prompt {
   bottom: 0;
 }
@@ -5946,4 +5950,143 @@ body.filedrag iframe {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* ------------------------------------------- the prompt as a side dock (AgentBar.tsx)
+   A column on the right edge: hidden with only its tab showing, opened by the pointer on the
+   tab or the cursor in the box, or pinned open with the editor given the rest of the width.
+   It is a child of <body>, so nothing in a kind's own layout moves when it opens. */
+
+:root {
+  --dock-w: 360px;
+}
+.prompt.agent-dock,
+.dsask.agent-dock {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  transform: none;
+  width: min(var(--dock-w), 100vw);
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  border-radius: 0;
+  border-left: 1px solid var(--line);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  z-index: 40;
+}
+.prompt.agent-dock.auto,
+.dsask.agent-dock.auto {
+  transform: translateX(100%);
+  pointer-events: none;
+  transition: transform 0.18s var(--ease) 0.35s, box-shadow 0.18s var(--ease) 0.35s;
+}
+.prompt.agent-dock.auto:hover,
+.dsask.agent-dock.auto:hover,
+.prompt.agent-dock.auto:has(:focus-visible),
+.dsask.agent-dock.auto:has(:focus-visible) {
+  transform: none;
+  pointer-events: auto;
+  box-shadow: var(--lift-shadow);
+  transition-delay: 0.12s;
+}
+.prompt.agent-dock:focus-within,
+.dsask.agent-dock:focus-within {
+  box-shadow: none;
+}
+.prompt.agent-dock.auto:hover,
+.dsask.agent-dock.auto:hover,
+.prompt.agent-dock.auto:has(:focus-visible),
+.dsask.agent-dock.auto:has(:focus-visible) {
+  box-shadow: var(--lift-shadow);
+}
+.dock-tab {
+  position: absolute;
+  left: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px 0 0 10px;
+  background: var(--panel);
+  color: var(--ink-2);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.dock-tab:hover {
+  color: var(--ink);
+}
+.dock-tab.running {
+  color: var(--actor-claude);
+}
+.dock-tab.done svg {
+  color: var(--ok, var(--accent));
+}
+.dock-tab.failed svg {
+  color: var(--bad, #d14343);
+}
+/* head on top, the run (and the earlier requests) filling the middle, the box at the bottom */
+.agent-dock > .head {
+  order: 0;
+  flex-wrap: wrap;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.agent-dock > .runfeed,
+.agent-dock > .run-history {
+  position: static;
+  order: 1;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: none;
+  margin: 8px;
+  box-shadow: none;
+  background: var(--panel-2);
+  border-radius: 10px;
+  overflow: auto;
+}
+.agent-dock > .attach-tray {
+  order: 2;
+}
+.agent-dock > .body {
+  order: 3;
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+.agent-dock .prompt-hint {
+  order: 4;
+}
+.agent-dock > .drop-hint {
+  position: absolute;
+  inset: 0;
+}
+.dsask:not(.agent-dock) > .body {
+  display: contents;
+}
+.dsask.agent-dock textarea,
+.prompt.agent-dock textarea {
+  flex: 1;
+  min-width: 0;
+}
+.agent-dock .run-head {
+  flex-wrap: wrap;
+}
+/* the floating bar's run card is one line (what it is doing, how it ended, undo) until the pointer is on the bar or the cursor is in the box:
+   the answer and steps are one hover away and stop covering the work the moment the person goes back to it */
+.prompt:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head),
+.dsask:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head) {
+  display: none;
 }

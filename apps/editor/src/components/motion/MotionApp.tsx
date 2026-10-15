@@ -18,6 +18,7 @@ import type { ExportReport } from '@dc/export/timing';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
+import { useDock } from '../AgentBar';
 import { Film, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
@@ -81,6 +82,7 @@ export function MotionApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const panelOpen = useStore((s) => s.panelOpen);
   const barCollapsed = useStore((s) => s.barCollapsed);
+  const barDock = useDock();
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const base = project ? api.rawBase(project) : '';
@@ -637,7 +639,7 @@ export function MotionApp() {
             )}
           </div>
         )}
-        <div className={`mprompt${barCollapsed ? ' collapsed' : ''}`}>
+        <div className={`mprompt${barDock.docked ? ' docked' : barCollapsed ? ' collapsed' : ''}`}>
           <PromptBar
             onOpen={(f) => {
               const w = timeline.scenes.find((x) => sceneFile(x.id) === f);
