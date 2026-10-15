@@ -92,6 +92,8 @@ describe('slide files', () => {
   });
 
   it('a new slide copies the look of its neighbour', () => {
+    expect(newSlideSource('x', { title: 'T', body: '' })).not.toContain('<p');
+    expect(newSlideSource('x', { title: 'T', body: '' })).toContain('background:#fbfbf8');
     const s = newSlideSource('next', { like: 'background:#111;color:#eee;margin:0;padding:128px;z-index:2' });
     expect(s).toMatch(/^<section id="next" style="background:#111;color:#eee;padding:128px">/);
     expect(checkSlide(parseDc(s), 'next')).toEqual([]);

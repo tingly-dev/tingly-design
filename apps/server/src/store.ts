@@ -393,7 +393,7 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     return;
   }
   if (kind === 'motion') {
-    const { motion, scenes } = newMotion(title, t('starter.motionHint'), opts);
+    const { motion, scenes } = newMotion(title, '', opts);
     for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
     await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
     return;
@@ -416,9 +416,8 @@ export async function createProject(name: string, title: string, kind: ProjectKi
       designSystems: [],
     }));
     await writeAtomic(name, slideFile('cover'), newSlideSource('cover', {
-      like: "background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px",
       title,
-      body: t('starter.deckHint'),
+      body: '',
     }).replace('font-size:72px', 'font-size:112px'));
     await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
     return;

@@ -12,6 +12,8 @@ A deck is a folder under `projects/<name>/`, laid out as the original Slides typ
 - `assets/…` — images and fonts the slides use (uploaded from the editor; served beside the deck).
 - `uploads/…` — files people attached to requests (images, PDFs, text). A slide can show an image from here by its path, `src="uploads/…"`.
 
+A new deck starts from a plain light cover holding only the title. That is a blank start, not the person's chosen look: pick the look from their request or the design system, don't copy the starter.
+
 The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files: anything you write shows up within a second and is recorded in the deck's journal. People edit the same files from the editor, so **read a file right before you change it** and change only what was asked. `projects/tingly-intro` is a full example (an intro deck; the gateway slide carries a live `<x-embed>` diagram).
 
 ## deck.json

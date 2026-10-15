@@ -154,10 +154,10 @@ export function newSlideSource(id: string, opts: { like?: string; title?: string
     .filter((d) => d && /^(background|color|font-family|padding|display|flex-direction|gap)\s*:/.test(d))
     .join(';');
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const body = opts.body ?? 'Double-click to edit text, or ask AI below to change this slide.';
   return `<section id="${id}" style="${style.replace(/"/g, "'") || DEFAULT_SECTION_STYLE}">
 <h2 style="font-size:72px;font-weight:600;line-height:1.1">${esc(opts.title ?? 'Title')}</h2>
-<p style="font-size:32px;line-height:1.4;width:960px">${esc(opts.body ?? 'Double-click to edit text, or ask AI below to change this slide.')}</p>
-</section>
+${body === '' ? '' : `<p style="font-size:32px;line-height:1.4;width:960px">${esc(body)}</p>\n`}</section>
 `;
 }
 

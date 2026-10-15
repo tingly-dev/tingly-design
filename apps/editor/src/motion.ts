@@ -130,7 +130,7 @@ export function addCover(): string {
   const files = sceneFiles().map((f) => sceneIdOf(f)!);
   const id = files.includes('poster') && !m.order.includes('poster') ? 'poster' : uniqueSlideId(files, 'poster');
   if (!files.includes(id)) {
-    edit(sceneFile(id), () => newCoverScene(id, m.title, t('starter.coverHint')), { actor: 'human', summary: t('motion.journal.coverCreated'), undoable: false });
+    edit(sceneFile(id), () => newCoverScene(id, m.title), { actor: 'human', summary: t('motion.journal.coverCreated'), undoable: false });
   }
   editMotion((raw) => void (raw.cover = id), t('motion.journal.coverSet', { id }));
   return id;
