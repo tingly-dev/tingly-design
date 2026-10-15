@@ -30,6 +30,8 @@ export default {
   taskFinished: 'This task has already finished.',
   noFastModel: 'Fast AI has no key yet. Set it up in AI settings (you can also write statements directly in jQuery mode).',
   badBaseUrl: 'The address must start with http:// or https://.',
+  noRenderer: 'This machine has no Chrome or Edge together with ffmpeg, so it cannot draw this video exactly.',
+  renderFailed: 'The video could not be rendered: {{detail}}',
   noClaudeCli: 'There is no claude CLI on this machine, so the work cannot be handed to Claude Code.',
   nothingToCommit: 'There are no changes to commit.',
   notGitRepo: 'The projects folder {{dir}} is not in a git repository, so there is nowhere to commit.',

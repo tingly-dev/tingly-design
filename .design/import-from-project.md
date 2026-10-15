@@ -66,7 +66,7 @@
 ### 3.5 导出
 
 - 幻灯片的单文件 HTML：画板运行时只写进页面一次（`#dc-boards` 里一份 JSON：运行时页面、画板文件、尺寸），每个嵌入块由页面脚本建一个 iframe。导出文件因此大约多 500 KB，与嵌入几个画板无关。
-- 动效的命令行渲染和单文件播放器：收集场景用到的画板文件（图片内联成 data: URL），把 `runtime.js` 的正文交给播放器（`boardRuntime: {inline}`）。
+- 动效在编辑器里导出视频时，含嵌入的场景走服务端的精确渲染（[export.md](./export.md)），浏览器那条路画不到框架；服务端渲染、命令行渲染和单文件播放器：收集场景用到的画板文件（图片内联成 data: URL），把 `runtime.js` 的正文交给播放器（`boardRuntime: {inline}`）。
 
 ## 4. 代码在哪
 
@@ -76,6 +76,7 @@
 | `packages/sandbox/src/slide.tsx` `XBoard`、`runtime.tsx` | 幻灯片/场景里画嵌入的画板；画板一侧接 seek、给 `time` |
 | `packages/sandbox/src/motion.ts` `mountBoard` | 播放器里的画板嵌入 |
 | `apps/server/src/index.ts` `import-board` | 复制和记录 |
+| `apps/server/src/render.ts` | 服务端精确渲染带上画板文件和画板运行时 |
 | `apps/editor/src/components/BoardPicker.tsx`、`ImportHere.tsx` | 选择器和入口 |
 | `apps/editor/src/boards.ts`、`slides.ts`、`motion.ts` | 嵌入块的写法、放到页面上、给帧准备画板文件 |
 | `apps/editor/src/components/panel/BoardEmbedProps.tsx`、`OtherProps.tsx` | 嵌入块的面板；画布 Tweaks 的时间滑块 |

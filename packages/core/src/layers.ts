@@ -1,5 +1,6 @@
 import { attr, elementLabel, isTextEditable, RAW_TEXT_ELEMENTS, type DcDoc, type DcElement } from './parse';
 import { getStyle } from './style';
+import { isBoardEmbedPath } from './boardEmbed';
 
 /**
  * The layer tree the editor shows: elements named by the role they play
@@ -23,6 +24,7 @@ export type Role =
   | 'Group'
   | 'Slide'
   | 'Embed'
+  | 'Artboard'
   | 'Shape'
   | 'Icon'
   | 'Connector'
@@ -63,7 +65,7 @@ export function roleOf(el: DcElement): Role {
   if (tag === 'dc-import' || tag === 'x-import') return 'Component';
   if (tag === 'img' || tag === 'picture' || tag === 'video') return 'Image';
   if (tag === 'section' && !el.parent) return 'Slide';
-  if (tag === 'x-embed') return 'Embed';
+  if (tag === 'x-embed') return isBoardEmbedPath(attr(el, 'src') ?? '') ? 'Artboard' : 'Embed';
   if (tag === 'x-shape' || tag === 'hr') return 'Shape';
   if (tag === 'x-icon') return 'Icon';
   if (tag === 'x-connector') return 'Connector';
@@ -86,7 +88,7 @@ export function roleOf(el: DcElement): Role {
   return 'Group';
 }
 
-const LEAF_ROLES = new Set<Role>(['Text', 'Vector', 'Image', 'Input', 'Embed', 'Shape', 'Icon', 'Connector', 'Notes']);
+const LEAF_ROLES = new Set<Role>(['Text', 'Vector', 'Image', 'Input', 'Embed', 'Artboard', 'Shape', 'Icon', 'Connector', 'Notes']);
 
 export function layerTree(doc: DcDoc): Layer[] {
   const build = (el: DcElement, repeated: boolean): Layer | null => {

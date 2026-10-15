@@ -59,6 +59,7 @@ export default {
     group: 'Group',
     shape: 'Shape',
     embed: 'Live embed',
+    artboard: 'Artboard',
     icon: 'Icon',
     connector: 'Connector',
     table: 'Table',

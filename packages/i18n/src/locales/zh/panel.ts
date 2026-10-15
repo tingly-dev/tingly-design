@@ -61,6 +61,7 @@ export default {
     group: '组',
     shape: '形状',
     embed: '动态嵌入',
+    artboard: '画板',
     icon: '图标',
     connector: '连线',
     table: '表格',

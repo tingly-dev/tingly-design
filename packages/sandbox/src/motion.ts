@@ -9,6 +9,8 @@
 import { resolveSrc, urlsAgainst } from './urls';
 import { attrsForFormat, boardFrameDoc, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
+import type { ExportOutcome, ExportRequest } from './motionExport';
+import type { AudioClip } from '@dc/export';
 
 export interface MountOptions {
   motion: MotionJson;
@@ -65,10 +67,13 @@ let seekCounter = 0;
 /** The file this script was loaded from, so the exporter beside it can be fetched when needed. */
 const SELF = typeof document !== 'undefined' ? (document.currentScript as HTMLScriptElement | null)?.src : undefined;
 type FrameRequest = { t: number; scale?: number; fontCss?: string };
-type Exporter = { exportFrame: (stage: MotionStage, root: HTMLElement, req: FrameRequest) => Promise<Blob> };
+type Exporter = {
+  exportVideo: (stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome>;
+  exportFrame: (stage: MotionStage, root: HTMLElement, req: FrameRequest) => Promise<Blob>;
+};
 let exporter: Promise<Exporter> | null = null;
 
-/** The picture exporter, fetched on first use so a player never carries it. */
+/** The exporter (video and picture), fetched on first use: it carries the encoders, which a player never needs. */
 function loadExporter(): Promise<Exporter> {
   const w = window as unknown as { dcMotionExport?: Exporter };
   exporter ??= new Promise((resolve, reject) => {
@@ -82,6 +87,7 @@ function loadExporter(): Promise<Exporter> {
   });
   return exporter;
 }
+const exportVideo = async (stage: MotionStage, root: HTMLElement, req: ExportRequest) => (await loadExporter()).exportVideo(stage, root, req);
 const exportFrame = async (stage: MotionStage, root: HTMLElement, req: FrameRequest) => (await loadExporter()).exportFrame(stage, root, req);
 
 export async function mount(opts: MountOptions): Promise<MotionStage> {
@@ -372,7 +378,7 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
   });
 }
 
-(window as unknown as { dcMotion: unknown }).dcMotion = { mount };
+(window as unknown as { dcMotion: unknown }).dcMotion = { mount, exportVideo };
 
 /**
  * In the editor the runtime runs in a sandboxed frame (`sandboxDoc(origin, 'motion')`)
@@ -383,6 +389,8 @@ type HostMsg =
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' }
+  | { dcm: 'export'; id: string; format?: 'auto' | 'mp4' | 'webm'; scale?: number; fontCss?: string; audio?: AudioClip[] }
+  | { dcm: 'export-cancel'; id: string }
   | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
 
 if (typeof document !== 'undefined' && document.getElementById('dc-app') && window.parent !== window) {
@@ -390,12 +398,30 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
   let stage: MotionStage | null = null;
   let stageBox: HTMLElement | null = null;
   let loading = 0;
+  const exporting = new Map<string, AbortController>();
   const post = (m: Record<string, unknown>) => window.parent.postMessage(m, '*');
   window.addEventListener('message', async (e: MessageEvent) => {
     if (e.source !== window.parent) return;
     const m = e.data as HostMsg;
     if (!m || typeof m !== 'object' || !('dcm' in m)) return;
-    if (m.dcm === 'snapshot') {
+    if (m.dcm === 'export-cancel') {
+      exporting.get(m.id)?.abort();
+    } else if (m.dcm === 'export') {
+      if (!stage) return post({ dcm: 'export-error', id: m.id, code: 'no-stage' });
+      const ctl = new AbortController();
+      exporting.set(m.id, ctl);
+      const req: ExportRequest = { format: m.format, scale: m.scale, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
+      try {
+        const r = await exportVideo(stage, stageBox!, req);
+        const { blob, ...rest } = r;
+        post({ dcm: 'exported', id: m.id, blob, ...rest });
+      } catch (err) {
+        const name = err instanceof Error ? err.name : '';
+        post({ dcm: 'export-error', id: m.id, code: name === 'AbortError' ? 'aborted' : name === 'NoEncoderError' ? 'no-encoder' : 'failed', message: err instanceof Error ? err.message : String(err) });
+      } finally {
+        exporting.delete(m.id);
+      }
+    } else if (m.dcm === 'snapshot') {
       if (!stage) return post({ dcm: 'snapshot-error', id: m.id, message: 'nothing is loaded' });
       try {
         post({ dcm: 'snapshot-done', id: m.id, blob: await exportFrame(stage, stageBox!, { t: m.t, scale: m.scale, fontCss: m.fontCss }) });

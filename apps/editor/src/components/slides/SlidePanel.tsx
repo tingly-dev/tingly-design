@@ -7,7 +7,7 @@ import { ColorField, Field, Row, Select } from '../panel/fields';
 import { Chevron, RoleIcon } from '../icons';
 import { DsInstall } from '../panel/DsInstall';
 
-const ROLES = ['Slide', 'Column', 'Row', 'Grid', 'Text', 'Image', 'Vector', 'Link', 'Group', 'Embed', 'Shape', 'Icon', 'Connector', 'Table', 'Notes'] as const;
+const ROLES = ['Slide', 'Column', 'Row', 'Grid', 'Text', 'Image', 'Vector', 'Link', 'Group', 'Embed', 'Artboard', 'Shape', 'Icon', 'Connector', 'Table', 'Notes'] as const;
 type KnownRole = (typeof ROLES)[number];
 const isKnownRole = (r: string): r is KnownRole => (ROLES as readonly string[]).includes(r);
 

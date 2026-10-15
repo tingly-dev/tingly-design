@@ -69,12 +69,12 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
-packages/export   exporting from the browser with nothing to install (a picture of a DOM tree, web fonts inlined); no dependency on the editor, server or core (see .design/export-image.md)
+packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
-apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation
+apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
 projects/         sample projects, one per kind
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
@@ -99,7 +99,7 @@ CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`); add new suites to both language versions of that table.
 
 # Issues
 

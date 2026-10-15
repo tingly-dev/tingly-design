@@ -23,7 +23,7 @@ projects/<name>/
 - **检查**：列出时间上的问题，比如退场早于入场、文字停留不到 0.8 秒、导不出的嵌入。
 - **AI**：底部输入框针对播放头所在的场景，或选中的元素。小改动选快速 AI，马上落在舞台上；大改动选 Claude Code，它会知道你看的是哪个场景、哪一刻、哪种尺寸。
 - **保存当前帧**：“保存当前帧为图片”把播放头所在的画面按当前尺寸存成 PNG。
-- **导出**：`pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> [--format wide] [--gif] [--player]` 把 MP4、封面 PNG、GIF 和单文件 HTML 播放器写进 `renders/`，需要 Chromium 和 ffmpeg。
+- **导出**：顶栏的“导出视频”把当前看的尺寸存成视频。视频在这个标签页里生成，不用装任何东西：浏览器能写 H.264 和 AAC 时（Chrome、Edge、Safari）存 MP4，否则存 WebM，提示会说是哪种、为什么。完成前请让标签页留在前台；按钮会变成进度和取消。字体和音频文件会一起带上。含嵌入内容（`<x-embed>`）或视频层的作品改由运行服务端那台机器上的 Chrome 或 Edge 来画（还需要 ffmpeg），提示里会说明，因为浏览器画不了这些；机器上两样都没有时，这些场景会是空白，提示里点名。GIF、封面 PNG 和单文件播放器用命令行：`pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> [--format wide] [--gif] [--player]` 把 MP4、封面 PNG、GIF 和单文件 HTML 播放器写进 `renders/`，命令行需要 Chromium 和 ffmpeg。
 
 时间写在元素上：`<section>` 上的 `data-duration`、`data-transition`，以及里面任意元素的 `data-in` / `data-out` 预设（`rise`、`drop`、`type`、`count`…）和 `data-keys` 关键帧。
 
