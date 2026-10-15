@@ -47,6 +47,8 @@ const dir = existsSync(project) ? resolve(project) : join(projectsDir, project);
 const motion = JSON.parse(readFileSync(join(dir, 'motion.json'), 'utf8'));
 // notes are for the people making the piece: they never go into a render or a shared player
 delete motion.note;
+// hand-written files may leave these out; the server and editor default them through parseMotion
+motion.faces ??= {};
 const NOTES = /<aside\b[^>]*>[\s\S]*?<\/aside>/gi;
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
 /** The page is rendered from a string, so files the scene points at (uploads/…) go in as data: URLs. */
