@@ -27,3 +27,15 @@ export async function mixAudio(clips: AudioClip[], seconds: number, sampleRate =
   }
   return ctx.startRendering();
 }
+
+/** Sample counts that add up to `seconds` of silence, a second each (the last one shorter). */
+export function silentChunks(seconds: number, sampleRate = 48000): number[] {
+  let left = Math.max(1, Math.ceil(seconds * sampleRate));
+  const out: number[] = [];
+  while (left > 0) {
+    const n = Math.min(left, sampleRate);
+    out.push(n);
+    left -= n;
+  }
+  return out;
+}
