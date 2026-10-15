@@ -28,6 +28,10 @@ Which model answers is set in one dialog (`apps/editor/src/components/AiSettings
 
 A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description as `https://github.com/tingly-dev/tingly-design/blob/pr-assets/<path>?raw=true` (`raw.githubusercontent.com` links do not render in this private repository), and the thread that did the work attaches them to its reply.
 
+## Design the editor in itself
+
+`projects/tingly-design-ui` is a canvas that draws Tingly Design's own UI: how the pieces fit, the shell every kind shares, the launcher, the top bar and menus, one board per kind (a numbered wireframe with notes and its open questions), the agent bar's states and the theme tokens. Before changing anything a person sees in the editor, find its board and draw the change there first; when a PR changes the UI, it redraws the board in the same PR. Boards use the editor's light token values, real UI wording, and placeholders for content. See `.design/self-design.md`.
+
 ## Files people bring in
 
 What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.
@@ -76,7 +80,7 @@ packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
-projects/         sample projects, one per kind; `tingly-design-ui` is a canvas that mocks the editor's own UI (design shell changes there first)
+projects/         sample projects, one per kind; `tingly-design-ui` is the editor's own design canvas (see "Design the editor in itself")
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)
