@@ -175,6 +175,7 @@ function encodeArgs(fps, w, h, seconds, file) {
   const a = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-'];
   const audio = (motion.audio ?? []).filter((x) => existsSync(join(dir, x.src)));
   for (const x of audio) a.push('-i', join(dir, x.src));
+  if (!audio.length) a.push('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo');
   const filters = [`[0:v]${scale > 1 ? `scale=${w}:${h}:flags=lanczos,` : ''}format=yuv420p[v]`];
   audio.forEach((x, i) => {
     const ms = Math.round((x.start ?? 0) * 1000);
@@ -182,7 +183,9 @@ function encodeArgs(fps, w, h, seconds, file) {
   });
   if (audio.length) filters.push(`${audio.map((_, i) => `[a${i}]`).join('')}amix=inputs=${audio.length}:normalize=0[a]`);
   a.push('-filter_complex', filters.join(';'), '-map', '[v]');
+  // no sound still gets a silent track: some platforms refuse a video without one
   if (audio.length) a.push('-map', '[a]', '-c:a', 'aac', '-b:a', '192k');
+  else a.push('-map', '1:a', '-c:a', 'aac', '-b:a', '128k');
   a.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', String(fps), '-t', seconds.toFixed(3), '-movflags', '+faststart', file);
   return a;
 }
