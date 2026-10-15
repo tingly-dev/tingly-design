@@ -4,15 +4,23 @@
  * Nothing leaves the browser. What a foreignObject cannot draw is reported, not
  * hidden: an <x-embed> is a separate frame and comes out blank.
  */
-import { Clock, FrameRasterizer, canvasPng, encodeVideo, mixAudio, rasterize, type AudioClip, type Container, type VideoResult } from '@dc/export';
+import { Clock, FrameRasterizer, canvasPng, encodeGif, encodeVideo, mixAudio, rasterize, type AudioClip, type Container, type VideoResult } from '@dc/export';
 import type { MotionStage } from './motion';
 
 // Built as its own file (dist/export.js) and loaded when someone exports, so the player doesn't carry the encoder.
 
 export interface ExportRequest {
-  format?: 'auto' | Container;
-  /** Output pixels per pixel of the piece: 1 is the piece's own size, 0.5 half of it (a quarter of the pixels to draw and encode), 2 twice. The picture is vector, so a bigger size is sharper, not blown up. */
-  scale?: number;
+  format?: 'auto' | Container | 'gif';
+  /** Frame size of the file; the piece's own when left out. Same aspect ratio: the picture is drawn at this size, not stretched. */
+  width?: number;
+  height?: number;
+  /** Frames per second of the file; the piece's own when left out. */
+  fps?: number;
+  /** Encoder effort: `high` by default. */
+  quality?: 'low' | 'medium' | 'high';
+  /** Only this stretch of the piece, in milliseconds on its timeline (after speed); the whole piece when left out. Sound is left out of a stretch. */
+  from?: number;
+  to?: number;
   /** @font-face CSS with the fonts inlined, built by the host (`fontCss`). */
   fontCss?: string;
   audio?: AudioClip[];
@@ -20,44 +28,70 @@ export interface ExportRequest {
   signal?: AbortSignal;
 }
 
-export interface ExportOutcome extends VideoResult {
+export interface ExportOutcome extends Omit<VideoResult, 'container' | 'ext'> {
+  container: Container | 'gif';
+  ext: string;
   /** Scenes holding an <x-embed>, which this route cannot draw. */
   embeds: string[];
 }
 
 export async function exportVideo(stage: MotionStage, root: HTMLElement, req: ExportRequest): Promise<ExportOutcome> {
   const clock = new Clock();
-  const { width, height } = stage;
-  const scale = Math.max(0.25, Math.min(3, req.scale ?? 1));
-  // video sizes are even numbers
-  const outWidth = Math.max(2, 2 * Math.round((width * scale) / 2));
-  const outHeight = Math.max(2, 2 * Math.round((height * scale) / 2));
+  const outW = Math.max(2, Math.round(req.width ?? stage.width));
+  const outH = Math.max(2, Math.round(req.height ?? stage.height));
   const embeds = Array.from(new Set(Array.from(root.querySelectorAll('x-embed')).map((x) => x.closest<HTMLElement>('.dc-slide-host')?.dataset.scene ?? ''))).filter(Boolean);
-  const audio = req.audio?.length ? await clock.time('audio', () => mixAudio(req.audio!, stage.duration / 1000)) : null;
+  const from = Math.max(0, req.from ?? 0);
+  const to = Math.min(stage.duration, req.to ?? stage.duration);
+  const whole = from === 0 && to >= stage.duration;
+  const fps = Math.max(1, Math.min(120, req.fps ?? stage.fps));
+  const audio = req.format !== 'gif' && whole && req.audio?.length ? await clock.time('audio', () => mixAudio(req.audio!, stage.duration / 1000)) : null;
   stage.pause();
-  const fontEmbedCSS = req.fontCss ?? '';
-  const rasterizer = new FrameRasterizer({ width, height, fontEmbedCSS, clock });
-  let result: VideoResult;
+  // the picture is vector: it is drawn at the file's size, so a small file is not a big one scaled down and a big one is not blown up
+  const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', clock });
+  const prepare = async (ms: number) => {
+    await clock.time('seek', () => stage.seek(from + ms));
+    return rasterizer.begin(root);
+  };
   try {
-    result = await encodeVideo({
-      width: outWidth,
-      height: outHeight,
-      fps: stage.fps,
-      duration: stage.duration,
+    if (req.format === 'gif') {
+      const g = document.createElement('canvas');
+      g.width = outW;
+      g.height = outH;
+      const ctx = g.getContext('2d', { willReadFrequently: true })!;
+      const blob = await encodeGif({
+        width: outW,
+        height: outH,
+        fps,
+        duration: to - from,
+        signal: req.signal,
+        onProgress: req.onProgress,
+        async renderFrame(ms) {
+          const f = await prepare(ms);
+          await clock.time('decode', () => f.ready);
+          f.draw(g);
+          return clock.time('encode', () => ctx.getImageData(0, 0, outW, outH));
+        },
+      });
+      const frames = Math.max(1, Math.round(((to - from) / 1000) * fps));
+      return { blob, container: 'gif', ext: 'gif', mime: 'image/gif', videoCodec: 'gif', audioCodec: null, frames, report: clock.report({ route: 'browser', frames, width: outW, height: outH }), embeds };
+    }
+    const result = await encodeVideo({
+      width: outW,
+      height: outH,
+      fps,
+      duration: to - from,
       format: req.format,
+      quality: req.quality,
       audio: audio ?? undefined,
       clock,
       signal: req.signal,
       onProgress: req.onProgress,
-      async prepareFrame(ms) {
-        await clock.time('seek', () => stage.seek(ms));
-        return rasterizer.begin(root);
-      },
+      prepareFrame: prepare,
     });
+    return { ...result, embeds };
   } finally {
     rasterizer.dispose();
   }
-  return { ...result, embeds };
 }
 
 /** A frame of the piece as a PNG: the picture at one moment, at the size on screen. */

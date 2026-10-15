@@ -15,8 +15,16 @@ export interface MotionInfo {
 }
 
 export interface MotionExportRequest {
-  format?: 'auto' | 'mp4' | 'webm';
+  format?: 'auto' | 'mp4' | 'webm' | 'gif';
   scale?: number;
+  /** the file's frame size, same aspect ratio as the piece; its own size when left out */
+  width?: number;
+  height?: number;
+  fps?: number;
+  quality?: 'low' | 'medium' | 'high';
+  /** a stretch of the piece in milliseconds on its timeline (after speed); the whole piece when left out */
+  from?: number;
+  to?: number;
   fontCss?: string;
   audio?: { data: ArrayBuffer; start: number; gain: number }[];
 }
@@ -24,7 +32,7 @@ export interface MotionExportRequest {
 export interface MotionExportResult {
   blob: Blob;
   ext: string;
-  container: 'mp4' | 'webm';
+  container: 'mp4' | 'webm' | 'gif';
   /** Why this is not the MP4 that was asked for, if it is not. */
   note?: 'no-h264' | 'no-aac';
   /** Scenes the in-browser route cannot draw (an embed comes out blank). */

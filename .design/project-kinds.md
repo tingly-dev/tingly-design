@@ -60,12 +60,13 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 界面语言（[i18n.md](./i18n.md)） | `@dc/i18n`（每个区域一份词条）、编辑器 `i18n.ts`、外观菜单、服务端 `x-dc-lang` | ✓ `canvas`、`panel` | ✓ `slides` | ✓ `ds` | ✓ `dash` | ✓ `docs` | ✓ `motion` | 共用部件的文字在 `common`、`prompt`、`app`、`importer`；新建时的占位文案在 `starter`，按新建者的语言写进文件；新类型要加自己的区域文件，测试会查出漏掉的汉字和缺的键 |
 | 编辑器主题（[theming](../docs/zh/theming.md)） | `theme.ts`、CSS 变量 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只改编辑器外壳，**不改**作品本身的颜色；外观菜单只在启动页 |
 | 宿主消息（[embedding](../docs/zh/embedding.md)） | `host.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `location` 只带 `?p=`，不分类型 |
+| 状态条：同步状态和改动记录（[export-menu.md](./export-menu.md) §6） | `SyncStatus`（历史图标加状态点，常态下不多一个字） | ✓ 右浮栏 | ✓ 右浮栏 | ✓ 顶栏 | 状态点在标题旁（没有改） | 状态点和“已保存”在标题旁（没有改） | 顶栏“日志”按钮（没有改） | 有浮栏的三种用同一个部件；其余三种的顶栏本来就把状态点放在标题旁 |
 | 离开项目：回首页、切换、新建、反馈（[launcher.md](./launcher.md) §4） | `ProjectMenu`（各类型自己的栏里放一份） | ✓ 左浮栏 | ✓ 缩略图栏顶部 | ✓ 侧栏顶部 | ✓ 顶栏 | ✓ 顶栏 | ✓ 顶栏 | 没有共用顶栏，所以组件共用、位置各自；新类型要自己放进去 |
 | 新建时选尺寸（[motion-editing.md](./motion-editing.md) §3.7） | `SizePicker`（新建对话框里选了动效才出现）、`motionSizes.ts`（浏览器里记上次和自己的尺寸）、核心 `MOTION_SIZES` / `newMotion` | — | — | — | — | — | ✓ 预设、自定义、上次用的 | 只有动效有"尺寸"这个概念：幻灯片固定 1920×1080，画布的画板有自己的宽高字段，其余随窗口 |
 | AI 模型设置（[ai-settings.md](./ai-settings.md)） | `AiSettings.tsx`（启动页按钮、`ProjectMenu`、请求栏“去设置”都打开同一个）、`apps/server/src/aiconfig.ts`、`packages/core/src/aiConfig.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 全局设置，不属于某个项目，所以各类型一样；快速 AI 用不上的类型（看板）仍用 Claude Code 那一项 |
 | 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
-| 导出（[export.md](./export.md) 视频；[export-image.md](./export-image.md) 图片） | 各自的菜单；图片的画法和提示共用 `imageExport.ts`；视频的编码、取图、字体、下载在 `packages/export`（`@dc/export`） | ✓ `Board.tsx`（PNG） | ✓ `exportDeck.ts`（HTML、打印 PDF、备注；PNG：这一页、每一页） | ✓ 保存为 PNG（当前页面；组件预览是空白） | ✓ 保存为 PNG（整页） | ✓ HTML；PNG（当前标签页） | ✓ 保存当前帧为 PNG；顶栏“导出视频”：浏览器里生成 MP4 或 WebM，含 embed、video 的作品自动改由服务端的 Chrome 画（`render.ts`）；`scripts/motion-render.mjs` 命令行另出封面、GIF、播放器 | 视频只有动效；PDF 和共用的导出菜单没有 |
+| 导入 / 导出（[export-menu.md](./export-menu.md)；视频底层 [export.md](./export.md)；图片 [export-image.md](./export-image.md)） | `FileMenu`（栏里唯一的“导入 / 导出”按钮，内含 `ImportHere`）、各类型交出 `ExportItem` 列表；PDF 共用 `pdfExport.ts`（服务端 `POST /api/pdf`，没有 Chrome 时回到打印窗口）；图片的画法和提示共用 `imageExport.ts`；视频的编码、取图、字体、下载在 `packages/export`（`@dc/export`） | ✓ PNG、PNG @2x、这一页的每个画板、源文件（`Board.tsx` 的 `canvasExportItems`；画板名称条上的下载图标保留） | ✓ PDF、PNG（这一页、每一页）、HTML、备注（`exportDeck.tsx`） | ✓ PNG（当前视图；组件预览是空白） | ✓ PNG（整页） | ✓ PDF（A4）、Markdown（标签页、整篇）、HTML、PNG（当前标签页） | ✓ 视频…（对话框：默认一键，选项折起来：格式含 GIF、尺寸、帧率、质量、范围），含 embed、video 的作品自动改由服务端的 Chrome 画（`render.ts`，只出 MP4）；PNG（播放头所在的帧）；`scripts/motion-render.mjs` 命令行另出封面、播放器 | 画布和看板没有 PDF（画板、页面各在沙箱框架里，分页没有意义）；PPTX 没有 |
 | 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | ✓ 播放器 | 三种各自实现，没有共用的播放部件 |
 | 图层树（[layers-tree.md](./layers-tree.md)） | `panel/LayerTree.tsx`（`LayerRow`、`ElementRows`）；隐藏/锁定写进文件，runtime 认 `data-hide`、`data-lock` | ✓ 画板、画布上的项、画板里的元素 | ✓ 当前这一页的元素 | ✗ 没有元素树，是令牌和组件的列表 | ✗ 页面是一份代码，没有可选的元素 | ✗ 用大纲（标题导航）；段落不是图层，隐藏和锁定对文档没有意义 | ✓ 播放头所在场景的元素，另标"何时入场" | 同一棵树、同一行（箭头、图标、名称、“文字”、隐藏、锁定）；幻灯片/场景自己的那一行没有开关（跳过一页是另一个开关）|
 | 批注 / 备注（[motion-editing.md](./motion-editing.md) §3.8.1） | 画布的便签项；幻灯片和动效场景的 `<aside>`（共用 `NoteBox` 输入框、`notesOf` / `setNotesIn`）；动效另有作品级的 `motion.json` 的 `note` | ✓ 便签（画布上的项，不是文字批注） | ✓ 演讲者备注，放映时给演讲者看 | ✗ 没有这个粒度：令牌和组件自己有说明 | ✗ 页面是一份代码，说明写在代码注释里 | ✗ 用评论（钉在文字上，见文档指南） | ✓ 作品一层、场景一层，不画进画面、不渲染；给 Claude Code 读 | 动效的批注是写给人和 AI 看的背景，不是指令；渲染和导出的播放器会去掉 |
@@ -89,5 +90,5 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - `design-system`、`dashboard` 两个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
-- 导出各写各的菜单；每种类型都能存 PNG，动效有视频，PDF 和共用的菜单还没有。
+- 导出菜单共用了；服务端路线的视频（含 embed 或视频层）没有尺寸、帧率、范围选项，只出作品本身尺寸的 MP4；只导出一个场景时没有声音；PPTX、画布和看板的 PDF 没有（[export-menu.md](./export-menu.md) §7）。
 - 外观菜单和语言按钮只在启动页，进入编辑器后改主题或语言要回启动页（或由宿主、URL 传入）。

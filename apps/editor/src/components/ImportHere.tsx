@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { importErrorText } from '@dc/import';
 import { clipText, toast } from '../store';
@@ -63,7 +63,13 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
  * `label` is the open project's kind as a noun in the language showing
  * ("canvas" / "画布"), said as "Import into this {label}".
  */
-export function ImportHere({ target, label, button = 'icon' }: { target: ImportTarget; label: string; button?: 'icon' | 'text' | false }) {
+/** What a shared menu needs to start an import without drawing the button: open the pickers, say whether one is running. */
+export interface ImportControls {
+  chooseFiles(): void;
+  chooseFolder(): void;
+}
+
+export function ImportHere({ target, label, button = 'icon', controls }: { target: ImportTarget; label: string; button?: 'icon' | 'text' | false; controls?: MutableRefObject<ImportControls | null> }) {
   const { t: tr } = useTranslation();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dropping, setDropping] = useState(false);
@@ -96,6 +102,13 @@ export function ImportHere({ target, label, button = 'icon' }: { target: ImportT
   };
 
   useEffect(() => dirRef.current?.setAttribute('webkitdirectory', ''), []);
+  useEffect(() => {
+    if (!controls) return;
+    controls.current = { chooseFiles: () => fileRef.current?.click(), chooseFolder: () => dirRef.current?.click() };
+    return () => {
+      controls.current = null;
+    };
+  }, [controls]);
   useEffect(() => {
     let depth = 0;
     const end = () => {

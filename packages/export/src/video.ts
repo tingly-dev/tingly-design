@@ -1,4 +1,4 @@
-import { AudioBufferSource, BufferTarget, CanvasSource, Mp4OutputFormat, Output, QUALITY_HIGH, WebMOutputFormat } from 'mediabunny';
+import { AudioBufferSource, BufferTarget, CanvasSource, Mp4OutputFormat, Output, QUALITY_HIGH, QUALITY_LOW, QUALITY_MEDIUM, WebMOutputFormat } from 'mediabunny';
 import type { Frame } from './frames';
 import { Clock, type ExportReport } from './timing';
 import { planVideo, type Container, type VideoNote, type VideoPlan } from './capabilities';
@@ -11,6 +11,8 @@ export interface VideoOptions {
   /** Milliseconds of video. */
   duration: number;
   format?: 'auto' | Container;
+  /** How much bitrate to spend: `high` (the default) keeps fine text clean, `low` makes the smallest file. */
+  quality?: 'low' | 'medium' | 'high';
   /** Paints frame `i` (video time `ms`) onto `canvas`, which is `width` × `height`. */
   renderFrame?(canvas: HTMLCanvasElement | OffscreenCanvas, ms: number, i: number): Promise<void> | void;
   /**
@@ -54,7 +56,8 @@ export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
   const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(o.width, o.height) : Object.assign(document.createElement('canvas'), { width: o.width, height: o.height });
   const target = new BufferTarget();
   const out = new Output({ format: plan.container === 'mp4' ? new Mp4OutputFormat({ fastStart: 'in-memory' }) : new WebMOutputFormat(), target });
-  const video = new CanvasSource(canvas, { codec: plan.videoCodec, quality: QUALITY_HIGH, keyFrameInterval: 2 });
+  const quality = { low: QUALITY_LOW, medium: QUALITY_MEDIUM, high: QUALITY_HIGH }[o.quality ?? 'high'];
+  const video = new CanvasSource(canvas, { codec: plan.videoCodec, quality, keyFrameInterval: 2 });
   out.addVideoTrack(video, { frameRate: o.fps });
   const audio = o.audio && plan.audioCodec ? new AudioBufferSource({ codec: plan.audioCodec, quality: QUALITY_HIGH }) : null;
   if (audio) out.addAudioTrack(audio);

@@ -45,11 +45,10 @@ foreignObject 画不到：`<x-embed>`（单独的框架，会是空白）、`<vi
 
 ## 5. 没做的
 
-- **共用的导出菜单**：每个类型的 `download()` 换成一份，格式按"想做什么"列，不可用的写原因和办法。
-- **PNG** 给幻灯片、文档、看板、设计系统；**PDF** 一键（需要 `Page.printToPDF`，即有 Chrome 的一侧），现在是浏览器打印；**PPTX**（pptxgenjs，先一页一图）。
+- **PPTX**（pptxgenjs，先一页一图）。共用的导出菜单、PNG、一键 PDF 和视频选项见 [export-menu.md](./export-menu.md)。
 - **封面**：导出的视频还不把封面放在第一帧、也不单独出封面 PNG（命令行会）。
 - **命令行和服务端渲染合成一份**：现在 `motion-render.mjs`（Playwright，带封面、GIF、播放器、`--verify`）和 `apps/server/src/render.ts`（Chrome 调试管道，只出 MP4）各有一份截图循环，该合并，让命令行也不用 Playwright。
 - **服务端渲染的封面**：同样不把封面放在第一帧。
-- **GIF**、**WebM 透明**、**Lottie / 动画 SVG**（见 [motion.md](./motion.md) §8）。
+- **WebM 透明**、**Lottie / 动画 SVG**（见 [motion.md](./motion.md) §8）。GIF 已能在编辑器里导出（[export-menu.md](./export-menu.md) §4）。
 - **速度**：每帧克隆并序列化一遍 DOM，比 CDP 截图更慢是预期；缓存、只重画变化的层是可做的优化，没测。
 - **两条路线逐帧对比的测试**（`motion-render.mjs --verify` 的指标）。

@@ -29,7 +29,10 @@ import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
-import { ImportHere } from '../ImportHere';
+import { FileMenu, type ExportItem } from '../FileMenu';
+import { FilePdf, FileText, Picture } from '../icons';
+import { t as tNow } from '../../i18n';
+import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { ProjectMenu } from '../ProjectMenu';
 import { useTranslation } from 'react-i18next';
 
@@ -204,43 +207,52 @@ img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;paddin
 </style></head><body>${parts.join('\n')}</body></html>`;
 }
 
-function ExportMenu({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
-  const d = useDocIndex();
-  const tab = useCurrentTab();
+/** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
+function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
   const s = useStore.getState();
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
-  return (
-    <div className="popmenu" onMouseLeave={onClose}>
-      <button onClick={() => (onClose(), download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'))}>{t('docs.export.tabMarkdown')}</button>
-      <button
-        onClick={() => {
-          onClose();
-          const all = tabOrder(d)
+  return [
+    {
+      id: 'pdf',
+      label: tNow('common.transfer.label.pdf'),
+      hint: pdfHint(tNow('common.transfer.hint.docWhole'), direct),
+      icon: <FilePdf />,
+      run: () => savePdf(`${name}.pdf`, { html: docHtml(d), paper: 'a4', print: () => void printWindow(docHtml(d), true) }),
+    },
+    {
+      id: 'md',
+      label: tNow('common.transfer.label.markdown'),
+      hint: tNow('common.transfer.hint.docTab'),
+      icon: <FileText />,
+      disabled: !tab,
+      rule: true,
+      run: () => download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'),
+    },
+    {
+      id: 'mdAll',
+      label: tNow('common.transfer.label.markdown'),
+      hint: tNow('common.transfer.hint.docWhole'),
+      icon: <FileText />,
+      run: () =>
+        download(
+          `${name}.md`,
+          tabOrder(d)
             .map((x) => display(s, tabFile(x.id)) ?? '')
-            .join('\n\n---\n\n');
-          download(`${name}.md`, all, 'text/markdown');
-        }}
-      >
-        {t('docs.export.docMarkdown')}
-      </button>
-      <button onClick={() => (onClose(), void saveImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 })))}>{t('docs.export.tabImage')}</button>
-      <button onClick={() => (onClose(), download(`${name}.html`, docHtml(d), 'text/html'))}>{t('docs.export.docHtml')}</button>
-      <button
-        onClick={() => {
-          onClose();
-          const w = window.open('', '_blank');
-          if (!w) return;
-          w.document.write(docHtml(d));
-          w.document.close();
-          w.onload = () => w.print();
-          setTimeout(() => w.print(), 600);
-        }}
-      >
-        {t('docs.export.print')}
-      </button>
-    </div>
-  );
+            .join('\n\n---\n\n'),
+          'text/markdown',
+        ),
+    },
+    { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
+    {
+      id: 'png',
+      label: tNow('common.transfer.label.png'),
+      hint: tNow('common.transfer.hint.docTab'),
+      icon: <Picture />,
+      disabled: !tab,
+      rule: true,
+      run: async () => void (await saveImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }))),
+    },
+  ];
 }
 
 function Settings({ onClose }: { onClose: () => void }) {
@@ -311,12 +323,13 @@ export function DocsApp() {
   const { t } = useTranslation();
   const d = useDocIndex();
   const tab = useCurrentTab();
+  const direct = useDirectPdf();
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useDocs((s) => s.rail);
   const comments = useComments();
-  const [pop, setPop] = useState<'export' | 'settings' | null>(null);
+  const [pop, setPop] = useState<'settings' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
   const open = comments.threads.filter((x) => x.tab === tab && !x.resolved).length;
@@ -339,19 +352,13 @@ export function DocsApp() {
         <span className="hint">{saving ? t('docs.app.saving') : t('docs.app.saved')}</span>
         <div className="grow" />
         <span className="hint">{t('docs.app.words', { count: words })}</span>
-        <ImportHere target={docsImport} label={t('docs.app.importLabel')} button="text" />
         <div className="popwrap">
           <button className={`btn ghost${pop === 'settings' ? ' on' : ''}`} onClick={() => setPop(pop === 'settings' ? null : 'settings')}>
             {t('docs.app.layout')}
           </button>
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
         </div>
-        <div className="popwrap">
-          <button className={`btn ghost${pop === 'export' ? ' on' : ''}`} onClick={() => setPop(pop === 'export' ? null : 'export')}>
-            {t('docs.app.export')}
-          </button>
-          {pop === 'export' && tab && <ExportMenu onClose={() => setPop(null)} />}
-        </div>
+        <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} button="text" />
         <button className={`btn ghost${rail ? ' on' : ''}`} aria-pressed={rail} onClick={() => useDocs.setState({ rail: !rail })}>
           {t('docs.app.comments')}{open ? <span className="badge blue">{open}</span> : null}
         </button>
