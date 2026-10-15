@@ -560,8 +560,8 @@ app.post('/api/projects/:p/render', async (c) => {
     c.header('content-type', 'application/x-ndjson');
     const line = (v: unknown) => s.write(JSON.stringify(v) + '\n');
     try {
-      const file = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
-      await line({ done: basename(file) });
+      const { file, report } = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
+      await line({ done: basename(file), report });
     } catch (e) {
       const code = e instanceof RenderError ? e.code : 'failed';
       if (code !== 'aborted') logError('render.failed', { project: basename(dir), error: (e as Error).message });
