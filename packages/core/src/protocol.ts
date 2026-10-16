@@ -38,7 +38,7 @@ export type ToRuntime =
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }
   | { dc: 'mode'; mode: Mode }
-  | { dc: 'export'; id: string; scale: number }
+  | { dc: 'export'; id: string; scale: number; tid?: number }
   /** start retyping an element's text in place */
   | { dc: 'edit'; tid: number }
   /** presenting a slide: show its builds up to this step */

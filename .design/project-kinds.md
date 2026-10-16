@@ -96,3 +96,4 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。
 - 导出菜单共用了；只导出一个场景时没有声音；PPTX、画布和看板的 PDF 没有（[export-menu.md](./export-menu.md) §7）。
+- 右键菜单的“复制为 PNG”只有画布有；幻灯片、看板、文档、动效各有自己的 PNG 导出，还没有“图到剪贴板”（[export-menu.md](./export-menu.md) §3）。
