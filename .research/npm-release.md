@@ -19,7 +19,7 @@
 |---|---|---|
 | PR / main 检查 | `.github/workflows/ci.yml` | 单测、typecheck、bundle、冒烟、`npm pack --dry-run`；main 是绿的 |
 | 发版 | `.github/workflows/release.yml` | 推 `vX.Y.Z` tag：校验版本与 license → 测试 → `pnpm bundle` → 冒烟（宿主方式 + 装好的命令）→ 一个 tgz + sha256 → GitHub release → npm |
-| npm 发布 | `.github/scripts/npm-publish.sh`、`npm-oidc-check.sh` | 同一个 tgz 以 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字发，带 provenance；`-rc.N` 走 `next`；可重跑 |
+| npm 发布 | `.github/scripts/npm-publish.sh`、`npm-oidc-check.sh` | 同一个 tgz 以 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字发，带 provenance；tag 带后缀走 `rc`，其余走 `latest`；可重跑 |
 | 鉴权 | Trusted Publishing（OIDC） | 没有 `NPM_TOKEN`，也不需要；绑定 `release.yml` + environment `production` |
 | 首发占位 | `scripts/npm-bootstrap.sh` | 维护者本机跑一次：发 `0.0.0` 占位、加 trusted publisher、设 2FA 且禁 token |
 | 许可证 | `LICENSE`（Apache-2.0）、`NOTICE`、`THIRD_PARTY_LICENSES.txt` | 都进包 |
@@ -59,9 +59,9 @@ npx --package ./…-0.1.1.tgz tingly-design --version ✓ 0.1.1
 
 ### 发版步骤
 
-3. 把根 `package.json` 版本改成 `0.2.0-rc.1`，合进 main，推 tag `v0.2.0-rc.1` → npm `next`，GitHub release 标 prerelease。
-4. 在一台干净机器上验：`npx tingly-design@next`、`npm i -g tingly-design@next && tingly-design`。
-5. 没问题就改成 `0.2.0`、推 `v0.2.0` → `latest`。
+3. 推 tag `v0.2.0-rc.1`（版本号由 CI 从 tag 写进 `package.json`，不用先改 main）→ npm `rc`，GitHub release 标 prerelease。
+4. 在一台干净机器上验：`npx tingly-design@rc`、`npm i -g tingly-design@rc && tingly-design`。
+5. 没问题就推 `v0.2.0` → `latest`。
 
 ### 可以顺手做的（不挡首发）
 
@@ -71,5 +71,5 @@ npx --package ./…-0.1.1.tgz tingly-design --version ✓ 0.1.1
 
 ## 5. 还开着的
 
-- 首个版本号：仓库现在是 `0.1.0` 但从没发过；可以直接发 `0.1.0`，也可以借 CLI 落地升到 `0.2.0`。建议后者，rc 先行。
+- 首个版本号：仓库现在是 `0.1.0` 但从没发过；版本由 tag 决定，建议从 `v0.2.0-rc.1` 开始。
 - 两个包名每次一起发是既定设计（`.design/release.md`）；用户文档只写不带作用域的 `tingly-design`。
