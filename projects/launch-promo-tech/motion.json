@@ -21,6 +21,7 @@
   "order": [
     "open",
     "ask",
+    "finish",
     "words",
     "kinds",
     "outro"
