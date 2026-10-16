@@ -5,6 +5,7 @@
 ```bash
 pnpm test           # unit tests: core (parsing, write-back, the jQuery session, statement splitting, undo relocation, slides, design systems, dashboards, docs), the importer, the exporter (what a browser can write, font inlining), and the UI strings (same keys and placeholders in both languages, every key the code uses exists, no hard-coded Chinese in code)
 pnpm typecheck
+pnpm tingly-design --help   # the command line from source (docs: cli.md)
 ```
 
 The other suites select elements by their Chinese labels, so they run the browser with a `zh-CN` locale; `i18n.py` covers English.
