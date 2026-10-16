@@ -212,7 +212,7 @@ async function check(arg: string | undefined): Promise<number> {
   if (opts.json) print({ name: p.name, kind: p.kind, problems });
   else if (!problems.length) console.log(t('cli.noProblems', { name: p.name }));
   else {
-    table(problems.map((x) => [x.file, x.level, t(`cli.problems.${x.code}`, { file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
+    table(problems.map((x) => [x.file, x.level, x.code === 'canvas' ? t(`cli.canvasRules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
     console.log(t('cli.problemCount', { count: problems.length }));
   }
   return errors ? 1 : 0;

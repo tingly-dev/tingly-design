@@ -6,6 +6,7 @@
  * own message where a per-file checker already wrote one (see .design/cli.md).
  */
 import { CANVAS_FILE, isBoardFile, parseCanvas } from './canvas';
+import { checkCanvas } from './canvasCheck';
 import { DASH_INDEX, DASH_PAGE, datasetIdOf, parseDash, parseDataset } from './dash';
 import { DECK_FILE, deckOrder, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DS_INDEX, DS_TOKENS, parseDsIndex, resolveTokens } from './designSystem';
@@ -49,7 +50,7 @@ export interface ProjectOutline {
   duration?: number;
 }
 
-export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover';
+export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas';
 
 export interface ProjectProblem {
   level: Exclude<IssueLevel, 'note'>;
@@ -59,6 +60,9 @@ export interface ProjectProblem {
   message?: string;
   /** The file a missing reference points at (`missingFile`), the index an unlisted file is missing from (`unlisted`), or the cover scene (`badCover`). */
   ref?: string;
+  /** `canvas`: the `checkCanvas` rule id and the values its wording needs. */
+  rule?: string;
+  params?: Record<string, string | number>;
 }
 
 function json(text: string | undefined): unknown {
@@ -166,6 +170,12 @@ export function checkProject(kind: ProjectKind, files: ProjectFiles): ProjectPro
       else for (const e of parseDc(files[f]).errors) out.push({ level: 'error', file: f, code: 'badFile', message: e });
     }
     for (const f of Object.keys(files)) if (isBoardFile(f) && !f.includes('/') && !c.boards[f]) out.push({ level: 'warning', file: f, code: 'unlisted', ref: CANVAS_FILE });
+    // the listing rules above already cover missing and unlisted boards
+    const boards = Object.fromEntries(Object.entries(files).filter(([f]) => c.boards[f]));
+    for (const i of checkCanvas({ canvas: files[CANVAS_FILE], boards })) {
+      if (i.rule === 'board-file-missing' || i.rule === 'board-unlisted') continue;
+      out.push({ level: i.level, file: i.file, code: 'canvas', rule: i.rule, params: { line: i.line, ...i.params } });
+    }
   } else if (kind === 'slides') {
     const d = parseDeck(files[DECK_FILE]);
     for (const id of d.order) if (files[slideFile(id)] === undefined) missing(DECK_FILE, slideFile(id));

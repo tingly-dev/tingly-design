@@ -75,6 +75,15 @@ describe('checkProject', () => {
       { level: 'warning', file: 'B.dc.html', code: 'unlisted', ref: 'canvas.json' },
     ]);
   });
+  it('adds the canvas rules, once per problem', () => {
+    const files = {
+      'canvas.json': JSON.stringify({ v: 3, title: 'C', boards: { 'A.dc.html': { x: 0, y: 0, w: 400, h: 300 } }, order: ['A.dc.html'] }),
+      'A.dc.html': '<script src="./support.js"></script><x-dc><div style="width:10px;height:10px"></div></x-dc>',
+    };
+    expect(checkProject('design', files)).toEqual([
+      { level: 'error', file: 'A.dc.html', code: 'canvas', rule: 'root-size', params: { line: 1, width: 10, height: 10, boardWidth: 400, boardHeight: 300 } },
+    ]);
+  });
   it('passes on what the slide checker says', () => {
     const files = { 'deck.json': JSON.stringify({ v: 4, title: 'D', order: ['s'] }), 'slides/s.html': '<section><blink>x</blink></section>' };
     const p = checkProject('slides', files);
