@@ -10,7 +10,7 @@
 
 一份与平台无关的 bundle，就是 `pnpm bundle` 产出的文件夹，两个渠道发同一个文件：
 
-- **npm**：同时发 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字，内容相同，只有 `package.json` 的 `name` 不同。作用域名和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起，是宿主钉版本用的正式名字；不带作用域的名字好记好搜，也防止被别人抢注，将来加了 `bin` 就是 `npx tingly-design`。和 TB 一样（`tingly-box` 加 `@tingly-dev/…`）。两个名字每次一起发，不留一个永远停在占位版本的空包。仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
+- **npm**：同时发 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字，内容相同，只有 `package.json` 的 `name` 不同。作用域名和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起，是宿主钉版本用的正式名字；不带作用域的名字好记好搜，也防止被别人抢注，用户用的就是它：`npx tingly-design` 或 `npm i -g tingly-design`（`bin` 是 `cli.mjs`，见 [cli.md](./cli.md)）。和 TB 一样（`tingly-box` 加 `@tingly-dev/…`）。两个名字每次一起发，不留一个永远停在占位版本的空包。仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
 - **GitHub release**：`tingly-design-<ver>.tgz` 和 `tingly-design-<ver>.tgz.sha256`。这个 tgz 就是 `npm pack` 的产物改了名，和 npm 上 `@tingly-dev/tingly-design` 的内容相同；TB 钉的 sha256 以 release 上的文件为准。解开后顶层是 `package/`（npm 的打包格式），宿主解压时去掉这一层。
 
 包里不放源码、`.design/`、`docs/`、`e2e/`，只有 bundle 本来就有的东西，加上 `README.md`、`LICENSE`、`NOTICE` 和 `THIRD_PARTY_LICENSES.txt`。最后这个是必须的：`server.mjs`、`editor/`、`sandbox/` 把依赖打进了同一个文件，构建时又去掉了许可证注释（`legalComments: 'none'`），MIT/ISC/BSD 要求随副本附上版权声明，所以 `scripts/bundle.mjs` 从 `pnpm licenses list --prod` 收集每个生产依赖的许可证全文。
@@ -20,7 +20,7 @@
 ### 考虑过的
 
 - **每个工作区包分别发**（`@dc/core` 之类）：没有外部使用者，包名作用域也不是我们的；宿主只要能跑的成品。
-- **给包加 `bin`，让人 `npx` 直接跑**：服务端默认把项目放在 bundle 目录下的 `projects/`，`npx` 的缓存目录会被清掉，项目跟着丢。等默认项目目录改到用户数据目录再加。
+- **把数据留在包目录里**：最早服务端默认把项目和 AI 设置放在 bundle 目录下，`npx` 的缓存会被清掉，`npm i` 升级会整个替换包目录，项目跟着丢。所以直接运行时数据放在 `~/.tingly-design/`，宿主仍用 `DC_PROJECTS` 自己决定（[project-folders.md](./project-folders.md)）；`bin` 是在这之后才加的。
 - **release 和 npm 各打一次包**：两次构建的产物可能不同，宿主钉的 sha256 只能对一边，放弃；现在只构建一次，npm 发布用的是同一个 tgz 解开后的内容。
 - **只占作用域名，或者只发不带作用域的名字**：前者把好记的名字留给别人，后者没法和 TB 的平台包归在一个组织下。
 
@@ -75,4 +75,4 @@ release 的 build 一步在根 `package.json` 没有 `license` 时直接失败�
 
 - TB 那边的下载、校验和缓存（tingly-box-integration.md §4.4）还没做。
 - 变更说明现在用 GitHub 自动生成的 release notes，没有手写的 changelog。
-- 默认项目目录改到用户数据目录之后，可以给包加 `bin`，支持 `npx tingly-design`。
+- 发版冒烟还没检查"升级一个版本后 `~/.tingly-design/` 里的项目还在"。
