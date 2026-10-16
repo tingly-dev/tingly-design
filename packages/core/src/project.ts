@@ -208,3 +208,27 @@ export function checkProject(kind: ProjectKind, files: ProjectFiles): ProjectPro
   }
   return out;
 }
+
+/**
+ * Where `history --since` starts: after a change-log entry (its id, as `history --json`
+ * gives it, so an agent can ask "what changed since I last looked"), or after a time
+ * (an ISO date, or how long ago: `30m`, `2h`, `1d`). Null when it is neither.
+ */
+export function parseSince(since: string, now = Date.now()): { id: string } | { after: number } | null {
+  const v = since.trim();
+  const ago = /^(\d+)\s*(s|m|h|d)$/i.exec(v);
+  if (ago) return { after: now - Number(ago[1]) * { s: 1e3, m: 6e4, h: 3.6e6, d: 8.64e7 }[ago[2].toLowerCase() as 's' | 'm' | 'h' | 'd'] };
+  if (/^[0-9a-f]{8}$/i.test(v)) return { id: v.toLowerCase() };
+  const at = /^\d{4}-\d{2}-\d{2}/.test(v) ? Date.parse(v) : NaN;
+  return Number.isNaN(at) ? null : { after: at };
+}
+
+/** The change-log entries after `since`, oldest first; null when `since` names an entry that is not there (it was trimmed, or belongs to another project). */
+export function journalSince<E extends { id: string; at: string }>(entries: E[], since: { id: string } | { after: number } | null): E[] | null {
+  if (!since) return entries;
+  if ('id' in since) {
+    const i = entries.findIndex((e) => e.id === since.id);
+    return i < 0 ? null : entries.slice(i + 1);
+  }
+  return entries.filter((e) => Date.parse(e.at) > since.after);
+}

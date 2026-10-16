@@ -46,4 +46,8 @@ CLI=(node "$DIR/cli.mjs" --projects "$WORK/projects")
 "${CLI[@]}" list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.length) process.exit(1)' || { echo "❌ tingly-design list found no projects"; exit 1; }
 "${CLI[@]}" new slides smoke-deck > /dev/null || { echo "❌ tingly-design new failed"; exit 1; }
 "${CLI[@]}" check smoke-deck || { echo "❌ a new deck does not pass tingly-design check"; exit 1; }
-echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates and checks"
+# the server above is the editor on this projects folder: open finds it instead of starting another
+"${CLI[@]}" open smoke-deck --json | node -e 'const o=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!o.running || !o.url.includes("/design/?p=smoke-deck")) process.exit(1)' || { echo "❌ tingly-design open did not find the running server"; exit 1; }
+curl -fsS "$BASE/api/projects" | grep -q '"smoke-deck"' || { echo "❌ the running server does not list the deck tingly-design new made"; exit 1; }
+"${CLI[@]}" history smoke-deck --json > /dev/null || { echo "❌ tingly-design history failed"; exit 1; }
+echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates, checks, finds the running server and reads the history"

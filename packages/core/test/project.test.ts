@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkProject, outlineProject, projectKind, type ProjectFiles } from '../src';
+import { checkProject, journalSince, outlineProject, parseSince, projectKind, type ProjectFiles } from '../src';
 
 const SAMPLES = join(__dirname, '../../../projects');
 
@@ -89,5 +89,33 @@ describe('checkProject', () => {
     const p = checkProject('slides', files);
     expect(p.length).toBeGreaterThan(0);
     expect(p[0]).toMatchObject({ file: 'slides/s.html', code: 'issue' });
+  });
+});
+
+describe('history --since', () => {
+  const now = Date.parse('2026-10-16T12:00:00Z');
+  const entries = [
+    { id: 'aaaa0001', at: '2026-10-16T09:00:00Z' },
+    { id: 'aaaa0002', at: '2026-10-16T11:30:00Z' },
+    { id: 'aaaa0003', at: '2026-10-16T11:59:00Z' },
+  ];
+
+  it('reads an entry id, an ISO time and a time ago', () => {
+    expect(parseSince('AAAA0002')).toEqual({ id: 'aaaa0002' });
+    expect(parseSince('2026-10-16T11:00:00Z')).toEqual({ after: Date.parse('2026-10-16T11:00:00Z') });
+    expect(parseSince('45m', now)).toEqual({ after: now - 45 * 60_000 });
+    expect(parseSince('1d', now)).toEqual({ after: now - 86_400_000 });
+    expect(parseSince('yesterday')).toBeNull();
+  });
+
+  it('keeps what came after', () => {
+    expect(journalSince(entries, { id: 'aaaa0001' })!.map((e) => e.id)).toEqual(['aaaa0002', 'aaaa0003']);
+    expect(journalSince(entries, { id: 'aaaa0003' })).toEqual([]);
+    expect(journalSince(entries, parseSince('1h', now))!.map((e) => e.id)).toEqual(['aaaa0002', 'aaaa0003']);
+    expect(journalSince(entries, null)).toHaveLength(3);
+  });
+
+  it('says when the entry is not there', () => {
+    expect(journalSince(entries, { id: 'ffffffff' })).toBeNull();
   });
 });

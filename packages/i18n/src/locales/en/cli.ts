@@ -12,8 +12,10 @@ Usage: tingly-design [command] [options]
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export: any project as zip (the whole project); a motion piece also as mp4, gif or png (its cover)
   import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
+  history <project>                the change history: who changed which file, newest last
 
-A project is a name from the launcher or a path to its folder.
+A project is a name from the launcher or a path to its folder. With the editor already open on the
+projects folder, open and new go through it: no second server, and the launcher shows the change at once.
 
 Options:
   --projects <folder>   the projects folder (default: {{projects}})
@@ -26,6 +28,8 @@ Options:
   --out <folder>        export: where files go (default: the project's renders/; a zip goes to the current folder)
   --files-only          export --as zip: leave out the change log and the design systems it installed
   --speed, --fps, --quality low|medium|high, --width, --height   export: video settings
+  --since <id or time>  history: after an entry id (from --json), a time, or how long ago (30m, 2h, 1d)
+  --limit <n>           history: the last n entries (default 20, all with --since)
   -v, --version         the version
   -h, --help            this help`,
   unknownCommand: 'Unknown command {{name}}. Run tingly-design --help for the list.',
@@ -38,6 +42,12 @@ Options:
   listEmpty: 'No projects yet in {{dir}}. Create one with tingly-design new <kind> <name>.',
   badArgs: '{{message}}. Run tingly-design --help for the options.',
   seconds: '{{n}}s',
+  attached: 'Opening {{url}} in the editor already running (process {{pid}}).',
+  badSince: '--since {{since}} is not an entry id, a time or how long ago (30m, 2h, 1d).',
+  noEntry: '{{name}}’s change history has no entry {{id}} (it keeps the last 500).',
+  historyEmpty: 'No changes recorded in {{name}} yet.',
+  historyNone: 'No changes in {{name}} since then.',
+  historyMore: '{{count}} earlier changes not shown (--limit, or --json for all).',
   words: '{{n}} words',
   kind: {
     design: 'canvas',
@@ -85,6 +95,8 @@ Options:
     noClaude: 'No Claude Code (claude) on PATH: handing work to Claude Code needs it.',
     fast: 'Fast AI: {{model}}',
     noFast: 'Fast AI: no model connection set. Open the editor’s AI settings, or set ANTHROPIC_API_KEY.',
+    running: 'The editor is running at {{url}} (process {{pid}}); open and new go through it.',
+    notRunning: 'The editor is not running on this projects folder; open starts it.',
   },
   exportKind: 'From the command line a {{kind}} exports as zip (the whole project); its other formats are in Export in the editor. A motion piece also exports as mp4, gif or png.',
   exportAs: '--as {{as}} is not something a motion piece exports. Use zip, mp4, gif or png.',

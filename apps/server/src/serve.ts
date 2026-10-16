@@ -12,8 +12,9 @@ import { DS_TOKENS, isDataPath, type Actor } from '@dc/core';
 import { afterTokens, app } from './app';
 import { activeDelegates, stopDelegates } from './delegate';
 import { lineDiffSummary, publish, record } from './hub';
-import { BASE_PATH, PROJECTS_DIR, PROTOCOL, VERSION } from './layout';
+import { BASE_PATH, BUNDLED, PROJECTS_DIR, PROTOCOL, VERSION } from './layout';
 import { logError, logInfo } from './log';
+import { announce, retire } from './running';
 import { isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, seedSamples, versionOf } from './store';
 
 export interface ServerOptions {
@@ -47,12 +48,20 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   // only once the port is ours: a caller that retries on another port must not leave a second watcher behind
   const watcher = watchProjects();
 
+  const url = `http://${o.host === '0.0.0.0' ? 'localhost' : o.host}:${port}${BASE_PATH}/`;
+  // the command line finds this editor through the projects folder (running.ts); under `pnpm dev`
+  // the editor itself is Vite's page, not this port
+  announce(url, process.env.NODE_ENV === 'production' || BUNDLED ? url : process.env.DC_EDITOR_URL || 'http://localhost:5173/');
+  // a process.exit() anywhere (a signal, a host closing stdin) still takes the file back
+  process.once('exit', retire);
+
   let closing: Promise<void> | null = null;
   return {
     port,
-    url: `http://${o.host === '0.0.0.0' ? 'localhost' : o.host}:${port}${BASE_PATH}/`,
+    url,
     close() {
       closing ??= (async () => {
+        retire();
         stopDelegates();
         await watcher.close();
         await new Promise<void>((ok) => {

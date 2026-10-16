@@ -42,7 +42,7 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 | `PORT` | `0` 让服务端自己挑空闲端口（从就绪行读出来），或固定端口。 |
 | `DC_HOST` | 不用设：服务端只监听 `127.0.0.1`，对外的是宿主。 |
 | `DC_BASE_PATH` | 挂载的前缀，如 `/design`。所有路由、编辑器和它的资源都挪到它下面；只访问前缀本身会跳到 `前缀/`。转发时路径原样保留。 |
-| `DC_PROJECTS` | 宿主数据目录里的一个文件夹，如 `~/.tingly-box/design/projects`。不存在时会先放入示例项目（`DC_SAMPLES=0` 则从空开始）。不设时，包把项目放在 `~/.tingly-design/projects`，不放在包自己的文件夹里（升级会替换它）。 |
+| `DC_PROJECTS` | 宿主数据目录里的一个文件夹，如 `~/.tingly-box/design/projects`。不存在时会先放入示例项目（`DC_SAMPLES=0` 则从空开始）。不设时，包把项目放在 `~/.tingly-design/projects`，不放在包自己的文件夹里（升级会替换它）。运行期间服务端会在那里放一个 `.server.json`，同一个文件夹上的 `tingly-design open` 和 `new` 会交给它（见[命令行](./cli.md#编辑器已经打开时)）。 |
 | `DC_LINKS` | 设为 `0` 时所有项目都只在 `DC_PROJECTS` 里。否则可以在启动页打开这台机器上任意位置的项目文件夹，或在那里新建；这些文件夹记在 `DC_PROJECTS/.links.json`，留在原处。 |
 | `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` | 宿主的模型网关和它的令牌。快速 AI 直接调它；「交给 Claude Code」用同样的环境运行 `claude`，所以两者都经过宿主。 |
 | `DC_FAST_MODEL`、`DC_DELEGATE_MODEL` | 网关认识的模型名。 |

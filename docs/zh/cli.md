@@ -17,16 +17,21 @@ pnpm tingly-design …              # 在本仓库里
 | 命令 | 做什么 |
 |---|---|
 | `tingly-design` | 起服务，在浏览器里打开启动页。 |
-| `open [项目]` | 起服务，打开一个项目。项目文件夹之外的文件夹会加到启动页上，和"打开文件夹"一样。 |
+| `open [项目]` | 在浏览器里打开一个项目。这个项目文件夹上已经有编辑器在运行时，就在那里打开；否则起服务。项目文件夹之外的文件夹会加到启动页上，和"打开文件夹"一样。 |
 | `serve` | 只起服务，给宿主应用或常驻服务用（见[嵌入](./embedding.md)）。bundle 里的 `node server.mjs` 就是它。 |
 | `new <类型> <名字或文件夹>` | 新建项目。类型：`canvas`、`slides`、`design-system`、`dashboard`、`doc`、`motion`。`--title` 设标题；`--size 1080x1920` 设第一块画板或动效格式的尺寸。给的是文件夹路径时，项目建在那里并加到启动页上。 |
 | `list [项目]` | 启动页上的项目；带项目时列出里面有什么：画板和尺寸、幻灯片、格式和各场景的时间、标签页和字数、数据集、颜色、字体、组件。 |
 | `check [项目]` | 带项目时，列出编辑器会报的问题（文件缺失、画板解析不了、幻灯片或场景超出子集、数据集或令牌有误），有错误时退出码为 1。不带项目时，看这台机器能做什么：Chrome、ffmpeg、`claude` 命令和快速 AI。 |
 | `export <项目> --as <格式>` | 把动效导出为 `mp4`、`gif` 或 `png`（封面），写进项目的 `renders/` 或 `--out`；任何项目都可以导出 `zip`，即整个项目一个文件（见下）。`--format wide,tall` 选格式；`--speed`、`--fps`、`--quality low|medium|high`、`--width`、`--height` 和导出对话框一样。导出整段 MP4 时第一帧是封面，并带着封面图；封面 PNG 写在旁边。其他类型的其他格式以后再加。 |
 | `export <项目> --as zip` | 整个项目存成一个 `.zip`，放在当前文件夹或 `--out`，和编辑器里的“整个项目（.zip）”一样：所有文件、改动记录，以及装进来的设计系统（并排放着）。`--files-only` 不带改动记录和设计系统。 |
+| `history <项目>` | 改动记录：什么时候、谁（手改、快速 AI、Claude、外部、撤销）、哪个文件、改了什么，最新的在最后。默认列最近 20 条（`--limit <n>`）；`--since` 接 `--json` 里的记录编号、一个时间或多久以前（`30m`、`2h`、`1d`），列出那之后的全部。编号不在记录里时报错（退出码 1），不当成“没有改动”。 |
 | `import <文件.zip>` | 从这样的 `.zip`（或自己压缩的项目文件夹）导入项目，和首页的“导入项目（.zip）…”一样。导入到项目文件夹，名字被占用时加 `-2`，并输出新名字。 |
 
 项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 就地读路径，不会把它加到启动页上。
+
+## 编辑器已经打开时
+
+运行中的服务会在它的项目文件夹里写 `.server.json`，停下时删掉。同一个文件夹上有服务在运行时，`open` 和 `new` 交给它来做：不会再起第二个服务，登记或新建的文件夹马上出现在打开着的启动页上，它记着的链接文件夹也不会被覆盖。不带项目的 `tingly-design check` 会说有没有编辑器在运行。`open` 带了 `--port` 时总是自己起服务。`pnpm dev` 下编辑器地址是 Vite 的（`DC_EDITOR_URL`，默认 `http://localhost:5173/`）。
 
 ## 通用选项
 
@@ -47,6 +52,8 @@ npx tingly-design new slides pitch --title "Q3 路演"
 npx tingly-design check pitch --json
 npx tingly-design export promo --as mp4 --format wide --out dist/
 npx tingly-design export pitch --as zip --out dist/   # 交给别人；tingly-design import dist/pitch.zip 再打开
+npx tingly-design open pitch                          # 给人看；在对方已经打开的编辑器里
+npx tingly-design history pitch --since 3f9a1c20      # 上次看到那条记录之后，对方改了什么
 ```
 
-每种类型的文件格式见 `.claude/skills/<类型>/SKILL.md`。命令为什么这样设计、后面还要做什么（接上已经打开的编辑器、所有类型都能导出、MCP、`prompt`），见 `.design/cli.md`。
+每种类型的文件格式见 `.claude/skills/<类型>/SKILL.md`。命令为什么这样设计、后面还要做什么（所有类型都能导出、MCP、`prompt`），见 `.design/cli.md`。

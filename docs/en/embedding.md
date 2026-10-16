@@ -42,7 +42,7 @@ Run `node <bundle>/server.mjs` with these variables:
 | `PORT` | `0` to let the server pick a free port (read it from the ready line), or a fixed port. |
 | `DC_HOST` | Leave unset: the server listens on `127.0.0.1`. The host is what people reach. |
 | `DC_BASE_PATH` | The prefix it is mounted under, such as `/design`. Every route, the editor and its assets move below it; the bare prefix redirects to `prefix/`. Forward the path unchanged. |
-| `DC_PROJECTS` | A folder in the host's data directory, such as `~/.tingly-box/design/projects`. If it does not exist, it starts with the samples (`DC_SAMPLES=0` to start empty). Unset, the bundle keeps projects in `~/.tingly-design/projects`, never inside its own folder, which an upgrade replaces. |
+| `DC_PROJECTS` | A folder in the host's data directory, such as `~/.tingly-box/design/projects`. If it does not exist, it starts with the samples (`DC_SAMPLES=0` to start empty). Unset, the bundle keeps projects in `~/.tingly-design/projects`, never inside its own folder, which an upgrade replaces. While it runs, the server keeps a `.server.json` there, so `tingly-design open` and `new` on the same folder go through it ([command line](./cli.md#with-the-editor-open)). |
 | `DC_LINKS` | `0` to keep every project in `DC_PROJECTS`. Otherwise people can open a project folder anywhere on the machine, or create one there, from the launcher; such folders are listed in `DC_PROJECTS/.links.json` and stay where they are. |
 | `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` | The host's model gateway and a token for it. Fast AI calls it; "hand to Claude Code" runs `claude` with the same environment, so both go through the host. |
 | `DC_FAST_MODEL`, `DC_DELEGATE_MODEL` | Model names the gateway understands. |

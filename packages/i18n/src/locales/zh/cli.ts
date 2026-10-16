@@ -14,8 +14,10 @@ export default {
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出：任何项目都可导出 zip（整个项目）；动效还可导出 mp4、gif 或 png（封面）
   import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
+  history <项目>                   改动记录：谁改了哪个文件，最新的在最后
 
-项目可以是启动页里的名字，也可以是它所在文件夹的路径。
+项目可以是启动页里的名字，也可以是它所在文件夹的路径。编辑器已经在这个项目文件夹上打开时，
+open 和 new 交给它来做：不会再起一个服务，启动页上马上能看到。
 
 选项：
   --projects <文件夹>   项目文件夹（默认：{{projects}}）
@@ -28,6 +30,8 @@ export default {
   --out <文件夹>        export：输出位置（默认：项目的 renders/；zip 放在当前文件夹）
   --files-only          export --as zip：不带改动记录和装进来的设计系统
   --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置
+  --since <编号或时间>  history：某条记录（编号见 --json）、某个时间或多久以前（30m、2h、1d）之后的改动
+  --limit <n>           history：最近 n 条（默认 20，带 --since 时全部）
   -v, --version         版本号
   -h, --help            本帮助`,
   unknownCommand: '没有 {{name}} 这个命令。运行 tingly-design --help 查看全部命令。',
@@ -40,6 +44,12 @@ export default {
   listEmpty: '{{dir}} 里还没有项目。用 tingly-design new <类型> <名字> 新建一个。',
   badArgs: '{{message}}。运行 tingly-design --help 查看选项。',
   seconds: '{{n}} 秒',
+  attached: '在已经运行的编辑器（进程 {{pid}}）里打开 {{url}}。',
+  badSince: '--since {{since}} 不是记录编号、时间，也不是多久以前（30m、2h、1d）。',
+  noEntry: '{{name}} 的改动记录里没有 {{id}}（只保留最近 500 条）。',
+  historyEmpty: '{{name}} 还没有改动记录。',
+  historyNone: '从那以后 {{name}} 没有改动。',
+  historyMore: '更早的 {{count}} 条没有列出（用 --limit，或 --json 看全部）。',
   words: '{{n}} 字',
   kind: {
     design: '画布',
@@ -87,6 +97,8 @@ export default {
     noClaude: 'PATH 里没有 Claude Code（claude）：交给 Claude Code 需要它。',
     fast: '快速 AI：{{model}}',
     noFast: '快速 AI：还没有设置模型连接。打开编辑器的 AI 设置，或设置 ANTHROPIC_API_KEY。',
+    running: '编辑器正在 {{url}} 运行（进程 {{pid}}）；open 和 new 会交给它。',
+    notRunning: '这个项目文件夹上没有运行中的编辑器；open 会启动一个。',
   },
   exportKind: '命令行里{{kind}}可以导出 zip（整个项目），其他格式请在编辑器里用"导出"。动效还可以导出 mp4、gif 或 png。',
   exportAs: '动效不能导出 --as {{as}}，请用 zip、mp4、gif 或 png。',
