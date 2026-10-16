@@ -52,19 +52,19 @@ PORT=4791 node node_modules/@tingly-dev/tingly-design/server.mjs
 
 ### 必须（发给用户之前）
 
-1. **加 `bin`**。由「CLI 与服务化使用」那边（#119，`/mnt/project-files/cli-service/cli-service.md`）设计的 `tingly-design` 命令负责：`scripts/bundle.mjs` 写进包的 `package.json` 里加 `"bin": { "tingly-design": "cli.mjs" }`，并把 `cli.mjs` 复制进 bundle。最小可发版本只需要 `tingly-design`（= `serve`）：起服务、打印地址、可选 `--open`。其余子命令可以后续版本再加，不必挡住首发。
+1. **加 `bin`**：已由 CLI 那边（#119）合入的 #129 完成，包的 `bin` 是 `cli.mjs`（`tingly-design`：open、serve、new、list、check、motion export）。
 2. **默认数据目录移出包目录**（由「项目可放在任意路径」那边的 PR 负责：bundle 没有 `DC_PROJECTS` 时用 `~/.tingly-design/projects` 和 `~/.tingly-design/ai.json`，宿主不变；这里不重复改）。原先设想的做法：
    - 项目默认 `~/.tingly-design/projects`（或 `--projects <dir>`），设置默认 `~/.tingly-design/ai.json`；
    - `DC_PROJECTS` / `DC_CONFIG` 照旧优先，宿主不变；
    - 判断"直接运行"最简单的办法是让 CLI 自己设好 `DC_PROJECTS` 和 `DC_CONFIG` 再起服务，`server.mjs` 的默认值不动，宿主协议不受影响。
    - 备选是用当前目录（`./projects`），像 `vite` 那样"在哪个文件夹里跑就编辑哪个文件夹"。对"装一个设计工具"来说，用户数据目录更不容易丢东西；当前目录适合"我的仓库里有设计稿"。建议默认用户目录，`--projects .` 覆盖。
-3. **发版冒烟加一步**：`smoke-bundle.sh` 现在只按宿主方式启动。加一个"`npm i` 打出来的 tgz → 跑 `tingly-design` 命令 → 等就绪 → 查 health → 确认项目落在包目录外"的检查，CI 和 release 都跑。
+3. **发版冒烟加一步**：#129 已让 `smoke-bundle.sh` 跑装好的命令（`--version`、`list --json`、`new`、`check`）。还可补一条"升级一次版本后项目还在"的检查。
 
 ### 应该（首发前最好有）
 
-4. **包里的 README 是写给宿主的**（"`node server.mjs`，变量见 Embedding"），npm 页面会显示它。改成给人看的：一行安装、一行运行、需要什么（Node ≥ 20.11；导出视频/PDF 需要本机 Chrome 和 ffmpeg；交给 Claude Code 需要 `claude`），宿主嵌入链接到 docs。
+4. **包里的 README**：#129 已改为指向 `docs/en/cli.md`；首发前看一眼 npm 页面上是否足够（安装、运行、需要 Chrome/ffmpeg/`claude` 的场景）。
 5. **`package.json` 补 `keywords`、`bugs`**，npm 上好搜。
-6. **CLI 用到的脚本进包**：`motion-render.mjs`、HTML 导入现在不在包里（CLI 调研已列出）。属于 #119 的范围，跟着 CLI 一起做。
+6. **CLI 用到的脚本进包**：motion 导出已随 #129 进包；HTML 导入还要看 CLI 后续。
 7. **`.design/release.md` 更新**：它在"考虑过的"里写了"等默认项目目录改到用户数据目录再加 `bin`"，做完以上就把这段改成现状；`docs/*/` 加一页"用 npm 安装"。
 
 ### 维护者一次性操作（只有有 npm 2FA 的人能做）
