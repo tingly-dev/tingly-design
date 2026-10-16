@@ -1,7 +1,7 @@
 {
   "v": 1,
   "title": "Tingly Design 发布",
-  "note": "Launch promo: a waterfall of real screenshots of the editor, the README story on top. Built from the README and the screenshots taken while building it.",
+  "note": "Launch promo. Few words, no tech: one sentence becomes a design, you finish it, then a waterfall of everything else you could make. Slogan: AI drafts. You decide.",
   "formats": {
     "wide": {
       "size": [
@@ -19,10 +19,11 @@
   "fps": 30,
   "speed": 1,
   "order": [
-    "open",
-    "ways",
-    "diff",
-    "kinds",
+    "ask",
+    "draft",
+    "final",
+    "wall",
+    "self",
     "outro"
   ],
   "cover": "poster",
@@ -34,7 +35,11 @@
     },
     "inter": {
       "family": "Inter",
-      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
+      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    },
+    "playfair": {
+      "family": "Playfair Display",
+      "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap"
     },
     "jetbrains-mono": {
       "family": "JetBrains Mono",
@@ -42,11 +47,11 @@
     },
     "noto-sans-sc": {
       "family": "Noto Sans SC",
-      "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;800&display=swap"
+      "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&display=swap"
     },
     "noto-serif-sc": {
       "family": "Noto Serif SC",
-      "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500&display=swap"
+      "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap"
     }
   }
 }
