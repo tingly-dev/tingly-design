@@ -12,7 +12,8 @@ export default {
   new <类型> <名字或文件夹>        新建项目：canvas、slides、design-system、dashboard、doc、motion
   list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）
   check [项目]                     一个项目的问题，或这台机器能做什么
-  export <项目> --as <格式>        导出：动效可导出 mp4、gif 或 png（封面）
+  export <项目> --as <格式>        导出：任何项目都可导出 zip（整个项目）；动效还可导出 mp4、gif 或 png（封面）
+  import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
 
 项目可以是启动页里的名字，也可以是它所在文件夹的路径。
 
@@ -24,7 +25,8 @@ export default {
   --title <文字>        new：启动页上显示的标题
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
-  --out <文件夹>        export：输出位置（默认：项目的 renders/）
+  --out <文件夹>        export：输出位置（默认：项目的 renders/；zip 放在当前文件夹）
+  --files-only          export --as zip：不带改动记录和装进来的设计系统
   --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置
   -v, --version         版本号
   -h, --help            本帮助`,
@@ -86,9 +88,13 @@ export default {
     fast: '快速 AI：{{model}}',
     noFast: '快速 AI：还没有设置模型连接。打开编辑器的 AI 设置，或设置 ANTHROPIC_API_KEY。',
   },
-  exportKind: '命令行还不能导出{{kind}}，请先在编辑器里用"导出"。动效可以导出 mp4、gif 或 png。',
-  exportAs: '动效不能导出 --as {{as}}，请用 mp4、gif 或 png。',
-  needAs: '请说明导出什么：tingly-design export {{project}} --as mp4|gif|png',
+  exportKind: '命令行里{{kind}}可以导出 zip（整个项目），其他格式请在编辑器里用"导出"。动效还可以导出 mp4、gif 或 png。',
+  exportAs: '动效不能导出 --as {{as}}，请用 zip、mp4、gif 或 png。',
+  needAs: '请说明导出什么：tingly-design export {{project}} --as zip|mp4|gif|png',
+  needZip: '请给出要导入的 .zip：tingly-design import <文件.zip>',
+  noFileAt: '{{path}} 没有这个文件',
+  imported: '已导入 {{name}}，位于 {{path}}',
+  importedSystems: '同时导入了设计系统 {{systems}}。',
   noFormat: '这个动效没有 {{format}} 画幅。画幅有：{{formats}}',
   rendering: '正在渲染 {{format}}（{{done}}/{{total}} 帧）',
   wrote: '已写入 {{file}}',

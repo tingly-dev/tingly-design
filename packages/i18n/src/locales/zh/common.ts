@@ -53,7 +53,10 @@ export default {
     saved: '已保存 {{name}}',
     pdfFailed: '没能生成 PDF：{{message}}',
     popupBlocked: '浏览器拦截了打印窗口，请允许本页弹出窗口后重试',
+    archiveFailed: '项目没能导出：{{message}}',
     label: {
+      project: '整个项目（.zip）',
+      projectFiles: '仅项目文件（.zip）',
       png: 'PNG 图片',
       pngs: 'PNG 图片（多张）',
       pngRetina: 'PNG 图片 @2x',
@@ -67,6 +70,8 @@ export default {
       frame: '这一帧的图片',
     },
     hint: {
+      project: '所有文件，含改动记录和设计系统 · 可在首页重新导入',
+      projectFiles: '不含改动记录和设计系统',
       boardOne: '选中的画板',
       boardEvery: '这一页的每个画板，各存一个文件',
       boardSource: '画板的 .dc.html 文件',

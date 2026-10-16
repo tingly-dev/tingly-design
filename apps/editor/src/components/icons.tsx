@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { IconFolder, IconFolderOpen, IconLayoutList, IconUnlink } from '@tabler/icons-react';
 import {
   IconAlignCenter,
+  IconFileZip,
   IconAlignJustified,
   IconAlignLeft,
   IconAlignRight,
@@ -197,6 +198,7 @@ export const Film = tabler(IconMovie, 14);
 export const Gif = tabler(IconGif, 14);
 export const Info = tabler(IconInfoCircle, 14);
 export const FilePdf = tabler(IconFileTypePdf, 14);
+export const FileZip = tabler(IconFileZip, 14);
 
 // what an agent is doing (RunFeed)
 export const StepRead = tabler(IconBook, 14);

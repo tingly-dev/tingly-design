@@ -1,6 +1,6 @@
 # 命令行 `tingly-design`
 
-已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
+已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
 
 ## 1. 问题
 
@@ -27,8 +27,9 @@
 | `new <kind> <name 或文件夹>` | 和新建对话框一样（`createProject`），`--title`、`--size WxH`；给的是路径时建在那里并登记 | 已实施 |
 | `list [project]` | 不带项目：启动页上的项目；带项目：里面有什么（画板、幻灯片、场景、标签页、数据集、令牌） | 已实施 |
 | `check [project]` | 带项目：编辑器会报的问题，有错时退出码 1；不带：这台机器能做什么（Chrome、ffmpeg、`claude`、快速 AI） | 已实施；还不画页面（§6） |
-| `export <project> --as <fmt>` | 和导出菜单同名；现在只有动效：`mp4`、`gif`、`png`（封面） | 动效已实施；其他类型等无头页面（§6） |
-| `import`、`history`、`prompt`、`skills`、`mcp` | 见 §6 | 方案 |
+| `export <project> --as <fmt>` | 和导出菜单同名；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；动效另有 `mp4`、`gif`、`png`（封面） | zip 和动效已实施；其他类型的其他格式等无头页面（§6） |
+| `import <file.zip>` | 和启动页的“导入项目（.zip）”同名同做法 | 已实施；导入 HTML、SVG 还没有 |
+| `history`、`prompt`、`skills`、`mcp` | 见 §6 | 方案 |
 
 一个项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 读路径时就地读，不登记链接，免得一次检查在启动页上多出一张卡。
 

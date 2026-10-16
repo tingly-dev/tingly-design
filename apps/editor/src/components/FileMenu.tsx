@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { toast } from '../store';
 import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
-import { Caret, FileText, Frame, Transfer } from './icons';
+import { saveProjectArchive } from '../projectArchive';
+import { Caret, FileText, FileZip, Frame, Transfer } from './icons';
 
 /**
  * Everything that moves files across the project's edge, in one place: one button in every
@@ -61,7 +62,17 @@ export function FileMenu({
     }
   };
   const name = t('common.transfer.button');
-  const list = pos ? (typeof items === 'function' ? items() : items) : [];
+  const project = new URLSearchParams(location.search).get('p');
+  const own = pos ? (typeof items === 'function' ? items() : items) : [];
+  // the whole project, the same two items in every kind (.design/project-archive.md)
+  const list: ExportItem[] =
+    pos && project
+      ? [
+          ...own,
+          { id: 'project', label: t('common.transfer.label.project'), hint: t('common.transfer.hint.project'), icon: <FileZip />, rule: own.length > 0, run: () => saveProjectArchive(project, true) },
+          { id: 'project-files', label: t('common.transfer.label.projectFiles'), hint: t('common.transfer.hint.projectFiles'), icon: <FileZip />, run: () => saveProjectArchive(project, false) },
+        ]
+      : own;
   return (
     <>
       <button

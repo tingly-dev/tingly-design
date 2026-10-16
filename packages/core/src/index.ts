@@ -22,4 +22,5 @@ export * from './motion';
 export * from './activity';
 export * from './aiConfig';
 export * from './boardEmbed';
+export * from './projectArchive';
 export * from './project';

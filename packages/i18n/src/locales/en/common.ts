@@ -51,7 +51,10 @@ export default {
     saved: 'Saved {{name}}',
     pdfFailed: 'The PDF could not be made: {{message}}',
     popupBlocked: 'The browser blocked the print window. Allow pop-ups for this page and try again',
+    archiveFailed: 'The project could not be saved: {{message}}',
     label: {
+      project: 'Whole project (.zip)',
+      projectFiles: 'Project files only (.zip)',
       png: 'PNG image',
       pngs: 'PNG images',
       pngRetina: 'PNG image @2x',
@@ -65,6 +68,8 @@ export default {
       frame: 'Picture of this frame',
     },
     hint: {
+      project: 'Every file, with the change log and design systems · import it again from the home page',
+      projectFiles: 'Without the change log or design systems',
       boardOne: 'The selected artboard',
       boardEvery: 'Every artboard on this page, one file each',
       boardSource: 'The artboard’s .dc.html file',

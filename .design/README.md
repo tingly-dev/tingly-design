@@ -29,6 +29,7 @@
 | [self-design.md](./self-design.md) | 自身设计稿：用一个画布项目（`projects/tingly-design-ui`）画 Tingly Design 自己的界面——整体结构、外壳、启动页、六种类型、顶栏和菜单、请求栏、主题 token；画到什么程度，先画再改代码，代码变了同一个 PR 里重画 | 已实施；§5 是没定的 |
 | [top-bar.md](./top-bar.md) | 顶栏：六种类型共用的一条栏——项目名、同步状态、导入 / 导出放哪，反馈、点星、语言、外观为什么在最右；浮栏只留工具 | 已实施 |
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
+| [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [canvas-check.md](./canvas-check.md) | 画布检查器：`checkCanvas` 把 `dc-canvas` 技能里写错了不报错的规则做成纯文本检查，返回规则 id 和参数，措辞留给命令行 / 编辑器 | 核心函数和 `check` 命令已实施；编辑器提示是方案 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |

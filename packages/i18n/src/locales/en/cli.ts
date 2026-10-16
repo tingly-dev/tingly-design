@@ -10,7 +10,8 @@ Usage: tingly-design [command] [options]
   new <kind> <name or folder>      create a project: canvas, slides, design-system, dashboard, doc, motion
   list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets)
   check [project]                  a project's problems, or what this machine can do
-  export <project> --as <format>   export: a motion piece as mp4, gif or png (its cover)
+  export <project> --as <format>   export: any project as zip (the whole project); a motion piece also as mp4, gif or png (its cover)
+  import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
 
 A project is a name from the launcher or a path to its folder.
 
@@ -22,7 +23,8 @@ Options:
   --title <text>        new: the title shown in the launcher
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size
   --format <a,b>        export: the motion formats to render (default: all)
-  --out <folder>        export: where files go (default: the project's renders/)
+  --out <folder>        export: where files go (default: the project's renders/; a zip goes to the current folder)
+  --files-only          export --as zip: leave out the change log and the design systems it installed
   --speed, --fps, --quality low|medium|high, --width, --height   export: video settings
   -v, --version         the version
   -h, --help            this help`,
@@ -84,9 +86,13 @@ Options:
     fast: 'Fast AI: {{model}}',
     noFast: 'Fast AI: no model connection set. Open the editor’s AI settings, or set ANTHROPIC_API_KEY.',
   },
-  exportKind: 'Exporting {{kind}} from the command line is not ready yet; use Export in the editor. A motion piece exports as mp4, gif or png.',
-  exportAs: '--as {{as}} is not something a motion piece exports. Use mp4, gif or png.',
-  needAs: 'Say what to export: tingly-design export {{project}} --as mp4|gif|png',
+  exportKind: 'From the command line a {{kind}} exports as zip (the whole project); its other formats are in Export in the editor. A motion piece also exports as mp4, gif or png.',
+  exportAs: '--as {{as}} is not something a motion piece exports. Use zip, mp4, gif or png.',
+  needAs: 'Say what to export: tingly-design export {{project}} --as zip|mp4|gif|png',
+  needZip: 'Name the .zip to import: tingly-design import <file.zip>',
+  noFileAt: 'There is no file at {{path}}',
+  imported: 'Imported {{name}} into {{path}}',
+  importedSystems: 'With the design system {{systems}}.',
   noFormat: '{{format}} is not a format of this piece. Formats: {{formats}}',
   rendering: 'Rendering {{format}} ({{done}}/{{total}} frames)',
   wrote: 'Wrote {{file}}',
