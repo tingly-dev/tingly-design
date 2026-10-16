@@ -9,6 +9,8 @@
     "url": "git+https://github.com/tingly-dev/tingly-design.git"
   },
   "homepage": "https://github.com/tingly-dev/tingly-design",
+  "bugs": "https://github.com/tingly-dev/tingly-design/issues",
+  "keywords": ["design", "editor", "canvas", "slides", "design-system", "dashboard", "motion", "claude-code", "cli"],
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "engines": {

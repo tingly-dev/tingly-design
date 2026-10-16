@@ -80,6 +80,8 @@ writeFileSync(
       engines: pkg.engines,
       repository: pkg.repository,
       homepage: pkg.homepage,
+      bugs: pkg.bugs,
+      keywords: pkg.keywords,
     },
     null,
     2,
