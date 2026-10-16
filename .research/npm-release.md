@@ -53,11 +53,11 @@ PORT=4791 node node_modules/@tingly-dev/tingly-design/server.mjs
 ### 必须（发给用户之前）
 
 1. **加 `bin`**。由「CLI 与服务化使用」那边（#119，`/mnt/project-files/cli-service/cli-service.md`）设计的 `tingly-design` 命令负责：`scripts/bundle.mjs` 写进包的 `package.json` 里加 `"bin": { "tingly-design": "cli.mjs" }`，并把 `cli.mjs` 复制进 bundle。最小可发版本只需要 `tingly-design`（= `serve`）：起服务、打印地址、可选 `--open`。其余子命令可以后续版本再加，不必挡住首发。
-2. **默认数据目录移出包目录**。直接运行（不是宿主）时：
+2. **默认数据目录移出包目录**（由「项目可放在任意路径」那边的 PR 负责：bundle 没有 `DC_PROJECTS` 时用 `~/.tingly-design/projects` 和 `~/.tingly-design/ai.json`，宿主不变；这里不重复改）。原先设想的做法：
    - 项目默认 `~/.tingly-design/projects`（或 `--projects <dir>`），设置默认 `~/.tingly-design/ai.json`；
    - `DC_PROJECTS` / `DC_CONFIG` 照旧优先，宿主不变；
    - 判断"直接运行"最简单的办法是让 CLI 自己设好 `DC_PROJECTS` 和 `DC_CONFIG` 再起服务，`server.mjs` 的默认值不动，宿主协议不受影响。
-   - 备选是用当前目录（`./projects`），像 `vite` 那样"在哪个文件夹里跑就编辑哪个文件夹"。对"装一个设计工具"来说，用户数据目录更不容易丢东西；当前目录适合"我的仓库里有设计稿"。建议默认用户目录，`--projects .` 覆盖。这个要 YZ 定。
+   - 备选是用当前目录（`./projects`），像 `vite` 那样"在哪个文件夹里跑就编辑哪个文件夹"。对"装一个设计工具"来说，用户数据目录更不容易丢东西；当前目录适合"我的仓库里有设计稿"。建议默认用户目录，`--projects .` 覆盖。
 3. **发版冒烟加一步**：`smoke-bundle.sh` 现在只按宿主方式启动。加一个"`npm i` 打出来的 tgz → 跑 `tingly-design` 命令 → 等就绪 → 查 health → 确认项目落在包目录外"的检查，CI 和 release 都跑。
 
 ### 应该（首发前最好有）
@@ -82,6 +82,6 @@ PORT=4791 node node_modules/@tingly-dev/tingly-design/server.mjs
 
 ## 5. 还开着的
 
-- 默认数据目录：用户目录还是当前目录（§4.2）。
+- 默认数据目录：已由「项目可放在任意路径」定为用户目录 `~/.tingly-design/`；`--projects .` 之类的覆盖跟着 CLI 走。
 - 首个版本号：仓库现在是 `0.1.0` 但从没发过；可以直接发 `0.1.0`，也可以借加 CLI 升到 `0.2.0`。建议后者，rc 先行。
 - 两个包名每次一起发是既定设计（`.design/release.md`）；用户文档只写不带作用域的 `tingly-design`。
