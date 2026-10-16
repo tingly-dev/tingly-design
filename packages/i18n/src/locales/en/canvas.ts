@@ -21,12 +21,15 @@ export default {
     source: 'Source file (.dc.html)',
     timeout: 'Export timed out',
     failed: 'Export failed',
+    copied: 'Copied as PNG',
+    copyFallback: "Your browser can't copy pictures, so the PNG was downloaded instead",
   },
   note: {
     titleLabel: 'Title',
     contentLabel: 'Note text',
   },
   menu: {
+    copyPng: 'Copy as PNG',
     cut: 'Cut',
     paste: 'Paste',
     duplicate: 'Duplicate',
