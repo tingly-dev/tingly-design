@@ -84,6 +84,7 @@ import {
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
+import { packProject, unpackProject } from './archive';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
@@ -185,6 +186,25 @@ app.post('/api/links', async (c) => {
   const name = await linkFolder(String(path ?? ''));
   logInfo('project.linked', { project: name, dir: projectDir(name) });
   return c.json({ name });
+});
+
+/** A whole project as one .zip (.design/project-archive.md): its files, and unless told otherwise its change log and the design systems it installed. */
+app.get('/api/projects/:p/archive', async (c) => {
+  const p = c.req.param('p');
+  const off = (k: string) => c.req.query(k) === '0';
+  const { bytes, file, files, systems } = await packProject(p, { journal: !off('journal'), systems: !off('systems') });
+  logInfo('archive.export', { project: p, files, systems, bytes: bytes.length });
+  return c.body(bytes as Uint8Array<ArrayBuffer>, 200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
+});
+
+/** A project from a .zip made by the route above (or a project folder zipped by hand); its name comes back. */
+app.post('/api/archive', async (c) => {
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (!bytes.length) throw new HttpError(400, 'emptyFile');
+  const from = c.req.query('file') ?? 'project';
+  const done = await unpackProject(bytes, from);
+  logInfo('archive.import', { file: from, project: done.name, systems: done.systems, bytes: bytes.length });
+  return c.json(done);
 });
 
 /** Take a linked project off the launcher; its folder stays as it is. */

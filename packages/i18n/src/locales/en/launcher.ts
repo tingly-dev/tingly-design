@@ -82,6 +82,13 @@ export default {
     open: 'Open {{title}} ({{kind}})',
     recent: 'Recently opened',
   },
+  archive: {
+    import: 'Import a project (.zip)…',
+    export: 'Export (.zip)',
+    imported: 'Imported “{{name}}”',
+    importedWith: 'Imported “{{name}}”, with the design system {{systems}}',
+    failed: 'The project could not be imported: {{message}}',
+  },
   importTile: {
     name: 'Import HTML or SVG',
   },

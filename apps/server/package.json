@@ -12,11 +12,12 @@
     "@anthropic-ai/sdk": "^0.133.0",
     "@dc/core": "workspace:*",
     "@dc/export": "workspace:*",
+    "@dc/i18n": "workspace:*",
     "@hono/node-server": "^2.1.4",
     "chokidar": "^5.0.0",
+    "fflate": "^0.8.3",
     "hono": "^4.13.13",
-    "tsx": "^4.23.15",
-    "@dc/i18n": "workspace:*"
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/node": "^24.0.0"

@@ -5,7 +5,8 @@ import { IconChartBar, IconComponents, IconFileImport, IconFileText, IconLayoutD
 import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectCard, type ProjectKind, type ProjectPreview } from '@dc/core';
 import { api, type FolderInfo } from '../api';
 import { toast, useStore } from '../store';
-import { Chevron, FolderOpen, GridLayout, GroupFolder, ListLayout, More, Rename, Sliders, Unlink } from './icons';
+import { Chevron, FileZip, FolderOpen, GridLayout, GroupFolder, ListLayout, More, Rename, Sliders, Unlink } from './icons';
+import { chooseProjectArchive, saveProjectArchive } from '../projectArchive';
 import { Menu, MenuItem } from './Menu';
 import { Appearance, LanguageMenu } from './Appearance';
 import { ISSUES_URL, REPO_URL } from '../links';
@@ -415,6 +416,7 @@ function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnlink }: 
         <>
           <MenuItem label={t('launcher.rename.menu')} icon={<Rename />} onSelect={() => setStep('rename')} />
           <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />
+          <MenuItem label={t('launcher.archive.export')} icon={<FileZip />} onSelect={() => (onClose(), void saveProjectArchive(p.name, true))} />
           {p.path && (
             <>
               <div className="msep" role="separator" />
@@ -1119,6 +1121,14 @@ export function Launcher() {
                 </span>
               }
               onSelect={() => (setNewMenu(null), setImporting({}))} />
+          </div>
+          <div data-new="archive" className="mwrap">
+            <MenuItem label={t('launcher.archive.import')} icon={
+                <span className="kic t-blue">
+                  <FileZip />
+                </span>
+              }
+              onSelect={() => (setNewMenu(null), void chooseProjectArchive().then((name) => name && open(name)))} />
           </div>
           {linksOn && (
             <div data-new="folder" className="mwrap">
