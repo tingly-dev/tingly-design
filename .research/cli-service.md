@@ -56,7 +56,7 @@ Good: one word to learn, works in any skill or CI, nothing running beforehand. C
 
 ### B. Service mode: one long-running server the CLI attaches to
 
-`tingly-design serve` writes `~/.tingly-design/server.json` (port, pid, projects dir, version). Every other command looks for it first: if a server for the same projects folder is up, the command goes through its HTTP API, so the open editor updates live, the journal records the change under its own actor and undo works. If none is up, the command runs alone as in A.
+`tingly-design serve` writes `server.json` (port, pid, projects dir, version) in the data root the bundle already defaults to, `~/.tingly-design/`. Every other command looks for it first: if a server for the same projects folder is up, the command goes through its HTTP API, so the open editor updates live, the journal records the change under its own actor and undo works. If none is up, the command runs alone as in A.
 
 Good: edits from a skill land in the person's open editor instead of fighting it (two writers on the same files is the real risk of A alone). Cost: a lockfile, stale-pid handling, a documented and versioned HTTP API (the `PROTOCOL` number already exists).
 
@@ -88,6 +88,8 @@ Steps 1–2 already make it usable from a skill (create, check, render motion, l
 
 ## 4. Open questions
 
+- Projects outside the projects folder: the server is gaining `POST /api/links {path}` (open a folder anywhere, returns its name), `GET /api/folder?path=` and `path` on `POST /api/projects`. CLI commands should take a path as well as a name and go through those, not a second copy of the logic.
+- The first npm release needs `bin` with at least `serve`; step 1 covers it.
 - Command name: `tingly-design` (matches the npm package) or a short alias such as `td`.
 - Does Tingly Box want to call the CLI, or keep launching `server.mjs` and use the HTTP API? Either works with B.
 - `snapshot` for a dashboard needs its data; run the page's queries or show the last saved runs?
