@@ -31,7 +31,34 @@ Two facts shape the options.
 1. **`apps/server/src/index.ts` is one script with side effects at the top level** (watcher, `serve`, signal handlers). Nothing can reuse its routes in-process; a CLI today can only talk to it over HTTP or copy code out of it.
 2. **Half of the useful jobs run in the editor's page** (picture export, PDF layout, fast-AI apply). A headless command for them has to open that page in a browser. We already drive the machine's own Chrome over CDP without Playwright (`render.ts`, `pdf.ts`), so the cost is code, not a new install.
 
-## 2. Options
+## 2. What similar products do
+
+Read from each product's own docs (October 2026), except where marked.
+
+| Product | Shape | Headless or attach to the running app | Agent surface | Export |
+|---|---|---|---|---|
+| [Pencil / pen.dev](https://docs.pencil.dev/for-developers/pen-cli) (closest peer: design files edited by agents) | `pen` CLI, "the same editor engine as the desktop app, fully headless" | both: headless by default, `pen interactive -a desktop` connects to the running app and changes apply live | MCP with four tools: `execute`, `get_app_state`, `read_skill` (format and workflow docs), `get_style`; the app's MCP adds `get_screenshot`, `snapshot_layout` ([AI integration](https://docs.pencil.dev/ai-integration)); `pen -p "prompt" -i in.pen -o out.pen` runs an agent in one command | `--export` PNG/JPEG/WEBP/PDF; `--enable-preview` writes a PNG after every change |
+| [Excalidraw MCP](https://mcpservers.org/fr/servers/yctimlin/mcp_excalidraw) (community) | canvas server + CLI + stdio MCP sharing one core library | CLI and MCP start the canvas server if it is not running, then drive it; the open browser tab syncs live | 26 MCP tools, plus a REST API | screenshots and PNG rendered in the server (jsdom + resvg) |
+| [Slidev](https://sli.dev/builtin/cli) | `slidev` (dev server), `slidev build`, `slidev export`, `slidev mcp` | headless export opens the deck's own print page in a browser | `slidev mcp`: stdio MCP to inspect and edit slides | PDF, PNG, PPTX, editable PPTX, Markdown; `--range`, `--dark`, `--with-clicks` |
+| [Marp CLI](https://github.com/marp-team/marp-cli/blob/main/README.md) | one command; `-w` watch, `-s` server, `-p` preview | finds Chrome/Edge/Firefox on the machine (`--browser auto`, `--browser-path`); Docker image when nothing is installed | programmatic `marpCli(args)` returning an exit status | HTML, PDF, PPTX, PNG/JPEG; **server mode converts on request**: `GET /deck.md?pdf` |
+| [Remotion](https://remotion.dev/docs/cli/) | `remotion studio / render / still / compositions / bundle / browser` | render bundles the project and drives a headless browser; `browser` makes sure one is there | `remotion skills add` installs agent skills into the project (`.agents/skills`, symlinked for Claude Code) ([docs](https://www.remotion.dev/docs/cli/skills)) | video, audio, stills |
+| [Figma desktop MCP](https://developers.figma.com/docs/figma-mcp-server/local-server-installation) | MCP served by the running desktop app at `127.0.0.1:3845/mcp` | attach only; the app must be open | `get_screenshot`, `get_design_context`, `get_metadata`, `get_variable_defs` … | through tools |
+| [Penpot MCP](https://help.penpot.app/mcp/) | `npx @penpot/mcp` local server + a plugin in the open Penpot tab | attach only; acts on the focused page of the tab that owns MCP | `execute_code`, `high_level_overview`, `penpot_api_info`, `export_shape`, `import_image` | `export_shape` |
+| [Storybook MCP](https://storybook.js.org/docs/ai/mcp/overview) | addon serving MCP from the dev server at `/mcp` | attach to the dev server | `stories-preview`, `test-run` (with accessibility), docs tools: a "fix, re-run, confirm" loop | links/previews |
+| Jupyter (from memory) | `jupyter server` writes a runtime file per server (port, token, root dir, pid); `jupyter server list` reads them | other tools find a running server through those files | — | `nbconvert` runs alone |
+
+What this says for us:
+
+1. **One command with `serve` plus headless export is the norm** (Slidev, Marp, Remotion, pen.dev). Every one of them exports by opening its own app's page in a headless browser, which is exactly the "export route in the editor" plan; nobody rewrites rendering for the CLI.
+2. **Headless and attach are both needed, chosen automatically.** pen.dev has both modes; Excalidraw's CLI starts the server when none is running and otherwise drives the running one. Our option B with Excalidraw's auto-start is the same thing, and it is what keeps an open editor live.
+3. **Agents need to see their work.** pen.dev writes a preview after each change, Pencil and Figma expose `get_screenshot`, Storybook pairs preview with tests. `snapshot` and `check` are the core of the agent loop, not extras: they move up the order.
+4. **MCP tools stay few and wide.** pen.dev ships four tools, Penpot one `execute_code`; both put the format knowledge behind a `read_skill`-style tool. Our `.claude/skills/` already is that knowledge.
+5. **MCP is served by the running server over HTTP** (Figma `/mcp`, Storybook `/mcp`, Penpot localhost) or as stdio for clients that launch it (Slidev, Excalidraw). We can do both from one place: `/mcp` on the server and `tingly-design mcp` as a stdio bridge to it.
+6. **A service tool can be just a URL.** Marp's server converts on request (`?pdf`). `GET /api/projects/:p/export?as=pdf` would let any script or host fetch an export without the CLI.
+7. **Ship the skills, don't just document them.** `remotion skills add` installs the agent's format references into the user's project; `tingly-design skills add` can do the same with ours.
+8. **Exit codes matter.** pen.dev's docs warn an export failure can exit 0; a CLI meant for scripts must fail loudly.
+
+## 3. Options
 
 ### A. A `tingly-design` command in the package (CLI)
 
@@ -74,19 +101,19 @@ Ship a `tingly-design` skill that tells an agent to edit the plain files directl
 
 Good: nothing to build. Bad: no export of pictures/PDF, no check, no live editor, and the scripts are not in the package. This is what we effectively have now and is why the issue was filed.
 
-## 3. Recommendation
+## 4. Recommendation
 
-**A + B together, C afterwards as a thin wrapper.** Concretely, in order:
+**A + B together, with MCP and skills as thin layers on the same core.** The peers above change the order more than the shape: seeing the result (`snapshot`, `check`) comes before `edit`, and the server learns to auto-start.
 
-1. Split `index.ts` into `createApp()` and `startServer()`, with no behaviour change; add `bin` and `cli.mjs` with `serve` (default), `new`, `list`, `check`, `skills`, and motion `export` (move `motion-render.mjs` onto `render.ts` so there is one renderer).
-2. Service lookup (`server.json`), so every write command goes through a running server when there is one.
-3. The editor's headless export route, then `export --as png|pdf|html` and `snapshot` for every kind.
-4. `edit` (fast AI headless, `--claude` for delegation, streaming the run feed as lines).
-5. `mcp`, mapping one tool to one command, and a `tingly-design` skill that points at the CLI.
+1. Split `index.ts` into `createApp()` and `startServer()` with no behaviour change; add `bin` and `cli.mjs` with `serve` (default), `new`, `list`, `check`, and motion `export` (move `motion-render.mjs` onto `render.ts` so there is one renderer).
+2. Service lookup (`server.json`) with auto-start: a command uses the running server for its projects folder, or starts one quietly and stops it when done.
+3. The editor's headless export route, then `snapshot` and `export --as png|pdf|html` for every kind, and the same through `GET …/export?as=` on the server.
+4. `/mcp` on the server with a few wide tools (`project`, `check`, `snapshot`, `export`, `read_skill`) and `tingly-design mcp` as the stdio bridge; `tingly-design skills add` to copy the format references into a user's project.
+5. `edit "prompt"`: Claude Code first (it runs on the server already), fast AI once its apply loop runs in the headless page.
 
-Steps 1–2 already make it usable from a skill (create, check, render motion, live edits); 3 is the biggest piece and the one that makes "look at what I made" possible for an agent.
+Steps 1–2 make it usable from a skill (create, check, render motion, live edits); step 3 is the biggest piece and the one that lets an agent look at what it made.
 
-## 4. Open questions
+## 5. Open questions
 
 - Projects outside the projects folder: the server is gaining `POST /api/links {path}` (open a folder anywhere, returns its name), `GET /api/folder?path=` and `path` on `POST /api/projects`. CLI commands should take a path as well as a name and go through those, not a second copy of the logic.
 - The first npm release needs `bin` with at least `serve`; step 1 covers it.
@@ -94,4 +121,5 @@ Steps 1–2 already make it usable from a skill (create, check, render motion, l
 - Does Tingly Box want to call the CLI, or keep launching `server.mjs` and use the HTTP API? Either works with B.
 - `snapshot` for a dashboard needs its data; run the page's queries or show the last saved runs?
 - `edit` with fast AI headless needs the editor's apply loop in a page; is a Claude-Code-only `edit` enough for a first version?
+- MCP tool shape: one `execute` that takes code (pen.dev, Penpot) is powerful but hard to keep safe; named tools over files are easier to reason about. Leaning named tools.
 - Cross-kind: every command must say what it does for each of the six kinds; add a CLI column to `.design/project-kinds.md` when this lands.
