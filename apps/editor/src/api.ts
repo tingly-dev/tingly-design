@@ -15,12 +15,23 @@ export interface FileState {
   version: string;
 }
 
+export interface FolderInfo {
+  /** the folder as the server read it, `~/…` under the home folder */
+  path: string;
+  state: 'project' | 'free' | 'busy' | 'file';
+  kind?: ProjectKind;
+  /** the name it is already listed under, if any */
+  name?: string;
+}
+
 export interface Health {
   ok: boolean;
   fastEdit: boolean;
   fastModel: string;
   claudeCli: boolean;
   projectsDir: string;
+  /** false when the host keeps every project in its own projects folder (DC_LINKS=0): no opening folders elsewhere */
+  links?: boolean;
   version?: string;
   /** the host contract's version (docs/en/embedding.md) */
   protocol?: number;
@@ -79,10 +90,22 @@ export const api = {
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
-  createProject: (name: string, title: string, kind: ProjectKind = 'design', size?: [number, number]) =>
-    call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind, ...(size ? { size } : {}) }) }).then((r) =>
-      json<{ ok: true }>(r),
-    ),
+  /** `where` is a folder name in the projects folder, or `{ path }` for a missing or empty folder anywhere; the project's name comes back */
+  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number]) =>
+    call(at('api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}) }),
+    })
+      .then((r) => json<{ ok: true; name?: string }>(r))
+      .then((r) => r.name ?? (typeof where === 'string' ? where : '')),
+  /** what is at a folder anywhere on disk: a project, a free (missing or empty) folder, other files, or a file */
+  folder: (path: string) => call(at(`api/folder?path=${enc(path)}`)).then((r) => json<FolderInfo>(r)),
+  /** open a project folder that lives anywhere; the name it is listed under comes back */
+  link: (path: string) =>
+    call(at('api/links'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<{ name: string }>(r)),
+  /** take a linked project off the launcher; its folder stays as it is */
+  unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
   /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
   patchProject: (p: string, patch: { title?: string; group?: string }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),

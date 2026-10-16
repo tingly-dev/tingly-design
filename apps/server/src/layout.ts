@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,7 +26,15 @@ export const EDITOR_DIST = join(ROOT, BUNDLED ? 'editor' : 'apps/editor/dist');
 export const SANDBOX_DIST = join(ROOT, BUNDLED ? 'sandbox' : 'packages/sandbox/dist');
 /** The sample projects copied into a projects folder that does not exist yet. */
 export const SAMPLES_DIR = join(ROOT, BUNDLED ? 'samples' : 'projects');
-export const PROJECTS_DIR = resolve(process.env.DC_PROJECTS ?? join(ROOT, 'projects'));
+/**
+ * Where people's own data lives when nobody said: the repository's projects/ when run from
+ * source; ~/.tingly-design/ for the bundle (an npm install), never inside the package, which
+ * an upgrade replaces. A host passes DC_PROJECTS (and DC_CONFIG) and decides for itself.
+ */
+export const DATA_HOME = join(homedir(), '.tingly-design');
+export const PROJECTS_DIR = resolve(process.env.DC_PROJECTS ?? (BUNDLED ? join(DATA_HOME, 'projects') : join(ROOT, 'projects')));
+/** DC_CONFIG: the file the AI settings are saved in; by default next to the projects folder. */
+export const CONFIG_FILE = process.env.DC_CONFIG?.trim() || (BUNDLED && !process.env.DC_PROJECTS ? join(DATA_HOME, 'ai.json') : join(PROJECTS_DIR, '..', '.tingly-design', 'ai.json'));
 
 /** A path to show or hand to Claude Code: relative to ROOT when inside it, absolute otherwise. */
 export function fromRoot(abs: string): string {

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
-import { basename, join, relative, sep } from 'node:path';
+import { basename, isAbsolute, join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -50,8 +50,14 @@ import {
 import {
   ASSET_TYPES,
   HttpError,
+  LINKS_ON,
   assetType,
   createProject,
+  inspectFolder,
+  linkFolder,
+  linkedProjects,
+  onLinksChange,
+  unlinkProject,
   isProjectName,
   isTracked,
   kindOf,
@@ -121,6 +127,7 @@ app.get('/api/health', (c) => {
     fastModel: aiResolved().fastModel.value,
     claudeCli: cliChecked,
     projectsDir: fromRoot(PROJECTS_DIR),
+    links: LINKS_ON,
     theme: DC_THEME,
     lang: DC_LANG,
     version: VERSION,
@@ -131,17 +138,43 @@ app.get('/api/health', (c) => {
 
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
+/** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
-  const { name, title, kind, size } = await c.req.json<{ name: string; title?: string; kind?: string; size?: unknown }>();
-  if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
+  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown }>();
+  const { title, kind, size } = body;
+  if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
   if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  const name = body.path !== undefined ? await linkFolder(String(body.path), true) : body.name!;
   await createProject(
     name,
     title || name,
     kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
     langOf(c),
     (kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {},
-  );
+  ).catch(async (e) => {
+    if (body.path !== undefined) await unlinkProject(name).catch(() => {});
+    throw e;
+  });
+  return c.json({ ok: true, name });
+});
+
+/** What is at a folder anywhere on disk, for the launcher to say before it opens or creates there. */
+app.get('/api/folder', async (c) => {
+  if (!LINKS_ON) throw new HttpError(403, 'linksOff');
+  return c.json(await inspectFolder(c.req.query('path') ?? ''));
+});
+
+/** Open a project folder that lives anywhere: it joins the launcher under a name, which comes back. */
+app.post('/api/links', async (c) => {
+  const { path } = await c.req.json<{ path?: unknown }>();
+  const name = await linkFolder(String(path ?? ''));
+  logInfo('project.linked', { project: name, dir: projectDir(name) });
+  return c.json({ name });
+});
+
+/** Take a linked project off the launcher; its folder stays as it is. */
+app.delete('/api/links/:p', async (c) => {
+  await unlinkProject(c.req.param('p'));
   return c.json({ ok: true });
 });
 
@@ -729,18 +762,18 @@ app.get('/api/projects/:p/render/:file', async (c) => {
 
 app.post('/api/projects/:p/commit', async (c) => {
   const p = c.req.param('p');
-  // git finds the repository the projects folder is in: this one, or a host's
+  // git finds the repository the project's folder is in: this one, a host's, or the one a linked folder sits in
   const dir = projectDir(p);
   const { message } = await c.req.json<{ message?: string }>().catch(() => ({ message: undefined }));
   try {
-    await run('git', ['add', '-A', '--', dir], { cwd: PROJECTS_DIR });
-    const st = await run('git', ['diff', '--cached', '--stat', '--', dir], { cwd: PROJECTS_DIR });
+    await run('git', ['add', '-A', '--', dir], { cwd: dir });
+    const st = await run('git', ['diff', '--cached', '--stat', '--', dir], { cwd: dir });
     if (!st.stdout.trim()) return c.json({ ok: false, output: trOf(c)('errors.nothingToCommit') });
-    const out = await run('git', ['commit', '-m', message?.trim() || `canvas(${p}): update`, '--', dir], { cwd: PROJECTS_DIR });
+    const out = await run('git', ['commit', '-m', message?.trim() || `canvas(${p}): update`, '--', dir], { cwd: dir });
     return c.json({ ok: true, output: out.stdout.trim().split('\n')[0] });
   } catch (e) {
     const err = e as { stderr?: string; message: string };
-    if (/not a git repository/i.test(err.stderr ?? '')) return c.json({ ok: false, output: trOf(c)('errors.notGitRepo', { dir: fromRoot(PROJECTS_DIR) }) });
+    if (/not a git repository/i.test(err.stderr ?? '')) return c.json({ ok: false, output: trOf(c)('errors.notGitRepo', { dir: fromRoot(dir) }) });
     return c.json({ ok: false, output: (err.stderr || err.message).trim() }, 500);
   }
 });
@@ -769,13 +802,24 @@ if (await seedSamples()) logInfo('samples.copied', { dir: PROJECTS_DIR });
 /** Last content seen per file, for diff summaries of outside edits. */
 const seen = new Map<string, string>();
 
+const isLinkRoot = (path: string) => [...linkedProjects().values()].includes(path);
 const watcher = chokidar.watch(PROJECTS_DIR, {
   ignoreInitial: false,
-  ignored: (path: string) => /(^|[/\\])\.[^/\\]+$/.test(path) && path !== PROJECTS_DIR,
+  ignored: (path: string) => /(^|[/\\])\.[^/\\]+$/.test(path) && path !== PROJECTS_DIR && !isLinkRoot(path),
   awaitWriteFinish: { stabilityThreshold: 60, pollInterval: 20 },
 });
 
+// a linked folder is watched beside the projects folder, from start-up and from when it is linked
+for (const dir of linkedProjects().values()) watcher.add(dir);
+onLinksChange((_, dir) => dir && watcher.add(dir));
+
 function split(abs: string): { project: string; rel: string } | null {
+  for (const [project, dir] of linkedProjects()) {
+    const rel = relative(dir, abs);
+    if (!rel || rel.startsWith('..') || isAbsolute(rel)) continue;
+    const r = rel.split(sep).join('/');
+    return isTracked(r) || isDataPath(r) ? { project, rel: r } : null;
+  }
   const r = relative(PROJECTS_DIR, abs).split(sep);
   if (r.length < 2 || !isProjectName(r[0])) return null;
   const rel = r.slice(1).join('/');
