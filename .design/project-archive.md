@@ -1,6 +1,6 @@
 # 整个项目导出成一个 .zip，再从首页导入
 
-状态：**已实施**（导出菜单、启动页导入和导出、服务端打包和解包）；§6 是没做的。
+状态：**已实施**（导出菜单、启动页导入和导出、命令行、服务端打包和解包）；§6 是没做的。
 
 ## 1. 问题
 
@@ -34,10 +34,10 @@
 - 规则（带什么、怎么读压缩包、取名）在 core 的 `projectArchive.ts`，没有文件系统，单元测试覆盖。
 - 服务端 `archive.ts` 读写文件夹，用 fflate（纯 JS，打包进 bundle，不需要本机工具）。接口：`GET /api/projects/:p/archive`（`?journal=0&systems=0` 是仅文件），`POST /api/archive?file=<文件名>`（请求体是 zip）。
 - 编辑器 `projectArchive.ts`：保存和选择文件，菜单和启动页都调它。
+- 命令行：`tingly-design export <项目> --as zip [--files-only] [--out <文件夹>]` 和 `tingly-design import <file.zip>`（`cli.ts`，见 [cli.md](./cli.md)），直接调同一个 `packProject` / `unpackProject`，不用起服务。项目以路径给出时就地读。
 
 ## 6. 还没做的
 
-- 命令行：`tingly-design export <项目> --as zip` 和 `tingly-design import <file.zip>`，名字和命令行的设计说明（`cli.md`）一致，等命令行合进来后接上同一个 `packProject` / `unpackProject`。
 - 把压缩包拖到启动页上导入。
 - "所有成品一次导出"（每个画板、每页的 PNG 加上 PDF）：等 cli.md 里的无头导出。
 - 放在项目文件夹之外的（链接的）项目导入时，可以选择解到某个文件夹而不是项目文件夹里。

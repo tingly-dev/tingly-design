@@ -51,9 +51,8 @@ async function addFolder(into: Zippable, dir: string, prefix: string, opts: Pick
   return n;
 }
 
-/** The project's .zip: its folder, and beside it the design systems it installed when asked. */
-export async function packProject(name: string, opts: ArchiveOptions): Promise<{ bytes: Uint8Array; file: string; files: number; systems: string[] }> {
-  const dir = projectDir(name);
+/** The project's .zip: its folder, and beside it the design systems it installed when asked. `dir` is for a folder named by path (the command line). */
+export async function packProject(name: string, opts: ArchiveOptions, dir = projectDir(name)): Promise<{ bytes: Uint8Array; file: string; files: number; systems: string[] }> {
   const kind = await kindOf(dir);
   if (!kind) throw new HttpError(404, 'noProject', { name });
   const zip: Zippable = {};

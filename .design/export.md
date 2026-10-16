@@ -4,7 +4,7 @@
 
 ## 1. 问题
 
-动效的导出只有命令行：`scripts/motion-render.mjs` 要 Playwright 的 Chromium（约 150 MB）和 PATH 里的 ffmpeg，编辑器里没有按钮。别的类型各有各的下载代码（画布 PNG、幻灯片 HTML 和打印 PDF、文档 Markdown 和 HTML），没有共用的部件。要的是：多种格式、每种类型都能导出、本机不要装特殊的东西。
+（历史基线）动效的导出只有命令行：`scripts/motion-render.mjs` 要 Playwright 的 Chromium（约 150 MB）和 PATH 里的 ffmpeg，编辑器里没有按钮。别的类型各有各的下载代码（画布 PNG、幻灯片 HTML 和打印 PDF、文档 Markdown 和 HTML），没有共用的部件。要的是：多种格式、每种类型都能导出、本机不要装特殊的东西。
 
 ## 2. 决定
 
@@ -93,7 +93,7 @@ foreignObject 画不到：`<x-embed>`（单独的框架，父页面拍不进去�
 
 - **PPTX**（pptxgenjs，先一页一图）。共用的导出菜单、PNG、一键 PDF 和视频选项见 [export-menu.md](./export-menu.md)。
 - **封面**：导出的视频还不把封面放在第一帧、也不单独出封面 PNG（命令行会）。
-- **命令行和服务端渲染合成一份**：现在 `motion-render.mjs`（Playwright，带封面、GIF、播放器、`--verify`）和 `apps/server/src/render.ts`（Chrome 调试管道，只出 MP4）各有一份截图循环，该合并，让命令行也不用 Playwright。
+- **命令行和服务端渲染合成一份**：大半已做。`render.ts` 出 MP4、GIF、封面 PNG（封面作第一帧并附进 MP4），命令行 `tingly-design export`（[cli.md](./cli.md)）和主页、README 的脚本都用它，不再要 Playwright。`motion-render.mjs` 只剩单文件播放器、`--verify`、`--scale`，搬过来后删掉。
 - **服务端渲染的封面**：同样不把封面放在第一帧。
 - **WebM 透明**、**Lottie / 动画 SVG**（见 [motion.md](./motion.md) §8）。GIF 已能在编辑器里导出（[export-menu.md](./export-menu.md) §4）。
 - **两条路线逐帧对比的测试**（`motion-render.mjs --verify` 的指标）。

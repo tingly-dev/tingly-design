@@ -38,7 +38,7 @@ What a person brings into a project (chat attachments, an imported page or pictu
 
 A project can also live anywhere on disk: the launcher's Open a folder, or a full path in the new-project dialog, lists it in `projects/.links.json` under a flat name, and everything else reaches it through `projectDir(name)`, so never build a project path by joining `PROJECTS_DIR` yourself. The bundle (an npm install) keeps its data in `~/.tingly-design/` unless the host sets `DC_PROJECTS`. See `.design/project-folders.md`. Committing (every kind, from the change log) commits only the project's folder to the nearest repository holding it, says which repository and branch first, and when there is none creates one in the project folder on the first confirmed commit (`apps/server/src/git.ts`, `.design/project-git.md`).
 
-A whole project leaves and comes back as one `.zip` (`.design/project-archive.md`): the last two items of every kind's `FileMenu` (with or without the change log and installed design systems), the launcher card's ⋯ and its New menu's Import a project. The archive holds project folders side by side plus `tingly-design.json`; what goes in and how a zip is read live in core's `projectArchive.ts`, the folders in `apps/server/src/archive.ts`. Local state (`.git`, `renders/`, `.runs.json`) never goes in.
+A whole project leaves and comes back as one `.zip` (`.design/project-archive.md`): the last two items of every kind's `FileMenu` (with or without the change log and installed design systems), the launcher card's ⋯ and its New menu's Import a project, and `tingly-design export <p> --as zip` / `import <file.zip>`. The archive holds project folders side by side plus `tingly-design.json`; what goes in and how a zip is read live in core's `projectArchive.ts`, the folders in `apps/server/src/archive.ts`. Local state (`.git`, `renders/`, `.runs.json`) never goes in.
 
 Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
 
@@ -76,13 +76,13 @@ Rules of thumb:
 # Layout
 
 ```
-packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
+packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher; `canvasCheck.ts` lints a canvas folder as data, `.design/canvas-check.md`)
 packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, `FrameRasterizer` for the frames of a video, `frameSnap.ts` for an embed's frame to hand over a picture of itself, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write, `Clock` / `ExportReport` timing every stage of an export); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
-apps/server       Hono server: files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`)
+apps/server       Hono server (`app.ts` routes, `serve.ts` start, `index.ts` for `pnpm dev`) and the `tingly-design` command (`cli.ts`: open, serve, new, list, check, export, import; `.design/cli.md`): files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`), whole-project .zip out and in (`archive.ts`)
 apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
 projects/         sample projects, one per kind; `tingly-design-ui` is the editor's own design canvas (see "Design the editor in itself")
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
@@ -101,9 +101,12 @@ pnpm test           # core, import and i18n unit tests
 pnpm typecheck
 pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm package)
+pnpm tingly-design  # the command line from source; the bundle's cli.mjs is the npm `bin`, server.mjs is `serve`
 ```
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on every PR. Releases are tag-driven: a `vX.Y.Z` tag matching `package.json` builds the bundle once and ships that tarball to a GitHub release and to npm as both `@tingly-dev/tingly-design` and `tingly-design` (`release.yml`, `.design/release.md`). The project is Apache-2.0 (`LICENSE`, `NOTICE`); the release fails if `package.json` has no `license`. npm publishing is Trusted Publishing only (environment `production`, no token anywhere; the packages refuse tokens, so only a maintainer with a one-time password can publish outside CI; first-time setup is `scripts/npm-bootstrap.sh`). Never publish or push a release tag without a maintainer asking. Anything added to the bundle ships to npm: `scripts/bundle.mjs` copies only what it names, keep it that way. Shell shared by workflows lives in `.github/scripts/`; lint with `actionlint` and `shellcheck` as Tingly Box's `.github/workflows/AGENTS.md` says.
+
+The command line names each command after the editor's word for the same action (`open`, `new`, `list`, `check`, `export`); core returns the data (`outlineProject`, `checkProject` in `packages/core/src/project.ts`) and the CLI's wording is in the `cli` i18n area. A kind added later joins `list` and `check` there, and `export` when it can be exported headless. User docs: `docs/en/cli.md`.
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 

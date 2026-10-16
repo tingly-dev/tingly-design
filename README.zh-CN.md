@@ -69,6 +69,8 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 
 打开 http://localhost:5173 选一个项目，或直接打开 http://localhost:5173/?p=box-console 看示例画布。生产方式运行：`pnpm start`（先构建，再由服务端在 8787 端口同时提供 API 和编辑器）。
 
+在终端、脚本或 agent 的 skill 里，用 `tingly-design` 命令（本仓库里是 `pnpm tingly-design`，从 npm 是 `npx tingly-design`）打开、新建、列出、检查和导出项目，见[命令行](docs/zh/cli.md)。
+
 ### 配置
 
 | 环境变量 | 作用 |
@@ -90,6 +92,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 |---|---|
 | **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) · [动效](docs/zh/guide/motion.md) |
 | **[主题](docs/zh/theming.md)** | 浅色、深色和 Tingly Box 的预设主题，以及通过 URL、脚本、宿主页面或 `DC_THEME` 传入主题 |
+| **[命令行](docs/zh/cli.md)** | `tingly-design open`、`serve`、`new`、`list`、`check`、`export`，给脚本、CI 和 agent 的 skill 用 |
 | **[嵌入](docs/zh/embedding.md)** | 跑在 Tingly Box 等其他应用里：打包（`pnpm bundle`）、挂在路径前缀下启动、宿主和编辑器之间的消息 |
 | **[工作原理](docs/zh/architecture.md)** | 源文件格式、回写引擎、快速 AI、协同、沙箱和项目结构 |
 | **[开发与测试](docs/zh/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |

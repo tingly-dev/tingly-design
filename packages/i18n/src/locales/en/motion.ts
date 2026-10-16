@@ -82,7 +82,7 @@ export default {
     noAac: 'This browser can’t write AAC sound, so this is a WebM with Opus sound. Chrome, Edge and Safari can write MP4 with sound',
     noEncoder: 'This browser can’t encode video. Use a current Chrome, Edge or Safari',
     viaServer: 'These scenes hold an embed or a video, so Chrome on this machine draws the video: {{scenes}}',
-    embeds: 'An embed in these scenes did not hand over its picture, so it is blank in this video: {{scenes}}. Chrome or Edge with ffmpeg draws it exactly; node scripts/motion-render.mjs on a machine that has them',
+    embeds: 'An embed in these scenes did not hand over its picture, so it is blank in this video: {{scenes}}. Chrome or Edge with ffmpeg draws it exactly; tingly-design export <piece> --as mp4 on a machine that has them',
     failed: 'The video could not be made: {{message}}',
   },
   stage: {
