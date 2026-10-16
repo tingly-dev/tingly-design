@@ -20,8 +20,8 @@
   "speed": 1,
   "order": [
     "open",
-    "ways",
-    "diff",
+    "ask",
+    "words",
     "kinds",
     "outro"
   ],
