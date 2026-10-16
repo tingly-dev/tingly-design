@@ -21,7 +21,7 @@ function read(dir: string): ProjectFiles {
 }
 
 /** Samples that still break the subset; `tingly-design check` lists what to fix. */
-const KNOWN_PROBLEMS = new Set(['motion-effects']);
+const KNOWN_PROBLEMS = new Set<string>();
 
 const samples = readdirSync(SAMPLES).filter((d) => statSync(join(SAMPLES, d)).isDirectory());
 
