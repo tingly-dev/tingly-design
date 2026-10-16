@@ -42,7 +42,7 @@ async def main():
         check('every sample project is listed with its kind', all(listed.get(n) == k for n, k in SAMPLES.items()), json.dumps(listed))
         await pg.locator('.lnewbtn').click()
         news = await pg.locator('.menu [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
-        check('the New project menu lists each kind, then import', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import'], str(news))
+        check('the New project menu lists each kind, then import and open a folder', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import', 'folder'], str(news))
         check('the strip of new-project tiles is gone', await pg.locator('.lstrip').count() == 0)
         await pg.keyboard.press('Escape')
         bar = await pg.locator('.lbar .lsearch').count() == 1 and await pg.locator('.lbar [data-view]').count() == 2 and await pg.locator('.lbar .lsort').count() == 1
@@ -189,7 +189,7 @@ async def main():
         await expect(dlg.locator('.problem')).to_contain_text('已经存在')
         check('a taken folder is refused before creating', await dlg.locator('button[type=submit]').is_disabled())
         await dlg.locator('input[aria-label="新项目名称"]').fill('bad name!')
-        await expect(dlg.locator('.problem')).to_contain_text('只能用字母')
+        await expect(dlg.locator('.problem')).to_contain_text('或写完整路径')
         await pg.keyboard.press('Escape')
         await expect(dlg).to_have_count(0)
         check('Escape closes the dialog', True)

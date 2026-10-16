@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, sep } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   CANVAS_FILE,
   MOTION_FILE,
@@ -53,6 +55,7 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
+import { repoOf } from './git';
 import type { ErrorKey, Language, TFunction } from '@dc/i18n';
 import { translator } from '@dc/i18n';
 
@@ -73,7 +76,138 @@ export function isProjectName(name: string): boolean {
 
 export function projectDir(name: string): string {
   if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
-  return join(PROJECTS_DIR, name);
+  return links.get(name) ?? join(PROJECTS_DIR, name);
+}
+
+// ---------------------------------------------------------------- projects kept elsewhere
+
+/**
+ * A project folder anywhere on disk, opened or created from the launcher, is
+ * listed in `.links.json` beside the projects (`{ name: absolute path }`), so
+ * it gets a flat name like every other project and the rest of the server,
+ * the editor's `?p=` and Claude Code delegation need no second kind of
+ * address. Removing a link never touches the folder. DC_LINKS=0 turns it off
+ * for a host that keeps every project in its own data folder.
+ */
+const LINKS_FILE = '.links.json';
+export const LINKS_ON = process.env.DC_LINKS !== '0';
+const links = new Map<string, string>(LINKS_ON ? readLinks() : []);
+
+function readLinks(): [string, string][] {
+  try {
+    const raw = JSON.parse(readFileSync(join(PROJECTS_DIR, LINKS_FILE), 'utf8')) as Record<string, unknown>;
+    return Object.entries(raw).filter((e): e is [string, string] => isProjectName(e[0]) && typeof e[1] === 'string' && isAbsolute(e[1]));
+  } catch {
+    return [];
+  }
+}
+
+/** Every linked project: name → absolute folder. */
+export function linkedProjects(): ReadonlyMap<string, string> {
+  return links;
+}
+
+/** A path as a person typed it (`~/work/site`, an absolute path) made absolute, or null when it is neither. */
+export function folderPath(input: string): string | null {
+  const v = input.trim();
+  if (!v) return null;
+  if (v === '~' || v.startsWith('~/') || v.startsWith('~\\')) return resolve(homedir(), v.slice(2));
+  return isAbsolute(v) ? resolve(v) : null;
+}
+
+/** The path to show for a folder: `~/…` under the home folder. */
+export function showPath(abs: string): string {
+  const rel = relative(homedir(), abs);
+  return rel && !rel.startsWith('..') && !isAbsolute(rel) ? `~/${rel.split(sep).join('/')}` : abs;
+}
+
+/** What is at a folder: a project of some kind, nothing (free to create in), or something else. */
+export async function inspectFolder(input: string): Promise<{ path: string; state: 'project' | 'free' | 'busy' | 'file'; kind?: ProjectKind; name?: string; repo?: string }> {
+  const abs = folderPath(input);
+  if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
+  const path = showPath(abs);
+  const st = await stat(abs).catch(() => null);
+  // the repository a project here would commit to, if any
+  const repo = await repoOf(abs);
+  const inRepo = repo ? { repo: showPath(repo) } : {};
+  if (!st) return { path, state: 'free', ...inRepo };
+  if (!st.isDirectory()) return { path, state: 'file' };
+  const kind = await kindOf(abs);
+  if (kind) return { path, state: 'project', kind, name: nameOfFolder(abs), ...inRepo };
+  const entries = (await readdir(abs).catch(() => [])).filter((e) => !e.startsWith('.'));
+  return { path, state: entries.length ? 'busy' : 'free', ...inRepo };
+}
+
+/** The project name a folder already answers to: a folder in the projects folder, or one already linked. */
+function nameOfFolder(abs: string): string | undefined {
+  for (const [name, dir] of links) if (dir === abs) return name;
+  if (dirname(abs) === PROJECTS_DIR && isProjectName(basename(abs))) return basename(abs);
+  return undefined;
+}
+
+async function takenNames(): Promise<Set<string>> {
+  const names = new Set(links.keys());
+  for (const e of await readdir(PROJECTS_DIR).catch(() => [] as string[])) names.add(e);
+  return names;
+}
+
+/** A free project name for a folder, from its own name. */
+async function nameFor(abs: string): Promise<string> {
+  const base = basename(abs).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-_]+|-+$/g, '').slice(0, 56) || 'project';
+  const taken = await takenNames();
+  if (!taken.has(base)) return base;
+  for (let i = 2; ; i++) if (!taken.has(`${base}-${i}`)) return `${base}-${i}`;
+}
+
+let linksWrite: Promise<unknown> = Promise.resolve();
+function saveLinks(): Promise<void> {
+  const next = linksWrite.then(async () => {
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    const tmp = join(PROJECTS_DIR, `${LINKS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(Object.fromEntries(links), null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, LINKS_FILE));
+  });
+  linksWrite = next.catch(() => {});
+  return next;
+}
+
+/** Listeners told when a folder is linked or unlinked (the file watcher). */
+const linkListeners = new Set<(name: string, dir: string | null) => void>();
+export function onLinksChange(fn: (name: string, dir: string | null) => void): void {
+  linkListeners.add(fn);
+}
+
+/**
+ * Opens a project folder that lives anywhere: its name when it already has
+ * one, else a new link. `create` links a folder that is missing or empty, for
+ * a new project to be written into.
+ */
+export async function linkFolder(input: string, create = false): Promise<string> {
+  if (!LINKS_ON) throw new HttpError(403, 'linksOff');
+  const abs = folderPath(input);
+  if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
+  const at = await inspectFolder(abs);
+  if (create ? at.state !== 'free' : at.state !== 'project') {
+    throw new HttpError(create ? 409 : 404, create ? (at.state === 'project' ? 'folderHasProject' : 'folderNotEmpty') : at.state === 'free' ? 'noFolder' : 'noProjectInFolder', { path: at.path });
+  }
+  const known = nameOfFolder(abs);
+  if (known) {
+    if (create) throw new HttpError(409, 'folderHasProject', { path: at.path });
+    return known;
+  }
+  const name = await nameFor(abs);
+  links.set(name, abs);
+  await saveLinks();
+  for (const fn of linkListeners) fn(name, abs);
+  return name;
+}
+
+/** Takes a linked project off the list. Its folder and files stay where they are. */
+export async function unlinkProject(name: string): Promise<void> {
+  if (!links.has(name)) throw new HttpError(404, 'notLinked', { name });
+  links.delete(name);
+  await saveLinks();
+  for (const fn of linkListeners) fn(name, null);
 }
 
 /**
@@ -232,9 +366,13 @@ export async function listProjects(): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
   const groups = await readGroups();
   const out: ProjectCard[] = [];
+  const found: { name: string; dir: string; path?: string }[] = [];
   for (const e of await readdir(PROJECTS_DIR, { withFileTypes: true })) {
-    if (!e.isDirectory() || !isProjectName(e.name)) continue;
-    const dir = join(PROJECTS_DIR, e.name);
+    if (e.isDirectory() && isProjectName(e.name) && !links.has(e.name)) found.push({ name: e.name, dir: join(PROJECTS_DIR, e.name) });
+  }
+  for (const [name, dir] of links) found.push({ name, dir, path: showPath(dir) });
+  for (const e of found) {
+    const dir = e.dir;
     const kind = await kindOf(dir);
     if (!kind) continue;
     try {
@@ -249,7 +387,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name] });
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path } : {}) });
     } catch {
       // unreadable index
     }

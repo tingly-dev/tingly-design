@@ -66,6 +66,8 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | AI 模型设置（[ai-settings.md](./ai-settings.md)） | `AiSettings.tsx`（启动页按钮、`ProjectMenu`、请求栏“去设置”都打开同一个）、`apps/server/src/aiconfig.ts`、`packages/core/src/aiConfig.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 全局设置，不属于某个项目，所以各类型一样；快速 AI 用不上的类型（看板）仍用 Claude Code 那一项 |
 | 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
 | 启动页分组、列表视图、重命名（[launcher.md](./launcher.md) §3） | `projects/.groups.json`、`PATCH /api/projects/:p`、`INDEX_FILE`、`Launcher.tsx` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 启动页层面的功能，六种一样；只有重命名随类型变（标题在各自的索引文件里，`INDEX_FILE`）。列表视图不画预览 |
+| 项目放在别处（[project-folders.md](./project-folders.md)） | `projects/.links.json`、`projectDir`、`/api/folder`、`/api/links`、`Launcher.tsx` 的 `OpenFolderDialog` 和新建对话框的路径 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 在 `projectDir` 之下，和类型无关；`e2e/folders.py` 六种都从外部打开过；看板的 `dash-query.mjs` 也认登记的文件夹 |
+| 提交到 git（[project-git.md](./project-git.md)） | `JournalPopover` 里的 `CommitDialog`（顶栏同步状态打开）、`apps/server/src/git.ts`、`GET …/git`、`POST …/commit` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只提交项目文件夹，不提交 `.journal.jsonl`、`.runs.json`、`renders/`；`e2e/git.py` 六种都查了入口 |
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
 | 导入 / 导出（[export-menu.md](./export-menu.md)；视频底层 [export.md](./export.md)；图片 [export-image.md](./export-image.md)） | `FileMenu`（栏里唯一的“导入 / 导出”按钮，内含 `ImportHere`）、各类型交出 `ExportItem` 列表；PDF 共用 `pdfExport.ts`（服务端 `POST /api/pdf`，没有 Chrome 时回到打印窗口）；图片的画法和提示共用 `imageExport.ts`；视频的编码、取图、字体、下载在 `packages/export`（`@dc/export`） | ✓ PNG、PNG @2x、这一页的每个画板、源文件（`Board.tsx` 的 `canvasExportItems`；画板名称条上的下载图标保留） | ✓ PDF、PNG（这一页、每一页）、HTML、备注（`exportDeck.tsx`） | ✓ PNG（当前视图；组件预览是空白） | ✓ PNG（整页） | ✓ PDF（A4）、Markdown（标签页、整篇）、HTML、PNG（当前标签页） | ✓ 视频…、GIF…（对话框：默认一键，选项折起来：格式含 GIF、尺寸、帧率、质量、范围），含 embed、video 的作品自动改由服务端的 Chrome 画（`render.ts`，出 MP4 或 GIF，选项同对话框）；PNG（播放头所在的帧）；`scripts/motion-render.mjs` 命令行另出封面、播放器 | 画布和看板没有 PDF（画板、页面各在沙箱框架里，分页没有意义）；PPTX 没有 |
 | 放映 / 播放 | 各自实现 | ✓ play mode | ✓ 放映 | — | — | — | ✓ 播放器 | 三种各自实现，没有共用的播放部件 |
@@ -94,3 +96,4 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。
 - 导出菜单共用了；只导出一个场景时没有声音；PPTX、画布和看板的 PDF 没有（[export-menu.md](./export-menu.md) §7）。
+- 右键菜单的“复制为 PNG”只有画布有；幻灯片、看板、文档、动效各有自己的 PNG 导出，还没有“图到剪贴板”（[export-menu.md](./export-menu.md) §3）。

@@ -15,12 +15,38 @@ export interface FileState {
   version: string;
 }
 
+export interface GitState {
+  /** the repository holding the project's folder (`~/…`), or null when it is in none */
+  repo: string | null;
+  /** the branch a commit lands on; empty on a detached head */
+  branch: string;
+  /** files of this project a commit would take */
+  changes: number;
+  /** the project's own folder (`~/…`), where a new repository would go */
+  folder: string;
+}
+
+export interface FolderInfo {
+  /** the folder as the server read it, `~/…` under the home folder */
+  path: string;
+  state: 'project' | 'free' | 'busy' | 'file';
+  kind?: ProjectKind;
+  /** the name it is already listed under, if any */
+  name?: string;
+  /** the repository a project here commits to, if the folder is in one */
+  repo?: string;
+}
+
 export interface Health {
   ok: boolean;
   fastEdit: boolean;
   fastModel: string;
   claudeCli: boolean;
   projectsDir: string;
+  /** whether the projects folder is inside a git repository */
+  projectsInRepo?: boolean;
+  /** false when the host keeps every project in its own projects folder (DC_LINKS=0): no opening folders elsewhere */
+  links?: boolean;
   version?: string;
   /** the host contract's version (docs/en/embedding.md) */
   protocol?: number;
@@ -79,10 +105,22 @@ export const api = {
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
-  createProject: (name: string, title: string, kind: ProjectKind = 'design', size?: [number, number]) =>
-    call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind, ...(size ? { size } : {}) }) }).then((r) =>
-      json<{ ok: true }>(r),
-    ),
+  /** `where` is a folder name in the projects folder, or `{ path }` for a missing or empty folder anywhere; the project's name comes back */
+  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean } = {}) =>
+    call(at('api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}), ...(opts.git ? { git: true } : {}) }),
+    })
+      .then((r) => json<{ ok: true; name?: string; gitError?: string }>(r))
+      .then((r) => ({ name: r.name ?? (typeof where === 'string' ? where : ''), gitError: r.gitError })),
+  /** what is at a folder anywhere on disk: a project, a free (missing or empty) folder, other files, or a file */
+  folder: (path: string) => call(at(`api/folder?path=${enc(path)}`)).then((r) => json<FolderInfo>(r)),
+  /** open a project folder that lives anywhere; the name it is listed under comes back */
+  link: (path: string) =>
+    call(at('api/links'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<{ name: string }>(r)),
+  /** take a linked project off the launcher; its folder stays as it is */
+  unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
   /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
   patchProject: (p: string, patch: { title?: string; group?: string }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),
@@ -197,12 +235,15 @@ export const api = {
 
   stopDelegate: (p: string, id: string) => call(at(`api/projects/${enc(p)}/delegate/${enc(id)}`), { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
 
-  commit: (p: string, message: string) =>
+  /** `init`: the project is in no repository, and the person agreed to give it one of its own */
+  commit: (p: string, message: string, init = false) =>
     call(at(`api/projects/${enc(p)}/commit`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, init }),
     }).then((r) => r.json() as Promise<{ ok: boolean; output: string }>),
+  /** where a commit of this project would land */
+  git: (p: string) => call(at(`api/projects/${enc(p)}/git`)).then((r) => json<GitState>(r)),
 
   events(p: string, on: (e: ServerEvent) => void, onStatus: (s: 'open' | 'closed') => void): () => void {
     const es = new EventSource(at(`api/projects/${enc(p)}/events`));

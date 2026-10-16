@@ -364,7 +364,7 @@ export function DocsApp() {
         />
       </main>
       {rail && <CommentsRail />}
-      {journalOpen && <JournalPopover />}
+      <JournalPopover />
     </div>
   );
 }
