@@ -1,10 +1,11 @@
 /**
  * Motion to video inside the page that plays it: seek the stage to each frame,
- * draw the stage's DOM onto a canvas (@dc/export rasterize), encode with WebCodecs.
- * Nothing leaves the browser. What a foreignObject cannot draw is reported, not
- * hidden: an <x-embed> is a separate frame and comes out blank.
+ * draw the stage's DOM onto a canvas (@dc/export FrameRasterizer), encode with WebCodecs.
+ * Nothing leaves the browser. An <x-embed> is a separate frame a foreignObject
+ * cannot draw, so each one on screen is asked for a picture of itself first
+ * (`snapFrames`); one that gives none is reported, not hidden.
  */
-import { Clock, FrameRasterizer, canvasPng, encodeGif, encodeVideo, mixAudio, rasterize, type AudioClip, type Container, type VideoResult } from '@dc/export';
+import { Clock, FrameRasterizer, canvasPng, encodeGif, encodeVideo, mixAudio, snapFrames, type AudioClip, type Container, type VideoResult } from '@dc/export';
 import type { MotionStage } from './motion';
 
 // Built as its own file (dist/export.js) and loaded when someone exports, so the player doesn't carry the encoder.
@@ -31,15 +32,33 @@ export interface ExportRequest {
 export interface ExportOutcome extends Omit<VideoResult, 'container' | 'ext'> {
   container: Container | 'gif';
   ext: string;
-  /** Scenes holding an <x-embed>, which this route cannot draw. */
+  /** Scenes with an <x-embed> that gave no picture of itself, so it is blank in the file. */
   embeds: string[];
+}
+
+/**
+ * Pictures of the embeds on screen at `ms` (video time), each taken by its own
+ * frame. Scenes whose embed gave none go into `missed`.
+ */
+async function embedPictures(stage: MotionStage, root: HTMLElement, ms: number, missed?: Set<string>): Promise<Map<Element, string> | undefined> {
+  const at = ms * stage.speed;
+  const frames = Array.from(root.querySelectorAll<HTMLIFrameElement>('x-embed > iframe')).filter((f) => {
+    const id = f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene;
+    const w = stage.scenes.find((s) => s.id === id);
+    // a scene is on screen from its start until its transition into the next one ends
+    return !w || (at >= w.start && at < w.start + w.duration + w.transition.duration);
+  });
+  if (!frames.length) return undefined;
+  const pics = await snapFrames(frames);
+  if (missed) for (const f of frames) if (!pics.has(f)) missed.add(f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene ?? '');
+  return pics;
 }
 
 export async function exportVideo(stage: MotionStage, root: HTMLElement, req: ExportRequest): Promise<ExportOutcome> {
   const clock = new Clock();
   const outW = Math.max(2, Math.round(req.width ?? stage.width));
   const outH = Math.max(2, Math.round(req.height ?? stage.height));
-  const embeds = Array.from(new Set(Array.from(root.querySelectorAll('x-embed')).map((x) => x.closest<HTMLElement>('.dc-slide-host')?.dataset.scene ?? ''))).filter(Boolean);
+  const missed = new Set<string>();
   const from = Math.max(0, req.from ?? 0);
   const to = Math.min(stage.duration, req.to ?? stage.duration);
   const whole = from === 0 && to >= stage.duration;
@@ -50,8 +69,10 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', clock });
   const prepare = async (ms: number) => {
     await clock.time('seek', () => stage.seek(from + ms));
-    return rasterizer.begin(root);
+    const pics = await clock.time('embeds', () => embedPictures(stage, root, from + ms, missed));
+    return rasterizer.begin(root, pics);
   };
+  const embeds = () => [...missed].filter(Boolean);
   try {
     if (req.format === 'gif') {
       const g = document.createElement('canvas');
@@ -73,7 +94,7 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
         },
       });
       const frames = Math.max(1, Math.round(((to - from) / 1000) * fps));
-      return { blob, container: 'gif', ext: 'gif', mime: 'image/gif', videoCodec: 'gif', audioCodec: null, frames, report: clock.report({ route: 'browser', frames, width: outW, height: outH }), embeds };
+      return { blob, container: 'gif', ext: 'gif', mime: 'image/gif', videoCodec: 'gif', audioCodec: null, frames, report: clock.report({ route: 'browser', frames, width: outW, height: outH }), embeds: embeds() };
     }
     const result = await encodeVideo({
       width: outW,
@@ -88,7 +109,7 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
       onProgress: req.onProgress,
       prepareFrame: prepare,
     });
-    return { ...result, embeds };
+    return { ...result, embeds: embeds() };
   } finally {
     rasterizer.dispose();
   }
@@ -98,8 +119,20 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
 export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { t: number; scale?: number; fontCss?: string }): Promise<Blob> {
   stage.pause();
   await stage.seek(req.t);
-  const canvas = await rasterize(root, { width: stage.width, height: stage.height, pixelRatio: Math.max(1, Math.min(3, req.scale ?? 1)), fontEmbedCSS: req.fontCss ?? '' });
-  return canvasPng(canvas);
+  const pics = await embedPictures(stage, root, req.t);
+  const scale = Math.max(1, Math.min(3, req.scale ?? 1));
+  const r = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '' });
+  try {
+    const f = await r.begin(root, pics);
+    await f.ready;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(stage.width * scale);
+    canvas.height = Math.round(stage.height * scale);
+    f.draw(canvas);
+    return canvasPng(canvas);
+  } finally {
+    r.dispose();
+  }
 }
 
 (window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo, exportFrame };

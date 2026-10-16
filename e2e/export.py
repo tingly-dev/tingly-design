@@ -1,5 +1,6 @@
 """End-to-end checks for exporting from the browser: a motion piece to a video file made in the tab
-(no server, no ffmpeg), with progress and cancel. A new piece keeps it short.
+(no server, no ffmpeg), with progress and cancel, and embeds drawn there from the picture each frame
+hands over when the machine has no Chrome. A new piece keeps it short.
 Run with `pnpm dev` up: python3 e2e/export.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
 import os, json, asyncio, subprocess
 from playwright.async_api import async_playwright, expect
@@ -10,6 +11,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 PIECE = os.path.join(REPO, 'projects/zz-export')
 EMBED = os.path.join(REPO, 'projects/zz-export-embed')
+BOARD = os.path.join(REPO, 'projects/zz-export-board')
 
 results = []
 def check(name, ok, extra=''):
@@ -22,11 +24,17 @@ def probe(path):
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['rm', '-rf', PIECE, EMBED])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
     os.makedirs(PIECE + '/scenes')
     os.makedirs(EMBED + '/scenes')
     open(EMBED + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-embed', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
     open(EMBED + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;padding:96px"><x-embed style="display:block;width:600px;height:300px"><div style="background:#ee3333;width:100%;height:100%"></div></x-embed></section>')
+    # an artboard imported from a canvas (box-console's Glow, moving), behind a title
+    os.makedirs(BOARD + '/scenes')
+    os.makedirs(BOARD + '/uploads/box-console-Glow')
+    subprocess.run(['cp', os.path.join(REPO, 'projects/box-console/Glow.dc.html'), BOARD + '/uploads/box-console-Glow/'])
+    open(BOARD + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-board', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['glow'], 'audio': [], 'faces': {}}))
+    open(BOARD + '/scenes/glow.html', 'w').write('<section id="glow" data-duration="2s" style="background:#0b1020;color:#fff;font-family:Arial,sans-serif;padding:96px"><x-embed src="uploads/box-console-Glow/Glow.dc.html" style="position:absolute;left:0px;top:0px;width:1280px;height:720px"></x-embed><h1 style="position:relative;font-size:80px">Glow</h1></section>')
     open(PIECE + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export', 'formats': {'wide': {'size': [1920, 1080]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
     open(PIECE + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;color:#f4f1ea;font-family:Arial,sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px"><h1 data-in="rise 500ms" style="font-size:112px;font-weight:800">Export</h1><p data-in="fade 500ms" style="font-size:40px;color:#a9a59c">Made in the tab</p></section>')
     async with async_playwright() as p:
@@ -175,9 +183,38 @@ async def main():
         px8 = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-embed-gif.png', '-vf', 'crop=1:1:100:100,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
         check('…with the embed on the GIF\'s frame', len(px8) == 3 and px8[0] > 180 and px8[1] < 100, str(list(px8)))
 
+        # --- without Chrome and ffmpeg, the tab draws embeds from the picture each one hands over -------
+        await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))
+        async def in_tab(project):
+            await pg.goto(BASE + '/?p=' + project)
+            await expect(pg.locator('.dashtitle')).to_have_text(project)
+            await expect(menu).to_be_enabled(timeout=15000)
+            await pg.wait_for_timeout(1500)
+            await menu.click()
+            await pg.get_by_role('menuitem', name='Video…').click()
+            dlg = pg.get_by_role('dialog', name='Export video')
+            async with pg.expect_download(timeout=120000) as dl:
+                await dlg.get_by_role('button', name='Export', exact=True).click()
+            d = await dl.value
+            path = OUT + 'tab-' + d.suggested_filename
+            await d.save_as(path)
+            png = path + '.png'
+            subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-ss', '1', '-i', path, '-frames:v', '1', png])
+            return png
+        p9 = await in_tab('zz-export-embed')
+        px9 = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', p9, '-vf', 'crop=1:1:300:300,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
+        check('with no Chrome, a video made in the tab has the embed on the frame', len(px9) == 3 and px9[0] > 180 and px9[1] < 100, str(list(px9)))
+        check('…and does not warn that it is blank', await pg.locator('.toast', has_text='blank').count() == 0)
+        p10 = await in_tab('zz-export-board')
+        # Glow is coloured light on #0b1020: drawn, the frame's 8×8 average spans far more than the plain background
+        g = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', p10, '-vf', 'scale=8:8,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
+        spread = max(g) - min(g) if g else 0
+        check('…and an artboard imported from a canvas too', len(g) == 192 and spread > 60, f'spread {spread}')
+        await pg.unroute('**/api/render')
+
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
-    subprocess.run(['rm', '-rf', PIECE, EMBED])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
     failed = [n for n, ok in results if not ok]
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')
     if failed: raise SystemExit(1)

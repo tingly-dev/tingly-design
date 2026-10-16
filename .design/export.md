@@ -1,6 +1,6 @@
 # 导出：在浏览器里做，不装东西
 
-状态：**部分已实施**。动效在编辑器里导出视频已实施，浏览器画不了的作品自动改走服务端（§3、§4）；其余类型的 PNG、PDF、PPTX 和共用的导出菜单是方案（§5）。调研和备选方案的比较见 `.research/export.md`，这里只记定下来的和还开着的。
+状态：**部分已实施**。动效在编辑器里导出视频已实施，浏览器画不了的作品自动改走服务端，本机没有时由嵌入内容自己交出画面（§3、§4）；其余类型的 PNG、PDF、PPTX 和共用的导出菜单是方案（§5）。调研和备选方案的比较见 `.research/export.md`，这里只记定下来的和还开着的。
 
 ## 1. 问题
 
@@ -59,15 +59,33 @@
 
 **怎么看见**：进度按钮显示百分比、实时帧率和剩余秒数，悬停说明在哪里画；保存后的提示说明走了哪条路线、花了多久、最耗时的是哪一步；服务端日志有 `render.start`（为什么走服务端）、`render.done`（服务端路线的各阶段）和 `export.done`（浏览器路线的各阶段，编辑器导出完成后报给服务端），每行一份 `*_ms`。
 
-没做、仍开着：服务端路线可以不截图，改成让 Chrome 逐帧吐像素；浏览器路线里 `seek` 在很短的作品上占比高，是首帧的字体和布局，没细查；视频层和 WebGL 仍要走服务端。
+没做、仍开着：服务端路线可以不截图，改成让 Chrome 逐帧吐像素；浏览器路线里 `seek` 在很短的作品上占比高，是首帧的字体和布局，没细查；视频层仍要走服务端；有了框架交画面，服务端是否还该是含 embed 作品的默认，要等有 GPU 的机器上的数字；幻灯片 PNG 和启动页缩略图还没接上 `snapFrames`。
 
 ## 4. 浏览器路线画不了什么，所以要有第二条路线
 
-foreignObject 画不到：`<x-embed>`（单独的框架，会是空白）、`<video>` 层、WebGL 和 WebGPU 的 canvas 特效、个别 CSS（backdrop-filter、少数混合模式）。这些不能让人自己发现、自己换工具，所以导出前先看作品里有没有 embed 或 video（`exactScenes`），有就换路线。从画布导入的画板（`<x-embed src>`，[import-from-project.md](./import-from-project.md)）也是一个单独的框架，同样走这条路线；服务端渲染把场景用到的画板文件和画板运行时一起交给播放器。
+foreignObject 画不到：`<x-embed>`（单独的框架，父页面拍不进去，也读不了沙箱里的内容）、`<video>` 层、个别 CSS（backdrop-filter、少数混合模式）。页面自己的 `<canvas>` 能拍（转成图片放进副本）。这些不能让人自己发现、自己换工具，所以导出前先看作品里有没有 embed 或 video（`exactScenes`），有而且本机有 Chrome 和 ffmpeg 就换路线。从画布导入的画板（`<x-embed src>`，[import-from-project.md](./import-from-project.md)）也是一个单独的框架，同样走这条路线；服务端渲染把场景用到的画板文件和画板运行时一起交给播放器。
+
+**嵌入内容自己交出画面（已实施）**：本机没有 Chrome 或 ffmpeg 时，embed 不再是空白。拍每一帧之前，页面问屏幕上的每个 embed 框架要一张它自己的图（`snapFrames`，`packages/export/src/frameSnap.ts`）：
+
+```
+页面 → 框架   { dcSnap: 'take', n }
+框架 → 页面   { dcSnap: 'taken', n, url }   // data:image/… ；拍不了就没有 url
+```
+
+框架里用同一个 `FrameRasterizer` 拍自己的 DOM（不含 canvas），再把 canvas（着色器的 WebGL）直接 `drawImage` 上去；只有一块 canvas 的框架不走 foreignObject。图不透明时交 JPEG（q 0.92），有透明时交 PNG，先在 48×27 的小图上看。页面拍副本时把这个 iframe 换成一张同样样式的 `<img>`（`FrameRasterizer.begin(node, frames)`），层次和裁切都照旧。答话的脚本是 `answerSnaps()`：画板运行时（`runtime.js`）启动时装上；内联 embed 的页面（编辑器的 `embed.html`、播放器的 srcdoc 头）由构建写进去（`snapEntry.ts` → `__DC_SNAP__`，约 9 KB）。
+
+- 为什么是框架自己拍：父页面拿不到沙箱框架的 DOM，这是隔离的本意；把画板挂进父页面（shadow root）能拍，但它的脚本就跑在编辑器里了，着色器也照样拍不到；屏幕录制要授权、不能逐帧确定。框架自己拍，出来的只有像素，沙箱和 CSP 都不变。
+- 安全上守两条：页面只认 `e.source` 是那个框架、`url` 是 `data:image/` 的回话；框架不回话（没有 `answerSnaps`、出错）就等到超时，那一处留空并在提示里点名场景，导出不卡住。框架里要的图片和字体由页面事先内联，框架不为这件事开网络。
+- 只问在这一刻屏幕上的场景里的框架（场景的开始到它转场结束）；播放器把所有场景的框架都挂着。
+- 代价：1080p、无 GPU 的机器上每帧约 180–270 ms，服务端截屏约 110–180 ms，同一个量级；保真度和服务端截屏一致（平均差不到 1/255）。慢在框架里的 foreignObject 和交图的编解码；朴素地交位图再让页面转 PNG 要 530–760 ms。实测见 `.research/embed-render.md` §5。
+- 着色器的 WebGL 要能在画完之后读回：`preserveDrawingBuffer: true`（示例都这样写），否则拍到的是空缓冲。
+- 动效的"保存当前帧为 PNG"（`exportFrame`）走同一个做法，也画得出 embed。
+
+编辑器的 `embed.html` 和播放器的 srcdoc 头写同样的页面样式（`html,body` 铺满嵌入块）。浏览器导出拍的就是编辑器里看到的，两边一不一致，同一个 `height:100%` 的内联 embed 就会在编辑器里零高、在服务端渲染里铺满。
 
 **精确渲染（已实施）**：服务端用本机已有的 Chrome 或 Edge 逐帧截图，交给 ffmpeg 编码，和 `scripts/motion-render.mjs` 是同一个做法，只是不用 Playwright、也不下载浏览器：Chrome 用自带的调试管道（`--remote-debugging-pipe`，NUL 分隔的 JSON）驱动，Node 20 也不需要 WebSocket 库。接口 `POST /api/projects/:p/render` 回一串 JSON 行（进度，最后是文件名），关掉请求就停；成品从 `GET /api/projects/:p/render/:file` 取，只给 `renders/` 里的 MP4。`GET /api/render` 说本机有没有 Chrome 和 ffmpeg，编辑器据此选路线。
 
-选路线（编辑器里）：没有 embed 和 video，走浏览器；有，而且本机两样都有，走服务端并告诉人为什么；有，但本机缺 Chrome 或 ffmpeg，仍走浏览器，导出后点名哪些场景会是空白、本机缺什么。服务端渲染不要求标签页留在前台，也不被浏览器能不能编 H.264 限制（总是 MP4），代价是慢和需要 ffmpeg。
+选路线（编辑器里）：没有 embed 和 video，走浏览器；有，而且本机两样都有，走服务端并告诉人为什么（稍快，MP4 不受浏览器编码器限制）；有，但本机缺 Chrome 或 ffmpeg，仍走浏览器，embed 由框架交出画面，只有没交出画面的场景在导出后点名；视频层在浏览器里仍不逐帧对齐。服务端渲染不要求标签页留在前台，也不被浏览器能不能编 H.264 限制（总是 MP4），代价是慢和需要 ffmpeg。
 
 试导出用 `projects/harness-motion`：两个场景共 2 秒，带淡入转场，不用网络字体，服务端路线约 5 秒出片；`design-motion` 有 36 秒，一次要等两分钟（服务端）到十分钟（标签页）。
 
