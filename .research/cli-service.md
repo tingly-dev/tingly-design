@@ -59,7 +59,7 @@ What this says for us:
 7. **Ship the skills, don't just document them.** `remotion skills add` installs the agent's format references into the user's project; `tingly-design skills add` can do the same with ours.
 8. **Exit codes matter.** pen.dev's docs warn an export failure can exit 0; a CLI meant for scripts must fail loudly.
 9. **Hand-off both ways, and say what changed.** HyperFrames' `open` gives the project to the person's app and `catch-up` tells the agent what the person did meanwhile. Two-way editing is our whole premise and the journal already records every change with its actor, so `open` and `changes --since` are cheap and very on-brand.
-10. **A compact read for agents.** `timeline --json` exists so an agent does not read every file. Our equivalent is `inspect --json`: boards, slides, scenes with timing, tokens, datasets, depending on the kind.
+10. **A compact read for agents.** `timeline --json` exists so an agent does not read every file. Ours is `list <project> --json`: boards, slides, scenes with timing, tokens, datasets, depending on the kind. We call it `list` rather than `timeline` because only motion has a timeline, and `list` with no project already lists the projects: one word for "what is here" at both levels.
 11. **One gate that includes looking.** HyperFrames' `check` reruns lint and then opens the browser, with `--snapshots` for annotated frames. Our `check` should do the same: parse and check, then render and report what broke, with `--snapshots`.
 12. **Environment checks are a command.** `doctor` and `browser` answer "why can't I render" before the agent tries; we have the same need (Chrome, ffmpeg, the `claude` CLI, the model settings).
 
@@ -72,9 +72,9 @@ Add `bin` to the bundle's `package.json` pointing at a small `cli.mjs`, so `npx 
 ```
 tingly-design serve [--port 0] [--open]          today's server (default command)
 tingly-design new <name> --kind slides           create from the starter
-tingly-design list                               projects, kind, title
+tingly-design list [project] [--json]           no project: projects, kind, title; a project: what is in it
+                                                 (boards, slides, scenes and timing, tokens, datasets)
 tingly-design check <project> [--snapshots]     parse and check every file, then render and report; exit 1 on problems
-tingly-design inspect <project> --json           compact structure (boards, slides, scenes and timing, tokens, datasets)
 tingly-design open <project> [--json]            hand it to the editor (running server, or start one) and print the URL
 tingly-design changes <project> [--since v]      what changed since a version, and who (from the journal)
 tingly-design doctor                             Chrome, ffmpeg, claude CLI, model settings
@@ -112,9 +112,9 @@ Good: nothing to build. Bad: no export of pictures/PDF, no check, no live editor
 
 ## 4. Recommendation
 
-**A + B together, with MCP and skills as thin layers on the same core.** The peers above change the order more than the shape: seeing the result (`snapshot`, `check`) comes before `edit`, the server learns to auto-start, and HyperFrames' hand-off (`open`, `catch-up`) and compact read (`timeline --json`) carry over directly.
+**A + B together, with MCP and skills as thin layers on the same core.** The peers above change the order more than the shape: seeing the result (`snapshot`, `check`) comes before `edit`, the server learns to auto-start, and HyperFrames' hand-off (`open`, `catch-up`) and compact read (`timeline --json`, our `list <project>`) carry over directly.
 
-1. Split `index.ts` into `createApp()` and `startServer()` with no behaviour change; add `bin` and `cli.mjs` with `serve` (default), `new`, `list`, `inspect --json`, `check`, `doctor`, and motion `export` (move `motion-render.mjs` onto `render.ts` so there is one renderer).
+1. Split `index.ts` into `createApp()` and `startServer()` with no behaviour change; add `bin` and `cli.mjs` with `serve` (default), `new`, `list [project]`, `check`, `doctor`, and motion `export` (move `motion-render.mjs` onto `render.ts` so there is one renderer).
 2. Service lookup (`server.json`) with auto-start: a command uses the running server for its projects folder, or starts one quietly and stops it when done. `open` and `changes --since` come with it, as the hand-off between an agent and the person.
 3. The editor's headless export route, then `snapshot`, `check --snapshots` and `export --as png|pdf|html` for every kind, and the same through `GET …/export?as=` on the server.
 4. `/mcp` on the server with a few wide tools (`project`, `check`, `snapshot`, `export`, `read_skill`) and `tingly-design mcp` as the stdio bridge; `tingly-design skills add` to copy the format references into a user's project.
