@@ -182,7 +182,6 @@ export function DsApp() {
   <FileMenu
         target={dsImport}
         label={tr('ds.app.label')}
-        button="text"
         items={[
           {
             id: 'png',

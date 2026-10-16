@@ -1,7 +1,8 @@
 import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ISSUES_URL, REPO_URL } from '../links';
-import { Bug, Check, External, More, Star } from './icons';
+import { Bug, Check, External, More, Panel, Star } from './icons';
+import { useStore } from '../store';
 import { Menu, MenuItem } from './Menu';
 import { PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode } from '../theme';
 import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
@@ -125,8 +126,10 @@ function MoreMenu() {
   );
 }
 
-export function TopBar({ title, children }: { title: ReactNode; children?: ReactNode }) {
+/** The kind's own actions go in `children`; `panel` adds the right-panel toggle at their end, the same button in every kind that has a panel. */
+export function TopBar({ title, panel, children }: { title: ReactNode; panel?: { label: string; hint: string }; children?: ReactNode }) {
   const { t } = useTranslation();
+  const panelOpen = useStore((s) => s.panelOpen);
   return (
     <header className="topbar dashbar" role="banner" aria-label={t('common.topbar.label')}>
       <ProjectMenu />
@@ -134,6 +137,11 @@ export function TopBar({ title, children }: { title: ReactNode; children?: React
       <SyncStatus />
       <div className="grow" />
       {children}
+      {panel && (
+        <button className="tb" aria-pressed={panelOpen} aria-label={panel.label} title={panel.hint} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
+          <Panel />
+        </button>
+      )}
       <span className="tsep" />
       <MoreMenu />
     </header>
