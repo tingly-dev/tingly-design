@@ -76,6 +76,13 @@ export default {
     open: '打开 {{title}}（{{kind}}）',
     recent: '最近打开',
   },
+  archive: {
+    import: '导入项目（.zip）…',
+    export: '导出（.zip）',
+    imported: '已导入“{{name}}”',
+    importedWith: '已导入“{{name}}”，以及设计系统 {{systems}}',
+    failed: '项目没能导入：{{message}}',
+  },
   importTile: {
     name: '导入 HTML 或 SVG',
   },

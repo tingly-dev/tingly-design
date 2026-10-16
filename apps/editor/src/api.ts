@@ -121,6 +121,15 @@ export const api = {
     call(at('api/links'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<{ name: string }>(r)),
   /** take a linked project off the launcher; its folder stays as it is */
   unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+  /** the whole project as one .zip; `full: false` leaves out the change log and the design systems it installed */
+  archive: async (p: string, full: boolean): Promise<Blob> => {
+    const res = await call(at(`api/projects/${enc(p)}/archive${full ? '' : '?journal=0&systems=0'}`));
+    if (!res.ok) await json(res);
+    return res.blob();
+  },
+  /** a project from a .zip; the name it was given (and the design systems that came with it) come back */
+  importArchive: (file: File) =>
+    call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[] }>(r)),
   /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
   patchProject: (p: string, patch: { title?: string; group?: string }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),

@@ -39,6 +39,7 @@ const { values: opts, positionals } = (() => {
         title: { type: 'string' },
         size: { type: 'string' },
         as: { type: 'string' },
+        'files-only': { type: 'boolean' },
         format: { type: 'string' },
         out: { type: 'string' },
         speed: { type: 'string' },
@@ -212,7 +213,7 @@ async function check(arg: string | undefined): Promise<number> {
   if (opts.json) print({ name: p.name, kind: p.kind, problems });
   else if (!problems.length) console.log(t('cli.noProblems', { name: p.name }));
   else {
-    table(problems.map((x) => [x.file, x.level, t(`cli.problems.${x.code}`, { file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
+    table(problems.map((x) => [x.file, x.level, x.code === 'canvas' ? t(`cli.canvasRules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
     console.log(t('cli.problemCount', { count: problems.length }));
   }
   return errors ? 1 : 0;
@@ -244,9 +245,10 @@ async function machine(): Promise<number> {
 
 async function exportProject(arg: string | undefined): Promise<void> {
   const p = await project(arg, 'export');
-  if (p.kind !== 'motion') throw new CliError(t('cli.exportKind', { kind: t(`cli.kind.${p.kind}`) }));
   if (!opts.as) throw new CliError(t('cli.needAs', { project: arg }));
   const as = opts.as.toLowerCase();
+  if (as === 'zip') return exportZip(p);
+  if (p.kind !== 'motion') throw new CliError(t('cli.exportKind', { kind: t(`cli.kind.${p.kind}`) }));
   if (as !== 'mp4' && as !== 'gif' && as !== 'png') throw new CliError(t('cli.exportAs', { as: opts.as }));
   const { RenderError, renderMotion } = await import('./render');
   const { parseMotion } = await import('@dc/core');
@@ -288,6 +290,37 @@ async function exportProject(arg: string | undefined): Promise<void> {
   if (opts.json) print(done);
 }
 
+/** The whole project as one .zip, the same as the editor's Whole project / Project files only (.design/project-archive.md). */
+async function exportZip(p: { name: string; dir: string }): Promise<void> {
+  const { packProject } = await import('./archive');
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const full = !opts['files-only'];
+  const { bytes, file, files, systems } = await packProject(p.name, { journal: full, systems: full }, p.dir);
+  const dir = opts.out ? resolve(expandHome(opts.out)) : process.cwd();
+  await mkdir(dir, { recursive: true });
+  const out = resolve(dir, full ? file : file.replace(/\.zip$/, '-files.zip'));
+  await writeFile(out, bytes);
+  if (opts.json) print({ file: out, files, systems });
+  else console.log(t('cli.wrote', { file: show(out) }));
+}
+
+// ---------------------------------------------------------------- import
+
+/** A project from a .zip, the same as the launcher's Import a project. */
+async function importProject(arg: string | undefined): Promise<void> {
+  if (!arg) throw new CliError(t('cli.needZip'));
+  const { readFile } = await import('node:fs/promises');
+  const path = resolve(expandHome(arg));
+  const bytes = await readFile(path).catch(() => {
+    throw new CliError(t('cli.noFileAt', { path: show(path) }), 1);
+  });
+  const { unpackProject } = await import('./archive');
+  const { projectDir } = await import('./store');
+  const done = await unpackProject(new Uint8Array(bytes), basename(path));
+  if (opts.json) print({ ...done, dir: projectDir(done.name) });
+  else console.log(t('cli.imported', { name: done.name, path: show(projectDir(done.name)) }) + (done.systems.length ? ` ${t('cli.importedSystems', { systems: done.systems.join(', ') })}` : ''));
+}
+
 // ---------------------------------------------------------------- main
 
 async function main(): Promise<number> {
@@ -315,6 +348,9 @@ async function main(): Promise<number> {
       return check(rest[0]);
     case 'export':
       await exportProject(rest[0]);
+      return 0;
+    case 'import':
+      await importProject(rest[0]);
       return 0;
     default:
       throw new CliError(t('cli.unknownCommand', { name: command }));
