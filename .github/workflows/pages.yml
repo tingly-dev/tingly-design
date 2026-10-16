@@ -12,7 +12,8 @@ on:
       - site/**
       - projects/design-motion/**
       - packages/sandbox/**
-      - scripts/motion-render.mjs
+      - apps/server/src/render.ts
+      - apps/server/src/cli.ts
       - scripts/build-site.sh
       - docs/images/**
       - .github/workflows/pages.yml
@@ -21,7 +22,8 @@ on:
       - site/**
       - projects/design-motion/**
       - packages/sandbox/**
-      - scripts/motion-render.mjs
+      - apps/server/src/render.ts
+      - apps/server/src/cli.ts
       - scripts/build-site.sh
       - docs/images/**
       - .github/workflows/pages.yml
@@ -58,6 +60,9 @@ jobs:
 
       - name: Build the site
         run: scripts/build-site.sh _site
+        env:
+          # Ubuntu 24.04 runners do not let Chrome's sandbox make user namespaces
+          DC_CHROME_SANDBOX: '0'
 
       - uses: actions/upload-pages-artifact@v4
         with:

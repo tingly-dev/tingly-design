@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Build the folder a host ships and runs: dist/tingly-design/
 //
-//   server.mjs           the server with every dependency bundled in: `node server.mjs`
+//   cli.mjs              the `tingly-design` command with every dependency bundled in (the package's bin)
+//   server.mjs           what a host runs, `node server.mjs`: the same as `tingly-design serve`
 //   tingly-design.json   name, version, protocol, entry and the Node it needs
 //   editor/  sandbox/    the built editor and the artboard runtime
 //   samples/             the sample projects, copied into a projects folder that does not exist yet
@@ -11,7 +12,7 @@
 //
 // Usage: pnpm bundle   (builds the editor and sandbox first). See docs/en/embedding.md.
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import * as esbuild from 'esbuild';
 
@@ -30,19 +31,27 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 await esbuild.build({
-  entryPoints: [join(root, 'apps/server/src/index.ts')],
-  outfile: join(out, 'server.mjs'),
+  entryPoints: [join(root, 'apps/server/src/cli.ts')],
+  outfile: join(out, 'cli.mjs'),
   bundle: true,
   platform: 'node',
   format: 'esm',
   target: 'node20',
   legalComments: 'none',
   // CommonJS dependencies call require(); give the ES module one
-  banner: { js: "import { createRequire as __dcRequire } from 'node:module'; const require = __dcRequire(import.meta.url);" },
+  banner: { js: "#!/usr/bin/env node\nimport { createRequire as __dcRequire } from 'node:module'; const require = __dcRequire(import.meta.url);" },
   // chokidar's optional macOS watcher is native; it falls back without it
   external: ['fsevents'],
   logLevel: 'warning',
 });
+
+// one copy of the server: a host's `node server.mjs` is `tingly-design serve`, configured by the environment
+writeFileSync(
+  join(out, 'server.mjs'),
+  `// The entry a host runs, configured by the environment (docs/en/embedding.md): the same as \`tingly-design serve\`.\n` +
+    `process.argv.splice(2, process.argv.length, 'serve');\nawait import('./cli.mjs');\n`,
+);
+chmodSync(join(out, 'cli.mjs'), 0o755);
 
 const copy = (from, to, filter) => cpSync(join(root, from), join(out, to), { recursive: true, filter });
 copy('apps/editor/dist', 'editor');
@@ -67,6 +76,7 @@ writeFileSync(
       description: pkg.description,
       license: pkg.license,
       type: 'module',
+      bin: { 'tingly-design': 'cli.mjs' },
       engines: pkg.engines,
       repository: pkg.repository,
       homepage: pkg.homepage,
@@ -78,8 +88,11 @@ writeFileSync(
 for (const f of ['LICENSE', 'NOTICE']) if (existsSync(join(root, f))) copy(f, f);
 writeFileSync(
   join(out, 'README.md'),
-  `# Tingly Design ${pkg.version}\n\nThe bundle a host such as Tingly Box ships and runs: \`node server.mjs\`. ` +
-    `Launch variables, the ready line and the host messages are in [Embedding](${pkg.homepage}/blob/main/docs/en/embedding.md).\n`,
+  `# Tingly Design ${pkg.version}\n\n` +
+    `Canvases, slides, design systems, dashboards, docs and motion pieces as plain files, with an editor.\n\n` +
+    `\`\`\`\nnpx tingly-design            # open the editor\nnpx tingly-design --help     # new, list, check, export …\n\`\`\`\n\n` +
+    `The command is described in [the command line guide](${pkg.homepage}/blob/main/docs/en/cli.md). ` +
+    `A host such as Tingly Box runs \`node server.mjs\`; launch variables, the ready line and the host messages are in [Embedding](${pkg.homepage}/blob/main/docs/en/embedding.md).\n`,
 );
 writeFileSync(join(out, 'THIRD_PARTY_LICENSES.txt'), thirdPartyNotices());
 

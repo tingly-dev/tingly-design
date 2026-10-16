@@ -294,10 +294,11 @@ The spike is in this branch. It has no editor UI; it proves the format, the runt
 |---|---|
 | Timing grammar, format overrides, scene timeline, checks | `packages/core/src/motion.ts`, 16 unit tests in `packages/core/test/motion.test.ts` |
 | Runtime: lays out one format, compiles attributes to paused Web Animations on one clock, `seek(t)`, `play()` | `packages/sandbox/src/motion.ts` → `dist/motion.js` |
-| Renderer: MP4 per format, GIF, poster, single-file HTML player, `--verify` | `scripts/motion-render.mjs` (Playwright's Chromium + ffmpeg) |
+| Renderer: MP4 per format, GIF, poster | `apps/server/src/render.ts` (the machine's Chrome + ffmpeg), run by `tingly-design export` ([cli.md](./cli.md)); the single-file HTML player and `--verify` are still `scripts/motion-render.mjs` (Playwright's Chromium + ffmpeg) |
 | Sample: "Tingly Design", a 36 s product promo in twelve scenes (authored at reading pace, played at `"speed": 1.5`), 16:9 and 9:16 from the same files | `projects/design-motion/`, listed in the launcher and seeded as a sample |
 
 ```bash
+pnpm tingly-design export design-motion --as mp4
 pnpm --filter @dc/sandbox build
 node scripts/motion-render.mjs design-motion --verify --player
 ```

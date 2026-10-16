@@ -22,7 +22,8 @@ pnpm bundle        # builds, then writes dist/tingly-design/
 
 | Path | What it is |
 |---|---|
-| `server.mjs` | The server with every dependency bundled in. Needs only Node (see `node` in the manifest). |
+| `cli.mjs` | The `tingly-design` command with every dependency bundled in (the npm package's `bin`; see [command line](./cli.md)). Needs only Node (see `node` in the manifest). |
+| `server.mjs` | `tingly-design serve`: the server alone, for a host. |
 | `tingly-design.json` | `{ name, version, protocol, entry, node }`: check `protocol` before launching. |
 | `editor/`, `sandbox/` | The built editor and the artboard runtime. |
 | `samples/` | The sample projects, copied into a projects folder that does not exist yet. |

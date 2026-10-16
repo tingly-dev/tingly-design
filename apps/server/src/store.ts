@@ -398,6 +398,11 @@ export async function listProjects(): Promise<ProjectCard[]> {
 export async function readProject(name: string): Promise<Record<string, FileState>> {
   const dir = projectDir(name);
   if (!(await kindOf(dir))) throw new HttpError(404, 'noProject', { name });
+  return readFolder(dir);
+}
+
+/** A project folder's tracked files, wherever it is (the CLI reads a folder it was given without linking it). */
+export async function readFolder(dir: string): Promise<Record<string, FileState>> {
   const files: string[] = [];
   await walk(dir, dir, files);
   const out: Record<string, FileState> = {};

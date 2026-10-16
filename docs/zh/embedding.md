@@ -22,7 +22,8 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 
 | 路径 | 是什么 |
 |---|---|
-| `server.mjs` | 打进了全部依赖的服务端，只需要 Node（版本见清单里的 `node`）。 |
+| `cli.mjs` | 打进了全部依赖的 `tingly-design` 命令（npm 包的 `bin`，见[命令行](./cli.md)），只需要 Node（版本见清单里的 `node`）。 |
+| `server.mjs` | 就是 `tingly-design serve`：只起服务端，给宿主用。 |
 | `tingly-design.json` | `{ name, version, protocol, entry, node }`：启动前先核对 `protocol`。 |
 | `editor/`、`sandbox/` | 构建好的编辑器和画板运行时。 |
 | `samples/` | 示例项目，会复制进一个还不存在的项目文件夹。 |

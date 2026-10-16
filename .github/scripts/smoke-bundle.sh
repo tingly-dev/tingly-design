@@ -39,4 +39,11 @@ fi
 curl -fsS -o /dev/null "$BASE/" || { echo "❌ the editor is not served at $BASE/"; exit 1; }
 curl -fsS -o /dev/null "$BASE/sandbox/runtime.js" || { echo "❌ the sandbox runtime is not served"; exit 1; }
 [ -n "$(ls -A "$WORK/projects" 2>/dev/null)" ] || { echo "❌ the projects folder was not seeded with the samples"; exit 1; }
-echo "✅ bundle starts, answers under /design and seeds the samples"
+
+# the same folder is the `tingly-design` command (the package's bin)
+CLI=(node "$DIR/cli.mjs" --projects "$WORK/projects")
+[ "$("${CLI[@]}" --version)" = "$(node -p 'require(process.argv[1]).version' "$DIR/package.json")" ] || { echo "❌ tingly-design --version disagrees with package.json"; exit 1; }
+"${CLI[@]}" list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.length) process.exit(1)' || { echo "❌ tingly-design list found no projects"; exit 1; }
+"${CLI[@]}" new slides smoke-deck > /dev/null || { echo "❌ tingly-design new failed"; exit 1; }
+"${CLI[@]}" check smoke-deck || { echo "❌ a new deck does not pass tingly-design check"; exit 1; }
+echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates and checks"
