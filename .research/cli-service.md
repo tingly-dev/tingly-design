@@ -37,6 +37,7 @@ Read from each product's own docs (October 2026), except where marked.
 
 | Product | Shape | Headless or attach to the running app | Agent surface | Export |
 |---|---|---|---|---|
+| [HyperFrames](https://github.com/heygen-com/hyperframes) (HeyGen; closest peer for motion: HTML compositions rendered to video, built for agents) | `npx hyperframes`: `init`, `add`/`catalog` (blocks), `lint`, `check`, `timeline --json`, `snapshot`, `preview --background`, `render --quality draft…`, `doctor`, `browser`, `skills update` ([CLI skill](https://skills.sh/heygen-com/hyperframes/hyperframes-cli)) | headless by default; **`open [dir] --json` hands the project to the desktop app and `catch-up` lists what the person changed there since the hand-off** | skills via `npx skills add heygen-com/hyperframes` or a Claude Code plugin; the CLI skill tells the agent: `lint` after structural edits, `check` as the final gate, `timeline --json` instead of reading every file, render draft while iterating | MP4/WebM; headless Chrome seeks each frame, FFmpeg encodes; local or Docker |
 | [Pencil / pen.dev](https://docs.pencil.dev/for-developers/pen-cli) (closest peer: design files edited by agents) | `pen` CLI, "the same editor engine as the desktop app, fully headless" | both: headless by default, `pen interactive -a desktop` connects to the running app and changes apply live | MCP with four tools: `execute`, `get_app_state`, `read_skill` (format and workflow docs), `get_style`; the app's MCP adds `get_screenshot`, `snapshot_layout` ([AI integration](https://docs.pencil.dev/ai-integration)); `pen -p "prompt" -i in.pen -o out.pen` runs an agent in one command | `--export` PNG/JPEG/WEBP/PDF; `--enable-preview` writes a PNG after every change |
 | [Excalidraw MCP](https://mcpservers.org/fr/servers/yctimlin/mcp_excalidraw) (community) | canvas server + CLI + stdio MCP sharing one core library | CLI and MCP start the canvas server if it is not running, then drive it; the open browser tab syncs live | 26 MCP tools, plus a REST API | screenshots and PNG rendered in the server (jsdom + resvg) |
 | [Slidev](https://sli.dev/builtin/cli) | `slidev` (dev server), `slidev build`, `slidev export`, `slidev mcp` | headless export opens the deck's own print page in a browser | `slidev mcp`: stdio MCP to inspect and edit slides | PDF, PNG, PPTX, editable PPTX, Markdown; `--range`, `--dark`, `--with-clicks` |
@@ -57,6 +58,10 @@ What this says for us:
 6. **A service tool can be just a URL.** Marp's server converts on request (`?pdf`). `GET /api/projects/:p/export?as=pdf` would let any script or host fetch an export without the CLI.
 7. **Ship the skills, don't just document them.** `remotion skills add` installs the agent's format references into the user's project; `tingly-design skills add` can do the same with ours.
 8. **Exit codes matter.** pen.dev's docs warn an export failure can exit 0; a CLI meant for scripts must fail loudly.
+9. **Hand-off both ways, and say what changed.** HyperFrames' `open` gives the project to the person's app and `catch-up` tells the agent what the person did meanwhile. Two-way editing is our whole premise and the journal already records every change with its actor, so `open` and `changes --since` are cheap and very on-brand.
+10. **A compact read for agents.** `timeline --json` exists so an agent does not read every file. Our equivalent is `inspect --json`: boards, slides, scenes with timing, tokens, datasets, depending on the kind.
+11. **One gate that includes looking.** HyperFrames' `check` reruns lint and then opens the browser, with `--snapshots` for annotated frames. Our `check` should do the same: parse and check, then render and report what broke, with `--snapshots`.
+12. **Environment checks are a command.** `doctor` and `browser` answer "why can't I render" before the agent tries; we have the same need (Chrome, ffmpeg, the `claude` CLI, the model settings).
 
 ## 3. Options
 
@@ -68,7 +73,11 @@ Add `bin` to the bundle's `package.json` pointing at a small `cli.mjs`, so `npx 
 tingly-design serve [--port 0] [--open]          today's server (default command)
 tingly-design new <name> --kind slides           create from the starter
 tingly-design list                               projects, kind, title
-tingly-design check <project>                    run every core parser/checker, exit 1 on problems
+tingly-design check <project> [--snapshots]     parse and check every file, then render and report; exit 1 on problems
+tingly-design inspect <project> --json           compact structure (boards, slides, scenes and timing, tokens, datasets)
+tingly-design open <project> [--json]            hand it to the editor (running server, or start one) and print the URL
+tingly-design changes <project> [--since v]      what changed since a version, and who (from the journal)
+tingly-design doctor                             Chrome, ffmpeg, claude CLI, model settings
 tingly-design export <project> --as png|pdf|mp4|gif|html [--board id] [--out file]
 tingly-design snapshot <project> [--board id]    PNG of what the editor shows, for an agent to look at its work
 tingly-design import <file.html|svg> <project>   the existing importer
@@ -103,11 +112,11 @@ Good: nothing to build. Bad: no export of pictures/PDF, no check, no live editor
 
 ## 4. Recommendation
 
-**A + B together, with MCP and skills as thin layers on the same core.** The peers above change the order more than the shape: seeing the result (`snapshot`, `check`) comes before `edit`, and the server learns to auto-start.
+**A + B together, with MCP and skills as thin layers on the same core.** The peers above change the order more than the shape: seeing the result (`snapshot`, `check`) comes before `edit`, the server learns to auto-start, and HyperFrames' hand-off (`open`, `catch-up`) and compact read (`timeline --json`) carry over directly.
 
-1. Split `index.ts` into `createApp()` and `startServer()` with no behaviour change; add `bin` and `cli.mjs` with `serve` (default), `new`, `list`, `check`, and motion `export` (move `motion-render.mjs` onto `render.ts` so there is one renderer).
-2. Service lookup (`server.json`) with auto-start: a command uses the running server for its projects folder, or starts one quietly and stops it when done.
-3. The editor's headless export route, then `snapshot` and `export --as png|pdf|html` for every kind, and the same through `GET …/export?as=` on the server.
+1. Split `index.ts` into `createApp()` and `startServer()` with no behaviour change; add `bin` and `cli.mjs` with `serve` (default), `new`, `list`, `inspect --json`, `check`, `doctor`, and motion `export` (move `motion-render.mjs` onto `render.ts` so there is one renderer).
+2. Service lookup (`server.json`) with auto-start: a command uses the running server for its projects folder, or starts one quietly and stops it when done. `open` and `changes --since` come with it, as the hand-off between an agent and the person.
+3. The editor's headless export route, then `snapshot`, `check --snapshots` and `export --as png|pdf|html` for every kind, and the same through `GET …/export?as=` on the server.
 4. `/mcp` on the server with a few wide tools (`project`, `check`, `snapshot`, `export`, `read_skill`) and `tingly-design mcp` as the stdio bridge; `tingly-design skills add` to copy the format references into a user's project.
 5. `edit "prompt"`: Claude Code first (it runs on the server already), fast AI once its apply loop runs in the headless page.
 
