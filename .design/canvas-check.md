@@ -1,6 +1,6 @@
 # 画布检查器
 
-状态：核心函数已实施；命令行入口、编辑器里的提示是方案。
+状态：核心函数和 `tingly-design check` 已实施；编辑器里的提示是方案。
 
 ## 问题
 
@@ -20,8 +20,11 @@
 
 `whole-svg` 的判断：根元素下只有一个 `<svg>`，或者有一个 `<svg>` 的宽高都达到画板的 90%。画板里一个个小的箭头 `<svg>` 是允许的。
 
+## 接入
+
+`checkProject('design', …)` 调 `checkCanvas`，结果变成 `code: 'canvas'` 加 `rule` 和 `params`，措辞在 `cli` 区的 `canvasRules`（见 [cli.md](./cli.md)）。画板没登记、登记了但文件不在这两条由 `checkProject` 自己的列表检查负责，不重复报。
+
 ## 没定的
 
-- 命令行入口 `tingly-design check <project>` 等 CLI 的命令形态确定后再接；退出码、输出格式（文本 / JSON）跟着定。
 - 是否在编辑器里显示（画板列表的角标）；要显示就走 i18n。
 - 要不要再覆盖 `{{}}` 只能是点路径、`<dc-import>` 缺 `hint-*`、模板洞里写了表达式这类规则；需要的话要对模板做真正的解析。
