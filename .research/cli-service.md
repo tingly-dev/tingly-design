@@ -82,7 +82,7 @@ Naming rule: **a command is the word the editor already shows for the same actio
 | `tingly-design export <project> --as <format>` | Export | the Export menu's formats by their menu names (`png`, `pdf`, `mp4`, `gif`, `html`, `md` …), `--board`/`--slide`/`--scene` to pick one, `--out`; a PNG is also how an agent looks at its work, so there is no separate `snapshot` |
 | `tingly-design import <file> [project]` | Import | HTML, SVG, Markdown, pictures, as the Import menu takes them |
 | `tingly-design history <project> [--since v]` | History | what changed since a version and who changed it (person, fast AI, Claude Code, outside edit), from the journal |
-| `tingly-design prompt <project> "…"` | the prompt bar, Hand to Claude Code | run a prompt the way the prompt bar does; `--claude` hands it to Claude Code; prints the history entries it made |
+| `tingly-design prompt <project> "…" [--fast]` | the prompt bar, Hand to Claude Code | hands the prompt to Claude Code by default; `--fast` uses the fast model like the prompt bar's quick edit; prints the history entries it made. Claude Code is the default because a script or agent wants the job done rather than an instant answer, it runs on the server with no page, and a dashboard only takes Claude Code anyway |
 | `tingly-design skills [add]` | — | print or copy the format references into a project's `.claude/skills/` |
 | `tingly-design mcp` | — | the same commands as MCP tools over stdio |
 
@@ -133,7 +133,7 @@ Good: nothing to build. Bad: no export of pictures/PDF, no check, no live editor
 2. Service lookup (`server.json`) with auto-start: a command uses the running server for its projects folder, or starts one quietly and stops it when done. `open` and `history --since` come with it, as the hand-off between an agent and the person.
 3. The editor's headless export route, then `export --as png|pdf|html` and the rendering half of `check` for every kind, and the same through `GET …/export?as=` on the server.
 4. `/mcp` on the server with a few wide tools (`list`, `check`, `export`, `history`, `read_skill`) and `tingly-design mcp` as the stdio bridge; `tingly-design skills add` to copy the format references into a user's project.
-5. `prompt`: Claude Code first (it runs on the server already), fast AI once its apply loop runs in the headless page.
+5. `prompt`: Claude Code (the default) first, since it runs on the server already; `--fast` once the fast model's apply loop runs in the headless page.
 
 Steps 1–2 make it usable from a skill (create, check, render motion, live edits); step 3 is the biggest piece and the one that lets an agent look at what it made.
 
@@ -143,6 +143,5 @@ Steps 1–2 make it usable from a skill (create, check, render motion, live edit
 - The first npm release needs `bin` with at least `serve`; step 1 covers it.
 - Does Tingly Box want to call the CLI, or keep launching `server.mjs` and use the HTTP API? Either works with B.
 - `export --as png` for a dashboard needs its data; run the page's queries or show the last saved runs?
-- `prompt` with fast AI headless needs the editor's apply loop in a page; is a Claude-Code-only `prompt` enough for a first version?
 - MCP tool shape: one `execute` that takes code (pen.dev, Penpot) is powerful but hard to keep safe; named tools over files are easier to reason about. Leaning named tools.
 - Cross-kind: every command must say what it does for each of the six kinds; add a CLI column to `.design/project-kinds.md` when this lands.
