@@ -123,8 +123,19 @@ export interface RenderOptions {
   runtime: string;
   format?: string;
   speed?: number;
-  /** The file to make: an MP4 (the default) or a GIF (no sound, a 256-colour palette made for the whole loop). */
-  container?: 'mp4' | 'gif';
+  /**
+   * The file to make: an MP4 (the default), a GIF (no sound, a 256-colour palette made for the
+   * whole loop), or a PNG of the cover (the frame at `from` when the piece names no cover).
+   */
+  container?: 'mp4' | 'gif' | 'png';
+  /** Where the file goes; the project's renders/ folder when left out. */
+  out?: string;
+  /**
+   * Also write the cover as `<project>-<format>-cover.png` beside the video, embed it in an MP4
+   * as its cover art, and make it the first frame unless motion.json says `coverFirstFrame: false`,
+   * so apps that thumbnail frame 0 show it. The editor's export leaves this off.
+   */
+  cover?: boolean;
   /** The file's frame size, same aspect ratio as the piece; the piece's own when left out. */
   width?: number;
   height?: number;
@@ -141,6 +152,8 @@ export interface RenderOptions {
 
 export interface RenderResult {
   file: string;
+  /** The cover PNG, when one was asked for and the piece has one. */
+  coverFile?: string;
   report: ExportReport;
 }
 
@@ -190,6 +203,14 @@ function encodeArgs(motion: ReturnType<typeof parseMotion>, dir: string, e: Enco
   return a;
 }
 
+function attachCover(video: string, png: string, file: string): Promise<void> {
+  return new Promise((ok, fail) =>
+    execFile(ffmpegPath(), ['-y', '-loglevel', 'error', '-i', video, '-i', png, '-map', '0', '-map', '1', '-c', 'copy', '-c:v:1', 'png', '-disposition:v:1', 'attached_pic', file], (err, _out, stderr) =>
+      err ? fail(new RenderError('failed', `ffmpeg (cover art): ${stderr || err.message}`)) : ok(),
+    ),
+  );
+}
+
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
 
 /** Render one format of a motion piece to `renders/<project>-<format>.mp4` (or `.gif`); resolves to the file's path and where the time went. */
@@ -205,22 +226,27 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     motion.order.filter((id) => existsSync(join(o.dir, sceneFile(id)))).map((id) => [id, inlineFiles(readFileSync(join(o.dir, sceneFile(id)), 'utf8'), o.dir)]),
   );
   // artboards the scenes embed (imported from a canvas), drawn by the artboard runtime written into the player (.design/import-from-project.md)
+  const cover = o.cover || o.container === 'png' ? motion.cover : undefined;
+  const coverScene = cover && 'scene' in cover && existsSync(join(o.dir, sceneFile(cover.scene))) ? cover.scene : null;
+  const coverHtml = coverScene ? inlineFiles(readFileSync(join(o.dir, sceneFile(coverScene)), 'utf8'), o.dir) : null;
   const raw = (f: string) => {
     const p = resolve(o.dir, f);
     return p.startsWith(resolve(o.dir) + '/') && existsSync(p) ? readFileSync(p, 'utf8') : undefined;
   };
-  const files = Object.fromEntries(Object.entries(boardFilesFor(Object.values(scenes), raw)).map(([f, src]) => [f, inlineFiles(src, o.dir)]));
+  const files = Object.fromEntries(Object.entries(boardFilesFor([...Object.values(scenes), ...(coverHtml ? [coverHtml] : [])], raw)).map(([f, src]) => [f, inlineFiles(src, o.dir)]));
   const boardJs = join(dirname(o.runtime), 'runtime.js');
   const boardRuntime = Object.keys(files).length && existsSync(boardJs) ? { inline: readFileSync(boardJs, 'utf8') } : undefined;
   const runtime = readFileSync(o.runtime, 'utf8').replace(/<\/script/gi, '<\\/script');
   const tmp = mkdtempSync(join(tmpdir(), 'dc-render-'));
   const page = join(tmp, 'page.html');
-  writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><script>${runtime}</script></body></html>`);
-  const out = join(o.dir, 'renders');
+  writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><div id="cover" style="position:absolute;left:0;top:0"></div><script>${runtime}</script></body></html>`);
+  const out = o.out ? resolve(o.out) : join(o.dir, 'renders');
   mkdirSync(out, { recursive: true });
-  const ext = o.container === 'gif' ? 'gif' : 'mp4';
-  const file = join(out, `${basename(o.dir)}-${format}.${ext}`);
+  const ext = o.container ?? 'mp4';
+  const stem = `${basename(o.dir)}-${format}`;
+  const file = join(out, ext === 'png' ? `${stem}-cover.png` : `${stem}.${ext}`);
   const partial = file.replace(new RegExp(`\\.${ext}$`), `.part.${ext}`);
+  const artFile = join(out, `${stem}.art.mp4`);
 
   const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${join(tmp, 'profile')}`, 'about:blank'];
   if (process.getuid?.() === 0) args.unshift('--no-sandbox');
@@ -254,6 +280,31 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     clock.add('launch', performance.now() - launched);
     const from = Math.max(0, o.from ?? 0);
     const to = Math.min(info.duration, o.to ?? info.duration);
+    const shot = async () => Buffer.from((await s<{ data: string }>('Page.captureScreenshot', { format: 'png' })).data, 'base64');
+    // the cover: a frame of the piece, or a scene outside the order drawn finished, over the stage and then taken away
+    let coverPng: Buffer | null = null;
+    if (cover && 'at' in cover) {
+      await evalIn(`window.__stage.seek(${Math.min(cover.at, info.duration)})`);
+      coverPng = await shot();
+    } else if (coverScene) {
+      await evalIn(
+        `(async()=>{const c=await window.dcMotion.mount({motion:{...${json(motion)},order:[${json(coverScene)}]},scenes:{[${json(coverScene)}]:${json(coverHtml)}},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},root:document.getElementById('cover')});await c.seek(c.duration);window.__cover=c})()`,
+      );
+      coverPng = await shot();
+      await evalIn(`(()=>{window.__cover.destroy?.();document.getElementById('cover').remove()})()`);
+    }
+    if (o.container === 'png') {
+      if (!coverPng) {
+        await evalIn(`window.__stage.seek(${from})`);
+        coverPng = await shot();
+      }
+      writeFileSync(file, coverPng);
+      const report = clock.report({ route: 'server', frames: 1, width: w, height: h });
+      logInfo('render.done', { project: basename(o.dir), format, size: `${w}x${h}`, container: 'png', frames: 1, wall_ms: report.wallMs });
+      return { file, report };
+    }
+    const coverFile = o.cover && coverPng ? join(out, `${stem}-cover.png`) : undefined;
+    if (coverFile) writeFileSync(coverFile, coverPng!);
     const whole = from === 0 && to >= info.duration;
     const fps = Math.max(1, Math.min(120, o.fps ?? info.fps));
     const length = Math.max(1, to - from);
@@ -266,23 +317,34 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     ffmpeg.stderr!.on('data', (d) => (ffmpegErr = (ffmpegErr + d).slice(-2000)));
     const closed = new Promise<number | null>((ok) => ffmpeg!.on('close', ok));
     ffmpeg.stdin!.on('error', () => {});
+    const coverFirst = coverFile && whole && motion.coverFirstFrame !== false;
     for (let i = 0; i < frames; i++) {
       if (o.signal?.aborted) throw new RenderError('aborted');
-      await clock.time('seek', () => evalIn(`window.__stage.seek(${from + (i * 1000) / fps})`));
-      const { data } = await clock.time('capture', () => s('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }));
+      let frame: Buffer;
+      if (i === 0 && coverFirst) frame = coverPng!;
+      else {
+        await clock.time('seek', () => evalIn(`window.__stage.seek(${from + (i * 1000) / fps})`));
+        const { data } = await clock.time('capture', () => s('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }));
+        frame = Buffer.from(data, 'base64');
+      }
       // ffmpeg's input pipe is full when it is the slower side: this is time spent waiting on the encoder
       await clock.time('write', async () => {
-        if (!ffmpeg!.stdin!.write(Buffer.from(data, 'base64'))) await new Promise((r) => ffmpeg!.stdin!.once('drain', r));
+        if (!ffmpeg!.stdin!.write(frame)) await new Promise((r) => ffmpeg!.stdin!.once('drain', r));
       });
       o.onProgress?.(i + 1, frames);
     }
     ffmpeg.stdin!.end();
     const code = await clock.time('finish', () => closed);
     if (code !== 0) throw new RenderError('failed', `ffmpeg exited ${code}: ${ffmpegErr}`);
+    if (coverFile && encode.container === 'mp4') {
+      // cover art: an attached picture stream, which Finder, Explorer and most players show as the thumbnail
+      await clock.time('finish', () => attachCover(partial, coverFile, artFile));
+      renameSync(artFile, partial);
+    }
     renameSync(partial, file);
     const report = clock.report({ route: 'server', frames, width: outW, height: outH });
     logInfo('render.done', { project: basename(o.dir), format, size: `${outW}x${outH}`, container: encode.container, frames, wall_ms: report.wallMs, fps: report.fps, ...Object.fromEntries(Object.entries(report.stages).map(([k, v]) => [`${k}_ms`, v.ms])) });
-    return { file, report };
+    return { file, report, ...(coverFile ? { coverFile } : {}) };
   } catch (e) {
     if (o.signal?.aborted) throw new RenderError('aborted');
     throw e instanceof RenderError ? e : new RenderError('failed', (e as Error).message);
@@ -294,6 +356,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     await new Promise((r) => setTimeout(r, 300));
     // Chrome may still be flushing its profile for a moment; leftovers in the temp folder are not worth failing a render for
     rmSync(partial, { force: true });
+    if (ext === 'mp4') rmSync(artFile, { force: true });
     try {
       rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     } catch {

@@ -15,6 +15,7 @@ import docs from './docs';
 import dash from './dash';
 import importReport from './importReport';
 import starter from './starter';
+import cli from './cli';
 
 export default {
   common,
@@ -34,4 +35,5 @@ export default {
   dash,
   importReport,
   starter,
+  cli,
 };

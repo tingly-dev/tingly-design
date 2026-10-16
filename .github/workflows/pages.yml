@@ -12,7 +12,8 @@ on:
       - site/**
       - projects/design-motion/**
       - packages/sandbox/**
-      - scripts/motion-render.mjs
+      - apps/server/src/render.ts
+      - apps/server/src/cli.ts
       - scripts/build-site.sh
       - docs/images/**
       - .github/workflows/pages.yml
@@ -21,7 +22,8 @@ on:
       - site/**
       - projects/design-motion/**
       - packages/sandbox/**
-      - scripts/motion-render.mjs
+      - apps/server/src/render.ts
+      - apps/server/src/cli.ts
       - scripts/build-site.sh
       - docs/images/**
       - .github/workflows/pages.yml
