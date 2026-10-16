@@ -55,6 +55,7 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
+import { repoOf } from './git';
 import type { ErrorKey, Language, TFunction } from '@dc/i18n';
 import { translator } from '@dc/i18n';
 
@@ -121,17 +122,20 @@ export function showPath(abs: string): string {
 }
 
 /** What is at a folder: a project of some kind, nothing (free to create in), or something else. */
-export async function inspectFolder(input: string): Promise<{ path: string; state: 'project' | 'free' | 'busy' | 'file'; kind?: ProjectKind; name?: string }> {
+export async function inspectFolder(input: string): Promise<{ path: string; state: 'project' | 'free' | 'busy' | 'file'; kind?: ProjectKind; name?: string; repo?: string }> {
   const abs = folderPath(input);
   if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
   const path = showPath(abs);
   const st = await stat(abs).catch(() => null);
-  if (!st) return { path, state: 'free' };
+  // the repository a project here would commit to, if any
+  const repo = await repoOf(abs);
+  const inRepo = repo ? { repo: showPath(repo) } : {};
+  if (!st) return { path, state: 'free', ...inRepo };
   if (!st.isDirectory()) return { path, state: 'file' };
   const kind = await kindOf(abs);
-  if (kind) return { path, state: 'project', kind, name: nameOfFolder(abs) };
+  if (kind) return { path, state: 'project', kind, name: nameOfFolder(abs), ...inRepo };
   const entries = (await readdir(abs).catch(() => [])).filter((e) => !e.startsWith('.'));
-  return { path, state: entries.length ? 'busy' : 'free' };
+  return { path, state: entries.length ? 'busy' : 'free', ...inRepo };
 }
 
 /** The project name a folder already answers to: a folder in the projects folder, or one already linked. */

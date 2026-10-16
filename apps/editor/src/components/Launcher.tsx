@@ -494,6 +494,8 @@ function useFolderInfo(path: string | null): FolderInfo | 'checking' | { error: 
 export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKind; taken: Set<string>; onClose: () => void; at?: string }) {
   const { t } = useTranslation();
   const linksOn = useStore((s) => s.health?.links !== false);
+  const projectsInRepo = useStore((s) => !!s.health?.projectsInRepo);
+  const [git, setGit] = useState(false);
   const [kind, setKind] = useState<ProjectKind>(initial);
   const [title, setTitle] = useState('');
   const [folder, setFolder] = useState<string | null>(at ?? null);
@@ -545,12 +547,22 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
           ? t('launcher.new.folderTaken', { name })
           : '';
   const waiting = !!path && (info === null || info === 'checking');
+  // a repository from the start is offered only where the project would not already be in one
+  const inRepo = path ? !!info && info !== 'checking' && !('error' in info) && !!info.repo : projectsInRepo;
+  const offerGit = !inRepo && !waiting;
   const submit = async () => {
     if (!name || problem || waiting || busy || sizeBad) return;
     setBusy(true);
     try {
       const boardSize = board.split('x').map(Number) as Size;
-      const made = await api.createProject(path ? { path } : name, title.trim() || (path ? path.split(/[\\/]/).filter(Boolean).pop() || kind : name), kind, kind === 'motion' && size ? size : kind === 'design' && board !== DEFAULT_BOARD_SIZE.join('x') ? boardSize : undefined);
+      const { name: made, gitError } = await api.createProject(
+        path ? { path } : name,
+        title.trim() || (path ? path.split(/[\\/]/).filter(Boolean).pop() || kind : name),
+        kind,
+        kind === 'motion' && size ? size : kind === 'design' && board !== DEFAULT_BOARD_SIZE.join('x') ? boardSize : undefined,
+        { git: offerGit && git },
+      );
+      if (gitError) toast(t('launcher.new.gitFailed', { error: gitError }), 'error');
       if (kind === 'motion' && size) rememberSize(size);
       const opts: NewOptions = {
         designSystem: (kind === 'design' || kind === 'slides') && designSystem ? designSystem : undefined,
@@ -591,7 +603,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
         <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
         <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
         {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
-        {(kind === 'design' || kind === 'slides' || kind === 'dashboard') && (
+        {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
           <div className="nopts" data-options={kind}>
             <span className="nopt-h">{t('launcher.new.options')}</span>
             {(kind === 'design' || kind === 'slides') && (
@@ -651,6 +663,13 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
                 </span>
                 {dataError && <span className="nopt-err">{dataError}</span>}
               </div>
+            )}
+            {offerGit && (
+              <label className="nopt nopt-check" data-git="">
+                <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} />
+                <span>{t('launcher.new.git')}</span>
+                <span className="hint">{t('launcher.new.gitHint')}</span>
+              </label>
             )}
           </div>
         )}

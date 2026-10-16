@@ -36,7 +36,7 @@ A PR that changes anything a person sees (the editor, the launcher, the homepage
 
 What a person brings into a project (chat attachments, an imported page or picture, an imported Markdown file) is kept under `uploads/` and referenced from there, never copied. The exceptions are a dashboard's data (`data/`, the only place it reads files) and a design system's own fonts and assets. See `.design/import-into-project.md`.
 
-A project can also live anywhere on disk: the launcher's Open a folder, or a full path in the new-project dialog, lists it in `projects/.links.json` under a flat name, and everything else reaches it through `projectDir(name)`, so never build a project path by joining `PROJECTS_DIR` yourself. The bundle (an npm install) keeps its data in `~/.tingly-design/` unless the host sets `DC_PROJECTS`. See `.design/project-folders.md`.
+A project can also live anywhere on disk: the launcher's Open a folder, or a full path in the new-project dialog, lists it in `projects/.links.json` under a flat name, and everything else reaches it through `projectDir(name)`, so never build a project path by joining `PROJECTS_DIR` yourself. The bundle (an npm install) keeps its data in `~/.tingly-design/` unless the host sets `DC_PROJECTS`. See `.design/project-folders.md`. Committing (every kind, from the change log) commits only the project's folder to the nearest repository holding it, says which repository and branch first, and when there is none creates one in the project folder on the first confirmed commit (`apps/server/src/git.ts`, `.design/project-git.md`).
 
 Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
 
@@ -105,7 +105,7 @@ CI (`.github/workflows/ci.yml`) runs the unit tests, typecheck and the bundle on
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `folders`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`); add new suites to both language versions of that table.
 
 # Issues
 

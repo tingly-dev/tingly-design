@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
 import {
@@ -14,7 +15,7 @@ import {
   updateNote,
   wrapSelection,
 } from '../actions';
-import { api } from '../api';
+import { api, type GitState } from '../api';
 import { canvasOf, display, getClip, toast, useCanvas, useStore } from '../store';
 import { TEXT_COLORS, sizeOf } from './Item';
 import { Menu, MenuItem } from './Menu';
@@ -233,24 +234,95 @@ function time(iso: string): string {
     : d.toLocaleString(locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Committing, said before it happens: which repository and branch the commit lands on, or that the
+ * project has none yet and confirming gives it one of its own in its folder. One confirmation, no
+ * separate "create a repository" step (.design/project-git.md).
+ */
+function CommitDialog({ project, onClose }: { project: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [state, setState] = useState<GitState | null>(null);
+  const [message, setMessage] = useState(`design(${project}): update`);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    api.git(project).then(
+      (g) => live && setState(g),
+      (e: Error) => (toast(e.message, 'error'), onClose()),
+    );
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', key);
+    return () => {
+      live = false;
+      window.removeEventListener('keydown', key);
+    };
+  }, [project, onClose]);
+  const fresh = !!state && !state.repo;
+  const nothing = !!state && !!state.repo && state.changes === 0;
+  const submit = async () => {
+    if (!state || busy || nothing || !message.trim()) return;
+    setBusy(true);
+    const r = await api.commit(project, message.trim(), fresh).catch((e: Error) => ({ ok: false, output: e.message }));
+    toast(r.output, r.ok ? 'info' : 'error');
+    onClose();
+  };
+  return (
+    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <form
+        className="ldialog lcommit"
+        role="dialog"
+        aria-label={t('canvas.journal.commit')}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        <header>
+          <h2>{t('canvas.journal.commit')}</h2>
+          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
+            ×
+          </button>
+        </header>
+        <div className="commit-where" role="status" data-state={!state ? 'checking' : fresh ? 'new' : 'repo'}>
+          {!state
+            ? t('canvas.journal.commitChecking')
+            : fresh
+              ? t('canvas.journal.commitNew', { folder: state.folder })
+              : state.branch
+                ? t('canvas.journal.commitTo', { repo: state.repo, branch: state.branch })
+                : t('canvas.journal.commitToDetached', { repo: state.repo })}
+          {state && !fresh && <span className="commit-changes">{nothing ? t('canvas.journal.commitNothing') : t('canvas.journal.commitChanges', { count: state.changes })}</span>}
+        </div>
+        <input autoFocus className="input" aria-label={t('canvas.journal.commitPrompt')} placeholder={t('canvas.journal.commitPrompt')} value={message} onChange={(e) => setMessage(e.target.value)} />
+        <footer>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn primary" type="submit" disabled={!state || busy || nothing || !message.trim()}>
+            {fresh ? t('canvas.journal.commitCreate') : t('canvas.journal.commitDo')}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
 export function JournalPopover() {
   const { t } = useTranslation();
   const open = useStore((s) => s.journalOpen);
   const journal = useStore((s) => s.journal);
   const project = useStore((s) => s.project);
-  if (!open) return null;
-  const commit = async () => {
-    if (!project) return;
-    const msg = prompt(t('canvas.journal.commitPrompt'), `canvas(${project}): ${canvasOf(useStore.getState()).title}`);
-    if (msg === null) return;
-    const r = await api.commit(project, msg);
-    toast(r.output, r.ok ? 'info' : 'error');
-  };
+  const [committing, setCommitting] = useState(false);
+  const closeCommit = useMemo(() => () => setCommitting(false), []);
+  // the dialog outlives the popover: a click in it counts as outside the popover, which closes it
+  const dialog = committing && project && createPortal(<CommitDialog project={project} onClose={closeCommit} />, document.body);
+  if (!open) return dialog || null;
   return (
     <section className="journal-pop" aria-label={t('canvas.journal.title')}>
+      {dialog}
       <header>
         {t('canvas.journal.title')}
-        <button className="btn" title={t('canvas.journal.commitHint')} onClick={commit}>
+        <button className="btn" title={t('canvas.journal.commitHint')} data-commit="" onClick={() => setCommitting(true)}>
           {t('canvas.journal.commit')}
         </button>
         <button className="ib" aria-label={t('common.close')} onClick={() => useStore.setState({ journalOpen: false })}>

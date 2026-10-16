@@ -57,6 +57,7 @@ import {
   linkFolder,
   linkedProjects,
   onLinksChange,
+  showPath,
   unlinkProject,
   isProjectName,
   isTracked,
@@ -82,6 +83,7 @@ import {
   writeAtomic,
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
+import { commitFolder, gitState, initRepo, repoOf } from './git';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { activeDelegates, claudeAvailable, startDelegate, stopDelegate, stopDelegates, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
@@ -119,7 +121,7 @@ app.onError((err, c) => {
 });
 
 let cliChecked: boolean | null = null;
-app.get('/api/health', (c) => {
+app.get('/api/health', async (c) => {
   if (cliChecked === null) cliChecked = claudeAvailable();
   return c.json({
     ok: true,
@@ -127,6 +129,7 @@ app.get('/api/health', (c) => {
     fastModel: aiResolved().fastModel.value,
     claudeCli: cliChecked,
     projectsDir: fromRoot(PROJECTS_DIR),
+    projectsInRepo: !!(await repoOf(PROJECTS_DIR)),
     links: LINKS_ON,
     theme: DC_THEME,
     lang: DC_LANG,
@@ -140,7 +143,7 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
-  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown }>();
+  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; git?: boolean }>();
   const { title, kind, size } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
   if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
@@ -155,6 +158,18 @@ app.post('/api/projects', async (c) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});
     throw e;
   });
+  // a repository of its own from the start, when asked and the folder is not already in one
+  const dir = projectDir(name);
+  if (body.git && !(await repoOf(dir))) {
+    try {
+      await initRepo(dir);
+      await commitFolder(dir, `design(${name}): start`);
+      logInfo('git.init', { project: name, dir });
+    } catch (e) {
+      logWarn('git.init.failed', { project: name, error: (e as Error).message });
+      return c.json({ ok: true, name, gitError: (e as Error).message });
+    }
+  }
   return c.json({ ok: true, name });
 });
 
@@ -760,20 +775,33 @@ app.get('/api/projects/:p/render/:file', async (c) => {
 
 // ---------------------------------------------------------------- git
 
+/** Where a commit of this project lands: the repository holding its folder and the branch, or none yet. */
+app.get('/api/projects/:p/git', async (c) => {
+  const dir = projectDir(c.req.param('p'));
+  const st = await gitState(dir);
+  return c.json({ ...st, repo: st.repo && showPath(st.repo), folder: showPath(dir) });
+});
+
+/**
+ * Commit the project's folder, and only it, to the nearest repository holding it. With no repository
+ * and `init`, the project gets one of its own in its folder first (the commit dialog said so).
+ */
 app.post('/api/projects/:p/commit', async (c) => {
   const p = c.req.param('p');
-  // git finds the repository the project's folder is in: this one, a host's, or the one a linked folder sits in
   const dir = projectDir(p);
-  const { message } = await c.req.json<{ message?: string }>().catch(() => ({ message: undefined }));
+  const { message, init } = await c.req.json<{ message?: string; init?: boolean }>().catch(() => ({ message: undefined, init: undefined }));
   try {
-    await run('git', ['add', '-A', '--', dir], { cwd: dir });
-    const st = await run('git', ['diff', '--cached', '--stat', '--', dir], { cwd: dir });
-    if (!st.stdout.trim()) return c.json({ ok: false, output: trOf(c)('errors.nothingToCommit') });
-    const out = await run('git', ['commit', '-m', message?.trim() || `canvas(${p}): update`, '--', dir], { cwd: dir });
-    return c.json({ ok: true, output: out.stdout.trim().split('\n')[0] });
+    if (!(await repoOf(dir))) {
+      if (!init) return c.json({ ok: false, output: trOf(c)('errors.notGitRepo', { dir: showPath(dir) }) });
+      await initRepo(dir);
+      logInfo('git.init', { project: p, dir });
+    }
+    const out = await commitFolder(dir, message?.trim() || `design(${p}): update`);
+    if (!out) return c.json({ ok: false, output: trOf(c)('errors.nothingToCommit') });
+    logInfo('git.commit', { project: p, commit: out.split(' ')[0] });
+    return c.json({ ok: true, output: out });
   } catch (e) {
     const err = e as { stderr?: string; message: string };
-    if (/not a git repository/i.test(err.stderr ?? '')) return c.json({ ok: false, output: trOf(c)('errors.notGitRepo', { dir: fromRoot(dir) }) });
     return c.json({ ok: false, output: (err.stderr || err.message).trim() }, 500);
   }
 });
