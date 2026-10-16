@@ -55,6 +55,17 @@ export async function renderCapabilities(): Promise<RenderCapabilities> {
   return { chrome: findChrome() !== null, ffmpeg: await hasFfmpeg() };
 }
 
+/**
+ * How we start Chrome: headless, driven over its debugging pipe. Its sandbox needs
+ * user namespaces, which root and some CI runners (Ubuntu 24.04's AppArmor rule) do
+ * not allow; `DC_CHROME_SANDBOX=0` turns it off there.
+ */
+export function chromeArgs(profile: string): string[] {
+  const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`, 'about:blank'];
+  if (process.getuid?.() === 0 || process.env.DC_CHROME_SANDBOX === '0') args.unshift('--no-sandbox');
+  return args;
+}
+
 /** Chrome's debugging protocol over the pipe it is started with: JSON messages ending in a NUL byte. */
 export class Cdp {
   private id = 0;
@@ -63,6 +74,12 @@ export class Cdp {
   private handlers: ((m: any) => void)[] = [];
   constructor(private child: ChildProcess) {
     const input = child.stdio[4] as NodeJS.ReadableStream;
+    // what Chrome said last, to say why it stopped; reading it also keeps the pipe from filling
+    let said = '';
+    child.stdio[2]?.on('data', (d: Buffer) => (said = (said + d.toString()).slice(-600)));
+    // a Chrome that dies at once resets the pipes: that is a failed render, not a crash
+    (child.stdio[3] as NodeJS.WritableStream | null)?.on('error', () => {});
+    input.on('error', () => {});
     input.setEncoding('utf8');
     input.on('data', (d: string) => {
       this.buf += d;
@@ -77,8 +94,10 @@ export class Cdp {
         } else for (const h of this.handlers) h(msg);
       }
     });
+    child.on('error', (e) => (said += `\n${e.message}`));
     child.on('close', () => {
-      for (const w of this.waiting.values()) w.fail(new Error('Chrome closed'));
+      const why = said.trim().split('\n').slice(-3).join(' ');
+      for (const w of this.waiting.values()) w.fail(new Error(why ? `Chrome closed: ${why}` : 'Chrome closed'));
       this.waiting.clear();
     });
   }
@@ -248,9 +267,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const partial = file.replace(new RegExp(`\\.${ext}$`), `.part.${ext}`);
   const artFile = join(out, `${stem}.art.mp4`);
 
-  const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${join(tmp, 'profile')}`, 'about:blank'];
-  if (process.getuid?.() === 0) args.unshift('--no-sandbox');
-  const browser = spawn(chrome, args, { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
+  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
   let ffmpeg: ChildProcess | null = null;
   const stop = () => {
     browser.kill('SIGKILL');
