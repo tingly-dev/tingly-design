@@ -109,7 +109,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     `.dc-motion-root>.dc-slide-host{position:absolute;left:0;top:0;visibility:hidden}` +
     `.dc-slide-host x-embed>iframe{display:block;width:100%;height:100%;border:0;background:transparent}`;
   root.appendChild(style);
-  const faces = faceMarkup({ faces: motion.faces } as DeckJson);
+  const faces = faceMarkup({ faces: motion.faces ?? {} } as DeckJson);
   const faceLinks: Promise<unknown>[] = [];
   if (faces) {
     const tpl = document.createElement('template');

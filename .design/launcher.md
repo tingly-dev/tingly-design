@@ -54,6 +54,7 @@
 
 - 外观菜单（主题）只放在启动页，见 [theming](../docs/zh/theming.md)。
 - 导入 HTML / SVG 的入口在启动页（`ImportDialog`），导入结果是一个新画布，见 [import-external-material.md](./import-external-material.md)。
+- 打开项目文件夹之外的项目、把新项目建到任意位置："新建项目"菜单最后一项"打开文件夹…"，新建对话框的"改文件夹"也收完整路径，见 [project-folders.md](./project-folders.md)。
 - 嵌入时宿主可以用 `tingly-design:open` 直接打开项目，跳过启动页，见 [embedding](../docs/zh/embedding.md)。
 
 ## 5. 项目菜单：编辑器里的出口

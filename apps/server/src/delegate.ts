@@ -5,7 +5,7 @@ import { describeTool, type ProjectKind } from '@dc/core';
 import type { Language } from '@dc/i18n';
 import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
-import { projectDir } from './store';
+import { linkedProjects, projectDir } from './store';
 import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
 import { claudeLaunch } from './aiconfig';
@@ -147,6 +147,9 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   if (launch.model) args.push('--model', launch.model);
   // a host keeps the projects in its own data folder: let Claude Code edit there too
   if (!PROJECTS_INSIDE_ROOT) args.push('--add-dir', PROJECTS_DIR);
+  // a project linked from elsewhere on disk: its own folder
+  const linked = linkedProjects().get(project);
+  if (linked && fromRoot(linked) === linked) args.push('--add-dir', linked);
 
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
   publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });

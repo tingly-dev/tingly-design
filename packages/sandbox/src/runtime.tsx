@@ -1342,10 +1342,10 @@ function exportError(err: unknown): string {
   return typeof err === 'string' && err ? err : 'the picture could not be made';
 }
 
-async function exportPng(id: string, scale: number) {
+async function exportPng(id: string, scale: number, tid?: number) {
   const prevSel = current.selected;
   try {
-    const node = mount.querySelector('[data-dc-tid]') as HTMLElement | null;
+    const node = (tid === undefined ? mount.querySelector('[data-dc-tid]') : instances(tid)[0]) as HTMLElement | null;
     if (!node) throw new Error('nothing to export');
     const broken = [...node.querySelectorAll('img')].find((i) => i.complete && !i.naturalWidth && i.getAttribute('src'));
     if (broken) throw new Error(`could not load the picture ${broken.getAttribute('src')!.slice(0, 120)}`);
@@ -1403,7 +1403,7 @@ function onMessage(m: ToRuntime) {
     current.step = m.step;
     post({ dc: 'steps', total: showSteps(mount, m.step) });
   } else if (m.dc === 'export') {
-    void exportPng(m.id, m.scale);
+    void exportPng(m.id, m.scale, m.tid);
   } else if (m.dc === 'edit') {
     // the element may only exist after the render that is on its way
     let tries = 0;

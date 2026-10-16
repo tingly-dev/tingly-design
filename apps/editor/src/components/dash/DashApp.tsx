@@ -281,7 +281,7 @@ export function DashApp() {
       {side === 'sources' && <SourcesPanel />}
       {side === 'code' && <CodePanel />}
       <Watch />
-      {journalOpen && <JournalPopover />}
+      <JournalPopover />
     </div>
   );
 }

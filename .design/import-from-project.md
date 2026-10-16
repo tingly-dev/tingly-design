@@ -75,12 +75,12 @@
 | `packages/core/src/boardEmbed.ts` | `$time`、尺寸、Tweaks、依赖收集、`imports` 记录、运行时页面、cover 计算 |
 | `packages/sandbox/src/slide.tsx` `XBoard`、`runtime.tsx` | 幻灯片/场景里画嵌入的画板；画板一侧接 seek、给 `time` |
 | `packages/sandbox/src/motion.ts` `mountBoard` | 播放器里的画板嵌入 |
-| `apps/server/src/index.ts` `import-board` | 复制和记录 |
+| `apps/server/src/app.ts` `import-board` | 复制和记录 |
 | `apps/server/src/render.ts` | 服务端精确渲染带上画板文件和画板运行时 |
 | `apps/editor/src/components/BoardPicker.tsx`、`ImportHere.tsx`、`FileMenu.tsx` | 选择器和入口 |
 | `apps/editor/src/boards.ts`、`slides.ts`、`motion.ts` | 嵌入块的写法、放到页面上、给帧准备画板文件 |
 | `apps/editor/src/components/panel/BoardEmbedProps.tsx`、`OtherProps.tsx` | 嵌入块的面板；画布 Tweaks 的时间滑块 |
-| `apps/editor/src/components/slides/exportDeck.tsx`、`scripts/motion-render.mjs` | 导出 |
+| `apps/editor/src/components/slides/exportDeck.tsx`、`apps/server/src/render.ts`（命令行 `tingly-design export`）、`scripts/motion-render.mjs`（播放器、`--verify`） | 导出 |
 
 ## 5. 还没做的
 

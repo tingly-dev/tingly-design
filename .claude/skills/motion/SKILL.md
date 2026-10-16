@@ -102,4 +102,6 @@ Scenes are shared by all formats; elements that need a different layout carry ov
 
 ## Rendering
 
-`pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> [--format wide] [--speed 2] [--gif] [--player] [--verify]` writes MP4s (and the cover PNG, a GIF, a single-file HTML player) to `projects/<name>/renders/`. It needs Chromium and ffmpeg.
+Check first: `tingly-design check <name>` lists every scene that falls outside the subset (exit code 1 on an error; `--json` for data), and `tingly-design list <name>` shows the formats and each scene's start and length.
+
+`tingly-design export <name> --as mp4 [--format wide] [--speed 2]` writes an MP4 per format (cover first, with cover art) and the cover PNG to `projects/<name>/renders/`; `--as gif` writes GIFs, `--as png` the cover alone, `--out <dir>` writes elsewhere. It needs Chrome or Edge and ffmpeg (`tingly-design check` with no project says whether they are there). Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder (`DC_PROJECTS` is already set) and the same version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), otherwise `pnpm tingly-design …` (this repository). Do not use `npx`, which may fetch another version. A single-file HTML player and the seek check are still `pnpm --filter @dc/sandbox build && node scripts/motion-render.mjs <name> --player --verify`.
