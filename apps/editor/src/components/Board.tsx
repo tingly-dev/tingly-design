@@ -25,7 +25,7 @@ export function post(file: string, msg: ToRuntime): void {
   frames.get(file)?.contentWindow?.postMessage(msg, '*');
 }
 
-export function exportPng(file: string, scale = 2): Promise<string> {
+export function exportPng(file: string, scale = 2, tid?: number): Promise<string> {
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => (exports.delete(id), reject(new Error(tr('canvas.export.timeout')))), 20000);
@@ -34,8 +34,36 @@ export function exportPng(file: string, scale = 2): Promise<string> {
       if (r.dataUrl) resolve(r.dataUrl);
       else reject(new Error(r.error ?? tr('canvas.export.failed')));
     });
-    post(file, { dc: 'export', id, scale });
+    post(file, { dc: 'export', id, scale, tid });
   });
+}
+
+/**
+ * Put a picture of an artboard, or of one element in it, on the clipboard. The clipboard item takes a
+ * promise so the write starts inside the click (Safari drops it otherwise); when the browser refuses an
+ * image on the clipboard the picture is downloaded instead and the toast says so.
+ */
+export async function copyPng(file: string, tid?: number): Promise<void> {
+  const stem = file.replace(/\.dc\.html$/, '');
+  let url = '';
+  const blob = exportPng(file, 2, tid).then(async (u) => {
+    url = u;
+    return (await fetch(u)).blob();
+  });
+  try {
+    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') throw new Error('no image clipboard');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    toast(tr('canvas.export.copied'));
+  } catch (e) {
+    try {
+      await blob;
+    } catch (err) {
+      toast((err as Error).message, 'error');
+      return;
+    }
+    download(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, url);
+    toast(tr('canvas.export.copyFallback'));
+  }
 }
 
 function download(name: string, href: string) {

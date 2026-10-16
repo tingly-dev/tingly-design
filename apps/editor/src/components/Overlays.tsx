@@ -17,6 +17,7 @@ import {
 import { api } from '../api';
 import { canvasOf, display, getClip, toast, useCanvas, useStore } from '../store';
 import { TEXT_COLORS, sizeOf } from './Item';
+import { copyPng } from './Board';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';
@@ -44,6 +45,7 @@ export function ContextMenu() {
     <Menu x={menu.x} y={menu.y} onClose={close} label={t('common.edit')}>
       <MenuItem label={t('canvas.menu.cut')} keys={`${mod}X`} disabled={isRoot || sel.kind === 'board'} onSelect={run(cutSelection)} />
       <MenuItem label={t('common.copy')} keys={`${mod}C`} disabled={sel.kind === 'board'} onSelect={run(copySelection)} />
+      <MenuItem label={t('canvas.menu.copyPng')} disabled={sel.kind === 'note'} onSelect={run(() => sel.kind !== 'note' && void copyPng(sel.file, sel.kind === 'el' ? sel.tid : undefined))} />
       <MenuItem label={t('canvas.menu.paste')} keys={`${mod}V`} disabled={!clip} onSelect={run(paste)} />
       <MenuItem label={t('canvas.menu.duplicate')} keys={`${mod}D`} disabled={isRoot} onSelect={run(duplicateSelection)} />
       <hr />
