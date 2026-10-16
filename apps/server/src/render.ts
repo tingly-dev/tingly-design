@@ -72,6 +72,8 @@ export class Cdp {
   private waiting = new Map<number, { ok: (v: any) => void; fail: (e: Error) => void }>();
   private buf = '';
   private handlers: ((m: any) => void)[] = [];
+  /** Set once Chrome has gone: a later request fails at once instead of waiting forever. */
+  private closed: Error | null = null;
   constructor(private child: ChildProcess) {
     const input = child.stdio[4] as NodeJS.ReadableStream;
     // what Chrome said last, to say why it stopped; reading it also keeps the pipe from filling
@@ -97,7 +99,8 @@ export class Cdp {
     child.on('error', (e) => (said += `\n${e.message}`));
     child.on('close', () => {
       const why = said.trim().split('\n').slice(-3).join(' ');
-      for (const w of this.waiting.values()) w.fail(new Error(why ? `Chrome closed: ${why}` : 'Chrome closed'));
+      this.closed = new Error(why ? `Chrome closed: ${why}` : 'Chrome closed');
+      for (const w of this.waiting.values()) w.fail(this.closed);
       this.waiting.clear();
     });
   }
@@ -107,6 +110,7 @@ export class Cdp {
   send<T = any>(method: string, params: object = {}, sessionId?: string): Promise<T> {
     const id = ++this.id;
     return new Promise((ok, fail) => {
+      if (this.closed) return fail(this.closed);
       this.waiting.set(id, { ok, fail });
       (this.child.stdio[3] as NodeJS.WritableStream).write(JSON.stringify({ id, method, params, sessionId }) + '\0');
     });
@@ -236,7 +240,8 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
 export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const clock = new Clock();
   const chrome = findChrome();
-  if (!chrome || !(await hasFfmpeg())) throw new RenderError('no-renderer');
+  // a cover PNG is one screenshot: Chrome alone draws it
+  if (!chrome || (o.container !== 'png' && !(await hasFfmpeg()))) throw new RenderError('no-renderer');
   const motion = parseMotion(readFileSync(join(o.dir, 'motion.json'), 'utf8'));
   const format = o.format && motion.formats[o.format] ? o.format : Object.keys(motion.formats)[0];
   if (!format) throw new RenderError('no-format');
@@ -304,11 +309,12 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
       await evalIn(`window.__stage.seek(${Math.min(cover.at, info.duration)})`);
       coverPng = await shot();
     } else if (coverScene) {
+      // the stage hides while the cover is up, so a cover with a see-through background shows nothing behind it
       await evalIn(
-        `(async()=>{const c=await window.dcMotion.mount({motion:{...${json(motion)},order:[${json(coverScene)}]},scenes:{[${json(coverScene)}]:${json(coverHtml)}},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},root:document.getElementById('cover')});await c.seek(c.duration);window.__cover=c})()`,
+        `(async()=>{document.getElementById('root').style.visibility='hidden';const c=await window.dcMotion.mount({motion:{...${json(motion)},order:[${json(coverScene)}]},scenes:{[${json(coverScene)}]:${json(coverHtml)}},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},root:document.getElementById('cover')});await c.seek(c.duration);window.__cover=c})()`,
       );
       coverPng = await shot();
-      await evalIn(`(()=>{window.__cover.destroy?.();document.getElementById('cover').remove()})()`);
+      await evalIn(`(()=>{window.__cover.destroy?.();document.getElementById('cover').remove();document.getElementById('root').style.visibility=''})()`);
     }
     if (o.container === 'png') {
       if (!coverPng) {
@@ -367,7 +373,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     throw e instanceof RenderError ? e : new RenderError('failed', (e as Error).message);
   } finally {
     o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null ? ok(null) : browser.once('close', ok)));
+    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
     stop();
     await exited;
     await new Promise((r) => setTimeout(r, 300));

@@ -52,7 +52,7 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
   } finally {
     clearTimeout(timer);
     o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null ? ok(null) : browser.once('close', ok)));
+    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
     stop();
     await exited;
     await new Promise((r) => setTimeout(r, 300));

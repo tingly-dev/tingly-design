@@ -20,6 +20,7 @@ export default {
   --projects <文件夹>   项目文件夹（默认：{{projects}}）
   --json                输出数据，给脚本或 agent 用
   --port <端口>         serve、open：端口（0 表示自动挑一个空闲端口）
+  --host <地址>         serve、open：监听的地址（默认 127.0.0.1）
   --title <文字>        new：启动页上显示的标题
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
@@ -35,7 +36,9 @@ export default {
   noProjectAt: '{{path}} 里没有项目',
   created: '已新建{{kind}} {{name}}，位置：{{path}}',
   listEmpty: '{{dir}} 里还没有项目。用 tingly-design new <类型> <名字> 新建一个。',
-  listMore: '还有 {{count}} 项',
+  badArgs: '{{message}}。运行 tingly-design --help 查看选项。',
+  seconds: '{{n}} 秒',
+  words: '{{n}} 字',
   kind: {
     design: '画布',
     slides: '幻灯片',

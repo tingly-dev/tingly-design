@@ -51,7 +51,8 @@ const { values: opts, positionals } = (() => {
       },
     });
   } catch (e) {
-    console.error((e as Error).message);
+    // node's own wording names the option; the hint around it follows the language
+    console.error(t('cli.badArgs', { message: (e as Error).message }));
     process.exit(2);
   }
 })();
@@ -181,14 +182,14 @@ async function list(arg: string | undefined): Promise<void> {
     outline.items.map((i) => [
       i.type,
       i.id,
-      i.size ? `${i.size[0]}×${i.size[1]}` : i.start !== undefined ? `${seconds(i.start)} +${seconds(i.duration ?? 0)}${i.transition ? ` ${i.transition}` : ''}` : i.words !== undefined ? `${i.words}w` : (i.source ?? ''),
+      i.size ? `${i.size[0]}×${i.size[1]}` : i.start !== undefined ? `${seconds(i.start)} +${seconds(i.duration ?? 0)}${i.transition ? ` ${i.transition}` : ''}` : i.words !== undefined ? t('cli.words', { n: i.words }) : (i.source ?? ''),
       i.title ?? '',
     ]),
     '  ',
   );
 }
 
-const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+const seconds = (ms: number) => t('cli.seconds', { n: (ms / 1000).toFixed(1) });
 
 function table(rows: string[][], indent = ''): void {
   const widths = rows[0]?.map((_, c) => Math.max(...rows.map((r) => r[c].length))) ?? [];

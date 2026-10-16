@@ -32,7 +32,6 @@ export interface RunningServer {
 
 export async function startServer(o: ServerOptions): Promise<RunningServer> {
   if (await seedSamples()) logInfo('samples.copied', { dir: PROJECTS_DIR });
-  const watcher = watchProjects();
 
   const fetch: typeof app.fetch = BASE_PATH
     ? (req, ...rest) => {
@@ -45,6 +44,8 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
     const server = serve({ fetch, port: o.port, hostname: o.host }, (info) => ok({ server, port: info.port }));
     server.once('error', fail);
   });
+  // only once the port is ours: a caller that retries on another port must not leave a second watcher behind
+  const watcher = watchProjects();
 
   let closing: Promise<void> | null = null;
   return {

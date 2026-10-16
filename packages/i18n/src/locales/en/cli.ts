@@ -18,6 +18,7 @@ Options:
   --projects <folder>   the projects folder (default: {{projects}})
   --json                print data for a script or an agent
   --port <n>            serve, open: the port (0 picks a free one)
+  --host <address>      serve, open: the address to listen on (default 127.0.0.1)
   --title <text>        new: the title shown in the launcher
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size
   --format <a,b>        export: the motion formats to render (default: all)
@@ -33,7 +34,9 @@ Options:
   noProjectAt: 'There is no project at {{path}}',
   created: 'Created {{kind}} {{name}} in {{path}}',
   listEmpty: 'No projects yet in {{dir}}. Create one with tingly-design new <kind> <name>.',
-  listMore: '{{count}} more',
+  badArgs: '{{message}}. Run tingly-design --help for the options.',
+  seconds: '{{n}}s',
+  words: '{{n}} words',
   kind: {
     design: 'canvas',
     slides: 'slides',
