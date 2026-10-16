@@ -9,7 +9,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./timing": "./src/timing.ts"
+    "./timing": "./src/timing.ts",
+    "./snap": "./src/frameSnap.ts"
   },
   "scripts": {
     "test": "vitest run",

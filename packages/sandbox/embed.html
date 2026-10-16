@@ -8,12 +8,15 @@
 <body>
 <script>
 // A slide's <x-embed> runs here: the slide frame posts the embed's markup once
-// and this page replaces itself with it. The page's own CSP stays in force
-// (no network), and the frame's sandbox gives it an opaque origin.
+// and this page replaces itself with it, filling the embed's box as the
+// player's own embed page does. The page's own CSP stays in force
+// (no network), and the frame's sandbox gives it an opaque origin. SNAP (filled in
+// by build.mjs) lets the page ask the embed for a picture of itself when it exports.
+var SNAP = "__DC_SNAP__";
 addEventListener('message', function (e) {
   if (e.source !== parent || !e.data || e.data.dcEmbed !== 'html') return;
   document.open();
-  document.write('<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style>' + String(e.data.html));
+  document.write('<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:transparent}</style><script>' + SNAP + '<\/script>' + String(e.data.html));
   document.close();
 });
 parent.postMessage({ dcEmbed: 'ready' }, '*');

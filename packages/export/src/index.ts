@@ -2,6 +2,7 @@ export { hasWebCodecs, planVideo, type Container, type VideoNote, type VideoPlan
 export { encodeVideo, NoEncoderError, type VideoOptions, type VideoResult } from './video';
 export { encodeGif, type GifOptions } from './gif';
 export { FrameRasterizer, type Frame, type FrameOptions } from './frames';
+export { answerSnaps, snapFrame, snapFrames } from './frameSnap';
 export { rasterize, canvasPng, fontCss, type RasterOptions } from './rasterize';
 export { mixAudio, type AudioClip } from './audio';
 export { download } from './download';

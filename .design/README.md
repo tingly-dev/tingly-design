@@ -31,7 +31,7 @@
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
-| [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome；其余类型的格式和共用菜单；速度怎么量、慢在哪、怎么看见 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
+| [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome，本机没有时嵌入内容自己交出画面；其余类型的格式和共用菜单；速度怎么量、慢在哪、怎么看见 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |

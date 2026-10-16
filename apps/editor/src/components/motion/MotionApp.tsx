@@ -294,6 +294,7 @@ export function MotionApp() {
       audio: t('motion.export.steps.audio'),
       launch: t('motion.export.steps.launch'),
       seek: t('motion.export.steps.seek'),
+      embeds: t('motion.export.steps.embeds'),
       snapshot: t('motion.export.steps.snapshot'),
       decode: t('motion.export.steps.decode'),
       paint: t('motion.export.steps.paint'),
