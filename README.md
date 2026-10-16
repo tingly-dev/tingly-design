@@ -69,6 +69,8 @@ pnpm dev            # editor at http://localhost:5173, server on :8787
 
 Open http://localhost:5173 to pick a project, or go straight to http://localhost:5173/?p=box-console for the sample canvas. For a production-style run, `pnpm start` builds the editor and serves it together with the API on port 8787.
 
+From a terminal, a script or an agent's skill, the `tingly-design` command (`pnpm tingly-design` here, `npx tingly-design` from npm) opens, creates, lists, checks and exports projects; see [command line](docs/en/cli.md).
+
 ### Configuration
 
 | Variable | Purpose |
@@ -91,6 +93,7 @@ Open http://localhost:5173 to pick a project, or go straight to http://localhost
 |---|---|
 | **Guides** | [Canvas](docs/en/guide/canvas.md) · [Slides](docs/en/guide/slides.md) · [Design system](docs/en/guide/design-system.md) · [Dashboard](docs/en/guide/dashboard.md) · [Docs](docs/en/guide/docs.md) · [Motion](docs/en/guide/motion.md) |
 | **[Themes](docs/en/theming.md)** | Light, dark and Tingly Box's presets, and passing a theme in by URL, script, a host page or `DC_THEME` |
+| **[Command line](docs/en/cli.md)** | `tingly-design open`, `serve`, `new`, `list`, `check` and `export`, for scripts, CI and agent skills |
 | **[Embedding](docs/en/embedding.md)** | Running inside another app such as Tingly Box: the bundle (`pnpm bundle`), launching it under a path prefix, and the messages between host and editor |
 | **[How it works](docs/en/architecture.md)** | The source format, the write-back engine, fast AI, collaboration, sandboxing and the repository layout |
 | **[Development and tests](docs/en/development.md)** | Unit tests, typecheck and the Playwright end-to-end suites |

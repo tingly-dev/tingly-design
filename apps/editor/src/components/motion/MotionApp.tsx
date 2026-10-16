@@ -689,7 +689,7 @@ export function MotionApp() {
       )}
       {panelOpen && <RightPanel />}
       <ContextMenu />
-      {journalOpen && <JournalPopover />}
+      <JournalPopover />
     </div>
   );
 }
