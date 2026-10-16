@@ -62,7 +62,8 @@ interface Embed {
   ready: Promise<void>;
 }
 
-const EMBED_HEAD = '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style>';
+// the embed answers the exporter's request for a picture of itself (@dc/export frameSnap)
+const EMBED_HEAD = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style><script>${__DC_SNAP__.replace(/<\/(script)/gi, '<\\/$1')}</script>`;
 
 let seekCounter = 0;
 

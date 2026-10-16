@@ -1,6 +1,6 @@
 # Embed 的渲染：哪里要过后端，能不能不过
 
-状态：**研究**。延伸自 #53（项目之间互相引用）：引用落地时最常见的形状就是一个 `<x-embed>`，所以先回答"embed 现在怎么画、是不是必须过后端"。和 #107（编辑器和渲染器各有一套 embed 宿主）是同一块代码。原型在 `.research/embed-render/spike-frame-snapshot.mjs`，实测脚本是同目录的 `bench-snap.mjs`（§5）。
+状态：**研究，已定**：方案 A 已落地，结论在 `.design/export.md` §4。延伸自 #53（项目之间互相引用）：引用落地时最常见的形状就是一个 `<x-embed>`，所以先回答"embed 现在怎么画、是不是必须过后端"。和 #107（编辑器和渲染器各有一套 embed 宿主）是同一块代码。原型在 `.research/embed-render/spike-frame-snapshot.mjs`，实测脚本是同目录的 `bench-snap.mjs`（§5）。
 
 ## 1. 现在的两种 embed
 

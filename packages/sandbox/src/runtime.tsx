@@ -40,8 +40,11 @@ import { BUILD_CSS, XArt, XBoard, XEmbed, innerSource, resolveSrc, showSteps } f
 import { urlsAgainst } from './urls';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 import { msg } from './msg';
+import { answerSnaps } from '@dc/export/snap';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
+// an artboard embedded in a slide or scene hands the page a picture of itself when it exports (.design/export.md)
+answerSnaps();
 
 // ------------------------------------------------------------------ holes
 

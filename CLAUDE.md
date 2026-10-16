@@ -73,7 +73,7 @@ Rules of thumb:
 
 ```
 packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher)
-packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, `FrameRasterizer` for the frames of a video, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write, `Clock` / `ExportReport` timing every stage of an export); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
+packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, `FrameRasterizer` for the frames of a video, `frameSnap.ts` for an embed's frame to hand over a picture of itself, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write, `Clock` / `ExportReport` timing every stage of an export); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)

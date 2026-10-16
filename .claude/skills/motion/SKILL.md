@@ -83,6 +83,7 @@ For light, noise, grain or glow that CSS cannot draw, put a GLSL ES 3.0 fragment
 </x-embed>
 ```
 
+- Keep `preserveDrawingBuffer: true` on the WebGL context (the sample has it): a video made in the browser asks the embed for a picture of itself after each seek, and without it the canvas reads back empty.
 - Keep the runtime's error reporting: when WebGL2 or the shader fails it posts `effect-error` and the editor tells the person why; the scene's own background colour is what shows then, so set one.
 - The frame must depend only on `time` and `aspect`: no clock, no animation loop, no randomness.
 - Output premultiplied alpha; `a = 1` for a background, less for a layer between elements (its DOM position is its place in the stack).

@@ -24,7 +24,7 @@ export async function exportInputs(motion: MotionJson, scenes: Record<string, st
   return { fontCss: await fontCss(sources, textOf(scenes)), audio };
 }
 
-/** Scenes a browser export draws wrongly: an embed is a separate frame and a video layer is not seeked. These go to the server's Chrome. */
+/** Scenes the server's Chrome draws better when the machine has it: a video layer is not seeked in the browser, and an embed is drawn there from the picture its frame hands over (.design/export.md). */
 export function exactScenes(scenes: Record<string, string>): string[] {
   return Object.entries(scenes)
     .filter(([, src]) => /<x-embed\b|<video\b/i.test(src))

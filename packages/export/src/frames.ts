@@ -14,7 +14,8 @@
  * What it leaves out on purpose: stylesheets and scripts (the copy carries
  * every style it needs, and a keyframe rule left in would run its animation again
  * inside the picture) and the properties of animation, transition and pointer.
- * Same limits as `rasterize`: a video layer, an <iframe> or a WebGL canvas comes out blank.
+ * Same limits as `rasterize`: a video layer or a WebGL canvas comes out blank, and so does an <iframe>
+ * unless the frame hands over a picture of itself (`snapFrames`, frameSnap.ts).
  */
 import type { Clock } from './timing';
 
@@ -64,6 +65,8 @@ export class FrameRasterizer {
   private plainCss = '';
   private families = new Set<string>();
   private familyAt: number;
+  /** Pictures of the frames in the tree being copied. */
+  private frames: Map<Element, string> | null = null;
 
   constructor(private o: FrameOptions) {
     this.props = Array.from(getComputedStyle(document.documentElement)).filter((p) => !SKIP.test(p));
@@ -78,10 +81,16 @@ export class FrameRasterizer {
     });
   }
 
-  /** Copy `node` now, and have the browser start decoding the copy. */
-  async begin(node: HTMLElement): Promise<Frame> {
+  /**
+   * Copy `node` now, and have the browser start decoding the copy. `frames`
+   * are pictures of the <iframe>s in it, each taken by the frame itself
+   * (`snapFrames`); a frame without one comes out blank.
+   */
+  async begin(node: HTMLElement, frames?: Map<Element, string>): Promise<Frame> {
     const clock = this.o.clock;
+    this.frames = frames ?? null;
     const svg = await (clock ? clock.time('snapshot', () => this.snapshot(node)) : this.snapshot(node));
+    this.frames = null;
     const img = new Image();
     img.decoding = 'async';
     // a blob: URL would be faster to make, but a canvas drawn from one cannot be read back by the encoder
@@ -149,9 +158,12 @@ export class FrameRasterizer {
     let out: HTMLElement;
     if (tag === 'canvas') out = this.canvas(el as unknown as HTMLCanvasElement);
     else if (tag === 'video') out = this.video(el as unknown as HTMLVideoElement);
-    else out = el.cloneNode(tag === 'svg') as HTMLElement;
+    else if (tag === 'iframe' && this.frames?.has(el)) {
+      out = document.createElement('img');
+      out.setAttribute('src', this.frames.get(el)!);
+    } else out = el.cloneNode(tag === 'svg') as HTMLElement;
 
-    // a canvas or video is drawn as an <img> that takes the style of its box
+    // a canvas, video or frame is drawn as an <img> that takes the style of its box
     const mine = this.read(el);
     for (const f of mine[this.familyAt].split(',')) this.families.add(f.trim().replace(/^["']|["']$/g, ''));
     out.setAttribute('style', this.diff(mine, this.baseline(el), parent));
