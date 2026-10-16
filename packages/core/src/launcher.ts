@@ -16,6 +16,8 @@ export interface ProjectCard {
   count: number;
   /** the group the person filed it under on the launcher, if any */
   group?: string;
+  /** where its folder is, when it lives outside the projects folder (`~/…` under the home folder) */
+  path?: string;
   preview: ProjectPreview;
 }
 

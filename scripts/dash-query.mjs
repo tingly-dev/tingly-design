@@ -2,16 +2,25 @@
 // Look into a dashboard's SQLite database, read only:
 //   node scripts/dash-query.mjs projects/<dash>/data/<db> "SELECT …"
 //   node scripts/dash-query.mjs projects/<dash>/data/<db>            (lists tables and columns)
-// The projects folder is DC_PROJECTS when the server runs with one (a host's data folder).
+// The projects folder is DC_PROJECTS when the server runs with one (a host's data folder);
+// a dashboard linked from elsewhere on disk (listed in its .links.json) is read where it is.
 // Prints the rows as JSON (at most 200), or the error.
-import { resolve, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join, resolve, relative } from 'node:path';
 
 process.removeAllListeners('warning');
 const { DatabaseSync } = await import('node:sqlite');
 const [db, sql] = process.argv.slice(2);
 const root = resolve(process.env.DC_PROJECTS ?? resolve(import.meta.dirname, '..', 'projects'));
 const path = resolve(db ?? '');
-if (!db || relative(root, path).startsWith('..') || !/[\\/]data[\\/][^\\/]+\.(db|sqlite3?)$/.test(path)) {
+const roots = [root];
+try {
+  roots.push(...Object.values(JSON.parse(readFileSync(join(root, '.links.json'), 'utf8'))).filter((d) => typeof d === 'string'));
+} catch {
+  // no linked projects
+}
+const inside = roots.some((r) => !relative(r, path).startsWith('..'));
+if (!db || !inside || !/[\\/]data[\\/][^\\/]+\.(db|sqlite3?)$/.test(path)) {
   console.error(`usage: node scripts/dash-query.mjs ${relative(process.cwd(), root) || '.'}/<dashboard>/data/<file>.db ["SELECT …"]`);
   process.exit(2);
 }
