@@ -4,6 +4,7 @@ import { TINGLY_BOX_ANTHROPIC, resolveAi, validBaseUrl } from '@dc/core';
 import { api, type AiConfig, type AiDraft, type AiSource } from '../api';
 import { toast, useStore } from '../store';
 import { External } from './icons';
+import { Dialog } from './Dialog';
 
 const BOX_REPO = 'https://github.com/tingly-dev/tingly-box';
 type Preset = AiConfig['preset'];
@@ -40,11 +41,6 @@ function AiSettings() {
   const [busy, setBusy] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
 
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, []);
   useEffect(() => {
     api.aiConfig().then(
       (c) => {
@@ -105,142 +101,126 @@ function AiSettings() {
   ];
 
   return (
-    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <form
-        className="ldialog aiset"
-        role="dialog"
-        aria-label={t('aiSettings.title')}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-      >
-        <header>
-          <h2>{t('aiSettings.title')}</h2>
-          <button type="button" className="tb" aria-label={t('common.close')} onClick={close}>
-            ×
+    <Dialog label={t('aiSettings.title')} className="aiset" onClose={close} onSubmit={() => void save()}>
+
+      <section>
+        <h3>{t('aiSettings.connection')}</h3>
+        <p className="note">{t('aiSettings.connectionNote')}</p>
+        {!urlLocked && (
+          <div className="kinds" role="radiogroup" aria-label={t('aiSettings.connection')}>
+            {presets.map((p) => (
+              <button type="button" key={p.id} role="radio" aria-checked={preset === p.id} data-preset={p.id} className="kopt" onClick={() => setPreset(p.id)}>
+                <span className="name">{p.name}</span>
+                {p.hint && <span className="tag">{p.hint}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {preset === 'tingly-box' && !urlLocked && (
+          <p className={`status ${cfg.box.reachable ? 'ok' : ''}`} data-box={cfg.box.reachable ? 'up' : 'down'}>
+            {cfg.box.reachable ? t('aiSettings.boxUp') : t('aiSettings.boxDown')}{' '}
+            <a href={BOX_REPO} target="_blank" rel="noopener noreferrer">
+              {t('aiSettings.boxGet')} <External />
+            </a>
+          </p>
+        )}
+        <label className="field">
+          <span>{t('aiSettings.address')}</span>
+          {preset === 'custom' && !urlLocked ? (
+            <input className="input mono" placeholder="https://" value={custom} onChange={(e) => setCustom(e.target.value)} aria-label={t('aiSettings.address')} />
+          ) : (
+            <code className="addr" data-address>
+              {baseUrl || 'https://api.anthropic.com'}
+            </code>
+          )}
+          <Locked source={cfg.baseUrl.source} />
+        </label>
+        <label className="field">
+          <span>{t('aiSettings.key')}</span>
+          <input
+            className="input mono"
+            type="password"
+            autoComplete="off"
+            disabled={keyLocked}
+            placeholder={keyLocked ? '••••••••' : cfg.key.set ? t('aiSettings.keyKept') : preset === 'tingly-box' ? t('aiSettings.keyBox') : 'sk-ant-…'}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            aria-label={t('aiSettings.key')}
+          />
+          <Locked source={cfg.key.source} />
+        </label>
+        {problem && <p className="status bad">{problem}</p>}
+      </section>
+
+      <section>
+        <h3>{t('aiSettings.fast')}</h3>
+        <p className="note">{t('aiSettings.fastNote')}</p>
+        <label className="field">
+          <span>{t('aiSettings.model')}</span>
+          <input
+            className="input mono"
+            disabled={cfg.fastModel.source === 'env'}
+            placeholder={dflt.fastModel.value}
+            value={cfg.fastModel.source === 'env' ? cfg.fastModel.value : fastModel}
+            onChange={(e) => setFastModel(e.target.value)}
+            aria-label={t('aiSettings.fast') + ' ' + t('aiSettings.model')}
+          />
+          <Locked source={cfg.fastModel.source} />
+        </label>
+        <div className="testrow">
+          <button type="button" className="btn sm" disabled={busy || !hasKey || !!problem} onClick={() => void runTest()}>
+            {t('aiSettings.test')}
           </button>
-        </header>
-
-        <section>
-          <h3>{t('aiSettings.connection')}</h3>
-          <p className="note">{t('aiSettings.connectionNote')}</p>
-          {!urlLocked && (
-            <div className="kinds" role="radiogroup" aria-label={t('aiSettings.connection')}>
-              {presets.map((p) => (
-                <button type="button" key={p.id} role="radio" aria-checked={preset === p.id} data-preset={p.id} className="kopt" onClick={() => setPreset(p.id)}>
-                  <span className="name">{p.name}</span>
-                  {p.hint && <span className="tag">{p.hint}</span>}
-                </button>
-              ))}
-            </div>
+          {test && (
+            <span className={`status ${test.ok ? 'ok' : 'bad'}`} role="status">
+              {test.text}
+            </span>
           )}
-          {preset === 'tingly-box' && !urlLocked && (
-            <p className={`status ${cfg.box.reachable ? 'ok' : ''}`} data-box={cfg.box.reachable ? 'up' : 'down'}>
-              {cfg.box.reachable ? t('aiSettings.boxUp') : t('aiSettings.boxDown')}{' '}
-              <a href={BOX_REPO} target="_blank" rel="noopener noreferrer">
-                {t('aiSettings.boxGet')} <External />
-              </a>
-            </p>
-          )}
-          <label className="field">
-            <span>{t('aiSettings.address')}</span>
-            {preset === 'custom' && !urlLocked ? (
-              <input className="input mono" placeholder="https://" value={custom} onChange={(e) => setCustom(e.target.value)} aria-label={t('aiSettings.address')} />
-            ) : (
-              <code className="addr" data-address>
-                {baseUrl || 'https://api.anthropic.com'}
-              </code>
-            )}
-            <Locked source={cfg.baseUrl.source} />
-          </label>
-          <label className="field">
-            <span>{t('aiSettings.key')}</span>
-            <input
-              className="input mono"
-              type="password"
-              autoComplete="off"
-              disabled={keyLocked}
-              placeholder={keyLocked ? '••••••••' : cfg.key.set ? t('aiSettings.keyKept') : preset === 'tingly-box' ? t('aiSettings.keyBox') : 'sk-ant-…'}
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              aria-label={t('aiSettings.key')}
-            />
-            <Locked source={cfg.key.source} />
-          </label>
-          {problem && <p className="status bad">{problem}</p>}
-        </section>
+          {!hasKey && !test && <span className="status">{t('aiSettings.needKey')}</span>}
+        </div>
+      </section>
 
-        <section>
-          <h3>{t('aiSettings.fast')}</h3>
-          <p className="note">{t('aiSettings.fastNote')}</p>
+      <section>
+        <h3>Claude Code</h3>
+        <p className="note">{t('aiSettings.claudeNote')}</p>
+        <div className="seg" role="group" aria-label="Claude Code">
+          {(
+            [
+              ['shared', t('aiSettings.routeShared')],
+              ['login', t('aiSettings.routeLogin')],
+            ] as const
+          ).map(([k, l]) => (
+            <button type="button" key={k} data-route={k} aria-pressed={route === k} onClick={() => setChosen(k)}>
+              {l}
+            </button>
+          ))}
+        </div>
+        {route === 'shared' && (
           <label className="field">
             <span>{t('aiSettings.model')}</span>
             <input
               className="input mono"
-              disabled={cfg.fastModel.source === 'env'}
-              placeholder={dflt.fastModel.value}
-              value={cfg.fastModel.source === 'env' ? cfg.fastModel.value : fastModel}
-              onChange={(e) => setFastModel(e.target.value)}
-              aria-label={t('aiSettings.fast') + ' ' + t('aiSettings.model')}
+              disabled={cfg.claudeModel.source === 'env'}
+              placeholder={dflt.claudeModel.value || t('aiSettings.claudeDefault')}
+              value={cfg.claudeModel.source === 'env' ? cfg.claudeModel.value : claudeModel}
+              onChange={(e) => setClaudeModel(e.target.value)}
+              aria-label={'Claude Code ' + t('aiSettings.model')}
             />
-            <Locked source={cfg.fastModel.source} />
+            <Locked source={cfg.claudeModel.source} />
           </label>
-          <div className="testrow">
-            <button type="button" className="btn sm" disabled={busy || !hasKey || !!problem} onClick={() => void runTest()}>
-              {t('aiSettings.test')}
-            </button>
-            {test && (
-              <span className={`status ${test.ok ? 'ok' : 'bad'}`} role="status">
-                {test.text}
-              </span>
-            )}
-            {!hasKey && !test && <span className="status">{t('aiSettings.needKey')}</span>}
-          </div>
-        </section>
+        )}
+        <p className={`status ${cfg.claudeCli ? 'ok' : 'bad'}`}>{cfg.claudeCli ? t('aiSettings.cliOk') : t('aiSettings.cliMissing')}</p>
+        {route === 'shared' && !hasKey && <p className="status bad">{t('aiSettings.sharedNeedsKey')}</p>}
+      </section>
 
-        <section>
-          <h3>Claude Code</h3>
-          <p className="note">{t('aiSettings.claudeNote')}</p>
-          <div className="seg" role="group" aria-label="Claude Code">
-            {(
-              [
-                ['shared', t('aiSettings.routeShared')],
-                ['login', t('aiSettings.routeLogin')],
-              ] as const
-            ).map(([k, l]) => (
-              <button type="button" key={k} data-route={k} aria-pressed={route === k} onClick={() => setChosen(k)}>
-                {l}
-              </button>
-            ))}
-          </div>
-          {route === 'shared' && (
-            <label className="field">
-              <span>{t('aiSettings.model')}</span>
-              <input
-                className="input mono"
-                disabled={cfg.claudeModel.source === 'env'}
-                placeholder={dflt.claudeModel.value || t('aiSettings.claudeDefault')}
-                value={cfg.claudeModel.source === 'env' ? cfg.claudeModel.value : claudeModel}
-                onChange={(e) => setClaudeModel(e.target.value)}
-                aria-label={'Claude Code ' + t('aiSettings.model')}
-              />
-              <Locked source={cfg.claudeModel.source} />
-            </label>
-          )}
-          <p className={`status ${cfg.claudeCli ? 'ok' : 'bad'}`}>{cfg.claudeCli ? t('aiSettings.cliOk') : t('aiSettings.cliMissing')}</p>
-          {route === 'shared' && !hasKey && <p className="status bad">{t('aiSettings.sharedNeedsKey')}</p>}
-        </section>
-
-        <footer>
-          <button type="button" className="btn" onClick={close}>
-            {t('common.cancel')}
-          </button>
-          <button type="submit" className="btn primary" disabled={busy || !!problem}>
-            {t('common.save')}
-          </button>
-        </footer>
-      </form>
-    </div>
+      <footer>
+        <button type="button" className="btn" onClick={close}>
+          {t('common.cancel')}
+        </button>
+        <button type="submit" className="btn primary" disabled={busy || !!problem}>
+          {t('common.save')}
+        </button>
+      </footer>
+    </Dialog>
   );
 }
