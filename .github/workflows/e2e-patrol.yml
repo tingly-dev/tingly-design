@@ -1,0 +1,88 @@
+name: E2E patrol
+
+# Every night on main, and by hand from the Actions tab: the full e2e set
+# (e2e.yml). On the nightly run a red result opens one issue labelled
+# e2e-patrol (or comments on the open one) and a green one closes it; a run by
+# hand only reports. Run by hand with "record baselines" it instead takes the
+# editor's screenshots again (e2e/baseline.py) and pushes them to the
+# e2e-baselines branch, after a person has looked at the diffs of a red run.
+# See .design/harness.md.
+
+on:
+  schedule:
+    - cron: '17 18 * * *'  # 02:17 Beijing
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: Suites to run, space-separated (empty runs every suite)
+        required: false
+        default: ''
+      record:
+        description: Record the screenshot baselines again and push them to the e2e-baselines branch
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E
+    if: ${{ !inputs.record }}
+    uses: ./.github/workflows/e2e.yml
+    with:
+      suites: ${{ inputs.suites || '' }}
+
+  patrol-issue:
+    name: Open or close the patrol issue
+    needs: e2e
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Report the nightly result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.e2e.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/e2e-patrol-issue.sh
+
+  record-baselines:
+    name: Record the screenshot baselines
+    if: ${{ inputs.record }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Set up the browser, ffmpeg and git
+        run: .github/scripts/e2e-setup.sh
+
+      - name: Take the screenshots
+        env:
+          DC_RECORD: '1'
+        run: python3 e2e/run.py baseline
+
+      - name: Push them to the e2e-baselines branch
+        env:
+          FROM: ${{ github.sha }}
+        run: .github/scripts/e2e-baselines-push.sh
+
+      - name: Upload the pictures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-baselines
+          path: e2e/out/baselines-new/
+          retention-days: 14

@@ -4,8 +4,8 @@ Chinese, compared with the pictures on the `e2e-baselines` branch. Run with `pnp
 A picture counts as the same when fewer than 0.2% of its pixels differ by more than a little (antialiasing and font
 hinting move single pixels); a different one is kept with a diff beside it in e2e/out/baseline/ for a person to look
 at. A picture with no baseline yet passes and says so. Baselines depend on the machine's fonts and Chromium, so they
-are recorded where they are compared: DC_RECORD=1 writes every picture to e2e/out/baselines-new/, and the E2E
-workflow run by hand with "record baselines" pushes that folder to the branch. DC_BASELINES=<folder> compares against
+are recorded where they are compared: DC_RECORD=1 writes every picture to e2e/out/baselines-new/ without comparing,
+and the E2E patrol workflow run by hand with "record baselines" pushes that folder to the branch. DC_BASELINES=<folder> compares against
 a folder instead of the branch."""
 import os, sys, asyncio, base64, shutil, subprocess
 from playwright.async_api import async_playwright
@@ -61,7 +61,7 @@ COMPARE = """async ([a, b, pixel]) => {
 STILL = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'
 
 async def main():
-    ref = baselines()
+    ref = None if RECORD else baselines()
     os.makedirs(OUT, exist_ok=True)
     if RECORD: shutil.rmtree(NEW, ignore_errors=True); os.makedirs(NEW)
     async with async_playwright() as p:
@@ -74,12 +74,17 @@ async def main():
             for screen, project in SCREENS.items():
                 name = f'{screen}-{scheme}-{lang}.png'
                 await pg.goto(f'{BASE}/?lang={lang}' + (f'&p={project}' if project else ''))
-                await pg.wait_for_load_state('networkidle')
+                # the editor keeps a live connection open, so the network may never fall quiet; wait for it a while
+                try: await pg.wait_for_load_state('networkidle', timeout=3000)
+                except Exception: pass
                 await pg.add_style_tag(content=STILL)
                 await pg.wait_for_timeout(2500)
                 shot = await pg.screenshot()
                 open(os.path.join(OUT, name), 'wb').write(shot)
                 if RECORD: open(os.path.join(NEW, name), 'wb').write(shot)
+                if RECORD:  # recording replaces the baselines, so a changed picture is what is wanted here
+                    check(f'{name} recorded', True)
+                    continue
                 known = os.path.join(ref, name)
                 if not os.path.exists(known):
                     check(f'{name}: no baseline yet', True)
