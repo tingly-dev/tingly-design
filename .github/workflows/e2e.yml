@@ -1,28 +1,20 @@
 name: E2E
 
-# The end-to-end suites (e2e/run.py) on three schedules, because the full set is
-# too slow to put on every PR:
+# The end-to-end suites (e2e/run.py), on the schedules that can afford them,
+# because the full set is too slow to put on every PR:
 #
-#   patrol       every night on main, and by hand (workflow_dispatch): the full
-#                set; a red run opens or updates one issue labelled e2e-patrol,
-#                a green one closes it
 #   pr smoke     a PR that touches the editor, the sandbox, the server or e2e/:
 #                the smoke subset (open, edit, save in every kind)
+#   patrol       e2e-patrol.yml calls this every night on main and by hand: the
+#                full set, and that workflow opens or closes the patrol issue
 #   release      release.yml calls this before it builds the tarball: the full
 #                set, and a red run stops the release
 #
+# Kept read-only, so a caller (release.yml) needs to grant it nothing more.
 # The report and every suite's output are uploaded as the `e2e-report` artifact.
 # See .design/harness.md and docs/en/development.md.
 
 on:
-  schedule:
-    - cron: '17 18 * * *'  # 02:17 Beijing
-  workflow_dispatch:
-    inputs:
-      suites:
-        description: Suites to run, space-separated (empty runs every suite)
-        required: false
-        default: ''
   pull_request:
     paths:
       - 'apps/**'
@@ -32,6 +24,12 @@ on:
       - 'pnpm-lock.yaml'
       - '.github/workflows/e2e.yml'
   workflow_call:
+    inputs:
+      suites:
+        description: Suites to run, space-separated (empty runs every suite)
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   group: e2e-${{ github.event_name }}-${{ github.ref }}
@@ -77,18 +75,3 @@ jobs:
         if: always()
         run: '[ -f e2e/out/report.md ] && cat e2e/out/report.md >> "$GITHUB_STEP_SUMMARY" || true'
 
-  patrol-issue:
-    name: Open or close the patrol issue
-    needs: e2e
-    if: always() && github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - uses: actions/checkout@v7
-      - name: Report the nightly result
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RESULT: ${{ needs.e2e.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: .github/scripts/e2e-patrol-issue.sh
