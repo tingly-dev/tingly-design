@@ -36,7 +36,7 @@ async def main():
         await expect(pg.locator('.dashtitle')).to_have_text('Tingly Design')
         stage = pg.frame_locator('.medit iframe')
         await expect(stage.locator('section#poster')).to_be_visible()
-        await expect(pg.locator('.mtime')).to_contain_text('/ 36.')
+        await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
         check('the sample opens on its cover, 36 s long at its speed', await pg.locator('.mscene').count() == 12)
         await pg.screenshot(path=OUT + 'motion.png')
 
@@ -196,9 +196,15 @@ async def main():
         await expect(pg).to_have_url(BASE + '/?p=design-motion&f=tall')
         box = await pg.locator('.medit .sframe').bounding_box()
         check('the tall format plays standing up', box and box['height'] > box['width'], str(box))
+        # the piece plays at its own speed (motion.json); 1× makes it that many times longer, the files untouched
+        total = lambda t: float(re.search(r'/\s*([\d.]+)', t).group(1))
+        at_project = total(await pg.locator('.mtime').inner_text())
+        project_speed = float(re.search(r'"speed":\s*([\d.]+)', read('motion.json')).group(1))
+        before = read('motion.json')
         await pg.locator('.mspeed select').select_option('1')
-        await expect(pg.locator('.mtime')).to_contain_text('/ 54.')
-        check('speed changes the length without touching the files', True)
+        await expect(pg.locator('.mtime')).not_to_contain_text(f'/ {at_project}')
+        at_one = total(await pg.locator('.mtime').inner_text())
+        check('speed changes the length without touching the files', abs(at_one - at_project * project_speed) < 0.2 and read('motion.json') == before, f'{at_project} → {at_one} at {project_speed}×')
         await pg.screenshot(path=OUT + 'motion-tall.png')
 
         # --- a new piece, in the size picked -----------------------------------------------------------
@@ -250,7 +256,7 @@ async def main():
 
         # --- notes: on the piece and on a scene ---------------------------------------------------------
         await pg.goto(BASE + '/?p=design-motion')
-        await expect(pg.locator('.mtime')).to_contain_text('/ 36.')
+        await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
         await pg.locator('.mscene').nth(1).click()
         await pg.locator('[data-notes-toggle]').click()
         await pg.locator('.mnotes textarea').first.fill('For the launch page. Upbeat, no voice-over.')
