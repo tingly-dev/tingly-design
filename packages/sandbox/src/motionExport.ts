@@ -77,7 +77,8 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => now), clock });
   const prepare = async (ms: number) => {
     now = from + ms;
-    await clock.time('seek', () => stage.seek(from + ms));
+    // the copy reads computed styles, which hold the new time as soon as it is set; waiting for a paint only costs vsyncs
+    await clock.time('seek', () => stage.seek(from + ms, { painted: false }));
     const pics = await clock.time('embeds', () => embedPictures(stage, root, from + ms, missed));
     return rasterizer.begin(root, pics);
   };
@@ -127,7 +128,7 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
 /** A frame of the piece as a PNG: the picture at one moment, at the size on screen. */
 export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { t: number; scale?: number; fontCss?: string }): Promise<Blob> {
   stage.pause();
-  await stage.seek(req.t);
+  await stage.seek(req.t, { painted: false });
   const pics = await embedPictures(stage, root, req.t);
   const scale = Math.max(1, Math.min(3, req.scale ?? 1));
   const r = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => req.t) });
