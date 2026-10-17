@@ -83,7 +83,7 @@ packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server (`app.ts` routes, `serve.ts` start, `index.ts` for `pnpm dev`) and the `tingly-design` command (`cli.ts`: open, serve, new, list, check, export, import; `.design/cli.md`): files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`), whole-project .zip out and in (`archive.ts`)
-apps/editor       React editors: components/ root holds what every kind shares (bars, menus, Dialog, the launcher);
+apps/editor       React editors: components/ root holds what every kind shares (bars, menus, Dialog; the launcher in launcher/);
                   components/<kind>/ holds one kind's app and its state (`slides.ts`, `motion.ts`, …), canvas included
 projects/         sample projects, one per kind; `tingly-design-ui` is the editor's own design canvas (see "Design the editor in itself")
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;

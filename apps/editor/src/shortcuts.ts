@@ -14,7 +14,7 @@ import {
 import { redo, undo, useStore, type Tool } from './store';
 import { fitAll, zoomAt, zoomToSelection } from './components/canvas/view';
 import { addSlide, stepSlide } from './components/slides/slides';
-import { presentStep, startPresent, stopPresent } from './components/slides/SlidesApp';
+import { presentStep, startPresent, stopPresent } from './components/slides/Present';
 
 const TOOL_KEYS: Record<string, Tool> = {
   v: 'select',
