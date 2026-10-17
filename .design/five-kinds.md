@@ -78,6 +78,26 @@ tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifa
 - **Dashboard：已实现**（见[使用指南：看板](../docs/zh/guide/dashboard.md)）。照上面的方案落到文件上：`dash.json`、`datasets/<id>.json`、`files/index.html`、`data/`；页面放进 `allow-scripts` iframe，`dash` API 在 iframe 里实现（`packages/sandbox/src/dash.ts`），数据由编辑器加载后经 postMessage 交给它；查询走服务端可插拔的连接器（先有只读的 SQLite），SQL 检查与参数绑定、CSV 解析、标注核对在 `packages/core/src/dash.ts`（有单元测试）。runs 文档写成不进 git 的 `.runs.json` 给 Claude Code 看。和原版的差别：没有 MCP 连接器和读者各自的权限、没有查询历史和定时刷新；页面可以手改。
 - **Docs：已实现**（见[使用指南：文档](../docs/zh/guide/docs.md)）。原版的内容在独立服务里、按块 id 编辑；这里改成文件：`doc.json`、每个标签页一个 `tabs/<id>.md`、`comments.json`，Claude Code 和 git 都能直接读写。编辑器是 TipTap 富文本，存盘时按块（块内再按行）合回原文件（`packages/core/src/docs.ts` 的 `mergeBlocks`、`rebaseBlocks`，有单元测试），所以手写的格式不会被编辑器重排。评论不用块 id，而是按引用的文字加前后文定位（W3C TextQuote 的做法），文件被谁改了都能找回。和原版的差别：没有版本对比与草稿、没有多人光标、没有图表/图示块和 Word/Google Docs 导出；“@Claude”在这里是底部的 Claude Code 输入框（带上选中的文字）和评论上的“交给 Claude”。
 
+## 与原版的对齐
+
+原版的类型会持续更新。原版材料只放在私有仓库 `tingly-dev/claude-design-artifact`（不公开，不复制进本仓库），每周按那里的 `artifact/REFRESH.md` 刷新一次：列出类型、和记录的版本比较、有变化就抓新版本和页内 prompt、写 `CHANGES-<日期>.md`，再把差异分成四类：
+
+- **格式**：原版文件格式多了或改了什么，我们的子集、检查器和 skill 要不要跟。
+- **指导**：给模型的说明里值得借鉴的做法，用我们自己的话写进 skill、委托 prompt 或快速 AI prompt。
+- **功能**：编辑器的新能力，先按 UX 原则判断再决定。
+- **不跟**：只属于原平台的东西（遥测、功能开关、Frame 外壳、Anthropic 自己的字体、平台能力如 `paste` 声明），记下来，不再重复讨论。
+
+要跟的提成 issue，并更新下表。表里是当前对齐到的原版版本和已知差距，不记历史。
+
+| 我们的类型 | 原版类型 | 对齐到的版本 | 已知差距（要跟） | 不跟（原因） |
+|---|---|---|---|---|
+| 画布 | Design | `1792190836-9749` | 复制会同时把元素 HTML 写进系统剪贴板，跨画布粘贴是否和原版一样顺未验证；跨页撤销未做；两者待按 UX 原则判断 | `paste` 能力声明、Google Fonts 许可清单（我们的导出只把字体画进图片，HTML 导出不嵌字体文件）、Frame 外壳 |
+| 幻灯片 | Slides | `1792187623-7bc5` | 多段落和列表的文本框（#155）；排版引号（#157）；设计指导整体偏少（#145） | 离线网页导出的字体许可（同上，不嵌字体文件）；超出时自动缩字和 `data-fit`（我们不缩字）；图片名里的 `@`（我们的设计系统素材不走这条路径） |
+| 看板 | Dashboard | `1792192844-f165` | 标记"保持不变"的数据、连接器数据保持在线、交付前自查 `.runs.json`、交付时说明数字来源（#156） | MCP 连接器和读者各自的权限、"连接在线数据"的平台流程（我们的连接器是服务端模块） |
+| 设计系统 | Design System | `1792195080-6821` | 无（给模型的说明没有变化） | db / 单页模式的迁移请求 |
+| 文档 | Docs | `1792185654-b4ba` | 无：选区改写已用 Markdown 保留格式，并按段落的语言写 | 一次给 4 个改写备选（我们给一个，可以接受或重来，少一步选择）；内容放在独立服务（我们是文件） |
+| 动效 | 无 | — | — | 原版没有对应类型 |
+
 ## 当初建议的第一步（已完成）
 
 1. 服务端和 core 引入"项目类型"：按索引文件识别（`canvas.json` → design，`deck.json` → slides，`design-system.json` → design-system），`safeRel()` / `listProjects()` / 文件监听按类型取白名单。
