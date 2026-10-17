@@ -1,4 +1,4 @@
-import { SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, slideFile, EMBED_CSP, type HumanOp } from '@dc/core';
+import { SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, type HumanOp } from '@dc/core';
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
@@ -37,11 +37,13 @@ async function dataUrl(url: string): Promise<string | null> {
 
 /** A slide's markup for a standalone page: relative images inlined, embeds as sandboxed srcdoc frames. */
 async function standalone(source: string, base: string): Promise<string> {
-  // the subset's paint order, written out as z-index
+  // the subset's paint order, written out as z-index, and text boxes' list indent
   const ops: HumanOp[] = [];
   for (const el of parseDc(source).elements) {
     const z = paintLayer(el);
     if (z !== undefined) ops.push({ kind: 'style', tid: el.tid, prop: 'z-index', value: String(z) });
+    const indent = textBoxIndent(el);
+    if (indent !== undefined) ops.push({ kind: 'style', tid: el.tid, prop: '--dc-indent', value: `${indent}px` });
   }
   let out = ops.length ? applyHumanOps(source, ops, inertDocument()).source : source;
   // images beside the deck

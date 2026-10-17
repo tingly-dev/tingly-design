@@ -71,6 +71,8 @@ export function roleOf(el: DcElement): Role {
   if (tag === 'x-connector') return 'Connector';
   if (tag === 'table') return 'Table';
   if (tag === 'aside') return 'Notes';
+  // a slide's text box: one box of paragraphs and lists
+  if (tag === 'div' && attr(el, 'data-text') !== undefined) return 'Text';
   // a painted box with nothing in it is a rectangle, not empty text
   if (tag === 'div' && !el.children.some((c) => c.kind === 'el' || (c.kind === 'text' && c.text.trim()))) return 'Shape';
   if (tag === 'svg' || el.ns === 'svg') return 'Vector';

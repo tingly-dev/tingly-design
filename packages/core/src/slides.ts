@@ -219,6 +219,9 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
       case 'ol':
         for (let a = el.parent; a; a = a.parent) if (a.tag === 'li') add(el, 'error', 'Lists do not nest.');
         break;
+      case 'div':
+        if (attr(el, 'data-text') !== undefined) checkTextBox(el, add);
+        break;
       case 'span': {
         const st = parseStyle(attr(el, 'style') ?? '');
         if (st.some((d) => d.prop === 'font-size' || d.prop === 'font-family')) add(el, 'warning', 'A <span> takes no size or font: use two blocks.');
@@ -242,6 +245,31 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
   if (count > MAX_ELEMENTS) add(section, 'error', `${count} elements: a slide holds at most ${MAX_ELEMENTS}.`);
   if (embeds > MAX_EMBEDS) add(section, 'error', `${embeds} <x-embed>s: at most ${MAX_EMBEDS} per slide.`);
   return out;
+}
+
+/** What a text box (`<div data-text>`) may hold: unstyled paragraphs and one-level lists, styled once on the box. */
+const TEXT_BOX_BLOCKS = new Set(['p', 'ul', 'ol']);
+
+function checkTextBox(el: DcElement, add: (el: DcElement, level: IssueLevel, message: string) => void): void {
+  const v = attr(el, 'data-text') ?? '';
+  if (v !== '' && textBoxIndent(el) === undefined) add(el, 'error', `data-text="${v}" is the lists' indent in px (a number), or empty.`);
+  for (const c of el.children) {
+    if (c.kind !== 'el') continue;
+    if (!TEXT_BOX_BLOCKS.has(c.tag)) {
+      add(c, 'error', `A text box (<div data-text>) holds only <p>, <ul> and <ol>, not <${c.tag}>: put it beside the box.`);
+      continue;
+    }
+    const styled = [c, ...(c.tag === 'p' ? [] : c.children.filter((g): g is DcElement => g.kind === 'el'))].filter((x) => attr(x, 'style'));
+    for (const x of styled) add(x, 'warning', 'Style the text box, not its paragraphs: a style here makes it two looks in one box.');
+  }
+}
+
+/** A text box's list indent in px (`data-text="N"`); undefined when it sets none. */
+export function textBoxIndent(el: DcElement): number | undefined {
+  const v = (attr(el, 'data-text') ?? '').trim();
+  if (!v || el.tag !== 'div') return undefined;
+  const n = px(v);
+  return n !== null && n >= 0 ? n : undefined;
 }
 
 function checkStyle(el: DcElement, add: (el: DcElement, level: IssueLevel, message: string) => void): void {
