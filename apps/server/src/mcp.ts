@@ -70,7 +70,7 @@ const TOOLS = [
   },
   {
     name: 'check',
-    description: 'The problems the editor would show in a project (files it cannot read, references to missing files, board markup the canvas cannot pick). With snapshots: true, also draws every board, slide, tab, design-system view or motion cover in the editor (needs Chrome) and returns the pictures.',
+    description: 'The problems the editor would show in a project (files it cannot read, references to missing files, board markup the canvas cannot pick). With snapshots: true, also draws every board, slide, tab, design-system view or motion cover in the editor (needs Chrome) and returns the pictures; for motion it also checks each format shows the same picture at the same time whatever came before (a `seek` warning when it does not, so the video would not match the preview).',
     inputSchema: { type: 'object', properties: { project, snapshots: { type: 'boolean' } }, required: ['project'] },
     annotations: { readOnlyHint: true },
   },
@@ -78,7 +78,7 @@ const TOOLS = [
     name: 'export',
     description: `Save what the editor's Export menu saves, into the project's renders/ folder, and return the file paths. Formats: any kind zip; ${Object.entries(FORMATS)
       .map(([k, f]) => `${k} ${f.join(', ')}`)
-      .join('; ')}. Pictures, PDF and HTML are drawn by the editor in Chrome; motion is rendered frame by frame (needs Chrome and ffmpeg).`,
+      .join('; ')}. Pictures, PDF and HTML are drawn by the editor in Chrome; motion is rendered frame by frame (needs Chrome and ffmpeg), and motion html is a single-file player made without either.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -89,6 +89,7 @@ const TOOLS = [
         tab: { type: 'string', description: 'doc md or png: one tab (id or title).' },
         view: { type: 'string', description: 'design system: overview, colors, type, space, components or assets.' },
         format: { type: 'array', items: { type: 'string' }, description: 'motion: the formats to render (default: all).' },
+        scale: { type: 'number', description: 'canvas png: 2 for @2x. motion: draw each frame at this many device pixels per pixel (1–4) and scale down, for sharper type.' },
       },
       required: ['project', 'as'],
     },
@@ -157,7 +158,7 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       const p = await resolveProject(ctx, str(a.project), 'export');
       const format = Array.isArray(a.format) ? a.format.map(String) : str(a.format)?.split(',').map((f) => f.trim());
       // files go next to the project, never wherever this process happens to run
-      const r = await exportProject(ctx, p, { as: str(a.as), out: resolve(p.dir, 'renders'), board: str(a.board), slide: str(a.slide), tab: str(a.tab), view: str(a.view), format });
+      const r = await exportProject(ctx, p, { as: str(a.as), out: resolve(p.dir, 'renders'), board: str(a.board), slide: str(a.slide), tab: str(a.tab), view: str(a.view), format, scale: typeof a.scale === 'number' ? a.scale : undefined });
       return json(r);
     }
     case 'prompt': {

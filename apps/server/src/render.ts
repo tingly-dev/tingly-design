@@ -162,6 +162,8 @@ export interface RenderOptions {
   /** The file's frame size, same aspect ratio as the piece; the piece's own when left out. */
   width?: number;
   height?: number;
+  /** Draw each frame at this many device pixels per pixel (1–4) and let ffmpeg bring it down to the file's size: sharper type, slower. */
+  scale?: number;
   /** Frames per second of the file; the piece's own when left out. */
   fps?: number;
   /** MP4 only: encoder effort, `high` by default. */
@@ -234,6 +236,25 @@ function attachCover(video: string, png: string, file: string): Promise<void> {
   );
 }
 
+/** What a page needs to play a piece: its scenes and the artboards they embed with their files inlined, the cover, the runtime. */
+function loadPiece(dir: string, runtimeJs: string, withCover: boolean) {
+  const motion = parseMotion(readFileSync(join(dir, 'motion.json'), 'utf8'));
+  const scenes = Object.fromEntries(motion.order.filter((id) => existsSync(join(dir, sceneFile(id)))).map((id) => [id, inlineFiles(readFileSync(join(dir, sceneFile(id)), 'utf8'), dir)]));
+  const cover = withCover ? motion.cover : undefined;
+  const coverScene = cover && 'scene' in cover && existsSync(join(dir, sceneFile(cover.scene))) ? cover.scene : null;
+  const coverHtml = coverScene ? inlineFiles(readFileSync(join(dir, sceneFile(coverScene)), 'utf8'), dir) : null;
+  const raw = (f: string) => {
+    const p = resolve(dir, f);
+    return p.startsWith(resolve(dir) + '/') && existsSync(p) ? readFileSync(p, 'utf8') : undefined;
+  };
+  // artboards the scenes embed (imported from a canvas), drawn by the artboard runtime written into the page (.design/import-from-project.md)
+  const files = Object.fromEntries(Object.entries(boardFilesFor([...Object.values(scenes), ...(coverHtml ? [coverHtml] : [])], raw)).map(([f, src]) => [f, inlineFiles(src, dir)]));
+  const boardJs = join(dirname(runtimeJs), 'runtime.js');
+  const boardRuntime = Object.keys(files).length && existsSync(boardJs) ? { inline: readFileSync(boardJs, 'utf8') } : undefined;
+  const runtime = readFileSync(runtimeJs, 'utf8').replace(/<\/script/gi, '<\\/script');
+  return { motion, scenes, files, boardRuntime, cover, coverScene, coverHtml, runtime };
+}
+
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c');
 
 /** Render one format of a motion piece to `renders/<project>-<format>.mp4` (or `.gif`); resolves to the file's path and where the time went. */
@@ -242,25 +263,12 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const chrome = findChrome();
   // a cover PNG is one screenshot: Chrome alone draws it
   if (!chrome || (o.container !== 'png' && !(await hasFfmpeg()))) throw new RenderError('no-renderer');
-  const motion = parseMotion(readFileSync(join(o.dir, 'motion.json'), 'utf8'));
+  const piece = loadPiece(o.dir, o.runtime, !!(o.cover || o.container === 'png'));
+  const { motion, scenes, files, boardRuntime, cover, coverScene, coverHtml, runtime } = piece;
   const format = o.format && motion.formats[o.format] ? o.format : Object.keys(motion.formats)[0];
   if (!format) throw new RenderError('no-format');
   const [w, h] = motion.formats[format].size;
-  const scenes = Object.fromEntries(
-    motion.order.filter((id) => existsSync(join(o.dir, sceneFile(id)))).map((id) => [id, inlineFiles(readFileSync(join(o.dir, sceneFile(id)), 'utf8'), o.dir)]),
-  );
-  // artboards the scenes embed (imported from a canvas), drawn by the artboard runtime written into the player (.design/import-from-project.md)
-  const cover = o.cover || o.container === 'png' ? motion.cover : undefined;
-  const coverScene = cover && 'scene' in cover && existsSync(join(o.dir, sceneFile(cover.scene))) ? cover.scene : null;
-  const coverHtml = coverScene ? inlineFiles(readFileSync(join(o.dir, sceneFile(coverScene)), 'utf8'), o.dir) : null;
-  const raw = (f: string) => {
-    const p = resolve(o.dir, f);
-    return p.startsWith(resolve(o.dir) + '/') && existsSync(p) ? readFileSync(p, 'utf8') : undefined;
-  };
-  const files = Object.fromEntries(Object.entries(boardFilesFor([...Object.values(scenes), ...(coverHtml ? [coverHtml] : [])], raw)).map(([f, src]) => [f, inlineFiles(src, o.dir)]));
-  const boardJs = join(dirname(o.runtime), 'runtime.js');
-  const boardRuntime = Object.keys(files).length && existsSync(boardJs) ? { inline: readFileSync(boardJs, 'utf8') } : undefined;
-  const runtime = readFileSync(o.runtime, 'utf8').replace(/<\/script/gi, '<\\/script');
+  const scale = Math.max(1, Math.min(4, Math.round(o.scale ?? 1)));
   const tmp = mkdtempSync(join(tmpdir(), 'dc-render-'));
   const page = join(tmp, 'page.html');
   writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><div id="cover" style="position:absolute;left:0;top:0"></div><script>${runtime}</script></body></html>`);
@@ -288,7 +296,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
     const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
     await s('Page.enable');
-    await s('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+    await s('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: scale, mobile: false });
     await s('Page.navigate', { url: `file://${page}` });
     const evalIn = async <T = any>(expression: string): Promise<T> => {
       const r = await s('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -333,9 +341,10 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     const length = Math.max(1, to - from);
     const frames = Math.max(1, Math.round((length / 1000) * fps));
     // the page is w×h; a different size is drawn by ffmpeg from the full-size screenshot, in the same aspect ratio
-    const outW = o.width ? even(o.width) : w;
-    const outH = o.height ? even(o.height) : h;
-    const encode: Encode = { fps, seconds: length / 1000, container: o.container === 'gif' ? 'gif' : 'mp4', size: outW === w && outH === h ? undefined : [outW, outH], quality: o.quality ?? 'high', sound: whole };
+    // one side given: the other keeps the piece's aspect ratio
+    const outW = even(o.width ?? (o.height ? (o.height * w) / h : w));
+    const outH = even(o.height ?? (o.width ? (o.width * h) / w : h));
+    const encode: Encode = { fps, seconds: length / 1000, container: o.container === 'gif' ? 'gif' : 'mp4', size: outW === w && outH === h && scale === 1 ? undefined : [outW, outH], quality: o.quality ?? 'high', sound: whole };
     ffmpeg = spawn(ffmpegPath(), encodeArgs(motion, o.dir, encode, partial), { stdio: ['pipe', 'ignore', 'pipe'] });
     ffmpeg.stderr!.on('data', (d) => (ffmpegErr = (ffmpegErr + d).slice(-2000)));
     const closed = new Promise<number | null>((ok) => ffmpeg!.on('close', ok));
@@ -386,4 +395,121 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
       /* the system clears its temp folder */
     }
   }
+}
+
+export interface SeekCheck {
+  format: string;
+  /** frames that came out byte for byte the same when seeked to again in reverse order */
+  same: number;
+  total: number;
+  /** the frame that differed most: how many pixels, by how much at most (0–255), at what time */
+  worst?: { pixels: number; max: number; at: number };
+  /** what differs is antialiasing at most (a few pixels, faintly), not the picture */
+  ok: boolean;
+}
+
+/**
+ * Whether a piece is the same picture at the same time whatever was shown before: frames across
+ * one format seeked in order, then again in reverse, and compared. A scene that reads the clock,
+ * draws at random or animates on its own shows up here. `check --snapshots` runs it.
+ */
+export async function checkSeek(o: { dir: string; runtime: string; format: string; frames?: number; signal?: AbortSignal }): Promise<SeekCheck> {
+  const chrome = findChrome();
+  if (!chrome) throw new RenderError('no-renderer');
+  const { motion, scenes, files, boardRuntime, runtime } = loadPiece(o.dir, o.runtime, false);
+  if (!motion.formats[o.format]) throw new RenderError('no-format');
+  const [w, h] = motion.formats[o.format].size;
+  const tmp = mkdtempSync(join(tmpdir(), 'dc-seek-'));
+  const page = join(tmp, 'page.html');
+  writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><script>${runtime}</script></body></html>`);
+  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
+  const stop = () => browser.kill('SIGKILL');
+  o.signal?.addEventListener('abort', stop);
+  try {
+    const cdp = new Cdp(browser);
+    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+    const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
+    await s('Page.enable');
+    await s('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+    await s('Page.navigate', { url: `file://${page}` });
+    const evalIn = async <T = any>(expression: string): Promise<T> => {
+      const r = await s('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+      if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
+      return r.result.value;
+    };
+    await evalIn('new Promise(r => document.readyState === "complete" ? r() : addEventListener("load", r))');
+    const duration = await evalIn<number>(
+      `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(o.format)},root:document.getElementById('root')});return window.__stage.duration})()`,
+    );
+    const shot = async (t: number) => {
+      await evalIn(`window.__stage.seek(${t})`);
+      return (await s<{ data: string }>('Page.captureScreenshot', { format: 'png' })).data;
+    };
+    const n = o.frames ?? 16;
+    const times = Array.from({ length: n }, (_, i) => Math.round((duration * (i + 0.5)) / n));
+    const forward: string[] = [];
+    for (const t of times) forward.push(await shot(t));
+    let same = 0;
+    let worst: SeekCheck['worst'];
+    for (let i = n - 1; i >= 0; i--) {
+      const again = await shot(times[i]);
+      if (again === forward[i]) {
+        same++;
+        continue;
+      }
+      // compared in the page, which can decode PNGs
+      const d = await evalIn<{ pixels: number; max: number }>(
+        `(async()=>{const load=async s=>createImageBitmap(await (await fetch('data:image/png;base64,'+s)).blob());const [a,b]=await Promise.all([load(${json(forward[i])}),load(${json(again)})]);const px=i=>{const c=new OffscreenCanvas(i.width,i.height),g=c.getContext('2d');g.drawImage(i,0,0);return g.getImageData(0,0,i.width,i.height).data};const da=px(a),db=px(b);let pixels=0,max=0;for(let k=0;k<da.length;k+=4){const m=Math.max(Math.abs(da[k]-db[k]),Math.abs(da[k+1]-db[k+1]),Math.abs(da[k+2]-db[k+2]));if(m)pixels++;if(m>max)max=m}return{pixels,max}})()`,
+      );
+      if (!worst || d.pixels > worst.pixels) worst = { ...d, at: times[i] };
+    }
+    // a few faint pixels are antialiasing; anything more is the picture changing
+    const ok = same === n || (!!worst && worst.max <= 16 && worst.pixels / (w * h) < 0.001);
+    return { format: o.format, same, total: n, ...(worst ? { worst } : {}), ok };
+  } catch (e) {
+    if (o.signal?.aborted) throw new RenderError('aborted');
+    throw e instanceof RenderError ? e : new RenderError('failed', (e as Error).message);
+  } finally {
+    o.signal?.removeEventListener('abort', stop);
+    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
+    stop();
+    await exited;
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      /* the system clears its temp folder */
+    }
+  }
+}
+
+/**
+ * The piece as one HTML file anyone can open: every format, the speeds, a scrubber, the cover
+ * until it plays, and the scene checks' warnings. Its pictures and fonts are inside it. The
+ * piece's note is for the people making it and stays out.
+ */
+export function motionPlayer(o: { dir: string; runtime: string; labels: { play: string; time: string; format: string; speed: string } }): string {
+  const { motion, scenes, files, boardRuntime, cover, coverScene, coverHtml, runtime } = loadPiece(o.dir, o.runtime, true);
+  const { note: _, ...shared } = motion;
+  const coverAt = cover && 'at' in cover ? cover.at : null;
+  const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const title = esc(motion.title || basename(o.dir));
+  const l = Object.fromEntries(Object.entries(o.labels).map(([k, v]) => [k, esc(v)])) as typeof o.labels;
+  const css = `body{margin:0;background:#111;color:#ddd;font:14px system-ui;display:flex;flex-direction:column;height:100vh}#wrap{flex:1;position:relative;overflow:hidden}#root,#dc-cover{position:absolute;left:50%;top:50%}#bar{display:flex;gap:12px;align-items:center;padding:10px 16px;background:#1b1b1b}#scrub{flex:1}#issues{color:#f5a524;padding:0 16px 8px;white-space:pre-wrap}`;
+  const boot = `const motion=${json(shared)},scenes=${json(scenes)},files=${json(files)},boardRuntime=${json(boardRuntime ?? null)}||undefined,coverAt=${json(coverAt)},coverScene=${json(coverScene)},coverHtml=${json(coverHtml)};let stage,cover,started=false;const coverRoot=document.getElementById('dc-cover');const wrap=document.getElementById('wrap'),root=document.getElementById('root');
+const fmt=document.getElementById('fmt'),scrub=document.getElementById('scrub'),time=document.getElementById('time'),play=document.getElementById('play');
+const spd=document.getElementById('spd'),base=motion.speed||1;for(const v of [...new Set([base,0.75,1,1.25,1.5,2])].sort((a,b)=>a-b)){const o=document.createElement('option');o.value=v;o.textContent=v+'×';o.selected=v===base;spd.appendChild(o)}
+for(const f of Object.keys(motion.formats)){const o=document.createElement('option');o.value=f;o.textContent=f+' '+motion.formats[f].size.join('×');fmt.appendChild(o)}
+function fit(){if(!stage)return;const s=Math.min(wrap.clientWidth/stage.width,wrap.clientHeight/stage.height);for(const r of [root,coverRoot]){r.style.width=stage.width+'px';r.style.height=stage.height+'px';r.style.transform='translate(-50%,-50%) scale('+s+')'}}
+const uncover=()=>{if(!started){started=true;coverRoot.style.display='none'}};
+const show=t=>{scrub.value=t;time.textContent=(t/1000).toFixed(2)+' s / '+(stage.duration/1000).toFixed(2)+' s'};let playing=false;
+async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,files,boardRuntime,format:f,speed:+spd.value,root});scrub.max=stage.duration;
+if(!started&&coverScene){cover=await dcMotion.mount({motion:{...motion,order:[coverScene]},scenes:{[coverScene]:coverHtml},files,boardRuntime,format:f,root:coverRoot});cover.seek(cover.duration)}
+if(!started&&coverAt!=null)stage.seek(coverAt);fit();show(0);
+document.getElementById('issues').textContent=stage.issues.map(i=>i.level+': '+i.scene+' '+i.message).join('\\n')}
+fmt.onchange=spd.onchange=()=>{playing=false;play.textContent='▶';load(fmt.value)};addEventListener('resize',fit);
+play.onclick=()=>{uncover();playing=!playing;play.textContent=playing?'❚❚':'▶';if(playing){const from=+scrub.value>=stage.duration?0:+scrub.value;stage.play(from,t=>{show(t);if(t>=stage.duration&&!motion.loop){playing=false;play.textContent='▶'}})}else stage.pause()};
+scrub.oninput=()=>{uncover();playing=false;play.textContent='▶';stage.pause();stage.seek(+scrub.value);show(+scrub.value)};load(fmt.value);`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${css}</style></head><body><div id="wrap"><div id="root"></div><div id="dc-cover"></div></div><div id="bar"><button id="play" aria-label="${l.play}">▶</button><input id="scrub" type="range" min="0" step="1" value="0" aria-label="${l.time}"><span id="time">0.00 s</span><select id="fmt" aria-label="${l.format}"></select><select id="spd" aria-label="${l.speed}"></select></div><div id="issues"></div><script>${runtime}</script><script>${boot.replace(/<\/script/gi, '<\\/script')}</script></body></html>`;
 }

@@ -14,7 +14,7 @@ export default {
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
                                    画布 png；幻灯片 pdf、png、html、notes；文档 pdf、html、md、png；
-                                   设计系统和看板 png；动效 mp4、gif、png（封面）
+                                   设计系统和看板 png；动效 mp4、gif、png（封面）、html（播放器）
   import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
   prompt <项目> <请求>             把请求交给 Claude Code，和请求栏一样：它改文件，打开着的编辑器
                                    实时显示；最后列出改了什么
@@ -39,7 +39,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
   --board、--slide、--tab、--view <名字>   export：只导出一个画板（文件名或标题）、一页幻灯片（编号或第几页）、
                         一个标签页（编号或标题）或设计系统的一个视图，而不是全部
-  --scale 2             导出画布：PNG @2x
+  --scale 2             导出画布：PNG @2x；动效：每帧按 2 倍画再缩回（文字更清晰）
   --snapshots           check：另外把每个画板、幻灯片、标签页、视图或封面画一遍，报告画不出来的，
                         图留在 renders/check/（或 --out）里可以看
   --out <文件夹>        export：输出位置（默认：项目的 renders/；zip 放在当前文件夹）
@@ -88,7 +88,9 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     badDataset: '{{message}}',
     badTokens: '{{message}}',
     snapshot: '画不出来：{{message}}',
+    seek: '{{total}} 帧里有 {{count}} 帧再次显示时画面不同（差得最多的在 {{at}} 毫秒）：某个场景读了时钟、随机绘制或自己在动，导出的视频会和预览对不上',
   },
+  player: { play: '播放', time: '时间', format: '尺寸', speed: '速度' },
   canvasRules: {
     'order-unknown': 'order 里的 {{file}} 不是画板',
     'order-missing': 'order 漏了 {{file}}',

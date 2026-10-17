@@ -56,7 +56,7 @@
 
 | 在哪 | `time` 从哪来 |
 |---|---|
-| 动效（编辑舞台、播放器、命令行渲染） | 场景时间，逐帧 seek（`data-seek` 握手：`{dcMotion:'seek', t, n}` → `{dcMotion:'seeked', n}`），所以视频逐帧确定，`motion-render --verify` 倒着 seek 也逐字节相同 |
+| 动效（编辑舞台、播放器、命令行渲染） | 场景时间，逐帧 seek（`data-seek` 握手：`{dcMotion:'seek', t, n}` → `{dcMotion:'seeked', n}`），所以视频逐帧确定，`check --snapshots` 的 seek 检查倒着 seek 也逐字节相同 |
 | 幻灯片放映、导出的 HTML | 从这一页出现起的时间，按 `loop` 取模，循环播放 |
 | 幻灯片编辑、缩略图、打印 | 停在 `still` |
 | 画布 | 停在 `still`；Tweaks 里有时间滑块和播放，只改画面、不改文件 |
@@ -80,7 +80,7 @@
 | `apps/editor/src/components/BoardPicker.tsx`、`ImportHere.tsx`、`FileMenu.tsx` | 选择器和入口 |
 | `apps/editor/src/boards.ts`、`slides.ts`、`motion.ts` | 嵌入块的写法、放到页面上、给帧准备画板文件 |
 | `apps/editor/src/components/panel/BoardEmbedProps.tsx`、`OtherProps.tsx` | 嵌入块的面板；画布 Tweaks 的时间滑块 |
-| `apps/editor/src/components/slides/exportDeck.tsx`、`apps/server/src/render.ts`（命令行 `tingly-design export`）、`scripts/motion-render.mjs`（播放器、`--verify`） | 导出 |
+| `apps/editor/src/components/slides/exportDeck.tsx`、`apps/server/src/render.ts`（命令行 `tingly-design export`，含 `--as html` 播放器和 `check --snapshots` 的 seek 检查） | 导出 |
 
 ## 5. 还没做的
 
