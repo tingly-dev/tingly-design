@@ -1,7 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { describeTool, type ProjectKind } from '@dc/core';
+import { describeTool, isSessionId, parseConversation, resumeLost, sessionFor, type Conversation, type ProjectKind } from '@dc/core';
 import type { Language } from '@dc/i18n';
 import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
@@ -103,12 +104,39 @@ export interface DelegateRequest {
   context?: string;
   /** files attached to the request, kept in the project's uploads/ (checked by the route) */
   attachments?: { name: string; path: string }[];
-  /** a Claude Code session to continue (the `session` an earlier run reported) instead of starting a fresh one */
+  /** a Claude Code session to continue (the `session` an earlier run reported) instead of the project's own conversation */
   resume?: string;
+  /** start a new conversation instead of continuing the project's */
+  fresh?: boolean;
 }
 
-/** A Claude Code session id is a UUID; anything else is not passed on to the command line. */
-export const isSessionId = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s);
+const conversationFile = (project: string) => join(projectDir(project), '.claude-session.json');
+
+/** The Claude Code conversation the project keeps (local to this machine, like .runs.json). */
+export function readConversation(project: string): Conversation | null {
+  try {
+    return parseConversation(readFileSync(conversationFile(project), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function keepConversation(project: string, c: Conversation): void {
+  try {
+    writeFileSync(conversationFile(project), JSON.stringify(c) + '\n', 'utf8');
+  } catch (e) {
+    logWarn('delegate.keepFailed', { project, error: (e as Error).message });
+  }
+}
+
+/** Start the project's next Claude Code request from scratch. */
+export function forgetConversation(project: string): void {
+  try {
+    rmSync(conversationFile(project), { force: true });
+  } catch {
+    // nothing to forget
+  }
+}
 
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en'): string {
   const id = randomUUID().slice(0, 8);
@@ -146,8 +174,6 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--append-system-prompt',
     `${slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM}\n${PUNCTUATION}`,
   ];
-  const resume = isSessionId(req.resume) ? req.resume : undefined;
-  if (resume) args.push('--resume', resume);
   const launch = claudeLaunch();
   if (launch.model) args.push('--model', launch.model);
   // a host keeps the projects in its own data folder: let Claude Code edit there too
@@ -156,70 +182,20 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const linked = linkedProjects().get(project);
   if (linked && fromRoot(linked) === linked) args.push('--add-dir', linked);
 
+  // the project's conversation is continued unless the request asks for a new one
+  const resume = sessionFor(req, readConversation(project));
+
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
   publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });
 
   const started = Date.now();
   let steps = 0;
-  const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0 };
+  const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0, continued: !!resume };
   logInfo('delegate.start', meta);
-  const child = spawn('claude', args, { cwd: ROOT, env: { ...process.env, ...launch.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stopped = false;
-  children.set(id, {
-    project,
-    child,
-    stop: () => {
-      stopped = true;
-      child.kill('SIGTERM');
-    },
-  });
-  child.on('exit', () => children.delete(id));
-  const absDir = resolve(ROOT, dir);
-  const timer = setTimeout(() => child.kill('SIGTERM'), 15 * 60 * 1000);
-  let buf = '';
-  let final = '';
-  let stderr = '';
-  let session = '';
-  child.stdout.setEncoding('utf8');
-  child.stdout.on('data', (chunk: string) => {
-    buf += chunk;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i).trim();
-      buf = buf.slice(i + 1);
-      if (!line) continue;
-      try {
-        const msg = JSON.parse(line);
-        // told once, so the next request can continue this conversation
-        if (!session && isSessionId(msg.session_id)) {
-          session = msg.session_id;
-          publish(project, { type: 'delegate', id, state: 'progress', session });
-        }
-        if (msg.type === 'assistant') {
-          for (const part of msg.message?.content ?? []) {
-            if (part.type === 'text' && part.text?.trim()) {
-              publish(project, { type: 'delegate', id, state: 'progress', text: part.text.trim().slice(0, 300) });
-            } else if (part.type === 'tool_use') {
-              steps++;
-              logDebug('delegate.step', { run: id, tool: String(part.name ?? ''), n: steps });
-              const step = describeTool(String(part.name ?? ''), part.input ?? {}, ROOT, absDir);
-              publish(project, { type: 'delegate', id, state: 'progress', step });
-            }
-          }
-        } else if (msg.type === 'result') {
-          final = typeof msg.result === 'string' ? msg.result : '';
-          if (msg.is_error) stderr += final;
-        }
-      } catch {
-        // not JSON
-      }
-    }
-  });
-  child.stderr.setEncoding('utf8');
-  child.stderr.on('data', (c: string) => {
-    stderr += c;
-  });
   let finished = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const absDir = resolve(ROOT, dir);
   const finish = (ok: boolean, text: string) => {
     if (finished) return;
     finished = true;
@@ -236,10 +212,81 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     else logInfo('delegate.finish', fields);
     publish(project, { type: 'delegate', id, state: stopped ? 'stopped' : ok ? 'done' : 'error', text: stopped ? undefined : text });
   };
-  child.on('error', (e) => finish(false, e.message));
-  child.on('close', (code) => {
-    if (code === 0) finish(true, final || 'Done.');
-    else finish(false, (stderr || final || `claude exited with ${code}`).slice(0, 800));
-  });
+
+  // one attempt; a resume Claude Code no longer has is retried once as a new conversation
+  const attempt = (resumeId: string | undefined) => {
+    const child = spawn('claude', resumeId ? [...args, '--resume', resumeId] : args, { cwd: ROOT, env: { ...process.env, ...launch.env, DC_PROJECTS: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
+    children.set(id, {
+      project,
+      child,
+      stop: () => {
+        stopped = true;
+        child.kill('SIGTERM');
+      },
+    });
+    child.on('exit', () => children.delete(id));
+    clearTimeout(timer);
+    timer = setTimeout(() => child.kill('SIGTERM'), 15 * 60 * 1000);
+    let buf = '';
+    let final = '';
+    let stderr = '';
+    let session = '';
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      buf += chunk;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line) continue;
+        try {
+          const msg = JSON.parse(line);
+          // kept as soon as it is known: even a stopped or failed run leaves a conversation the next request can continue
+          if (!session && isSessionId(msg.session_id)) {
+            session = msg.session_id;
+            keepConversation(project, { session, prompt: req.prompt, at: Date.now() });
+            publish(project, { type: 'delegate', id, state: 'progress', session });
+          }
+          if (msg.type === 'assistant') {
+            for (const part of msg.message?.content ?? []) {
+              if (part.type === 'text' && part.text?.trim()) {
+                publish(project, { type: 'delegate', id, state: 'progress', text: part.text.trim().slice(0, 300) });
+              } else if (part.type === 'tool_use') {
+                steps++;
+                logDebug('delegate.step', { run: id, tool: String(part.name ?? ''), n: steps });
+                const step = describeTool(String(part.name ?? ''), part.input ?? {}, ROOT, absDir);
+                publish(project, { type: 'delegate', id, state: 'progress', step });
+              }
+            }
+          } else if (msg.type === 'result') {
+            final = typeof msg.result === 'string' ? msg.result : '';
+            if (msg.is_error) stderr += final;
+          }
+        } catch {
+          // not JSON
+        }
+      }
+    });
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (c: string) => {
+      stderr += c;
+    });
+    child.on('error', (e) => finish(false, e.message));
+    child.on('close', (code) => {
+      if (code === 0) {
+        if (session) keepConversation(project, { session, prompt: req.prompt, at: Date.now() });
+        return finish(true, final || 'Done.');
+      }
+      const why = stderr || final || `claude exited with ${code}`;
+      if (resumeId && !session && !stopped && resumeLost(why)) {
+        logWarn('delegate.resumeLost', { run: id, project });
+        forgetConversation(project);
+        publish(project, { type: 'delegate', id, state: 'progress', continued: false });
+        return attempt(undefined);
+      }
+      finish(false, why.slice(0, 800));
+    });
+  };
+  attempt(resume);
   return id;
 }

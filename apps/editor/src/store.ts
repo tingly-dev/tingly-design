@@ -24,6 +24,7 @@ import {
   stringifyDeck,
   type DeckJson,
   type ProjectKind,
+  type Conversation,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
@@ -212,6 +213,8 @@ export interface State {
   historyOpen: boolean;
   /** every request of this editor session, oldest first */
   history: RunRecord[];
+  /** the project's Claude Code conversation, kept by the server: the next request continues it */
+  conversation: Conversation | null;
   /** the next Claude Code request starts a fresh session even though one could be continued */
   freshNext: boolean;
   toasts: Toast[];
@@ -250,6 +253,7 @@ export const useStore = create<State>(() => ({
   runtimeErrors: {},
   fast: { status: 'idle', mode: 'ai', lines: [] },
   delegates: [],
+  conversation: null,
   jqDraft: '',
   lastRun: null,
   runHidden: false,
@@ -362,12 +366,12 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], lastRun: null, runHidden: false, history: [], historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
-  const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], conversation: null, lastRun: null, runHidden: false, history: [], historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
+  const [{ files }, journal, conversation] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set({ files: entries, journal, loaded: true, kind });
+  set((s) => ({ files: entries, journal, loaded: true, kind, conversation: s.conversation ?? conversation }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
@@ -421,6 +425,7 @@ function onEvent(e: ServerEvent): void {
         if (e.continued) d.continued = true;
       }
       if (e.session) d.session = e.session;
+      if (e.continued === false) d.continued = false;
       if (e.state === 'progress') {
         if (e.step) {
           d.log = [...d.log, { step: e.step, at: now }].slice(-60);
@@ -435,8 +440,11 @@ function onEvent(e: ServerEvent): void {
       if (e.state !== 'start') d.state = e.state;
       // a new run takes over the feed; a later event of an older run does not
       const fresh = i < 0;
-      const history = recordRun(s.history, { id: e.id, agent: 'claude', prompt: d.prompt, at: d.startedAt, state: 'running', continued: !!d.continued }, e.state === 'start' || e.state === 'progress' ? undefined : e.state === 'done' ? 'done' : e.state === 'stopped' ? 'stopped' : 'error');
-      return { delegates: list.slice(-5), history, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
+      const base = e.continued === false ? s.history.map((h) => (h.id === e.id ? { ...h, continued: false } : h)) : s.history;
+      const history = recordRun(base, { id: e.id, agent: 'claude', prompt: d.prompt, at: d.startedAt, state: 'running', continued: !!d.continued }, e.state === 'start' || e.state === 'progress' ? undefined : e.state === 'done' ? 'done' : e.state === 'stopped' ? 'stopped' : 'error');
+      // the server keeps the conversation from the moment a run reports its session, whatever the run's end
+      const conversation = e.session ? { session: e.session, prompt: d.prompt, at: now } : s.conversation;
+      return { delegates: list.slice(-5), history, conversation, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
     });
     if (e.state === 'done' || e.state === 'error') {
       const ok = e.state === 'done';
@@ -455,11 +463,6 @@ export function recordRun(history: RunRecord[], rec: RunRecord, end?: RunRecord[
   const next = [...history];
   next[i] = { ...next[i], state: end };
   return next;
-}
-
-/** The Claude Code session the next request would continue: that of the newest run that finished. */
-export function continuable(delegates: DelegateState[]): DelegateState | undefined {
-  return [...delegates].reverse().find((d) => d.session && d.state === 'done');
 }
 
 export type BarMode = 'auto' | 'float';

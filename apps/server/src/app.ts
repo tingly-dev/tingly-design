@@ -82,7 +82,7 @@ import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
 import { packProject, unpackProject } from './archive';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
-import { claudeAvailable, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
+import { claudeAvailable, forgetConversation, readConversation, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
 import { PdfError, printPdf } from './pdf';
 import type { ExportReport } from '@dc/export/timing';
@@ -696,6 +696,20 @@ app.post('/api/projects/:p/delegate', async (c) => {
   const bad = checkUploads(req.attachments);
   if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
   return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c)) });
+});
+
+/** The Claude Code conversation the project keeps: the next request continues it unless it asks for a new one. */
+app.get('/api/projects/:p/conversation', (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  return c.json(readConversation(p));
+});
+
+app.delete('/api/projects/:p/conversation', (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  forgetConversation(p);
+  return c.json({ ok: true });
 });
 
 app.delete('/api/projects/:p/delegate/:id', (c) => {

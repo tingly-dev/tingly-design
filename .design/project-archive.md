@@ -20,7 +20,7 @@
 | 项目文件、`uploads/`、`data/`、`ds/`（装进来的 tokens 和字体）、`fonts/`、`assets/` | 带 | 带 | 项目本身 |
 | `.journal.jsonl`（改动记录） | 带 | 不带 | 有了它，改动记录和撤销在新机器上也接得上；交给别人时可能不想带 |
 | 用到的设计系统（画布、幻灯片 `designSystems` 里 `artifact: projects/<名字>` 指向的项目） | 作为并排的项目带上 | 不带 | 装进项目的只是 tokens 和字体的副本（够画），组件、说明、样张在系统自己的项目里；拿到的人要重新装或改系统时需要它 |
-| `.git/`、`renders/`、`.runs.json`、`node_modules/`、其他点文件 | 不带 | 不带 | 属于这台机器（和 [project-git.md](./project-git.md) 不提交的那些一致） |
+| `.git/`、`renders/`、`.runs.json`、`.claude-session.json`、`node_modules/`、其他点文件 | 不带 | 不带 | 属于这台机器（和 [project-git.md](./project-git.md) 不提交的那些一致） |
 
 ## 4. 导入
 

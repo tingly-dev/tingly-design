@@ -29,6 +29,7 @@ SUITES = {
     'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'archive': 'dev', 'copy_png': 'dev',
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev',
     'ai_settings': 'dev-bare',
+    'conversation': 'fake-claude',
     'attach': 'build', 'run_feed': 'build', 'dock': 'build', 'import_here': 'build', 'import_board': 'build',
     'check_snapshots': 'build',
     'embed': 'bundle',
@@ -36,7 +37,7 @@ SUITES = {
 }
 # The per-PR subset: open, edit and save in every kind, plus the request bar's run feed.
 SMOKE = ['e2e', 'slides', 'ds', 'dash', 'docs', 'motion', 'run_feed']
-GROUP_ORDER = ['dev', 'dev-bare', 'build', 'bundle', 'real']
+GROUP_ORDER = ['dev', 'dev-bare', 'fake-claude', 'build', 'bundle', 'real']
 
 
 def say(msg): print(msg, flush=True)
@@ -101,7 +102,7 @@ class Group:
             raise
 
     def start(self):
-        if self.name in ('dev', 'dev-bare'):
+        if self.name in ('dev', 'dev-bare', 'fake-claude'):
             busy = [p for p in (5173, 8787, MOCK_PORT) if port_busy(p)]
             if busy: raise RuntimeError(f'ports {busy} are in use; stop the running `pnpm dev` (or mock) first')
             # the fast suites read what the model was sent from the mock's default log, e2e/out/mock.log
@@ -109,6 +110,10 @@ class Group:
             if self.name == 'dev':
                 self.env.update(ANTHROPIC_API_KEY='x', ANTHROPIC_BASE_URL=f'http://127.0.0.1:{MOCK_PORT}')
             self.env['DC_CONFIG'] = os.path.join(self.tmp, f'ai-{self.name}.json')
+            if self.name == 'fake-claude':
+                # a stand-in `claude` first on PATH, so no real model is called and every call is recorded
+                self.env['PATH'] = os.path.join(HERE, 'fake-claude') + os.pathsep + self.env['PATH']
+                self.env['FAKE_CLAUDE_LOG'] = os.path.join(self.tmp, 'fake-claude.log')
             self.procs.append(start(['pnpm', 'dev'], self.env, self.log('server')))
             if not (wait_http('http://localhost:8787/api/projects') and wait_http('http://localhost:5173/')):
                 raise RuntimeError(f'`pnpm dev` did not come up; see e2e/out/logs/_{self.name}-server.log')
