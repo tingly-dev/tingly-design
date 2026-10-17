@@ -62,10 +62,22 @@ A single entry (working name `pnpm harness`, later maybe `tingly-design verify`)
 
 Plus a **coverage check on the cross-kind matrix**: `.design/project-kinds.md` lists which kind supports which cross-kind feature. Make the matrix data, and fail when a claimed cell has no e2e behind it. This turns "check it in each kind" from a reminder into a test.
 
-## 6. Open questions for YZ
+## 6. Scope decision: no outside dependencies first
 
-1. Is T1 as a required CI gate acceptable (cost: a Playwright job of several minutes; needs the known #159 failure fixed first)?
-2. Appearance: go with baselines + structural checks, or is the design-canvas-as-spec idea worth a spike first?
-3. Should T3 (real models, vision judge) live in this repo, or in Tingly Box's harness with Tingly Design as a target?
-4. Name and shape: `pnpm harness` only, or a public `tingly-design verify` that agents and users can also call?
-5. What does VModel need to ship for us: scripted replies only, or full orchestration?
+Decided with YZ: plan only what needs no real model and no Tingly Box (T0 to T2). T3, VModel and the vision judge are parked until this part works; the scripted mock in `e2e/mock_anthropic.py` and the stand-in `claude` already cover the fault cases we need.
+
+Steps, each small and independently useful:
+
+1. **Make the e2e suites runnable as one command.** `pnpm e2e` starts what each suite needs (server, mock model, stand-in `claude`, pinned `chromium_headless_shell`), runs all suites, prints one table (suite, checks, pass/fail, time) and keeps failure screenshots. Today each suite has its own startup recipe in `docs/en/development.md`.
+2. **Fix the known failure (#159), then add e2e to CI** as a separate job from the fast unit job, so a red e2e is visible without slowing the unit feedback.
+3. **Structural checks on snapshots**: inside `check --snapshots`, assert on the rendered page (no overflow or clipped text, contrast of text on its background, a board that draws something non-blank). No baselines yet.
+4. **Screenshot baselines for the editor chrome**: one image per kind × light/dark × en/zh at a fixed viewport, compared with a tolerance; a diff is reviewed and re-recorded with one command, never auto-accepted.
+5. **Cross-kind matrix as data**: `.design/project-kinds.md` stays the readable table, a small JSON next to it lists feature × kind with the suite that covers each cell, and a unit test fails on a claimed cell with no suite (or a suite naming a cell that is not claimed).
+
+Out of scope for now: real-model evals, vision judge, VModel scripting, a public `verify` command, the design-canvas-as-spec comparison.
+
+## 7. Open questions for YZ
+
+1. Is e2e as a required CI check acceptable (a few minutes of Playwright per PR)?
+2. Baselines: stored in the repo (simple, grows the repo) or on the `pr-assets`-style side branch?
+3. Order: is 1 → 2 → 3 → 4 → 5 right, or should the matrix check (5) come first because it is cheap?
