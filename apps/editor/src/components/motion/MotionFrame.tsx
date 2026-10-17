@@ -30,7 +30,12 @@ export interface MotionExportRequest {
   to?: number;
   fontCss?: string;
   audio?: { data: ArrayBuffer; start: number; gain: number }[];
+  /** the cover, put in frame 0 of a whole-piece MP4 or WebM */
+  cover?: MotionCoverSpec;
 }
+
+/** A cover for the frame to draw: a moment of the piece in authored ms (before speed), or a cover scene's source. */
+export type MotionCoverSpec = { at: number } | { scene: string; html: string };
 
 export interface MotionExportResult {
   blob: Blob;
@@ -58,6 +63,8 @@ export interface MotionControl {
   exportVideo(req: MotionExportRequest, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<MotionExportResult>;
   /** One frame at time `t` as a PNG, drawn in the frame. */
   snapshot(req: { t: number; scale?: number; fontCss?: string }): Promise<Blob>;
+  /** The cover as a PNG, drawn in the frame; with none, the first frame. */
+  cover(req: { cover?: MotionCoverSpec; scale?: number; fontCss?: string }): Promise<Blob>;
 }
 
 /**
@@ -139,6 +146,12 @@ export function MotionFrame({
   useEffect(() => {
     if (!control) return;
     const post = (m: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(m, '*');
+    const picture = (m: Record<string, unknown>) =>
+      new Promise<Blob>((resolve, reject) => {
+        const id = Math.random().toString(36).slice(2);
+        snaps.current.set(id, { ok: (b) => (snaps.current.delete(id), resolve(b)), fail: (e) => (snaps.current.delete(id), reject(e)) });
+        post({ ...m, id });
+      });
     control.current = {
       seek: (t) => post({ dcm: 'seek', t }),
       play: (from) => post({ dcm: 'play', from }),
@@ -157,12 +170,8 @@ export function MotionFrame({
           signal?.addEventListener('abort', cancel);
           post({ dcm: 'export', id, ...req });
         }),
-      snapshot: (req) =>
-        new Promise((resolve, reject) => {
-          const id = Math.random().toString(36).slice(2);
-          snaps.current.set(id, { ok: (b) => (snaps.current.delete(id), resolve(b)), fail: (e) => (snaps.current.delete(id), reject(e)) });
-          post({ dcm: 'snapshot', id, ...req });
-        }),
+      snapshot: (req) => picture({ dcm: 'snapshot', ...req }),
+      cover: (req) => picture({ dcm: 'cover', ...req }),
     };
     return () => {
       control.current = null;

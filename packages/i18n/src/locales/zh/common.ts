@@ -68,6 +68,7 @@ export default {
       video: '视频…',
       gif: 'GIF…',
       frame: '这一帧的图片',
+      cover: '封面图片',
     },
     hint: {
       project: '所有文件，含改动记录和设计系统 · 可在首页重新导入',
@@ -88,6 +89,8 @@ export default {
       motionGif: '256 色、没有声音 · 小而循环，默认 15 帧/秒',
       motionVideo: '{{size}} · {{fps}} 帧/秒 · MP4 或 WebM，下一步可调',
       motionFrame: '播放头所在的那一帧',
+      motionCover: '代表这段视频的那张图，也是视频的第一帧',
+      motionCoverNone: '还没设封面，用视频的第一帧',
     },
   },
   image: {

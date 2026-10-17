@@ -497,6 +497,70 @@
 }
 
 
+/* a cover that is a frame of the video: a pin on the ruler with a dashed line through the clips; the pin drags */
+
+
+.mcoverpin {
+  position: absolute;
+  top: 0;
+  bottom: -4px;
+  width: 0;
+  border-left: 1px dashed var(--ink-2);
+  pointer-events: none;
+  z-index: 2;
+}
+
+
+.mcoverpin > span {
+  position: absolute;
+  top: 0;
+  left: -9px;
+  width: 18px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--ink-2);
+  color: var(--panel);
+  cursor: grab;
+  pointer-events: auto;
+}
+
+
+.mcoverpin > span svg {
+  width: 12px;
+  height: 12px;
+}
+
+
+.mcoverpin > span:hover,
+.mcoverpin.dragging > span {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+
+.mcoverpin.dragging > span {
+  cursor: grabbing;
+}
+
+
+.mcoverset {
+  margin-left: auto;
+}
+
+
+.mcoverset + .mwhere {
+  margin-left: 0;
+}
+
+
+.mcoverset svg {
+  width: 14px;
+  height: 14px;
+}
+
+
 /* the playhead: a line through the ruler and the track, with its handle on the ruler */
 
 

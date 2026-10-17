@@ -202,7 +202,7 @@ export const api = {
    * Render a motion piece on the server. Progress arrives as lines; resolves to the video's file name
    * (fetch it with `renderedUrl`) and where the time went. Aborting the signal stops the render.
    */
-  renderMotion: async (p: string, format: string, opts: { container?: 'mp4' | 'gif'; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number }, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<{ file: string; report: ExportReport }> => {
+  renderMotion: async (p: string, format: string, opts: { container?: 'mp4' | 'gif'; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number; cover?: boolean }, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<{ file: string; report: ExportReport }> => {
     const res = await call(at(`api/projects/${enc(p)}/render`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format, ...opts }), signal });
     if (!res.ok || !res.body) return json<never>(res);
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();

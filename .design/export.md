@@ -92,7 +92,7 @@ foreignObject 画不到：`<x-embed>`（单独的框架，父页面拍不进去�
 ## 5. 没做的
 
 - **PPTX**（pptxgenjs，先一页一图）。共用的导出菜单、PNG、一键 PDF 和视频选项见 [export-menu.md](./export-menu.md)。
-- **封面**：导出的视频还不把封面放在第一帧、也不单独出封面 PNG（命令行会）。
+- **封面**：导出的视频第一帧是封面（`coverFirstFrame` 不为 false，MP4 和 WebM；GIF 循环播放，不放），“封面图片”存封面 PNG，和命令行一致。封面场景在同一个框架里临时挂在视野外、画到结束再拿掉；MP4 的封面图（附加图片流）只有服务端那条路会写，浏览器的封装器没有这个流。
 - **命令行和服务端渲染合成一份**：已做。`render.ts` 出 MP4、GIF、封面 PNG（封面作第一帧并附进 MP4），命令行 `tingly-design export`（[cli.md](./cli.md)）和主页、README 的脚本都用它，不再要 Playwright。原来的 `scripts/motion-render.mjs` 已删掉：单文件播放器成了 `export --as html`，`--scale` 成了 `export --scale`，`--verify` 成了 `check --snapshots` 里的 seek 检查（16 帧顺着 seek 再倒着 seek，逐像素比；只差抗锯齿那几个像素算一致）。
 - **服务端渲染的封面**：同样不把封面放在第一帧。
 - **WebM 透明**、**Lottie / 动画 SVG**（见 [motion.md](./motion.md) §8）。GIF 已能在编辑器里导出（[export-menu.md](./export-menu.md) §4）。

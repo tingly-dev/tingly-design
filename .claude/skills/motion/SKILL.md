@@ -33,7 +33,7 @@ A new piece starts from a plain light title scene (and cover) holding only the t
 - `speed` (0.25 to 4, default 1) plays all timing faster or slower. Write timing at reading pace and change `speed` to change the pace; never retime every attribute.
 - `order`: the scenes, in play order. Adding a scene means writing its file and adding its id here.
 - `note` (optional): a note on the whole piece, plain text up to 4000 characters, written by the person (what it is for, who watches it, the tone). Read it before you edit; never draw it, keep it unless asked to change it, and write it only when asked.
-- `cover` (optional): the still that stands for the video (thumbnail, first frame, the player before play): the id of a scene file that is **not** in `order`, designed to be read standing still, usually with no timing attributes. The editor shows it as its own clip before 0 s on the timeline. Leave `cover` out for none, and the video's first frame stands in. A time such as `"2.2s"` (a frame of the video) is still read in older files, but don't write one.
+- `cover` (optional): the still that stands for the video (thumbnail, first frame, the player before play): the id of a scene file that is **not** in `order`, designed to be read standing still, usually with no timing attributes. The editor shows it as its own clip before 0 s on the timeline. Leave `cover` out for none, and the video's first frame stands in. A time such as `"2.2s"` is also a cover: the frame of the video at that time, in authored time like every other time in the piece (before `speed`). The editor writes it when the person picks “Use as cover” on a frame; don't invent one yourself unless asked, a still page reads better as a thumbnail.
 
 ## Timing attributes
 

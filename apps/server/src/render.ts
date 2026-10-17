@@ -304,8 +304,8 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
       return r.result.value;
     };
     await evalIn('new Promise(r => document.readyState === "complete" ? r() : addEventListener("load", r))');
-    const info = await evalIn<{ duration: number; fps: number }>(
-      `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},speed:${o.speed ? Number(o.speed) : 'undefined'},root:document.getElementById('root')});return{duration:window.__stage.duration,fps:window.__stage.fps}})()`,
+    const info = await evalIn<{ duration: number; fps: number; speed: number }>(
+      `(async()=>{window.__stage=await window.dcMotion.mount({motion:${json(motion)},scenes:${json(scenes)},files:${json(files)},boardRuntime:${json(boardRuntime ?? null)}||undefined,format:${json(format)},speed:${o.speed ? Number(o.speed) : 'undefined'},root:document.getElementById('root')});return{duration:window.__stage.duration,fps:window.__stage.fps,speed:window.__stage.speed}})()`,
     );
     clock.add('launch', performance.now() - launched);
     const from = Math.max(0, o.from ?? 0);
@@ -314,7 +314,8 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     // the cover: a frame of the piece, or a scene outside the order drawn finished, over the stage and then taken away
     let coverPng: Buffer | null = null;
     if (cover && 'at' in cover) {
-      await evalIn(`window.__stage.seek(${Math.min(cover.at, info.duration)})`);
+      // a cover time is written at reading pace, like every time in the piece
+      await evalIn(`window.__stage.seek(${Math.min(cover.at / info.speed, info.duration)})`);
       coverPng = await shot();
     } else if (coverScene) {
       // the stage hides while the cover is up, so a cover with a see-through background shows nothing behind it
@@ -549,7 +550,7 @@ const uncover=()=>{if(!started){started=true;coverRoot.style.display='none'}};
 const show=t=>{scrub.value=t;time.textContent=(t/1000).toFixed(2)+' s / '+(stage.duration/1000).toFixed(2)+' s'};let playing=false;
 async function load(f){stage&&stage.destroy();cover&&cover.destroy();cover=null;stage=await dcMotion.mount({motion,scenes,files,boardRuntime,format:f,speed:+spd.value,root});scrub.max=stage.duration;
 if(!started&&coverScene){cover=await dcMotion.mount({motion:{...motion,order:[coverScene]},scenes:{[coverScene]:coverHtml},files,boardRuntime,format:f,root:coverRoot});cover.seek(cover.duration)}
-if(!started&&coverAt!=null)stage.seek(coverAt);fit();show(0);
+if(!started&&coverAt!=null)stage.seek(Math.min(coverAt/stage.speed,stage.duration));fit();show(0);
 document.getElementById('issues').textContent=stage.issues.map(i=>i.level+': '+i.scene+' '+i.message).join('\\n')}
 fmt.onchange=spd.onchange=()=>{playing=false;play.textContent='▶';load(fmt.value)};addEventListener('resize',fit);
 play.onclick=()=>{uncover();playing=!playing;play.textContent=playing?'❚❚':'▶';if(playing){const from=+scrub.value>=stage.duration?0:+scrub.value;stage.play(from,t=>{show(t);if(t>=stage.duration&&!motion.loop){playing=false;play.textContent='▶'}})}else stage.pause()};

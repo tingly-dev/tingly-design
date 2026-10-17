@@ -25,9 +25,14 @@ export interface ExportRequest {
   /** @font-face CSS with the fonts inlined, built by the host (`fontCss`). */
   fontCss?: string;
   audio?: AudioClip[];
+  /** What frame 0 shows when the whole piece goes to MP4 or WebM: a moment of the piece, or a cover scene already mounted (`mountCover`). A GIF loops, so it never gets one. */
+  cover?: CoverSource;
   onProgress?(done: number, total: number): void;
   signal?: AbortSignal;
 }
+
+/** The cover: a moment of the video (ms after speed), or a cover scene's own stage, drawn finished. */
+export type CoverSource = { at: number } | { stage: MotionStage; root: HTMLElement };
 
 export interface ExportOutcome extends Omit<VideoResult, 'container' | 'ext'> {
   container: Container | 'gif';
@@ -67,7 +72,13 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   stage.pause();
   // the picture is vector: it is drawn at the file's size, so a small file is not a big one scaled down and a big one is not blown up
   const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', clock });
-  const prepare = async (ms: number) => {
+  const cover = whole && req.format !== 'gif' ? req.cover : undefined;
+  const prepare = async (ms: number, i = -1) => {
+    if (i === 0 && cover && 'root' in cover) {
+      const pics = await clock.time('embeds', () => embedPictures(cover.stage, cover.root, cover.stage.duration));
+      return rasterizer.begin(cover.root, pics);
+    }
+    if (i === 0 && cover && 'at' in cover) ms = cover.at;
     await clock.time('seek', () => stage.seek(from + ms));
     const pics = await clock.time('embeds', () => embedPictures(stage, root, from + ms, missed));
     return rasterizer.begin(root, pics);
@@ -115,6 +126,11 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   }
 }
 
+/** The cover as a PNG: a moment of the piece, or a cover scene at its end. */
+export function exportCover(stage: MotionStage, root: HTMLElement, cover: CoverSource, req: { scale?: number; fontCss?: string }): Promise<Blob> {
+  return 'at' in cover ? exportFrame(stage, root, { ...req, t: cover.at }) : exportFrame(cover.stage, cover.root, { ...req, t: cover.stage.duration });
+}
+
 /** A frame of the piece as a PNG: the picture at one moment, at the size on screen. */
 export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { t: number; scale?: number; fontCss?: string }): Promise<Blob> {
   stage.pause();
@@ -135,4 +151,4 @@ export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { 
   }
 }
 
-(window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo, exportFrame };
+(window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo, exportFrame, exportCover };

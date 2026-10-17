@@ -9,7 +9,7 @@
 import { resolveSrc, urlsAgainst } from './urls';
 import { attrsForFormat, boardFrameDoc, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
-import type { ExportOutcome, ExportRequest } from './motionExport';
+import type { CoverSource, ExportOutcome, ExportRequest } from './motionExport';
 import type { AudioClip } from '@dc/export';
 
 export interface MountOptions {
@@ -73,6 +73,7 @@ type FrameRequest = { t: number; scale?: number; fontCss?: string };
 type Exporter = {
   exportVideo: (stage: MotionStage, root: HTMLElement, req: ExportRequest) => Promise<ExportOutcome>;
   exportFrame: (stage: MotionStage, root: HTMLElement, req: FrameRequest) => Promise<Blob>;
+  exportCover: (stage: MotionStage, root: HTMLElement, cover: CoverSource, req: Omit<FrameRequest, 't'>) => Promise<Blob>;
 };
 let exporter: Promise<Exporter> | null = null;
 
@@ -92,6 +93,7 @@ function loadExporter(): Promise<Exporter> {
 }
 const exportVideo = async (stage: MotionStage, root: HTMLElement, req: ExportRequest) => (await loadExporter()).exportVideo(stage, root, req);
 const exportFrame = async (stage: MotionStage, root: HTMLElement, req: FrameRequest) => (await loadExporter()).exportFrame(stage, root, req);
+const exportCover = async (stage: MotionStage, root: HTMLElement, cover: CoverSource, req: Omit<FrameRequest, 't'>) => (await loadExporter()).exportCover(stage, root, cover, req);
 
 export async function mount(opts: MountOptions): Promise<MotionStage> {
   const { motion, root } = opts;
@@ -409,12 +411,16 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
  * In the editor the runtime runs in a sandboxed frame (`sandboxDoc(origin, 'motion')`)
  * and the editor drives it over postMessage: load a project, seek, play, pause.
  */
+/** The cover the host asks for: a moment of the piece in authored ms (before speed), or a cover scene's source. */
+type CoverSpec = { at: number } | { scene: string; html: string };
+
 type HostMsg =
   | { dcm: 'load'; motion: MotionJson; scenes: Record<string, string>; files?: Record<string, string>; format?: string; speed?: number; at?: number | 'end' | 'still'; base?: string }
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' }
-  | ({ dcm: 'export'; id: string; fontCss?: string; audio?: AudioClip[] } & Pick<ExportRequest, 'format' | 'width' | 'height' | 'fps' | 'quality' | 'from' | 'to'>)
+  | ({ dcm: 'export'; id: string; fontCss?: string; audio?: AudioClip[]; cover?: CoverSpec } & Pick<ExportRequest, 'format' | 'width' | 'height' | 'fps' | 'quality' | 'from' | 'to'>)
+  | { dcm: 'cover'; id: string; cover: CoverSpec; scale?: number; fontCss?: string }
   | { dcm: 'export-cancel'; id: string }
   | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
 
@@ -425,6 +431,31 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
   let loading = 0;
   const exporting = new Map<string, AbortController>();
   const post = (m: Record<string, unknown>) => window.parent.postMessage(m, '*');
+  let loaded: Extract<HostMsg, { dcm: 'load' }> | null = null;
+  /**
+   * Runs `fn` with the cover ready to draw: a moment of the loaded piece, or the cover scene
+   * mounted out of sight in the same format (taken away after), drawn at its end.
+   */
+  const withCover = async <T>(spec: CoverSpec | undefined, fn: (c: CoverSource | undefined) => Promise<T>): Promise<T> => {
+    if (!spec || !stage) return fn(undefined);
+    if ('at' in spec) return fn({ at: Math.max(0, Math.min(stage.duration, spec.at / stage.speed)) });
+    if (!loaded) return fn(undefined);
+    // out of sight by its wrapper, not by visibility: the picture copies the computed style of what it draws
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:absolute;left:-100000px;top:0';
+    const box = document.createElement('div');
+    wrap.appendChild(box);
+    document.body.appendChild(wrap);
+    let c: MotionStage | null = null;
+    try {
+      c = await mount({ motion: { ...loaded.motion, order: [spec.scene] }, scenes: { [spec.scene]: spec.html }, files: loaded.files, format: loaded.format, root: box, base: loaded.base });
+      await c.seek(c.duration);
+      return await fn({ stage: c, root: box });
+    } finally {
+      c?.destroy();
+      wrap.remove();
+    }
+  };
   window.addEventListener('message', async (e: MessageEvent) => {
     if (e.source !== window.parent) return;
     const m = e.data as HostMsg;
@@ -437,7 +468,8 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       exporting.set(m.id, ctl);
       const req: ExportRequest = { format: m.format, width: m.width, height: m.height, fps: m.fps, quality: m.quality, from: m.from, to: m.to, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
       try {
-        const r = await exportVideo(stage, stageBox!, req);
+        const s = stage;
+        const r = await withCover(m.cover, (cover) => exportVideo(s, stageBox!, { ...req, cover }));
         const { blob, ...rest } = r;
         post({ dcm: 'exported', id: m.id, blob, ...rest });
       } catch (err) {
@@ -453,7 +485,17 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       } catch (err) {
         post({ dcm: 'snapshot-error', id: m.id, message: err instanceof Error ? err.message : String(err) });
       }
+    } else if (m.dcm === 'cover') {
+      if (!stage) return post({ dcm: 'snapshot-error', id: m.id, message: 'nothing is loaded' });
+      try {
+        const s = stage;
+        const blob = await withCover(m.cover, async (c) => (c ? exportCover(s, stageBox!, c, { scale: m.scale, fontCss: m.fontCss }) : exportFrame(s, stageBox!, { t: 0, scale: m.scale, fontCss: m.fontCss })));
+        post({ dcm: 'snapshot-done', id: m.id, blob });
+      } catch (err) {
+        post({ dcm: 'snapshot-error', id: m.id, message: err instanceof Error ? err.message : String(err) });
+      }
     } else if (m.dcm === 'load') {
+      loaded = m;
       const n = ++loading;
       // loads overlap while files are still being written (a generation saves scene after scene);
       // each mounts into its own box, so a stale one finishing late can't wipe the newer one

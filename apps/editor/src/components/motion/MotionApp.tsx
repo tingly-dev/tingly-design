@@ -17,7 +17,7 @@ import { Checklist, Film, Gif as GifIcon, Note, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
-import { MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
+import { MotionFrame, type MotionControl, type MotionCoverSpec, type MotionInfo } from './MotionFrame';
 import { useBoardFiles } from '../../boards';
 import { useElementSize } from '../../hooks';
 import { Timeline } from './Timeline';
@@ -104,12 +104,18 @@ export function MotionApp() {
   const axisMs = drag ? Math.max(drag.total, timeline.duration) : timeline.duration;
   const axis = axisMs / rate;
 
-  // the cover is a scene before 0 s; with none, the video's first frame stands for it
+  // the cover is a scene before 0 s, or a frame of the video (authored ms); with none, the video's first frame stands for it
   const coverScene = motion.cover && 'scene' in motion.cover && scenes[motion.cover.scene] !== undefined ? motion.cover.scene : null;
+  const coverAt = motion.cover && 'at' in motion.cover ? motion.cover.at : null;
+  const coverSpec = useMemo<MotionCoverSpec | undefined>(
+    () => (coverScene ? { scene: coverScene, html: scenes[coverScene] } : coverAt !== null ? { at: coverAt } : undefined),
+    [coverScene, coverAt, scenes],
+  );
   const [onCover, setOnCover] = useState(true);
   const cover = !!coverScene && onCover;
 
   const control = useRef<MotionControl | null>(null);
+  const opened = useRef(false);
   const [info, setInfo] = useState<MotionInfo | null>(null);
   const [time, setTime] = useState(0);
   const tRef = useRef(time);
@@ -221,7 +227,7 @@ export function MotionApp() {
 
   // the file name of a stretch: the scene it starts in
   const sceneName = (from: number) => timeline.scenes.findLast((w) => w.start / rate <= from + 1)?.id ?? 'scene';
-  const { exporting, cancel, where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame } = useMotionExport({ motion, fmt, info, playScenes, base, project, control, at: tRef, pause, sceneName });
+  const { exporting, cancel, where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame, saveCover } = useMotionExport({ motion, fmt, info, playScenes, base, project, control, at: tRef, pause, sceneName, cover: coverSpec });
 
   // the scene under the playhead as a range the dialog may offer (not on the cover, which is before the video)
   const scenePick: ScenePick | null = !cover && current ? { name: current.id, from: current.start / rate, to: (current.start + current.duration) / rate } : null;
@@ -297,7 +303,8 @@ export function MotionApp() {
           items={[
             { id: 'video', label: t('common.transfer.label.video'), hint: t('common.transfer.hint.motionVideo', { size: `${W}×${H}`, fps: info?.fps ?? motion.fps }), icon: <Film />, disabled: !info || !!exporting, run: () => void openExportDialog() },
             { id: 'gif', label: t('common.transfer.label.gif'), hint: t('common.transfer.hint.motionGif'), icon: <GifIcon />, disabled: !info || !!exporting, run: () => void openExportDialog('gif') },
-            { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
+            { id: 'cover', label: t('common.transfer.label.cover'), hint: coverSpec ? t('common.transfer.hint.motionCover') : t('common.transfer.hint.motionCoverNone'), icon: <Picture />, disabled: !info, rule: true, run: saveCover },
+            { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, run: saveFrame },
           ]}
         />
       </TopBar>
@@ -319,6 +326,13 @@ export function MotionApp() {
                   title={t('motion.stage.playerTitle')}
                   control={control}
                   onLoaded={(i) => {
+                    // a piece whose cover is a frame opens on that frame, as one with a cover scene opens on it
+                    if (!opened.current && coverAt !== null && !coverScene && tRef.current === 0) {
+                      const at = Math.min(i.duration, coverAt / i.speed);
+                      control.current?.seek(at);
+                      setTime(at);
+                    }
+                    opened.current = true;
                     setInfo(i);
                     setError(null);
                     setEffectErrors(i.effectErrors ?? []);
@@ -364,6 +378,7 @@ export function MotionApp() {
           playing={playing}
           cover={cover}
           coverScene={coverScene}
+          coverAt={coverAt}
           current={current}
           stageAt={stageAt}
           stageLanded={stageLanded}
