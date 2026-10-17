@@ -3,7 +3,7 @@ import { SLIDE_H, SLIDE_W, elementSource, faceMarkup, sandboxDoc, slideFile, typ
 import { api } from '../../api';
 import { deckOf, display, editElement, parsed, useStore } from '../../store';
 import { frames, post } from '../canvas/Board';
-import { handleKey } from '../../shortcuts';
+import { handleKey, leaveField } from '../../shortcuts';
 import { SERVER } from '../../base';
 import { htmlLang } from '../../i18n';
 import { useBoardFiles } from '../../boards';
@@ -91,9 +91,7 @@ export const SlideFrame = memo(function SlideFrame({
       const s = useStore.getState();
       switch (m.dc) {
         case 'select': {
-          // the frame keeps focus where it was on a click; a field in the editor must let go
-          const a = document.activeElement as HTMLElement | null;
-          if (a && a !== frame.current && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur();
+          leaveField();
           useStore.setState({ selection: m.tid === null ? { kind: 'board', file } : { kind: 'el', file, tid: m.tid }, menu: null });
           break;
         }
