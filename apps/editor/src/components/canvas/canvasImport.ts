@@ -2,7 +2,8 @@ import { addToCanvas } from '@dc/import';
 import { CANVAS_FILE, uniqueNoteId, type NoteEntry } from '@dc/core';
 import { api } from '../../api';
 import { t } from '../../i18n';
-import { display, edit, editCanvas, fitTo, toCanvas, useStore } from '../../store';
+import { display, edit, editCanvas, useStore } from '../../store';
+import { fitTo, toCanvas } from './view';
 import { readPage, writePage, type Picked } from '../../importer';
 import { filesOf, type ImportTarget } from '../ImportHere';
 

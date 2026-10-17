@@ -14,21 +14,9 @@ import {
   type NoteEntry,
   type Where,
 } from '@dc/core';
-import {
-  canvasOf,
-  deleteBoard,
-  display,
-  edit,
-  editCanvas,
-  editElement,
-  focusBoard,
-  getClip,
-  parsed,
-  setClip,
-  slideIds,
-  toast,
-  useStore,
-} from './store';
+import { canvasOf, deleteBoard, display, edit, editCanvas, editElement, parsed, slideIds, toast, useStore } from './store';
+import { focusBoard } from './components/canvas/view';
+import { getClip, setClip } from './clipboard';
 import { deleteSlide, duplicateSlide, moveSlide } from './components/slides/slides';
 import { slideIdOf } from '@dc/core';
 import { currentLanguage, t } from './i18n';

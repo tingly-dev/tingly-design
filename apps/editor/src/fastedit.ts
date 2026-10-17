@@ -23,7 +23,8 @@ import {
 import { api } from './api';
 import { t } from './i18n';
 import { ExecSession, replay } from './executor';
-import { canvasOf, continuable, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine, type LastRun } from './store';
+import { canvasOf, continuable, deckOf, display, enqueueResult, slideIds, toast, useStore, type FastLine, type LastRun } from './store';
+import { visibleBoards } from './components/canvas/view';
 import { slideTitle } from './components/slides/slides';
 import { motionOf } from './components/motion/motion';
 

@@ -16,7 +16,8 @@ import {
   wrapSelection,
 } from '../actions';
 import { api, type GitState } from '../api';
-import { canvasOf, display, getClip, toast, useCanvas, useStore } from '../store';
+import { canvasOf, display, toast, useCanvas, useStore } from '../store';
+import { getClip } from '../clipboard';
 import { TEXT_COLORS, sizeOf } from './canvas/Item';
 import { copyPng } from './canvas/Board';
 import { Menu, MenuItem } from './Menu';
