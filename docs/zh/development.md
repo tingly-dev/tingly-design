@@ -40,6 +40,7 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 | `python3 e2e/dock.py` | 请求栏放在哪里，先跑 `pnpm build`；它自己启动带模拟模型和替身 `claude` 的服务端：默认在底部、运行卡片在人回到画面时收成一行，移到右侧后隐藏在右缘只露标签，鼠标移上标签打开、移开收回，Ctrl J 和 Esc，点一下画面就放手，标签显示正在跑和已完成、浮动和再停靠、窄窗口自动浮动，其余五种类型同一个面板、动效没有空槽位（33 项） |
 | `python3 e2e/import_here.py` | 往打开的项目里导入，先跑 `pnpm build`；它自己在示例项目的副本上启动服务端：每种类型的导入按钮、拖到任何地方、粘贴，网页文件夹变成画布上已有内容旁边的新画板（原文件留在 `uploads/`），粘贴 SVG，图片放到画布和幻灯片上，带图片的 Markdown 变成文档标签页，CSV 变成看板数据集，字体和 SVG 进设计系统，拒收，动效不收（29 项） |
 | `python3 e2e/check_snapshots.py` | `check --snapshots` 查版面，先 `pnpm build`；在自己的项目文件夹上跑命令行：示例幻灯片的副本里放一行超出页面边缘的字、一行被框裁掉的字、一行淡色说明和一页空白，每样都报警告，原样的示例幻灯片一条也不报，每页照样画出来（7 项） |
+| `python3 e2e/baseline.py` | 截图基线：要先 `pnpm dev`；启动页和每种类型的示例，明暗 × 中英（28 张，1440×900），每张和 `e2e-baselines` 分支上的那张比；超过 0.2% 的像素变了就算失败，截图和差异图留在 `e2e/out/baseline/`；`DC_RECORD=1` 把新截图写到 `e2e/out/baselines-new/`，`DC_BASELINES=<文件夹>` 改成和一个文件夹比 |
 | `python3 e2e/ai_settings.py` | AI 模型设置：要先用没有 `ANTHROPIC_*` 变量、`DC_CONFIG` 指向临时文件的环境跑 `pnpm dev`，再跑 `python3 e2e/mock_anthropic.py`；请求栏的提示、从启动页和项目里打开对话框、Tingly Box / 自定义地址、拒绝不合法地址、经模拟模型测试、保存后不回传密钥、Claude Code 用自己登录的选项 |
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
 | `python3 e2e/fast_slides.py` | 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型 |
@@ -55,7 +56,7 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 ## CI 里的 e2e
 
-`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report` 产物。为什么这样分：`.design/harness.md`。
+`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report` 产物。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。界面是有意改的时候，先在红了的那次运行的报告里看差异图，再手动运行 E2E patrol 这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
 
 ## 发版
 
