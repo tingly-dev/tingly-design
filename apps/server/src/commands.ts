@@ -5,13 +5,13 @@
  * never drift (.design/cli.md §4). Imported after the environment is settled (`DC_PROJECTS`).
  */
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
 import { checkProject, journalSince, type AgentStep, outlineProject, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
-import type { PageJob } from './pageExport';
+import type { PageIssue, PageJob } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
 import { createProject, kindOf, linkFolder, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
@@ -193,9 +193,43 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     }
     return { dir, files };
   }
-  const { files, failed } = await runPage(ctx, p, await pageJobs(p, 'png', {}, true), dir);
+  const { files, failed, issues = [] } = await runPage(ctx, p, await pageJobs(p, 'png', {}, true), dir);
   for (const f of failed) fail(f.what, f.error);
+  // a board that threw or a picture that never came still draws something; the picture alone would not say why
+  const where = await frameFiles(p);
+  const before = problems.length;
+  for (const i of issues) {
+    const file = (i.where && where.get(i.where)) ?? (p.kind === 'dashboard' ? 'files/index.html' : (i.where ?? p.name));
+    if (i.kind === 'error') {
+      problems.push({ level: 'error', file, code: 'pageError', message: i.text });
+      continue;
+    }
+    // a project file is named by its path; one that is not there is a missing reference, like any other
+    const raw = i.text.match(/\/api\/projects\/[^/]+\/raw\/([^?# ]+)/);
+    const rel = raw ? decodeURIComponent(raw[1]) : undefined;
+    if (rel && !existsSync(resolve(p.dir, rel))) problems.push({ level: 'error', file, code: 'missingFile', ref: rel });
+    else problems.push({ level: 'warning', file, code: 'notLoaded', message: rel ? i.text.replace(/^\S+/, rel) : i.text });
+  }
+  // a slide shows in its thumbnail too: the same problem from two frames is one
+  const seen = new Set<string>();
+  const found = problems.splice(before).filter((x) => {
+    const key = [x.file, x.code, x.ref, x.message].join('\0');
+    return !seen.has(key) && seen.add(key);
+  });
+  problems.push(...found);
   return { dir, files };
+}
+
+/** The file behind a frame's title, where the editor titles a frame by something else: a board by its name, a slide by its id. */
+async function frameFiles(p: Project): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (p.kind === 'design') {
+    const c = parseCanvas(await readFile(resolve(p.dir, 'canvas.json'), 'utf8').catch(() => undefined));
+    for (const [file, b] of Object.entries(c.boards)) out.set(b.title ?? file, file);
+  } else if (p.kind === 'slides') {
+    for (const f of await readdir(resolve(p.dir, 'slides')).catch(() => [])) if (f.endsWith('.html')) out.set(f.slice(0, -5), `slides/${f}`);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- export
@@ -229,6 +263,8 @@ export interface ExportResult {
   failed: { what: string; error: string }[];
   /** a motion export: the file each format became, and its cover */
   formats?: { format: string; file: string; cover?: string }[];
+  /** `check --snapshots`: what went wrong in the work while the editor showed it */
+  issues?: PageIssue[];
   /** a zip: what went in */
   zip?: { files: number; systems: string[] };
 }
@@ -369,9 +405,9 @@ async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpe
   const t = translator(ctx.lang);
   const { exportFromPage, PageExportError } = await import('./pageExport');
   onOpening?.();
-  let results;
+  let results, issues;
   try {
-    results = await withEditor(ctx, p, true, (at) => exportFromPage({ editor: at.page, project: at.name, lang: ctx.lang, jobs }));
+    ({ results, issues } = await withEditor(ctx, p, true, (at) => exportFromPage({ editor: at.page, project: at.name, lang: ctx.lang, jobs })));
   } catch (e) {
     if (e instanceof PageExportError && e.code === 'no-chrome') throw new CommandError(t('cli.noChrome'), 1);
     if (e instanceof PageExportError && e.code === 'no-editor') throw new CommandError(t('cli.noEditorPage', { detail: e.message }), 1);
@@ -398,7 +434,7 @@ async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpe
     }
     if (!r.files.length && !r.errors.length) failed.push({ what: r.pick ?? r.item, error: t('cli.nothingSaved') });
   }
-  return { files, failed };
+  return { files, failed, issues };
 }
 
 // ---------------------------------------------------------------- prompt

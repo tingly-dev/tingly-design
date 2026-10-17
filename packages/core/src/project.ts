@@ -50,13 +50,13 @@ export interface ProjectOutline {
   duration?: number;
 }
 
-export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek';
+export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded';
 
 export interface ProjectProblem {
   level: Exclude<IssueLevel, 'note'>;
   file: string;
   code: ProblemCode;
-  /** What the per-file checker said (`issue`, `badFile`, `badDataset`, `badTokens`), in its own words. */
+  /** What the per-file checker said (`issue`, `badFile`, `badDataset`, `badTokens`), or the page (`pageError`, `notLoaded`), in its own words. */
   message?: string;
   /** The file a missing reference points at (`missingFile`), the index an unlisted file is missing from (`unlisted`), or the cover scene (`badCover`). */
   ref?: string;
