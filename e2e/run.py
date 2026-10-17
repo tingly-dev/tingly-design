@@ -27,7 +27,7 @@ SUITES = {
     'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev',
     'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
     'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'archive': 'dev', 'copy_png': 'dev',
-    'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev',
+    'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev',
     'ai_settings': 'dev-bare',
     'attach': 'build', 'run_feed': 'build', 'dock': 'build', 'import_here': 'build', 'import_board': 'build',
     'check_snapshots': 'build',

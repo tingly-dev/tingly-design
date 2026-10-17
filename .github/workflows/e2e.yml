@@ -10,6 +10,9 @@ name: E2E
 #                the smoke subset (open, edit, save in every kind)
 #   release      release.yml calls this before it builds the tarball: the full
 #                set, and a red run stops the release
+#   record       by hand with "record baselines": takes the editor's screenshots
+#                again (e2e/baseline.py) and pushes them to the e2e-baselines
+#                branch, after a person has looked at the diffs of a red run
 #
 # The report and every suite's output are uploaded as the `e2e-report` artifact.
 # See .design/harness.md and docs/en/development.md.
@@ -23,6 +26,11 @@ on:
         description: Suites to run, space-separated (empty runs every suite)
         required: false
         default: ''
+      record:
+        description: Record the screenshot baselines again and push them to the e2e-baselines branch
+        type: boolean
+        required: false
+        default: false
   pull_request:
     paths:
       - 'apps/**'
@@ -43,6 +51,7 @@ permissions:
 jobs:
   e2e:
     name: E2E (${{ github.event_name == 'pull_request' && 'smoke' || 'full' }})
+    if: ${{ !inputs.record }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -92,3 +101,40 @@ jobs:
           RESULT: ${{ needs.e2e.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: .github/scripts/e2e-patrol-issue.sh
+
+  record-baselines:
+    name: Record the screenshot baselines
+    if: ${{ inputs.record }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Set up the browser, ffmpeg and git
+        run: .github/scripts/e2e-setup.sh
+
+      - name: Take the screenshots
+        env:
+          DC_RECORD: '1'
+        run: python3 e2e/run.py baseline
+
+      - name: Push them to the e2e-baselines branch
+        env:
+          FROM: ${{ github.sha }}
+        run: .github/scripts/e2e-baselines-push.sh
+
+      - name: Upload the pictures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-baselines
+          path: e2e/out/baselines-new/
+          retention-days: 14
