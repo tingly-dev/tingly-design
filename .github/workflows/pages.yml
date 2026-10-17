@@ -55,7 +55,7 @@ jobs:
       - name: Install Chromium
         run: |
           export PLAYWRIGHT_BROWSERS_PATH="$RUNNER_TEMP/pw"
-          pnpm exec playwright-core install --with-deps chromium
+          pnpm --filter @dc/import exec playwright-core install --with-deps chromium
           echo "PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH" >> "$GITHUB_ENV"
 
       - name: Build the site
