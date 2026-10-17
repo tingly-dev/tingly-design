@@ -10,7 +10,7 @@ and report.json with every suite's checks, failures and time; each suite's outpu
   python3 e2e/run.py --smoke         the per-PR subset (SMOKE below)
   python3 e2e/run.py --list          the suites, their group and whether they are in the smoke subset
   --real      also run delegate.py   --force   run even when projects/ has uncommitted changes
-  --timeout   seconds per suite (default 600)
+  --timeout N seconds per suite (default 600; also --timeout=N)
 
 The suites edit the sample projects in place and put them back with `git checkout`, so the run refuses to
 start when projects/ has uncommitted changes. DC_CHROME defaults to Playwright's chromium_headless_shell
@@ -93,6 +93,13 @@ class Group:
     def log(self, what): return open(os.path.join(self.logs, f'_{self.name}-{what}.log'), 'w')
 
     def __enter__(self):
+        try:
+            return self.start()
+        except BaseException:
+            self.__exit__()  # Python skips __exit__ when __enter__ raises; don't leave the mock or `pnpm dev` behind
+            raise
+
+    def start(self):
         if self.name in ('dev', 'dev-bare'):
             busy = [p for p in (5173, 8787, MOCK_PORT) if port_busy(p)]
             if busy: raise RuntimeError(f'ports {busy} are in use; stop the running `pnpm dev` (or mock) first')
@@ -120,12 +127,13 @@ def run_suite(name, env, timeout, logs):
     path = os.path.join(logs, f'{name}.log')
     t = time.time()
     with open(path, 'w') as f:
+        # its own session, so a timeout also stops what the suite started (a mock, a server)
+        proc = start([sys.executable, os.path.join(HERE, f'{name}.py')], env, f)
         try:
-            code = subprocess.run([sys.executable, os.path.join(HERE, f'{name}.py')], cwd=REPO, env=env, stdout=f,
-                                  stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, timeout=timeout).returncode
-            timed_out = False
+            code, timed_out = proc.wait(timeout), False
         except subprocess.TimeoutExpired:
             code, timed_out = None, True
+        stop(proc)
     text = open(path, encoding='utf-8', errors='replace').read()
     passed = len(re.findall(r'^PASS\b', text, re.M))
     failed = re.findall(r'^FAIL\b ?(.*)$', text, re.M)
@@ -159,9 +167,16 @@ def report(results, total_s):
 
 
 def main(argv):
+    timeout = 600
+    if '--timeout' in argv:  # also `--timeout 300`
+        i = argv.index('--timeout')
+        argv = argv[:i] + [f'--timeout={argv[i + 1] if i + 1 < len(argv) else ""}'] + argv[i + 2:]
+    for a in argv:
+        if a.startswith('--timeout='):
+            try: timeout = int(a.split('=', 1)[1])
+            except ValueError: say('--timeout takes a number of seconds'); return 2
     args = [a for a in argv if not a.startswith('--')]
     flags = {a for a in argv if a.startswith('--') and not a.startswith('--timeout')}
-    timeout = next((int(a.split('=', 1)[1]) for a in argv if a.startswith('--timeout=')), 600)
     if '--list' in flags:
         for s, g in SUITES.items(): say(f"{s:14} {g:9} {'smoke' if s in SMOKE else ''}")
         return 0
