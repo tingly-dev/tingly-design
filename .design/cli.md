@@ -1,6 +1,6 @@
 # 命令行 `tingly-design`
 
-已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`。第 5 步：`prompt`，默认交给 Claude Code，`--fast` 用快速 AI）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
+已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`。第 5 步：`prompt`，默认交给 Claude Code，`--fast` 用快速 AI）；§6 是还开着的和考虑过暂不做的。调研和同类产品对比在 `.research/cli-service.md`。
 
 ## 1. 问题
 
@@ -90,7 +90,7 @@
 - 安全：带 `Origin` 的请求只收本机或编辑器自己地址来的，别的网站不能借人的浏览器调它。服务默认只听 127.0.0.1；监听到网络上时，`/mcp` 和其余 `/api` 一样，谁能连上谁就能用。
 - 工具的说明写给模型，用英文，和其他提示词一样；工具报的错跟调用方的语言（HTTP 看 `x-dc-lang`、`Accept-Language`，stdio 看命令行的语言）。
 
-**`skills`。** 格式 skill 是给 agent 读的说明，原来只在这个仓库和 bundle 里。`skills` 列出它们（类型、名字、什么时候读），`skills add [文件夹]` 复制到那个文件夹的 `.claude/skills/<名字>/SKILL.md`，别的仓库里的 Claude Code 就认得 Tingly Design 的文件。已有的同名副本内容不同时留着、提示 `--force`，免得盖掉别人改过的版本；一样的报"已是最新"。skill 里"怎么运行"的那段写全三种情形：bundle 里 `node cli.mjs`，仓库里 `pnpm tingly-design`，别处是装好的 `tingly-design`，连着 MCP 时用它的 `check`、`export`。
+**`skills`。** 格式 skill 是给 agent 读的说明，原来只在这个仓库和 bundle 里。`skills` 列出它们（类型、名字、什么时候读），`skills add [文件夹]` 复制到那个文件夹的 `.claude/skills/<名字>/SKILL.md`（连同它指向的参考页 `reference/*.md`；MCP 的 `read_skill` 带 `page` 读其中一篇），别的仓库里的 Claude Code 就认得 Tingly Design 的文件。已有的同名副本内容不同时留着、提示 `--force`，免得盖掉别人改过的版本；一样的报"已是最新"。skill 里"怎么运行"的那段写全三种情形：bundle 里 `node cli.mjs`，仓库里 `pnpm tingly-design`，别处是装好的 `tingly-design`，连着 MCP 时用它的 `check`、`export`。
 
 **`prompt`。** 交给 Claude Code 的活由编辑器来跑（`POST …/delegate`），命令不自己起 `claude`：这样改动在改动记录里记成 Claude（监听靠 `activeDelegates` 认），打开着的编辑器实时看到，运行列表、停止按钮也都是同一个。命令先订阅项目的改动流（短的运行可能在启动请求返回前就结束），再发请求，按编号跟着这次运行的步骤，终端里一步一行（措辞用请求栏的 `prompt.step`），结束后稍等监听记完最后的写入，再读改动记录里这之后 Claude 的条目。用哪个编辑器和导出一样（`withEditor`，只是不需要页面）；没有在运行的就在进程里起一个，跑完关掉。MCP 也有同名的 `prompt` 工具，说明里让 agent 能自己改文件时就自己改。默认交给 Claude Code 而不是快速 AI：脚本和 agent 要的是把事做完，不是即时回答；它本来就在服务端跑，不需要页面；看板也只收 Claude Code。
 
@@ -106,8 +106,9 @@
 
 ## 6. 没做的
 
-按 `.research/cli-service.md` 的顺序：
+**还开着的：页面检查的边角。** 框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在 `check --snapshots` 和导出的图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行和 MCP 能这样导出。
 
-1. **命令行做的改动记成自己的身份。** 现在命令行写的文件由监听记成“外部”；经过正在运行的编辑器时可以带上 `cli` 这个身份，撤销和改动记录里分得出来。
-2. **页面检查的边角。** 框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在这些图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行能这样导出。
-3. **MCP 还没有的**：服务端推送（资源变化通知、SSE 流）、`prompts`。
+**考虑过、暂不做：**
+
+1. **命令行或 agent 的改动记成自己的身份。** 命令行本身不改项目文件：`new`、`import` 建项目，`export` 只写 `renders/`。记成“外部”的是通过 MCP 连上的 agent 用它自己的文件工具改的文件；要分出来只能按时间窗猜（agent 调过工具之后一段时间的外部改动都算它的），同一时间人在别的编辑器里手改也会被算进去。改动记录宁可说“外部”，也不该把人说成 agent。agent 要分清自己和人改了什么，用 `history --since`。
+2. **MCP 的服务端推送和 `prompts`。** 推送（资源变化通知）在 stdio 下好做，HTTP 下要另开 SSE 流；主流客户端基本不订阅资源变化，agent 想知道人改了什么，`history --since` 已经够用。`prompts` 只是给客户端预置几条请求模板，作用有限，还要维护两种语言的文案。等有客户端真的用上再做。

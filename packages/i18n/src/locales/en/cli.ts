@@ -56,6 +56,7 @@ Options:
   needProject: 'Name a project: tingly-design {{command}} <project>',
   needKind: 'Name a kind: canvas, slides, design-system, dashboard, doc or motion',
   badKind: '{{kind}} is not a kind. Kinds: canvas, slides, design-system, dashboard, doc, motion',
+  badPage: '{{page}} is not a reference page of this kind. Pages: {{pages}}',
   needName: 'Name the project or give a folder: tingly-design new {{kind}} <name or folder>',
   noProjectAt: 'There is no project at {{path}}',
   created: 'Created {{kind}} {{name}} in {{path}}',
