@@ -1,6 +1,6 @@
 # 命令行 `tingly-design`
 
-已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`。第 5 步：`prompt`，默认交给 Claude Code，`--fast` 用快速 AI）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
+已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`。第 5 步：`prompt`，默认交给 Claude Code，`--fast` 用快速 AI）；§6 是还开着的和考虑过暂不做的。调研和同类产品对比在 `.research/cli-service.md`。
 
 ## 1. 问题
 
@@ -106,8 +106,9 @@
 
 ## 6. 没做的
 
-按 `.research/cli-service.md` 的顺序：
+**还开着的：页面检查的边角。** 框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在 `check --snapshots` 和导出的图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行和 MCP 能这样导出。
 
-1. **命令行做的改动记成自己的身份。** 现在命令行写的文件由监听记成“外部”；经过正在运行的编辑器时可以带上 `cli` 这个身份，撤销和改动记录里分得出来。
-2. **页面检查的边角。** 框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在这些图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行能这样导出。
-3. **MCP 还没有的**：服务端推送（资源变化通知、SSE 流）、`prompts`。
+**考虑过、暂不做：**
+
+1. **命令行或 agent 的改动记成自己的身份。** 命令行本身不改项目文件：`new`、`import` 建项目，`export` 只写 `renders/`。记成“外部”的是通过 MCP 连上的 agent 用它自己的文件工具改的文件；要分出来只能按时间窗猜（agent 调过工具之后一段时间的外部改动都算它的），同一时间人在别的编辑器里手改也会被算进去。改动记录宁可说“外部”，也不该把人说成 agent。agent 要分清自己和人改了什么，用 `history --since`。
+2. **MCP 的服务端推送和 `prompts`。** 推送（资源变化通知）在 stdio 下好做，HTTP 下要另开 SSE 流；主流客户端基本不订阅资源变化，agent 想知道人改了什么，`history --since` 已经够用。`prompts` 只是给客户端预置几条请求模板，作用有限，还要维护两种语言的文案。等有客户端真的用上再做。
