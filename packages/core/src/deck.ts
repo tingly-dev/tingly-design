@@ -200,6 +200,8 @@ ${HIDE_CSS}
 .dc-slide-host section h1,.dc-slide-host section h2,.dc-slide-host section h3,.dc-slide-host section p{overflow-wrap:break-word}
 .dc-slide-host section ul,.dc-slide-host section ol{padding-left:1.2em}
 .dc-slide-host section li+li{margin-top:.3em}
+.dc-slide-host section [data-text]{gap:.5em}
+.dc-slide-host section [data-text] ul,.dc-slide-host section [data-text] ol{padding-left:var(--dc-indent,1.2em)}
 .dc-slide-host section img{display:block;max-width:none}
 .dc-slide-host section svg{display:block}
 .dc-slide-host section table{border-collapse:collapse;width:100%}

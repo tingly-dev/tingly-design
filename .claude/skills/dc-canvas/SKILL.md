@@ -121,6 +121,10 @@ The editor shows elements by handle ids such as `#dc12`. They are not in the fil
 
 No lorem ipsum and no invented numbers: unknown facts become placeholders like `[价格]`. Real `<button>`, `<a href>`, `<input>` + `<label>`; `aria-label` on icon-only buttons; text contrast at least 4.5:1.
 
+## Punctuation
+
+Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches.
+
 ## Look at what you made
 
 `tingly-design check <name> --snapshots` checks the files and draws every board that is not hidden as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --board <file or title>` draws one board (`--scale 2` for PNG @2x). Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), `pnpm tingly-design …` in this repository, otherwise the installed `tingly-design …`; not `npx`, which may fetch another version. With Tingly Design's MCP server connected (`tingly-design mcp`, or the editor's `/mcp`), its `check` and `export` tools do the same and hand the pictures back.

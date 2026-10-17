@@ -108,6 +108,32 @@ async def main():
         ok = await wait_for(lambda: 'One endpoint for every agent</h2>' in src('slides/box.html'))
         check('undo brings it back', ok)
 
+        # --- a text box: one box of paragraphs and lists ------------------------------------
+        restore()
+        lead = '<p style="font-size:30px;line-height:1.55;color:#4A4F5A;width:580px">Agents keep their native protocol. Tingly Box translates Anthropic, OpenAI and Gemini formats both ways.</p>'
+        tbox = ('<div data-text="36" style="font-size:30px;line-height:1.55;color:#4A4F5A;width:580px;gap:12px">\n'
+                '<p>Agents keep their native protocol.</p>\n<ul>\n<li>Anthropic</li>\n<li>OpenAI</li>\n</ul>\n</div>')
+        path = os.path.join(DECK, 'slides/box.html')
+        text = src('slides/box.html').replace(lead, tbox)
+        with open(path, 'w', encoding='utf-8') as f: f.write(text)
+        await pg.reload()
+        await stage_ready(pg, 'box')
+        fr = pg.frame_locator(f'{STAGE} iframe')
+        indent = await fr.locator('[data-text] ul').evaluate('e => getComputedStyle(e).paddingLeft')
+        check('a text box sets its lists\' indent', indent == '36px', indent)
+        await click_in(pg, '[data-text] li', 1)
+        ok = await wait_for_async(lambda: pg.locator('.prompt .target').filter(has_text='<div>').count())
+        await pg.screenshot(path=OUT + 's3-text-box.png')
+        check('a click inside a text box picks the whole box', ok)
+        await click_in(pg, '[data-text] li', 1, count=2)
+        await pg.wait_for_timeout(200)
+        await pg.keyboard.press('Control+a')
+        await pg.keyboard.type('Gemini')
+        await pg.keyboard.press('Enter')
+        ok = await wait_for(lambda: '<li>Gemini</li>' in src('slides/box.html'))
+        check('double-click types in one paragraph of the box', ok and '<li>Anthropic</li>' in src('slides/box.html'))
+        await pg.wait_for_timeout(400)
+
         # --- dragging a pinned element ------------------------------------------------
         restore()
         await pg.reload()

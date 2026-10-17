@@ -73,6 +73,7 @@ Elements:
 |---|---|
 | `h1 h2 h3 p` | text; set `font-size` (≥ 24px everywhere); defaults 96/64/44/32px |
 | `ul` / `ol` of plain `li` | parallel lines, one level |
+| `div data-text` | **one text box** of unstyled `p`, `ul` and `ol`: style it once on the div (font, size, colour, `gap` between paragraphs, default 0.5em; `width` when pinned); `data-text="N"` sets the lists' indent in px. It selects and moves as one box; use it for a body of text (a paragraph, a short list, another paragraph) rather than separate blocks |
 | `b i u a span br` | inline; a `span` takes `color` only, never a size or font |
 | `div` | containers: flex row/column or grid, ≤ 15 deep; invisible unless painted (a painted empty `div` is a rectangle) |
 | `img src alt style` | `src` is a file of the deck (`assets/…`); `object-fit:cover` for photos, `contain` for screenshots |
@@ -114,6 +115,10 @@ A person can import an artboard of a canvas project into a deck (import menu →
 - Change only what was asked; keep everything else byte for byte (the editor writes back minimal text patches, and so should you).
 - The editor checks each slide against the subset and shows what's outside it; keep your slides clean.
 - Ids such as `dc12` in a request are handles the editor numbered depth-first over the slide's elements; they are never in the files.
+
+## Punctuation
+
+Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches.
 
 ## Look at what you made
 

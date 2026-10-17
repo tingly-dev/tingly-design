@@ -49,6 +49,10 @@ A thread is pinned to the words it quotes (`quote`, with a little of the text be
 - One `#` title per tab; sections as `##`. Short paragraphs; lists for steps and options; a table when items share attributes.
 - Write in the doc's language (`settings.lang`). Keep facts checkable: name files, commands and numbers exactly.
 
+## Punctuation
+
+Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches. In a tab, this is the prose: code spans and code blocks stay exactly as written.
+
 ## Look at what you made
 
 `tingly-design check <name> --snapshots` checks the files and draws every tab as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --tab <id or title>` draws one tab; `--as pdf`, `html` and `md` are the doc's other exports. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), `pnpm tingly-design …` in this repository, otherwise the installed `tingly-design …`; not `npx`, which may fetch another version. With Tingly Design's MCP server connected (`tingly-design mcp`, or the editor's `/mcp`), its `check` and `export` tools do the same and hand the pictures back.

@@ -36,6 +36,7 @@ WHAT AN ARTBOARD HOLDS
 - <sc-for list="{{items}}" as="item"> repeats its content once per item: a change inside it changes every item. <sc-if> shows its content conditionally. <helmet> holds page styles. Never remove these tags.
 - Handlers you write never run; anything that must react to clicks lives in the artboard's script, which you cannot see.
 - Keep the person's look: colours, typefaces, sizes and spacing stay unless the request asks otherwise.
+- Text you write uses its language's own punctuation: curly apostrophe and quotes in English (’ “ ” ‘ ’), full-width punctuation in Chinese; straight quotes only inside markup and CSS, and for feet and inches.
 
 DO IT OR DELEGATE
 Do it yourself whenever the markup and the request hold everything you need: wording, colour, size, spacing, layout, moving, hiding, adding a section, a list, a table, an icon (inline <svg> with stroke, about 20px), restyling to make something "nicer" (that asks for your taste — do not delegate it).
@@ -51,6 +52,7 @@ export const FAST_EDIT_SLIDES = `THIS DESIGN IS A SLIDE DECK
 - Every style is inline. Use only: position (absolute|relative), left top right bottom width height (px or %), min/max-width/height, display (flex|grid|none; no display = a column), flex-direction, flex-wrap, gap, align-items, justify-content, justify-items, align-self, justify-self, flex, flex-grow, flex-shrink, flex-basis, grid-template-columns/rows (px, fr, auto, repeat), grid-column/row (span N), aspect-ratio, padding, overflow, font-family, font-size, font-weight, font-style, line-height, letter-spacing, text-align, text-transform, white-space, text-decoration, font-variant-numeric, color, background (color or one gradient), background-clip:text, border (+ sides), border-radius, box-shadow, text-shadow, opacity, transform (2D), filter, backdrop-filter, mix-blend-mode, object-fit.
 - Never: margin, z-index, em/rem/vw/vh, var(), classes, <style>, scripts, on…= handlers.
 - Tags: h1 h2 h3 p ul/ol/li br b i u a span div img svg table/tr/th/td hr aside x-shape x-icon x-connector x-embed. No size or font on a <span>. Text is never under 24px.
+- A body of text (paragraphs and lists together) is one text box: <div data-text style="font-size;color;gap;width"> holding only unstyled <p>, <ul>, <ol>; data-text="N" sets the lists' indent in px.
 - position:absolute pins a box to the slide (or to a position:relative div): give pinned text a width. Later children paint over earlier ones.
 - An attached image can go on the slide: <img src="uploads/…" alt="…" style="position:absolute;left;top;width;height;object-fit:cover"> with the path it is kept at.
 - <aside> is the speaker notes: plain text, the last child of the section. <x-embed> (a live sandboxed mini page) must stay a direct, pinned child of the section: leave its insides alone unless asked. An <x-embed src="uploads/…"> is an artboard imported from a canvas: keep its src (and data-seek) and change only its data-props JSON (its tweaks) or its box.
@@ -132,7 +134,7 @@ export const FAST_EDIT_DOCS = `You rewrite one passage of a document, in place. 
 
 You get the passage as Markdown (GitHub flavour: tables, task lists), the text around it for context, and the request.
 
-Reply with the new passage ONLY, as Markdown: no preamble, no explanation, no code fence around it. It replaces the selected passage exactly, so keep what the request does not touch: the passage's language, its headings and their levels, links, lists and tables. Write in the passage's own language unless asked otherwise. Never add content that is not supported by the passage or the request.`;
+Reply with the new passage ONLY, as Markdown: no preamble, no explanation, no code fence around it. It replaces the selected passage exactly, so keep what the request does not touch: the passage's language, its headings and their levels, links, lists and tables. Write in the passage's own language unless asked otherwise. Use that language's own punctuation in prose (curly apostrophe and quotes in English, full-width punctuation in Chinese); keep code spans and code blocks exactly as they are. Never add content that is not supported by the passage or the request.`;
 
 export function docsUserMessage(o: { before: string; passage: string; after: string; request: string; title?: string }): string {
   return [

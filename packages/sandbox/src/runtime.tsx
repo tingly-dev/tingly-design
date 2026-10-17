@@ -23,6 +23,7 @@ import {
   timeSpec,
   sceneBaseCss,
   paintLayer,
+  textBoxIndent,
   parseDc,
   styleObject,
   isTextEditable,
@@ -190,6 +191,8 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
   if (ctx.slide) {
     const z = paintLayer(el);
     if (z !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), zIndex: z };
+    const indent = textBoxIndent(el);
+    if (indent !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), '--dc-indent': `${indent}px` };
   }
   return p;
 }
@@ -673,9 +676,12 @@ function drawBoxes() {
   requestAnimationFrame(loop);
 })();
 
-/** What a click lands on: the element under the pointer, or the nearest one outside a locked branch. */
+/** What a click lands on: the element under the pointer (a slide's text box as a whole), or the nearest one outside a locked branch. */
 function tidOf(target: EventTarget | null): number | null {
   let el = (target as Element | null)?.closest?.('[data-dc-tid]') ?? null;
+  // a slide's text box is one box: a click on one of its paragraphs picks the box (a double click still types in the paragraph)
+  const box = current.slide ? el?.closest('[data-text][data-dc-tid]') : null;
+  if (box) el = box;
   const locked = el?.closest(`[${LOCK_ATTR}]`);
   if (locked) el = locked.parentElement?.closest('[data-dc-tid]') ?? null;
   if (!el) return null;

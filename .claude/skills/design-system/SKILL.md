@@ -91,6 +91,10 @@ A canvas or deck installs a system from its panel (nothing selected → 设计�
 - Text holds 4.5:1 on the surfaces its note names, in every theme (3:1 at 24px and up). Colours that must be told apart differ in lightness, not hue alone.
 - No AI tropes: blue-purple gradients, emoji cards, left-border accent cards.
 
+## Punctuation
+
+Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches.
+
 ## Look at what you made
 
 `tingly-design check <name> --snapshots` checks the files and draws each view (overview, colors, type, space, components, assets) as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --view <view>` draws one view. Component previews are frames and come out empty in these pictures. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), `pnpm tingly-design …` in this repository, otherwise the installed `tingly-design …`; not `npx`, which may fetch another version. With Tingly Design's MCP server connected (`tingly-design mcp`, or the editor's `/mcp`), its `check` and `export` tools do the same and hand the pictures back.
