@@ -4,11 +4,12 @@ change log and the design system it installed, beside it, with a manifest; the f
 no local state; the launcher's New menu imports the .zip as a new project under a free name and opens it; the
 launcher card's ⋯ exports too; a .zip with no project is refused in words. English light, then Chinese dark.
 Run with `pnpm dev` up: python3 e2e/archive.py"""
-import os, re, json, asyncio, zipfile, urllib.request
+import os, re, json, asyncio, shutil, subprocess, zipfile, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/archive-'
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 
 results = []
@@ -22,6 +23,16 @@ def api(path, body=None, method=None):
         return json.loads(r.read())
 
 KINDS = {'canvas': 'box-console', 'slides': 'tingly-intro', 'design system': 'tingly-ds', 'dashboard': 'box-usage', 'docs': 'design-guide', 'motion': 'design-motion'}
+
+PROJECTS = os.path.join(REPO, 'projects')
+THERE = set(os.listdir(PROJECTS))  # what was there before; anything new is a project this suite imported
+
+def restore():
+    """The deck as committed, without the design system this suite installs, and no project it imported."""
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-intro'], cwd=REPO)
+    for name in set(os.listdir(PROJECTS)) - THERE:
+        if os.path.isdir(os.path.join(PROJECTS, name)): shutil.rmtree(os.path.join(PROJECTS, name))
 
 async def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -139,4 +150,8 @@ async def main():
     if failed:
         raise SystemExit(1)
 
-asyncio.run(main())
+restore()
+try:
+    asyncio.run(main())
+finally:
+    restore()

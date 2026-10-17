@@ -75,8 +75,10 @@ def stop(proc):
 def base_env(tmp):
     env = {k: v for k, v in os.environ.items() if not k.startswith('ANTHROPIC_')}
     if not env.get('DC_CHROME'):
-        shell = sorted(glob.glob('/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell')
-                       + glob.glob(os.path.expanduser('~/.cache/ms-playwright/chromium_headless_shell-*/chrome-linux/headless_shell')))
+        # where Playwright puts its headless shell: this container's /opt/pw-browsers, or its cache on a runner (two layouts)
+        shell = sorted(p for root in ('/opt/pw-browsers', os.path.expanduser('~/.cache/ms-playwright'))
+                       for p in glob.glob(f'{root}/chromium_headless_shell-*/chrome-linux/headless_shell')
+                       + glob.glob(f'{root}/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell'))
         if shell: env['DC_CHROME'] = shell[-1]
     env['DC_CONFIG'] = os.path.join(tmp, 'ai.json')  # never the person's own saved model settings
     return env
@@ -183,6 +185,10 @@ def main(argv):
         say(f'unknown suite(s): {", ".join(unknown)}; see --list'); return 2
     picked = args or (SMOKE if '--smoke' in flags else [s for s, g in SUITES.items() if g != 'real' or '--real' in flags])
     dirty = subprocess.run(['git', 'status', '--porcelain', '--', 'projects'], cwd=REPO, capture_output=True, text=True).stdout
+    # a folder holding only ignored files (a change log left by an earlier run) is not in git status, but takes a name
+    tracked = {f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2}
+    dirty += ''.join(f'?? projects/{d}/ (no tracked files)\n' for d in sorted(os.listdir(os.path.join(REPO, 'projects')))
+                     if os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
     if dirty and '--force' not in flags:
         say('projects/ has uncommitted changes, and the suites put the samples back with `git checkout`.\n'
             'Commit or stash them first, or pass --force to run anyway (they will be lost).\n' + dirty)

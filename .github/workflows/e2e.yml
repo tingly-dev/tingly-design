@@ -1,0 +1,77 @@
+name: E2E
+
+# The end-to-end suites (e2e/run.py), on the schedules that can afford them,
+# because the full set is too slow to put on every PR:
+#
+#   pr smoke     a PR that touches the editor, the sandbox, the server or e2e/:
+#                the smoke subset (open, edit, save in every kind)
+#   patrol       e2e-patrol.yml calls this every night on main and by hand: the
+#                full set, and that workflow opens or closes the patrol issue
+#   release      release.yml calls this before it builds the tarball: the full
+#                set, and a red run stops the release
+#
+# Kept read-only, so a caller (release.yml) needs to grant it nothing more.
+# The report and every suite's output are uploaded as the `e2e-report` artifact.
+# See .design/harness.md and docs/en/development.md.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'e2e/**'
+      - 'projects/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/e2e.yml'
+  workflow_call:
+    inputs:
+      suites:
+        description: Suites to run, space-separated (empty runs every suite)
+        type: string
+        required: false
+        default: ''
+
+concurrency:
+  group: e2e-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E (${{ github.event_name == 'pull_request' && 'smoke' || 'full' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Set up the browser, ffmpeg and git
+        run: .github/scripts/e2e-setup.sh
+
+      - name: Run the suites
+        env:
+          SUITES: ${{ inputs.suites }}
+          MODE: ${{ github.event_name == 'pull_request' && '--smoke' || '' }}
+        run: |
+          # shellcheck disable=SC2086  # SUITES and MODE are word lists
+          python3 e2e/run.py $MODE $SUITES
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: e2e/out/
+          retention-days: 14
+
+      - name: Show the report on the run page
+        if: always()
+        run: '[ -f e2e/out/report.md ] && cat e2e/out/report.md >> "$GITHUB_STEP_SUMMARY" || true'
+

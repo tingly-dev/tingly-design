@@ -1,0 +1,42 @@
+name: E2E patrol
+
+# Every night on main, and by hand from the Actions tab: the full e2e set
+# (e2e.yml). On the nightly run a red result opens one issue labelled
+# e2e-patrol (or comments on the open one) and a green one closes it; a run by
+# hand only reports. See .design/harness.md.
+
+on:
+  schedule:
+    - cron: '17 18 * * *'  # 02:17 Beijing
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: Suites to run, space-separated (empty runs every suite)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E
+    uses: ./.github/workflows/e2e.yml
+    with:
+      suites: ${{ inputs.suites || '' }}
+
+  patrol-issue:
+    name: Open or close the patrol issue
+    needs: e2e
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Report the nightly result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.e2e.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/e2e-patrol-issue.sh

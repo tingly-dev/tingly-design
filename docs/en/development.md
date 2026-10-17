@@ -52,9 +52,13 @@ python3 e2e/mock_anthropic.py &
 ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 ```
 
+## E2E in CI
+
+`.github/workflows/e2e.yml` runs `pnpm e2e` on three schedules, because the full set is too slow for every pull request: every night on main and by hand from the Actions tab, through `e2e-patrol.yml` (the full set; a red night opens one issue labelled `e2e-patrol`, or comments on the open one, and a green night closes it; a run by hand only reports), before every release (the full set, blocking), and on a pull request that touches `apps/`, `packages/`, `e2e/` or `projects/` (`--smoke`). The report and the logs are the run's `e2e-report` artifact. Why it is split this way: `.design/harness.md`.
+
 ## Releasing
 
-Pushing a tag `vX.Y.Z` releases that version; the tag has to match `version` in the root `package.json`, so bump it on main first. `.github/workflows/release.yml` runs the unit tests and typecheck, builds the bundle, starts it the way a host does (`.github/scripts/smoke-bundle.sh`), and packs it into `tingly-design-<ver>.tgz`. That one file, with its `.sha256`, is attached to a GitHub release on the tag and published to npm as `@tingly-dev/tingly-design` and as `tingly-design` (the same contents under both names). A tag such as `v0.2.0-rc.1` makes a prerelease on the `next` dist-tag.
+Pushing a tag `vX.Y.Z` releases that version; the tag has to match `version` in the root `package.json`, so bump it on main first. `.github/workflows/release.yml` first runs every end-to-end suite (`e2e.yml`; a red one stops the release), then the unit tests and typecheck, builds the bundle, starts it the way a host does (`.github/scripts/smoke-bundle.sh`), and packs it into `tingly-design-<ver>.tgz`. That one file, with its `.sha256`, is attached to a GitHub release on the tag and published to npm as `@tingly-dev/tingly-design` and as `tingly-design` (the same contents under both names). A tag such as `v0.2.0-rc.1` makes a prerelease on the `next` dist-tag.
 
 npm publishing uses Trusted Publishing only: no token is stored anywhere, and both packages refuse tokens, so outside CI only a maintainer entering a one-time password can publish. Before the very first release a maintainer runs `scripts/npm-bootstrap.sh` once on their own machine (placeholder versions, the trusted publisher, 2FA required), and creates the `production` environment on GitHub.
 

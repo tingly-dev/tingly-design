@@ -127,6 +127,16 @@ function slideKey(key: string, meta: boolean, shift: boolean): boolean {
 
 const typingIn = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
 
+/**
+ * A click inside a sandboxed frame does not move focus out of the editor (the runtime prevents the
+ * mousedown so nothing in the work reacts), so a panel field used just before keeps it and swallows
+ * the keys meant for the new selection. Frames call this when they report a selection.
+ */
+export function leaveField(): void {
+  const a = document.activeElement;
+  if (typingIn(a)) (a as HTMLElement).blur();
+}
+
 export function installShortcuts(): () => void {
   // a ⌘V waiting for its paste event; browsers that send none for a page with no text field get the in-app paste anyway
   let waiting = 0;
