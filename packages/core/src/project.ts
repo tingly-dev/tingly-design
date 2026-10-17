@@ -50,7 +50,7 @@ export interface ProjectOutline {
   duration?: number;
 }
 
-export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded';
+export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded' | 'layout';
 
 export interface ProjectProblem {
   level: Exclude<IssueLevel, 'note'>;
@@ -60,7 +60,7 @@ export interface ProjectProblem {
   message?: string;
   /** The file a missing reference points at (`missingFile`), the index an unlisted file is missing from (`unlisted`), or the cover scene (`badCover`). */
   ref?: string;
-  /** `canvas`: the `checkCanvas` rule id and the values its wording needs. */
+  /** `canvas`: the `checkCanvas` rule id; `layout`: what the snapshot's layout probe found (`clipped`, `outside`, `contrast`, `blank`); and the values its wording needs. */
   rule?: string;
   params?: Record<string, string | number>;
 }

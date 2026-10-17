@@ -11,7 +11,7 @@ import { basename, resolve } from 'node:path';
 import { checkProject, journalSince, type AgentStep, outlineProject, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
-import type { PageIssue, PageJob } from './pageExport';
+import type { PageIssue, PageJob, PageLayout } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
 import { createProject, kindOf, linkFolder, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
@@ -193,7 +193,8 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     }
     return { dir, files };
   }
-  const { files, failed, issues = [] } = await runPage(ctx, p, await pageJobs(p, 'png', {}, true), dir);
+  // boards and slides are their own size, so text past the edge is lost; a dashboard or a view scrolls
+  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', {}, true), dir, undefined, { fixed: p.kind === 'design' || p.kind === 'slides' });
   for (const f of failed) fail(f.what, f.error);
   // a board that threw or a picture that never came still draws something; the picture alone would not say why
   const where = await frameFiles(p);
@@ -210,10 +211,25 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     if (rel && !existsSync(resolve(p.dir, rel))) problems.push({ level: 'error', file, code: 'missingFile', ref: rel });
     else problems.push({ level: 'warning', file, code: 'notLoaded', message: rel ? i.text.replace(/^\S+/, rel) : i.text });
   }
+  // how the drawn work is laid out: warnings, since a cut or a quiet caption can be on purpose
+  // faint text comes in families (every caption of a board), so it is one line per file: how many, the faintest, one example
+  const faint = new Map<string, { count: number; ratio: number; text: string }>();
+  for (const l of layout) {
+    const file = (l.where && where.get(l.where)) ?? (p.kind === 'dashboard' ? 'files/index.html' : (l.where ?? p.name));
+    if (l.rule !== 'contrast') {
+      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: { text: l.text ?? '' } });
+      continue;
+    }
+    const f = faint.get(file) ?? { count: 0, ratio: Infinity, text: '' };
+    f.count++;
+    if ((l.ratio ?? 0) < f.ratio) Object.assign(f, { ratio: l.ratio ?? 0, text: l.text ?? '' });
+    faint.set(file, f);
+  }
+  for (const [file, f] of faint) problems.push({ level: 'warning', file, code: 'layout', rule: f.count > 1 ? 'contrastMany' : 'contrast', params: f });
   // a slide shows in its thumbnail too: the same problem from two frames is one
   const seen = new Set<string>();
   const found = problems.splice(before).filter((x) => {
-    const key = [x.file, x.code, x.ref, x.message].join('\0');
+    const key = [x.file, x.code, x.ref, x.message, x.rule, JSON.stringify(x.params ?? {})].join('\0');
     return !seen.has(key) && seen.add(key);
   });
   problems.push(...found);
@@ -401,13 +417,13 @@ async function withEditor<T>(ctx: Ctx, p: Project, page: boolean, fn: (at: { api
 }
 
 /** The files the menu's items made, written to `dir`; what failed, in words. */
-async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpening?: () => void): Promise<ExportResult> {
+async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpening?: () => void, look?: { fixed: boolean }): Promise<ExportResult & { layout?: PageLayout[] }> {
   const t = translator(ctx.lang);
   const { exportFromPage, PageExportError } = await import('./pageExport');
   onOpening?.();
-  let results, issues;
+  let results, issues, layout;
   try {
-    ({ results, issues } = await withEditor(ctx, p, true, (at) => exportFromPage({ editor: at.page, project: at.name, lang: ctx.lang, jobs })));
+    ({ results, issues, layout } = await withEditor(ctx, p, true, (at) => exportFromPage({ editor: at.page, project: at.name, lang: ctx.lang, jobs, layout: look })));
   } catch (e) {
     if (e instanceof PageExportError && e.code === 'no-chrome') throw new CommandError(t('cli.noChrome'), 1);
     if (e instanceof PageExportError && e.code === 'no-editor') throw new CommandError(t('cli.noEditorPage', { detail: e.message }), 1);
@@ -434,7 +450,7 @@ async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpe
     }
     if (!r.files.length && !r.errors.length) failed.push({ what: r.pick ?? r.item, error: t('cli.nothingSaved') });
   }
-  return { files, failed, issues };
+  return { files, failed, issues, ...(look ? { layout } : {}) };
 }
 
 // ---------------------------------------------------------------- prompt
