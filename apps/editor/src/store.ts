@@ -29,6 +29,7 @@ import {
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
+import { readPref, writePref } from './local';
 
 /** What a failed edit says to the person: a rebase conflict in the editor's own words, anything else as thrown. */
 function errorText(e: unknown): string {
@@ -235,13 +236,7 @@ export const useStore = create<State>(() => ({
   selection: null,
   tool: 'select',
   mode: 'edit',
-  panelOpen: (() => {
-    try {
-      return localStorage.getItem('dc.panelOpen') !== '0';
-    } catch {
-      return true;
-    }
-  })(),
+  panelOpen: readPref('dc.panelOpen') !== '0',
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -260,21 +255,8 @@ export const useStore = create<State>(() => ({
   lastRun: null,
   runHidden: false,
   feeds: 0,
-  barCollapsed: (() => {
-    try {
-      return localStorage.getItem('dc.barCollapsed') === '1';
-    } catch {
-      return false;
-    }
-  })(),
-  barMode: (() => {
-    try {
-      const m = localStorage.getItem('dc.barMode');
-      return m === 'auto' ? m : 'float';
-    } catch {
-      return 'float';
-    }
-  })(),
+  barCollapsed: readPref('dc.barCollapsed') === '1',
+  barMode: readPref('dc.barMode') === 'auto' ? 'auto' : 'float',
   historyOpen: false,
   history: [],
   freshNext: false,
@@ -483,20 +465,12 @@ export type BarMode = 'auto' | 'float';
 
 /** Where the prompt lives (kept across sessions, the same in every kind). */
 export function setBarMode(mode: BarMode): void {
-  try {
-    localStorage.setItem('dc.barMode', mode);
-  } catch {
-    // private window
-  }
+  writePref('dc.barMode', mode);
   set({ barMode: mode, historyOpen: false });
 }
 
 export function setBarCollapsed(on: boolean): void {
-  try {
-    localStorage.setItem('dc.barCollapsed', on ? '1' : '0');
-  } catch {
-    // private window
-  }
+  writePref('dc.barCollapsed', on ? '1' : '0');
   set({ barCollapsed: on, historyOpen: false });
 }
 
@@ -827,11 +801,5 @@ export function clipText(): string {
 
 // remember whether the panel is open, per browser
 useStore.subscribe((st, prev) => {
-  if (st.panelOpen !== prev.panelOpen) {
-    try {
-      localStorage.setItem('dc.panelOpen', st.panelOpen ? '1' : '0');
-    } catch {
-      // storage unavailable: the default applies next time
-    }
-  }
+  if (st.panelOpen !== prev.panelOpen) writePref('dc.panelOpen', st.panelOpen ? '1' : '0');
 });

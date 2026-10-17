@@ -22,6 +22,8 @@ import { applyNewOptions, checkDataFile, type NewOptions } from '../newProject';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
 import { Specimen } from './ds/Specimen';
+import { readPref, writePref } from '../local';
+import { useElementSize } from '../hooks';
 import { Dialog } from './Dialog';
 
 /** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
@@ -38,21 +40,6 @@ const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<Project
 const RECENT_KEY = 'dc:recent-projects';
 const VIEW_KEY = 'dc:launcher-view';
 const FOLDED_KEY = 'dc:launcher-folded-groups';
-
-function stored(key: string): string {
-  try {
-    return localStorage.getItem(key) ?? '';
-  } catch {
-    return '';
-  }
-}
-function store(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // private mode: nothing to remember
-  }
-}
 
 export function readRecent(): string[] {
   try {
@@ -296,20 +283,6 @@ function MotionStill({ still, format, width, base }: { still: { motion: MotionJs
   return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
 }
 
-function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
-  const ref = useRef<T>(null);
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setW(el.clientWidth);
-    const ro = new ResizeObserver(() => setW(el.clientWidth));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return [ref, w];
-}
-
 /** The ⋯ beside a card or row: it sits next to the card, not inside it, since a card is itself a button. */
 function MoreButton({ p, onMore }: { p: ProjectCard; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
@@ -322,7 +295,7 @@ function MoreButton({ p, onMore }: { p: ProjectCard; onMore: (name: string, at: 
 
 function Card({ p, recent, flat, onMore }: { p: ProjectCard; recent: boolean; flat: boolean; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
-  const [ref, width] = useWidth<HTMLButtonElement>();
+  const [ref, { w: width }] = useElementSize<HTMLButtonElement>();
   const k = KIND[p.kind];
   const kindName = t(`launcher.kind.${p.kind}.name`);
   return (
@@ -791,8 +764,8 @@ export function Launcher() {
   const [tab, setTab] = useState<ProjectKind | 'all'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
-  const [view, setView] = useState<'grid' | 'list'>(() => (stored(VIEW_KEY) === 'list' ? 'list' : 'grid'));
-  const [folded, setFolded] = useState<Set<string>>(() => new Set(stored(FOLDED_KEY).split('\n').filter(Boolean)));
+  const [view, setView] = useState<'grid' | 'list'>(() => (readPref(VIEW_KEY) === 'list' ? 'list' : 'grid'));
+  const [folded, setFolded] = useState<Set<string>>(() => new Set(readPref(FOLDED_KEY).split('\n').filter(Boolean)));
   const [acting, setActing] = useState<{ name: string; x: number; y: number } | null>(null);
   const [newMenu, setNewMenu] = useState<DOMRect | null>(null);
   const [creating, setCreating] = useState<ProjectKind | null>(null);
@@ -902,13 +875,13 @@ export function Launcher() {
   };
   const setViewTo = (v: 'grid' | 'list') => {
     setView(v);
-    store(VIEW_KEY, v);
+    writePref(VIEW_KEY, v);
   };
   const fold = (key: string) =>
     setFolded((f) => {
       const n = new Set(f);
       if (!n.delete(key)) n.add(key);
-      store(FOLDED_KEY, [...n].join('\n'));
+      writePref(FOLDED_KEY, [...n].join('\n'));
       return n;
     });
   const onMore = (name: string, r: DOMRect) => setActing({ name, x: r.right, y: r.bottom + 4 });
