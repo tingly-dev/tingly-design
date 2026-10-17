@@ -75,10 +75,41 @@ function inRange(range: string | undefined, points: Set<number>): boolean {
   return false;
 }
 
+const GOOGLE = /^https:\/\/fonts\.googleapis\.com\/css2?\?/;
+/** Characters per `text=` request: Google Fonts sends the whole font, not a cut of it, once the URL passes about 8 KB (some 900 CJK characters). */
+const PER_SHEET = 300;
+
+async function sheet(href: string): Promise<string | null> {
+  try {
+    const r = await fetch(href);
+    return r.ok ? await r.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A Google Fonts sheet cut to the characters in `points` (`text=`): each face is a font of just those
+ * glyphs, a few KB, where the unicode-range slices of a CJK family are tens of KB each and a page of text
+ * needs dozens of them in every weight. Every face in the answer names its characters in its own
+ * unicode-range, so the cuts of a long text, asked for a few hundred characters at a time, add up.
+ */
+async function cutSheet(href: string, points: Set<number>): Promise<string | null> {
+  const chars = [...points].map((p) => String.fromCodePoint(p));
+  const parts: string[] = [];
+  for (let i = 0; i < chars.length; i += PER_SHEET) {
+    const css = await sheet(`${href}&text=${encodeURIComponent(chars.slice(i, i + PER_SHEET).join(''))}`);
+    if (css === null) return null;
+    parts.push(css);
+  }
+  return parts.join('\n');
+}
+
 /**
  * `fontEmbedCSS` for web fonts named by stylesheet URLs (Google Fonts and the
  * like): each sheet is fetched, and each @font-face whose unicode-range covers
- * a character of `text` gets its file inlined as a data: URL. A picture drawn
+ * a character of `text` gets its file inlined as a data: URL; a Google Fonts
+ * sheet is asked for a font of just those characters. A picture drawn
  * from a foreignObject cannot load a font from the network, so without this it
  * is set in the fallback face. Run it where the network is reachable (the
  * editor, not a sandboxed frame), once per export.
@@ -91,13 +122,10 @@ export async function fontCss(sources: (string | { family: string; url: string }
     const href = new URL(typeof source === 'string' ? source : source.url, typeof location !== 'undefined' ? location.href : undefined).href;
     let css: string;
     if (typeof source === 'string') {
-      try {
-        const r = await fetch(href);
-        if (!r.ok) continue;
-        css = await r.text();
-      } catch {
-        continue;
-      }
+      const cut = text && GOOGLE.test(href) ? await cutSheet(href, points) : null;
+      const whole = cut ?? (await sheet(href));
+      if (whole === null) continue;
+      css = whole;
     } else {
       css = `@font-face{font-family:"${source.family.replace(/["\\]/g, '')}";src:url("${href}")}`;
     }
