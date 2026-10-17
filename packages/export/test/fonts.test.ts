@@ -40,6 +40,42 @@ describe('fontCss', () => {
     expect(await fontCss(['https://fonts.example/css2?x.css'], 'a')).toBe('');
   });
 
+  it('asks Google Fonts for just the characters in use, a few hundred at a time', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        asked.push(String(url));
+        if (String(url).includes('fonts.googleapis.com')) {
+          const text = new URL(url).searchParams.get('text') ?? '';
+          return new Response(`@font-face { font-family: 'Noto Sans SC'; src: url(https://fonts.gstatic.com/l/font?kit=${asked.length}) format('woff2'); unicode-range: ${[...text].map((c) => 'U+' + c.codePointAt(0)!.toString(16)).join(', ')}; }`);
+        }
+        return new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'font/woff2' } });
+      }),
+    );
+    const text = Array.from({ length: 400 }, (_, i) => String.fromCodePoint(0x4e00 + i)).join('');
+    const css = await fontCss(['https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400&display=swap'], text + text);
+    const sheets = asked.filter((u) => u.includes('googleapis'));
+    expect(sheets).toHaveLength(2);
+    expect(new URL(sheets[0]).searchParams.get('text')).toHaveLength(300);
+    expect(new URL(sheets[0]).searchParams.get('family')).toBe('Noto Sans SC:wght@400');
+    expect(css.match(/@font-face/g)).toHaveLength(2);
+    expect(css).toContain('base64,AQID');
+  });
+
+  it('falls back to the whole sheet when a cut cannot be fetched', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('text=')) return new Response('', { status: 400 });
+        if (String(url).includes('googleapis')) return new Response(SHEET);
+        return new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'font/woff2' } });
+      }),
+    );
+    const css = await fontCss(['https://fonts.googleapis.com/css2?family=Inter'], 'Hello');
+    expect(css.match(/@font-face/g)).toHaveLength(1);
+  });
+
   it('wraps a single font file in a face', async () => {
     network();
     const css = await fontCss([{ family: 'My "Face"', url: 'https://fonts.example/my.woff2' }], 'a');
