@@ -3,7 +3,7 @@
 # Development and tests
 
 ```bash
-pnpm test           # unit tests: core (parsing, write-back, the jQuery session, statement splitting, undo relocation, slides, design systems, dashboards, docs), the importer, the exporter (what a browser can write, font inlining), and the UI strings (same keys and placeholders in both languages, every key the code uses exists, no hard-coded Chinese in code)
+pnpm test           # unit tests: core (parsing, write-back, the jQuery session, statement splitting, undo relocation, slides, design systems, dashboards, docs), the importer, the exporter (what a browser can write, font inlining), and the UI strings (same keys and placeholders in both languages, every key the code uses exists, no hard-coded Chinese in code), and that every ✓ in the cross-kind matrix (`.design/project-kinds.md` §3) names its e2e suites or why none checks it yet in `e2e/coverage.json`
 pnpm typecheck
 pnpm tingly-design --help   # the command line from source (docs: cli.md)
 ```

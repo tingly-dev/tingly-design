@@ -87,7 +87,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 2. 写下这个功能对每种类型的结论：支持、不支持（为什么）、不适用。不支持是一种决定，要写原因，否则下个会话会当成漏了。
 3. 这个功能如果改变了 Claude Code 能读写或引用的东西，同步每种类型的技能文件和 `delegate.ts` 里的说明。
 4. 在声称支持的每种类型里测过（e2e 或手动），PR 里写明哪种没测。
-5. 更新本文的矩阵，必要时更新 `CLAUDE.md`。
+5. 更新本文的矩阵，必要时更新 `CLAUDE.md`。每个 ✓ 在 `e2e/coverage.json` 里写上测它的套件，或者为什么还没有；`pnpm test` 会查矩阵和这份数据对不对得上（[harness.md](./harness.md)）。
 
 ## 5. 已知缺口
 

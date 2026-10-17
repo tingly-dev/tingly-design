@@ -67,7 +67,7 @@ Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind
 
 Most editor features are not "canvas features": the prompt bar, attachments, themes, the UI language, the journal and undo, host messages, export, the launcher card, Claude Code delegation all have to work in every kind. Every kind, motion included, has to plug into every one of them, and so does any kind added later.
 
-**Read `.design/project-kinds.md` before adding a kind or a feature that any kind can reach.** It lists every place a kind is registered (core, server, editor, launcher, skills, samples, docs, e2e) and a matrix of which cross-kind features each kind supports, with the known gaps. When you change either, update the matrix in the same PR. When a feature deliberately skips a kind, write that down in the matrix with the reason, so the next session knows it is a choice and not an omission.
+**Read `.design/project-kinds.md` before adding a kind or a feature that any kind can reach.** It lists every place a kind is registered (core, server, editor, launcher, skills, samples, docs, e2e) and a matrix of which cross-kind features each kind supports, with the known gaps. When you change either, update the matrix in the same PR, and give every ✓ its suites (or the reason none checks it yet) in `e2e/coverage.json`; `pnpm test` fails when the two disagree. When a feature deliberately skips a kind, write that down in the matrix with the reason, so the next session knows it is a choice and not an omission.
 
 Rules of thumb:
 
@@ -100,7 +100,7 @@ artifact/         private reference material; never publish
 
 ```bash
 pnpm dev            # server + editor
-pnpm test           # core, import and i18n unit tests
+pnpm test           # core, import and i18n unit tests, and the matrix's e2e coverage (e2e/coverage.json)
 pnpm e2e            # every e2e suite with what each needs started, one table and e2e/out/report.md (--smoke, --list, names)
 pnpm typecheck
 pnpm build
