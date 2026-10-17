@@ -69,7 +69,7 @@ Decided with YZ: plan only what needs no real model and no Tingly Box (T0 to T2)
 Steps, each small and independently useful:
 
 1. **Make the e2e suites runnable as one command.** `pnpm e2e` starts what each suite needs (server, mock model, stand-in `claude`, pinned `chromium_headless_shell`), runs all suites, prints one table (suite, checks, pass/fail, time) and keeps failure screenshots. Today each suite has its own startup recipe in `docs/en/development.md`.
-2. **Fix the known failure (#159), then add e2e to CI** as a separate job from the fast unit job, so a red e2e is visible without slowing the unit feedback.
+2. **Fix the known failure (#159), then run e2e on a schedule and before release, not on every PR.** Cost is the reason: 30 suites, several that build and start their own server, a full browser, no cached state between runs. Triggers: (a) a nightly patrol on main that opens or updates one issue when red, (b) the release workflow runs the full set before it builds the tarball and blocks the tag when red, (c) a manual `workflow_dispatch` for a PR that touches the editor. Per PR keep only a small smoke subset (one suite per kind's open-edit-save, a few minutes at most) chosen by path filters (`apps/editor`, `packages/sandbox`, `apps/server`). The first run of the full set also gives the real wall-clock number this choice depends on (not measured yet).
 3. **Structural checks on snapshots**: inside `check --snapshots`, assert on the rendered page (no overflow or clipped text, contrast of text on its background, a board that draws something non-blank). No baselines yet.
 4. **Screenshot baselines for the editor chrome**: one image per kind × light/dark × en/zh at a fixed viewport, compared with a tolerance; a diff is reviewed and re-recorded with one command, never auto-accepted.
 5. **Cross-kind matrix as data**: `.design/project-kinds.md` stays the readable table, a small JSON next to it lists feature × kind with the suite that covers each cell, and a unit test fails on a claimed cell with no suite (or a suite naming a cell that is not claimed).
@@ -78,6 +78,6 @@ Out of scope for now: real-model evals, vision judge, VModel scripting, a public
 
 ## 7. Open questions for YZ
 
-1. Is e2e as a required CI check acceptable (a few minutes of Playwright per PR)?
+1. Patrol (nightly on main) plus a blocking full run before release plus a path-filtered smoke subset per PR: acceptable? A red patrol files an issue instead of blocking merges.
 2. Baselines: stored in the repo (simple, grows the repo) or on the `pr-assets`-style side branch?
 3. Order: is 1 → 2 → 3 → 4 → 5 right, or should the matrix check (5) come first because it is cheap?
