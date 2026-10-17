@@ -56,11 +56,11 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 ## CI 里的 e2e
 
-`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发（全量；红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report` 产物。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。界面是有意改的时候，先在红了的那次运行的报告里看差异图，再手动运行这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
+`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report` 产物。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。界面是有意改的时候，先在红了的那次运行的报告里看差异图，再手动运行 E2E patrol 这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
 
 ## 发版
 
-推一个 `vX.Y.Z` tag 就发布这个版本；tag 必须和根 `package.json` 的 `version` 一致，所以先在 main 上改版本。`.github/workflows/release.yml` 跑单元测试和 typecheck，打出 bundle，像宿主那样启动一次（`.github/scripts/smoke-bundle.sh`），再打成 `tingly-design-<ver>.tgz`。这一个文件连同它的 `.sha256` 附到 tag 上的 GitHub release，同时以 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字发到 npm（内容相同）。`v0.2.0-rc.1` 这样的 tag 发预发布版，npm dist-tag 是 `next`。
+推一个 `vX.Y.Z` tag 就发布这个版本；tag 必须和根 `package.json` 的 `version` 一致，所以先在 main 上改版本。`.github/workflows/release.yml` 先跑全部 e2e 套件（`e2e.yml`，红了就停下不发），再跑单元测试和 typecheck，打出 bundle，像宿主那样启动一次（`.github/scripts/smoke-bundle.sh`），再打成 `tingly-design-<ver>.tgz`。这一个文件连同它的 `.sha256` 附到 tag 上的 GitHub release，同时以 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字发到 npm（内容相同）。`v0.2.0-rc.1` 这样的 tag 发预发布版，npm dist-tag 是 `next`。
 
 npm 发布只走 Trusted Publishing：哪里都不存 token，两个包也拒绝 token，所以 CI 之外只有维护者输入一次性密码才能发。第一次发版前，维护者在自己机器上跑一次 `scripts/npm-bootstrap.sh`（占位版本、trusted publisher、要求 2FA），并在 GitHub 上建好 `production` environment。
 

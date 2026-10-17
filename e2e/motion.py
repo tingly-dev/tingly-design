@@ -172,7 +172,11 @@ async def main():
         check('selected mid-entrance, an element is drawn landed', mid < 0.99 and rest == 1, f'{mid} {rest}')
         await expect(pg.locator('.lr.away').first).to_be_visible()
         check('layers fade what is not on screen yet', 'S 入场' in (await pg.locator('.lr.away .rt').first.inner_text()).upper().replace('MS', 'S'))
+        # the frame marks the element as soon as it is clicked; wait for the editor to have the selection too,
+        # or Escape can land before it and the selection comes back after
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_have_count(1)
         await pg.keyboard.press('Escape')
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_have_count(0)
 
         # sizes set by hand
         await pg.locator('.mstage').click(position={'x': 5, 'y': 5})
