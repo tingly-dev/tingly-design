@@ -6,7 +6,9 @@ import { at } from '../base';
 import { useStore } from '../store';
 import { Caret, Home, Plus, Sliders } from './icons';
 import { Menu, MenuItem } from './Menu';
-import { KindIcon, NewDialog, open, readRecent } from './Launcher';
+import { open, readRecent } from './launcher/recent';
+import { KindIcon } from './launcher/kinds';
+import { NewDialog } from './launcher/NewDialog';
 
 const SHOWN = 8;
 

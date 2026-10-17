@@ -12,7 +12,7 @@ import { DsApp } from './components/ds/DsApp';
 import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
 import { MotionApp } from './components/motion/MotionApp';
-import { Launcher } from './components/Launcher';
+import { Launcher } from './components/launcher/Launcher';
 import { serverDefault } from './theme';
 import { announceReady } from './host';
 import { serverLanguage, t } from './i18n';

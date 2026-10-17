@@ -31,7 +31,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | `apps/server/src/delegate.ts` `startDelegate` | 交给 Claude Code 时的开场说明、附件路径写法、系统提示、允许的工具 | Claude Code 按画布规则改文件 |
 | `packages/core/src/prompt.ts` | 快速 AI 的系统提示正文（`FAST_EDIT_SYSTEM`、`FAST_EDIT_SLIDES`、`FAST_EDIT_DOCS`）；Claude Code 的在 `delegate.ts`（`SLIDES_SYSTEM` 等） | 同上 |
 | `packages/core/src/launcher.ts` `projectCard`、`ProjectPreview` | 启动页卡片的标题、数量、预览数据 | 卡片没有预览 |
-| `apps/editor/src/components/Launcher.tsx` `KINDS`、图标、`Preview` | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
+| `apps/editor/src/components/launcher/`：`kinds.tsx` 的 `KINDS` 和图标、`Preview.tsx` 的 `Preview` | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
 | `packages/i18n/src/locales/{en,zh}/<kind>.ts` | 这种类型编辑器的界面文字，两种语言；`starter` 里加它新建时的占位文案 | 类型检查不过，或界面上出现没翻译的文字 |
 | `apps/editor/src/App.tsx` | 按 `kind` 进入对应的编辑器 | 打开后是画布编辑器 |
 | `apps/editor/src/components/<kind>/` | 这种类型的编辑器和它自己的状态（如 `slides.ts`、`motion.ts`）；各类型共用的部件留在 `components/` 根下，不放进某个类型的目录 | 看目录分不清哪些是共用部件，改共用功能时漏掉某种类型 |
@@ -65,9 +65,9 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 离开项目：回首页、切换、新建（[launcher.md](./launcher.md) §5） | `ProjectMenu`（`TopBar` 最左，自带） | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 新类型用 `TopBar` 就有；反馈和点星在顶栏最右的"更多"菜单里，不在项目菜单里 |
 | 新建时选尺寸（[motion-editing.md](./motion-editing.md) §3.7） | `SizePicker`（新建对话框里选了动效才出现）、`motionSizes.ts`（浏览器里记上次和自己的尺寸）、核心 `MOTION_SIZES` / `newMotion` | — | — | — | — | — | ✓ 预设、自定义、上次用的 | 只有动效有"尺寸"这个概念：幻灯片固定 1920×1080，画布的画板有自己的宽高字段，其余随窗口 |
 | AI 模型设置（[ai-settings.md](./ai-settings.md)） | `AiSettings.tsx`（启动页按钮、`ProjectMenu`、请求栏“去设置”都打开同一个）、`apps/server/src/aiconfig.ts`、`packages/core/src/aiConfig.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 全局设置，不属于某个项目，所以各类型一样；快速 AI 用不上的类型（看板）仍用 Claude Code 那一项 |
-| 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`Launcher.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
-| 启动页分组、列表视图、重命名（[launcher.md](./launcher.md) §3） | `projects/.groups.json`、`PATCH /api/projects/:p`、`INDEX_FILE`、`Launcher.tsx` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 启动页层面的功能，六种一样；只有重命名随类型变（标题在各自的索引文件里，`INDEX_FILE`）。列表视图不画预览 |
-| 项目放在别处（[project-folders.md](./project-folders.md)） | `projects/.links.json`、`projectDir`、`/api/folder`、`/api/links`、`Launcher.tsx` 的 `OpenFolderDialog` 和新建对话框的路径 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 在 `projectDir` 之下，和类型无关；`e2e/folders.py` 六种都从外部打开过；看板的 `dash-query.mjs` 也认登记的文件夹 |
+| 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`launcher/Preview.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |
+| 启动页分组、列表视图、重命名（[launcher.md](./launcher.md) §3） | `projects/.groups.json`、`PATCH /api/projects/:p`、`INDEX_FILE`、`launcher/` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 启动页层面的功能，六种一样；只有重命名随类型变（标题在各自的索引文件里，`INDEX_FILE`）。列表视图不画预览 |
+| 项目放在别处（[project-folders.md](./project-folders.md)） | `projects/.links.json`、`projectDir`、`/api/folder`、`/api/links`、`launcher/NewDialog.tsx` 的 `OpenFolderDialog` 和新建对话框的路径 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 在 `projectDir` 之下，和类型无关；`e2e/folders.py` 六种都从外部打开过；看板的 `dash-query.mjs` 也认登记的文件夹 |
 | 提交到 git（[project-git.md](./project-git.md)） | `JournalPopover` 里的 `CommitDialog`（顶栏同步状态打开）、`apps/server/src/git.ts`、`GET …/git`、`POST …/commit` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 只提交项目文件夹，不提交 `.journal.jsonl`、`.runs.json`、`renders/`；`e2e/git.py` 六种都查了入口 |
 | 装入设计系统 | `POST /design-systems` | ✓ | ✓ | — | ✗ 服务端只允许画布和幻灯片 | ✗ 同左 | ✗ 服务端只允许画布和幻灯片 | |
 | 导入 / 导出（[export-menu.md](./export-menu.md)；视频底层 [export.md](./export.md)；图片 [export-image.md](./export-image.md)） | `FileMenu`（栏里唯一的“导入 / 导出”按钮，内含 `ImportHere`）、各类型交出 `ExportItem` 列表；PDF 共用 `pdfExport.ts`（服务端 `POST /api/pdf`，没有 Chrome 时回到打印窗口）；图片的画法和提示共用 `imageExport.ts`；视频的编码、取图、字体、下载在 `packages/export`（`@dc/export`） | ✓ PNG、PNG @2x、这一页的每个画板、源文件（`Board.tsx` 的 `canvasExportItems`；画板名称条上的下载图标保留） | ✓ PDF、PNG（这一页、每一页）、HTML、备注（`exportDeck.tsx`） | ✓ PNG（当前视图；组件预览是空白） | ✓ PNG（整页） | ✓ PDF（A4）、Markdown（标签页、整篇）、HTML、PNG（当前标签页） | ✓ 视频…、GIF…（对话框：默认一键，选项折起来：格式含 GIF、尺寸、帧率、质量、范围），含 embed、video 的作品自动改由服务端的 Chrome 画（`render.ts`，出 MP4 或 GIF，选项同对话框）；PNG（播放头所在的帧）；命令行 `tingly-design export --as mp4|gif|png`（[cli.md](./cli.md)）出视频和封面，播放器仍在 `scripts/motion-render.mjs` | 画布和看板没有 PDF（画板、页面各在沙箱框架里，分页没有意义）；PPTX 没有 |
