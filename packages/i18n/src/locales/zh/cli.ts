@@ -16,6 +16,8 @@ export default {
                                    画布 png；幻灯片 pdf、png、html、notes；文档 pdf、html、md、png；
                                    设计系统和看板 png；动效 mp4、gif、png（封面）
   import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
+  prompt <项目> <请求>             把请求交给 Claude Code，和请求栏一样：它改文件，打开着的编辑器
+                                   实时显示；最后列出改了什么
   history <项目>                   改动记录：谁改了哪个文件，最新的在最后
   skills [add [文件夹]]            agent 改项目前要读的格式说明；
                                    add 把它们复制到文件夹的 .claude/skills/ 里（默认：当前文件夹）
@@ -44,6 +46,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置
   --since <编号或时间>  history：某条记录（编号见 --json）、某个时间或多久以前（30m、2h、1d）之后的改动
   --limit <n>           history：最近 n 条（默认 20，带 --since 时全部）
+  --file <文件>         prompt：请求针对的画板、幻灯片、标签页或场景
+  --continue <会话>     prompt：接着之前某次 prompt 输出的会话说
   --force               skills add：和这个版本不一样的副本也替换掉
   -v, --version         版本号
   -h, --help            本帮助`,
@@ -126,6 +130,12 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   exportFailed: '{{what}}：{{error}}',
   snapshotsWrote_one: '{{count}} 张图，在 {{dir}}',
   snapshotsWrote_other: '{{count}} 张图，在 {{dir}}',
+  needPrompt: '请说要做什么：tingly-design prompt {{project}} "<请求>"',
+  promptStopped: '已停止。',
+  promptChanged_one: '改动记录里多了 {{count}} 条：',
+  promptChanged_other: '改动记录里多了 {{count}} 条：',
+  promptNoChanges: '没有改动文件。',
+  promptContinue: '接着这次对话：tingly-design prompt {{project}} "…" --continue {{session}}',
   notListed: '{{path}} 不在这个编辑器的启动页里。先在启动页用"打开文件夹"打开它，或者用命令行导出。',
   skillsUsage: '用 tingly-design skills 列出它们，或用 tingly-design skills add [文件夹] 复制到一个文件夹里。',
   skill: {

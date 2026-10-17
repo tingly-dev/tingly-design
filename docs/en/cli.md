@@ -24,6 +24,7 @@ It needs Node 20 or newer. Exporting video needs Chrome or Edge and ffmpeg on th
 | `check [project]` | With a project, the problems the editor would show (a missing file, an artboard that does not parse, a slide or scene outside the subset, a bad dataset or token); exits with 1 when there is an error. `--snapshots` also draws every board, slide, tab, design-system view or motion cover, reports any that cannot be drawn, and keeps the pictures in the project's `renders/check/` (or `--out`) to look at. With no project, what this machine can do: Chrome, ffmpeg, the `claude` CLI and the fast model. |
 | `export <project> --as <format>` | What the Export menu saves, by its name, written to the project's `renders/` or `--out`: a canvas as `png` (every board, or `--board <file or title>`; `--scale 2` for PNG @2x); slides as `pdf`, `png` (every slide, or `--slide <id or number>`), `html` or `notes`; a doc as `pdf`, `html`, `md` (the whole doc, or `--tab <id or title>`) or `png` (each tab); a design system as `png` (the overview, or `--view colors`…); a dashboard as `png`. These are drawn by the editor itself in Chrome, so the file is the one the menu's button makes (below). A motion piece exports as `mp4`, `gif` or `png` (its cover): `--format wide,tall` picks formats; `--speed`, `--fps`, `--quality low|medium|high`, `--width`, `--height` as in the export dialog; an MP4 of the whole piece starts on the cover and carries it as cover art, and the cover PNG is written beside it. Any project also exports as `zip` (below). |
 | `export <project> --as zip` | The whole project as one `.zip` in the current folder or `--out`, the same as “Whole project (.zip)” in the editor: every file, the change log and the design systems it installed, beside it. `--files-only` leaves the change log and the systems out. |
+| `prompt <project> <request>` | Hand a request to Claude Code, as the request bar's Hand to Claude Code does. The editor runs it (the one open on the projects folder, or one started for the run), so its edits show live and are credited to Claude in the history. Prints the steps as it works, what it said, the history entries it made, and a session to continue with `--continue <session>`. `--file <file>` names the board, slide, tab or scene the request is about. Ctrl+C stops it. Needs the `claude` CLI. |
 | `history <project>` | The change history: when, who (by hand, fast AI, Claude, outside, undo), which file and what changed, newest last. The last 20 by default (`--limit <n>`); `--since` takes an entry id from `--json`, a time, or how long ago (`30m`, `2h`, `1d`) and lists everything after it. An id that is not in the history is an error (exit code 1), not "no changes". |
 | `import <file.zip>` | A project from such a `.zip` (or a project folder zipped by hand), the same as “Import a project (.zip)…” on the home page. It joins the projects folder under its own name, or with `-2` when that is taken, and prints the name. |
 
@@ -40,7 +41,7 @@ Pictures, PDFs, HTML and Markdown (everything but zip and motion) are made by th
 
 ## As an MCP server
 
-An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result. Exports go to the project's `renders/`.
+An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export`, `prompt` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result. Exports go to the project's `renders/`.
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # started by the agent, on stdio
@@ -65,6 +66,7 @@ Messages follow `DC_LANG`, then `LC_ALL` / `LANG` (`en` or `zh`). Exit codes: `0
 ```bash
 npx tingly-design new slides pitch --title "Q3 pitch"
 # … edit projects/pitch/*.dc.html …
+npx tingly-design prompt pitch "Tighten the title slide" --json   # or let the editor's Claude Code do it
 npx tingly-design check pitch --snapshots --json         # problems, and a picture of every slide in projects/pitch/renders/check/
 npx tingly-design export pitch --as pdf --out dist/
 npx tingly-design export promo --as mp4 --format wide --out dist/
@@ -73,4 +75,4 @@ npx tingly-design open pitch                          # show the person; in the 
 npx tingly-design history pitch --since 3f9a1c20      # what they changed after the entry you saw last
 ```
 
-The format of each kind is in `.claude/skills/<kind>/SKILL.md` (`tingly-design skills add` copies them into another repository). Why the command looks the way it does, and what comes next (`prompt`), is in `.design/cli.md`.
+The format of each kind is in `.claude/skills/<kind>/SKILL.md` (`tingly-design skills add` copies them into another repository). Why the command looks the way it does, and what comes next (`prompt --fast`), is in `.design/cli.md`.

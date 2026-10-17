@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, journalSince, outlineProject, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { checkProject, journalSince, type AgentStep, outlineProject, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageJob } from './pageExport';
@@ -129,11 +129,9 @@ export interface JournalLine {
   version?: string;
 }
 
-/** The change log, as the editor's History shows it. `since` is an entry id, a time or how long ago; `limit` the last n (20 by default, all with `since`). */
-export async function history(ctx: Ctx, p: Project, o: { since?: string; limit?: number } = {}) {
-  const t = translator(ctx.lang);
+async function readJournal(dir: string): Promise<JournalLine[]> {
   const all: JournalLine[] = [];
-  const text = await readFile(resolve(p.dir, '.journal.jsonl'), 'utf8').catch(() => '');
+  const text = await readFile(resolve(dir, '.journal.jsonl'), 'utf8').catch(() => '');
   for (const line of text.split('\n')) {
     try {
       if (line.trim()) all.push(JSON.parse(line));
@@ -141,6 +139,13 @@ export async function history(ctx: Ctx, p: Project, o: { since?: string; limit?:
       // a torn line, as the server skips it
     }
   }
+  return all;
+}
+
+/** The change log, as the editor's History shows it. `since` is an entry id, a time or how long ago; `limit` the last n (20 by default, all with `since`). */
+export async function history(ctx: Ctx, p: Project, o: { since?: string; limit?: number } = {}) {
+  const t = translator(ctx.lang);
+  const all = await readJournal(p.dir);
   const since = o.since === undefined ? null : parseSince(o.since);
   if (o.since !== undefined && !since) throw new CommandError(t('cli.badSince', { since: o.since }));
   const entries = journalSince(all, since);
@@ -315,29 +320,29 @@ async function pageJobs(p: Project, as: string, o: Pick<ExportOptions, 'board' |
 }
 
 /**
- * Runs `fn` against an editor showing this project: the one already running on the projects
+ * Runs `fn` against an editor serving this project: the one already running on the projects
  * folder, or one started on a free port and stopped again. A folder given by its path that the
  * launcher does not list gets a name for this run only (`visitFolder`). Inside the editor's own
  * server that is this editor, and a folder it does not list is refused: naming it there would
- * put it in the launcher.
+ * put it in the launcher. `page`: the editor's page is needed, not only its API.
  */
-async function withEditor<T>(ctx: Ctx, p: Project, fn: (editor: string, name: string) => Promise<T>): Promise<T> {
+async function withEditor<T>(ctx: Ctx, p: Project, page: boolean, fn: (at: { api: string; page: string; name: string }) => Promise<T>): Promise<T> {
   const t = translator(ctx.lang);
   const known = nameOfFolder(p.dir);
   if (ctx.inServer) {
     const self = ownEditor();
     if (!known) throw new CommandError(t('cli.notListed', { path: p.dir }), 1);
     if (!self) throw new CommandError(t('cli.noEditorPage', { detail: 'no address' }), 1);
-    return fn(self.editor, known);
+    return fn({ api: self.url, page: self.editor, name: known });
   }
   const running = known ? await findEditor() : null;
-  if (running) return fn(running.editor, known!);
-  if (!existsSync(resolve(EDITOR_DIST, 'index.html'))) throw new CommandError(t('cli.noEditorBuild'), 1);
+  if (running) return fn({ api: running.url, page: running.editor, name: known! });
+  if (page && !existsSync(resolve(EDITOR_DIST, 'index.html'))) throw new CommandError(t('cli.noEditorBuild'), 1);
   const name = known ?? (await visitFolder(p.dir));
   const { startServer } = await import('./serve');
   const s = await startServer({ port: 0, host: '127.0.0.1', announce: false });
   try {
-    return await fn(s.url, name);
+    return await fn({ api: s.url, page: s.url, name });
   } finally {
     await s.close();
   }
@@ -350,7 +355,7 @@ async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpe
   onOpening?.();
   let results;
   try {
-    results = await withEditor(ctx, p, (editor, project) => exportFromPage({ editor, project, lang: ctx.lang, jobs }));
+    results = await withEditor(ctx, p, true, (at) => exportFromPage({ editor: at.page, project: at.name, lang: ctx.lang, jobs }));
   } catch (e) {
     if (e instanceof PageExportError && e.code === 'no-chrome') throw new CommandError(t('cli.noChrome'), 1);
     if (e instanceof PageExportError && e.code === 'no-editor') throw new CommandError(t('cli.noEditorPage', { detail: e.message }), 1);
@@ -378,6 +383,115 @@ async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpe
     if (!r.files.length && !r.errors.length) failed.push({ what: r.pick ?? r.item, error: t('cli.nothingSaved') });
   }
   return { files, failed };
+}
+
+// ---------------------------------------------------------------- prompt
+
+export interface PromptOptions {
+  text: string | undefined;
+  /** the board, slide, tab or scene the request is about (a file in the project) */
+  file?: string;
+  /** a Claude Code session to continue: the `session` an earlier prompt returned */
+  resume?: string;
+  /** each step Claude Code takes (read, search, edit, run), as the editor's run feed shows it */
+  onStep?: (step: AgentStep) => void;
+  /** Claude Code's own words while it works */
+  onText?: (text: string) => void;
+  /** stops the run, as the editor's Stop button does */
+  signal?: AbortSignal;
+}
+
+export interface PromptResult {
+  name: string;
+  outcome: 'done' | 'error' | 'stopped';
+  /** Claude Code's last words: what it did, or why it could not */
+  text: string;
+  session?: string;
+  /** the change history entries the run made */
+  entries: JournalLine[];
+}
+
+/**
+ * The request bar's Hand to Claude Code, from a command: the editor runs Claude Code on the
+ * project (so its writes are credited to it in the change history and show live in any open
+ * editor), and this waits for the run to end and returns what it changed.
+ */
+export async function prompt(ctx: Ctx, p: Project, o: PromptOptions): Promise<PromptResult> {
+  const t = translator(ctx.lang);
+  const text = o.text?.trim();
+  if (!text) throw new CommandError(t('cli.needPrompt', { project: p.name }));
+  const before = (await readJournal(p.dir)).at(-1)?.id;
+  const startedAt = Date.now() - 1000;
+  const run = await withEditor(ctx, p, false, async ({ api, name }) => {
+    const base = new URL(`api/projects/${encodeURIComponent(name)}/`, api);
+    const headers = { 'content-type': 'application/json', 'x-dc-lang': ctx.lang };
+    // listen first: a short run can end before the request that started it returns
+    const listening = new AbortController();
+    const events = await fetch(new URL('events', base), { signal: listening.signal });
+    if (!events.ok || !events.body) throw new CommandError(t('cli.noEditorPage', { detail: `${events.status}` }), 1);
+    const seen: { id: string; state: string; text?: string; step?: AgentStep; session?: string }[] = [];
+    let id = '';
+    let wake: () => void = () => {};
+    const ended = new Promise<{ outcome: PromptResult['outcome']; text: string; session?: string }>((done, fail) => {
+      let session: string | undefined;
+      const take = (e: (typeof seen)[number]) => {
+        if (e.session) session = e.session;
+        if (e.step) o.onStep?.(e.step);
+        else if (e.text && e.state === 'progress') o.onText?.(e.text);
+        if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') done({ outcome: e.state, text: e.text ?? '', session });
+      };
+      wake = () => {
+        if (id) for (const e of seen.splice(0)) if (e.id === id) take(e);
+      };
+      (async () => {
+        const reader = events.body!.pipeThrough(new TextDecoderStream()).getReader();
+        let buf = '';
+        for (;;) {
+          const { value, done: closed } = await reader.read();
+          if (closed) throw new Error('the editor closed its change stream');
+          buf += value;
+          let i;
+          while ((i = buf.indexOf('\n\n')) >= 0) {
+            const data = buf
+              .slice(0, i)
+              .split('\n')
+              .filter((l) => l.startsWith('data:'))
+              .map((l) => l.slice(5).trim())
+              .join('\n');
+            buf = buf.slice(i + 2);
+            try {
+              const e = data ? JSON.parse(data) : null;
+              if (e?.type === 'delegate') seen.push(e), wake();
+            } catch {
+              // not an event of ours
+            }
+          }
+        }
+      })().catch((e) => !listening.signal.aborted && fail(e));
+    });
+    try {
+      const r = await fetch(new URL('delegate', base), { method: 'POST', headers, body: JSON.stringify({ prompt: text, ...(o.file ? { file: o.file } : {}), ...(o.resume ? { resume: o.resume } : {}) }) });
+      const v = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (!r.ok || !v.id) throw new CommandError(v.error ?? `${r.status} ${r.statusText}`, 1);
+      id = v.id;
+      wake();
+      const stop = () => void fetch(new URL(`delegate/${id}`, base), { method: 'DELETE', headers }).catch(() => {});
+      if (o.signal?.aborted) stop();
+      o.signal?.addEventListener('abort', stop, { once: true });
+      try {
+        return await ended;
+      } finally {
+        o.signal?.removeEventListener('abort', stop);
+      }
+    } finally {
+      listening.abort();
+    }
+  });
+  // the editor credits the run's last writes for a moment after it ends (delegate.ts), then the history has them
+  await new Promise((r) => setTimeout(r, 2000));
+  const all = await readJournal(p.dir);
+  const entries = (before ? journalSince(all, { id: before }) : all) ?? journalSince(all, { after: startedAt })!;
+  return { name: p.name, ...run, entries: entries.filter((e) => e.actor === 'claude') };
 }
 
 // ---------------------------------------------------------------- skills

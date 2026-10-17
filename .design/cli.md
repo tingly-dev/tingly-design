@@ -1,6 +1,6 @@
 # 命令行 `tingly-design`
 
-已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
+已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`。第 5 步：交给 Claude Code 的 `prompt`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
 
 ## 1. 问题
 
@@ -32,7 +32,7 @@
 | `history <project>` | 改动记录：时间、谁改的、哪个文件、改了什么；`--since` 接一条记录的编号、一个时间或多久以前 | 已实施 |
 | `skills [add [folder]]` | 列出每种类型的格式 skill；`add` 复制到一个文件夹的 `.claude/skills/`，内容不同的副本留着，`--force` 才换 | 已实施 |
 | `mcp` | 上面这些命令作为 stdio 上的 MCP 服务（正在运行的编辑器在 `/mcp` 也提供同一份），见 §4 | 已实施 |
-| `prompt` | 见 §6 | 方案 |
+| `prompt <project> <请求>` | 请求栏的“交给 Claude Code”：编辑器跑 Claude Code 改文件，命令等它跑完，输出它最后说的话、改动记录里多出的条目和接着说用的会话（`--continue`）；`--file` 说请求针对哪个文件；Ctrl+C 和停止按钮一样 | 已实施；`--fast` 见 §6 |
 
 一个项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 读路径时就地读，不登记链接，免得一次检查在启动页上多出一张卡。
 
@@ -92,11 +92,15 @@
 
 **`skills`。** 格式 skill 是给 agent 读的说明，原来只在这个仓库和 bundle 里。`skills` 列出它们（类型、名字、什么时候读），`skills add [文件夹]` 复制到那个文件夹的 `.claude/skills/<名字>/SKILL.md`，别的仓库里的 Claude Code 就认得 Tingly Design 的文件。已有的同名副本内容不同时留着、提示 `--force`，免得盖掉别人改过的版本；一样的报"已是最新"。skill 里"怎么运行"的那段写全三种情形：bundle 里 `node cli.mjs`，仓库里 `pnpm tingly-design`，别处是装好的 `tingly-design`，连着 MCP 时用它的 `check`、`export`。
 
+**`prompt`。** 交给 Claude Code 的活由编辑器来跑（`POST …/delegate`），命令不自己起 `claude`：这样改动在改动记录里记成 Claude（监听靠 `activeDelegates` 认），打开着的编辑器实时看到，运行列表、停止按钮也都是同一个。命令先订阅项目的改动流（短的运行可能在启动请求返回前就结束），再发请求，按编号跟着这次运行的步骤，终端里一步一行（措辞用请求栏的 `prompt.step`），结束后稍等监听记完最后的写入，再读改动记录里这之后 Claude 的条目。用哪个编辑器和导出一样（`withEditor`，只是不需要页面）；没有在运行的就在进程里起一个，跑完关掉。MCP 也有同名的 `prompt` 工具，说明里让 agent 能自己改文件时就自己改。默认交给 Claude Code 而不是快速 AI：脚本和 agent 要的是把事做完，不是即时回答；它本来就在服务端跑，不需要页面；看板也只收 Claude Code。
+
+一个顺带修的问题：监听第一次扫描时，文件的 `add` 事件先读文件再看 `ready`，读得慢的文件会在 `ready` 之后才判断，被记成"外部新建文件"。命令每次在进程里起服务都会触发，现在在事件到达时就记下是不是第一次扫描。
+
 **`history`。** 编辑器里叫“改动记录”，同步状态的提示说“打开改动历史”；命令行用 `history`，和调研里定的一致。默认列最近 20 条，最新的在最后，和终端里往上翻的习惯一致；`--json` 每条带编号。agent 把最后一条的编号记下，下次 `history <p> --since <编号>` 就是“我走开以后这个人改了什么”，这是双向编辑里交接的那一半。编号找不到（改动记录只留最近 500 条）时报错、退出码 1，不当成“没有改动”，免得 agent 以为什么都没变。时间解析在核心（`parseSince`、`journalSince`），措辞和谁改的叫法（`app.actor`）在 `@dc/i18n`。
 
 ## 5. 对 agent 和 skill
 
-一个 skill 只要写 `npx tingly-design …`（或者连上 `tingly-design mcp`，用同名的工具）：`new` 建项目，改文件，`check --snapshots` 看有没有问题、画出来什么样，`export` 出成品，`open` 交给人看，`history --since` 看人改了什么。不用先起服务，也不用知道接口。每种类型的 skill（`.claude/skills/<kind>/SKILL.md`）都写了怎么看自己做的东西；被编辑器启动的 Claude Code 用同一个版本（`node cli.mjs` 或 `pnpm tingly-design`），不用 `npx`。
+一个 skill 只要写 `npx tingly-design …`（或者连上 `tingly-design mcp`，用同名的工具）：`new` 建项目，改文件（或 `prompt` 交给编辑器的 Claude Code），`check --snapshots` 看有没有问题、画出来什么样，`export` 出成品，`open` 交给人看，`history --since` 看人改了什么。不用先起服务，也不用知道接口。每种类型的 skill（`.claude/skills/<kind>/SKILL.md`）都写了怎么看自己做的东西；被编辑器启动的 Claude Code 用同一个版本（`node cli.mjs` 或 `pnpm tingly-design`），不用 `npx`。
 
 ## 6. 没做的
 
@@ -104,6 +108,6 @@
 
 1. **命令行做的改动记成自己的身份。** 现在命令行写的文件由监听记成“外部”；经过正在运行的编辑器时可以带上 `cli` 这个身份，撤销和改动记录里分得出来。
 2. **页面检查看得更细。** `check --snapshots` 现在只报导出项本身失败的；画板运行时报的错、没加载出来的图片、嵌入的报错还没有收进问题列表。框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在这些图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行能这样导出。
-3. **`prompt`**（第 5 步）。和请求栏一样，默认交给 Claude Code，`--fast` 用快速 AI；之后 MCP 也加同名的工具。
+3. **`prompt --fast`**。快速 AI 的“改写”在编辑器页面里应用（模型回的编辑由页面落到文件上），要等请求栏在无头页面里也能跑，像导出菜单那样交出一个入口（`headless.ts`）。
 4. **MCP 还没有的**：服务端推送（资源变化通知、SSE 流）、`prompts`；`check` 的图是原尺寸，没有缩小。
 5. `scripts/motion-render.mjs` 还留着它独有的 `--player`（单文件播放器）、`--verify`（倒着 seek 逐字节对比）和 `--scale`；搬进 `render.ts` 后删掉它。

@@ -14,6 +14,8 @@ Usage: tingly-design [command] [options]
                                    canvas png; slides pdf, png, html, notes; doc pdf, html, md, png;
                                    design system and dashboard png; motion mp4, gif, png (its cover)
   import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
+  prompt <project> <request>       hand a request to Claude Code, as the request bar does: it edits the
+                                   files, the open editor shows it live; prints what it changed
   history <project>                the change history: who changed which file, newest last
   skills [add [folder]]            the format references an agent reads before editing a project;
                                    add copies them into the folder's .claude/skills/ (default: here)
@@ -43,6 +45,8 @@ Options:
   --speed, --fps, --quality low|medium|high, --width, --height   export: video settings
   --since <id or time>  history: after an entry id (from --json), a time, or how long ago (30m, 2h, 1d)
   --limit <n>           history: the last n entries (default 20, all with --since)
+  --file <file>         prompt: the board, slide, tab or scene the request is about
+  --continue <session>  prompt: continue the conversation an earlier prompt printed
   --force               skills add: replace a copy that differs from this version's
   -v, --version         the version
   -h, --help            this help`,
@@ -125,6 +129,12 @@ Options:
   exportFailed: '{{what}}: {{error}}',
   snapshotsWrote_one: '{{count}} picture in {{dir}}',
   snapshotsWrote_other: '{{count}} pictures in {{dir}}',
+  needPrompt: 'Say what to do: tingly-design prompt {{project}} "<request>"',
+  promptStopped: 'Stopped.',
+  promptChanged_one: '{{count}} change in the history:',
+  promptChanged_other: '{{count}} changes in the history:',
+  promptNoChanges: 'No files changed.',
+  promptContinue: 'To continue this conversation: tingly-design prompt {{project}} "…" --continue {{session}}',
   notListed: '{{path}} is not in this editor’s launcher. Open it there first (Open a folder), or export it with the command line.',
   skillsUsage: 'Use tingly-design skills to list them, or tingly-design skills add [folder] to copy them into a folder.',
   skill: {

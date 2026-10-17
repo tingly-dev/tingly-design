@@ -12,7 +12,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { translator, type Language } from '@dc/i18n';
-import { check, CommandError, create, exportProject, FORMATS, history, KINDS, outline, projects, resolveProject, skills, type Ctx } from './commands';
+import { check, CommandError, create, exportProject, FORMATS, history, KINDS, outline, projects, prompt, resolveProject, skills, type Ctx } from './commands';
 import { VERSION } from './layout';
 import { log } from './log';
 import { HttpError } from './store';
@@ -94,6 +94,21 @@ const TOOLS = [
     },
   },
   {
+    name: 'prompt',
+    description:
+      "Hand a request to Claude Code, as the editor's request bar does: it edits the project's files (credited to Claude in the change history, live in any open editor) and this returns its last words, the history entries it made and a session id to continue the conversation. Takes minutes. Prefer editing the files yourself when you can; use this to have the editor's own Claude Code do the work.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project,
+        prompt: { type: 'string', description: 'The request, in the words a person would type in the request bar.' },
+        file: { type: 'string', description: 'The board, slide, tab or scene file the request is about.' },
+        session: { type: 'string', description: 'Continue the Claude Code conversation an earlier prompt returned.' },
+      },
+      required: ['project', 'prompt'],
+    },
+  },
+  {
     name: 'history',
     description: "A project's change log, newest last: who changed which file (person, fast AI, Claude Code, outside edit) and how.",
     inputSchema: {
@@ -142,6 +157,12 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       const format = Array.isArray(a.format) ? a.format.map(String) : str(a.format)?.split(',').map((f) => f.trim());
       // files go next to the project, never wherever this process happens to run
       const r = await exportProject(ctx, p, { as: str(a.as), out: resolve(p.dir, 'renders'), board: str(a.board), slide: str(a.slide), tab: str(a.tab), view: str(a.view), format });
+      return json(r);
+    }
+    case 'prompt': {
+      const p = await resolveProject(ctx, str(a.project), 'prompt');
+      const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: str(a.session) });
+      // a run that failed or was stopped still says so in `outcome`, with what it changed before it ended
       return json(r);
     }
     case 'history': {
