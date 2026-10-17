@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { tabFile, type DocThread } from '@dc/core';
 import { delegateToClaude } from '../../fastedit';
-import { addThread, author, dateLocale, deleteThread, reply, setResolved, threadsOf, useComments, useCurrentTab, useDocs } from '../../docs';
+import { addThread, author, dateLocale, deleteThread, reply, setResolved, threadsOf, useComments, useCurrentTab, useDocs } from './docs';
 import { useTranslation } from 'react-i18next';
 
 function when(at: string): string {

@@ -2,7 +2,7 @@ import { SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFr
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
-import { isHidden, notesOf, slideTitle } from '../../slides';
+import { isHidden, notesOf, slideTitle } from './slides';
 import { t } from '../../i18n';
 import { fileStem, htmlToPng, saveImage } from '../../imageExport';
 import { SERVER } from '../../base';

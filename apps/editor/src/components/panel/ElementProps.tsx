@@ -2,7 +2,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { attr, getStyle, isRepeated, roleOf, styleDeclarations, styleInFormat, templateText, type DcElement, type Inspect } from '@dc/core';
-import { useInstalled } from '../../ds';
+import { useInstalled } from '../ds/ds';
 import { display, editElement, parsed, useStore } from '../../store';
 import { Menu, MenuItem } from '../Menu';
 import {

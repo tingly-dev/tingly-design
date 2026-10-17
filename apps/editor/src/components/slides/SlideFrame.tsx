@@ -2,7 +2,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import { SLIDE_H, SLIDE_W, elementSource, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
 import { api } from '../../api';
 import { deckOf, display, editElement, parsed, useStore } from '../../store';
-import { frames, post } from '../Board';
+import { frames, post } from '../canvas/Board';
 import { handleKey } from '../../shortcuts';
 import { SERVER } from '../../base';
 import { htmlLang } from '../../i18n';

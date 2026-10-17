@@ -17,8 +17,8 @@ import {
 } from '../actions';
 import { api, type GitState } from '../api';
 import { canvasOf, display, getClip, toast, useCanvas, useStore } from '../store';
-import { TEXT_COLORS, sizeOf } from './Item';
-import { copyPng } from './Board';
+import { TEXT_COLORS, sizeOf } from './canvas/Item';
+import { copyPng } from './canvas/Board';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';

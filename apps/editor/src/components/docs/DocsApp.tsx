@@ -23,7 +23,7 @@ import DOMPurify from 'dompurify';
 import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
-import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
+import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { htmlToPng, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';

@@ -69,7 +69,7 @@ packages/export     exporting from the browser with nothing to install: a DOM tr
 packages/i18n       the UI strings in English and Chinese (locales/<lang>/<area>.ts), language matching, the translator the server and importer use (.design/i18n.md)
 packages/sandbox    the artboard runtime (template → React, selection, in-place text), the dashboard runtime (dash API + d3) and the AI executor, bundled as IIFEs with esbuild
 apps/server         Hono: file reads and writes with versions, SSE, journal, file watching, fast AI streaming proxy, delegation to the claude CLI, exact motion rendering with the machine's own Chrome and ffmpeg, git commits, dashboard connectors
-apps/editor         React + Vite + zustand editors for canvas, slides (components/slides), design systems (components/ds), dashboards (components/dash) and docs (components/docs)
+apps/editor         React + Vite + zustand editors: what every kind shares sits at the root of components/; each kind's app and its state sit in components/<kind>/ (canvas, slides, ds, dash, docs, motion)
 projects/           sample projects: box-console (canvas), tingly-intro (slides), tingly-ds (design system), box-usage (dashboard), design-guide (docs), design-motion (motion)
 scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code); bundle.mjs: the folder a host ships (docs/en/embedding.md); sync-tingly-box-theme.mjs: copies Tingly Box's palettes into the editor (docs/en/theming.md)
 .claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs (read before every delegated task)

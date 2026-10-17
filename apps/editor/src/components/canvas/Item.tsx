@@ -1,9 +1,9 @@
 import { memo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, isShape, noteBox, type NoteEntry } from '@dc/core';
-import { editCanvas, useStore } from '../store';
-import { updateNote } from '../actions';
-import { api } from '../api';
+import { editCanvas, useStore } from '../../store';
+import { updateNote } from '../../actions';
+import { api } from '../../api';
 
 export const TEXT_COLORS: Record<string, string> = {
   default: '#2a2924',

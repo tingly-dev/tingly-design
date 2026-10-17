@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { styleDeclarations, type DsColor, type DsTokens, type DsTypeGroup, type DsTypeStyle } from '@dc/core';
-import { addFonts, editTokens, familyList, typeOf } from '../../ds';
+import { addFonts, editTokens, familyList, typeOf } from './ds';
 import { contrastRatio, toHex } from '../panel/fields';
 import { useTranslation } from 'react-i18next';
 

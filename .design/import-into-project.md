@@ -51,10 +51,10 @@
 |---|---|
 | `apps/editor/src/components/ImportHere.tsx` | 按钮和菜单、全编辑器的拖放和粘贴、材料分类、`ImportTarget` 接口 |
 | `apps/editor/src/importer.ts` | `readPage`（排版并读回）、`keepPicked`（存进 `uploads/`）、`writePage`（生成画板）；启动页的 `importPicked` 也由它们组成 |
-| `apps/editor/src/canvasImport.ts` | 画布的目标 |
+| `apps/editor/src/components/canvas/canvasImport.ts` | 画布的目标 |
 | `slides.ts` `slidesImport`、`docs.ts` `docsImport`、`dash.ts` `dashImport`、`ds.ts` `dsImport` | 其余各类型的目标，挨着各自的写文件函数 |
 | `packages/import/src/generate.ts` `addToCanvas` | 放到已有画布上 |
-| `apps/editor/src/components/Item.tsx` | 图片项的相对路径按项目解析 |
+| `apps/editor/src/components/canvas/Item.tsx` | 图片项的相对路径按项目解析 |
 
 ## 5. 还没做的
 

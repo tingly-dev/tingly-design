@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BUILDS, TRANSITIONS, attr, checkSlide, getStyle, googleFace, layerTree, rootElement, slideFile, type Layer } from '@dc/core';
 import { display, editDeck, editElement, parsed, useDeck, useStore } from '../../store';
-import { isHidden, setSectionAttr, slideTitle, toggleHidden } from '../../slides';
+import { isHidden, setSectionAttr, slideTitle, toggleHidden } from './slides';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { Chevron, RoleIcon } from '../icons';
 import { DsInstall } from '../panel/DsInstall';
