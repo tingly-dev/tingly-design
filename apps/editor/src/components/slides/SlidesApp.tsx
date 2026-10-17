@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconTable } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { t } from '../../i18n';
@@ -30,10 +30,11 @@ import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { TopBar, ProjectTitle } from '../TopBar';
-import { Caret, Panel, Picture, Presentation, Shapes, TextT } from '../icons';
+import { Caret, Picture, Presentation, Shapes, TextT } from '../icons';
 import { slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
 import { useDirectPdf } from '../../pdfExport';
+import { useElementSize } from '../../hooks';
 
 // ------------------------------------------------------------------ strip
 
@@ -244,7 +245,6 @@ function TopLeft() {
 function SlidesTopBar() {
   const deck = useDeck();
   const direct = useDirectPdf();
-  const panelOpen = useStore((s) => s.panelOpen);
   const [menu, setMenu] = useState<null | 'play'>(null);
   const playBtn = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
@@ -262,6 +262,7 @@ function SlidesTopBar() {
           onRename={(v) => editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }))}
         />
       }
+      panel={{ label: t('slides.toolbar.panel'), hint: t('slides.toolbar.panelHint') }}
     >
       <button ref={playBtn} className="tb" aria-haspopup="menu" aria-expanded={menu === 'play'} aria-label={t('slides.toolbar.present')} title={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
         <Presentation />
@@ -270,9 +271,6 @@ function SlidesTopBar() {
         </span>
       </button>
       <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
-      <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
-        <Panel />
-      </button>
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />
@@ -287,19 +285,9 @@ function SlidesTopBar() {
 // ------------------------------------------------------------------ stage
 
 function useFit(ref: React.RefObject<HTMLElement | null>, padX: number, padY: number): number {
-  const [k, setK] = useState(0.4);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const w = el.clientWidth - padX * 2;
-      const h = el.clientHeight - padY * 2;
-      setK(Math.max(0.1, Math.min(w / SLIDE_W, h / SLIDE_H)));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref, padX, padY]);
-  return k;
+  const [, { w, h }] = useElementSize(ref);
+  if (!w || !h) return 0.4;
+  return Math.max(0.1, Math.min((w - padX * 2) / SLIDE_W, (h - padY * 2) / SLIDE_H));
 }
 
 function Notes({ id }: { id: string }) {

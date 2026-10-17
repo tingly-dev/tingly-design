@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Dialog } from '../Dialog';
 
 export type VideoFormat = 'auto' | 'mp4' | 'webm' | 'gif';
 export type VideoQuality = 'low' | 'medium' | 'high';
@@ -70,11 +71,6 @@ export function VideoExportDialog({
   const [quality, setQuality] = useState<VideoQuality>('high');
   const [range, setRange] = useState<'whole' | 'scene'>('whole');
 
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
 
   const rates = useMemo(() => [...new Set(format === 'gif' ? [10, 15, 24, fps].filter((r) => r <= Math.max(24, fps)) : [24, 30, 60, fps])].sort((a, b) => a - b), [format, fps]);
 
@@ -98,93 +94,77 @@ export function VideoExportDialog({
   const start = () => onStart({ format, width, height: outH, fps: rate, quality, ...(span ?? {}) });
 
   return (
-    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form
-        className="ldialog vexport"
-        role="dialog"
-        aria-label={t('motion.export.title')}
-        onSubmit={(e) => {
-          e.preventDefault();
-          start();
-        }}
-      >
-        <header>
-          <h2>{t('motion.export.title')}</h2>
-          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
-            ×
+    <Dialog label={t('motion.export.title')} className="vexport" onClose={onClose} onSubmit={() => start()}>
+      <p className="vsummary" data-summary>
+        {summary}
+      </p>
+      {viaServer && <p className="note">{t('motion.export.viaServerNote', { scenes: viaServer.join(', ') })}</p>}
+      <>
+          <button type="button" className="vmore" aria-expanded={more} onClick={() => setMore(!more)}>
+            {more ? t('motion.export.fewerOptions') : t('motion.export.moreOptions')}
           </button>
-        </header>
-        <p className="vsummary" data-summary>
-          {summary}
-        </p>
-        {viaServer && <p className="note">{t('motion.export.viaServerNote', { scenes: viaServer.join(', ') })}</p>}
-        <>
-            <button type="button" className="vmore" aria-expanded={more} onClick={() => setMore(!more)}>
-              {more ? t('motion.export.fewerOptions') : t('motion.export.moreOptions')}
-            </button>
-            {more && (
-              <div className="vopts">
+          {more && (
+            <div className="vopts">
+              <label>
+                <span>{t('motion.export.format')}</span>
+                <select value={format} onChange={(e) => pickFormat(e.target.value as VideoFormat)} aria-label={t('motion.export.format')}>
+                  {!viaServer && <option value="auto">{t('motion.export.formatAuto')}</option>}
+                  <option value="mp4">MP4</option>
+                  {!viaServer && <option value="webm">WebM</option>}
+                  <option value="gif">GIF</option>
+                </select>
+              </label>
+              <label>
+                <span>{t('motion.export.size')}</span>
+                <select value={height} onChange={(e) => setHeight(Number(e.target.value))} aria-label={t('motion.export.size')}>
+                  {heights.map((h) => (
+                    <option key={h} value={h}>
+                      {h === H ? t('motion.export.sizeOriginal', { size: `${W}×${H}` }) : `${evenDown((W * h) / H)}×${evenDown(h)}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('motion.export.fps')}</span>
+                <select value={rate} onChange={(e) => setRate(Number(e.target.value))} aria-label={t('motion.export.fps')}>
+                  {rates.map((r) => (
+                    <option key={r} value={r}>
+                      {r === fps ? t('motion.export.fpsOriginal', { fps: r }) : t('motion.export.fpsValue', { fps: r })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {format !== 'gif' && (
                 <label>
-                  <span>{t('motion.export.format')}</span>
-                  <select value={format} onChange={(e) => pickFormat(e.target.value as VideoFormat)} aria-label={t('motion.export.format')}>
-                    {!viaServer && <option value="auto">{t('motion.export.formatAuto')}</option>}
-                    <option value="mp4">MP4</option>
-                    {!viaServer && <option value="webm">WebM</option>}
-                    <option value="gif">GIF</option>
+                  <span>{t('motion.export.quality')}</span>
+                  <select value={quality} onChange={(e) => setQuality(e.target.value as VideoQuality)} aria-label={t('motion.export.quality')}>
+                    <option value="high">{t('motion.export.qualityHigh')}</option>
+                    <option value="medium">{t('motion.export.qualityMedium')}</option>
+                    <option value="low">{t('motion.export.qualityLow')}</option>
                   </select>
                 </label>
-                <label>
-                  <span>{t('motion.export.size')}</span>
-                  <select value={height} onChange={(e) => setHeight(Number(e.target.value))} aria-label={t('motion.export.size')}>
-                    {heights.map((h) => (
-                      <option key={h} value={h}>
-                        {h === H ? t('motion.export.sizeOriginal', { size: `${W}×${H}` }) : `${evenDown((W * h) / H)}×${evenDown(h)}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t('motion.export.fps')}</span>
-                  <select value={rate} onChange={(e) => setRate(Number(e.target.value))} aria-label={t('motion.export.fps')}>
-                    {rates.map((r) => (
-                      <option key={r} value={r}>
-                        {r === fps ? t('motion.export.fpsOriginal', { fps: r }) : t('motion.export.fpsValue', { fps: r })}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {format !== 'gif' && (
-                  <label>
-                    <span>{t('motion.export.quality')}</span>
-                    <select value={quality} onChange={(e) => setQuality(e.target.value as VideoQuality)} aria-label={t('motion.export.quality')}>
-                      <option value="high">{t('motion.export.qualityHigh')}</option>
-                      <option value="medium">{t('motion.export.qualityMedium')}</option>
-                      <option value="low">{t('motion.export.qualityLow')}</option>
-                    </select>
-                  </label>
-                )}
-                <label>
-                  <span>{t('motion.export.range')}</span>
-                  <select value={range} onChange={(e) => setRange(e.target.value as 'whole' | 'scene')} aria-label={t('motion.export.range')}>
-                    <option value="whole">{t('motion.export.rangeWhole', { length: seconds(duration) })}</option>
-                    {scene && <option value="scene">{t('motion.export.rangeScene', { name: scene.name, length: seconds(scene.to - scene.from) })}</option>}
-                  </select>
-                </label>
-                <p className="note">
-                  {format === 'gif' ? t('motion.export.gifNote') : span ? t('motion.export.sceneNoSound') : t('motion.export.formatNote')} {t('motion.export.frames', { count: frames })}
-                </p>
-              </div>
-            )}
-        </>
-        <footer>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button type="submit" className="btn primary" autoFocus>
-            {t('motion.export.start')}
-          </button>
-        </footer>
-      </form>
-    </div>
+              )}
+              <label>
+                <span>{t('motion.export.range')}</span>
+                <select value={range} onChange={(e) => setRange(e.target.value as 'whole' | 'scene')} aria-label={t('motion.export.range')}>
+                  <option value="whole">{t('motion.export.rangeWhole', { length: seconds(duration) })}</option>
+                  {scene && <option value="scene">{t('motion.export.rangeScene', { name: scene.name, length: seconds(scene.to - scene.from) })}</option>}
+                </select>
+              </label>
+              <p className="note">
+                {format === 'gif' ? t('motion.export.gifNote') : span ? t('motion.export.sceneNoSound') : t('motion.export.formatNote')} {t('motion.export.frames', { count: frames })}
+              </p>
+            </div>
+          )}
+      </>
+      <footer>
+        <button type="button" className="btn" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button type="submit" className="btn primary" autoFocus>
+          {t('motion.export.start')}
+        </button>
+      </footer>
+    </Dialog>
   );
 }

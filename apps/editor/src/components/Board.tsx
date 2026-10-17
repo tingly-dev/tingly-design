@@ -12,6 +12,7 @@ import { Menu, MenuItem } from './Menu';
 import { SERVER } from '../base';
 import { api } from '../api';
 import { t as tr, htmlLang } from '../i18n';
+import { downloadUrl } from '../local';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -61,16 +62,9 @@ export async function copyPng(file: string, tid?: number): Promise<void> {
       toast((err as Error).message, 'error');
       return;
     }
-    download(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, url);
+    downloadUrl(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, url);
     toast(tr('canvas.export.copyFallback'));
   }
-}
-
-function download(name: string, href: string) {
-  const a = document.createElement('a');
-  a.href = href;
-  a.download = name;
-  a.click();
 }
 
 export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source') {
@@ -78,12 +72,12 @@ export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source'
   if (kind === 'source') {
     const src = display(useStore.getState(), file) ?? '';
     const url = URL.createObjectURL(new Blob([src], { type: 'text/html' }));
-    download(file, url);
+    downloadUrl(file, url);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     return;
   }
   try {
-    download(`${stem}${kind === 'png2' ? '@2x' : ''}.png`, await exportPng(file, kind === 'png2' ? 2 : 1));
+    downloadUrl(`${stem}${kind === 'png2' ? '@2x' : ''}.png`, await exportPng(file, kind === 'png2' ? 2 : 1));
   } catch (e) {
     toast((e as Error).message, 'error');
   }

@@ -4,6 +4,7 @@ import { boardsOf, parseDc, sandboxDoc, timeSpec, type ProjectCard } from '@dc/c
 import { api } from '../api';
 import { SERVER } from '../base';
 import { htmlLang } from '../i18n';
+import { Dialog } from './Dialog';
 
 interface Source {
   project: ProjectCard;
@@ -52,55 +53,42 @@ export function BoardPicker({
       live = false;
     };
   }, []);
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
 
   return (
-    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="ldialog bpick" role="dialog" aria-label={t('importer.board.title')}>
-        <header>
-          <h2>{t('importer.board.title')}</h2>
-          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
-            ×
-          </button>
-        </header>
-        <p className="hint">{what}</p>
-        {sources === null ? (
-          <p className="hint">{t('common.loading')}</p>
-        ) : sources.length === 0 ? (
-          <p className="hint">{t('importer.board.none')}</p>
-        ) : (
-          sources.map((s) => (
-            <section key={s.project.name} className="bpick-group">
-              <h3>{s.project.title || s.project.name}</h3>
-              <div className="bpick-grid">
-                {s.boards.map((b) => (
-                  <button
-                    key={b.file}
-                    className="bpick-item"
-                    data-pick={b.file}
-                    onClick={() => onPick(s.project.name, b.file, b.title, b.moving)}
-                    title={t('importer.board.pick', { title: b.title })}
-                  >
-                    <BoardThumb from={s.project.name} file={b.file} files={s.files} size={b.size} moving={b.moving} />
-                    <span className="bpick-name">
-                      {b.title}
-                      {b.moving && <span className="badge ai">{t('importer.board.moving')}</span>}
-                    </span>
-                    <span className="faint">
-                      {b.size[0]}×{b.size[1]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))
-        )}
-      </div>
-    </div>
+    <Dialog label={t('importer.board.title')} className="bpick" onClose={onClose}>
+      <p className="hint">{what}</p>
+      {sources === null ? (
+        <p className="hint">{t('common.loading')}</p>
+      ) : sources.length === 0 ? (
+        <p className="hint">{t('importer.board.none')}</p>
+      ) : (
+        sources.map((s) => (
+          <section key={s.project.name} className="bpick-group">
+            <h3>{s.project.title || s.project.name}</h3>
+            <div className="bpick-grid">
+              {s.boards.map((b) => (
+                <button
+                  key={b.file}
+                  className="bpick-item"
+                  data-pick={b.file}
+                  onClick={() => onPick(s.project.name, b.file, b.title, b.moving)}
+                  title={t('importer.board.pick', { title: b.title })}
+                >
+                  <BoardThumb from={s.project.name} file={b.file} files={s.files} size={b.size} moving={b.moving} />
+                  <span className="bpick-name">
+                    {b.title}
+                    {b.moving && <span className="badge ai">{t('importer.board.moving')}</span>}
+                  </span>
+                  <span className="faint">
+                    {b.size[0]}×{b.size[1]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+    </Dialog>
   );
 }
 
