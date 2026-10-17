@@ -12,7 +12,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { translator, type Language } from '@dc/i18n';
-import { check, CommandError, create, exportProject, FORMATS, history, KINDS, outline, projects, prompt, resolveProject, skills, type Ctx } from './commands';
+import { check, CommandError, create, exportProject, FORMATS, history, KINDS, outline, projects, prompt, resolveProject, skillPages, skills, type Ctx } from './commands';
 import { VERSION } from './layout';
 import { log } from './log';
 import { HttpError } from './store';
@@ -52,7 +52,14 @@ const TOOLS = [
   {
     name: 'read_skill',
     description: `The format reference for a kind: which files a project holds and what may go in them. Read it before editing a project's files. Kinds: ${Object.keys(KINDS).filter((k) => k !== 'docs').join(', ')}.`,
-    inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: Object.keys(KINDS) } }, required: ['kind'] },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: Object.keys(KINDS) },
+        page: { type: 'string', description: 'One of the reference pages the format reference names (such as layout for reference/layout.md); leave out for the reference itself.' },
+      },
+      required: ['kind'],
+    },
     annotations: { readOnlyHint: true },
   },
   {
@@ -138,7 +145,12 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       const kind = KINDS[String(a.kind ?? '')];
       const s = (await skills()).find((x) => x.kind === kind);
       if (!s) throw new CommandError(t('cli.badKind', { kind: String(a.kind ?? '') }));
-      return [{ type: 'text', text: s.text }];
+      if (!a.page) return [{ type: 'text', text: s.text }];
+      const pages = await skillPages(s);
+      const want = String(a.page).replace(/^reference\//, '').replace(/\.md$/, '');
+      const page = pages.find((p) => p.name === want);
+      if (!page) throw new CommandError(t('cli.badPage', { page: String(a.page), pages: pages.map((p) => p.name).join(', ') || '—' }));
+      return [{ type: 'text', text: page.text }];
     }
     case 'new':
       return json(await create(ctx, { kind: str(a.kind), target: str(a.name), title: str(a.title), size: str(a.size) }));

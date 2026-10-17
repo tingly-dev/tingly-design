@@ -57,6 +57,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   needProject: '请指定项目：tingly-design {{command}} <项目>',
   needKind: '请指定类型：canvas、slides、design-system、dashboard、doc 或 motion',
   badKind: '{{kind}} 不是项目类型。类型有：canvas、slides、design-system、dashboard、doc、motion',
+  badPage: '{{page}} 不是这种类型的参考页。参考页有：{{pages}}',
   needName: '请给项目起名或指定文件夹：tingly-design new {{kind}} <名字或文件夹>',
   noProjectAt: '{{path}} 里没有项目',
   created: '已新建{{kind}} {{name}}，位置：{{path}}',

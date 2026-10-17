@@ -28,7 +28,7 @@ pnpm tingly-design …              # 在本仓库里
 | `history <项目>` | 改动记录：什么时候、谁（手改、快速 AI、Claude、外部、撤销）、哪个文件、改了什么，最新的在最后。默认列最近 20 条（`--limit <n>`）；`--since` 接 `--json` 里的记录编号、一个时间或多久以前（`30m`、`2h`、`1d`），列出那之后的全部。编号不在记录里时报错（退出码 1），不当成“没有改动”。 |
 | `import <文件.zip>` | 从这样的 `.zip`（或自己压缩的项目文件夹）导入项目，和首页的“导入项目（.zip）…”一样。导入到项目文件夹，名字被占用时加 `-2`，并输出新名字。 |
 
-| `skills [add [文件夹]]` | agent 改项目前要读的格式说明，每种类型一份。`add` 把它们复制到文件夹的 `.claude/skills/`（默认：当前文件夹），在那里工作的 Claude Code 就认得这些文件；和这个版本不一样的副本保留，除非加 `--force`。 |
+| `skills [add [文件夹]]` | agent 改项目前要读的格式说明，每种类型一份。`add` 把它们复制到文件夹的 `.claude/skills/`（默认：当前文件夹），连同格式说明指向的参考页（`reference/*.md`），在那里工作的 Claude Code 就认得这些文件；和这个版本不一样的副本保留，除非加 `--force`。 |
 | `mcp` | 以 stdio 上的 MCP 服务提供这些命令，给 agent 启动用（见下）。 |
 
 项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 就地读路径，不会把它加到启动页上。
@@ -41,7 +41,7 @@ pnpm tingly-design …              # 在本仓库里
 
 ## 作为 MCP 服务
 
-能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`prompt`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里，长边缩到 1200 像素（最多 12 张；原尺寸的图留在 `renders/check/`）。导出写到项目的 `renders/`。
+能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`prompt`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）；`read_skill` 带 `page` 时返回格式说明点名的某一篇参考页（比如幻灯片的 `layout`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里，长边缩到 1200 像素（最多 12 张；原尺寸的图留在 `renders/check/`）。导出写到项目的 `renders/`。
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # 由 agent 启动，走 stdio

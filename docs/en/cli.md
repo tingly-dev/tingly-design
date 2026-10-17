@@ -28,7 +28,7 @@ It needs Node 20 or newer. Exporting video needs Chrome or Edge and ffmpeg on th
 | `history <project>` | The change history: when, who (by hand, fast AI, Claude, outside, undo), which file and what changed, newest last. The last 20 by default (`--limit <n>`); `--since` takes an entry id from `--json`, a time, or how long ago (`30m`, `2h`, `1d`) and lists everything after it. An id that is not in the history is an error (exit code 1), not "no changes". |
 | `import <file.zip>` | A project from such a `.zip` (or a project folder zipped by hand), the same as “Import a project (.zip)…” on the home page. It joins the projects folder under its own name, or with `-2` when that is taken, and prints the name. |
 
-| `skills [add [folder]]` | The format references an agent reads before editing a project, one per kind. `add` copies them into the folder's `.claude/skills/` (default: the current folder), so Claude Code working there knows the files; a copy that differs from this version's is kept unless `--force`. |
+| `skills [add [folder]]` | The format references an agent reads before editing a project, one per kind. `add` copies them into the folder's `.claude/skills/` (default: the current folder), with the reference pages a skill points to (`reference/*.md`), so Claude Code working there knows the files; a copy that differs from this version's is kept unless `--force`. |
 | `mcp` | These commands as an MCP server on stdio, for an agent to start (below). |
 
 A project is a name from the launcher or a path to its folder. `list`, `check` and `export` read a path where it is, without adding it to the launcher.
@@ -41,7 +41,7 @@ Pictures, PDFs, HTML and Markdown (everything but zip and motion) are made by th
 
 ## As an MCP server
 
-An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export`, `prompt` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result, scaled down to 1200 pixels on the longer side (up to 12 of them; the full-size files stay in `renders/check/`). Exports go to the project's `renders/`.
+An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export`, `prompt` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`); `read_skill` with `page` returns one of the reference pages a format reference names (such as slides' `layout`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result, scaled down to 1200 pixels on the longer side (up to 12 of them; the full-size files stay in `renders/check/`). Exports go to the project's `renders/`.
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # started by the agent, on stdio
