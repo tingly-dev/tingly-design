@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type LayoutFinding, layoutProbe } from './layoutProbe';
 import { log } from './log';
 import { Cdp, chromeArgs, findChrome } from './render';
 
@@ -43,6 +44,11 @@ export interface PageIssue {
   text: string;
 }
 
+/** A layout finding in one frame of the work; `where` as for a PageIssue. */
+export interface PageLayout extends LayoutFinding {
+  where?: string;
+}
+
 export class PageExportError extends Error {
   constructor(public code: 'no-chrome' | 'no-editor' | 'failed', message = '') {
     super(message || code);
@@ -65,17 +71,20 @@ export interface Page {
   quiet(max?: number): Promise<void>;
   /** what went wrong in the work so far, each once */
   issues(): Promise<PageIssue[]>;
+  /** what the layout probe finds in every work frame showing now; `fixed` when a frame is the work's own size */
+  layout(fixed: boolean): Promise<PageLayout[]>;
 }
 
 /** Opens `editor` on `project` and runs `jobs` in order; with `issues`, also what went wrong in the work while it showed. */
-export async function exportFromPage(o: PageOptions & { jobs: PageJob[] }): Promise<{ results: PageResult[]; issues: PageIssue[] }> {
-  return withPage(o, async ({ call, quiet, issues }) => {
+export async function exportFromPage(o: PageOptions & { jobs: PageJob[]; layout?: { fixed: boolean } }): Promise<{ results: PageResult[]; issues: PageIssue[]; layout: PageLayout[] }> {
+  return withPage(o, async ({ call, quiet, issues, layout }) => {
     log('info', 'page.export.start', { project: o.project, jobs: o.jobs.length, editor: new URL(o.editor).origin });
     // the menu shows once the project has loaded; until then there is nothing to run
     await call('window.tinglyDesign.exports()', 45_000).catch(() => {
       throw new PageExportError('no-editor', o.editor);
     });
     const out: PageResult[] = [];
+    const looked = new Map<string, PageLayout>();
     for (const job of o.jobs) {
       if (job.pick !== undefined && !(await call<boolean>(`window.tinglyDesign.pick(${JSON.stringify(job.pick)})`, 30_000))) {
         out.push({ ...job, files: [], errors: [`no-pick:${job.pick}`] });
@@ -84,11 +93,13 @@ export async function exportFromPage(o: PageOptions & { jobs: PageJob[] }): Prom
       await quiet();
       const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, 120_000);
       out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
+      // each job shows its own board, slide or view: look at what is on screen now, each finding once
+      if (o.layout) for (const f of await layout(o.layout.fixed)) looked.set(JSON.stringify(f), f);
     }
     await quiet();
     const seen = await issues();
     log('info', 'page.export.done', { project: o.project, files: out.reduce((n, r) => n + r.files.length, 0), errors: out.reduce((n, r) => n + r.errors.length, 0), issues: seen.length });
-    return { results: out, issues: seen };
+    return { results: out, issues: seen, layout: [...looked.values()] };
   });
 }
 
@@ -119,6 +130,8 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
         .then(() => waiting && cdp.send('Runtime.runIfWaitingForDebugger', {}, sid).catch(() => {}));
     // what went wrong inside the work: a context's frame, each request's frame and kind, and what was found
     const contexts = new Map<string, string>();
+    // each frame's page context while it lives, for the layout probe
+    const live = new Map<string, { sid: string; id: number; frame: string }>();
     const requests = new Map<string, { url: string; type: string; frame: string }>();
     const found = new Map<string, { kind: PageIssue['kind']; frame: string; text: string }>();
     let mainFrame = '';
@@ -136,7 +149,11 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
       if (m.method === 'Target.attachedToTarget' && m.params.targetInfo?.type === 'iframe') {
         sessions.add(m.params.sessionId);
         void watch(m.params.sessionId, m.params.waitingForDebugger);
-      } else if (m.method === 'Runtime.executionContextCreated') contexts.set(`${sid}:${m.params.context.id}`, m.params.context.auxData?.frameId ?? '');
+      } else if (m.method === 'Runtime.executionContextCreated') {
+        contexts.set(`${sid}:${m.params.context.id}`, m.params.context.auxData?.frameId ?? '');
+        if (m.params.context.auxData?.isDefault) live.set(`${sid}:${m.params.context.id}`, { sid, id: m.params.context.id, frame: m.params.context.auxData.frameId ?? '' });
+      } else if (m.method === 'Runtime.executionContextDestroyed') live.delete(`${sid}:${m.params.executionContextId}`);
+      else if (m.method === 'Runtime.executionContextsCleared') for (const k of [...live.keys()]) k.startsWith(`${sid}:`) && live.delete(k);
       else if (m.method === 'Runtime.exceptionThrown') {
         const d = m.params.exceptionDetails;
         const frame = contexts.get(`${sid}:${d?.executionContextId}`) ?? '';
@@ -206,7 +223,19 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
       if (Date.now() > deadline) throw new PageExportError('no-editor', url.origin);
       await new Promise((r) => setTimeout(r, 200));
     }
-    return await fn({ call, quiet, issues });
+    const layout = async (fixed: boolean): Promise<PageLayout[]> => {
+      const out: PageLayout[] = [];
+      for (const c of [...live.values()]) {
+        if (!c.frame || c.frame === mainFrame) continue;
+        const r = await within(cdp.send<{ result: { value?: LayoutFinding[] } }>('Runtime.evaluate', { expression: layoutProbe(fixed), contextId: c.id, returnByValue: true }, c.sid), 5_000, 'failed', 'layout').catch(() => undefined);
+        const found = r?.result.value;
+        if (!Array.isArray(found) || !found.length) continue;
+        const where = await frameTitle(s, c.frame);
+        for (const f of found) out.push({ ...f, ...(where ? { where } : {}) });
+      }
+      return out;
+    };
+    return await fn({ call, quiet, issues, layout });
   } catch (e) {
     log('warn', 'page.export.failed', { project: o.project, error: (e as Error).message });
     if (o.signal?.aborted) throw new PageExportError('failed', 'aborted');

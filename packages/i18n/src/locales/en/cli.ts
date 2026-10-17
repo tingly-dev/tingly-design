@@ -93,6 +93,13 @@ Options:
     seek: '{{count}} of {{total}} frames come out different when shown again (most at {{at}} ms): something in a scene reads the clock, draws at random or animates on its own, so the video will not match the preview',
   },
   player: { play: 'Play', time: 'Time', format: 'Format', speed: 'Speed' },
+  layoutRules: {
+    clipped: 'text is cut off by its box: “{{text}}”',
+    outside: 'text runs past the edge: “{{text}}”',
+    contrast: 'text is hard to read on its background (contrast {{ratio}}:1): “{{text}}”',
+    contrastMany: '{{count}} texts are hard to read on their background (the faintest at contrast {{ratio}}:1, “{{text}}”)',
+    blank: 'nothing is drawn',
+  },
   canvasRules: {
     'order-unknown': 'order lists {{file}}, which is not a board',
     'order-missing': 'order leaves out {{file}}',

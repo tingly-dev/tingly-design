@@ -78,7 +78,7 @@ const TOOLS = [
   },
   {
     name: 'check',
-    description: 'The problems the editor would show in a project (files it cannot read, references to missing files, board markup the canvas cannot pick). With snapshots: true, also draws every board, slide, tab, design-system view or motion cover in the editor (needs Chrome) and returns the pictures (scaled down; full size on disk), with what threw or did not load in the work as problems; for motion it also checks each format shows the same picture at the same time whatever came before (a `seek` warning when it does not, so the video would not match the preview).',
+    description: 'The problems the editor would show in a project (files it cannot read, references to missing files, board markup the canvas cannot pick). With snapshots: true, also draws every board, slide, tab, design-system view or motion cover in the editor (needs Chrome) and returns the pictures (scaled down; full size on disk), with what threw or did not load in the work as problems, and `layout` warnings for text cut off by its box, text past the edge of a board or slide, text too faint on a plain background (`contrast`, or `contrastMany` with a count per file) and a frame with nothing drawn (`blank`); for motion it also checks each format shows the same picture at the same time whatever came before (a `seek` warning when it does not, so the video would not match the preview).',
     inputSchema: { type: 'object', properties: { project, snapshots: { type: 'boolean' } }, required: ['project'] },
     annotations: { readOnlyHint: true },
   },

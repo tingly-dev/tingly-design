@@ -39,6 +39,7 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 | `python3 e2e/import_board.py` | 从项目导入，先跑 `pnpm build`；它自己在示例项目的副本上启动服务端：把示例特效画板（box-console 的 Glow）经"从项目导入…"放进幻灯片和动效，副本在 `uploads/`、来源记进索引，舞台和播放器都画出来、同一时刻同一帧，参数写进嵌入块、还原、从原画板更新，以及画布的时间滑块（24 项） |
 | `python3 e2e/dock.py` | 请求栏放在哪里，先跑 `pnpm build`；它自己启动带模拟模型和替身 `claude` 的服务端：默认在底部、运行卡片在人回到画面时收成一行，移到右侧后隐藏在右缘只露标签，鼠标移上标签打开、移开收回，Ctrl J 和 Esc，点一下画面就放手，标签显示正在跑和已完成、浮动和再停靠、窄窗口自动浮动，其余五种类型同一个面板、动效没有空槽位（33 项） |
 | `python3 e2e/import_here.py` | 往打开的项目里导入，先跑 `pnpm build`；它自己在示例项目的副本上启动服务端：每种类型的导入按钮、拖到任何地方、粘贴，网页文件夹变成画布上已有内容旁边的新画板（原文件留在 `uploads/`），粘贴 SVG，图片放到画布和幻灯片上，带图片的 Markdown 变成文档标签页，CSV 变成看板数据集，字体和 SVG 进设计系统，拒收，动效不收（29 项） |
+| `python3 e2e/check_snapshots.py` | `check --snapshots` 查版面，先 `pnpm build`；在自己的项目文件夹上跑命令行：示例幻灯片的副本里放一行超出页面边缘的字、一行被框裁掉的字、一行淡色说明和一页空白，每样都报警告，原样的示例幻灯片一条也不报，每页照样画出来（7 项） |
 | `python3 e2e/ai_settings.py` | AI 模型设置：要先用没有 `ANTHROPIC_*` 变量、`DC_CONFIG` 指向临时文件的环境跑 `pnpm dev`，再跑 `python3 e2e/mock_anthropic.py`；请求栏的提示、从启动页和项目里打开对话框、Tingly Box / 自定义地址、拒绝不合法地址、经模拟模型测试、保存后不回传密钥、Claude Code 用自己登录的选项 |
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
 | `python3 e2e/fast_slides.py` | 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型 |

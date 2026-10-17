@@ -94,6 +94,13 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     seek: '{{total}} 帧里有 {{count}} 帧再次显示时画面不同（差得最多的在 {{at}} 毫秒）：某个场景读了时钟、随机绘制或自己在动，导出的视频会和预览对不上',
   },
   player: { play: '播放', time: '时间', format: '尺寸', speed: '速度' },
+  layoutRules: {
+    clipped: '文字被框裁掉了：“{{text}}”',
+    outside: '文字超出了边缘：“{{text}}”',
+    contrast: '文字和背景对比度太低（{{ratio}}:1），不易看清：“{{text}}”',
+    contrastMany: '有 {{count}} 处文字和背景对比度太低（最低 {{ratio}}:1，“{{text}}”）',
+    blank: '什么也没画出来',
+  },
   canvasRules: {
     'order-unknown': 'order 里的 {{file}} 不是画板',
     'order-missing': 'order 漏了 {{file}}',
