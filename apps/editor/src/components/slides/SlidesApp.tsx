@@ -30,7 +30,7 @@ import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { TopBar, ProjectTitle } from '../TopBar';
-import { Caret, Panel, Picture, Presentation, Shapes, TextT } from '../icons';
+import { Caret, Picture, Presentation, Shapes, TextT } from '../icons';
 import { slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
 import { useDirectPdf } from '../../pdfExport';
@@ -245,7 +245,6 @@ function TopLeft() {
 function SlidesTopBar() {
   const deck = useDeck();
   const direct = useDirectPdf();
-  const panelOpen = useStore((s) => s.panelOpen);
   const [menu, setMenu] = useState<null | 'play'>(null);
   const playBtn = useRef<HTMLButtonElement>(null);
   const { t } = useTranslation();
@@ -263,6 +262,7 @@ function SlidesTopBar() {
           onRename={(v) => editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }))}
         />
       }
+      panel={{ label: t('slides.toolbar.panel'), hint: t('slides.toolbar.panelHint') }}
     >
       <button ref={playBtn} className="tb" aria-haspopup="menu" aria-expanded={menu === 'play'} aria-label={t('slides.toolbar.present')} title={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
         <Presentation />
@@ -271,9 +271,6 @@ function SlidesTopBar() {
         </span>
       </button>
       <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
-      <button className="tb" aria-pressed={panelOpen} aria-label={t('slides.toolbar.panel')} title={t('slides.toolbar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
-        <Panel />
-      </button>
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />

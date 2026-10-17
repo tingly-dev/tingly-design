@@ -2,12 +2,12 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, snapSceneMs, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { addCover, motionImport, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
+import { addCover, editMotion, motionImport, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
 import { notesOf, setNotesIn } from '../../slides';
 import { NoteBox } from '../NoteBox';
 import { FileMenu } from '../FileMenu';
 import { VideoExportDialog, type ScenePick, type VideoExportOptions } from './VideoExportDialog';
-import { TopBar, BarButton } from '../TopBar';
+import { TopBar, BarButton, ProjectTitle } from '../TopBar';
 import { fileStem, saveImage } from '../../imageExport';
 import { frameFonts } from '../../motionImage';
 import { display, isSaving, toast, useStore } from '../../store';
@@ -19,7 +19,7 @@ import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { useDock } from '../AgentBar';
-import { Checklist, Film, Gif as GifIcon, Note, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
+import { Checklist, Film, Gif as GifIcon, Note, PauseFilled, PlayFilled, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
@@ -360,7 +360,17 @@ export function MotionApp() {
 
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
-      <TopBar title={<span className="dashtitle">{motion.title}</span>}>
+      <TopBar
+        title={
+          <ProjectTitle
+            value={motion.title}
+            label={t('motion.motionProps.nameLabel')}
+            hint={t('common.topbar.rename')}
+            onRename={(v) => editMotion((r) => (r.title = v), t('motion.journal.title', { title: v }))}
+          />
+        }
+        panel={{ label: t('motion.bar.panel'), hint: t('motion.bar.panelHint') }}
+      >
         {formats.length > 1 && (
           <div className="mseg" role="radiogroup" aria-label={t('motion.bar.formats')}>
             {formats.map((f) => (
@@ -418,9 +428,6 @@ export function MotionApp() {
             { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
           ]}
         />
-        <button className="tb" aria-pressed={panelOpen} aria-label={t('motion.bar.panel')} title={t('motion.bar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
-          <Panel />
-        </button>
       </TopBar>
       <main className="mmain">
         <div ref={stageRef} className="mstage" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
