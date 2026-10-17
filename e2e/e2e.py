@@ -81,6 +81,7 @@ async def main():
         await pg.wait_for_timeout(400)
         await pg.locator('select[aria-label="宽度模式"]').focus()
         await main.locator('h1').click()
+        await expect(pg.locator('select[aria-label="宽度模式"]')).not_to_be_focused()
         await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('文字')
         await main.locator('body').press('Shift+Enter')
         await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('横向')
