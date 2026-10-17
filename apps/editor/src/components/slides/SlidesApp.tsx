@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconTable } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { t } from '../../i18n';
@@ -34,6 +34,7 @@ import { Caret, Picture, Presentation, Shapes, TextT } from '../icons';
 import { slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
 import { useDirectPdf } from '../../pdfExport';
+import { useElementSize } from '../../hooks';
 
 // ------------------------------------------------------------------ strip
 
@@ -284,19 +285,9 @@ function SlidesTopBar() {
 // ------------------------------------------------------------------ stage
 
 function useFit(ref: React.RefObject<HTMLElement | null>, padX: number, padY: number): number {
-  const [k, setK] = useState(0.4);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const w = el.clientWidth - padX * 2;
-      const h = el.clientHeight - padY * 2;
-      setK(Math.max(0.1, Math.min(w / SLIDE_W, h / SLIDE_H)));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref, padX, padY]);
-  return k;
+  const [, { w, h }] = useElementSize(ref);
+  if (!w || !h) return 0.4;
+  return Math.max(0.1, Math.min((w - padX * 2) / SLIDE_W, (h - padY * 2) / SLIDE_H));
 }
 
 function Notes({ id }: { id: string }) {

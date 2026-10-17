@@ -25,6 +25,7 @@ import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
 import { MotionExportError, MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
 import { useBoardFiles } from '../../boards';
+import { useElementSize } from '../../hooks';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -54,21 +55,6 @@ function useSettled<T>(v: T, ms: number): T {
     return () => clearTimeout(t);
   }, [v, ms]);
   return out;
-}
-
-function useBox(): [React.RefObject<HTMLDivElement | null>, { w: number; h: number }] {
-  const ref = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return [ref, box];
 }
 
 /**
@@ -150,7 +136,7 @@ export function MotionApp() {
   // the export dialog, and whether the server's Chrome will draw this piece (it holds an embed or a video layer)
   const [exportDialog, setExportDialog] = useState<{ viaServer: string[] | null; format?: 'gif' } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
-  const [stageRef, box] = useBox();
+  const [stageRef, box] = useElementSize<HTMLDivElement>();
 
   // the player reloads in the background once edits settle, so typing never waits on it
   const player = useSettled(useMemo(() => ({ motion, scenes: playScenes }), [motion, playScenes]), 600);
@@ -241,7 +227,7 @@ export function MotionApp() {
   const playerAt = tRef.current;
 
   // ruler: a labelled tick at least ~64 px apart, four minor ticks between labels
-  const [lanesRef, lanes] = useBox();
+  const [lanesRef, lanes] = useElementSize<HTMLDivElement>();
   const labelStep = [1000, 2000, 5000, 10_000, 15_000, 30_000, 60_000, 120_000, 300_000].find((st) => (st / Math.max(1, axis)) * lanes.w >= 64) ?? 600_000;
   const tickStep = labelStep / (labelStep === 2000 || labelStep === 120_000 ? 4 : 5);
   const ticks = useMemo(() => (lanes.w > 0 ? Array.from({ length: Math.floor(axis / tickStep) + 1 }, (_, i) => i * tickStep) : []), [axis, tickStep, lanes.w]);
