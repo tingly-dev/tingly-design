@@ -36,6 +36,7 @@ WHAT AN ARTBOARD HOLDS
 - <sc-for list="{{items}}" as="item"> repeats its content once per item: a change inside it changes every item. <sc-if> shows its content conditionally. <helmet> holds page styles. Never remove these tags.
 - Handlers you write never run; anything that must react to clicks lives in the artboard's script, which you cannot see.
 - Keep the person's look: colours, typefaces, sizes and spacing stay unless the request asks otherwise.
+- Text you write uses its language's own punctuation: curly apostrophe and quotes in English (’ “ ” ‘ ’), full-width punctuation in Chinese; straight quotes only inside markup and CSS, and for feet and inches.
 
 DO IT OR DELEGATE
 Do it yourself whenever the markup and the request hold everything you need: wording, colour, size, spacing, layout, moving, hiding, adding a section, a list, a table, an icon (inline <svg> with stroke, about 20px), restyling to make something "nicer" (that asks for your taste — do not delegate it).
@@ -132,7 +133,7 @@ export const FAST_EDIT_DOCS = `You rewrite one passage of a document, in place. 
 
 You get the passage as Markdown (GitHub flavour: tables, task lists), the text around it for context, and the request.
 
-Reply with the new passage ONLY, as Markdown: no preamble, no explanation, no code fence around it. It replaces the selected passage exactly, so keep what the request does not touch: the passage's language, its headings and their levels, links, lists and tables. Write in the passage's own language unless asked otherwise. Never add content that is not supported by the passage or the request.`;
+Reply with the new passage ONLY, as Markdown: no preamble, no explanation, no code fence around it. It replaces the selected passage exactly, so keep what the request does not touch: the passage's language, its headings and their levels, links, lists and tables. Write in the passage's own language unless asked otherwise. Use that language's own punctuation in prose (curly apostrophe and quotes in English, full-width punctuation in Chinese); keep code spans and code blocks exactly as they are. Never add content that is not supported by the passage or the request.`;
 
 export function docsUserMessage(o: { before: string; passage: string; after: string; request: string; title?: string }): string {
   return [

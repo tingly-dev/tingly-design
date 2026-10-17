@@ -73,6 +73,9 @@ The layers panel's hide and lock are written as data-hide and data-lock on eleme
 An <x-embed src="uploads/…/X.dc.html" data-seek> is an artboard imported from a canvas (listed in motion.json "imports"), drawn frame by frame from the scene's time: keep data-seek, set its look through its data-props JSON, never edit the copy under uploads/, and don't point src anywhere else.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
+/** Shared by every kind: what the person reads gets the language's own punctuation. */
+const PUNCTUATION = `Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches.`;
+
 /** Running Claude Code processes by run id, stopped with the server. */
 const children = new Map<string, { project: string; child: ReturnType<typeof spawn>; stop: () => void }>();
 export function stopDelegates(): void {
@@ -139,7 +142,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--allowedTools',
     dash ? 'Read,Edit,Write,Glob,Grep,Bash(node scripts/dash-query.mjs:*)' : 'Read,Edit,Write,Glob,Grep',
     '--append-system-prompt',
-    slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM,
+    `${slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM}\n${PUNCTUATION}`,
   ];
   const resume = isSessionId(req.resume) ? req.resume : undefined;
   if (resume) args.push('--resume', resume);
