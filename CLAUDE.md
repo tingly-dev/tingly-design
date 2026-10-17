@@ -19,6 +19,8 @@ The product is the core; **UX always comes first**. When UX conflicts with imple
 - Icons are Tabler (`@tabler/icons-react`); prefer the shared set in `apps/editor/src/components/icons.tsx` and add new ones there when they are reused.
 - No UI text in code. Every string a person sees (labels, `aria-label`, `title`, placeholders, toasts, empty states, server errors, starter copy written into new projects) is a key in `packages/i18n/src/locales/en/<area>.ts` with its twin in `zh/<area>.ts`. Components use `useTranslation()`; other editor code imports `t` from `apps/editor/src/i18n.ts`; the server uses `trOf(c)` / `HttpError(status, key, params)`. English is the default and fallback, Chinese is the other shipped language. Write the English and the Chinese together; keep core free of wording (return data such as `AgentStep.op`, let the editor say it). Model-facing prompts and `.claude/skills/` stay English. `pnpm test` fails on a missing key, a mismatched placeholder, or a Chinese string outside the bundles. See `.design/i18n.md`.
 - The editor's look is theme tokens (`apps/editor/src/theme.ts`, synced from Tingly Box's `@tingly/ui` palettes by `scripts/sync-tingly-box-theme.mjs`); use tokens, not raw colours, in editor chrome. Work inside canvases, slides and dashboards keeps its own colours.
+- Styles are plain CSS, one file per area under `apps/editor/src/styles/`, pulled in by `styles.css` in cascade order (a later file wins at equal specificity). Put a rule in its area's file; add a file at the position where its rules must win, and keep `agent-dock.css` last.
+- Buttons come in three families: `btn` (text, with `primary` / `outline` / `ghost` / `danger` / `sm`), `tb` (the top bar) and `ib` (an icon button, `ib sm` at 24px). A new icon button is `ib` plus an area class that only states what differs; don't restyle a bare button from scratch.
 
 ## AI model settings
 
@@ -69,7 +71,7 @@ Most editor features are not "canvas features": the prompt bar, attachments, the
 
 Rules of thumb:
 
-- Build a cross-kind feature once, in a shared component or module (`PromptBar`, `AskClaude`, `RunFeed`, `AgentBar` (the prompt at the bottom by default, or moved to a right-edge dock that hides until the pointer comes, `.design/agent-panel.md`), `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `TopBar` (the one top bar of every kind: `ProjectMenu`, the name, `SyncStatus`, the kind's own actions, then one "more" menu with report an issue, star, language and look; floating bars keep only tools, `.design/top-bar.md`), `FileMenu` (the one Import / Export menu each kind hands its export list to, placed in the `TopBar`), `SyncStatus`, `ProjectMenu`, `host.ts`, `theme.ts`), and wire it into every kind's app. Don't copy it per kind.
+- Build a cross-kind feature once, in a shared component or module (`RequestBar` (the one request bar; `PromptBar` adds the pointed-at target and Fast AI for canvas, slides and motion, `AskClaude` sends to Claude Code only), `RunFeed`, `AgentBar` (the prompt at the bottom by default, or moved to a right-edge dock that hides until the pointer comes, `.design/agent-panel.md`), `LayerTree`, `attachments.ts`, `NoteBox`, `ImportHere`, `Dialog` (every modal: backdrop, Esc, focus in and back, Tab kept inside, `.design/dialog.md`), `TopBar` (the one top bar of every kind: `ProjectMenu`, the name, `SyncStatus`, the kind's own actions, then one "more" menu with report an issue, star, language and look; floating bars keep only tools, `.design/top-bar.md`), `FileMenu` (the one Import / Export menu each kind hands its export list to, placed in the `TopBar`), `SyncStatus`, `ProjectMenu`, `host.ts`, `theme.ts`, `local.ts` (what the browser remembers, and files handed to the person), `hooks.ts` (an element's size)), and wire it into every kind's app. Don't copy it per kind.
 - Anything a feature tells Claude Code about a kind (paths, what a file may reference) also goes into that kind's skill under `.claude/skills/<kind>/SKILL.md` and its system prompt in `apps/server/src/delegate.ts`.
 - Test it in each kind it claims to support, or say in the PR which kinds were not tested.
 
@@ -83,7 +85,8 @@ packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as
                   scene's timing for both the motion player and the editable motion stage (keep it the only copy)
 packages/import   HTML and SVG → canvas importer (see .design/import-external-material.md; importing into an open project of any kind: .design/import-into-project.md)
 apps/server       Hono server (`app.ts` routes, `serve.ts` start, `index.ts` for `pnpm dev`) and the `tingly-design` command (`cli.ts`: open, serve, new, list, check, export, import, history; `.design/cli.md`; a running server announces itself in `<projects>/.server.json`, `running.ts`, and `open` / `new` go through it): files with versions, SSE, journal, fast AI proxy, Claude Code delegation, exact video render with the machine's Chrome and ffmpeg (`render.ts`), one-click PDF with the same Chrome (`pdf.ts`, `.design/export-menu.md`), whole-project .zip out and in (`archive.ts`)
-apps/editor       React editors, one app per kind under components/<kind>/, the launcher, shared bars
+apps/editor       React editors: components/ root holds what every kind shares (bars, menus, Dialog; the launcher in launcher/);
+                  components/<kind>/ holds one kind's app and its state (`slides.ts`, `motion.ts`, …), canvas included
 projects/         sample projects, one per kind; `tingly-design-ui` is the editor's own design canvas (see "Design the editor in itself")
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
@@ -110,7 +113,7 @@ The command line names each command after the editor's word for the same action 
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`); add new suites to both language versions of that table.
 
 # Issues
 

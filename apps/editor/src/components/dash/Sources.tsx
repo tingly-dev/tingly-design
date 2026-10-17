@@ -12,8 +12,9 @@ import {
   type FileSource,
   type QuerySource,
 } from '@dc/core';
-import { ago, editDataset, load, pauseQuery, postFrame, rawUrl, resumeQuery, runQuery, staleOf, useDash, useDatasets, type DatasetEntry } from '../../dash';
+import { ago, editDataset, load, pauseQuery, postFrame, rawUrl, resumeQuery, runQuery, staleOf, useDash, useDatasets, type DatasetEntry } from './dash';
 import { toast } from '../../store';
+import { download } from '../../local';
 
 function Dot({ s }: { s: DataState | undefined }) {
   const { t } = useTranslation();
@@ -29,14 +30,6 @@ function safeDecode(s: string): string {
   } catch {
     return s;
   }
-}
-
-function download(name: string, text: string, type = 'text/csv'): void {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 /** The rows of a result, the picked cell lit. */
@@ -300,7 +293,7 @@ function DatasetView({ entry }: { entry: DatasetEntry }) {
         <summary>{t('dash.result.title')}</summary>
         {s ? <ResultTable s={s} rows={lit} field={picked?.field} /> : <p className="hint">{t('dash.result.notRead')}</p>}
         {s?.status === 'ok' && s.columns.length > 0 && (
-          <button className="btn ghost" onClick={() => download(`${entry.id}.csv`, tableToCsv({ columns: s.columns, rows: s.rows }))}>
+          <button className="btn ghost" onClick={() => download(`${entry.id}.csv`, tableToCsv({ columns: s.columns, rows: s.rows }), 'text/csv')}>
             {t('dash.result.downloadCsv')}
           </button>
         )}

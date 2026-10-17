@@ -12,11 +12,11 @@ import {
   type DsIndex,
   type DsTokens,
 } from '@dc/core';
-import { api } from './api';
-import { display, edit, toast, useStore } from './store';
-import { SERVER } from './base';
-import { filesOf, type ImportTarget } from './components/ImportHere';
-import { t } from './i18n';
+import { api } from '../../api';
+import { display, edit, toast, useStore } from '../../store';
+import { SERVER } from '../../base';
+import { filesOf, type ImportTarget } from '../ImportHere';
+import { t } from '../../i18n';
 
 /**
  * Design-system helpers: tokens as the page reads them, edits of tokens.json

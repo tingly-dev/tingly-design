@@ -5,8 +5,8 @@ import { NOTE_SIZES, formatTime, setPropDefault, timeSpec, type TimeSpec, type B
 import { duplicateBoard, updateBoard, updateNote } from '../../actions';
 import { BOARD_PRESETS } from '../../boardPresets';
 import { deleteBoard, display, edit, useStore } from '../../store';
-import { TEXT_COLORS, sizeOf } from '../Item';
-import { frames } from '../Board';
+import { TEXT_COLORS, sizeOf } from '../canvas/Item';
+import { frames } from '../canvas/Board';
 import { PauseFilled, PlayFilled } from '../icons';
 import { ColorField, Field, Row, Seg, Select, px, toLength } from './fields';
 

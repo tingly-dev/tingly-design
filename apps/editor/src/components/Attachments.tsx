@@ -18,7 +18,7 @@ export function AttachTray({ items, onRemove }: { items: Attached[]; onRemove: (
         <li key={a.key} className={`attach-chip ${a.kind}`} title={`${a.name} · ${size(a.size)}`}>
           {a.preview ? <img src={a.preview} alt="" /> : <span className="ico">{a.kind === 'pdf' ? <FilePdf /> : <FileText />}</span>}
           <span className="name">{a.name}</span>
-          <button className="x" aria-label={t('prompt.attach.remove', { name: a.name })} onClick={() => onRemove(a.key)}>
+          <button className="ib x" aria-label={t('prompt.attach.remove', { name: a.name })} onClick={() => onRemove(a.key)}>
             <Close />
           </button>
         </li>

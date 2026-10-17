@@ -2,16 +2,18 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
 import { elementSource, roleOf, rootElement, sandboxDoc, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
-import { canvasOf, display, editElement, focusBoard, onPage, parsed, toast, useStore } from '../store';
-import { insertHtml, updateBoard } from '../actions';
+import { canvasOf, display, editElement, parsed, toast, useStore } from '../../store';
+import { focusBoard, onPage } from './view';
+import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
-import { handleKey } from '../shortcuts';
-import { Download, Expand, FileText, Picture } from './icons';
-import type { ExportItem } from './FileMenu';
-import { Menu, MenuItem } from './Menu';
-import { SERVER } from '../base';
-import { api } from '../api';
-import { t as tr, htmlLang } from '../i18n';
+import { handleKey } from '../../shortcuts';
+import { Download, Expand, FileText, Picture } from '../icons';
+import type { ExportItem } from '../FileMenu';
+import { Menu, MenuItem } from '../Menu';
+import { SERVER } from '../../base';
+import { api } from '../../api';
+import { t as tr, htmlLang } from '../../i18n';
+import { downloadUrl } from '../../local';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -61,16 +63,9 @@ export async function copyPng(file: string, tid?: number): Promise<void> {
       toast((err as Error).message, 'error');
       return;
     }
-    download(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, url);
+    downloadUrl(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, url);
     toast(tr('canvas.export.copyFallback'));
   }
-}
-
-function download(name: string, href: string) {
-  const a = document.createElement('a');
-  a.href = href;
-  a.download = name;
-  a.click();
 }
 
 export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source') {
@@ -78,12 +73,12 @@ export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source'
   if (kind === 'source') {
     const src = display(useStore.getState(), file) ?? '';
     const url = URL.createObjectURL(new Blob([src], { type: 'text/html' }));
-    download(file, url);
+    downloadUrl(file, url);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     return;
   }
   try {
-    download(`${stem}${kind === 'png2' ? '@2x' : ''}.png`, await exportPng(file, kind === 'png2' ? 2 : 1));
+    downloadUrl(`${stem}${kind === 'png2' ? '@2x' : ''}.png`, await exportPng(file, kind === 'png2' ? 2 : 1));
   } catch (e) {
     toast((e as Error).message, 'error');
   }
@@ -372,11 +367,11 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             {t('canvas.board.error')}
           </span>
         )}
-        <button className="sb" aria-label={t('canvas.board.fullscreenLabel', { title })} title={t('canvas.board.fullscreen')} onClick={() => useStore.setState({ focused: file })}>
+        <button className="ib sm sb" aria-label={t('canvas.board.fullscreenLabel', { title })} title={t('canvas.board.fullscreen')} onClick={() => useStore.setState({ focused: file })}>
           <Expand />
         </button>
         <button
-          className="sb"
+          className="ib sm sb"
           aria-label={t('canvas.export.boardLabel', { title })}
           title={t('canvas.export.title')}
           onClick={(e) => {

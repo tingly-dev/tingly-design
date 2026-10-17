@@ -1,34 +1,32 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, snapSceneMs, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
+import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { addCover, motionImport, motionOf, removeCover, setPieceNote, setSceneDuration } from '../../motion';
-import { notesOf, setNotesIn } from '../../slides';
-import { NoteBox } from '../NoteBox';
+import { editMotion, motionImport } from './motion';
+import { notesOf } from '../slides/slides';
 import { FileMenu } from '../FileMenu';
-import { VideoExportDialog, type ScenePick, type VideoExportOptions } from './VideoExportDialog';
-import { TopBar, BarButton } from '../TopBar';
-import { fileStem, saveImage } from '../../imageExport';
-import { frameFonts } from '../../motionImage';
-import { display, isSaving, toast, useStore } from '../../store';
-import { download } from '@dc/export';
-import { exactScenes, exportInputs } from '../../motionExport';
-import { pace, slowestStage } from '../../exportReport';
-import type { ExportReport } from '@dc/export/timing';
+import { VideoExportDialog, type ScenePick } from './VideoExportDialog';
+import { TopBar, BarButton, ProjectTitle } from '../TopBar';
+import { display, isSaving, useStore } from '../../store';
+import { pace } from '../../exportReport';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { useDock } from '../AgentBar';
-import { Checklist, Film, Gif as GifIcon, Note, Panel, PauseFilled, PlayFilled, Picture } from '../icons';
+import { Checklist, Film, Gif as GifIcon, Note, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
-import { MotionExportError, MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
+import { MotionFrame, type MotionControl, type MotionInfo } from './MotionFrame';
 import { useBoardFiles } from '../../boards';
+import { useElementSize } from '../../hooks';
+import { Timeline } from './Timeline';
+import { MotionIssues, MotionNotes } from './MotionSidePanes';
+import { useMotionExport } from './useMotionExport';
+
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-const secs = (ms: number) => (ms / 1000).toFixed(1);
 
 /** The motion.json text and every scene file it names, as one key that changes when any of them does. */
 function useSources(): { motionText: string; scenes: Record<string, string> } {
@@ -54,21 +52,6 @@ function useSettled<T>(v: T, ms: number): T {
     return () => clearTimeout(t);
   }, [v, ms]);
   return out;
-}
-
-function useBox(): [React.RefObject<HTMLDivElement | null>, { w: number; h: number }] {
-  const ref = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return [ref, box];
 }
 
 /**
@@ -145,12 +128,8 @@ export function MotionApp() {
     return out;
   }, [effectErrors]);
   const [issuesOpen, setIssuesOpen] = useState(false);
-  const [exporting, setExporting] = useState<{ done: number; total: number; route: 'browser' | 'server'; startedAt: number } | null>(null);
-  const exportCtl = useRef<AbortController | null>(null);
-  // the export dialog, and whether the server's Chrome will draw this piece (it holds an embed or a video layer)
-  const [exportDialog, setExportDialog] = useState<{ viaServer: string[] | null; format?: 'gif' } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
-  const [stageRef, box] = useBox();
+  const [stageRef, box] = useElementSize<HTMLDivElement>();
 
   // the player reloads in the background once edits settle, so typing never waits on it
   const player = useSettled(useMemo(() => ({ motion, scenes: playScenes }), [motion, playScenes]), 600);
@@ -240,133 +219,12 @@ export function MotionApp() {
   // a player reload (a file changed, another format or speed) keeps the place, in authored time
   const playerAt = tRef.current;
 
-  // ruler: a labelled tick at least ~64 px apart, four minor ticks between labels
-  const [lanesRef, lanes] = useBox();
-  const labelStep = [1000, 2000, 5000, 10_000, 15_000, 30_000, 60_000, 120_000, 300_000].find((st) => (st / Math.max(1, axis)) * lanes.w >= 64) ?? 600_000;
-  const tickStep = labelStep / (labelStep === 2000 || labelStep === 120_000 ? 4 : 5);
-  const ticks = useMemo(() => (lanes.w > 0 ? Array.from({ length: Math.floor(axis / tickStep) + 1 }, (_, i) => i * tickStep) : []), [axis, tickStep, lanes.w]);
-
-  // a clip's right edge: drag to set the scene's length in 0.1 s steps, written once on release; Esc cancels, arrows nudge
-  const dragEdge = (e: React.PointerEvent, id: string, d0: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const x0 = e.clientX;
-    const total = timeline.duration;
-    const perMs = lanes.w / Math.max(1, total);
-    let last = d0;
-    const move = (ev: PointerEvent) => {
-      last = snapSceneMs(d0 + (ev.clientX - x0) / perMs);
-      setDrag({ id, ms: last, total });
-    };
-    const end = (commit: boolean) => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('keydown', key, true);
-      setDrag(null);
-      if (commit && last !== d0) setSceneDuration(id, last);
-    };
-    const up = () => end(true);
-    const key = (ev: KeyboardEvent) => {
-      if (ev.key !== 'Escape') return;
-      ev.stopPropagation();
-      end(false);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('keydown', key, true);
-  };
-  const commitLength = (text: string) => {
-    const v = Number(text.trim().replace(/s$/, ''));
-    if (current && Number.isFinite(v) && v > 0) setSceneDuration(current.id, snapSceneMs(v * 1000 * rate, 1));
-  };
-
-  /** Asked before the dialog: a piece with an embed or a video layer is drawn by the server's Chrome when it has one, which the browser cannot do. */
-  const openExportDialog = async (format?: 'gif') => {
-    if (exportCtl.current || !info) return;
-    const exact = exactScenes(playScenes);
-    const caps = exact.length && project ? await api.renderCapabilities().catch(() => null) : null;
-    setExportDialog({ viaServer: caps?.chrome && caps.ffmpeg ? exact : null, format });
-  };
-
-  const where = (route: 'browser' | 'server') => (route === 'server' ? t('motion.export.where.server') : t('motion.export.where.browser'));
-  const stepName = (id: string) => {
-    const names: Record<string, string> = {
-      audio: t('motion.export.steps.audio'),
-      launch: t('motion.export.steps.launch'),
-      seek: t('motion.export.steps.seek'),
-      embeds: t('motion.export.steps.embeds'),
-      snapshot: t('motion.export.steps.snapshot'),
-      decode: t('motion.export.steps.decode'),
-      paint: t('motion.export.steps.paint'),
-      capture: t('motion.export.steps.capture'),
-      write: t('motion.export.steps.write'),
-      encode: t('motion.export.steps.encode'),
-      finish: t('motion.export.steps.finish'),
-    };
-    return names[id] ?? id;
-  };
-  /** "Saved x.mp4", then which route made it, how long it took and what took longest: the answer to "why is this slow". */
-  const doneMessage = (file: string, r: ExportReport) => {
-    const top = slowestStage(r);
-    return t('motion.export.doneDetail', {
-      name: file,
-      where: where(r.route),
-      seconds: Math.max(1, Math.round(r.wallMs / 1000)),
-      fps: r.fps,
-      step: top ? stepName(top.id) : '',
-      percent: top?.percent ?? 0,
-    });
-  };
-
-  const exportVideo = async (o: VideoExportOptions, viaServer: string[] | null) => {
-    if (exportCtl.current || !info) return;
-    const ctl = new AbortController();
-    exportCtl.current = ctl;
-    const back = tRef.current;
-    pause();
-    const route = project && viaServer ? 'server' : 'browser';
-    const startedAt = performance.now();
-    const progress = (done: number, total: number) => setExporting({ done, total, route, startedAt });
-    progress(0, 1);
-    try {
-      const [W0, H0] = motion.formats[fmt]?.size ?? [info.width, info.height];
-      const name = (ext: string) =>
-        `${(motion.title || 'motion').replace(/[\\/:*?"<>|]+/g, '-')}-${fmt}${o.height !== H0 ? `-${o.height}p` : ''}${o.from !== undefined ? `-${sceneName(o.from)}` : ''}.${ext}`;
-      if (project && viaServer) {
-        toast(t('motion.export.viaServer', { scenes: viaServer.join(', ') }));
-        const ext = o.format === 'gif' ? 'gif' : 'mp4';
-        const { file, report } = await api.renderMotion(project, fmt, { container: ext, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to }, progress, ctl.signal);
-        download(name(ext), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
-        toast(doneMessage(name(ext), report));
-      } else {
-        const inputs = await exportInputs(motion, playScenes, base);
-        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs }, progress, ctl.signal);
-        download(name(r.ext), r.blob);
-        toast(doneMessage(name(r.ext), r.report));
-        if (project) api.logExport(project, r.report, exactScenes(playScenes).length ? 'no-server-renderer' : undefined);
-        if (r.note) toast(t(r.note === 'no-aac' ? 'motion.export.noAac' : 'motion.export.noH264'), 'info');
-        if (r.embeds.length) toast(t('motion.export.embeds', { scenes: r.embeds.join(', ') }), 'info');
-      }
-    } catch (e) {
-      const code = e instanceof MotionExportError ? e.code : (e as { name?: string }).name === 'AbortError' ? 'aborted' : (e as { code?: string }).code === 'aborted' ? 'aborted' : 'failed';
-      toast(code === 'aborted' ? t('motion.export.cancelled') : code === 'no-encoder' ? t('motion.export.noEncoder') : t('motion.export.failed', { message: (e as Error).message }), code === 'aborted' ? 'info' : 'error');
-    } finally {
-      exportCtl.current = null;
-      setExporting(null);
-      control.current?.seek(back);
-    }
-  };
   // the file name of a stretch: the scene it starts in
   const sceneName = (from: number) => timeline.scenes.findLast((w) => w.start / rate <= from + 1)?.id ?? 'scene';
+  const { exporting, cancel, where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame } = useMotionExport({ motion, fmt, info, playScenes, base, project, control, at: tRef, pause, sceneName });
+
   // the scene under the playhead as a range the dialog may offer (not on the cover, which is before the video)
   const scenePick: ScenePick | null = !cover && current ? { name: current.id, from: current.start / rate, to: (current.start + current.duration) / rate } : null;
-
-  const saveFrame = async () => {
-    const at = tRef.current;
-    pause();
-    await saveImage(`${fileStem(motion.title, 'motion')}-${fmt}-${Math.round(at)}ms.png`, async () => control.current!.snapshot({ t: at, scale: 1, fontCss: await frameFonts(motion, playScenes, base) }));
-    control.current?.seek(at);
-  };
 
   const errors = info?.issues.filter((i) => i.level === 'error').length ?? 0;
   const [W, H] = motion.formats[fmt]?.size ?? [1920, 1080];
@@ -374,7 +232,17 @@ export function MotionApp() {
 
   return (
     <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
-      <TopBar title={<span className="dashtitle">{motion.title}</span>}>
+      <TopBar
+        title={
+          <ProjectTitle
+            value={motion.title}
+            label={t('motion.motionProps.nameLabel')}
+            hint={t('common.topbar.rename')}
+            onRename={(v) => editMotion((r) => (r.title = v), t('motion.journal.title', { title: v }))}
+          />
+        }
+        panel={{ label: t('motion.bar.panel'), hint: t('motion.bar.panelHint') }}
+      >
         {formats.length > 1 && (
           <div className="mseg" role="radiogroup" aria-label={t('motion.bar.formats')}>
             {formats.map((f) => (
@@ -414,7 +282,7 @@ export function MotionApp() {
           onClick={() => setIssuesOpen(!issuesOpen)}
         />
         {exporting && (
-          <button className="btn ghost" onClick={() => exportCtl.current?.abort()} title={`${where(exporting.route)}. ${t('motion.export.cancelHint')}`}>
+          <button className="btn ghost" onClick={cancel} title={`${where(exporting.route)}. ${t('motion.export.cancelHint')}`}>
             {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })}
             {(() => {
               const p = pace(exporting.done, exporting.total, exporting.startedAt);
@@ -432,9 +300,6 @@ export function MotionApp() {
             { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, rule: true, run: saveFrame },
           ]}
         />
-        <button className="tb" aria-pressed={panelOpen} aria-label={t('motion.bar.panel')} title={t('motion.bar.panelHint')} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
-          <Panel />
-        </button>
       </TopBar>
       <main className="mmain">
         <div ref={stageRef} className="mstage" onPointerDown={(e) => e.target === e.currentTarget && useStore.setState({ selection: null })}>
@@ -486,182 +351,30 @@ export function MotionApp() {
             </div>
           ))}
         </div>
-        <div className="mtimeline">
-          <div className="mbar">
-            <button className="mplay" onClick={playing ? pause : play} disabled={!info} aria-label={playing ? t('motion.stage.pause') : t('motion.stage.play')}>
-              {playing ? <PauseFilled /> : <PlayFilled />}
-            </button>
-            <span className="mtime">
-              <b>{secs(time)}</b> / {secs(duration)} s
-            </span>
-            {!cover && current && (
-              <label className="mdur" title={t('motion.stage.sceneLengthHint')}>
-                {t('motion.stage.sceneLength')}
-                <input
-                  key={`${current.id}:${current.duration}:${rate}`}
-                  className="input"
-                  defaultValue={+(current.duration / rate / 1000).toFixed(2)}
-                  inputMode="decimal"
-                  aria-label={t('motion.stage.sceneLength')}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                    if (e.key === 'Escape') {
-                      (e.target as HTMLInputElement).value = String(+(current.duration / rate / 1000).toFixed(2));
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onBlur={(e) => commitLength(e.target.value)}
-                />
-                s
-              </label>
-            )}
-            <span className="mwhere" title={cover ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
-              {cover
-                ? t('motion.stage.whereCover')
-                : current
-                  ? stageLanded
-                    ? t('motion.stage.whereLandedValue', { scene: current.id, time: secs(stageAt) })
-                    : `${current.id} · ${secs(stageAt)} s`
-                  : ''}
-            </span>
-          </div>
-          <div className="mlanes">
-            <div className="mcoverslot">
-              <div className="mcoverhead">{t('motion.stage.coverAxis')}</div>
-              <div className="mcovertrack">
-                {coverScene ? (
-                  <>
-                    <button
-                      className={`mcoverclip${cover ? ' on' : ''}`}
-                      aria-pressed={cover}
-                      onClick={() => (pause(), setOnCover(true))}
-                      title={t('motion.stage.coverHint')}
-                    >
-                      <span className="mname">
-                        {t('motion.stage.cover')}
-                        {notesOf(scenes[coverScene]) && <i className="mnotedot" title={t('motion.notes.onScene')} />}
-                      </span>
-                      <span className="mlen">{coverScene}</span>
-                    </button>
-                    <button className="mcoverx" aria-label={t('motion.stage.coverRemove')} title={t('motion.stage.coverRemoveHint')} onClick={removeCover}>
-                      ×
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="mcoverclip add"
-                    onClick={() => {
-                      pause();
-                      addCover();
-                      setOnCover(true);
-                    }}
-                    title={t('motion.stage.coverAddHint')}
-                  >
-                    {t('motion.stage.coverAdd')}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="maxis" ref={lanesRef}>
-              <div className="mruler">
-                {ticks.map((ms) => (
-                  <i key={ms} className={ms % labelStep === 0 ? 'major' : undefined} style={{ left: `${(ms / axis) * 100}%` }}>
-                    {ms % labelStep === 0 && <span>{ms / 1000}s</span>}
-                  </i>
-                ))}
-                <input className="mscrub" type="range" min={0} max={Math.max(1, Math.round(duration))} step={1} value={Math.round(time)} onChange={(e) => seek(Number(e.target.value))} aria-label={t('motion.stage.time')} />
-              </div>
-              <div className="mscenes" aria-label={t('motion.stage.scenes')}>
-                {timeline.scenes.map((w, i) => {
-                  // a scene's clip runs to where the next one takes over, so clips and playhead share one axis
-                  const end = timeline.scenes[i + 1]?.start ?? timeline.duration;
-                  const hint = w.transition.kind !== 'cut'
-                    ? t('motion.stage.sceneJumpTransition', { scene: w.id, time: secs(w.duration / rate), transition: w.transition.kind })
-                    : t('motion.stage.sceneJump', { scene: w.id, time: secs(w.duration / rate) });
-                  return (
-                    <Fragment key={w.id}>
-                      <button
-                        className={`mscene${!cover && current?.id === w.id ? ' on' : ''}${w.transition.kind !== 'cut' ? ' blend' : ''}`}
-                        style={{ left: `${(w.start / axisMs) * 100}%`, width: `${((end - w.start) / axisMs) * 100}%` }}
-                        onClick={() => seek(w.start / rate)}
-                        onDoubleClick={() => seek(Math.max(w.start, end - 1000 / (motion.fps || 30)) / rate)}
-                        title={hint}
-                      >
-                        <span className="mname">
-                          {w.id}
-                          {notesOf(scenes[w.id]) && <i className="mnotedot" title={t('motion.notes.onScene')} />}
-                        </span>
-                        <span className="mlen">{secs(w.duration / rate)}s</span>
-                      </button>
-                      <span
-                        className="mgrip"
-                        role="separator"
-                        aria-orientation="vertical"
-                        tabIndex={0}
-                        aria-label={t('motion.stage.sceneEdge', { scene: w.id })}
-                        title={t('motion.stage.sceneEdge', { scene: w.id })}
-                        style={{ left: `${(end / axisMs) * 100}%` }}
-                        onPointerDown={(e) => dragEdge(e, w.id, w.duration)}
-                        onKeyDown={(e) => {
-                          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setSceneDuration(w.id, snapSceneMs(w.duration + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1000 : 100)));
-                        }}
-                      />
-                    </Fragment>
-                  );
-                })}
-              </div>
-              {!cover && axis > 0 && <div className="mhead" style={{ left: `${(time / axis) * 100}%` }} />}
-            </div>
-          </div>
-        </div>
-        {notesOpen && (
-          <div className="mnotes">
-            <label>
-              <span>{t('motion.notes.piece')}</span>
-              <NoteBox
-                className="snotes"
-                saved={motion.note ?? ''}
-                current={() => motionOf().note ?? ''}
-                onSave={setPieceNote}
-                placeholder={t('motion.notes.piecePlaceholder')}
-                label={t('motion.notes.pieceLabel')}
-              />
-            </label>
-            {stage.id && scenes[stage.id] !== undefined && (
-              <label>
-                <span>{t('motion.notes.scene', { id: stage.id })}</span>
-                <NoteBox
-                  key={stage.id}
-                  className="snotes"
-                  saved={notesOf(scenes[stage.id])}
-                  current={() => notesOf(display(useStore.getState(), sceneFile(stage.id!)))}
-                  onSave={(v) => setNotesIn(sceneFile(stage.id!), v)}
-                  placeholder={t('motion.notes.scenePlaceholder')}
-                  label={t('motion.notes.sceneLabel', { id: stage.id })}
-                />
-              </label>
-            )}
-          </div>
-        )}
-        {issuesOpen && (
-          <div className="missues">
-            {info?.issues.length ? (
-              <ul>
-                {info.issues.map((i, n) => (
-                  <li key={n} className={i.level}>
-                    <b>{i.scene}</b> {i.message}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>{t('motion.stage.noIssues')}</p>
-            )}
-          </div>
-        )}
+        <Timeline
+          motion={motion}
+          scenes={scenes}
+          timeline={timeline}
+          axisMs={axisMs}
+          axis={axis}
+          rate={rate}
+          time={time}
+          duration={duration}
+          ready={!!info}
+          playing={playing}
+          cover={cover}
+          coverScene={coverScene}
+          current={current}
+          stageAt={stageAt}
+          stageLanded={stageLanded}
+          play={play}
+          pause={pause}
+          seek={seek}
+          showCover={() => setOnCover(true)}
+          onDrag={setDrag}
+        />
+        {notesOpen && <MotionNotes motion={motion} scenes={scenes} sceneId={stage.id} />}
+        {issuesOpen && <MotionIssues info={info} />}
         <div className={`mprompt${barDock.docked ? ' docked' : barCollapsed ? ' collapsed' : ''}`}>
           <PromptBar
             onOpen={(f) => {

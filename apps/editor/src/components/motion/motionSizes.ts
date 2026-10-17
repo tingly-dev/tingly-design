@@ -3,6 +3,7 @@
  * new piece starts there) and the custom ones they have used, newest first. Presets are not stored.
  */
 import { MOTION_SIZES, validSize } from '@dc/core';
+import { readPref, writePref } from '../../local';
 
 const KEY = 'dc.motionSizes';
 const KEEP = 6;
@@ -18,7 +19,7 @@ export const isPreset = (s: Size) => MOTION_SIZES.some((p) => sameSize(p.size as
 
 export function readSizes(): MotionSizes {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+    const raw = JSON.parse(readPref(KEY) || '{}');
     const mine = (Array.isArray(raw.mine) ? raw.mine : []).map(validSize).filter((s: Size | null): s is Size => !!s && !isPreset(s));
     return { last: validSize(raw.last), mine: mine.slice(0, KEEP) };
   } catch {
@@ -27,11 +28,7 @@ export function readSizes(): MotionSizes {
 }
 
 function write(v: MotionSizes): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(v));
-  } catch {
-    // private windows and blocked storage: the picker still works, it just forgets
-  }
+  writePref(KEY, JSON.stringify(v));
 }
 
 /** A size just used: the next piece starts here, and a custom one joins the person's own. */

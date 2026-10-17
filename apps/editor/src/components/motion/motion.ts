@@ -3,12 +3,12 @@
  * the piece's formats (sizes), and where the stage stands.
  */
 import { DEFAULT_SCENE_MS, MOTION_SIZES, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
-import { api } from './api';
-import { insertHtml } from './actions';
-import { filesOf, type ImportTarget } from './components/ImportHere';
-import { boardEmbed } from './boards';
-import { display, edit, editElement, parsed, toast, useStore } from './store';
-import { t } from './i18n';
+import { api } from '../../api';
+import { insertHtml } from '../../actions';
+import { filesOf, type ImportTarget } from '../ImportHere';
+import { boardEmbed } from '../../boards';
+import { display, edit, editElement, parsed, toast, useStore } from '../../store';
+import { t } from '../../i18n';
 
 const get = useStore.getState;
 

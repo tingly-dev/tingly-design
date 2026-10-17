@@ -1,0 +1,539 @@
+/* Slides: the strip, the stage, presenting. */
+
+/* ------------------------------------------------------------- slides */
+
+
+.app.slides {
+  grid-template-columns: 216px 1fr auto;
+}
+
+
+.slides .strip {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+
+.slides .slist {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 10px 4px;
+}
+
+
+.slides .sgroup + .sgroup {
+  margin-top: 6px;
+}
+
+
+.slides .shead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 6px 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  min-height: 20px;
+}
+
+
+.slides .shead .d {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+
+.slides .shead input {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+
+.slides .shead .ib {
+  opacity: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--faint);
+}
+
+
+.slides .shead:hover .ib {
+  opacity: 1;
+}
+
+
+.thumb {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 4px 0;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+}
+
+
+.thumb.over {
+  border-top-color: var(--accent);
+}
+
+
+.thumb .num {
+  width: 14px;
+  flex: none;
+  text-align: right;
+  font-size: 11px;
+  color: var(--faint);
+  padding-top: 2px;
+}
+
+
+.thumb.on .num {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+
+.thumb .tframe {
+  position: relative;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+
+.thumb.on .tframe {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+
+.thumb.skipped .tframe {
+  opacity: 0.45;
+}
+
+
+.thumb .tag {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--scrim-ink);
+  color: var(--panel);
+}
+
+
+.thumb .tag.err {
+  left: 4px;
+  right: auto;
+  background: var(--danger);
+}
+
+
+.slides .sdrop {
+  height: 24px;
+}
+
+
+.slides .addslide {
+  margin: 8px 10px 10px;
+}
+
+
+.sframe {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+
+
+.sframe .sinner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+
+.sframe iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+
+.sframe.f-thumb iframe {
+  pointer-events: none;
+}
+
+
+.sframe.f-stage {
+  box-shadow: var(--float-shadow);
+  background: #fff;
+}
+
+
+.slides .sarea {
+  position: absolute;
+  inset: 64px 0 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.slides .scol {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+
+.slides .shead2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 0;
+}
+
+
+.snotes {
+  height: 56px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--panel);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+
+.snotes:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+
+.issues {
+  position: relative;
+}
+
+
+.issues .ibtn {
+  border: 0;
+  border-radius: 6px;
+  padding: 2px 8px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+
+.issues.err .ibtn {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+
+.issues ul,
+.issue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+
+.issues ul {
+  position: absolute;
+  z-index: 30;
+  top: 26px;
+  left: 0;
+  width: 420px;
+  max-height: 260px;
+  overflow: auto;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+  padding: 6px;
+}
+
+
+.issues li,
+.issue-list li {
+  padding: 4px 6px 4px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+}
+
+
+.issues li:hover,
+.issue-list li:hover {
+  background: var(--hover);
+}
+
+
+.issues li::before,
+.issue-list li::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+
+.issues li.error::before,
+.issue-list li.error::before {
+  background: var(--danger);
+}
+
+
+.issues li.warning::before,
+.issue-list li.warning::before {
+  background: var(--warn);
+}
+
+
+.iconpick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  max-width: 330px;
+}
+
+
+.iconpick .tb {
+  font-size: 12px;
+  justify-content: flex-start;
+}
+
+
+.chk {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+
+/* present */
+
+
+.present {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+
+.present.withnotes {
+  grid-template-columns: 1fr 340px;
+}
+
+
+.pstage {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.pslide {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inset: 0;
+}
+
+
+.pslide.in.t-fade,
+.pslide.in.t-magic {
+  animation: p-fade-in 0.5s ease both;
+}
+
+
+.pslide.out.t-fade,
+.pslide.out.t-magic {
+  animation: p-fade-out 0.5s ease both;
+}
+
+
+.pslide.in.t-push.df {
+  animation: p-from-right 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+
+.pslide.out.t-push.df {
+  animation: p-to-left 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+
+.pslide.in.t-push.db {
+  animation: p-from-left 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+
+.pslide.out.t-push.db {
+  animation: p-to-right 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+
+.pslide.out.t-none {
+  display: none;
+}
+
+
+@keyframes p-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+
+@keyframes p-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+
+@keyframes p-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+
+@keyframes p-to-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+
+@keyframes p-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+
+@keyframes p-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+
+.pnotes {
+  background: #17171a;
+  color: #e9e7e1;
+  padding: 20px;
+  overflow: auto;
+  font-size: 18px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+
+.pn-h {
+  font-size: 12px;
+  color: #9a9892;
+  margin-bottom: 12px;
+}
+
+
+.pbar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: rgba(30, 30, 32, 0.85);
+  color: #ddd;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+
+.present:hover .pbar {
+  opacity: 1;
+}
+
+
+.pbar .tb {
+  color: #ddd;
+}
+
+
+.pbar .tb:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+
+.panel .face {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+
+.panel .face .fname {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.panel .faceadd {
+  display: flex;
+  gap: 6px;
+}
+
+
+.panel .faceadd .input {
+  flex: 1;
+  min-width: 0;
+}
+
+
+.pbar .tb[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+

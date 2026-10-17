@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
 import { display, edit, toast, useStore } from '../../store';
-import { dsImport, editDsIndex, useDsIndex, useTokens } from '../../ds';
+import { dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
 import { FileMenu } from '../FileMenu';
 import { TopBar, ProjectTitle } from '../TopBar';
 import { Picture } from '../icons';
@@ -182,7 +182,6 @@ export function DsApp() {
   <FileMenu
         target={dsImport}
         label={tr('ds.app.label')}
-        button="text"
         items={[
           {
             id: 'png',

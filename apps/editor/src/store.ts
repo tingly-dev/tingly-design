@@ -16,8 +16,6 @@ import {
   type JournalEntry,
   type Mode,
   type Inspect,
-  type NoteEntry,
-  noteBox,
   DECK_FILE,
   deckOrder,
   parseDeck,
@@ -29,6 +27,7 @@ import {
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
+import { readPref, writePref } from './local';
 
 /** What a failed edit says to the person: a rebase conflict in the editor's own words, anything else as thrown. */
 function errorText(e: unknown): string {
@@ -152,7 +151,7 @@ export interface Present {
   notes: boolean;
 }
 
-interface State {
+export interface State {
   project: string | null;
   /** design canvas or slide deck, from the project's files */
   kind: ProjectKind | null;
@@ -235,13 +234,7 @@ export const useStore = create<State>(() => ({
   selection: null,
   tool: 'select',
   mode: 'edit',
-  panelOpen: (() => {
-    try {
-      return localStorage.getItem('dc.panelOpen') !== '0';
-    } catch {
-      return true;
-    }
-  })(),
+  panelOpen: readPref('dc.panelOpen') !== '0',
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -260,21 +253,8 @@ export const useStore = create<State>(() => ({
   lastRun: null,
   runHidden: false,
   feeds: 0,
-  barCollapsed: (() => {
-    try {
-      return localStorage.getItem('dc.barCollapsed') === '1';
-    } catch {
-      return false;
-    }
-  })(),
-  barMode: (() => {
-    try {
-      const m = localStorage.getItem('dc.barMode');
-      return m === 'auto' ? m : 'float';
-    } catch {
-      return 'float';
-    }
-  })(),
+  barCollapsed: readPref('dc.barCollapsed') === '1',
+  barMode: readPref('dc.barMode') === 'auto' ? 'auto' : 'float',
   historyOpen: false,
   history: [],
   freshNext: false,
@@ -417,8 +397,8 @@ function onEvent(e: ServerEvent): void {
       return { files };
     });
   } else if (e.type === 'assets') {
-    void import('./ds').then((m) => m.assetsChanged());
-    if (get().kind === 'dashboard') void import('./dash').then((m) => m.dataChanged(e.path));
+    void import('./components/ds/ds').then((m) => m.assetsChanged());
+    if (get().kind === 'dashboard') void import('./components/dash/dash').then((m) => m.dataChanged(e.path));
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {
@@ -483,20 +463,12 @@ export type BarMode = 'auto' | 'float';
 
 /** Where the prompt lives (kept across sessions, the same in every kind). */
 export function setBarMode(mode: BarMode): void {
-  try {
-    localStorage.setItem('dc.barMode', mode);
-  } catch {
-    // private window
-  }
+  writePref('dc.barMode', mode);
   set({ barMode: mode, historyOpen: false });
 }
 
 export function setBarCollapsed(on: boolean): void {
-  try {
-    localStorage.setItem('dc.barCollapsed', on ? '1' : '0');
-  } catch {
-    // private window
-  }
+  writePref('dc.barCollapsed', on ? '1' : '0');
   set({ barCollapsed: on, historyOpen: false });
 }
 
@@ -724,114 +696,7 @@ export async function deleteBoard(file: string): Promise<void> {
   if (v) await api.remove(project, file, v);
 }
 
-// ----------------------------------------------------------------- view
-
-export function setView(v: Partial<State['view']>): void {
-  set((s) => ({ view: { ...s.view, ...v } }));
-}
-
-export function zoomAt(factor: number, sx: number, sy: number): void {
-  const { view } = get();
-  const zoom = Math.min(4, Math.max(0.05, view.zoom * factor));
-  const k = zoom / view.zoom;
-  setView({ zoom, x: sx - (sx - view.x) * k, y: sy - (sy - view.y) * k });
-}
-
-export function fitTo(rect: { x: number; y: number; w: number; h: number }, pad = 64): void {
-  const { viewport } = get();
-  const zoom = Math.min(2, Math.max(0.05, Math.min((viewport.w - pad * 2) / rect.w, (viewport.h - pad * 2) / rect.h)));
-  setView({ zoom, x: (viewport.w - rect.w * zoom) / 2 - rect.x * zoom, y: (viewport.h - rect.h * zoom) / 2 - rect.y * zoom });
-}
-
-/** Is a board or note on the current page? Items without a page sit on the first page. */
-export function onPage(c: CanvasJson, page: string | undefined, current: string): boolean {
-  const first = c.pages[0]?.id ?? '';
-  const p = page ?? first;
-  return (current || first) === p || (!page && !current);
-}
-
-export function contentBounds(c: CanvasJson, page = get().page): { x: number; y: number; w: number; h: number } | null {
-  const rects: { x: number; y: number; w: number; h: number }[] = [];
-  for (const b of Object.values(c.boards)) if (onPage(c, b.page, page)) rects.push({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 });
-  for (const n of Object.values(c.notes)) if (typeof n.x === 'number' && onPage(c, n.page, page)) rects.push(noteBox(n));
-  if (!rects.length) return null;
-  const x = Math.min(...rects.map((r) => r.x));
-  const y = Math.min(...rects.map((r) => r.y));
-  return { x, y, w: Math.max(...rects.map((r) => r.x + r.w)) - x, h: Math.max(...rects.map((r) => r.y + r.h)) - y };
-}
-
-export function fitAll(): void {
-  const b = contentBounds(canvasOf(get()));
-  if (b) fitTo(b);
-}
-
-export function focusBoard(file: string): void {
-  const c = canvasOf(get());
-  const b = c.boards[file];
-  if (!b) return;
-  if (b.page && b.page !== get().page) set({ page: b.page });
-  fitTo({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 }, 80);
-}
-
-/** Zoom to whatever is selected (Shift+2). */
-export function zoomToSelection(): void {
-  const s = get();
-  const c = canvasOf(s);
-  const sel = s.selection;
-  if (sel?.kind === 'board' || sel?.kind === 'el') focusBoard(sel.file);
-  else if (sel?.kind === 'note' && c.notes[sel.id]) {
-    const b = noteBox(c.notes[sel.id]);
-    fitTo({ x: b.x, y: b.y, w: Math.max(b.w, 200), h: Math.max(b.h, 120) }, 120);
-  } else fitAll();
-}
-
-export function visibleBoards(): string[] {
-  const s = get();
-  const c = canvasOf(s);
-  const { view, viewport } = s;
-  const x0 = -view.x / view.zoom;
-  const y0 = -view.y / view.zoom;
-  const x1 = x0 + viewport.w / view.zoom;
-  const y1 = y0 + viewport.h / view.zoom;
-  return c.order.filter((f) => {
-    const b = c.boards[f];
-    return b && onPage(c, b.page, s.page) && b.x < x1 && b.x + b.w > x0 && b.y < y1 && b.y + b.h > y0;
-  });
-}
-
-/** Screen point → canvas point. */
-export function toCanvas(sx: number, sy: number): { x: number; y: number } {
-  const { view } = get();
-  return { x: (sx - view.x) / view.zoom, y: (sy - view.y) / view.zoom };
-}
-
-// ----------------------------------------------------------------- clipboard
-
-export type Clip = { kind: 'el'; html: string } | { kind: 'items'; items: NoteEntry[] };
-let clip: Clip | null = null;
-export function setClip(c: Clip): void {
-  clip = c;
-  try {
-    navigator.clipboard?.writeText(clipText()).catch(() => {});
-  } catch {
-    // clipboard permission is optional: the in-app clipboard still works
-  }
-}
-export function getClip(): Clip | null {
-  return clip;
-}
-/** The text the in-app clipboard put on the system clipboard: pasting it back is a paste, not an import. */
-export function clipText(): string {
-  return !clip ? '' : clip.kind === 'el' ? clip.html : JSON.stringify(clip.items, null, 2);
-}
-
 // remember whether the panel is open, per browser
 useStore.subscribe((st, prev) => {
-  if (st.panelOpen !== prev.panelOpen) {
-    try {
-      localStorage.setItem('dc.panelOpen', st.panelOpen ? '1' : '0');
-    } catch {
-      // storage unavailable: the default applies next time
-    }
-  }
+  if (st.panelOpen !== prev.panelOpen) writePref('dc.panelOpen', st.panelOpen ? '1' : '0');
 });

@@ -9,13 +9,13 @@ import {
   withSlideId,
   type DcElement,
 } from '@dc/core';
-import { api } from './api';
-import { insertHtml } from './actions';
-import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from './store';
-import { replaceUrl } from './host';
-import { filesOf, type ImportTarget } from './components/ImportHere';
-import { boardEmbed } from './boards';
-import { t } from './i18n';
+import { api } from '../../api';
+import { insertHtml } from '../../actions';
+import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from '../../store';
+import { replaceUrl } from '../../host';
+import { filesOf, type ImportTarget } from '../ImportHere';
+import { boardEmbed } from '../../boards';
+import { t } from '../../i18n';
 
 /**
  * Deck commands: slides are files placed by deck.json `order`, so adding,

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { addBoard, addNote } from '../actions';
-import { onPage, setView, toCanvas, useCanvas, useStore, zoomAt } from '../store';
+import { addBoard, addNote } from '../../actions';
+import { useCanvas, useStore } from '../../store';
+import { onPage, setView, toCanvas, zoomAt } from './view';
 import { BoardView } from './Board';
 import { CanvasItem } from './Item';
 

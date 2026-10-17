@@ -23,9 +23,10 @@ import {
 import { api } from './api';
 import { t } from './i18n';
 import { ExecSession, replay } from './executor';
-import { canvasOf, continuable, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine, type LastRun } from './store';
-import { slideTitle } from './slides';
-import { motionOf } from './motion';
+import { canvasOf, continuable, deckOf, display, enqueueResult, slideIds, toast, useStore, type FastLine, type LastRun } from './store';
+import { visibleBoards } from './components/canvas/view';
+import { slideTitle } from './components/slides/slides';
+import { motionOf } from './components/motion/motion';
 
 /** A deck's outline for the model: sections and slide titles, the current one marked. */
 function deckOutline(file: string): string {

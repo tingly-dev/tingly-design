@@ -24,12 +24,13 @@ import {
   type QuerySource,
   type ToDash,
 } from '@dc/core';
-import { api } from './api';
-import { display, edit, toast, useStore } from './store';
-import { currentTheme, onTheme } from './theme';
-import { at } from './base';
-import { t } from './i18n';
-import { filesOf, type ImportTarget } from './components/ImportHere';
+import { api } from '../../api';
+import { display, edit, toast, useStore } from '../../store';
+import { currentTheme, onTheme } from '../../theme';
+import { at } from '../../base';
+import { t } from '../../i18n';
+import { filesOf, type ImportTarget } from '../ImportHere';
+import { readPref, writePref } from '../../local';
 
 /**
  * A dashboard's data, on the editor's side: it loads each dataset the page
@@ -359,12 +360,8 @@ export function staleOf(d: DatasetJson | null): boolean {
 }
 
 function savedDashTheme(): 'light' | 'dark' | null {
-  try {
-    const v = localStorage.getItem('dc.dashTheme');
-    return v === 'light' || v === 'dark' ? v : null;
-  } catch {
-    return null;
-  }
+  const v = readPref('dc.dashTheme');
+  return v === 'light' || v === 'dark' ? v : null;
 }
 
 // until someone flips the dashboard's own switch, its page follows the editor's light or dark
@@ -377,11 +374,7 @@ onTheme(() => {
 
 export function setTheme(theme: 'light' | 'dark'): void {
   dset({ theme });
-  try {
-    localStorage.setItem('dc.dashTheme', theme);
-  } catch {
-    // ignore
-  }
+  writePref('dc.dashTheme', theme);
   postFrame({ dc: 'dash-theme', theme });
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useInstalled } from '../../ds';
+import { useInstalled } from '../ds/ds';
 
 /** Number-ish CSS lengths: "16" → "16px"; keeps %, rem, auto, calc(), holes as typed. */
 export function toLength(v: string, unit = 'px'): string {

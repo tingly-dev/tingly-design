@@ -1,0 +1,766 @@
+/* Docs. */
+
+/* ----------------------------------------------------------------- docs */
+
+
+.app.docs {
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 1fr;
+  background: var(--panel-2);
+  --doc-sans: system-ui, -apple-system, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --doc-serif: 'Source Serif 4', Georgia, 'Songti SC', 'Noto Serif SC', serif;
+}
+
+
+.app.docs.with-rail {
+  grid-template-columns: 220px 1fr 320px;
+}
+
+
+.dashbar .badge.blue {
+  background: var(--accent);
+}
+
+
+.popwrap {
+  position: relative;
+}
+
+
+.popmenu {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  z-index: 40;
+  min-width: 200px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.popmenu > button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+
+.popmenu > button:hover {
+  background: var(--hover);
+}
+
+
+.popmenu.settings {
+  padding: 10px 12px;
+  gap: 4px;
+}
+
+
+.popmenu.settings label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+
+.seg button {
+  flex: 1;
+  border: 0;
+  background: none;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+
+.seg button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+
+.doctabs {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 12px 8px;
+  overflow: auto;
+  min-height: 0;
+}
+
+
+.doctabs h3,
+.crail h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 4px 6px 6px;
+}
+
+
+.doctabs ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+
+.tabrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+}
+
+
+.tabrow:hover {
+  background: var(--hover);
+}
+
+
+.tabrow.on {
+  background: var(--accent-soft);
+}
+
+
+.tabrow.sub {
+  padding-left: 14px;
+}
+
+
+.tabrow .tabname {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 7px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-2);
+}
+
+
+.tabrow.on .tabname {
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+
+.tabrow input {
+  flex: 1;
+  min-width: 0;
+  margin: 3px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+
+.tabrow .more {
+  opacity: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0 6px;
+  color: var(--muted);
+}
+
+
+.tabrow:hover .more,
+.tabrow.on .more {
+  opacity: 1;
+}
+
+
+.tabmenu {
+  position: absolute;
+  right: 4px;
+  top: 30px;
+  z-index: 30;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: var(--float-shadow);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 110px;
+}
+
+
+.tabmenu button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+
+.tabmenu button:hover {
+  background: var(--hover);
+}
+
+
+.tabmenu .danger {
+  color: var(--danger);
+}
+
+
+.addtab {
+  margin: 6px 4px 14px;
+}
+
+
+.doctabs .outline {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.doctabs .outline button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.doctabs .outline button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+
+.docmain {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+
+.doctools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  min-height: 42px;
+  box-sizing: border-box;
+}
+
+
+.doctools button,
+.bubble button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+
+.doctools button:hover,
+.bubble button:hover {
+  background: var(--hover);
+}
+
+
+.doctools button.on,
+.bubble button.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+
+.doctools select {
+  height: 28px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background-color: var(--panel);
+  padding: 0 24px 0 8px;
+}
+
+
+.doctools button svg,
+.bubble button svg {
+  display: block;
+}
+
+
+.doctools button,
+.bubble button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+
+.doctools .sep,
+.bubble .sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+
+.docscroll {
+  flex: 1;
+  overflow: auto;
+  padding: 32px 24px 140px;
+}
+
+
+.docpage {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--line);
+  padding: 48px 64px 80px;
+  min-height: calc(100% - 40px);
+  box-sizing: border-box;
+}
+
+
+.app.docs[data-width='wide'] .docpage {
+  max-width: 1040px;
+}
+
+
+.app.docs .dsask {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: min(640px, calc(100% - 32px));
+}
+
+
+.docbody {
+  outline: none;
+  font: 16px/1.75 var(--doc-sans);
+  color: var(--ink);
+}
+
+
+.app.docs[data-bfont='serif'] .docbody {
+  font-family: var(--doc-serif);
+}
+
+
+.docbody h1,
+.docbody h2,
+.docbody h3,
+.docbody h4 {
+  font-family: var(--doc-sans);
+  line-height: 1.3;
+  margin: 1.4em 0 0.5em;
+}
+
+
+.app.docs[data-hfont='serif'] .docbody :is(h1, h2, h3, h4) {
+  font-family: var(--doc-serif);
+  font-weight: 600;
+}
+
+
+.docbody h1 {
+  font-size: 30px;
+}
+
+
+.docbody h2 {
+  font-size: 22px;
+}
+
+
+.docbody h3 {
+  font-size: 18px;
+}
+
+
+.docbody > :first-child {
+  margin-top: 0;
+}
+
+
+.docbody p {
+  margin: 0.6em 0;
+}
+
+
+.docbody ul,
+.docbody ol {
+  padding-left: 1.5em;
+}
+
+
+.docbody ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+
+.docbody ul[data-type='taskList'] li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+
+.docbody ul[data-type='taskList'] li > label {
+  margin-top: 0.3em;
+}
+
+
+.docbody ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+
+.docbody blockquote {
+  margin: 0.8em 0;
+  padding-left: 16px;
+  border-left: 3px solid var(--line-2);
+  color: var(--ink-2);
+}
+
+
+.docbody pre {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font: 13px/1.6 var(--mono);
+  overflow: auto;
+}
+
+
+.docbody code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--panel-2);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+
+.docbody pre code {
+  background: none;
+  padding: 0;
+}
+
+
+.docbody table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+
+
+.docbody td,
+.docbody th {
+  border: 1px solid var(--line-2);
+  padding: 6px 10px;
+  vertical-align: top;
+  min-width: 60px;
+}
+
+
+.docbody th {
+  background: var(--panel-2);
+  font-weight: 600;
+  text-align: left;
+}
+
+
+.docbody td > p,
+.docbody th > p {
+  margin: 0;
+}
+
+
+.docbody .selectedCell {
+  background: var(--accent-soft);
+}
+
+
+.docbody hr {
+  border: 0;
+  border-top: 1px solid var(--line-2);
+  margin: 1.6em 0;
+}
+
+
+.docbody img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+
+.docbody img.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}
+
+
+.docbody a {
+  color: var(--accent-ink);
+}
+
+
+.docbody mark {
+  background: var(--mark);
+  color: inherit;
+  padding: 0 1px;
+}
+
+
+.docbody p.is-empty::before,
+.docbody h1.is-empty::before,
+.docbody h2.is-empty::before,
+.docbody h3.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+
+.docbody .cmark {
+  background: var(--comment);
+  border-bottom: 2px solid var(--comment-line);
+  cursor: pointer;
+}
+
+
+.docbody .cmark.on {
+  background: var(--comment-on);
+}
+
+
+.docbody .cmark.done {
+  background: none;
+  border-bottom: 1px dashed var(--faint);
+}
+
+
+.bubble {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+  padding: 4px;
+}
+
+
+.bubble .spark {
+  color: var(--actor-claude);
+}
+
+
+.bubble .askin {
+  width: 140px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-left: 2px;
+}
+
+
+.slashmenu {
+  position: fixed;
+  z-index: 50;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+
+.slashmenu button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+
+.slashmenu button[aria-selected='true'],
+.slashmenu button:hover {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+
+.sparkpanel {
+  position: absolute;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 32px));
+  z-index: 30;
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: var(--float-shadow);
+  padding: 12px 14px;
+}
+
+
+.sparkpanel .row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+
+.sparktext {
+  white-space: pre-wrap;
+  font: 13.5px/1.6 var(--doc-sans, sans-serif);
+  max-height: 300px;
+  overflow: auto;
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0 0;
+}
+
+
+.crail {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  padding: 12px 12px 80px;
+  min-height: 0;
+}
+
+
+.crail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+
+.cthread {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+
+.cthread.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  cursor: default;
+}
+
+
+.cthread.done {
+  opacity: 0.6;
+}
+
+
+.cquote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 3px solid var(--comment-line);
+  color: var(--muted);
+  font-size: 12.5px;
+  max-height: 3.2em;
+  overflow: hidden;
+}
+
+
+.ccomment {
+  margin: 6px 0;
+}
+
+
+.cmeta b {
+  font-size: 12.5px;
+}
+
+
+.cmeta b.claude {
+  color: var(--actor-claude);
+}
+
+
+.ctext {
+  white-space: pre-wrap;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+
+.ccompose textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+
+.cthread .row,
+.ccompose .row {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+

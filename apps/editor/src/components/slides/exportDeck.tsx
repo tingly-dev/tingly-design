@@ -2,28 +2,20 @@ import { SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFr
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
-import { isHidden, notesOf, slideTitle } from '../../slides';
+import { isHidden, notesOf, slideTitle } from './slides';
 import { t } from '../../i18n';
 import { fileStem, htmlToPng, saveImage } from '../../imageExport';
 import { SERVER } from '../../base';
 import { pdfHint, printWindow, savePdf } from '../../pdfExport';
 import type { ExportItem } from '../FileMenu';
 import { FileText, FilePdf, Picture } from '../icons';
+import { download } from '../../local';
 
 /**
  * Downloads: one self-contained HTML file that plays the deck (images inlined,
  * embeds running in sandboxed frames), the same page laid out one slide per
  * page for the browser's Save as PDF, and the speaker notes as text.
  */
-
-function download(name: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 

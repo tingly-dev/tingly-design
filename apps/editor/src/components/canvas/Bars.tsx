@@ -1,9 +1,10 @@
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { addPage, renamePage } from '../actions';
-import { editCanvas, fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
-import { Menu, MenuItem } from './Menu';
+import { addPage, renamePage } from '../../actions';
+import { editCanvas, useCanvas, useStore, type Tool } from '../../store';
+import { fitAll, zoomAt, zoomToSelection, setView } from './view';
+import { Menu, MenuItem } from '../Menu';
 import {
   ArrowI,
   Caret,
@@ -13,17 +14,16 @@ import {
   LineI,
   Note,
   Oval,
-  Panel,
   Pen,
   Play,
   Rect,
   Shapes,
   TextT,
-} from './icons';
-import { FileMenu } from './FileMenu';
+} from '../icons';
+import { FileMenu } from '../FileMenu';
 import { canvasExportItems } from './Board';
-import { canvasImport } from '../canvasImport';
-import { TopBar, ProjectTitle, BarButton } from './TopBar';
+import { canvasImport } from './canvasImport';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },
@@ -111,10 +111,10 @@ export function CanvasTopBar() {
   const { t } = useTranslation();
   const canvas = useCanvas();
   const mode = useStore((s) => s.mode);
-  const panelOpen = useStore((s) => s.panelOpen);
   return (
     <TopBar
       title={<ProjectTitle value={canvas.title} label={t('panel.canvas.nameLabel')} hint={t('common.topbar.rename')} onRename={(v) => editCanvas((c) => (c.title = v), `title → ${v}`)} />}
+      panel={{ label: t('app.view.panel'), hint: t('app.view.panelHint') }}
     >
       <BarButton
         icon={<Play />}
@@ -124,15 +124,6 @@ export function CanvasTopBar() {
         onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
       />
       <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
-      <button
-        className="tb"
-        aria-pressed={panelOpen}
-        aria-label={t('app.view.panel')}
-        title={t('app.view.panelHint')}
-        onClick={() => useStore.setState({ panelOpen: !panelOpen })}
-      >
-        <Panel />
-      </button>
     </TopBar>
   );
 }

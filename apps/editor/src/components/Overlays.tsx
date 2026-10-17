@@ -16,13 +16,15 @@ import {
   wrapSelection,
 } from '../actions';
 import { api, type GitState } from '../api';
-import { canvasOf, display, getClip, toast, useCanvas, useStore } from '../store';
-import { TEXT_COLORS, sizeOf } from './Item';
-import { copyPng } from './Board';
+import { canvasOf, display, toast, useCanvas, useStore } from '../store';
+import { getClip } from '../clipboard';
+import { TEXT_COLORS, sizeOf } from './canvas/Item';
+import { copyPng } from './canvas/Board';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';
 import { currentLanguage, htmlLang } from '../i18n';
+import { Dialog } from './Dialog';
 
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
@@ -252,11 +254,8 @@ function CommitDialog({ project, onClose }: { project: string; onClose: () => vo
       (g) => live && setState(g),
       (e: Error) => (toast(e.message, 'error'), onClose()),
     );
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', key);
     return () => {
       live = false;
-      window.removeEventListener('keydown', key);
     };
   }, [project, onClose]);
   const fresh = !!state && !state.repo;
@@ -269,43 +268,27 @@ function CommitDialog({ project, onClose }: { project: string; onClose: () => vo
     onClose();
   };
   return (
-    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form
-        className="ldialog lcommit"
-        role="dialog"
-        aria-label={t('canvas.journal.commit')}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <header>
-          <h2>{t('canvas.journal.commit')}</h2>
-          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
-            ×
-          </button>
-        </header>
-        <div className="commit-where" role="status" data-state={!state ? 'checking' : fresh ? 'new' : 'repo'}>
-          {!state
-            ? t('canvas.journal.commitChecking')
-            : fresh
-              ? t('canvas.journal.commitNew', { folder: state.folder })
-              : state.branch
-                ? t('canvas.journal.commitTo', { repo: state.repo, branch: state.branch })
-                : t('canvas.journal.commitToDetached', { repo: state.repo })}
-          {state && !fresh && <span className="commit-changes">{nothing ? t('canvas.journal.commitNothing') : t('canvas.journal.commitChanges', { count: state.changes })}</span>}
-        </div>
-        <input autoFocus className="input" aria-label={t('canvas.journal.commitPrompt')} placeholder={t('canvas.journal.commitPrompt')} value={message} onChange={(e) => setMessage(e.target.value)} />
-        <footer>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button className="btn primary" type="submit" disabled={!state || busy || nothing || !message.trim()}>
-            {fresh ? t('canvas.journal.commitCreate') : t('canvas.journal.commitDo')}
-          </button>
-        </footer>
-      </form>
-    </div>
+    <Dialog label={t('canvas.journal.commit')} className="lcommit" onClose={onClose} onSubmit={() => void submit()}>
+      <div className="commit-where" role="status" data-state={!state ? 'checking' : fresh ? 'new' : 'repo'}>
+        {!state
+          ? t('canvas.journal.commitChecking')
+          : fresh
+            ? t('canvas.journal.commitNew', { folder: state.folder })
+            : state.branch
+              ? t('canvas.journal.commitTo', { repo: state.repo, branch: state.branch })
+              : t('canvas.journal.commitToDetached', { repo: state.repo })}
+        {state && !fresh && <span className="commit-changes">{nothing ? t('canvas.journal.commitNothing') : t('canvas.journal.commitChanges', { count: state.changes })}</span>}
+      </div>
+      <input autoFocus className="input" aria-label={t('canvas.journal.commitPrompt')} placeholder={t('canvas.journal.commitPrompt')} value={message} onChange={(e) => setMessage(e.target.value)} />
+      <footer>
+        <button type="button" className="btn" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button className="btn primary" type="submit" disabled={!state || busy || nothing || !message.trim()}>
+          {fresh ? t('canvas.journal.commitCreate') : t('canvas.journal.commitDo')}
+        </button>
+      </footer>
+    </Dialog>
   );
 }
 

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { HIDE_ATTR, LOCK_ATTR, layerTree, pathTo, slideFile, type Layer, type NoteEntry } from '@dc/core';
-import { display, editElement, focusBoard, onPage, parsed, useCanvas, useStore } from '../../store';
+import { display, editElement, parsed, useCanvas, useStore } from '../../store';
+import { focusBoard, onPage } from '../canvas/view';
 import { updateBoard, updateNote } from '../../actions';
 import { Chevron, Eye, EyeOff, Lock, RoleIcon, Unlock } from '../icons';
 
