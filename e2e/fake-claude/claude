@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+// A stand-in for the `claude` CLI for the conversation suite: records how it was called ($FAKE_CLAUDE_LOG),
+// answers with a session id (the one it was resumed with, else a new one) and a result.
+import fs from 'fs';
+import { randomUUID } from 'crypto';
+const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('0.0.0-fake'); process.exit(0); }
+const i = args.indexOf('--resume');
+const resume = i >= 0 ? args[i + 1] : null;
+const log = (o) => fs.appendFileSync(process.env.FAKE_CLAUDE_LOG || '/tmp/fake-claude.log', JSON.stringify(o) + '\n');
+log({ ev: 'start', resume });
+if (resume === '00000000-0000-4000-8000-000000000000') {
+  process.stderr.write(`No conversation found with session ID: ${resume}\n`);
+  log({ ev: 'end', code: 1 });
+  process.exit(1);
+}
+const session = resume || randomUUID();
+console.log(JSON.stringify({ type: 'system', subtype: 'init', session_id: session }));
+setTimeout(() => {
+  console.log(JSON.stringify({ type: 'result', result: 'ok', is_error: false, session_id: session }));
+  log({ ev: 'end', code: 0, session });
+}, 150);

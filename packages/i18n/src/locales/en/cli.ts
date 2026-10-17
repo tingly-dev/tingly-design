@@ -48,7 +48,8 @@ Options:
   --limit <n>           history: the last n entries (default 20, all with --since)
   --file <file>         prompt: the board, slide, tab or scene the request is about
   --fast                prompt: fast AI instead of Claude Code (canvas, slides, motion)
-  --continue <session>  prompt: continue the conversation an earlier prompt printed
+  --continue <session>  prompt: continue a particular conversation an earlier prompt printed
+  --new                 prompt: start a new conversation (the project's last one is continued by default)
   --force               skills add: replace a copy that differs from this version's
   -v, --version         the version
   -h, --help            this help`,
@@ -152,7 +153,7 @@ Options:
   promptChanged_one: '{{count}} change in the history:',
   promptChanged_other: '{{count}} changes in the history:',
   promptNoChanges: 'No files changed.',
-  promptContinue: 'To continue this conversation: tingly-design prompt {{project}} "…" --continue {{session}}',
+  promptContinue: 'The next prompt on {{project}} continues this conversation (session {{session}}); add --new to start over.',
   notListed: '{{path}} is not in this editor’s launcher. Open it there first (Open a folder), or export it with the command line.',
   skillsUsage: 'Use tingly-design skills to list them, or tingly-design skills add [folder] to copy them into a folder.',
   skill: {

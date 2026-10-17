@@ -12,7 +12,7 @@ import { promisify } from 'node:util';
 const run = promisify(execFile);
 
 /** What the server keeps beside a project's files for this machine only: the change log, dashboard runs, rendered videos. Never committed. */
-const LOCAL = ['.journal.jsonl', '.runs.json', 'renders/'];
+const LOCAL = ['.journal.jsonl', '.runs.json', '.claude-session.json', 'renders/'];
 const PATHS = ['.', ...LOCAL.map((f) => `:(exclude)${f.replace(/\/$/, '')}`)];
 const git = (cwd: string, ...args: string[]) => run('git', args, { cwd }).then((r) => r.stdout.trim());
 

@@ -3,6 +3,7 @@
   "交给 Claude Code": {"design": ["run_feed"], "slides": ["run_feed"], "design-system": ["run_feed"], "dashboard": ["run_feed"], "docs": ["run_feed"], "motion": ["run_feed"]},
   "运行反馈": {"design": ["run_feed"], "slides": ["run_feed"], "design-system": ["run_feed"], "dashboard": ["run_feed"], "docs": ["run_feed"], "motion": ["run_feed"]},
   "请求栏面板": {"design": ["dock"], "slides": ["dock"], "design-system": ["dock"], "dashboard": ["dock"], "docs": ["dock"], "motion": ["dock"]},
+  "Claude Code 对话": {"design": ["conversation"], "slides": ["conversation"], "design-system": ["conversation"], "dashboard": ["conversation"], "docs": ["conversation"], "motion": ["conversation"]},
   "手写 jQuery": {"design": ["e2e"], "slides": ["slides"], "motion": "no e2e checks this kind yet"},
   "附件": {"design": ["attach"], "slides": ["attach"], "design-system": "no e2e checks this kind yet", "dashboard": "no e2e checks this kind yet", "docs": ["attach"], "motion": "no e2e checks this kind yet"},
   "版本、409 重放、协作": {"design": ["e2e"], "slides": "no e2e checks this kind yet", "design-system": ["ds"], "dashboard": ["dash"], "docs": ["docs"], "motion": "no e2e checks this kind yet"},
