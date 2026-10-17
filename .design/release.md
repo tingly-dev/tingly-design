@@ -26,7 +26,9 @@
 
 ## 怎么触发
 
-推一个 `vX.Y.Z` tag，版本必须和根 `package.json` 的 `version` 一致，不一致直接失败（先改版本、合进 main、再打 tag）。`vX.Y.Z-rc.N` 这类预发布版发到 npm 的 `next` dist-tag，GitHub release 标成 prerelease；正式版走 `latest`。
+推一个 `vX.Y.Z` tag 就发这个版本。tag 就是版本号：build 先把它写进根 `package.json`，再打 bundle，所以发版前不用在 main 上改版本（和 Tingly Box 的 `npm.yml` 一样）。仓库里的 `version` 只是本地开发时显示的值。tag 带后缀（`-rc.1`、`-beta` 等）就发到 npm 的 `rc` dist-tag，GitHub release 标成 prerelease；不带后缀走 `latest`。格式不对（不是 `vX.Y.Z` 或 `vX.Y.Z-<后缀>`）直接失败。
+
+考虑过让 tag 必须和 `package.json` 一致、先提 PR 改版本：多一个只改一行的 PR，还多一种失败（忘了改）。版本既然只在发版时有意义，就由 tag 说了算。dist-tag 用 `rc` 而不是 npm 常见的 `next`，跟 Tingly Box 统一，宿主和用户只记一套。
 
 三个 job 依次跑：
 
