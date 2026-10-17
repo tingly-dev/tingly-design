@@ -55,7 +55,7 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 ## E2E in CI
 
-`.github/workflows/e2e.yml` runs `pnpm e2e` on three schedules, because the full set is too slow for every pull request: every night on main and by hand from the Actions tab (the full set; a red night opens one issue labelled `e2e-patrol`, or comments on the open one, and a green night closes it), before every release (the full set, blocking), and on a pull request that touches `apps/`, `packages/`, `e2e/` or `projects/` (`--smoke`). The report and the logs are the run's `e2e-report` artifact. Why it is split this way: `.design/harness.md`.
+`.github/workflows/e2e.yml` runs `pnpm e2e` on three schedules, because the full set is too slow for every pull request: every night on main and by hand from the Actions tab, through `e2e-patrol.yml` (the full set; a red night opens one issue labelled `e2e-patrol`, or comments on the open one, and a green night closes it; a run by hand only reports), before every release (the full set, blocking), and on a pull request that touches `apps/`, `packages/`, `e2e/` or `projects/` (`--smoke`). The report and the logs are the run's `e2e-report` artifact. Why it is split this way: `.design/harness.md`.
 
 ## Releasing
 

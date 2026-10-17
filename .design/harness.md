@@ -17,7 +17,7 @@
 - `DC_CHROME` 没设时用 Playwright 的无头版（完整版 Chromium 无头时点缩放后的画板会点偏）。
 - `delegate` 调真实的 `claude`，只在 `--real` 时跑。
 
-**全量 e2e 不进每个 PR。** 整套大约十分钟，还要装浏览器、起几轮服务，每个 PR 都跑代价太大。分三种节奏（`.github/workflows/e2e.yml`）：
+**全量 e2e 不进每个 PR。** 整套大约十分钟，还要装浏览器、起几轮服务，每个 PR 都跑代价太大。分三种节奏（`.github/workflows/e2e.yml` 跑套件，只读权限；每晚的巡检和开关 issue 在 `e2e-patrol.yml` 里调用它，这样发布流程调用 `e2e.yml` 时不用多给权限）：
 
 | 节奏 | 跑什么 | 红了怎样 |
 |---|---|---|
