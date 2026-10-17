@@ -10,7 +10,9 @@ pnpm tingly-design --help   # the command line from source (docs: cli.md)
 
 The other suites select elements by their Chinese labels, so they run the browser with a `zh-CN` locale; `i18n.py` covers English.
 
-The end-to-end tests need `pnpm dev` running and Python Playwright (`pip install playwright`). Set `DC_CHROME=/path/to/chrome` to use another browser; in a headless environment use Playwright's `chromium_headless_shell`, because full Chromium in headless mode misplaces clicks inside a zoomed artboard.
+`pnpm e2e` runs every suite below but `delegate` with one command: it starts what each group needs (`pnpm dev` with the mock model, `pnpm dev` with no model for `ai_settings`, `pnpm build` for the suites that start their own server, `pnpm bundle` for `embed`), runs the suites one after another and prints one table; `e2e/out/report.md` and `report.json` say which checks failed, with each suite's output in `e2e/out/logs/`. `pnpm e2e slides docs` runs only those, `--smoke` the per-PR subset, `--list` shows the groups, `--real` adds `delegate`. The suites edit the sample projects and put them back with `git checkout`, so it refuses to start while `projects/` has uncommitted changes (`--force` runs anyway). The whole set takes about ten minutes.
+
+Each suite can still be run on its own. The end-to-end tests need `pnpm dev` running and Python Playwright (`pip install -r e2e/requirements.txt`). Set `DC_CHROME=/path/to/chrome` to use another browser (`pnpm e2e` picks Playwright's headless shell when it is installed); in a headless environment use Playwright's `chromium_headless_shell`, because full Chromium in headless mode misplaces clicks inside a zoomed artboard.
 
 | Command | Covers |
 |---|---|

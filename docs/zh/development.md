@@ -10,7 +10,9 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 
 其他套件按中文的标签找元素，所以浏览器用 `zh-CN` 语言运行；英文由 `i18n.py` 覆盖。
 
-端到端测试需要先 `pnpm dev`，以及 Python 版 Playwright（`pip install playwright`）。用别的浏览器时设置 `DC_CHROME=/path/to/chrome`；在无界面环境里请用 Playwright 的 `chromium_headless_shell`，完整版 Chromium 无头运行时点击缩放后的画板会点偏。
+`pnpm e2e` 一条命令跑完下表里除 `delegate` 以外的所有套件：按组先起好各自要的东西（带 mock 模型的 `pnpm dev`；给 `ai_settings` 用的不配模型的 `pnpm dev`；自己起服务的套件先 `pnpm build`；`embed` 先 `pnpm bundle`），逐个跑完，最后打印一张表；哪些检查没过写在 `e2e/out/report.md` 和 `report.json`，每个套件的输出在 `e2e/out/logs/`。`pnpm e2e slides docs` 只跑这几个，`--smoke` 跑 PR 用的小集合，`--list` 列出分组，`--real` 加上 `delegate`。套件会改示例项目，再用 `git checkout` 改回去，所以 `projects/` 里有没提交的改动时它不开跑（`--force` 强制跑）。整套大约十分钟。
+
+单个套件仍然可以单独跑。端到端测试需要先 `pnpm dev`，以及 Python 版 Playwright（`pip install -r e2e/requirements.txt`）。用别的浏览器时设置 `DC_CHROME=/path/to/chrome`（装了 Playwright 的无头版时 `pnpm e2e` 会自动用它）；在无界面环境里请用 Playwright 的 `chromium_headless_shell`，完整版 Chromium 无头运行时点击缩放后的画板会点偏。
 
 | 命令 | 覆盖 |
 |---|---|

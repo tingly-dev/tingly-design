@@ -24,7 +24,8 @@
     "typecheck": "pnpm -r typecheck",
     "bundle": "node scripts/bundle.mjs",
     "dc-import": "node packages/import/bin/dc-import.mjs",
-    "tingly-design": "tsx apps/server/src/cli.ts"
+    "tingly-design": "tsx apps/server/src/cli.ts",
+    "e2e": "python3 e2e/run.py"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

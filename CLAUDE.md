@@ -101,6 +101,7 @@ artifact/         private reference material; never publish
 ```bash
 pnpm dev            # server + editor
 pnpm test           # core, import and i18n unit tests
+pnpm e2e            # every e2e suite with what each needs started, one table and e2e/out/report.md (--smoke, --list, names)
 pnpm typecheck
 pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm package)
@@ -113,7 +114,7 @@ The command line names each command after the editor's word for the same action 
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`); add new suites to both language versions of that table.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
 
 # Issues
 
