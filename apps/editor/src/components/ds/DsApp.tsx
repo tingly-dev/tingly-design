@@ -15,7 +15,8 @@ import { currentTheme } from '../../theme';
 import { replaceUrl } from '../../host';
 import { useTranslation } from 'react-i18next';
 
-type View = 'overview' | 'colors' | 'type' | 'space' | 'components' | 'assets' | 'issues';
+const ALL_VIEWS = ['overview', 'colors', 'type', 'space', 'components', 'assets', 'issues'] as const;
+type View = (typeof ALL_VIEWS)[number];
 
 const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
 
@@ -182,6 +183,7 @@ export function DsApp() {
   <FileMenu
         target={dsImport}
         label={tr('ds.app.label')}
+        pick={(what) => ALL_VIEWS.includes(what as View) && (setView(what as View), true)}
         items={[
           {
             id: 'png',

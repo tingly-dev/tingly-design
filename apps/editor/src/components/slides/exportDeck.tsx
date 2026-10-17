@@ -2,7 +2,7 @@ import { SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFr
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
-import { isHidden, notesOf, slideTitle } from './slides';
+import { goToSlide, isHidden, notesOf, slideTitle } from './slides';
 import { t } from '../../i18n';
 import { fileStem, htmlToPng, saveImage } from '../../imageExport';
 import { SERVER } from '../../base';
@@ -211,6 +211,15 @@ export async function exportSlideImages(which: string | null | true): Promise<vo
     if (!(await saveImage(t('common.image.fileSlide', { name: stem, n }), () => slidePng(id, 1)))) return;
   }
   if (ids.length > 1) toast(t('slides.export.imagesDone', { total: ids.length }));
+}
+
+/** Shows one slide, by its id or its number in the deck (headless.ts). */
+export function pickSlide(what: string): boolean {
+  const ids = slideIds(useStore.getState());
+  const id = ids.includes(what) ? what : /^\d+$/.test(what) ? ids[Number(what) - 1] : undefined;
+  if (!id) return false;
+  goToSlide(id);
+  return true;
 }
 
 /** What the menu offers for a deck, in the order people ask for it: the one-file PDF first. */

@@ -50,4 +50,11 @@ CLI=(node "$DIR/cli.mjs" --projects "$WORK/projects")
 "${CLI[@]}" open smoke-deck --json | node -e 'const o=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!o.running || !o.url.includes("/design/?p=smoke-deck")) process.exit(1)' || { echo "❌ tingly-design open did not find the running server"; exit 1; }
 curl -fsS "$BASE/api/projects" | grep -q '"smoke-deck"' || { echo "❌ the running server does not list the deck tingly-design new made"; exit 1; }
 "${CLI[@]}" history smoke-deck --json > /dev/null || { echo "❌ tingly-design history failed"; exit 1; }
-echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates, checks, finds the running server and reads the history"
+# exports other than zip are drawn by that editor in Chrome (CI runners need its sandbox off)
+if "${CLI[@]}" check --json | node -e 'process.exit(JSON.parse(require("fs").readFileSync(0,"utf8")).chrome ? 0 : 1)'; then
+  DC_CHROME_SANDBOX=0 "${CLI[@]}" export smoke-deck --as png --slide 1 --out "$WORK/out" > /dev/null || { echo "❌ tingly-design export --as png failed"; exit 1; }
+  ls "$WORK/out"/*.png > /dev/null 2>&1 || { echo "❌ tingly-design export --as png wrote no picture"; exit 1; }
+else
+  echo "(no Chrome here: skipping the picture export)"
+fi
+echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates, checks, finds the running server, reads the history and exports a picture"

@@ -126,7 +126,7 @@ export function ComponentsView({ t, index, theme }: { t: DsTokens; index: DsInde
       {bundle !== undefined && (
         <div className="dsgroup">
           <h3>bundle</h3>
-          <p className="hint">{tr('ds.components.bundleHint', { ns: index.namespace })}</p>
+          <p className="hint">{tr('ds.components.bundleHint', { name: index.namespace })}</p>
         </div>
       )}
     </section>

@@ -12,12 +12,15 @@ export default {
   new <类型> <名字或文件夹>        新建项目：canvas、slides、design-system、dashboard、doc、motion
   list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）
   check [项目]                     一个项目的问题，或这台机器能做什么
-  export <项目> --as <格式>        导出：任何项目都可导出 zip（整个项目）；动效还可导出 mp4、gif 或 png（封面）
+  export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
+                                   画布 png；幻灯片 pdf、png、html、notes；文档 pdf、html、md、png；
+                                   设计系统和看板 png；动效 mp4、gif、png（封面）
   import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
   history <项目>                   改动记录：谁改了哪个文件，最新的在最后
 
 项目可以是启动页里的名字，也可以是它所在文件夹的路径。编辑器已经在这个项目文件夹上打开时，
 open 和 new 交给它来做：不会再起一个服务，启动页上马上能看到。
+除了 zip 和动效，导出由编辑器在 Chrome 里画：用已经打开的编辑器，或者为这次导出起一个、导完就停。
 
 选项：
   --projects <文件夹>   项目文件夹（默认：{{projects}}）
@@ -27,6 +30,11 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --title <文字>        new：启动页上显示的标题
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
+  --board、--slide、--tab、--view <名字>   export：只导出一个画板（文件名或标题）、一页幻灯片（编号或第几页）、
+                        一个标签页（编号或标题）或设计系统的一个视图，而不是全部
+  --scale 2             导出画布：PNG @2x
+  --snapshots           check：另外把每个画板、幻灯片、标签页、视图或封面画一遍，报告画不出来的，
+                        图留在 renders/check/（或 --out）里可以看
   --out <文件夹>        export：输出位置（默认：项目的 renders/；zip 放在当前文件夹）
   --files-only          export --as zip：不带改动记录和装进来的设计系统
   --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置
@@ -68,6 +76,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     issue: '{{message}}',
     badDataset: '{{message}}',
     badTokens: '{{message}}',
+    snapshot: '画不出来：{{message}}',
   },
   canvasRules: {
     'order-unknown': 'order 里的 {{file}} 不是画板',
@@ -100,9 +109,18 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     running: '编辑器正在 {{url}} 运行（进程 {{pid}}）；open 和 new 会交给它。',
     notRunning: '这个项目文件夹上没有运行中的编辑器；open 会启动一个。',
   },
-  exportKind: '命令行里{{kind}}可以导出 zip（整个项目），其他格式请在编辑器里用"导出"。动效还可以导出 mp4、gif 或 png。',
-  exportAs: '动效不能导出 --as {{as}}，请用 zip、mp4、gif 或 png。',
-  needAs: '请说明导出什么：tingly-design export {{project}} --as zip|mp4|gif|png',
+  exportAs: '{{kind}}不能导出 --as {{as}}，请用 {{formats}}。',
+  needAs: '请说明导出什么：tingly-design export {{project}} --as <格式>（任何项目都可以用 zip；各类型的格式见 tingly-design --help）',
+  opening: '正在 Chrome 里打开编辑器…',
+  noChrome: '这种导出由编辑器在 Chrome 或 Edge 里画，这台机器上两个都没有。请安装一个，或设置 DC_CHROME。',
+  noEditorBuild: '这种导出由编辑器的页面来画，这里还没有构建。请运行 pnpm build，或者打开编辑器（pnpm dev）后再导出。',
+  noEditorPage: '编辑器没能在 Chrome 里打开（{{detail}}）。',
+  noPick: '这个项目里没有 {{what}}',
+  notOffered: '这里的"导出"菜单没有 {{item}}',
+  nothingSaved: '什么都没有保存',
+  exportFailed: '{{what}}：{{error}}',
+  snapshotsWrote_one: '{{count}} 张图，在 {{dir}}',
+  snapshotsWrote_other: '{{count}} 张图，在 {{dir}}',
   needZip: '请给出要导入的 .zip：tingly-design import <文件.zip>',
   noFileAt: '{{path}} 没有这个文件',
   imported: '已导入 {{name}}，位于 {{path}}',

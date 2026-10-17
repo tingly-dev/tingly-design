@@ -1,6 +1,6 @@
 # 命令行 `tingly-design`
 
-已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
+已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
 
 ## 1. 问题
 
@@ -26,8 +26,8 @@
 | `serve` | 只起服务，给宿主或常驻服务用；bundle 的 `server.mjs` 就是它 | 已实施 |
 | `new <kind> <name 或文件夹>` | 和新建对话框一样（`createProject`），`--title`、`--size WxH`；给的是路径时建在那里并登记；编辑器在运行时交给它建 | 已实施 |
 | `list [project]` | 不带项目：启动页上的项目；带项目：里面有什么（画板、幻灯片、场景、标签页、数据集、令牌） | 已实施 |
-| `check [project]` | 带项目：编辑器会报的问题，有错时退出码 1；不带：这台机器能做什么（Chrome、ffmpeg、`claude`、快速 AI） | 已实施；还不画页面（§6） |
-| `export <project> --as <fmt>` | 和导出菜单同名；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；动效另有 `mp4`、`gif`、`png`（封面） | zip 和动效已实施；其他类型的其他格式等无头页面（§6） |
+| `check [project]` | 带项目：编辑器会报的问题，有错时退出码 1；`--snapshots` 再把每个画板、幻灯片、标签页、视图或封面画一遍，画不出来的算错，图留下来看；不带：这台机器能做什么（Chrome、ffmpeg、`claude`、快速 AI） | 已实施 |
+| `export <project> --as <fmt>` | 和导出菜单同名同做法；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；画布 `png`，幻灯片 `pdf`、`png`、`html`、`notes`，文档 `pdf`、`html`、`md`、`png`，设计系统和看板 `png`（由编辑器的页面画，见 §4）；动效 `mp4`、`gif`、`png`（封面，由 `render.ts` 画）；`--board`、`--slide`、`--tab`、`--view` 只要一个 | 已实施 |
 | `import <file.zip>` | 和启动页的“导入项目（.zip）”同名同做法 | 已实施；导入 HTML、SVG 还没有 |
 | `history <project>` | 改动记录：时间、谁改的、哪个文件、改了什么；`--since` 接一条记录的编号、一个时间或多久以前 | 已实施 |
 | `prompt`、`skills`、`mcp` | 见 §6 | 方案 |
@@ -63,20 +63,31 @@
 - **`new`** 交给它建（`POST /api/projects`）。这不只是为了启动页马上出现：链接表（`.links.json`）每个服务进程在内存里各存一份、改了整份写回，命令行自己登记一个链接，正在运行的编辑器既看不见它，下次登记别的文件夹时还会把它覆盖掉。
 - **其余命令**（`list`、`check`、`export`、`import`、`history`）照旧直接读写文件，不经过它：读不改变什么；`import` 写进项目文件夹，监听会把新项目报给编辑器；`history` 读 `.journal.jsonl`，服务端是追加写，两边读到的一样。
 
-考虑过、没做的：所有命令都走正在运行的服务，没有就悄悄起一个、用完关掉。现在的命令没有一个需要页面，起服务只多花一两秒、没换来什么；等导出要用编辑器的页面画图（§6 第 2 条）和 `prompt` 时，再让它们按需起服务。
+考虑过、没做的：所有命令都走正在运行的服务，没有就悄悄起一个、用完关掉。读文件的命令不需要页面，起服务只多花一两秒、没换来什么；只有要编辑器页面画图的导出（下一段）按需起服务。
+
+**导出走编辑器的页面。** 画板、幻灯片、文档、看板、设计系统的图和 PDF 都是编辑器在浏览器里画的（沙箱框架、`htmlToPng`、排好版的 HTML 交给服务端打印），命令行要的是和菜单按钮一模一样的文件，所以不在服务端另写一套，而是让本机的 Chrome 打开编辑器、跑导出菜单自己的项：
+
+- 编辑器这边是 `headless.ts`：每种类型的 `FileMenu` 渲染时把自己的导出项（和"先显示哪一个"的 `pick`：画板、幻灯片、标签页、设计系统视图）登记给它，页面上挂 `window.tinglyDesign`（`exports`、`pick`、`run`）。项运行时，交给人的文件（`local.ts` 的 `download`，编辑器里所有存文件都走它）和报错的提示被截下来，不点链接、不弹提示，原样返回。
+- 服务端是 `pageExport.ts`：和 PDF、视频同一个 Chrome 和调试管道，打开 `?p=<项目>&lang=<语言>&theme=light`（浅色、命令的语言：谁运行都是同一个文件），等页面的网络静下来（数据集、字体、图片、框架；一直开着的改动流不算）再跑每一项。页面里的 `console` 和异常写进 debug 日志，查空文件时看。
+- 用哪个编辑器：项目文件夹上已经有编辑器在运行就用它（`pnpm dev` 下是 Vite 的页面）；没有就在命令自己的进程里起一个、用完关掉，它不写 `.server.json`，免得盖掉或撤掉别人的。给的是没登记的文件夹路径时，这个临时服务只在内存里给它一个名字（`visitFolder`），启动页上不会多一张卡。从源码运行而编辑器还没构建时，直说要先 `pnpm build`。
+- 命令行只决定跑哪几项：画布不带 `--board` 时是每个没隐藏的画板（跨页），幻灯片是"PNG 多张"，文档的图是每个标签页一张（同名的加标签页编号），设计系统默认总览。
+
+考虑过、没选的：在服务端用核心的格式代码自己画（要把沙箱、字体、嵌入重写一遍，和编辑器画的会走样）；用 CDP 的下载行为接文件（拿不到项报的错，下载名和完成时机也要猜）。
+
+**`check --snapshots`。** 同类工具里最有用的一道关卡是"检查完再看一眼"（HyperFrames 的 `check --snapshots`）。这里就是用上面的路把每个画板、幻灯片、标签页、设计系统视图画一遍（动效是每个画幅的封面，走 `render.ts`），画不出来的作为 `snapshot` 问题报出来，图放在 `renders/check/`（每次先清空；`--out` 给的文件夹不清），agent 把图读回去就是看到了自己做的东西。
 
 **`history`。** 编辑器里叫“改动记录”，同步状态的提示说“打开改动历史”；命令行用 `history`，和调研里定的一致。默认列最近 20 条，最新的在最后，和终端里往上翻的习惯一致；`--json` 每条带编号。agent 把最后一条的编号记下，下次 `history <p> --since <编号>` 就是“我走开以后这个人改了什么”，这是双向编辑里交接的那一半。编号找不到（改动记录只留最近 500 条）时报错、退出码 1，不当成“没有改动”，免得 agent 以为什么都没变。时间解析在核心（`parseSince`、`journalSince`），措辞和谁改的叫法（`app.actor`）在 `@dc/i18n`。
 
 ## 5. 对 agent 和 skill
 
-一个 skill 只要写 `npx tingly-design …`：`new` 建项目，改文件，`check --json` 看有没有问题，`export` 出成品，`open` 交给人看，`history --since` 看人改了什么。不用先起服务，也不用知道接口。动效 skill（`.claude/skills/motion/SKILL.md`）已经这样写。
+一个 skill 只要写 `npx tingly-design …`：`new` 建项目，改文件，`check --snapshots` 看有没有问题、画出来什么样，`export` 出成品，`open` 交给人看，`history --since` 看人改了什么。不用先起服务，也不用知道接口。每种类型的 skill（`.claude/skills/<kind>/SKILL.md`）都写了怎么看自己做的东西；被编辑器启动的 Claude Code 用同一个版本（`node cli.mjs` 或 `pnpm tingly-design`），不用 `npx`。
 
 ## 6. 没做的
 
 按 `.research/cli-service.md` 的顺序：
 
 1. **命令行做的改动记成自己的身份。** 现在命令行写的文件由监听记成“外部”；经过正在运行的编辑器时可以带上 `cli` 这个身份，撤销和改动记录里分得出来。
-2. **无头导出和页面检查**（第 3 步）。一个服务端路由打开编辑器里的页面再截图，画布、幻灯片、看板、文档、设计系统的 `export --as png|pdf` 都走它；`check --snapshots` 用同一个页面找画不出来的东西（图片没加载、嵌入报错）。
+2. **页面检查看得更细。** `check --snapshots` 现在只报导出项本身失败的；画板运行时报的错、没加载出来的图片、嵌入的报错还没有收进问题列表。框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在这些图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行能这样导出。
 3. **MCP**（第 4 步）。服务端 `/mcp`，命令行 `mcp` 做 stdio 桥；`skills add` 把格式 skill 装进别的项目。
 4. **`prompt`**（第 5 步）。和请求栏一样，默认交给 Claude Code，`--fast` 用快速 AI。
 5. `scripts/motion-render.mjs` 还留着它独有的 `--player`（单文件播放器）、`--verify`（倒着 seek 逐字节对比）和 `--scale`；搬进 `render.ts` 后删掉它。

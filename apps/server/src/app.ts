@@ -579,10 +579,13 @@ app.get('/api/projects/:p/events', (c) => {
     await s.writeSSE({ event: 'hello', data: '{}' });
     while (!s.aborted) {
       if (!queue.length) {
+        // the ping timer goes with the wait, so a closed stream leaves nothing keeping the process up
+        let ping: NodeJS.Timeout | undefined;
         await new Promise<void>((r) => {
           wake = r;
-          setTimeout(r, 20000);
+          ping = setTimeout(r, 20000);
         });
+        clearTimeout(ping);
         wake = null;
         if (!queue.length && !s.aborted) await s.writeSSE({ event: 'ping', data: '{}' });
         continue;

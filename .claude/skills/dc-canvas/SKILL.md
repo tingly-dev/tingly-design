@@ -120,3 +120,7 @@ The editor shows elements by handle ids such as `#dc12`. They are not in the fil
 ## Content
 
 No lorem ipsum and no invented numbers: unknown facts become placeholders like `[价格]`. Real `<button>`, `<a href>`, `<input>` + `<label>`; `aria-label` on icon-only buttons; text contrast at least 4.5:1.
+
+## Look at what you made
+
+`tingly-design check <name> --snapshots` checks the files and draws every board that is not hidden as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --board <file or title>` draws one board (`--scale 2` for PNG @2x). Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), otherwise `pnpm tingly-design …` (this repository); not `npx`.

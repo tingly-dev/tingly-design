@@ -10,12 +10,16 @@ Usage: tingly-design [command] [options]
   new <kind> <name or folder>      create a project: canvas, slides, design-system, dashboard, doc, motion
   list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets)
   check [project]                  a project's problems, or what this machine can do
-  export <project> --as <format>   export: any project as zip (the whole project); a motion piece also as mp4, gif or png (its cover)
+  export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
+                                   canvas png; slides pdf, png, html, notes; doc pdf, html, md, png;
+                                   design system and dashboard png; motion mp4, gif, png (its cover)
   import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
   history <project>                the change history: who changed which file, newest last
 
 A project is a name from the launcher or a path to its folder. With the editor already open on the
 projects folder, open and new go through it: no second server, and the launcher shows the change at once.
+Exports other than zip and motion are drawn by the editor in Chrome: the one already open, or one
+started for the export and stopped after it.
 
 Options:
   --projects <folder>   the projects folder (default: {{projects}})
@@ -25,6 +29,11 @@ Options:
   --title <text>        new: the title shown in the launcher
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size
   --format <a,b>        export: the motion formats to render (default: all)
+  --board, --slide, --tab, --view <name>   export: one board (file or title), slide (id or number),
+                        tab (id or title) or design-system view, instead of all of them
+  --scale 2             export a canvas: PNG @2x
+  --snapshots           check: also draw every board, slide, tab, view or cover, report what fails,
+                        and keep the pictures (in renders/check/, or --out) to look at
   --out <folder>        export: where files go (default: the project's renders/; a zip goes to the current folder)
   --files-only          export --as zip: leave out the change log and the design systems it installed
   --speed, --fps, --quality low|medium|high, --width, --height   export: video settings
@@ -66,6 +75,7 @@ Options:
     issue: '{{message}}',
     badDataset: '{{message}}',
     badTokens: '{{message}}',
+    snapshot: 'could not be drawn: {{message}}',
   },
   canvasRules: {
     'order-unknown': 'order lists {{file}}, which is not a board',
@@ -98,9 +108,18 @@ Options:
     running: 'The editor is running at {{url}} (process {{pid}}); open and new go through it.',
     notRunning: 'The editor is not running on this projects folder; open starts it.',
   },
-  exportKind: 'From the command line a {{kind}} exports as zip (the whole project); its other formats are in Export in the editor. A motion piece also exports as mp4, gif or png.',
-  exportAs: '--as {{as}} is not something a motion piece exports. Use zip, mp4, gif or png.',
-  needAs: 'Say what to export: tingly-design export {{project}} --as zip|mp4|gif|png',
+  exportAs: '--as {{as}} is not something a {{kind}} exports. Use {{formats}}.',
+  needAs: 'Say what to export: tingly-design export {{project}} --as <format> (zip for any project; tingly-design --help lists each kind’s)',
+  opening: 'Opening the editor in Chrome…',
+  noChrome: 'This export is drawn by the editor in Chrome or Edge, and there is neither on this machine. Install one, or set DC_CHROME.',
+  noEditorBuild: 'This export is drawn by the editor’s page, which is not built here. Run pnpm build, or open the editor (pnpm dev) and export again.',
+  noEditorPage: 'The editor did not open in Chrome ({{detail}}).',
+  noPick: 'there is nothing called {{what}} in this project',
+  notOffered: 'the Export menu has no {{item}} here',
+  nothingSaved: 'nothing was saved',
+  exportFailed: '{{what}}: {{error}}',
+  snapshotsWrote_one: '{{count}} picture in {{dir}}',
+  snapshotsWrote_other: '{{count}} pictures in {{dir}}',
   needZip: 'Name the .zip to import: tingly-design import <file.zip>',
   noFileAt: 'There is no file at {{path}}',
   imported: 'Imported {{name}} into {{path}}',

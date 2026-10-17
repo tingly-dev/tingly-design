@@ -21,6 +21,8 @@ const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
 /** Live artboard frames, so the panel, menus and export can talk to them. */
 export const frames = new Map<string, HTMLIFrameElement>();
+/** Frames whose runtime has said it is ready, so a picture asked of them gets an answer. */
+const readyFrames = new Set<string>();
 const exports = new Map<string, (r: { dataUrl?: string; error?: string }) => void>();
 
 export function post(file: string, msg: ToRuntime): void {
@@ -116,6 +118,22 @@ export function canvasExportItems(): ExportItem[] {
   return items;
 }
 
+/**
+ * Shows one artboard, by its file (`hero.dc.html`, `hero`) or its title, and waits until it can draw
+ * itself: `tingly-design export <canvas> --board` and the pictures of `check --snapshots` (headless.ts).
+ */
+export async function pickBoard(what: string): Promise<boolean> {
+  const c = canvasOf(useStore.getState());
+  const want = what.trim().toLowerCase();
+  const file = c.order.find((f) => c.boards[f] && (f.toLowerCase() === want || f.replace(/\.dc\.html$/, '').toLowerCase() === want)) ?? c.order.find((f) => c.boards[f]?.title?.trim().toLowerCase() === want);
+  // a hidden board is not drawn, so there is no picture of it to take
+  if (!file || c.boards[file].hidden) return false;
+  focusBoard(file);
+  useStore.setState({ selection: { kind: 'board', file } });
+  for (const until = Date.now() + 20_000; !readyFrames.has(file) && Date.now() < until; ) await new Promise((ok) => setTimeout(ok, 50));
+  return true;
+}
+
 /** After a move the element's tid changes; find it again by its own source text. */
 function follow(file: string, slice: string | null, fallback: number): number {
   const src = display(useStore.getState(), file);
@@ -158,7 +176,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     const el = frame.current;
     if (el) frames.set(file, el);
     return () => {
-      if (frames.get(file) === el) frames.delete(file);
+      if (frames.get(file) === el) frames.delete(file), readyFrames.delete(file);
     };
   }, [file]);
 
@@ -171,6 +189,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
       const s = useStore.getState();
       switch (m.dc) {
         case 'ready':
+          readyFrames.add(file);
           setReady(true);
           break;
         case 'select': {

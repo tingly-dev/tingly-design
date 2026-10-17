@@ -1,4 +1,4 @@
-import { download } from '@dc/export';
+import { download } from './local';
 import { api } from './api';
 import { t } from './i18n';
 import { toast } from './store';

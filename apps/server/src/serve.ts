@@ -21,6 +21,8 @@ export interface ServerOptions {
   port: number;
   /** The address to listen on; loopback unless the editor is meant to be shared on the network. */
   host: string;
+  /** Write `.server.json` so commands find this editor (running.ts); off for a server a command starts for itself. */
+  announce?: boolean;
 }
 
 export interface RunningServer {
@@ -51,9 +53,11 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
   const url = `http://${o.host === '0.0.0.0' ? 'localhost' : o.host}:${port}${BASE_PATH}/`;
   // the command line finds this editor through the projects folder (running.ts); under `pnpm dev`
   // the editor itself is Vite's page, not this port
-  announce(url, process.env.NODE_ENV === 'production' || BUNDLED ? url : process.env.DC_EDITOR_URL || 'http://localhost:5173/');
-  // a process.exit() anywhere (a signal, a host closing stdin) still takes the file back
-  process.once('exit', retire);
+  if (o.announce !== false) {
+    announce(url, process.env.NODE_ENV === 'production' || BUNDLED ? url : process.env.DC_EDITOR_URL || 'http://localhost:5173/');
+    // a process.exit() anywhere (a signal, a host closing stdin) still takes the file back
+    process.once('exit', retire);
+  }
 
   let closing: Promise<void> | null = null;
   return {
