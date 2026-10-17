@@ -6,7 +6,7 @@ import { canvasOf, display, editElement, parsed, toast, useStore } from '../../s
 import { focusBoard, onPage } from './view';
 import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
-import { handleKey } from '../../shortcuts';
+import { handleKey, leaveField } from '../../shortcuts';
 import { Download, Expand, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
@@ -197,6 +197,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             textTool(m.tid);
             break;
           }
+          leaveField();
           useStore.setState({ selection: m.tid === null ? { kind: 'board', file } : { kind: 'el', file, tid: m.tid }, menu: null, editingNote: null });
           break;
         }

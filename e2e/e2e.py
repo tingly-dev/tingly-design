@@ -76,8 +76,10 @@ async def main():
         ok = await wait_for(lambda: re.search(r'<h1 style="[^"]*width:', src()) is None)
         check('size mode Hug removes it again', ok)
 
-        # Shift+Enter walks up to the parent, Enter back down, Escape clears (keys pressed inside the artboard frame)
+        # Shift+Enter walks up to the parent, Enter back down, Escape clears (keys pressed inside the artboard frame);
+        # a panel field used just before must not keep the keys
         await pg.wait_for_timeout(400)
+        await pg.locator('select[aria-label="宽度模式"]').focus()
         await main.locator('h1').click()
         await expect(pg.locator('.lr[aria-selected="true"] .rn')).to_have_text('文字')
         await main.locator('body').press('Shift+Enter')
