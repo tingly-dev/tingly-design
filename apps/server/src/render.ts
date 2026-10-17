@@ -485,6 +485,49 @@ export async function checkSeek(o: { dir: string; runtime: string; format: strin
 }
 
 /**
+ * PNGs brought down to at most `max` pixels on their longer side, for a model to look at: a
+ * board at full size costs far more than it shows. Done in Chrome, which decodes and scales
+ * PNGs; a picture already small enough, or one that cannot be read, comes back as it was.
+ */
+export async function shrinkPictures(pngs: Buffer[], max: number): Promise<Buffer[]> {
+  const chrome = findChrome();
+  if (!chrome || !pngs.length) return pngs;
+  const tmp = mkdtempSync(join(tmpdir(), 'dc-shrink-'));
+  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
+  try {
+    const cdp = new Cdp(browser);
+    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+    const out: Buffer[] = [];
+    for (const png of pngs) {
+      const r = await cdp.send<{ result: { value?: string | null } }>(
+        'Runtime.evaluate',
+        {
+          expression: `(async()=>{const b=await createImageBitmap(await (await fetch('data:image/png;base64,${png.toString('base64')}')).blob());const k=${max}/Math.max(b.width,b.height);if(k>=1)return null;const c=new OffscreenCanvas(Math.max(1,Math.round(b.width*k)),Math.max(1,Math.round(b.height*k)));const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(b,0,0,c.width,c.height);const u=new Uint8Array(await (await c.convertToBlob({type:'image/png'})).arrayBuffer());let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode(...u.subarray(i,i+0x8000));return btoa(s)})()`,
+          awaitPromise: true,
+          returnByValue: true,
+        },
+        sessionId,
+      ).catch(() => ({ result: { value: null } }));
+      out.push(r.result.value ? Buffer.from(r.result.value, 'base64') : png);
+    }
+    return out;
+  } catch {
+    return pngs;
+  } finally {
+    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
+    browser.kill('SIGKILL');
+    await exited;
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      /* the system clears its temp folder */
+    }
+  }
+}
+
+/**
  * The piece as one HTML file anyone can open: every format, the speeds, a scrubber, the cover
  * until it plays, and the scene checks' warnings. Its pictures and fonts are inside it. The
  * piece's note is for the people making it and stays out.

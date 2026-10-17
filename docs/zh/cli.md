@@ -41,7 +41,7 @@ pnpm tingly-design …              # 在本仓库里
 
 ## 作为 MCP 服务
 
-能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`prompt`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里。导出写到项目的 `renders/`。
+能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`prompt`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里，长边缩到 1200 像素（最多 12 张；原尺寸的图留在 `renders/check/`）。导出写到项目的 `renders/`。
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # 由 agent 启动，走 stdio
