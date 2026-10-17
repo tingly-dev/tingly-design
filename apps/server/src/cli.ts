@@ -47,6 +47,8 @@ const { values: opts, positionals } = (() => {
         quality: { type: 'string' },
         width: { type: 'string' },
         height: { type: 'string' },
+        since: { type: 'string' },
+        limit: { type: 'string' },
         version: { type: 'boolean', short: 'v' },
         help: { type: 'boolean', short: 'h' },
       },
@@ -116,6 +118,16 @@ function browse(url: string): void {
 }
 
 async function open(arg: string | undefined): Promise<void> {
+  // an editor already running on this projects folder takes the project; asking for a port means a server of its own
+  const running = opts.port ? null : await editor();
+  if (running) {
+    const { call } = await import('./running');
+    const name = !arg ? undefined : looksLikePath(arg) ? (await call<{ name: string }>(running, 'api/links', lang, { path: resolve(expandHome(arg)) })).name : (await project(arg, 'open')).name;
+    const url = name ? `${running.editor}?p=${encodeURIComponent(name)}` : running.editor;
+    if (opts.json) return print({ url, running: true, pid: running.pid, projects: layout.PROJECTS_DIR });
+    console.log(t('cli.attached', { url, pid: running.pid }));
+    return browse(url);
+  }
   let name: string | undefined;
   if (arg) {
     if (looksLikePath(arg)) {
@@ -125,7 +137,7 @@ async function open(arg: string | undefined): Promise<void> {
   }
   const s = await start(opts.port ? Number(opts.port) : Number(process.env.PORT ?? 8787), opts.host ?? (process.env.DC_HOST?.trim() || '127.0.0.1'), !opts.port);
   const url = name ? `${s.url}?p=${encodeURIComponent(name)}` : s.url;
-  if (opts.json) print({ url, port: s.port, projects: layout.PROJECTS_DIR });
+  if (opts.json) print({ url, running: false, port: s.port, projects: layout.PROJECTS_DIR });
   else {
     console.log(t('cli.serving', { version: layout.VERSION, url, dir: layout.PROJECTS_DIR }));
     browse(url);
@@ -152,6 +164,19 @@ async function create(kindArg: string | undefined, target: string | undefined): 
   const size = opts.size ? validSize(opts.size.split(/[x×,]/i).map(Number)) : undefined;
   if (opts.size && !size) throw new CliError(t('errors.badSize'));
   const atPath = looksLikePath(target);
+  // with an editor open on this folder, the editor creates it: a linked folder then lives in its list
+  // of links too (it keeps them in memory and writes them back), and the launcher shows the card at once
+  const running = await editor();
+  if (running) {
+    const { call } = await import('./running');
+    const title = opts.title?.trim() || (atPath ? basename(resolve(expandHome(target))) : target);
+    const sized = size && (kind === 'design' || kind === 'motion') ? { size } : {};
+    const { name } = await call<{ name: string }>(running, 'api/projects', lang, { kind, title, ...sized, ...(atPath ? { path: resolve(expandHome(target)) } : { name: target }) });
+    // this process read the links before the editor added this one
+    const dir = atPath ? resolve(expandHome(target)) : projectDir(name);
+    if (opts.json) return print({ name, kind: kindArg, dir });
+    return void console.log(t('cli.created', { kind: t(`cli.kind.${kind}`), name, path: show(dir) }));
+  }
   const name = atPath ? await linkFolder(resolve(expandHome(target)), true) : target;
   const title = opts.title?.trim() || (atPath ? basename(resolve(expandHome(target))) : target);
   await createProject(name, title, kind, lang, size && (kind === 'design' || kind === 'motion') ? { size } : {}).catch(async (e) => {
@@ -202,6 +227,42 @@ async function texts(dir: string): Promise<Record<string, string>> {
   return Object.fromEntries(Object.entries(await readFolder(dir)).map(([f, s]) => [f, s.content]));
 }
 
+// ---------------------------------------------------------------- history
+
+/** The change log, as the editor's History shows it: who changed which file, and how. */
+async function history(arg: string | undefined): Promise<void> {
+  const p = await project(arg, 'history');
+  const { journalSince, parseSince } = await import('@dc/core');
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const all: { id: string; at: string; actor: string; file: string; summary: string; prompt?: string; version?: string }[] = [];
+  const text = await readFile(join(p.dir, '.journal.jsonl'), 'utf8').catch(() => '');
+  for (const line of text.split('\n')) {
+    try {
+      if (line.trim()) all.push(JSON.parse(line));
+    } catch {
+      // a torn line, as the server skips it
+    }
+  }
+  const since = opts.since === undefined ? null : parseSince(opts.since);
+  if (opts.since !== undefined && !since) throw new CliError(t('cli.badSince', { since: opts.since }));
+  const entries = journalSince(all, since);
+  if (!entries) throw new CliError(t('cli.noEntry', { id: opts.since ?? '', name: p.name }), 1);
+  const limit = opts.limit ? Math.max(1, Number(opts.limit) || 0) : since ? Infinity : 20;
+  const shown = entries.slice(-limit);
+  if (opts.json) return print({ name: p.name, entries: shown, more: entries.length - shown.length });
+  if (!shown.length) return void console.log(t(since ? 'cli.historyNone' : 'cli.historyEmpty', { name: p.name }));
+  if (entries.length > shown.length) console.log(t('cli.historyMore', { count: entries.length - shown.length }));
+  const when = (at: string) => new Date(at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  table(shown.map((e) => [e.id, when(e.at), t(`app.actor.${e.actor}`, { defaultValue: e.actor }), e.file, e.prompt ? `${e.summary} · “${e.prompt.replace(/\s+/g, ' ').slice(0, 60)}”` : e.summary]));
+}
+
+/** The editor running on this projects folder, if any (running.ts). */
+async function editor() {
+  const { findEditor } = await import('./running');
+  return findEditor();
+}
+
 // ---------------------------------------------------------------- check
 
 async function check(arg: string | undefined): Promise<number> {
@@ -230,7 +291,8 @@ async function machine(): Promise<number> {
   const claude = claudeAvailable();
   const ai = aiResolved();
   const fast = fastReady(ai);
-  if (opts.json) return print({ version: layout.VERSION, projects: layout.PROJECTS_DIR, chrome, ffmpeg, claude, fastModel: fast ? ai.fastModel.value : null }), 0;
+  const running = await editor();
+  if (opts.json) return print({ version: layout.VERSION, projects: layout.PROJECTS_DIR, chrome, ffmpeg, claude, fastModel: fast ? ai.fastModel.value : null, editor: running ? { url: running.editor, pid: running.pid, version: running.version } : null }), 0;
   const line = (ok: boolean, text: string) => console.log(`${ok ? '✓' : '✗'} ${text}`);
   console.log(t('cli.machine.title', { version: layout.VERSION }));
   console.log(`  ${t('cli.machine.projects', { dir: layout.PROJECTS_DIR })}`);
@@ -238,6 +300,7 @@ async function machine(): Promise<number> {
   line(ffmpeg, t(ffmpeg ? 'cli.machine.ffmpeg' : 'cli.machine.noFfmpeg'));
   line(claude, t(claude ? 'cli.machine.claude' : 'cli.machine.noClaude'));
   line(fast, fast ? t('cli.machine.fast', { model: ai.fastModel.value }) : t('cli.machine.noFast'));
+  console.log(`  ${running ? t('cli.machine.running', { url: running.editor, pid: running.pid }) : t('cli.machine.notRunning')}`);
   return 0;
 }
 
@@ -351,6 +414,9 @@ async function main(): Promise<number> {
       return 0;
     case 'import':
       await importProject(rest[0]);
+      return 0;
+    case 'history':
+      await history(rest[0]);
       return 0;
     default:
       throw new CliError(t('cli.unknownCommand', { name: command }));

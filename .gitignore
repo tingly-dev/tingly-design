@@ -10,3 +10,4 @@ projects/*/.runs.json
 projects/*/renders/
 .tingly-design/
 projects/.links.json
+projects/.server.json
