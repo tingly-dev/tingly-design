@@ -89,6 +89,7 @@ import type { ExportReport } from '@dc/export/timing';
 import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
+import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
@@ -822,6 +823,39 @@ app.post('/api/projects/:p/commit', async (c) => {
     return c.json({ ok: false, output: (err.stderr || err.message).trim() }, 500);
   }
 });
+
+// ---------------------------------------------------------------- MCP
+
+/**
+ * The command line's commands as MCP tools (mcp.ts), over Streamable HTTP with JSON replies. A page
+ * on another site must not drive it through the person's browser, so a request carrying an Origin
+ * is answered only from this editor's own address or the machine itself.
+ */
+app.post('/mcp', async (c) => {
+  const origin = c.req.header('origin');
+  if (origin && !sameMachine(origin, c.req.url)) return c.json({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Origin not allowed' } }, 403);
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400);
+  }
+  const lang = langOf(c);
+  const replies = (await Promise.all((Array.isArray(body) ? body : [body]).map((m) => handleMcp(m, lang, true)))).filter((r) => r !== null);
+  if (!replies.length) return c.body(null, 202);
+  return c.json(Array.isArray(body) ? replies : replies[0]);
+});
+// no server-sent stream and no sessions to end
+app.on(['GET', 'DELETE'], '/mcp', (c) => c.body(null, 405, { allow: 'POST' }));
+
+function sameMachine(origin: string, self: string): boolean {
+  try {
+    const o = new URL(origin);
+    return o.host === new URL(self).host || ['localhost', '127.0.0.1', '[::1]'].includes(o.hostname);
+  } catch {
+    return false;
+  }
+}
 
 // ---------------------------------------------------------------- static
 

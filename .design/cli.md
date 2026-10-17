@@ -1,6 +1,6 @@
 # 命令行 `tingly-design`
 
-已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
+已实施（第 1 步：`open`、`serve`、`new`、`list`、`check`、动效的 `export`；整个项目的 `export --as zip` 和 `import`。第 2 步：找到正在运行的编辑器、`history`。第 3 步：每种类型通过编辑器页面的 `export`，`check --snapshots`。第 4 步：MCP（服务端 `/mcp`、`tingly-design mcp`）和 `skills`）；§6 是没做的。调研和同类产品对比在 `.research/cli-service.md`。
 
 ## 1. 问题
 
@@ -30,7 +30,9 @@
 | `export <project> --as <fmt>` | 和导出菜单同名同做法；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；画布 `png`，幻灯片 `pdf`、`png`、`html`、`notes`，文档 `pdf`、`html`、`md`、`png`，设计系统和看板 `png`（由编辑器的页面画，见 §4）；动效 `mp4`、`gif`、`png`（封面，由 `render.ts` 画）；`--board`、`--slide`、`--tab`、`--view` 只要一个 | 已实施 |
 | `import <file.zip>` | 和启动页的“导入项目（.zip）”同名同做法 | 已实施；导入 HTML、SVG 还没有 |
 | `history <project>` | 改动记录：时间、谁改的、哪个文件、改了什么；`--since` 接一条记录的编号、一个时间或多久以前 | 已实施 |
-| `prompt`、`skills`、`mcp` | 见 §6 | 方案 |
+| `skills [add [folder]]` | 列出每种类型的格式 skill；`add` 复制到一个文件夹的 `.claude/skills/`，内容不同的副本留着，`--force` 才换 | 已实施 |
+| `mcp` | 上面这些命令作为 stdio 上的 MCP 服务（正在运行的编辑器在 `/mcp` 也提供同一份），见 §4 | 已实施 |
+| `prompt` | 见 §6 | 方案 |
 
 一个项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 读路径时就地读，不登记链接，免得一次检查在启动页上多出一张卡。
 
@@ -47,7 +49,9 @@
 
 **`server.mjs` 就是 `tingly-design serve`。** bundle 只打一个入口 `cli.mjs`（带 shebang，`package.json` 的 `bin`）；`server.mjs` 是三行的包装，把参数换成 `serve` 再导入 `cli.mjs`。考虑过打两个 bundle，体积翻倍、两份可能不同步；也考虑过 esbuild 拆包，`layout.ts` 的路径计算依赖文件所在位置，拆开后要处处改。包装最省，宿主的约定（环境变量、就绪行、`DC_EXIT_WITH_STDIN`）一字不变（[embedding](../docs/zh/embedding.md)）。
 
-**核心给数据，命令行给措辞。** `outlineProject`、`checkProject` 在 `packages/core/src/project.ts`，输入是项目文件（路径 → 内容），输出是数据：大纲项、问题码加参数。各类型自己的检查器（`checkSlide`、`checkScene`、`resolveTokens`）已经写好的英文原样带上。文字在 `@dc/i18n` 的 `cli` 区域，中英两份；语言取 `DC_LANG`，再看 `LC_ALL`、`LANG`。将来服务端、MCP 也读同一份数据。
+**核心给数据，命令行给措辞。** `outlineProject`、`checkProject` 在 `packages/core/src/project.ts`，输入是项目文件（路径 → 内容），输出是数据：大纲项、问题码加参数。各类型自己的检查器（`checkSlide`、`checkScene`、`resolveTokens`）已经写好的英文原样带上。文字在 `@dc/i18n` 的 `cli` 区域，中英两份；语言取 `DC_LANG`，再看 `LC_ALL`、`LANG`。MCP 也读同一份数据。
+
+**命令是数据，命令行和 MCP 各自给形状。** `commands.ts` 是每个命令真正做的事：收普通参数，返回找到或做出来的东西，出错时抛 `CommandError`（措辞已经是调用方的语言，带退出码）。`cli.ts` 把结果排成表格、`--json` 和退出码，`mcp.ts` 把它变成工具结果；两边不会各写一套、慢慢走样。
 
 **导出复用服务端渲染。** `export` 走 `render.ts`（本机的 Chrome 调试管道 + ffmpeg），不再要 Playwright。为此 `render.ts` 加了：容器 `png`、输出目录、封面（`motion.json` 的 `cover`：某一时刻或某个场景的结尾），MP4 导整段时封面作第一帧并作为封面图附进文件（`attached_pic`），封面 PNG 写在旁边。主页视频（`scripts/build-site.sh`）和 README 素材（`scripts/readme-assets.sh`）都改用 `pnpm tingly-design export`。
 
@@ -76,11 +80,23 @@
 
 **`check --snapshots`。** 同类工具里最有用的一道关卡是"检查完再看一眼"（HyperFrames 的 `check --snapshots`）。这里就是用上面的路把每个画板、幻灯片、标签页、设计系统视图画一遍（动效是每个画幅的封面，走 `render.ts`），画不出来的作为 `snapshot` 问题报出来，图放在 `renders/check/`（每次先清空；`--out` 给的文件夹不清），agent 把图读回去就是看到了自己做的东西。
 
+**MCP。** 能说 MCP 的 agent（Claude Code、Claude Desktop、IDE）不用敲命令，直接拿到工具：`list`、`read_skill`、`new`、`check`、`export`、`history`，和命令同名同参数；资源是每种类型的格式 skill（`tingly-design://skills/<kind>`）。`initialize` 带一段说明：先 `read_skill`，再用 agent 自己的文件工具改项目文件夹，改完 `check`（`snapshots: true` 画出来看）。不另做"写文件"的工具：项目就是文件，agent 本来就会改文件，监听会把改动记进改动记录、推给编辑器。
+
+- 两条路，一个处理函数（`handleMcp`）：正在运行的编辑器在 `POST /mcp` 答（Streamable HTTP，回 JSON，不开 SSE、不要会话；通知回 202，`GET`、`DELETE` 回 405）；`tingly-design mcp` 在 stdio 上答，一行一条 JSON-RPC，stdout 只放协议（`console.log` 改写到 stderr，日志本来就在 stderr）。考虑过让 `mcp` 做转发到 `/mcp` 的桥：要先有编辑器在运行，而直接在进程里调同一个函数时，要画图的工具照样能用上正在运行的编辑器（`withEditor`），所以不做桥。
+- 协议手写：`initialize`、`ping`、`tools/list`、`tools/call`、`resources/list`、`resources/read`，回客户端要的协议版本（认得的话）。官方 SDK 要带上 zod 等依赖、进 bundle，换来的只是这几个方法。
+- `check` 带 `snapshots: true` 时把图直接放进结果（最多 6 张、共 4 MB，其余给路径），模型不用再调一次就能看。工具执行出错放在结果里（`isError`），模型能看到原因自己改；协议层的错（没有这个工具、方法）才是 JSON-RPC 错误。
+- 写文件只写在项目里：MCP 的 `export` 没有 `--out`，`zip` 也写进项目的 `renders/`，不写到服务进程碰巧所在的目录。
+- 在编辑器自己的 `/mcp` 里（`inServer`），要画图时用的就是这个编辑器（`ownEditor()`：服务开始监听就记下自己的地址，不管写没写 `.server.json`），不另起一个；启动页上没有的文件夹路径直接拒绝（`cli.notListed`），因为在这个进程里给它起名字就会出现在启动页上。
+- 安全：带 `Origin` 的请求只收本机或编辑器自己地址来的，别的网站不能借人的浏览器调它。服务默认只听 127.0.0.1；监听到网络上时，`/mcp` 和其余 `/api` 一样，谁能连上谁就能用。
+- 工具的说明写给模型，用英文，和其他提示词一样；工具报的错跟调用方的语言（HTTP 看 `x-dc-lang`、`Accept-Language`，stdio 看命令行的语言）。
+
+**`skills`。** 格式 skill 是给 agent 读的说明，原来只在这个仓库和 bundle 里。`skills` 列出它们（类型、名字、什么时候读），`skills add [文件夹]` 复制到那个文件夹的 `.claude/skills/<名字>/SKILL.md`，别的仓库里的 Claude Code 就认得 Tingly Design 的文件。已有的同名副本内容不同时留着、提示 `--force`，免得盖掉别人改过的版本；一样的报"已是最新"。skill 里"怎么运行"的那段写全三种情形：bundle 里 `node cli.mjs`，仓库里 `pnpm tingly-design`，别处是装好的 `tingly-design`，连着 MCP 时用它的 `check`、`export`。
+
 **`history`。** 编辑器里叫“改动记录”，同步状态的提示说“打开改动历史”；命令行用 `history`，和调研里定的一致。默认列最近 20 条，最新的在最后，和终端里往上翻的习惯一致；`--json` 每条带编号。agent 把最后一条的编号记下，下次 `history <p> --since <编号>` 就是“我走开以后这个人改了什么”，这是双向编辑里交接的那一半。编号找不到（改动记录只留最近 500 条）时报错、退出码 1，不当成“没有改动”，免得 agent 以为什么都没变。时间解析在核心（`parseSince`、`journalSince`），措辞和谁改的叫法（`app.actor`）在 `@dc/i18n`。
 
 ## 5. 对 agent 和 skill
 
-一个 skill 只要写 `npx tingly-design …`：`new` 建项目，改文件，`check --snapshots` 看有没有问题、画出来什么样，`export` 出成品，`open` 交给人看，`history --since` 看人改了什么。不用先起服务，也不用知道接口。每种类型的 skill（`.claude/skills/<kind>/SKILL.md`）都写了怎么看自己做的东西；被编辑器启动的 Claude Code 用同一个版本（`node cli.mjs` 或 `pnpm tingly-design`），不用 `npx`。
+一个 skill 只要写 `npx tingly-design …`（或者连上 `tingly-design mcp`，用同名的工具）：`new` 建项目，改文件，`check --snapshots` 看有没有问题、画出来什么样，`export` 出成品，`open` 交给人看，`history --since` 看人改了什么。不用先起服务，也不用知道接口。每种类型的 skill（`.claude/skills/<kind>/SKILL.md`）都写了怎么看自己做的东西；被编辑器启动的 Claude Code 用同一个版本（`node cli.mjs` 或 `pnpm tingly-design`），不用 `npx`。
 
 ## 6. 没做的
 
@@ -88,6 +104,6 @@
 
 1. **命令行做的改动记成自己的身份。** 现在命令行写的文件由监听记成“外部”；经过正在运行的编辑器时可以带上 `cli` 这个身份，撤销和改动记录里分得出来。
 2. **页面检查看得更细。** `check --snapshots` 现在只报导出项本身失败的；画板运行时报的错、没加载出来的图片、嵌入的报错还没有收进问题列表。框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在这些图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行能这样导出。
-3. **MCP**（第 4 步）。服务端 `/mcp`，命令行 `mcp` 做 stdio 桥；`skills add` 把格式 skill 装进别的项目。
-4. **`prompt`**（第 5 步）。和请求栏一样，默认交给 Claude Code，`--fast` 用快速 AI。
+3. **`prompt`**（第 5 步）。和请求栏一样，默认交给 Claude Code，`--fast` 用快速 AI；之后 MCP 也加同名的工具。
+4. **MCP 还没有的**：服务端推送（资源变化通知、SSE 流）、`prompts`；`check` 的图是原尺寸，没有缩小。
 5. `scripts/motion-render.mjs` 还留着它独有的 `--player`（单文件播放器）、`--verify`（倒着 seek 逐字节对比）和 `--scale`；搬进 `render.ts` 后删掉它。

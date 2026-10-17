@@ -27,6 +27,9 @@ It needs Node 20 or newer. Exporting video needs Chrome or Edge and ffmpeg on th
 | `history <project>` | The change history: when, who (by hand, fast AI, Claude, outside, undo), which file and what changed, newest last. The last 20 by default (`--limit <n>`); `--since` takes an entry id from `--json`, a time, or how long ago (`30m`, `2h`, `1d`) and lists everything after it. An id that is not in the history is an error (exit code 1), not "no changes". |
 | `import <file.zip>` | A project from such a `.zip` (or a project folder zipped by hand), the same as “Import a project (.zip)…” on the home page. It joins the projects folder under its own name, or with `-2` when that is taken, and prints the name. |
 
+| `skills [add [folder]]` | The format references an agent reads before editing a project, one per kind. `add` copies them into the folder's `.claude/skills/` (default: the current folder), so Claude Code working there knows the files; a copy that differs from this version's is kept unless `--force`. |
+| `mcp` | These commands as an MCP server on stdio, for an agent to start (below). |
+
 A project is a name from the launcher or a path to its folder. `list`, `check` and `export` read a path where it is, without adding it to the launcher.
 
 ## With the editor open
@@ -34,6 +37,17 @@ A project is a name from the launcher or a path to its folder. `list`, `check` a
 A running server writes `.server.json` in its projects folder and removes it when it stops. When one is running on the same folder, `open` and `new` go through it: no second server starts, a folder you link or create shows up in the open launcher at once, and its list of linked folders stays whole. `tingly-design check` with no project says whether one is running. `--port` on `open` always starts a server of its own. Under `pnpm dev` the editor's address is Vite's (`DC_EDITOR_URL`, default `http://localhost:5173/`).
 
 Pictures, PDFs, HTML and Markdown (everything but zip and motion) are made by the editor's page: Chrome or Edge opens the editor on the project, in light and in the command's language, waits for its data and pictures to load, and runs the Export menu's own items. It uses the editor already running on the projects folder, or starts one for the export and stops it after (that one does not announce itself, and a folder given by its path is not added to the launcher). Run from this repository, that needs the editor built (`pnpm build`) unless `pnpm dev` is running. `DC_LOG_LEVEL=debug` prints what the page logged.
+
+## As an MCP server
+
+An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result. Exports go to the project's `renders/`.
+
+```bash
+claude mcp add tingly-design -- npx -y tingly-design mcp          # started by the agent, on stdio
+claude mcp add --transport http tingly-design http://127.0.0.1:8787/mcp   # the editor already running
+```
+
+In a client that takes a JSON config (Claude Desktop, an IDE): `{"mcpServers": {"tingly-design": {"command": "npx", "args": ["-y", "tingly-design", "mcp"]}}}`. The stdio server finds the editor running on the same projects folder, as the commands do (`--projects` picks the folder). The running editor's `/mcp` answers only requests from this machine or its own pages, and exports only projects its launcher lists.
 
 ## Options for every command
 
@@ -59,4 +73,4 @@ npx tingly-design open pitch                          # show the person; in the 
 npx tingly-design history pitch --since 3f9a1c20      # what they changed after the entry you saw last
 ```
 
-The format of each kind is in `.claude/skills/<kind>/SKILL.md`. Why the command looks the way it does, and what comes next (MCP, `prompt`), is in `.design/cli.md`.
+The format of each kind is in `.claude/skills/<kind>/SKILL.md` (`tingly-design skills add` copies them into another repository). Why the command looks the way it does, and what comes next (`prompt`), is in `.design/cli.md`.

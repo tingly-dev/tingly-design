@@ -21,8 +21,21 @@ export interface RunningEditor {
   startedAt: string;
 }
 
+let own: Pick<RunningEditor, 'url' | 'editor'> | null = null;
+
+/** Where this process's own server answers, announced or not; null when it serves nothing. Its `/mcp` draws pages with it. */
+export function ownEditor(): Pick<RunningEditor, 'url' | 'editor'> | null {
+  return own;
+}
+
+/** Remembers this process's own address (`ownEditor`) without telling the projects folder. */
+export function serving(url: string, editor: string): void {
+  own = { url, editor };
+}
+
 /** Says this process serves the projects folder. A second server on the same folder takes over the file; the last one started is the one commands use. */
 export function announce(url: string, editor: string): void {
+  serving(url, editor);
   const info: RunningEditor = { pid: process.pid, url, editor, version: VERSION, protocol: PROTOCOL, startedAt: new Date().toISOString() };
   try {
     writeFileSync(join(PROJECTS_DIR, FILE), JSON.stringify(info, null, 2) + '\n', 'utf8');
