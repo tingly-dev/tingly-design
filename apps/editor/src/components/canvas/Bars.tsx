@@ -2,7 +2,8 @@ import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addPage, renamePage } from '../../actions';
-import { editCanvas, fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../../store';
+import { editCanvas, useCanvas, useStore, type Tool } from '../../store';
+import { fitAll, zoomAt, zoomToSelection, setView } from './view';
 import { Menu, MenuItem } from '../Menu';
 import {
   ArrowI,

@@ -11,7 +11,8 @@ import {
   ungroupSelection,
   wrapSelection,
 } from './actions';
-import { fitAll, redo, undo, useStore, zoomAt, zoomToSelection, type Tool } from './store';
+import { redo, undo, useStore, type Tool } from './store';
+import { fitAll, zoomAt, zoomToSelection } from './components/canvas/view';
 import { addSlide, stepSlide } from './components/slides/slides';
 import { presentStep, startPresent, stopPresent } from './components/slides/Present';
 

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { api } from './api';
-import { canvasOf, fitAll, focusBoard, openProject, toast, useStore } from './store';
+import { canvasOf, openProject, toast, useStore } from './store';
+import { fitAll, focusBoard } from './components/canvas/view';
 import { installShortcuts } from './shortcuts';
 import { Canvas } from './components/canvas/Canvas';
 import { CanvasTopBar, LeftBar, RightBar } from './components/canvas/Bars';
