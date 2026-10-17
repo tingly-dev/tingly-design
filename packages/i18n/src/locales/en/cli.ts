@@ -87,6 +87,8 @@ Options:
     badDataset: '{{message}}',
     badTokens: '{{message}}',
     snapshot: 'could not be drawn: {{message}}',
+    pageError: 'threw while the editor showed it: {{message}}',
+    notLoaded: 'asked for something that did not load: {{message}}',
     seek: '{{count}} of {{total}} frames come out different when shown again (most at {{at}} ms): something in a scene reads the clock, draws at random or animates on its own, so the video will not match the preview',
   },
   player: { play: 'Play', time: 'Time', format: 'Format', speed: 'Speed' },

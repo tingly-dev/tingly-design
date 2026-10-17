@@ -88,6 +88,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     badDataset: '{{message}}',
     badTokens: '{{message}}',
     snapshot: '画不出来：{{message}}',
+    pageError: '编辑器显示它时出错：{{message}}',
+    notLoaded: '要用的东西没加载出来：{{message}}',
     seek: '{{total}} 帧里有 {{count}} 帧再次显示时画面不同（差得最多的在 {{at}} 毫秒）：某个场景读了时钟、随机绘制或自己在动，导出的视频会和预览对不上',
   },
   player: { play: '播放', time: '时间', format: '尺寸', speed: '速度' },

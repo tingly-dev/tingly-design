@@ -31,6 +31,18 @@ export interface PageResult extends PageJob {
   errors: string[];
 }
 
+/**
+ * What went wrong inside the work while the page showed it: a script in a board, slide, page or
+ * preview that threw, or a picture, font, stylesheet or script it asked for that did not arrive.
+ * `where` is the frame's title (the board's name, the slide's id), when it has one.
+ */
+export interface PageIssue {
+  kind: 'error' | 'missing';
+  where?: string;
+  /** the error's message, or the address that did not load and why */
+  text: string;
+}
+
 export class PageExportError extends Error {
   constructor(public code: 'no-chrome' | 'no-editor' | 'failed', message = '') {
     super(message || code);
@@ -51,11 +63,13 @@ export interface PageOptions {
 export interface Page {
   call<T>(expression: string, ms: number): Promise<T>;
   quiet(max?: number): Promise<void>;
+  /** what went wrong in the work so far, each once */
+  issues(): Promise<PageIssue[]>;
 }
 
-/** Opens `editor` on `project` and runs `jobs` in order. */
-export async function exportFromPage(o: PageOptions & { jobs: PageJob[] }): Promise<PageResult[]> {
-  return withPage(o, async ({ call, quiet }) => {
+/** Opens `editor` on `project` and runs `jobs` in order; with `issues`, also what went wrong in the work while it showed. */
+export async function exportFromPage(o: PageOptions & { jobs: PageJob[] }): Promise<{ results: PageResult[]; issues: PageIssue[] }> {
+  return withPage(o, async ({ call, quiet, issues }) => {
     log('info', 'page.export.start', { project: o.project, jobs: o.jobs.length, editor: new URL(o.editor).origin });
     // the menu shows once the project has loaded; until then there is nothing to run
     await call('window.tinglyDesign.exports()', 45_000).catch(() => {
@@ -71,8 +85,10 @@ export async function exportFromPage(o: PageOptions & { jobs: PageJob[] }): Prom
       const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, 120_000);
       out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
     }
-    log('info', 'page.export.done', { project: o.project, files: out.reduce((n, r) => n + r.files.length, 0), errors: out.reduce((n, r) => n + r.errors.length, 0) });
-    return out;
+    await quiet();
+    const seen = await issues();
+    log('info', 'page.export.done', { project: o.project, files: out.reduce((n, r) => n + r.files.length, 0), errors: out.reduce((n, r) => n + r.errors.length, 0), issues: seen.length });
+    return { results: out, issues: seen };
   });
 }
 
@@ -90,17 +106,70 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
     const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
     await s('Page.enable');
-    await s('Runtime.enable');
-    await s('Network.enable');
+    // boards, slides and previews are sandboxed frames, which Chrome may run as frames of their own: attach to them too
+    const sessions = new Set([sessionId]);
+    // a frame waits until it is watched, so an error its first script throws is seen
+    const watch = (sid: string, waiting = false) =>
+      Promise.all([
+        cdp.send('Runtime.enable', {}, sid),
+        cdp.send('Network.enable', {}, sid),
+        cdp.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true }, sid),
+      ])
+        .catch(() => {})
+        .then(() => waiting && cdp.send('Runtime.runIfWaitingForDebugger', {}, sid).catch(() => {}));
+    // what went wrong inside the work: a context's frame, each request's frame and kind, and what was found
+    const contexts = new Map<string, string>();
+    const requests = new Map<string, { url: string; type: string; frame: string }>();
+    const found = new Map<string, { kind: PageIssue['kind']; frame: string; text: string }>();
+    let mainFrame = '';
+    const note = (kind: PageIssue['kind'], frame: string, text: string) => found.set(`${kind}\0${frame}\0${text}`, { kind, frame, text });
+    const missed = (sid: string, requestId: string, why: string) => {
+      const r = requests.get(`${sid}:${requestId}`);
+      // the editor's own requests are its business; the work's pictures, fonts, styles and scripts are the person's
+      if (!r || !WORK_TYPES.has(r.type) || r.url.startsWith('data:')) return;
+      if (r.frame === mainFrame && !r.url.includes('/raw/')) return;
+      note('missing', r.frame, `${r.url.length > 160 ? r.url.slice(0, 160) + '…' : r.url} (${why})`);
+    };
+    cdp.on((m) => {
+      if (!sessions.has(m.sessionId)) return;
+      const sid: string = m.sessionId;
+      if (m.method === 'Target.attachedToTarget' && m.params.targetInfo?.type === 'iframe') {
+        sessions.add(m.params.sessionId);
+        void watch(m.params.sessionId, m.params.waitingForDebugger);
+      } else if (m.method === 'Runtime.executionContextCreated') contexts.set(`${sid}:${m.params.context.id}`, m.params.context.auxData?.frameId ?? '');
+      else if (m.method === 'Runtime.exceptionThrown') {
+        const d = m.params.exceptionDetails;
+        const frame = contexts.get(`${sid}:${d?.executionContextId}`) ?? '';
+        if (frame && frame !== mainFrame) note('error', frame, (d?.exception?.description ?? d?.text ?? 'error').split('\n')[0]);
+      } else if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
+        // a board's renderer catches what its script throws and logs the error object
+        const frame = contexts.get(`${sid}:${m.params.executionContextId}`) ?? '';
+        const err = (m.params.args ?? []).find((a: { subtype?: string }) => a.subtype === 'error');
+        if (frame && frame !== mainFrame && err?.description) note('error', frame, err.description.split('\n')[0]);
+      } else if (m.method === 'Network.requestWillBeSent') requests.set(`${sid}:${m.params.requestId}`, { url: m.params.request?.url ?? '', type: m.params.type ?? '', frame: m.params.frameId ?? '' });
+      else if (m.method === 'Network.responseReceived' && m.params.response?.status >= 400) missed(sid, m.params.requestId, String(m.params.response.status));
+      else if (m.method === 'Network.loadingFailed' && !m.params.canceled) missed(sid, m.params.requestId, m.params.errorText || m.params.blockedReason || 'failed');
+    });
+    const issues = async (): Promise<PageIssue[]> => {
+      const titles = new Map<string, string | undefined>();
+      const out: PageIssue[] = [];
+      for (const f of found.values()) {
+        if (!titles.has(f.frame)) titles.set(f.frame, await frameTitle(s, f.frame));
+        const where = titles.get(f.frame);
+        out.push({ kind: f.kind, ...(where ? { where } : {}), text: f.text });
+      }
+      return out;
+    };
     // what the page is still fetching (datasets, fonts, pictures, a frame's files): a picture taken before they arrive shows placeholders
     const inflight = new Map<string, string>();
     let lastNet = Date.now();
     cdp.on((m) => {
-      if (m.sessionId !== sessionId) return;
+      if (!sessions.has(m.sessionId)) return;
       // the editor's change stream stays open for good; it is not something to wait for
-      if (m.method === 'Network.requestWillBeSent') m.params.type !== 'EventSource' && (inflight.set(m.params.requestId, m.params.request?.url ?? ''), (lastNet = Date.now()));
-      else if (m.method === 'Network.responseReceived' && /event-stream/.test(m.params.response?.mimeType ?? '')) inflight.delete(m.params.requestId);
-      else if (m.method === 'Network.loadingFinished' || m.method === 'Network.loadingFailed') inflight.delete(m.params.requestId), (lastNet = Date.now());
+      const id = `${m.sessionId}:${m.params?.requestId}`;
+      if (m.method === 'Network.requestWillBeSent') m.params.type !== 'EventSource' && (inflight.set(id, m.params.request?.url ?? ''), (lastNet = Date.now()));
+      else if (m.method === 'Network.responseReceived' && /event-stream/.test(m.params.response?.mimeType ?? '')) inflight.delete(id);
+      else if (m.method === 'Network.loadingFinished' || m.method === 'Network.loadingFailed') inflight.delete(id), (lastNet = Date.now());
     });
     // quiet: nothing in flight for half a second (an event stream that never ends is not waited for past `max`)
     const quiet = async (max = 20_000) => {
@@ -110,10 +179,11 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
     };
     // what the page says goes to the debug log (DC_LOG_LEVEL=debug), to see why an export came back empty
     cdp.on((m) => {
-      if (m.sessionId !== sessionId) return;
+      if (!sessions.has(m.sessionId)) return;
       if (m.method === 'Runtime.consoleAPICalled') log('debug', 'page.console', { type: m.params.type, text: m.params.args?.map((a: { value?: unknown; description?: string }) => a.value ?? a.description).join(' ') });
       else if (m.method === 'Runtime.exceptionThrown') log('debug', 'page.error', { text: m.params.exceptionDetails?.exception?.description ?? m.params.exceptionDetails?.text });
     });
+    await watch(sessionId);
     await s('Emulation.setDeviceMetricsOverride', { width: o.width ?? 1440, height: o.height ?? 900, deviceScaleFactor: 1, mobile: false });
     // light, in the command's language: the same file whoever runs it
     const url = new URL(o.editor);
@@ -121,7 +191,8 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
     url.searchParams.set('lang', o.lang);
     url.searchParams.set('theme', 'light');
     const loaded = new Promise<void>((ok) => cdp.on((m) => m.method === 'Page.loadEventFired' && m.sessionId === sessionId && ok()));
-    const nav = await s<{ errorText?: string }>('Page.navigate', { url: url.href });
+    const nav = await s<{ frameId: string; errorText?: string }>('Page.navigate', { url: url.href });
+    mainFrame = nav.frameId;
     if (nav.errorText) throw new PageExportError('no-editor', `${url.origin}: ${nav.errorText}`);
     await within(loaded, 30_000, 'no-editor', url.origin);
     const call = async <T>(expression: string, ms: number): Promise<T> => {
@@ -135,7 +206,7 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
       if (Date.now() > deadline) throw new PageExportError('no-editor', url.origin);
       await new Promise((r) => setTimeout(r, 200));
     }
-    return await fn({ call, quiet });
+    return await fn({ call, quiet, issues });
   } catch (e) {
     log('warn', 'page.export.failed', { project: o.project, error: (e as Error).message });
     if (o.signal?.aborted) throw new PageExportError('failed', 'aborted');
@@ -151,6 +222,22 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
     } catch {
       /* the system clears its temp folder */
     }
+  }
+}
+
+/** What a page's work asks for: a request of any other kind is the editor's own. */
+const WORK_TYPES = new Set(['Image', 'Font', 'Stylesheet', 'Script', 'Media']);
+
+/** The title of the frame element showing `frame` (a board's name, a slide's id), if it has one. */
+async function frameTitle(s: <T = any>(method: string, params?: object) => Promise<T>, frame: string): Promise<string | undefined> {
+  try {
+    const { backendNodeId } = await s<{ backendNodeId: number }>('DOM.getFrameOwner', { frameId: frame });
+    const { node } = await s<{ node: { attributes?: string[] } }>('DOM.describeNode', { backendNodeId });
+    const a = node.attributes ?? [];
+    const i = a.indexOf('title');
+    return i >= 0 && a[i + 1] ? a[i + 1] : undefined;
+  } catch {
+    return undefined;
   }
 }
 
