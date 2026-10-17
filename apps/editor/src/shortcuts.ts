@@ -13,7 +13,7 @@ import {
 } from './actions';
 import { fitAll, redo, undo, useStore, zoomAt, zoomToSelection, type Tool } from './store';
 import { addSlide, stepSlide } from './components/slides/slides';
-import { presentStep, startPresent, stopPresent } from './components/slides/SlidesApp';
+import { presentStep, startPresent, stopPresent } from './components/slides/Present';
 
 const TOOL_KEYS: Record<string, Tool> = {
   v: 'select',
