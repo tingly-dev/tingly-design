@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_SIZES, validSize } from '@dc/core';
-import { forgetSize, readSizes, sameSize, type Size } from '../../motionSizes';
+import { forgetSize, readSizes, sameSize, type Size } from './motionSizes';
 import { Close } from '../icons';
 
 const label = (s: Size) => `${s[0]}×${s[1]}`;

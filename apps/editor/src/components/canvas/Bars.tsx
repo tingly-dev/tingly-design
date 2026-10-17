@@ -1,9 +1,9 @@
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { addPage, renamePage } from '../actions';
-import { editCanvas, fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../store';
-import { Menu, MenuItem } from './Menu';
+import { addPage, renamePage } from '../../actions';
+import { editCanvas, fitAll, useCanvas, useStore, zoomAt, zoomToSelection, setView, type Tool } from '../../store';
+import { Menu, MenuItem } from '../Menu';
 import {
   ArrowI,
   Caret,
@@ -18,11 +18,11 @@ import {
   Rect,
   Shapes,
   TextT,
-} from './icons';
-import { FileMenu } from './FileMenu';
+} from '../icons';
+import { FileMenu } from '../FileMenu';
 import { canvasExportItems } from './Board';
-import { canvasImport } from '../canvasImport';
-import { TopBar, ProjectTitle, BarButton } from './TopBar';
+import { canvasImport } from './canvasImport';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },

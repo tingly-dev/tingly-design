@@ -22,7 +22,7 @@ import {
   toggleHidden,
   uploadImage,
   slidesImport,
-} from '../../slides';
+} from './slides';
 import { NoteBox } from '../NoteBox';
 import { SlideFrame } from './SlideFrame';
 import { Menu, MenuItem } from '../Menu';

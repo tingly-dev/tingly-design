@@ -17,13 +17,13 @@ import {
   type DocJson,
   type DocThread,
 } from '@dc/core';
-import { deleteFile, display, edit, enqueueResult, toast, useStore } from './store';
-import { replaceUrl } from './host';
+import { deleteFile, display, edit, enqueueResult, toast, useStore } from '../../store';
+import { replaceUrl } from '../../host';
 import { joinPath } from '@dc/import';
-import { keepPicked } from './importer';
-import { filesOf, type ImportTarget } from './components/ImportHere';
-import { currentLanguage, t } from './i18n';
-import { readPref } from './local';
+import { keepPicked } from '../../importer';
+import { filesOf, type ImportTarget } from '../ImportHere';
+import { currentLanguage, t } from '../../i18n';
+import { readPref } from '../../local';
 
 /** A doc in the editor: which tab is open, the comment rail, and writing tabs back block by block. */
 interface DocsState {

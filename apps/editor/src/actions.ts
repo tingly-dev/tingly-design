@@ -29,7 +29,7 @@ import {
   toast,
   useStore,
 } from './store';
-import { deleteSlide, duplicateSlide, moveSlide } from './slides';
+import { deleteSlide, duplicateSlide, moveSlide } from './components/slides/slides';
 import { slideIdOf } from '@dc/core';
 import { currentLanguage, t } from './i18n';
 

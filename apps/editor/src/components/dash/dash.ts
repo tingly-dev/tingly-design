@@ -24,13 +24,13 @@ import {
   type QuerySource,
   type ToDash,
 } from '@dc/core';
-import { api } from './api';
-import { display, edit, toast, useStore } from './store';
-import { currentTheme, onTheme } from './theme';
-import { at } from './base';
-import { t } from './i18n';
-import { filesOf, type ImportTarget } from './components/ImportHere';
-import { readPref, writePref } from './local';
+import { api } from '../../api';
+import { display, edit, toast, useStore } from '../../store';
+import { currentTheme, onTheme } from '../../theme';
+import { at } from '../../base';
+import { t } from '../../i18n';
+import { filesOf, type ImportTarget } from '../ImportHere';
+import { readPref, writePref } from '../../local';
 
 /**
  * A dashboard's data, on the editor's side: it loads each dataset the page

@@ -16,7 +16,7 @@ import { NAME_RE, freeName, slugOf } from '../projectName';
 import { ImportDialog } from './ImportDialog';
 import { MotionFrame } from './motion/MotionFrame';
 import { SizePicker } from './motion/SizePicker';
-import { readSizes, rememberSize, type Size } from '../motionSizes';
+import { readSizes, rememberSize, type Size } from './motion/motionSizes';
 import { BOARD_PRESETS, DEFAULT_BOARD_SIZE } from '../boardPresets';
 import { applyNewOptions, checkDataFile, type NewOptions } from '../newProject';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';

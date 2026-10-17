@@ -23,7 +23,7 @@ import {
   useDatasets,
   want,
   dashImport,
-} from '../../dash';
+} from './dash';
 import { FileMenu } from '../FileMenu';
 import { Picture } from '../icons';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';

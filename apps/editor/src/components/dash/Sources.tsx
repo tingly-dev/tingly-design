@@ -12,7 +12,7 @@ import {
   type FileSource,
   type QuerySource,
 } from '@dc/core';
-import { ago, editDataset, load, pauseQuery, postFrame, rawUrl, resumeQuery, runQuery, staleOf, useDash, useDatasets, type DatasetEntry } from '../../dash';
+import { ago, editDataset, load, pauseQuery, postFrame, rawUrl, resumeQuery, runQuery, staleOf, useDash, useDatasets, type DatasetEntry } from './dash';
 import { toast } from '../../store';
 import { download } from '../../local';
 

@@ -3,7 +3,7 @@
  * new piece starts there) and the custom ones they have used, newest first. Presets are not stored.
  */
 import { MOTION_SIZES, validSize } from '@dc/core';
-import { readPref, writePref } from './local';
+import { readPref, writePref } from '../../local';
 
 const KEY = 'dc.motionSizes';
 const KEEP = 6;

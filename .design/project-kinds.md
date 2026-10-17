@@ -34,6 +34,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | `apps/editor/src/components/Launcher.tsx` `KINDS`、图标、`Preview` | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
 | `packages/i18n/src/locales/{en,zh}/<kind>.ts` | 这种类型编辑器的界面文字，两种语言；`starter` 里加它新建时的占位文案 | 类型检查不过，或界面上出现没翻译的文字 |
 | `apps/editor/src/App.tsx` | 按 `kind` 进入对应的编辑器 | 打开后是画布编辑器 |
+| `apps/editor/src/components/<kind>/` | 这种类型的编辑器和它自己的状态（如 `slides.ts`、`motion.ts`）；各类型共用的部件留在 `components/` 根下，不放进某个类型的目录 | 看目录分不清哪些是共用部件，改共用功能时漏掉某种类型 |
 | `apps/editor/src/store.ts` | 读项目时记下 `kind` | 共用部件不知道自己在哪种类型里 |
 | `.claude/skills/<kind>/SKILL.md` | 文件格式、能引用什么（`uploads/` 等） | Claude Code 写出编辑器读不了的文件 |
 | `projects/<sample>/` | 一个示例项目 | 新用户看不到这种类型能做什么 |
