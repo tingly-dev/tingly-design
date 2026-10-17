@@ -4,7 +4,8 @@
  * PDF made from a terminal is the one the button makes (.design/cli.md §4). Each kind's `FileMenu`
  * offers its export list and, where the list depends on what is showing, a way to show one board,
  * slide, tab or view. While an item runs, files handed to the person and error toasts are caught
- * here instead of reaching the screen.
+ * here instead of reaching the screen. The request bar offers its fast AI the same way, for
+ * `tingly-design prompt --fast` (.design/cli.md §4).
  */
 
 export interface HeadlessItem {
@@ -28,6 +29,8 @@ export type Pick = (what: string) => boolean | Promise<boolean>;
 
 let offered: { items: Items; pick?: Pick } | null = null;
 let waiting: (() => void)[] = [];
+/** The request bar's fast AI, where the kind has one: the file a request goes to when none is named. */
+let prompting: { file: () => string | undefined } | null = null;
 let catching: { files: Promise<HeadlessFile>[]; errors: string[] } | null = null;
 
 /** Called by `FileMenu` on every render: the list as it is now. */
@@ -37,6 +40,16 @@ export function offerExports(items: Items, pick?: Pick): () => void {
   for (const fn of waiting.splice(0)) fn();
   return () => {
     if (offered === mine) offered = null;
+  };
+}
+
+/** Called by `PromptBar`: fast AI can take a request here, about `file()` unless the caller names one. */
+export function offerPrompt(file: () => string | undefined): () => void {
+  const mine = { file };
+  prompting = mine;
+  for (const fn of waiting.splice(0)) fn();
+  return () => {
+    if (prompting === mine) prompting = null;
   };
 }
 
@@ -65,15 +78,20 @@ export function headlessRun(text: string, kind: string): boolean {
 
 const settle = () => new Promise<void>((ok) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(ok, 50))));
 
-async function current(): Promise<{ items: HeadlessItem[]; pick?: Pick }> {
-  const deadline = Date.now() + 30_000;
-  while (!offered) {
-    if (Date.now() > deadline) throw new Error('no-menu');
+async function until(ready: () => boolean, ms = 30_000): Promise<boolean> {
+  const deadline = Date.now() + ms;
+  while (!ready()) {
+    if (Date.now() > deadline) return false;
     await new Promise<void>((ok) => {
       waiting.push(ok);
       setTimeout(ok, 500);
     });
   }
+  return true;
+}
+
+async function current(): Promise<{ items: HeadlessItem[]; pick?: Pick }> {
+  if (!(await until(() => !!offered))) throw new Error('no-menu');
   await settle();
   const o = offered!;
   return { items: typeof o.items === 'function' ? o.items() : o.items, pick: o.pick };
@@ -106,6 +124,24 @@ const api = {
       catching = null;
     }
     return { files: await Promise.all(mine.files), errors: mine.errors };
+  },
+  /**
+   * A request to fast AI, as typed in the request bar: the model's edits are applied and saved
+   * like a person's. `delegated` when the model handed it to Claude Code (the run goes on in the
+   * server). `no-fast` when this kind's bar has no fast AI, `no-file:<f>` when there is no such file.
+   */
+  async fast(prompt: string, file?: string): Promise<{ status: string; file?: string; note?: string; changed: boolean; lines: { code: string; ok: boolean; error?: string }[] }> {
+    if (!(await until(() => !!prompting))) return { status: 'error', note: 'no-fast', changed: false, lines: [] };
+    await settle();
+    const { display, isSaving, useStore } = await import('./store');
+    const { runFastEdit } = await import('./fastedit');
+    const target = file || prompting!.file();
+    if (!target || display(useStore.getState(), target) === undefined) return { status: 'error', note: `no-file:${target ?? ''}`, changed: false, lines: [] };
+    await runFastEdit(target, null, prompt);
+    const fast = useStore.getState().fast;
+    // the edit is the file once it is saved, not once it is on the screen
+    if (fast.changed) await until(() => !isSaving(useStore.getState()), 30_000);
+    return { status: fast.status, file: target, note: fast.note, changed: !!fast.changed, lines: fast.lines.filter((l) => !l.divider).map(({ code, ok, error }) => ({ code, ok, ...(error ? { error } : {}) })) };
   },
 };
 

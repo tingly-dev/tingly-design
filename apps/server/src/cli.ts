@@ -52,6 +52,7 @@ const { values: opts, positionals } = (() => {
         force: { type: 'boolean' },
         file: { type: 'string' },
         continue: { type: 'string' },
+        fast: { type: 'boolean' },
         since: { type: 'string' },
         limit: { type: 'string' },
         version: { type: 'boolean', short: 'v' },
@@ -298,11 +299,14 @@ async function promptCommand(arg: string | undefined, text: string | undefined):
     text,
     file: opts.file,
     resume: opts.continue,
+    fast: opts.fast,
     signal: stop.signal,
+    onOpening: opening,
     onStep: tty() ? (step) => process.stderr.write(`  · ${t(`prompt.step.${step.op}`, { target: step.target ?? '', within: step.within ?? '' })}\n`) : undefined,
-  });
+  }).finally(clearLine);
   if (opts.json) print(r);
   else {
+    if (r.by === 'claude' && r.statements) console.log(t('cli.promptHandedOver'));
     if (r.text) console.log(r.text);
     if (r.outcome === 'stopped') console.error(t('cli.promptStopped'));
     if (r.entries.length) {

@@ -37,8 +37,47 @@ export class PageExportError extends Error {
   }
 }
 
-/** Opens `editor` (the editor's address, with a trailing slash) on `project` and runs `jobs` in order. */
-export async function exportFromPage(o: { editor: string; project: string; lang: string; jobs: PageJob[]; signal?: AbortSignal; width?: number; height?: number }): Promise<PageResult[]> {
+export interface PageOptions {
+  /** the editor's address, with a trailing slash */
+  editor: string;
+  project: string;
+  lang: string;
+  signal?: AbortSignal;
+  width?: number;
+  height?: number;
+}
+
+/** In the editor's page: an expression evaluated there, awaited, and its value; `quiet` waits for what the page is still fetching. */
+export interface Page {
+  call<T>(expression: string, ms: number): Promise<T>;
+  quiet(max?: number): Promise<void>;
+}
+
+/** Opens `editor` on `project` and runs `jobs` in order. */
+export async function exportFromPage(o: PageOptions & { jobs: PageJob[] }): Promise<PageResult[]> {
+  return withPage(o, async ({ call, quiet }) => {
+    log('info', 'page.export.start', { project: o.project, jobs: o.jobs.length, editor: new URL(o.editor).origin });
+    // the menu shows once the project has loaded; until then there is nothing to run
+    await call('window.tinglyDesign.exports()', 45_000).catch(() => {
+      throw new PageExportError('no-editor', o.editor);
+    });
+    const out: PageResult[] = [];
+    for (const job of o.jobs) {
+      if (job.pick !== undefined && !(await call<boolean>(`window.tinglyDesign.pick(${JSON.stringify(job.pick)})`, 30_000))) {
+        out.push({ ...job, files: [], errors: [`no-pick:${job.pick}`] });
+        continue;
+      }
+      await quiet();
+      const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, 120_000);
+      out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
+    }
+    log('info', 'page.export.done', { project: o.project, files: out.reduce((n, r) => n + r.files.length, 0), errors: out.reduce((n, r) => n + r.errors.length, 0) });
+    return out;
+  });
+}
+
+/** Opens `editor` on `project` in the machine's Chrome, waits until the page answers (`window.tinglyDesign`), runs `fn` against it and closes Chrome. */
+export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>): Promise<T> {
   const chrome = findChrome();
   if (!chrome) throw new PageExportError('no-chrome');
   const tmp = mkdtempSync(join(tmpdir(), 'dc-page-'));
@@ -96,23 +135,7 @@ export async function exportFromPage(o: { editor: string; project: string; lang:
       if (Date.now() > deadline) throw new PageExportError('no-editor', url.origin);
       await new Promise((r) => setTimeout(r, 200));
     }
-    // the menu shows once the project has loaded; until then there is nothing to run
-    await call('window.tinglyDesign.exports()', 45_000).catch(() => {
-      throw new PageExportError('no-editor', url.href);
-    });
-    log('info', 'page.export.start', { project: o.project, jobs: o.jobs.length, editor: url.origin });
-    const out: PageResult[] = [];
-    for (const job of o.jobs) {
-      if (job.pick !== undefined && !(await call<boolean>(`window.tinglyDesign.pick(${JSON.stringify(job.pick)})`, 30_000))) {
-        out.push({ ...job, files: [], errors: [`no-pick:${job.pick}`] });
-        continue;
-      }
-      await quiet();
-      const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, 120_000);
-      out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
-    }
-    log('info', 'page.export.done', { project: o.project, files: out.reduce((n, r) => n + r.files.length, 0), errors: out.reduce((n, r) => n + r.errors.length, 0) });
-    return out;
+    return await fn({ call, quiet });
   } catch (e) {
     log('warn', 'page.export.failed', { project: o.project, error: (e as Error).message });
     if (o.signal?.aborted) throw new PageExportError('failed', 'aborted');

@@ -391,107 +391,189 @@ export interface PromptOptions {
   text: string | undefined;
   /** the board, slide, tab or scene the request is about (a file in the project) */
   file?: string;
+  /** fast AI instead of Claude Code: the request bar's quick edit, run in the editor's page (canvas, slides and motion) */
+  fast?: boolean;
   /** a Claude Code session to continue: the `session` an earlier prompt returned */
   resume?: string;
   /** each step Claude Code takes (read, search, edit, run), as the editor's run feed shows it */
   onStep?: (step: AgentStep) => void;
   /** Claude Code's own words while it works */
   onText?: (text: string) => void;
+  /** said once the editor's page is about to open (fast AI) */
+  onOpening?: () => void;
   /** stops the run, as the editor's Stop button does */
   signal?: AbortSignal;
 }
 
 export interface PromptResult {
   name: string;
+  /** `fast` when fast AI made the change itself; `claude` when Claude Code did, asked directly or handed over by fast AI */
+  by: 'fast' | 'claude';
   outcome: 'done' | 'error' | 'stopped';
-  /** Claude Code's last words: what it did, or why it could not */
+  /** Claude Code's last words, or why fast AI stopped */
   text: string;
   session?: string;
+  /** fast AI: the statements it ran on the file, in order */
+  statements?: { code: string; ok: boolean; error?: string }[];
   /** the change history entries the run made */
   entries: JournalLine[];
 }
 
+/** The kinds whose request bar has fast AI (`PromptBar`). */
+const FAST_KINDS: Kind[] = ['design', 'slides', 'motion'];
+
+interface RunEnd {
+  outcome: PromptResult['outcome'];
+  text: string;
+  session?: string;
+}
+
 /**
- * The request bar's Hand to Claude Code, from a command: the editor runs Claude Code on the
- * project (so its writes are credited to it in the change history and show live in any open
- * editor), and this waits for the run to end and returns what it changed.
+ * Follows the editor's Claude Code runs on a project through its change stream, opened before
+ * anything starts: a short run can end before the request that started it returns.
+ */
+async function delegateStream(ctx: Ctx, base: URL, o: Pick<PromptOptions, 'onStep' | 'onText'>) {
+  const t = translator(ctx.lang);
+  const listening = new AbortController();
+  const events = await fetch(new URL('events', base), { signal: listening.signal });
+  if (!events.ok || !events.body) throw new CommandError(t('cli.noEditorPage', { detail: `${events.status}` }), 1);
+  type Ev = { id: string; state: string; text?: string; step?: AgentStep; session?: string };
+  const seen: Ev[] = [];
+  let wake: () => void = () => {};
+  let failed: Error | null = null;
+  void (async () => {
+    const reader = events.body!.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error('the editor closed its change stream');
+      buf += value;
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const data = buf
+          .slice(0, i)
+          .split('\n')
+          .filter((l) => l.startsWith('data:'))
+          .map((l) => l.slice(5).trim())
+          .join('\n');
+        buf = buf.slice(i + 2);
+        try {
+          const e = data ? JSON.parse(data) : null;
+          if (e?.type === 'delegate') seen.push(e), wake();
+        } catch {
+          // not an event of ours
+        }
+      }
+    }
+  })().catch((e) => {
+    if (listening.signal.aborted) return;
+    failed = e;
+    wake();
+  });
+  return {
+    /** The id of the run that started with this request (fast AI handing over starts one the command did not). */
+    adopt(prompt: string): string | undefined {
+      return seen.find((e) => e.state === 'start' && e.text === prompt)?.id;
+    },
+    /** Waits for run `id` to end, passing on its steps and words. */
+    follow(id: string): Promise<RunEnd> {
+      let session: string | undefined;
+      let at = 0;
+      return new Promise<RunEnd>((done, fail) => {
+        wake = () => {
+          if (failed) return fail(failed);
+          for (; at < seen.length; at++) {
+            const e = seen[at];
+            if (e.id !== id) continue;
+            if (e.session) session = e.session;
+            if (e.step) o.onStep?.(e.step);
+            else if (e.text && e.state === 'progress') o.onText?.(e.text);
+            if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') return done({ outcome: e.state, text: e.text ?? '', session });
+          }
+        };
+        wake();
+      });
+    },
+    close: () => listening.abort(),
+  };
+}
+
+/**
+ * The request bar, from a command. By default its Hand to Claude Code: the editor runs Claude Code
+ * on the project (its writes credited to it in the change history, live in any open editor) and
+ * this waits for the run to end. With `fast`, the editor's page opens in Chrome and its fast AI
+ * makes the edit as it does when a person types; when the model hands the request to Claude Code,
+ * that run is followed the same way. Returns what changed.
  */
 export async function prompt(ctx: Ctx, p: Project, o: PromptOptions): Promise<PromptResult> {
   const t = translator(ctx.lang);
   const text = o.text?.trim();
   if (!text) throw new CommandError(t('cli.needPrompt', { project: p.name }));
+  if (o.fast && !FAST_KINDS.includes(p.kind)) throw new CommandError(t('cli.noFast', { kind: t(`cli.kind.${p.kind}`) }));
   const before = (await readJournal(p.dir)).at(-1)?.id;
   const startedAt = Date.now() - 1000;
-  const run = await withEditor(ctx, p, false, async ({ api, name }) => {
+  const run = await withEditor(ctx, p, !!o.fast, async ({ api, page, name }) => {
     const base = new URL(`api/projects/${encodeURIComponent(name)}/`, api);
     const headers = { 'content-type': 'application/json', 'x-dc-lang': ctx.lang };
-    // listen first: a short run can end before the request that started it returns
-    const listening = new AbortController();
-    const events = await fetch(new URL('events', base), { signal: listening.signal });
-    if (!events.ok || !events.body) throw new CommandError(t('cli.noEditorPage', { detail: `${events.status}` }), 1);
-    const seen: { id: string; state: string; text?: string; step?: AgentStep; session?: string }[] = [];
+    const stream = await delegateStream(ctx, base, o);
     let id = '';
-    let wake: () => void = () => {};
-    const ended = new Promise<{ outcome: PromptResult['outcome']; text: string; session?: string }>((done, fail) => {
-      let session: string | undefined;
-      const take = (e: (typeof seen)[number]) => {
-        if (e.session) session = e.session;
-        if (e.step) o.onStep?.(e.step);
-        else if (e.text && e.state === 'progress') o.onText?.(e.text);
-        if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') done({ outcome: e.state, text: e.text ?? '', session });
-      };
-      wake = () => {
-        if (id) for (const e of seen.splice(0)) if (e.id === id) take(e);
-      };
-      (async () => {
-        const reader = events.body!.pipeThrough(new TextDecoderStream()).getReader();
-        let buf = '';
-        for (;;) {
-          const { value, done: closed } = await reader.read();
-          if (closed) throw new Error('the editor closed its change stream');
-          buf += value;
-          let i;
-          while ((i = buf.indexOf('\n\n')) >= 0) {
-            const data = buf
-              .slice(0, i)
-              .split('\n')
-              .filter((l) => l.startsWith('data:'))
-              .map((l) => l.slice(5).trim())
-              .join('\n');
-            buf = buf.slice(i + 2);
-            try {
-              const e = data ? JSON.parse(data) : null;
-              if (e?.type === 'delegate') seen.push(e), wake();
-            } catch {
-              // not an event of ours
-            }
-          }
-        }
-      })().catch((e) => !listening.signal.aborted && fail(e));
-    });
+    const stop = () => id && void fetch(new URL(`delegate/${id}`, base), { method: 'DELETE', headers }).catch(() => {});
+    o.signal?.addEventListener('abort', stop);
     try {
+      if (o.fast) {
+        const r = await fastInPage(ctx, { editor: page, project: name, kind: p.kind, signal: o.signal, onOpening: o.onOpening }, text, o.file);
+        if (r.status !== 'delegated') return { by: 'fast' as const, outcome: r.status === 'done' ? ('done' as const) : o.signal?.aborted ? ('stopped' as const) : ('error' as const), text: r.note ?? '', statements: r.lines };
+        // the model said this needs Claude Code; the editor started that run
+        id = (await waitFor(() => stream.adopt(text), 10_000)) ?? '';
+        if (!id) throw new CommandError(t('cli.noEditorPage', { detail: 'hand-off' }), 1);
+        return { by: 'claude' as const, statements: r.lines, ...(await stream.follow(id)) };
+      }
       const r = await fetch(new URL('delegate', base), { method: 'POST', headers, body: JSON.stringify({ prompt: text, ...(o.file ? { file: o.file } : {}), ...(o.resume ? { resume: o.resume } : {}) }) });
       const v = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!r.ok || !v.id) throw new CommandError(v.error ?? `${r.status} ${r.statusText}`, 1);
       id = v.id;
-      wake();
-      const stop = () => void fetch(new URL(`delegate/${id}`, base), { method: 'DELETE', headers }).catch(() => {});
       if (o.signal?.aborted) stop();
-      o.signal?.addEventListener('abort', stop, { once: true });
-      try {
-        return await ended;
-      } finally {
-        o.signal?.removeEventListener('abort', stop);
-      }
+      return { by: 'claude' as const, ...(await stream.follow(id)) };
     } finally {
-      listening.abort();
+      o.signal?.removeEventListener('abort', stop);
+      stream.close();
     }
   });
-  // the editor credits the run's last writes for a moment after it ends (delegate.ts), then the history has them
-  await new Promise((r) => setTimeout(r, 2000));
+  // the editor credits a run's last writes for a moment after it ends (delegate.ts), then the history has them
+  await new Promise((r) => setTimeout(r, run.by === 'claude' ? 2000 : 300));
   const all = await readJournal(p.dir);
   const entries = (before ? journalSince(all, { id: before }) : all) ?? journalSince(all, { after: startedAt })!;
-  return { name: p.name, ...run, entries: entries.filter((e) => e.actor === 'claude') };
+  return { name: p.name, ...run, entries: entries.filter((e) => e.actor === 'claude' || e.actor === 'fast-edit') };
+}
+
+async function waitFor<T>(get: () => T | undefined, ms: number): Promise<T | undefined> {
+  const until = Date.now() + ms;
+  for (let v = get(); ; v = get()) {
+    if (v !== undefined || Date.now() > until) return v;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
+/** The request typed into the request bar of the editor's page, with fast AI chosen. */
+async function fastInPage(ctx: Ctx, o: { editor: string; project: string; kind: Kind; signal?: AbortSignal; onOpening?: () => void }, text: string, file?: string) {
+  const t = translator(ctx.lang);
+  const { withPage, PageExportError } = await import('./pageExport');
+  o.onOpening?.();
+  let r: { status: string; file?: string; note?: string; changed: boolean; lines: { code: string; ok: boolean; error?: string }[] };
+  try {
+    r = await withPage({ editor: o.editor, project: o.project, lang: ctx.lang, signal: o.signal }, async ({ call, quiet }) => {
+      await quiet();
+      return call(`window.tinglyDesign.fast(${JSON.stringify(text)}${file ? `, ${JSON.stringify(file)}` : ''})`, 300_000);
+    });
+  } catch (e) {
+    if (e instanceof PageExportError && e.code === 'no-chrome') throw new CommandError(t('cli.noChrome'), 1);
+    if (e instanceof PageExportError && e.code === 'no-editor') throw new CommandError(t('cli.noEditorPage', { detail: e.message }), 1);
+    if (o.signal?.aborted) return { status: 'error', note: t('cli.promptStopped'), changed: false, lines: [] };
+    throw e;
+  }
+  if (r.note === 'no-fast') throw new CommandError(t('cli.noFast', { kind: t(`cli.kind.${o.kind}`) }), 1);
+  if (r.note?.startsWith('no-file:')) throw new CommandError(r.note.length > 8 ? t('cli.noFile', { file: r.note.slice(8) }) : t('cli.needFile'), 2);
+  return r;
 }
 
 // ---------------------------------------------------------------- skills

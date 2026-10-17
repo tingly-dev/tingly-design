@@ -1,6 +1,6 @@
 # Tingly Design as a CLI and a service tool
 
-Status: **research**. Answers issue #119: today the only way in is to start the server and open the editor, so a skill, a script or another agent cannot call Tingly Design and get an answer back. Once a direction is picked, the conclusion moves into `.design/`.
+Status: **research, decided**: the conclusion lives in [`.design/cli.md`](../.design/cli.md), which says what is built and what is left. This note keeps the survey and the options as they were weighed. Answers issue #119: today the only way in is to start the server and open the editor, so a skill, a script or another agent cannot call Tingly Design and get an answer back. Once a direction is picked, the conclusion moves into `.design/`.
 
 ## 1. Where we are
 
