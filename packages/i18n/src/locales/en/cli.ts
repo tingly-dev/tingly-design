@@ -12,7 +12,7 @@ Usage: tingly-design [command] [options]
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
                                    canvas png; slides pdf, png, html, notes; doc pdf, html, md, png;
-                                   design system and dashboard png; motion mp4, gif, png (its cover)
+                                   design system and dashboard png; motion mp4, gif, png (its cover), html (a player)
   import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
   prompt <project> <request>       hand a request to Claude Code, as the request bar does: it edits the
                                    files, the open editor shows it live; prints what it changed
@@ -38,7 +38,7 @@ Options:
   --format <a,b>        export: the motion formats to render (default: all)
   --board, --slide, --tab, --view <name>   export: one board (file or title), slide (id or number),
                         tab (id or title) or design-system view, instead of all of them
-  --scale 2             export a canvas: PNG @2x
+  --scale 2             export a canvas: PNG @2x; motion: draw each frame at 2× and scale it down (sharper type)
   --snapshots           check: also draw every board, slide, tab, view or cover, report what fails,
                         and keep the pictures (in renders/check/, or --out) to look at
   --out <folder>        export: where files go (default: the project's renders/; a zip goes to the current folder)
@@ -87,7 +87,9 @@ Options:
     badDataset: '{{message}}',
     badTokens: '{{message}}',
     snapshot: 'could not be drawn: {{message}}',
+    seek: '{{count}} of {{total}} frames come out different when shown again (most at {{at}} ms): something in a scene reads the clock, draws at random or animates on its own, so the video will not match the preview',
   },
+  player: { play: 'Play', time: 'Time', format: 'Format', speed: 'Speed' },
   canvasRules: {
     'order-unknown': 'order lists {{file}}, which is not a board',
     'order-missing': 'order leaves out {{file}}',

@@ -50,7 +50,7 @@ export interface ProjectOutline {
   duration?: number;
 }
 
-export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot';
+export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek';
 
 export interface ProjectProblem {
   level: Exclude<IssueLevel, 'note'>;

@@ -27,7 +27,7 @@
 | `new <kind> <name 或文件夹>` | 和新建对话框一样（`createProject`），`--title`、`--size WxH`；给的是路径时建在那里并登记；编辑器在运行时交给它建 | 已实施 |
 | `list [project]` | 不带项目：启动页上的项目；带项目：里面有什么（画板、幻灯片、场景、标签页、数据集、令牌） | 已实施 |
 | `check [project]` | 带项目：编辑器会报的问题，有错时退出码 1；`--snapshots` 再把每个画板、幻灯片、标签页、视图或封面画一遍，画不出来的算错，图留下来看；不带：这台机器能做什么（Chrome、ffmpeg、`claude`、快速 AI） | 已实施 |
-| `export <project> --as <fmt>` | 和导出菜单同名同做法；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；画布 `png`，幻灯片 `pdf`、`png`、`html`、`notes`，文档 `pdf`、`html`、`md`、`png`，设计系统和看板 `png`（由编辑器的页面画，见 §4）；动效 `mp4`、`gif`、`png`（封面，由 `render.ts` 画）；`--board`、`--slide`、`--tab`、`--view` 只要一个 | 已实施 |
+| `export <project> --as <fmt>` | 和导出菜单同名同做法；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；画布 `png`，幻灯片 `pdf`、`png`、`html`、`notes`，文档 `pdf`、`html`、`md`、`png`，设计系统和看板 `png`（由编辑器的页面画，见 §4）；动效 `mp4`、`gif`、`png`（封面，由 `render.ts` 画）、`html`（单文件播放器，不用 Chrome）；`--scale 2` 画布出 @2x，动效每帧按 2 倍画再由 ffmpeg 缩回；`--board`、`--slide`、`--tab`、`--view` 只要一个 | 已实施 |
 | `import <file.zip>` | 和启动页的“导入项目（.zip）”同名同做法 | 已实施；导入 HTML、SVG 还没有 |
 | `history <project>` | 改动记录：时间、谁改的、哪个文件、改了什么；`--since` 接一条记录的编号、一个时间或多久以前 | 已实施 |
 | `skills [add [folder]]` | 列出每种类型的格式 skill；`add` 复制到一个文件夹的 `.claude/skills/`，内容不同的副本留着，`--force` 才换 | 已实施 |
@@ -53,7 +53,7 @@
 
 **命令是数据，命令行和 MCP 各自给形状。** `commands.ts` 是每个命令真正做的事：收普通参数，返回找到或做出来的东西，出错时抛 `CommandError`（措辞已经是调用方的语言，带退出码）。`cli.ts` 把结果排成表格、`--json` 和退出码，`mcp.ts` 把它变成工具结果；两边不会各写一套、慢慢走样。
 
-**导出复用服务端渲染。** `export` 走 `render.ts`（本机的 Chrome 调试管道 + ffmpeg），不再要 Playwright。为此 `render.ts` 加了：容器 `png`、输出目录、封面（`motion.json` 的 `cover`：某一时刻或某个场景的结尾），MP4 导整段时封面作第一帧并作为封面图附进文件（`attached_pic`），封面 PNG 写在旁边。主页视频（`scripts/build-site.sh`）和 README 素材（`scripts/readme-assets.sh`）都改用 `pnpm tingly-design export`。
+**导出复用服务端渲染。** `export` 走 `render.ts`（本机的 Chrome 调试管道 + ffmpeg），不再要 Playwright。为此 `render.ts` 加了：容器 `png`、输出目录、封面（`motion.json` 的 `cover`：某一时刻或某个场景的结尾），MP4 导整段时封面作第一帧并作为封面图附进文件（`attached_pic`），封面 PNG 写在旁边。主页视频（`scripts/build-site.sh`）和 README 素材（`scripts/readme-assets.sh`）都改用 `pnpm tingly-design export`。原来的 `scripts/motion-render.mjs` 剩下的三样也搬了过来，脚本和根目录的 `playwright-core` 一起删掉：单文件播放器是 `--as html`（`motionPlayer`，作品的 `note` 是给做的人看的，不放进去），`--scale` 是导出选项，`--verify` 成了 `check --snapshots` 的 seek 检查（下面）。`--width` 或 `--height` 只给一个时，另一个按作品比例算。
 
 **示例照常种下。** 除了 `serve` 以外的命令都先 `seedSamples()`，所以 `npx tingly-design list` 第一次就能看到示例，和第一次打开启动页一样。
 
@@ -78,7 +78,7 @@
 
 考虑过、没选的：在服务端用核心的格式代码自己画（要把沙箱、字体、嵌入重写一遍，和编辑器画的会走样）；用 CDP 的下载行为接文件（拿不到项报的错，下载名和完成时机也要猜）。
 
-**`check --snapshots`。** 同类工具里最有用的一道关卡是"检查完再看一眼"（HyperFrames 的 `check --snapshots`）。这里就是用上面的路把每个画板、幻灯片、标签页、设计系统视图画一遍（动效是每个画幅的封面，走 `render.ts`），画不出来的作为 `snapshot` 问题报出来，图放在 `renders/check/`（每次先清空；`--out` 给的文件夹不清），agent 把图读回去就是看到了自己做的东西。
+**`check --snapshots`。** 同类工具里最有用的一道关卡是"检查完再看一眼"（HyperFrames 的 `check --snapshots`）。这里就是用上面的路把每个画板、幻灯片、标签页、设计系统视图画一遍（动效是每个画幅的封面，走 `render.ts`），画不出来的作为 `snapshot` 问题报出来。动效还多一道 seek 检查（`checkSeek`）：每个画幅取 16 帧，顺着 seek 一遍再倒着 seek 一遍，在页面里逐像素比；精确渲染是逐帧 seek 的，场景读了时钟、随机绘制或自己在动，视频就和预览对不上，所以不一致记成 `seek` 警告。只差抗锯齿（最大差 ≤ 16、不到画面 0.1% 的像素）算一致，免得字体渲染的细微抖动误报。图放在 `renders/check/`（每次先清空；`--out` 给的文件夹不清），agent 把图读回去就是看到了自己做的东西。
 
 **MCP。** 能说 MCP 的 agent（Claude Code、Claude Desktop、IDE）不用敲命令，直接拿到工具：`list`、`read_skill`、`new`、`check`、`export`、`history`，和命令同名同参数；资源是每种类型的格式 skill（`tingly-design://skills/<kind>`）。`initialize` 带一段说明：先 `read_skill`，再用 agent 自己的文件工具改项目文件夹，改完 `check`（`snapshots: true` 画出来看）。不另做"写文件"的工具：项目就是文件，agent 本来就会改文件，监听会把改动记进改动记录、推给编辑器。
 
@@ -111,4 +111,3 @@
 1. **命令行做的改动记成自己的身份。** 现在命令行写的文件由监听记成“外部”；经过正在运行的编辑器时可以带上 `cli` 这个身份，撤销和改动记录里分得出来。
 2. **页面检查看得更细。** `check --snapshots` 现在只报导出项本身失败的；画板运行时报的错、没加载出来的图片、嵌入的报错还没有收进问题列表。框架里的内容（设计系统的组件预览、幻灯片里的嵌入）在这些图里是空的，这是菜单里的图本来就有的限制（`nodeToPng` 画不了框架）。服务端的 `GET …/export?as=` 也还没有，现在只有命令行能这样导出。
 3. **MCP 还没有的**：服务端推送（资源变化通知、SSE 流）、`prompts`；`check` 的图是原尺寸，没有缩小。
-4. `scripts/motion-render.mjs` 还留着它独有的 `--player`（单文件播放器）、`--verify`（倒着 seek 逐字节对比）和 `--scale`；搬进 `render.ts` 后删掉它。

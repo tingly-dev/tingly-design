@@ -28,7 +28,7 @@ export const FORMATS: Record<Kind, string[]> = {
   docs: ['pdf', 'html', 'md', 'png'],
   'design-system': ['png'],
   dashboard: ['png'],
-  motion: ['mp4', 'gif', 'png'],
+  motion: ['mp4', 'gif', 'png', 'html'],
 };
 
 /** The views of a design system that have a picture (`issues` is a list, not a page). */
@@ -176,12 +176,16 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   if (!out) await rm(dir, { recursive: true, force: true });
   const fail = (file: string, message: string) => problems.push({ level: 'error', file, code: 'snapshot', message });
   if (p.kind === 'motion') {
-    const { RenderError, renderMotion } = await import('./render');
+    const { RenderError, checkSeek, renderMotion } = await import('./render');
     const motion = parseMotion(await readFile(resolve(p.dir, 'motion.json'), 'utf8'));
+    const runtime = resolve(SANDBOX_DIST, 'motion.js');
     const files: string[] = [];
     for (const format of Object.keys(motion.formats)) {
       try {
-        files.push((await renderMotion({ dir: p.dir, runtime: resolve(SANDBOX_DIST, 'motion.js'), format, container: 'png', out: dir })).file);
+        files.push((await renderMotion({ dir: p.dir, runtime, format, container: 'png', out: dir })).file);
+        // the exact render seeks frame by frame: a scene that is not the same picture at the same time renders wrong
+        const seek = await checkSeek({ dir: p.dir, runtime, format });
+        if (!seek.ok && seek.worst) problems.push({ level: 'warning', file: `motion.json#${format}`, code: 'seek', params: { count: seek.total - seek.same, total: seek.total, at: Math.round(seek.worst.at) } });
       } catch (e) {
         if (e instanceof RenderError && e.code === 'no-renderer') throw new CommandError(t('errors.noRenderer'), 1);
         fail(`motion.json#${format}`, (e as Error).message);
@@ -205,7 +209,7 @@ export interface ExportOptions {
   slide?: string;
   tab?: string;
   view?: string;
-  /** a canvas at PNG @2x */
+  /** a canvas at PNG @2x; motion: frames drawn at this many device pixels per pixel (1–4), then brought down to the file's size */
   scale?: number;
   /** motion: the formats to render, and the export dialog's settings */
   format?: string[];
@@ -236,7 +240,7 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   const as = o.as.toLowerCase();
   if (as === 'zip') return exportZip(p, o);
   if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip'].join(', ') }));
-  if (p.kind === 'motion') return exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
+  if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);
 }
@@ -262,6 +266,7 @@ async function exportMotion(ctx: Ctx, p: Project, as: 'mp4' | 'gif' | 'png', o: 
         fps: o.fps,
         width: o.width,
         height: o.height,
+        scale: o.scale,
         quality: o.quality ?? 'high',
         onProgress: o.onProgress && ((n, total) => o.onProgress!(format, n, total)),
       });
@@ -272,6 +277,17 @@ async function exportMotion(ctx: Ctx, p: Project, as: 'mp4' | 'gif' | 'png', o: 
     }
   }
   return { files: done.flatMap((d) => (d.cover ? [d.file, d.cover] : [d.file])), failed: [], formats: done };
+}
+
+/** The piece as one HTML player anyone can open: every format, a scrubber, the speeds, its pictures and fonts inside. */
+async function exportPlayer(ctx: Ctx, p: Project, o: ExportOptions): Promise<ExportResult> {
+  const t = translator(ctx.lang);
+  const { motionPlayer } = await import('./render');
+  const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
+  await mkdir(dir, { recursive: true });
+  const file = resolve(dir, `${basename(p.dir)}.html`);
+  await writeFile(file, motionPlayer({ dir: p.dir, runtime: resolve(SANDBOX_DIST, 'motion.js'), labels: { play: t('cli.player.play'), time: t('cli.player.time'), format: t('cli.player.format'), speed: t('cli.player.speed') } }));
+  return { files: [file], failed: [] };
 }
 
 /** The whole project as one .zip, the same as the editor's Whole project / Project files only (.design/project-archive.md). */
