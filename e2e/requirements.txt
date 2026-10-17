@@ -1,1 +1,4 @@
-playwright==1.64.0
+# The same Playwright as the repository's playwright-core (package.json), so CI gets the
+# same headless shell (Chromium 141) the suites are written against; a newer Chromium
+# changes how keys reach a zoomed artboard frame.
+playwright==1.56.0
