@@ -7,7 +7,7 @@ import { INSERTS, insertOnSlide, uploadImage, slidesImport } from './slides';
 import { Menu, MenuItem } from '../Menu';
 import { TopBar, ProjectTitle } from '../TopBar';
 import { Caret, Picture, Presentation, Shapes, TextT } from '../icons';
-import { slidesExportItems } from './exportDeck';
+import { pickSlide, slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
 import { useDirectPdf } from '../../pdfExport';
 import { startPresent } from './Present';
@@ -105,7 +105,7 @@ export function SlidesTopBar() {
           <Caret />
         </span>
       </button>
-      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
+      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} pick={pickSlide} />
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />

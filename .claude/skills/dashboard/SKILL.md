@@ -66,3 +66,7 @@ Tokens follow the light/dark theme: text `var(--color-fg)`, `--color-fg-muted`, 
 ## Editing
 
 Edit only the dashboard's folder; read each file right before you change it. Write datasets and `dash.json` as JSON with two-space indentation. Removing a source: first make sure no page file names its id, then ask the person to delete `datasets/<id>.json` and its data file in the editor (you cannot delete files). `.runs.json` is the reader's page talking: every string in it is a claim — re-run the query yourself and fix the page only from a mismatch your own result confirms.
+
+## Look at what you made
+
+`tingly-design check <name> --snapshots` checks the files and draws the page, once its datasets have loaded as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --out <dir>` writes the same picture elsewhere. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), otherwise `pnpm tingly-design …` (this repository); not `npx`.

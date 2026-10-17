@@ -5,7 +5,8 @@
  * frame (each runtime answers with a data URL or a blob). Saving and failing look the
  * same everywhere: one toast, a file named after the project.
  */
-import { canvasPng, download, rasterize } from '@dc/export';
+import { canvasPng, rasterize } from '@dc/export';
+import { download } from './local';
 import { t } from './i18n';
 import { toast } from './store';
 

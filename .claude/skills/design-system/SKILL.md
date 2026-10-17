@@ -90,3 +90,7 @@ A canvas or deck installs a system from its panel (nothing selected → 设计�
 - README is a brand book: voice, visual foundations, iconography, with real examples; usage rules that name tokens.
 - Text holds 4.5:1 on the surfaces its note names, in every theme (3:1 at 24px and up). Colours that must be told apart differ in lightness, not hue alone.
 - No AI tropes: blue-purple gradients, emoji cards, left-border accent cards.
+
+## Look at what you made
+
+`tingly-design check <name> --snapshots` checks the files and draws each view (overview, colors, type, space, components, assets) as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --view <view>` draws one view. Component previews are frames and come out empty in these pictures. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), otherwise `pnpm tingly-design …` (this repository); not `npx`.

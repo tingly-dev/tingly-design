@@ -21,7 +21,7 @@ import {
   TextT,
 } from '../icons';
 import { FileMenu } from '../FileMenu';
-import { canvasExportItems } from './Board';
+import { canvasExportItems, pickBoard } from './Board';
 import { canvasImport } from './canvasImport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 
@@ -123,7 +123,7 @@ export function CanvasTopBar() {
         on={mode === 'play'}
         onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
       />
-      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
+      <FileMenu target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} pick={pickBoard} />
     </TopBar>
   );
 }

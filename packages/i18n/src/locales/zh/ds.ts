@@ -57,7 +57,7 @@ export default {
     sourceLabel: '{{name}} 的预览源文件',
     readmeLabel: '{{name}} 的使用说明',
     empty: '还没有组件。从代码库生成组件、写 bundle.js 和预览，适合交给 Claude Code。',
-    bundleHint: 'components/bundle.js 定义 window.{{ns}}；每个预览都会先加载它和 tokens.css、bundle.css。',
+    bundleHint: 'components/bundle.js 定义 window.{{name}}；每个预览都会先加载它和 tokens.css、bundle.css。',
   },
   assets: {
     fontSample: 'Aa 字',

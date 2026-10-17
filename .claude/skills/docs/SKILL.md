@@ -48,3 +48,7 @@ A thread is pinned to the words it quotes (`quote`, with a little of the text be
 
 - One `#` title per tab; sections as `##`. Short paragraphs; lists for steps and options; a table when items share attributes.
 - Write in the doc's language (`settings.lang`). Keep facts checkable: name files, commands and numbers exactly.
+
+## Look at what you made
+
+`tingly-design check <name> --snapshots` checks the files and draws every tab as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --tab <id or title>` draws one tab; `--as pdf`, `html` and `md` are the doc's other exports. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), otherwise `pnpm tingly-design …` (this repository); not `npx`.

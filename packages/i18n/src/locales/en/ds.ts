@@ -59,7 +59,7 @@ export default {
     sourceLabel: 'Preview source of {{name}}',
     readmeLabel: 'Usage notes for {{name}}',
     empty: 'No components yet. Generating components from a codebase and writing bundle.js and previews is a good job for Claude Code.',
-    bundleHint: 'components/bundle.js defines window.{{ns}}; every preview loads it, tokens.css and bundle.css first.',
+    bundleHint: 'components/bundle.js defines window.{{name}}; every preview loads it, tokens.css and bundle.css first.',
   },
   assets: {
     fontSample: 'Aa',

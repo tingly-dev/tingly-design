@@ -114,3 +114,7 @@ A person can import an artboard of a canvas project into a deck (import menu →
 - Change only what was asked; keep everything else byte for byte (the editor writes back minimal text patches, and so should you).
 - The editor checks each slide against the subset and shows what's outside it; keep your slides clean.
 - Ids such as `dc12` in a request are handles the editor numbered depth-first over the slide's elements; they are never in the files.
+
+## Look at what you made
+
+`tingly-design check <name> --snapshots` checks the files and draws every slide as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken. `tingly-design export <name> --as png --slide <id or number>` draws one slide; `--as pdf`, `html` and `notes` are the deck's other exports. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), otherwise `pnpm tingly-design …` (this repository); not `npx`.

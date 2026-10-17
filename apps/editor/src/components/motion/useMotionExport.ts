@@ -1,7 +1,7 @@
 import { useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MotionJson } from '@dc/core';
-import { download } from '@dc/export';
+import { download } from '../../local';
 import type { ExportReport } from '@dc/export/timing';
 import { api } from '../../api';
 import { toast } from '../../store';

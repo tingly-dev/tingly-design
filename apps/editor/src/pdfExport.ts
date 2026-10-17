@@ -4,7 +4,7 @@
  * print window, where the person picks Save as PDF; the menu says which of the two will happen.
  */
 import { useEffect, useState } from 'react';
-import { download } from '@dc/export';
+import { download } from './local';
 import { api } from './api';
 import { t } from './i18n';
 import { toast } from './store';

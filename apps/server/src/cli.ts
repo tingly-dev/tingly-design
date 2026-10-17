@@ -10,6 +10,8 @@ import { homedir } from 'node:os';
 import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { DEFAULT_LANGUAGE, matchLanguage, translator, type Language } from '@dc/i18n';
+import type { ProjectProblem } from '@dc/core';
+import type { PageJob } from './pageExport';
 
 type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed on the command line, and the internal names they map to. */
@@ -47,6 +49,12 @@ const { values: opts, positionals } = (() => {
         quality: { type: 'string' },
         width: { type: 'string' },
         height: { type: 'string' },
+        board: { type: 'string' },
+        slide: { type: 'string' },
+        tab: { type: 'string' },
+        view: { type: 'string' },
+        scale: { type: 'string' },
+        snapshots: { type: 'boolean' },
         since: { type: 'string' },
         limit: { type: 'string' },
         version: { type: 'boolean', short: 'v' },
@@ -65,7 +73,8 @@ const [command = 'open', ...rest] = positionals;
 // a command that answers and exits keeps the server's own log to warnings, unless asked
 if (command !== 'serve' && command !== 'open' && !process.env.DC_LOG_LEVEL) process.env.DC_LOG_LEVEL = 'warn';
 // run from the repository, the command serves the built editor too (there is no Vite beside it)
-if ((command === 'serve' || command === 'open') && !process.env.NODE_ENV) process.env.NODE_ENV = 'production';
+// (export and check --snapshots may start one to draw pages in)
+if ((command === 'serve' || command === 'open' || command === 'export' || command === 'check') && !process.env.NODE_ENV) process.env.NODE_ENV = 'production';
 
 // `tingly-design list | head` closes the pipe early; that is not an error
 process.stdout.on('error', (e: NodeJS.ErrnoException) => (e.code === 'EPIPE' ? process.exit(0) : undefined));
@@ -270,14 +279,48 @@ async function check(arg: string | undefined): Promise<number> {
   const p = await project(arg, 'check');
   const { checkProject } = await import('@dc/core');
   const problems = checkProject(p.kind, await texts(p.dir));
+  const pictures = opts.snapshots ? await snapshots(p, problems) : null;
   const errors = problems.filter((x) => x.level === 'error').length;
-  if (opts.json) print({ name: p.name, kind: p.kind, problems });
+  if (opts.json) print({ name: p.name, kind: p.kind, problems, ...(pictures ? { snapshots: pictures.files } : {}) });
   else if (!problems.length) console.log(t('cli.noProblems', { name: p.name }));
   else {
     table(problems.map((x) => [x.file, x.level, x.code === 'canvas' ? t(`cli.canvasRules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
     console.log(t('cli.problemCount', { count: problems.length }));
   }
+  if (pictures && !opts.json) console.log(t('cli.snapshotsWrote', { count: pictures.files.length, dir: show(pictures.dir) }));
   return errors ? 1 : 0;
+}
+
+/**
+ * The half of `check` that looks: every board, slide, tab, design-system view or motion cover drawn
+ * as the Export menu draws it, each one that fails added as a problem, and the pictures kept for
+ * whoever checks (an agent reads them back). Motion covers come from the exact renderer.
+ */
+async function snapshots(p: { name: string; dir: string; kind: Kind }, problems: ProjectProblem[]): Promise<{ dir: string; files: string[] }> {
+  const dir = opts.out ? resolve(expandHome(opts.out)) : resolve(p.dir, 'renders', 'check');
+  // pictures of the last check would read as this one's; a folder named with --out is the person's, and stays
+  if (!opts.out) await (await import('node:fs/promises')).rm(dir, { recursive: true, force: true });
+  const fail = (file: string, message: string) => problems.push({ level: 'error', file, code: 'snapshot', message });
+  if (p.kind === 'motion') {
+    const { RenderError, renderMotion } = await import('./render');
+    const { parseMotion } = await import('@dc/core');
+    const { readFile } = await import('node:fs/promises');
+    const motion = parseMotion(await readFile(resolve(p.dir, 'motion.json'), 'utf8'));
+    const files: string[] = [];
+    for (const format of Object.keys(motion.formats)) {
+      try {
+        const r = await renderMotion({ dir: p.dir, runtime: resolve(layout.SANDBOX_DIST, 'motion.js'), format, container: 'png', out: dir });
+        files.push(r.file);
+      } catch (e) {
+        if (e instanceof RenderError && e.code === 'no-renderer') throw new CliError(t('errors.noRenderer'), 1);
+        fail(`motion.json#${format}`, (e as Error).message);
+      }
+    }
+    return { dir, files };
+  }
+  const { files, failed } = await runPage(p, await pageJobs(p, 'png', true), dir);
+  for (const f of failed) fail(f.what, f.error);
+  return { dir, files };
 }
 
 /** What this machine can do: the diagnostics the editor shows across its dialogs, in one place. */
@@ -306,13 +349,13 @@ async function machine(): Promise<number> {
 
 // ---------------------------------------------------------------- export
 
-async function exportProject(arg: string | undefined): Promise<void> {
+async function exportProject(arg: string | undefined): Promise<number | void> {
   const p = await project(arg, 'export');
   if (!opts.as) throw new CliError(t('cli.needAs', { project: arg }));
   const as = opts.as.toLowerCase();
   if (as === 'zip') return exportZip(p);
-  if (p.kind !== 'motion') throw new CliError(t('cli.exportKind', { kind: t(`cli.kind.${p.kind}`) }));
-  if (as !== 'mp4' && as !== 'gif' && as !== 'png') throw new CliError(t('cli.exportAs', { as: opts.as }));
+  if (p.kind !== 'motion') return exportPage(p, as);
+  if (as !== 'mp4' && as !== 'gif' && as !== 'png') throw new CliError(t('cli.exportAs', { as: opts.as, kind: t(`cli.kind.${p.kind}`), formats: [...PAGE_FORMATS.motion, 'zip'].join(', ') }));
   const { RenderError, renderMotion } = await import('./render');
   const { parseMotion } = await import('@dc/core');
   const { readFile } = await import('node:fs/promises');
@@ -351,6 +394,130 @@ async function exportProject(arg: string | undefined): Promise<void> {
     }
   }
   if (opts.json) print(done);
+}
+
+// ---------------------------------------------------------------- export through the editor's page
+
+/** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
+const PAGE_FORMATS: Record<Kind, string[]> = {
+  design: ['png'],
+  slides: ['pdf', 'png', 'html', 'notes'],
+  docs: ['pdf', 'html', 'md', 'png'],
+  'design-system': ['png'],
+  dashboard: ['png'],
+  motion: ['mp4', 'gif', 'png'],
+};
+
+/** The views of a design system that have a picture (`issues` is a list, not a page). */
+const DS_VIEWS = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
+
+/** The menu items that make `as`, with the board, slide, tab or view each one needs showing first. `every` is `check --snapshots`: a picture of everything. */
+async function pageJobs(p: { dir: string; kind: Kind }, as: string, every = false): Promise<PageJob[]> {
+  const { readFile } = await import('node:fs/promises');
+  const read = (f: string) => readFile(resolve(p.dir, f), 'utf8').catch(() => undefined);
+  const one = (flag: string | undefined) => (every ? undefined : flag?.trim() || undefined);
+  switch (p.kind) {
+    case 'design': {
+      const { parseCanvas } = await import('@dc/core');
+      const c = parseCanvas(await read('canvas.json'));
+      const board = one(opts.board);
+      const boards = board ? [board] : c.order.filter((f) => c.boards[f] && !c.boards[f].hidden);
+      return boards.map((pick) => ({ pick, item: opts.scale === '2' && !every ? 'png2' : 'png' }));
+    }
+    case 'slides': {
+      const slide = one(opts.slide);
+      if (as === 'png') return slide ? [{ pick: slide, item: 'png' }] : [{ item: 'pngs' }];
+      return [{ item: as }];
+    }
+    case 'docs': {
+      const { parseDoc, tabOrder } = await import('@dc/core');
+      const tab = one(opts.tab);
+      if (as === 'md') return tab ? [{ pick: tab, item: 'md' }] : [{ item: 'mdAll' }];
+      if (as === 'png') return (tab ? [tab] : tabOrder(parseDoc(await read('doc.json'))).map((x) => x.id)).map((pick) => ({ pick, item: 'png' }));
+      return [{ item: as }];
+    }
+    case 'design-system': {
+      const view = one(opts.view);
+      return (view ? [view] : every ? DS_VIEWS : ['overview']).map((pick) => ({ pick, item: 'png' }));
+    }
+    default:
+      return [{ item: 'png' }];
+  }
+}
+
+/**
+ * Runs `fn` against an editor showing this project: the one already running on the projects
+ * folder, or one this command starts on a free port and stops again. A folder given by its path
+ * that the launcher does not list gets a name for this run only (`visitFolder`).
+ */
+async function withEditor<T>(p: { dir: string }, fn: (editor: string, name: string) => Promise<T>): Promise<T> {
+  const { nameOfFolder, visitFolder } = await import('./store');
+  const known = nameOfFolder(p.dir);
+  const running = known ? await editor() : null;
+  if (running) return fn(running.editor, known!);
+  const { existsSync } = await import('node:fs');
+  if (!existsSync(resolve(layout.EDITOR_DIST, 'index.html'))) throw new CliError(t('cli.noEditorBuild'), 1);
+  const name = known ?? (await visitFolder(p.dir));
+  const { startServer } = await import('./serve');
+  const s = await startServer({ port: 0, host: '127.0.0.1', announce: false });
+  try {
+    return await fn(s.url, name);
+  } finally {
+    await s.close();
+  }
+}
+
+/** The files the menu's items made, written to `dir`; what failed, in words. */
+async function runPage(p: { dir: string }, jobs: PageJob[], dir: string): Promise<{ files: string[]; failed: { what: string; error: string }[] }> {
+  const { exportFromPage, PageExportError } = await import('./pageExport');
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  const tty = process.stderr.isTTY && !opts.json;
+  if (tty) process.stderr.write(t('cli.opening'));
+  let results;
+  try {
+    results = await withEditor(p, (editorUrl, project) => exportFromPage({ editor: editorUrl, project, lang, jobs }));
+  } catch (e) {
+    if (e instanceof PageExportError && e.code === 'no-chrome') throw new CliError(t('cli.noChrome'), 1);
+    if (e instanceof PageExportError && e.code === 'no-editor') throw new CliError(t('cli.noEditorPage', { detail: e.message }), 1);
+    throw e;
+  } finally {
+    if (tty) process.stderr.write('\r\x1b[K');
+  }
+  await mkdir(dir, { recursive: true });
+  const files: string[] = [];
+  const failed: { what: string; error: string }[] = [];
+  const taken = new Set<string>();
+  for (const r of results) {
+    for (const f of r.files) {
+      // the menu names a doc's picture after the doc; with one per tab, the tab tells them apart
+      let name = basename(f.name);
+      if (taken.has(name) && r.pick) name = name.replace(/(\.[^.]+)?$/, (ext) => `-${r.pick!.replace(/[\\/:*?"<>|]+/g, '-')}${ext}`);
+      taken.add(name);
+      const out = resolve(dir, name);
+      await writeFile(out, f.data);
+      files.push(out);
+    }
+    for (const e of r.errors) {
+      const [code, arg] = e.split(/:(.*)/s);
+      const error = code === 'no-pick' ? t('cli.noPick', { what: arg }) : code === 'no-item' || code === 'disabled' ? t('cli.notOffered', { item: arg }) : e;
+      failed.push({ what: r.pick ?? r.item, error });
+    }
+    if (!r.files.length && !r.errors.length) failed.push({ what: r.pick ?? r.item, error: t('cli.nothingSaved') });
+  }
+  return { files, failed };
+}
+
+/** `export` for every kind but motion: the menu's own items, run in the editor's page. */
+async function exportPage(p: { name: string; dir: string; kind: Kind }, as: string): Promise<number> {
+  if (!PAGE_FORMATS[p.kind].includes(as)) throw new CliError(t('cli.exportAs', { as: opts.as, kind: t(`cli.kind.${p.kind}`), formats: [...PAGE_FORMATS[p.kind], 'zip'].join(', ') }));
+  const dir = opts.out ? resolve(expandHome(opts.out)) : resolve(p.dir, 'renders');
+  const { files, failed } = await runPage(p, await pageJobs(p, as), dir);
+  if (opts.json) print({ files, failed });
+  else {
+    for (const f of files) console.log(t('cli.wrote', { file: show(f) }));
+    for (const f of failed) console.error(t('cli.exportFailed', f));
+  }
+  return failed.length ? 1 : 0;
 }
 
 /** The whole project as one .zip, the same as the editor's Whole project / Project files only (.design/project-archive.md). */
@@ -410,8 +577,7 @@ async function main(): Promise<number> {
     case 'check':
       return check(rest[0]);
     case 'export':
-      await exportProject(rest[0]);
-      return 0;
+      return (await exportProject(rest[0])) ?? 0;
     case 'import':
       await importProject(rest[0]);
       return 0;

@@ -139,7 +139,7 @@ export async function inspectFolder(input: string): Promise<{ path: string; stat
 }
 
 /** The project name a folder already answers to: a folder in the projects folder, or one already linked. */
-function nameOfFolder(abs: string): string | undefined {
+export function nameOfFolder(abs: string): string | undefined {
   for (const [name, dir] of links) if (dir === abs) return name;
   if (dirname(abs) === PROJECTS_DIR && isProjectName(basename(abs))) return basename(abs);
   return undefined;
@@ -175,6 +175,19 @@ function saveLinks(): Promise<void> {
 const linkListeners = new Set<(name: string, dir: string | null) => void>();
 export function onLinksChange(fn: (name: string, dir: string | null) => void): void {
   linkListeners.add(fn);
+}
+
+/**
+ * A name for a project folder in this process only, without adding it to the list on disk: the
+ * command line exporting a folder given by its path opens it in the editor this way, and the
+ * launcher never shows it.
+ */
+export async function visitFolder(abs: string): Promise<string> {
+  const known = nameOfFolder(abs);
+  if (known) return known;
+  const name = await nameFor(abs);
+  links.set(name, abs);
+  return name;
 }
 
 /**

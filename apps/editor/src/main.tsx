@@ -5,6 +5,7 @@ import { useStore } from './store';
 import { initLanguage } from './i18n';
 import { initTheme } from './theme';
 import { listenToHost } from './host';
+import './headless';
 import './styles.css';
 
 initLanguage();

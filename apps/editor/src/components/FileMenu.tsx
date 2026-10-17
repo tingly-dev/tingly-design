@@ -1,8 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../store';
 import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
+import { offerExports, type Pick } from '../headless';
 import { saveProjectArchive } from '../projectArchive';
 import { Caret, FileText, FileZip, Frame, Transfer } from './icons';
 
@@ -33,6 +34,7 @@ export function FileMenu({
   target,
   label,
   items,
+  pick,
   button = 'icon',
   align = 'right',
 }: {
@@ -41,6 +43,8 @@ export function FileMenu({
   label: string;
   /** a function when the list depends on what is selected: it is read when the menu opens */
   items: ExportItem[] | (() => ExportItem[]);
+  /** shows one board, slide, tab or view by id or name, for `tingly-design export --board/--slide/--tab/--view` (headless.ts) */
+  pick?: Pick;
   button?: 'icon' | 'text';
   align?: 'left' | 'right';
 }) {
@@ -53,6 +57,8 @@ export function FileMenu({
     setPos({ x: align === 'right' ? r.right : r.left, y: r.bottom + 8 });
   };
   const close = () => setPos(null);
+  // the command line runs the same items without opening the menu
+  useEffect(() => offerExports(items, pick));
   const run = async (item: ExportItem) => {
     close();
     try {

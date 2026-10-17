@@ -27,6 +27,7 @@ import {
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
+import { headlessRun } from './headless';
 import { readPref, writePref } from './local';
 
 /** What a failed edit says to the person: a rebase conflict in the editor's own words, anything else as thrown. */
@@ -348,6 +349,8 @@ export function useSource(file: string): string | undefined {
 
 let toastId = 0;
 export function toast(text: string, kind: Toast['kind'] = 'info', action?: Toast['action']): void {
+  // an export run from the command line reports its errors there, and nothing else needs showing
+  if (headlessRun(text, kind)) return;
   const id = ++toastId;
   set((s) => ({ toasts: [...s.toasts, { id, text, kind, action }].slice(-4) }));
   setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : action ? 6000 : 3500);
