@@ -367,11 +367,11 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             {t('canvas.board.error')}
           </span>
         )}
-        <button className="sb" aria-label={t('canvas.board.fullscreenLabel', { title })} title={t('canvas.board.fullscreen')} onClick={() => useStore.setState({ focused: file })}>
+        <button className="ib sm sb" aria-label={t('canvas.board.fullscreenLabel', { title })} title={t('canvas.board.fullscreen')} onClick={() => useStore.setState({ focused: file })}>
           <Expand />
         </button>
         <button
-          className="sb"
+          className="ib sm sb"
           aria-label={t('canvas.export.boardLabel', { title })}
           title={t('canvas.export.title')}
           onClick={(e) => {

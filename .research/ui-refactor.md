@@ -51,7 +51,7 @@ So this is tidying, not a rewrite. The work below is about duplication that has 
 
 ### 2.7 Button classes
 
-Buttons are `btn` (67), `tb` (28, top bar), `ib` (28, icon button) plus ~25 one-off classes. That split is reasonable; the one-offs (`ibtn` in slide issues next to `ib`, `tokbtn`, `lmore`, `vmore` …) are where looks drift. Worth a pass only after the CSS is split (2.5), so each one-off is seen next to its area.
+Buttons are `btn` (67), `tb` (28, top bar), `ib` (28, icon button) plus ~25 one-off classes. That split is reasonable; the one-offs (`ibtn` in slide issues next to `ib`, `tokbtn`, `lmore`, `vmore` …) are where looks drift. Worth a pass only after the CSS is split (2.5), so each one-off is seen next to its area. Done after the split: the attachment chip's remove button and the canvas board strip's buttons were icon buttons rebuilt from scratch and are now `ib` with only their size, radius and colour kept; the rest (`ibtn` the issues pill, `tokbtn` / `vmore` text links, `lmore` the floating card menu, `mcoverx`, `tw`, the docs toolbar) are different roles and stay.
 
 ## 3. Plan: small PRs, each green and shippable alone
 
