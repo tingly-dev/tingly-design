@@ -17,6 +17,10 @@ export default {
                                    设计系统和看板 png；动效 mp4、gif、png（封面）
   import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
   history <项目>                   改动记录：谁改了哪个文件，最新的在最后
+  skills [add [文件夹]]            agent 改项目前要读的格式说明；
+                                   add 把它们复制到文件夹的 .claude/skills/ 里（默认：当前文件夹）
+  mcp                              以 stdio 上的 MCP 服务提供这些命令，给 agent 启动用
+                                   （正在运行的编辑器也在 <地址>/mcp 提供）
 
 项目可以是启动页里的名字，也可以是它所在文件夹的路径。编辑器已经在这个项目文件夹上打开时，
 open 和 new 交给它来做：不会再起一个服务，启动页上马上能看到。
@@ -40,6 +44,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置
   --since <编号或时间>  history：某条记录（编号见 --json）、某个时间或多久以前（30m、2h、1d）之后的改动
   --limit <n>           history：最近 n 条（默认 20，带 --since 时全部）
+  --force               skills add：和这个版本不一样的副本也替换掉
   -v, --version         版本号
   -h, --help            本帮助`,
   unknownCommand: '没有 {{name}} 这个命令。运行 tingly-design --help 查看全部命令。',
@@ -121,6 +126,15 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   exportFailed: '{{what}}：{{error}}',
   snapshotsWrote_one: '{{count}} 张图，在 {{dir}}',
   snapshotsWrote_other: '{{count}} 张图，在 {{dir}}',
+  notListed: '{{path}} 不在这个编辑器的启动页里。先在启动页用"打开文件夹"打开它，或者用命令行导出。',
+  skillsUsage: '用 tingly-design skills 列出它们，或用 tingly-design skills add [文件夹] 复制到一个文件夹里。',
+  skill: {
+    added: '已添加 {{file}}',
+    updated: '已更新 {{file}}',
+    same: '已是最新：{{file}}',
+    kept: '保留了 {{file}}，它和这个版本的不一样',
+  },
+  skillsKept: '加上 --force 替换不一样的副本。',
   needZip: '请给出要导入的 .zip：tingly-design import <文件.zip>',
   noFileAt: '{{path}} 没有这个文件',
   imported: '已导入 {{name}}，位于 {{path}}',

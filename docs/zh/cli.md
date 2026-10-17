@@ -27,6 +27,9 @@ pnpm tingly-design …              # 在本仓库里
 | `history <项目>` | 改动记录：什么时候、谁（手改、快速 AI、Claude、外部、撤销）、哪个文件、改了什么，最新的在最后。默认列最近 20 条（`--limit <n>`）；`--since` 接 `--json` 里的记录编号、一个时间或多久以前（`30m`、`2h`、`1d`），列出那之后的全部。编号不在记录里时报错（退出码 1），不当成“没有改动”。 |
 | `import <文件.zip>` | 从这样的 `.zip`（或自己压缩的项目文件夹）导入项目，和首页的“导入项目（.zip）…”一样。导入到项目文件夹，名字被占用时加 `-2`，并输出新名字。 |
 
+| `skills [add [文件夹]]` | agent 改项目前要读的格式说明，每种类型一份。`add` 把它们复制到文件夹的 `.claude/skills/`（默认：当前文件夹），在那里工作的 Claude Code 就认得这些文件；和这个版本不一样的副本保留，除非加 `--force`。 |
+| `mcp` | 以 stdio 上的 MCP 服务提供这些命令，给 agent 启动用（见下）。 |
+
 项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 就地读路径，不会把它加到启动页上。
 
 ## 编辑器已经打开时
@@ -34,6 +37,17 @@ pnpm tingly-design …              # 在本仓库里
 运行中的服务会在它的项目文件夹里写 `.server.json`，停下时删掉。同一个文件夹上有服务在运行时，`open` 和 `new` 交给它来做：不会再起第二个服务，登记或新建的文件夹马上出现在打开着的启动页上，它记着的链接文件夹也不会被覆盖。不带项目的 `tingly-design check` 会说有没有编辑器在运行。`open` 带了 `--port` 时总是自己起服务。`pnpm dev` 下编辑器地址是 Vite 的（`DC_EDITOR_URL`，默认 `http://localhost:5173/`）。
 
 图片、PDF、HTML 和 Markdown（除了 zip 和动效）由编辑器的页面来做：Chrome 或 Edge 打开编辑器里的项目（浅色、命令的语言），等数据和图片加载完，再跑“导出”菜单自己的项。用的是这个项目文件夹上已经在运行的编辑器；没有就为这次导出起一个、导完就停（它不登记自己，按路径给的文件夹也不会加到启动页上）。在本仓库里运行时，没开 `pnpm dev` 就要先构建编辑器（`pnpm build`）。`DC_LOG_LEVEL=debug` 会打印页面里的日志。
+
+## 作为 MCP 服务
+
+能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里。导出写到项目的 `renders/`。
+
+```bash
+claude mcp add tingly-design -- npx -y tingly-design mcp          # 由 agent 启动，走 stdio
+claude mcp add --transport http tingly-design http://127.0.0.1:8787/mcp   # 用已经在运行的编辑器
+```
+
+用 JSON 配置的客户端（Claude Desktop、IDE）：`{"mcpServers": {"tingly-design": {"command": "npx", "args": ["-y", "tingly-design", "mcp"]}}}`。stdio 服务和命令一样，会找到同一个项目文件夹上正在运行的编辑器（`--projects` 指定文件夹）。正在运行的编辑器的 `/mcp` 只接受本机或它自己页面来的请求，只导出启动页上有的项目。
 
 ## 通用选项
 
@@ -59,4 +73,4 @@ npx tingly-design open pitch                          # 给人看；在对方已
 npx tingly-design history pitch --since 3f9a1c20      # 上次看到那条记录之后，对方改了什么
 ```
 
-每种类型的文件格式见 `.claude/skills/<类型>/SKILL.md`。命令为什么这样设计、后面还要做什么（MCP、`prompt`），见 `.design/cli.md`。
+每种类型的文件格式见 `.claude/skills/<类型>/SKILL.md`（`tingly-design skills add` 把它们复制到别的仓库）。命令为什么这样设计、后面还要做什么（`prompt`），见 `.design/cli.md`。

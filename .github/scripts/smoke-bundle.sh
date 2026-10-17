@@ -50,6 +50,14 @@ CLI=(node "$DIR/cli.mjs" --projects "$WORK/projects")
 "${CLI[@]}" open smoke-deck --json | node -e 'const o=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!o.running || !o.url.includes("/design/?p=smoke-deck")) process.exit(1)' || { echo "❌ tingly-design open did not find the running server"; exit 1; }
 curl -fsS "$BASE/api/projects" | grep -q '"smoke-deck"' || { echo "❌ the running server does not list the deck tingly-design new made"; exit 1; }
 "${CLI[@]}" history smoke-deck --json > /dev/null || { echo "❌ tingly-design history failed"; exit 1; }
+# the format references ship, and copy into a folder for an agent
+"${CLI[@]}" skills add "$WORK/agent" > /dev/null || { echo "❌ tingly-design skills add failed"; exit 1; }
+[ -f "$WORK/agent/.claude/skills/slides/SKILL.md" ] || { echo "❌ tingly-design skills add copied no slides skill"; exit 1; }
+# the same commands as MCP tools: on stdio, and at the running editor's /mcp
+INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}'
+CALL='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"check","arguments":{"project":"smoke-deck"}}}'
+printf '%s\n%s\n' "$INIT" "$CALL" | "${CLI[@]}" mcp | node -e 'const r=require("fs").readFileSync(0,"utf8").trim().split("\n").map(JSON.parse); if(r.length!==2 || r[0].result.serverInfo.name!=="tingly-design" || r[1].result.isError || !r[1].result.content[0].text.includes("smoke-deck")) process.exit(1)' || { echo "❌ tingly-design mcp did not answer on stdio"; exit 1; }
+curl -fsS -H 'content-type: application/json' -d "$CALL" "$BASE/mcp" | grep -q 'smoke-deck' || { echo "❌ the running editor did not answer at /mcp"; exit 1; }
 # exports other than zip are drawn by that editor in Chrome (CI runners need its sandbox off)
 if "${CLI[@]}" check --json | node -e 'process.exit(JSON.parse(require("fs").readFileSync(0,"utf8")).chrome ? 0 : 1)'; then
   DC_CHROME_SANDBOX=0 "${CLI[@]}" export smoke-deck --as png --slide 1 --out "$WORK/out" > /dev/null || { echo "❌ tingly-design export --as png failed"; exit 1; }
@@ -57,4 +65,4 @@ if "${CLI[@]}" check --json | node -e 'process.exit(JSON.parse(require("fs").rea
 else
   echo "(no Chrome here: skipping the picture export)"
 fi
-echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates, checks, finds the running server, reads the history and exports a picture"
+echo "✅ bundle starts, answers under /design and seeds the samples; the tingly-design command lists, creates, checks, finds the running server, reads the history, copies the skills, answers MCP and exports a picture"

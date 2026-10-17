@@ -15,6 +15,10 @@ Usage: tingly-design [command] [options]
                                    design system and dashboard png; motion mp4, gif, png (its cover)
   import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
   history <project>                the change history: who changed which file, newest last
+  skills [add [folder]]            the format references an agent reads before editing a project;
+                                   add copies them into the folder's .claude/skills/ (default: here)
+  mcp                              these commands as an MCP server on stdio, for an agent to start
+                                   (the running editor also serves them at <address>/mcp)
 
 A project is a name from the launcher or a path to its folder. With the editor already open on the
 projects folder, open and new go through it: no second server, and the launcher shows the change at once.
@@ -39,6 +43,7 @@ Options:
   --speed, --fps, --quality low|medium|high, --width, --height   export: video settings
   --since <id or time>  history: after an entry id (from --json), a time, or how long ago (30m, 2h, 1d)
   --limit <n>           history: the last n entries (default 20, all with --since)
+  --force               skills add: replace a copy that differs from this version's
   -v, --version         the version
   -h, --help            this help`,
   unknownCommand: 'Unknown command {{name}}. Run tingly-design --help for the list.',
@@ -120,6 +125,15 @@ Options:
   exportFailed: '{{what}}: {{error}}',
   snapshotsWrote_one: '{{count}} picture in {{dir}}',
   snapshotsWrote_other: '{{count}} pictures in {{dir}}',
+  notListed: '{{path}} is not in this editor’s launcher. Open it there first (Open a folder), or export it with the command line.',
+  skillsUsage: 'Use tingly-design skills to list them, or tingly-design skills add [folder] to copy them into a folder.',
+  skill: {
+    added: 'Added {{file}}',
+    updated: 'Updated {{file}}',
+    same: 'Up to date: {{file}}',
+    kept: 'Kept {{file}}, which differs from this version’s',
+  },
+  skillsKept: 'Add --force to replace the copies that differ.',
   needZip: 'Name the .zip to import: tingly-design import <file.zip>',
   noFileAt: 'There is no file at {{path}}',
   imported: 'Imported {{name}} into {{path}}',
