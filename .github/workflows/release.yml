@@ -2,6 +2,7 @@ name: Release
 
 # Push a tag vX.Y.Z (or vX.Y.Z-rc.N) whose version matches package.json:
 #
+#   e2e      every end-to-end suite (e2e.yml); red stops the release
 #   build    tests, typecheck, `pnpm bundle`, start the bundle like a host,
 #            pack it into tingly-design-<ver>.tgz plus its sha256
 #   github   a GitHub release on the tag with both files attached
@@ -31,8 +32,14 @@ permissions:
   contents: read
 
 jobs:
+  e2e:
+    name: End-to-end suites
+    # every suite (e2e.yml in its full mode); a red run stops the release before anything is built
+    uses: ./.github/workflows/e2e.yml
+
   build:
     name: Build and check the bundle
+    needs: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:

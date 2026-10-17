@@ -52,6 +52,10 @@ python3 e2e/mock_anthropic.py &
 ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 ```
 
+## CI 里的 e2e
+
+`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发（全量；红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report` 产物。为什么这样分：`.design/harness.md`。
+
 ## 发版
 
 推一个 `vX.Y.Z` tag 就发布这个版本；tag 必须和根 `package.json` 的 `version` 一致，所以先在 main 上改版本。`.github/workflows/release.yml` 跑单元测试和 typecheck，打出 bundle，像宿主那样启动一次（`.github/scripts/smoke-bundle.sh`），再打成 `tingly-design-<ver>.tgz`。这一个文件连同它的 `.sha256` 附到 tag 上的 GitHub release，同时以 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字发到 npm（内容相同）。`v0.2.0-rc.1` 这样的 tag 发预发布版，npm dist-tag 是 `next`。

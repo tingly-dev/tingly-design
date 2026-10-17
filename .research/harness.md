@@ -1,6 +1,6 @@
 # Harness: how Tingly Design verifies that it works
 
-Status: **research, under discussion** (nothing built beyond what already exists). Raised by YZ: most of the product is interaction and visuals, not model calls, and even where a model is involved "correct" is hard to define. "Harness" is the working name for all validation, matching `cli/harness` in Tingly Box. Once a direction is picked, the conclusion moves into `.design/`.
+Status: **research, decided for the scope in §6**: the conclusion lives in [`.design/harness.md`](../.design/harness.md); this note keeps the survey and the options as they were weighed. Raised by YZ: most of the product is interaction and visuals, not model calls, and even where a model is involved "correct" is hard to define. "Harness" is the working name for all validation, matching `cli/harness` in Tingly Box. Once a direction is picked, the conclusion moves into `.design/`.
 
 ## 1. What exists today
 

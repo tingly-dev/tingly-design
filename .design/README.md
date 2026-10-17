@@ -54,6 +54,7 @@
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
+| [harness.md](./harness.md) | 怎么确认一切都还好用：`pnpm e2e` 按组起环境跑全部套件、出一张表；全量 e2e 走每晚巡检和发布前，PR 只跑冒烟；结构检查、截图基线、矩阵数据化的方案 | 入口和三种节奏已实施；其余是方案；调研在 `.research/harness.md` |
 | [issue-resolve.md](./issue-resolve.md) | Issue 自动跟进：每 5 小时拉取，团队的直接推进到 draft PR，外部的先评估回复、等维护者放行；阶段记在 issue 评论里 | 已实施；skill 在 `.claude/skills/issue-resolve/` |
 
 ## 宿主与 Tingly Box
