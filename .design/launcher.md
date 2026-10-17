@@ -71,4 +71,4 @@
 
 ## 6. 加一种类型时
 
-启动页是最容易漏的地方：`kindOf` 认不出的目录不会出现在列表里，也不报错。要动的是 `ProjectPreview`、`projectCard` 和 `INDEX_FILE`（core，重命名要知道标题在哪个文件）、`KINDS`、图标和 `Preview`（`Launcher.tsx`）、`POST /api/projects` 的白名单（server），完整清单见 [project-kinds.md](./project-kinds.md) §2。新类型的编辑器也要用 `TopBar`（它自带 `ProjectMenu`）。动效类型最初就是这样：格式和示例都写好了，启动页却看不到。
+启动页是最容易漏的地方：`kindOf` 认不出的目录不会出现在列表里，也不报错。要动的是 `ProjectPreview`、`projectCard` 和 `INDEX_FILE`（core，重命名要知道标题在哪个文件）、`KINDS` 和图标（`launcher/kinds.tsx`）、`Preview`（`launcher/Preview.tsx`）、`POST /api/projects` 的白名单（server），完整清单见 [project-kinds.md](./project-kinds.md) §2。新类型的编辑器也要用 `TopBar`（它自带 `ProjectMenu`）。动效类型最初就是这样：格式和示例都写好了，启动页却看不到。
