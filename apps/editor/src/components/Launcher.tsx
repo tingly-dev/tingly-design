@@ -22,6 +22,9 @@ import { applyNewOptions, checkDataFile, type NewOptions } from '../newProject';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
 import { htmlLang } from '../i18n';
 import { Specimen } from './ds/Specimen';
+import { readPref, writePref } from '../local';
+import { useElementSize } from '../hooks';
+import { Dialog } from './Dialog';
 
 /** The six project kinds, in the order the launcher lists them. Their words are launcher.kind.<kind>.* */
 export const KINDS: { kind: ProjectKind; tone: string }[] = [
@@ -37,21 +40,6 @@ const KIND = Object.fromEntries(KINDS.map((k) => [k.kind, k])) as Record<Project
 const RECENT_KEY = 'dc:recent-projects';
 const VIEW_KEY = 'dc:launcher-view';
 const FOLDED_KEY = 'dc:launcher-folded-groups';
-
-function stored(key: string): string {
-  try {
-    return localStorage.getItem(key) ?? '';
-  } catch {
-    return '';
-  }
-}
-function store(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // private mode: nothing to remember
-  }
-}
 
 export function readRecent(): string[] {
   try {
@@ -295,20 +283,6 @@ function MotionStill({ still, format, width, base }: { still: { motion: MotionJs
   return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
 }
 
-function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
-  const ref = useRef<T>(null);
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setW(el.clientWidth);
-    const ro = new ResizeObserver(() => setW(el.clientWidth));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return [ref, w];
-}
-
 /** The ⋯ beside a card or row: it sits next to the card, not inside it, since a card is itself a button. */
 function MoreButton({ p, onMore }: { p: ProjectCard; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
@@ -321,7 +295,7 @@ function MoreButton({ p, onMore }: { p: ProjectCard; onMore: (name: string, at: 
 
 function Card({ p, recent, flat, onMore }: { p: ProjectCard; recent: boolean; flat: boolean; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
-  const [ref, width] = useWidth<HTMLButtonElement>();
+  const [ref, { w: width }] = useElementSize<HTMLButtonElement>();
   const k = KIND[p.kind];
   const kindName = t(`launcher.kind.${p.kind}.name`);
   return (
@@ -516,11 +490,6 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   useEffect(() => {
     api.projects().then((l) => setSystems(l.filter((p) => p.kind === 'design-system')), () => setSystems([]));
   }, []);
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
   // the folder is a detail: it follows the title, falls back to the type's name for a title with no
   // letters (Chinese, say), and steps aside for a name that is taken, until the person edits it
   const auto = freeName(slugOf(title) || kind, taken);
@@ -578,145 +547,129 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
     }
   };
   return (
-    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form
-        className="ldialog"
-        role="dialog"
-        aria-label={t('launcher.new.title')}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <header>
-          <h2>{t('launcher.new.title')}</h2>
-          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
-            ×
+    <Dialog label={t('launcher.new.title')} onClose={onClose} onSubmit={() => void submit()}>
+      <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
+        {KINDS.map((k) => (
+          <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind} data-kind={k.kind} className={`kopt t-${k.tone}`} onClick={() => setKind(k.kind)}>
+            <KindIcon kind={k.kind} size={16} />
+            <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
           </button>
-        </header>
-        <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
-          {KINDS.map((k) => (
-            <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind} data-kind={k.kind} className={`kopt t-${k.tone}`} onClick={() => setKind(k.kind)}>
-              <KindIcon kind={k.kind} size={16} />
-              <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
-            </button>
-          ))}
-        </div>
-        <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
-        <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
-        {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
-        {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
-          <div className="nopts" data-options={kind}>
-            <span className="nopt-h">{t('launcher.new.options')}</span>
-            {(kind === 'design' || kind === 'slides') && (
-              <label className="nopt">
-                <span>{t('launcher.new.ds')}</span>
-                <select className="input" value={designSystem} onChange={(e) => setDesignSystem(e.target.value)} aria-label={t('launcher.new.ds')}>
-                  <option value="">{t('launcher.new.dsNone')}</option>
-                  {systems.map((s) => (
-                    <option key={s.name} value={s.name}>
-                      {s.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {kind === 'design' && (
-              <label className="nopt">
-                <span>{t('launcher.new.boardSize')}</span>
-                <select className="input" value={board} onChange={(e) => setBoard(e.target.value)} aria-label={t('launcher.new.boardSize')}>
-                  {BOARD_PRESETS.map((p) => (
-                    <option key={p.size.join('x')} value={p.size.join('x')}>
-                      {p.key ? t(p.key, { w: p.size[0], h: p.size[1] }) : p.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {kind === 'dashboard' && (
-              <div className="nopt">
-                <span>{t('launcher.new.dataFile')}</span>
-                <span className="nopt-file">
-                  <label className="btn ghost">
-                    {dataFile ? dataFile.file.name : t('launcher.new.dataPick')}
-                    <input
-                      type="file"
-                      hidden
-                      accept=".csv,.tsv,.json"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        e.target.value = '';
-                        if (!f) return;
-                        const r = await checkDataFile(f);
-                        if ('error' in r) return setDataError(r.error), setDataFile(null);
-                        setDataError('');
-                        setDataFile({ file: f, rows: r.rows });
-                      }}
-                    />
-                  </label>
-                  {dataFile && (
-                    <>
-                      <span className="hint">{t('launcher.new.dataRows', { count: dataFile.rows })}</span>
-                      <button type="button" className="linkish" onClick={() => setDataFile(null)}>
-                        {t('launcher.new.dataClear')}
-                      </button>
-                    </>
-                  )}
-                </span>
-                {dataError && <span className="nopt-err">{dataError}</span>}
-              </div>
-            )}
-            {offerGit && (
-              <label className="nopt nopt-check" data-git="">
-                <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} />
-                <span>{t('launcher.new.git')}</span>
-                <span className="hint">{t('launcher.new.gitHint')}</span>
-              </label>
-            )}
-          </div>
-        )}
-        <div className="where">
-          {folder === null ? (
-            <>
-              <span className="path" data-folder={name}>
-                projects/{name}
+        ))}
+      </div>
+      <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
+      <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
+      {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
+      {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
+        <div className="nopts" data-options={kind}>
+          <span className="nopt-h">{t('launcher.new.options')}</span>
+          {(kind === 'design' || kind === 'slides') && (
+            <label className="nopt">
+              <span>{t('launcher.new.ds')}</span>
+              <select className="input" value={designSystem} onChange={(e) => setDesignSystem(e.target.value)} aria-label={t('launcher.new.ds')}>
+                <option value="">{t('launcher.new.dsNone')}</option>
+                {systems.map((s) => (
+                  <option key={s.name} value={s.name}>
+                    {s.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {kind === 'design' && (
+            <label className="nopt">
+              <span>{t('launcher.new.boardSize')}</span>
+              <select className="input" value={board} onChange={(e) => setBoard(e.target.value)} aria-label={t('launcher.new.boardSize')}>
+                {BOARD_PRESETS.map((p) => (
+                  <option key={p.size.join('x')} value={p.size.join('x')}>
+                    {p.key ? t(p.key, { w: p.size[0], h: p.size[1] }) : p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {kind === 'dashboard' && (
+            <div className="nopt">
+              <span>{t('launcher.new.dataFile')}</span>
+              <span className="nopt-file">
+                <label className="btn ghost">
+                  {dataFile ? dataFile.file.name : t('launcher.new.dataPick')}
+                  <input
+                    type="file"
+                    hidden
+                    accept=".csv,.tsv,.json"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      const r = await checkDataFile(f);
+                      if ('error' in r) return setDataError(r.error), setDataFile(null);
+                      setDataError('');
+                      setDataFile({ file: f, rows: r.rows });
+                    }}
+                  />
+                </label>
+                {dataFile && (
+                  <>
+                    <span className="hint">{t('launcher.new.dataRows', { count: dataFile.rows })}</span>
+                    <button type="button" className="linkish" onClick={() => setDataFile(null)}>
+                      {t('launcher.new.dataClear')}
+                    </button>
+                  </>
+                )}
               </span>
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => {
-                  setFolder(name);
-                  setTimeout(() => folderRef.current?.focus());
-                }}
-              >
-                {t('launcher.new.folderEdit')}
-              </button>
-            </>
-          ) : (
-            <span className="folder">
-              {!path && <span className="pre">projects/</span>}
-              <input ref={folderRef} className="input" aria-label={t('launcher.new.folderLabel')} value={folder} onChange={(e) => setFolder(e.target.value.trim())} />
-            </span>
+              {dataError && <span className="nopt-err">{dataError}</span>}
+            </div>
+          )}
+          {offerGit && (
+            <label className="nopt nopt-check" data-git="">
+              <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} />
+              <span>{t('launcher.new.git')}</span>
+              <span className="hint">{t('launcher.new.gitHint')}</span>
+            </label>
           )}
         </div>
-        {folder !== null && linksOn && (
-          <div className="where-hint" data-where={path ? 'path' : 'name'}>
-            {path && info && info !== 'checking' && !('error' in info) && info.state === 'free' ? t('launcher.new.pathFree', { path: info.path }) : t('launcher.new.folderHint')}
-          </div>
+      )}
+      <div className="where">
+        {folder === null ? (
+          <>
+            <span className="path" data-folder={name}>
+              projects/{name}
+            </span>
+            <button
+              type="button"
+              className="linkish"
+              onClick={() => {
+                setFolder(name);
+                setTimeout(() => folderRef.current?.focus());
+              }}
+            >
+              {t('launcher.new.folderEdit')}
+            </button>
+          </>
+        ) : (
+          <span className="folder">
+            {!path && <span className="pre">projects/</span>}
+            <input ref={folderRef} className="input" aria-label={t('launcher.new.folderLabel')} value={folder} onChange={(e) => setFolder(e.target.value.trim())} />
+          </span>
         )}
-        <div className={`problem${problem ? ' on' : ''}`} role="alert">
-          {problem}
+      </div>
+      {folder !== null && linksOn && (
+        <div className="where-hint" data-where={path ? 'path' : 'name'}>
+          {path && info && info !== 'checking' && !('error' in info) && info.state === 'free' ? t('launcher.new.pathFree', { path: info.path }) : t('launcher.new.folderHint')}
         </div>
-        <footer>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button className="btn primary" type="submit" disabled={!name || !!problem || waiting || busy || sizeBad}>
-            {t(`launcher.kind.${kind}.create`)}
-          </button>
-        </footer>
-      </form>
-    </div>
+      )}
+      <div className={`problem${problem ? ' on' : ''}`} role="alert">
+        {problem}
+      </div>
+      <footer>
+        <button type="button" className="btn" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button className="btn primary" type="submit" disabled={!name || !!problem || waiting || busy || sizeBad}>
+          {t(`launcher.kind.${kind}.create`)}
+        </button>
+      </footer>
+    </Dialog>
   );
 }
 
@@ -732,11 +685,6 @@ function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => void; onCr
   const usable = isFolderPath(typed);
   const info = useFolderInfo(usable ? typed : null);
   const ready = !!info && info !== 'checking' && !('error' in info);
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
   const submit = async () => {
     if (!ready || busy) return;
     if (info.state === 'free') return onCreateHere(typed);
@@ -767,38 +715,22 @@ function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => void; onCr
                 ? t('launcher.folder.noProject', { path: info.path })
                 : t('launcher.new.pathFile', { path: info.path });
   return (
-    <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form
-        className="ldialog lopen"
-        role="dialog"
-        aria-label={t('launcher.folder.title')}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <header>
-          <h2>{t('launcher.folder.title')}</h2>
-          <button type="button" className="tb" aria-label={t('common.close')} onClick={onClose}>
-            ×
-          </button>
-        </header>
-        <p className="kblurb">{t('launcher.folder.blurb')}</p>
-        <input autoFocus className="input mono" aria-label={t('launcher.folder.label')} placeholder={t('launcher.folder.placeholder')} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
-        <div className={`folder-state${ready ? ` s-${info.state}` : ''}`} role="status" data-state={ready ? info.state : undefined}>
-          {ready && info.state === 'project' && <KindIcon kind={info.kind!} size={14} />}
-          <span>{status}</span>
-        </div>
-        <footer>
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button className="btn primary" type="submit" disabled={!ready || busy || (info.state !== 'project' && info.state !== 'free')}>
-            {ready && info.state === 'free' ? t('launcher.folder.createHere') : t('launcher.folder.open')}
-          </button>
-        </footer>
-      </form>
-    </div>
+    <Dialog label={t('launcher.folder.title')} className="lopen" onClose={onClose} onSubmit={() => void submit()}>
+      <p className="kblurb">{t('launcher.folder.blurb')}</p>
+      <input autoFocus className="input mono" aria-label={t('launcher.folder.label')} placeholder={t('launcher.folder.placeholder')} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
+      <div className={`folder-state${ready ? ` s-${info.state}` : ''}`} role="status" data-state={ready ? info.state : undefined}>
+        {ready && info.state === 'project' && <KindIcon kind={info.kind!} size={14} />}
+        <span>{status}</span>
+      </div>
+      <footer>
+        <button type="button" className="btn" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button className="btn primary" type="submit" disabled={!ready || busy || (info.state !== 'project' && info.state !== 'free')}>
+          {ready && info.state === 'free' ? t('launcher.folder.createHere') : t('launcher.folder.open')}
+        </button>
+      </footer>
+    </Dialog>
   );
 }
 
@@ -832,8 +764,8 @@ export function Launcher() {
   const [tab, setTab] = useState<ProjectKind | 'all'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
-  const [view, setView] = useState<'grid' | 'list'>(() => (stored(VIEW_KEY) === 'list' ? 'list' : 'grid'));
-  const [folded, setFolded] = useState<Set<string>>(() => new Set(stored(FOLDED_KEY).split('\n').filter(Boolean)));
+  const [view, setView] = useState<'grid' | 'list'>(() => (readPref(VIEW_KEY) === 'list' ? 'list' : 'grid'));
+  const [folded, setFolded] = useState<Set<string>>(() => new Set(readPref(FOLDED_KEY).split('\n').filter(Boolean)));
   const [acting, setActing] = useState<{ name: string; x: number; y: number } | null>(null);
   const [newMenu, setNewMenu] = useState<DOMRect | null>(null);
   const [creating, setCreating] = useState<ProjectKind | null>(null);
@@ -943,13 +875,13 @@ export function Launcher() {
   };
   const setViewTo = (v: 'grid' | 'list') => {
     setView(v);
-    store(VIEW_KEY, v);
+    writePref(VIEW_KEY, v);
   };
   const fold = (key: string) =>
     setFolded((f) => {
       const n = new Set(f);
       if (!n.delete(key)) n.add(key);
-      store(FOLDED_KEY, [...n].join('\n'));
+      writePref(FOLDED_KEY, [...n].join('\n'));
       return n;
     });
   const onMore = (name: string, r: DOMRect) => setActing({ name, x: r.right, y: r.bottom + 4 });
