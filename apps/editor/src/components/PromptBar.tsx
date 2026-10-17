@@ -6,6 +6,7 @@ import { focusBoard } from './canvas/view';
 import { delegateToClaude, runFastEdit } from '../fastedit';
 import { ContextChip } from './AgentBar';
 import { RequestBar } from './RequestBar';
+import { offerPrompt } from '../headless';
 import { slideIdOf } from '@dc/core';
 
 type Target = 'ai' | 'claude';
@@ -48,6 +49,8 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
             ? `scenes/${stageScene}.html`
             : undefined
           : canvas.order[0];
+  // the command line's prompt --fast types into this bar (headless.ts)
+  useEffect(() => offerPrompt(() => file), [file]);
   const tid = sel?.kind === 'el' ? sel.tid : null;
   const pointed = useStore((s) => {
     if (!file || tid === null) return null;

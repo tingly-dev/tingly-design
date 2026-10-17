@@ -18,6 +18,7 @@ export default {
   import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
   prompt <项目> <请求>             把请求交给 Claude Code，和请求栏一样：它改文件，打开着的编辑器
                                    实时显示；最后列出改了什么
+                                   （--fast：由快速 AI 在 Chrome 里改一个画板、幻灯片或场景）
   history <项目>                   改动记录：谁改了哪个文件，最新的在最后
   skills [add [文件夹]]            agent 改项目前要读的格式说明；
                                    add 把它们复制到文件夹的 .claude/skills/ 里（默认：当前文件夹）
@@ -47,6 +48,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --since <编号或时间>  history：某条记录（编号见 --json）、某个时间或多久以前（30m、2h、1d）之后的改动
   --limit <n>           history：最近 n 条（默认 20，带 --since 时全部）
   --file <文件>         prompt：请求针对的画板、幻灯片、标签页或场景
+  --fast                prompt：用快速 AI 而不是 Claude Code（画布、幻灯片、动效）
   --continue <会话>     prompt：接着之前某次 prompt 输出的会话说
   --force               skills add：和这个版本不一样的副本也替换掉
   -v, --version         版本号
@@ -131,6 +133,10 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   snapshotsWrote_one: '{{count}} 张图，在 {{dir}}',
   snapshotsWrote_other: '{{count}} 张图，在 {{dir}}',
   needPrompt: '请说要做什么：tingly-design prompt {{project}} "<请求>"',
+  noFast: '{{kind}}没有快速 AI。去掉 --fast，把请求交给 Claude Code。',
+  noFile: '这个项目里没有 {{file}}。',
+  needFile: '请用 --file 指定画板、幻灯片或场景（没有可以默认的）。',
+  promptHandedOver: '快速 AI 把这件事交给了 Claude Code。',
   promptStopped: '已停止。',
   promptChanged_one: '改动记录里多了 {{count}} 条：',
   promptChanged_other: '改动记录里多了 {{count}} 条：',

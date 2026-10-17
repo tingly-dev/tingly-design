@@ -16,6 +16,7 @@ Usage: tingly-design [command] [options]
   import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
   prompt <project> <request>       hand a request to Claude Code, as the request bar does: it edits the
                                    files, the open editor shows it live; prints what it changed
+                                   (--fast: the fast AI edits one board, slide or scene in Chrome)
   history <project>                the change history: who changed which file, newest last
   skills [add [folder]]            the format references an agent reads before editing a project;
                                    add copies them into the folder's .claude/skills/ (default: here)
@@ -46,6 +47,7 @@ Options:
   --since <id or time>  history: after an entry id (from --json), a time, or how long ago (30m, 2h, 1d)
   --limit <n>           history: the last n entries (default 20, all with --since)
   --file <file>         prompt: the board, slide, tab or scene the request is about
+  --fast                prompt: fast AI instead of Claude Code (canvas, slides, motion)
   --continue <session>  prompt: continue the conversation an earlier prompt printed
   --force               skills add: replace a copy that differs from this version's
   -v, --version         the version
@@ -130,6 +132,10 @@ Options:
   snapshotsWrote_one: '{{count}} picture in {{dir}}',
   snapshotsWrote_other: '{{count}} pictures in {{dir}}',
   needPrompt: 'Say what to do: tingly-design prompt {{project}} "<request>"',
+  noFast: 'Fast AI is not offered for a {{kind}}. Leave out --fast to hand the request to Claude Code.',
+  noFile: 'There is no {{file}} in this project.',
+  needFile: 'Name the board, slide or scene with --file (there is none to default to).',
+  promptHandedOver: 'Fast AI handed this to Claude Code.',
   promptStopped: 'Stopped.',
   promptChanged_one: '{{count}} change in the history:',
   promptChanged_other: '{{count}} changes in the history:',

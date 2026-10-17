@@ -104,6 +104,7 @@ const TOOLS = [
         prompt: { type: 'string', description: 'The request, in the words a person would type in the request bar.' },
         file: { type: 'string', description: 'The board, slide, tab or scene file the request is about.' },
         session: { type: 'string', description: 'Continue the Claude Code conversation an earlier prompt returned.' },
+        fast: { type: 'boolean', description: "canvas, slides, motion: the editor's fast AI makes a small edit to one file in seconds instead (needs Chrome and a fast model); it hands larger requests to Claude Code itself." },
       },
       required: ['project', 'prompt'],
     },
@@ -161,7 +162,7 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
     }
     case 'prompt': {
       const p = await resolveProject(ctx, str(a.project), 'prompt');
-      const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: str(a.session) });
+      const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: str(a.session), fast: a.fast === true });
       // a run that failed or was stopped still says so in `outcome`, with what it changed before it ended
       return json(r);
     }
