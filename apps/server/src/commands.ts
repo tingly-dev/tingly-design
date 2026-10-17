@@ -645,6 +645,25 @@ export async function skills() {
   return out;
 }
 
+/** A skill's reference pages (`reference/<page>.md`): each page's name and text. */
+export async function skillPages(s: { file: string }): Promise<{ name: string; text: string }[]> {
+  const dir = resolve(s.file, '..', 'reference');
+  const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => n.endsWith('.md')).sort();
+  return Promise.all(names.map(async (n) => ({ name: n.slice(0, -3), text: await readFile(resolve(dir, n), 'utf8') })));
+}
+
+/** A skill's reference pages into its copy: missing ones always, changed ones only when `overwrite`. */
+async function copyReferences(from: string, to: string, overwrite: boolean): Promise<void> {
+  const names = await readdir(from).catch(() => [] as string[]);
+  for (const n of names.filter((x) => x.endsWith('.md'))) {
+    const text = await readFile(resolve(from, n), 'utf8');
+    const had = await readFile(resolve(to, n), 'utf8').catch(() => null);
+    if (had === text || (had !== null && !overwrite)) continue;
+    await mkdir(to, { recursive: true });
+    await writeFile(resolve(to, n), text, 'utf8');
+  }
+}
+
 /**
  * Copies the format references into a project's `.claude/skills/`, so Claude Code (or another agent
  * that reads skills) knows the files before it edits them. A skill already there with other text is
@@ -661,6 +680,8 @@ export async function addSkills(o: { to?: string; force?: boolean } = {}) {
       await mkdir(resolve(file, '..'), { recursive: true });
       await writeFile(file, s.text, 'utf8');
     }
+    // the pages a skill points to (reference/*.md) go with it; a copy kept as it was keeps its own
+    if (state !== 'kept') await copyReferences(resolve(s.file, '..', 'reference'), resolve(file, '..', 'reference'), state === 'updated');
     done.push({ name: s.name, file, state });
   }
   return { root, skills: done };

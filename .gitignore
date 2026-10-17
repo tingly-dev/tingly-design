@@ -11,3 +11,4 @@ projects/*/renders/
 .tingly-design/
 projects/.links.json
 projects/.server.json
+__pycache__/
