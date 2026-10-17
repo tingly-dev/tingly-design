@@ -19,9 +19,10 @@ import { HttpError } from './store';
 
 const PROTOCOLS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
-/** At most this many pictures go back inline from `check` with snapshots; the rest are named by path. */
-const INLINE_PICTURES = 6;
+/** At most this many pictures go back inline from `check` with snapshots, each at most PICTURE_SIDE on its longer side; the rest are named by path. */
+const INLINE_PICTURES = 12;
 const INLINE_BYTES = 4 * 1024 * 1024;
+const PICTURE_SIDE = 1200;
 
 export interface JsonRpc {
   jsonrpc: '2.0';
@@ -70,7 +71,7 @@ const TOOLS = [
   },
   {
     name: 'check',
-    description: 'The problems the editor would show in a project (files it cannot read, references to missing files, board markup the canvas cannot pick). With snapshots: true, also draws every board, slide, tab, design-system view or motion cover in the editor (needs Chrome) and returns the pictures, with what threw or did not load in the work as problems; for motion it also checks each format shows the same picture at the same time whatever came before (a `seek` warning when it does not, so the video would not match the preview).',
+    description: 'The problems the editor would show in a project (files it cannot read, references to missing files, board markup the canvas cannot pick). With snapshots: true, also draws every board, slide, tab, design-system view or motion cover in the editor (needs Chrome) and returns the pictures (scaled down; full size on disk), with what threw or did not load in the work as problems; for motion it also checks each format shows the same picture at the same time whatever came before (a `seek` warning when it does not, so the video would not match the preview).',
     inputSchema: { type: 'object', properties: { project, snapshots: { type: 'boolean' } }, required: ['project'] },
     annotations: { readOnlyHint: true },
   },
@@ -145,12 +146,14 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       const p = await resolveProject(ctx, str(a.project), 'check');
       const r = await check(ctx, p, { snapshots: a.snapshots === true });
       const out: Content[] = json({ ...r, snapshots: r.snapshots?.files });
-      // the pictures themselves, as many as fit: a model looks at them without another call
+      // the pictures themselves, brought down to a size a model reads at a glance, as many as fit: it looks at them without another call
+      const pictures = (r.snapshots?.files ?? []).filter((f) => f.endsWith('.png')).slice(0, INLINE_PICTURES);
+      const { shrinkPictures } = await import('./render');
+      const small = await shrinkPictures(await Promise.all(pictures.map((f) => readFile(f))), PICTURE_SIDE);
       let bytes = 0;
-      for (const f of (r.snapshots?.files ?? []).filter((f) => f.endsWith('.png')).slice(0, INLINE_PICTURES)) {
-        const data = await readFile(f);
+      for (const [i, data] of small.entries()) {
         if ((bytes += data.length) > INLINE_BYTES) break;
-        out.push({ type: 'text', text: f }, { type: 'image', data: data.toString('base64'), mimeType: 'image/png' });
+        out.push({ type: 'text', text: pictures[i] }, { type: 'image', data: data.toString('base64'), mimeType: 'image/png' });
       }
       return out;
     }

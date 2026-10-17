@@ -41,7 +41,7 @@ Pictures, PDFs, HTML and Markdown (everything but zip and motion) are made by th
 
 ## As an MCP server
 
-An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export`, `prompt` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result. Exports go to the project's `renders/`.
+An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export`, `prompt` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result, scaled down to 1200 pixels on the longer side (up to 12 of them; the full-size files stay in `renders/check/`). Exports go to the project's `renders/`.
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # started by the agent, on stdio
