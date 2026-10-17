@@ -1,0 +1,324 @@
+/* What every editor shares: the app frame, menus and popovers, an item's detail. */
+
+/* ------------------------------------------------------------- shell */
+
+
+:root {
+  --topbar-h: 44px;
+}
+
+
+.app {
+  position: fixed;
+  inset: var(--topbar-h) 0 0 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+
+.app.dragging iframe {
+  pointer-events: none;
+}
+
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+
+.bar {
+  position: absolute;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 5px;
+  background: var(--panel);
+  border-radius: var(--r-float);
+  box-shadow: var(--float-shadow);
+}
+
+
+.bar.left {
+  left: 12px;
+}
+
+
+.bar.right {
+  right: 12px;
+}
+
+
+.bar .sep {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+
+.tb {
+  height: 30px;
+  min-width: 30px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+
+.tb:hover {
+  background: var(--hover);
+}
+
+
+.tb[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+
+.tb:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+
+.tb.text {
+  font-weight: 500;
+  color: var(--ink);
+  padding: 0 8px;
+}
+
+
+.tb .caret {
+  color: var(--faint);
+  display: inline-flex;
+}
+
+
+.zoomval {
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+}
+
+
+.syncchip {
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+
+.syncchip .hist {
+  position: relative;
+  display: inline-flex;
+  line-height: 0;
+}
+
+
+.syncchip .dot {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+
+.syncchip .dot.off {
+  background: var(--danger);
+}
+
+
+.syncchip .dot.busy {
+  background: var(--accent);
+}
+
+
+.syncchip[data-state='off'] {
+  color: var(--danger);
+}
+
+
+/* menus and popovers */
+
+
+.menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 200px;
+  padding: 5px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--lift-shadow);
+  animation: pop-in 0.12s var(--ease);
+}
+
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.98);
+  }
+}
+
+
+.menu .mi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+
+.menu .mi:hover,
+.menu .mi:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+
+
+.menu .mi:disabled {
+  color: var(--faint);
+  cursor: default;
+  background: none;
+}
+
+
+.menu .mi .k {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+
+.menu .mi {
+  position: relative;
+}
+
+
+/* the detail of an item: an info mark, and the sentence on hover or keyboard focus */
+
+
+.menu .mi .mi-info {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--faint);
+  opacity: 0.7;
+}
+
+
+.menu .mi .k + .mi-info {
+  margin-left: 8px;
+}
+
+
+.menu .mi:hover .mi-info,
+.menu .mi:focus-visible .mi-info {
+  opacity: 1;
+}
+
+
+.menu .mi .mh {
+  position: absolute;
+  z-index: 2;
+  left: 28px;
+  top: calc(100% + 2px);
+  width: max-content;
+  max-width: 250px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--panel);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s var(--ease) 0s;
+}
+
+
+.menu .mi:hover .mh,
+.menu .mi:focus-visible .mh {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.35s;
+}
+
+
+.menu .mi.danger {
+  color: var(--danger);
+}
+
+
+.menu .mi .ic {
+  width: 16px;
+  display: inline-flex;
+  color: var(--muted);
+}
+
+
+.menu hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 4px 2px;
+}
+
+
+.menu .head {
+  padding: 6px 10px 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.menu .mhint {
+  max-width: 280px;
+  padding: 0 10px 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+
+.menu .mhint.faint {
+  padding-top: 6px;
+  color: var(--faint);
+}
+
+
+.menu input {
+  width: 100%;
+  height: 28px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 0 8px;
+}
+
