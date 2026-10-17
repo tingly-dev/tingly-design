@@ -1,0 +1,203 @@
+/* Theme tokens, the page, plain form controls. */
+
+:root {
+  /* The themeable tokens. These are the light preset (Tingly Box's light theme), for the first
+     paint; theme.ts writes the active theme over them on <html> (presets, ?theme=, DC_THEME, a host's postMessage). */
+  --canvas: #f8fafc;
+  --panel: #ffffff;
+  --panel-2: #f6f6f7;
+  --hover: #f1f5f9;
+  --line: #e2e8f0;
+  --line-2: #d7d8dc;
+  --ink: #1e293b;
+  --ink-2: #47505e;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --accent: #2563eb;
+  --accent-ink: #1d4ed8;
+  --accent-soft: #e0e7ff;
+  --on-accent: #ffffff;
+  --danger: #dc2626;
+  --danger-soft: #fce9e9;
+  --ok: #059669;
+  --ok-soft: #e6f5f0;
+  --warn: #d97706;
+  --warn-soft: #fbf1e6;
+  --backdrop: rgba(30, 41, 59, 0.32);
+  --float-shadow: 0 0 0 1px #e2e8f0, 0 10px 24px rgba(15, 23, 42, 0.08);
+  --lift-shadow: 0 0 0 1px #e2e8f0, 0 20px 48px rgba(15, 23, 42, 0.16);
+  --ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Roboto', 'Helvetica', 'Arial', system-ui, sans-serif;
+  --mono: 'Fira Code', 'Cascadia Code', ui-monospace, 'SF Mono', Consolas, Menlo, Monaco, 'Courier New', monospace;
+  --r: 6px;
+  --r-float: 12px;
+
+  /* follow the tokens above, so a theme that sets only a few still holds together */
+  --hairline: color-mix(in srgb, var(--ink) 12%, transparent);
+  --tint: color-mix(in srgb, var(--ink) 6%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  --scrim-ink: color-mix(in srgb, var(--ink) 78%, transparent);
+  --mark: color-mix(in srgb, #ffc400 30%, var(--panel));
+  --comment: rgba(255, 196, 0, 0.22);
+  --comment-on: rgba(255, 196, 0, 0.45);
+  --comment-line: rgba(230, 160, 0, 0.7);
+  --check-a: #e4e4e0;
+  --check-b: #ffffff;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* who made a change: shared by the journal and the prompt bar */
+  --actor-human: var(--ink);
+  --actor-jquery: #0e7c7b;
+  --actor-fast-edit: var(--accent);
+  --actor-claude: #6d4fd8;
+  --actor-external: #b45309;
+  --actor-undo: var(--faint);
+
+  /* sticky-note fills (default is yellow, as in the original). Notes are content on the board,
+     so they keep their colours in every theme. */
+  --note-default: #fbefa2;
+  --note-gray: #e8e8e5;
+  --note-red: #fbd9d6;
+  --note-orange: #fde0c2;
+  --note-green: #d3efdb;
+  --note-teal: #cdece9;
+  --note-blue: #d8e4fc;
+  --note-purple: #e6dcfb;
+  --note-pink: #fbdbe9;
+
+  /* the six project kinds */
+  --t-blue: #2f6fed;
+  --t-purple: #6d4fd8;
+  --t-teal: #0e7c7b;
+  --t-orange: #b45309;
+  --t-green: #1f7a43;
+  --t-pink: #c0306e;
+
+  --panel-w: 312px;
+  color-scheme: light;
+}
+
+
+:root[data-scheme='dark'] {
+  --actor-jquery: #2dd4bf;
+  --actor-claude: #a78bfa;
+  --actor-external: #fbbf24;
+  --t-blue: #7aa5ff;
+  --t-purple: #a78bfa;
+  --t-teal: #2dd4bf;
+  --t-orange: #fb9a4b;
+  --t-green: #4ade80;
+  --t-pink: #f472b6;
+  --mark: color-mix(in srgb, #ffc400 28%, var(--panel));
+  --comment: rgba(255, 196, 0, 0.16);
+  --comment-on: rgba(255, 196, 0, 0.32);
+  --check-a: #2e3037;
+  --check-b: #11141c;
+  color-scheme: dark;
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+
+body {
+  font: 13px/1.45 var(--ui);
+  color: var(--ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent;
+}
+
+
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'],
+progress {
+  accent-color: var(--accent);
+}
+
+
+/* plain form controls: themed, whatever class they carry (rules with a class still win) */
+
+
+:where(input:not([type='checkbox'], [type='radio'], [type='color'], [type='range'], [type='file']), textarea, select) {
+  background-color: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+}
+
+
+:where(input, textarea)::placeholder {
+  color: var(--faint);
+}
+
+
+select:not([multiple]) {
+  appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238b8f98' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+
+.input {
+  height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+
+:where(.input, .dsin, .sel-inp, .lsort, select, .snotes, .ccompose textarea, textarea.code):focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+

@@ -63,7 +63,7 @@ Order is by value over risk. Steps 1–4 are behaviour-preserving or small visib
 4. **Top bar tidy** (2.4). `TopBar` takes the panel toggle; motion gets `ProjectTitle`; design system uses the ⇄ `FileMenu`. Redraws the Shell, Motion and DesignSystem boards. Screenshots of six top bars.
 5. **Folders** (2.6). `components/shared/` (or `shell/`) for cross-kind pieces, `components/canvas/` for canvas-only ones, per-kind state next to its components. Pure `git mv` + import paths; `CLAUDE.md` layout and `.design/project-kinds.md` registration list updated.
 6. **Split the big files** (2.5), one PR each: Launcher (page / card+preview / dialogs), MotionApp (top bar / stage / timeline), SlidesApp (strip / stage / present), `store.ts` into slices. No visible change.
-7. **Split `styles.css`** per area (shell, menus, dialogs, panel, agent bar, launcher, one per kind), imported in today's order so the cascade is unchanged; then the one-off button pass (2.7).
+7. **Split `styles.css`** (done: `styles/<area>.css`, imported in cascade order) per area (shell, menus, dialogs, panel, agent bar, launcher, one per kind), imported in today's order so the cascade is unchanged; then the one-off button pass (2.7).
 
 Recommendation: start with **1 (Dialog)**. It is small, it is the only finding that is also a real keyboard/accessibility bug, and it gives the later steps a primitive to build on. Step 3 has the most long-term value but the widest test surface; do it second or third.
 

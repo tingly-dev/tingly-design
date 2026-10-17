@@ -1,0 +1,805 @@
+/* Motion: the stage, the timeline, formats, notes. */
+
+/* ------------------------------------------------------------- motion */
+
+
+.mframe {
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+
+.mframe.on {
+  opacity: 1;
+}
+
+
+.mframe iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+
+.mmain {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px 16px;
+}
+
+
+.mstage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+
+.mstack {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+
+.mstack .mframe {
+  box-shadow: var(--lift-shadow), 0 0 0 1px var(--line);
+  background: #fff;
+}
+
+
+.mcover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+
+/* the timeline panel: a bar (play, time, where), then the ruler and the scene track on one time axis */
+
+
+.mtimeline {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 6px 12px 12px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+
+.mbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+}
+
+
+.mplay {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+  transition: filter 0.12s var(--ease);
+}
+
+
+.mplay:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+
+.mplay:disabled {
+  background: var(--panel-2);
+  color: var(--faint);
+  cursor: default;
+}
+
+
+.mtime {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+
+.mtime b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+
+.mwhere {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.mlanes {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+
+/* the axis: ruler, clips and playhead share it, 0 s at its left edge */
+
+
+.maxis {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* before 0 s: the cover's own slot, always there so adding one moves nothing */
+
+
+.mcoverslot {
+  flex: none;
+  width: 84px;
+  padding-right: 12px;
+  border-right: 1px dashed var(--line-2);
+}
+
+
+.mcoverhead {
+  height: 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 20px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+
+.mcovertrack {
+  position: relative;
+  height: 40px;
+  margin-top: 8px;
+}
+
+
+.mcoverclip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+
+.mcoverclip .mname {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+.mcoverclip .mlen {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+
+.mcoverclip:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+
+.mcoverclip.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+
+.mcoverclip.add {
+  align-items: center;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+
+.mcoverx {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+
+.mcovertrack:hover .mcoverx,
+.mcoverx:focus-visible {
+  opacity: 1;
+}
+
+
+.mcoverx:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+
+/* a clip's right edge: drag to set the scene's length */
+
+
+.mgrip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  margin-left: -6px;
+  z-index: 1;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+
+.mgrip::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+
+
+.mgrip:hover::after,
+.mgrip:focus-visible::after {
+  opacity: 0.8;
+}
+
+
+.mdur {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+
+.mdur .input {
+  width: 52px;
+  height: 24px;
+  padding: 0 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.mruler {
+  position: relative;
+  height: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+
+.mruler i {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 4px;
+  background: var(--line-2);
+  pointer-events: none;
+}
+
+
+.mruler i.major {
+  height: 7px;
+  background: var(--faint);
+}
+
+
+.mruler i span {
+  position: absolute;
+  bottom: 8px;
+  left: 3px;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+
+/* the native range keeps keyboard and assistive tech; a zero-width thumb maps its value onto the full width */
+
+
+.mscrub {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+
+.mscrub::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+
+
+.mscrub::-moz-range-track {
+  height: 100%;
+  background: transparent;
+}
+
+
+.mscrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 100%;
+  border: 0;
+}
+
+
+.mscrub::-moz-range-thumb {
+  width: 0;
+  height: 100%;
+  border: 0;
+}
+
+
+.mscrub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+
+.mscenes {
+  position: relative;
+  height: 40px;
+  margin-top: 8px;
+}
+
+
+/* a clip: its edges are on the axis; the 2px gap between clips comes out of each clip's own width */
+
+
+.mscene {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  background-clip: padding-box;
+  border-radius: 6px;
+  background-color: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+}
+
+
+.mscene .mname,
+.mscene .mlen {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+
+.mscene .mname {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+.mscene .mlen {
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+
+.mscene:hover {
+  background-color: var(--hover);
+  color: var(--ink);
+}
+
+
+.mscene.on {
+  background-color: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+
+.mscene.on .mlen {
+  color: var(--accent-ink);
+  opacity: 0.7;
+}
+
+
+/* the playhead: a line through the ruler and the track, with its handle on the ruler */
+
+
+.mhead {
+  position: absolute;
+  top: 0;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+
+.mhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: 12px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 3px 3px 2px 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+}
+
+
+.missues {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  max-height: 160px;
+  overflow: auto;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+
+.missues ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+
+.missues li {
+  padding: 2px 0;
+}
+
+
+.missues li.error b {
+  color: var(--danger);
+}
+
+
+.missues p {
+  margin: 0;
+  color: var(--faint);
+}
+
+
+.mseg {
+  display: flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+
+.mseg button {
+  border: 0;
+  background: transparent;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+
+.mseg button.on {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+
+.mspeed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin: 0 4px;
+}
+
+
+.mspeed select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+
+.app.motion .dsask {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  margin: 0 auto;
+  width: min(640px, 100%);
+  flex: none;
+}
+
+
+.app.motion.with-panel {
+  grid-template-columns: 1fr auto;
+}
+
+
+.app.motion .panel {
+  min-height: 0;
+}
+
+
+.mlayer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+
+.mlayer.on {
+  visibility: visible;
+}
+
+
+.mlayer.medit.on {
+  pointer-events: auto;
+}
+
+
+.mcatch {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+
+.mlayer.medit .sframe {
+  box-shadow: var(--lift-shadow), 0 0 0 1px var(--line);
+  background: #fff;
+}
+
+
+/* a fixed slot under the timeline: the bar (and the card above it) float over the stage instead of pushing it */
+
+
+.mprompt {
+  flex: none;
+  position: relative;
+  height: 96px;
+}
+
+
+.mprompt.collapsed {
+  height: 36px;
+}
+
+
+.mprompt.docked {
+  display: none;
+}
+
+
+.mprompt .prompt {
+  bottom: 0;
+}
+
+
+.mfmt-where {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+
+.mfmt-where b {
+  color: var(--accent-ink);
+}
+
+
+.mover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+
+.mover .chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+
+.mformats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+
+.mformat {
+  display: grid;
+  grid-template-columns: 1fr 72px 72px 22px;
+  align-items: center;
+  gap: 6px;
+}
+
+
+.mfname {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--ink);
+  min-width: 0;
+}
+
+
+.mfname .faint {
+  font-size: 11px;
+}
+
+
+.maddfmt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+
+.mcustom {
+  display: grid;
+  grid-template-columns: 1fr 56px 56px auto;
+  gap: 6px;
+  width: 100%;
+}
+
+
+/* notes under the timeline: the whole piece, and the scene on the stage (an <aside> in its file) */
+
+
+.mnotes {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+
+.mnotes label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.mnotes .snotes {
+  height: 56px;
+}
+
+
+.mnotedot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+

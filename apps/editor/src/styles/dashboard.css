@@ -1,0 +1,27 @@
+/* Dashboards. */
+
+/* ------------------------------------------------------------- dashboard */
+
+
+.app.dash {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  background: var(--panel-2);
+}
+
+
+.app.dash.with-side {
+  grid-template-columns: 1fr 400px;
+}
+
+
+.dashbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
