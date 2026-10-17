@@ -24,6 +24,7 @@ pnpm tingly-design …              # 在本仓库里
 | `check [项目]` | 带项目时，列出编辑器会报的问题（文件缺失、画板解析不了、幻灯片或场景超出子集、数据集或令牌有误），有错误时退出码为 1。`--snapshots` 再把每个画板、幻灯片、标签页、设计系统视图或动效封面画一遍，报告画不出来的，图留在项目的 `renders/check/`（或 `--out`）里可以看。不带项目时，看这台机器能做什么：Chrome、ffmpeg、`claude` 命令和快速 AI。 |
 | `export <项目> --as <格式>` | “导出”菜单能存的格式，用它的名字，写进项目的 `renders/` 或 `--out`：画布 `png`（每个画板，或 `--board <文件名或标题>`；`--scale 2` 是 PNG @2x）；幻灯片 `pdf`、`png`（每一页，或 `--slide <编号或第几页>`）、`html`、`notes`；文档 `pdf`、`html`、`md`（整篇，或 `--tab <编号或标题>`）、`png`（每个标签页）；设计系统 `png`（总览，或 `--view colors`…）；看板 `png`。这些由编辑器自己在 Chrome 里画，和菜单按钮存的是同一个文件（见下）。动效导出为 `mp4`、`gif` 或 `png`（封面）：`--format wide,tall` 选格式；`--speed`、`--fps`、`--quality low|medium|high`、`--width`、`--height` 和导出对话框一样；导出整段 MP4 时第一帧是封面，并带着封面图，封面 PNG 写在旁边。任何项目都可以导出 `zip`（见下）。 |
 | `export <项目> --as zip` | 整个项目存成一个 `.zip`，放在当前文件夹或 `--out`，和编辑器里的“整个项目（.zip）”一样：所有文件、改动记录，以及装进来的设计系统（并排放着）。`--files-only` 不带改动记录和设计系统。 |
+| `prompt <项目> <请求>` | 把请求交给 Claude Code，和请求栏的“交给 Claude Code”一样。由编辑器来跑（项目文件夹上已经打开的那个，或者为这次起一个），所以改动实时显示，改动记录里记成 Claude。工作时列出每一步，最后输出它说的话、改动记录里多出的条目，以及用 `--continue <会话>` 接着说的会话。`--file <文件>` 说明请求针对哪个画板、幻灯片、标签页或场景。Ctrl+C 停止。需要 `claude` 命令。 |
 | `history <项目>` | 改动记录：什么时候、谁（手改、快速 AI、Claude、外部、撤销）、哪个文件、改了什么，最新的在最后。默认列最近 20 条（`--limit <n>`）；`--since` 接 `--json` 里的记录编号、一个时间或多久以前（`30m`、`2h`、`1d`），列出那之后的全部。编号不在记录里时报错（退出码 1），不当成“没有改动”。 |
 | `import <文件.zip>` | 从这样的 `.zip`（或自己压缩的项目文件夹）导入项目，和首页的“导入项目（.zip）…”一样。导入到项目文件夹，名字被占用时加 `-2`，并输出新名字。 |
 
@@ -40,7 +41,7 @@ pnpm tingly-design …              # 在本仓库里
 
 ## 作为 MCP 服务
 
-能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里。导出写到项目的 `renders/`。
+能说 MCP 的 agent 直接拿到这些命令作为工具：`list`、`read_skill`、`new`、`check`、`export`、`prompt`、`history`，参数和命令一样；每种类型的格式说明是资源（`tingly-design://skills/<类型>`）。agent 用自己的文件工具改项目文件；`check` 带 `snapshots: true` 时把图直接放在结果里。导出写到项目的 `renders/`。
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # 由 agent 启动，走 stdio
@@ -65,6 +66,7 @@ claude mcp add --transport http tingly-design http://127.0.0.1:8787/mcp   # 用�
 ```bash
 npx tingly-design new slides pitch --title "Q3 路演"
 # … 编辑 projects/pitch/*.dc.html …
+npx tingly-design prompt pitch "把标题页写得更紧凑" --json   # 或者交给编辑器的 Claude Code
 npx tingly-design check pitch --snapshots --json         # 有什么问题，每页幻灯片的图在 projects/pitch/renders/check/
 npx tingly-design export pitch --as pdf --out dist/
 npx tingly-design export promo --as mp4 --format wide --out dist/
@@ -73,4 +75,4 @@ npx tingly-design open pitch                          # 给人看；在对方已
 npx tingly-design history pitch --since 3f9a1c20      # 上次看到那条记录之后，对方改了什么
 ```
 
-每种类型的文件格式见 `.claude/skills/<类型>/SKILL.md`（`tingly-design skills add` 把它们复制到别的仓库）。命令为什么这样设计、后面还要做什么（`prompt`），见 `.design/cli.md`。
+每种类型的文件格式见 `.claude/skills/<类型>/SKILL.md`（`tingly-design skills add` 把它们复制到别的仓库）。命令为什么这样设计、后面还要做什么（`prompt --fast`），见 `.design/cli.md`。

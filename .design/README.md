@@ -38,7 +38,7 @@
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
-| [cli.md](./cli.md) | 命令行 `tingly-design`：命令用编辑器里同一个词（`open`、`new`、`list`、`check`、`export`）；服务端拆成路由和启动；核心给数据、命令行给措辞；`server.mjs` 就是 `serve`；找到正在运行的编辑器（`.server.json`）、`history`；其他类型的导出由本机 Chrome 打开编辑器、跑导出菜单自己的项（`headless.ts`、`pageExport.ts`），`check --snapshots`；命令抽成数据（`commands.ts`），同一份作为 MCP 工具（`/mcp`、`tingly-design mcp`），`skills add` | 第 1–4 步已实施；§6 是后面几步 |
+| [cli.md](./cli.md) | 命令行 `tingly-design`：命令用编辑器里同一个词（`open`、`new`、`list`、`check`、`export`）；服务端拆成路由和启动；核心给数据、命令行给措辞；`server.mjs` 就是 `serve`；找到正在运行的编辑器（`.server.json`）、`history`；其他类型的导出由本机 Chrome 打开编辑器、跑导出菜单自己的项（`headless.ts`、`pageExport.ts`），`check --snapshots`；命令抽成数据（`commands.ts`），同一份作为 MCP 工具（`/mcp`、`tingly-design mcp`），`skills add`；`prompt` 交给编辑器跑 Claude Code | 第 1–5 步已实施（`prompt --fast` 除外）；§6 是后面几步 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或右侧边栏（自动隐藏）、请求历史、"新对话 / 接着"标记 | 已实施；§5 是没做的 |

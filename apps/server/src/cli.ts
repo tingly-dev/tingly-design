@@ -50,6 +50,8 @@ const { values: opts, positionals } = (() => {
         scale: { type: 'string' },
         snapshots: { type: 'boolean' },
         force: { type: 'boolean' },
+        file: { type: 'string' },
+        continue: { type: 'string' },
         since: { type: 'string' },
         limit: { type: 'string' },
         version: { type: 'boolean', short: 'v' },
@@ -69,7 +71,7 @@ const [command = 'open', ...rest] = positionals;
 if (command !== 'serve' && command !== 'open' && !process.env.DC_LOG_LEVEL) process.env.DC_LOG_LEVEL = 'warn';
 // run from the repository, the command serves the built editor too (there is no Vite beside it)
 // (export and check --snapshots may start one to draw pages in)
-if (['serve', 'open', 'export', 'check', 'mcp'].includes(command) && !process.env.NODE_ENV) process.env.NODE_ENV = 'production';
+if (['serve', 'open', 'export', 'check', 'mcp', 'prompt'].includes(command) && !process.env.NODE_ENV) process.env.NODE_ENV = 'production';
 
 // `tingly-design list | head` closes the pipe early; that is not an error
 process.stdout.on('error', (e: NodeJS.ErrnoException) => (e.code === 'EPIPE' ? process.exit(0) : undefined));
@@ -284,6 +286,34 @@ async function exportProject(arg: string | undefined): Promise<number> {
   return r.failed.length ? 1 : 0;
 }
 
+// ---------------------------------------------------------------- prompt
+
+/** The request bar's Hand to Claude Code: the steps as it works (in a terminal), then what it said and what it changed. */
+async function promptCommand(arg: string | undefined, text: string | undefined): Promise<number> {
+  const p = await project(arg, 'prompt');
+  // Ctrl+C stops the run, as the editor's Stop button does, and the command still reports what it changed
+  const stop = new AbortController();
+  process.once('SIGINT', () => stop.abort());
+  const r = await cmd.prompt(ctx, p, {
+    text,
+    file: opts.file,
+    resume: opts.continue,
+    signal: stop.signal,
+    onStep: tty() ? (step) => process.stderr.write(`  · ${t(`prompt.step.${step.op}`, { target: step.target ?? '', within: step.within ?? '' })}\n`) : undefined,
+  });
+  if (opts.json) print(r);
+  else {
+    if (r.text) console.log(r.text);
+    if (r.outcome === 'stopped') console.error(t('cli.promptStopped'));
+    if (r.entries.length) {
+      console.log(t('cli.promptChanged', { count: r.entries.length }));
+      table(r.entries.map((e) => [e.id, e.file, e.summary]), '  ');
+    } else console.log(t('cli.promptNoChanges'));
+    if (r.session) console.log(t('cli.promptContinue', { project: arg, session: r.session }));
+  }
+  return r.outcome === 'done' ? 0 : 1;
+}
+
 // ---------------------------------------------------------------- skills
 
 /** The format references Claude Code reads, listed or copied into a folder's .claude/skills/. */
@@ -381,6 +411,8 @@ async function main(): Promise<number> {
     case 'history':
       await history(rest[0]);
       return 0;
+    case 'prompt':
+      return promptCommand(rest[0], rest.slice(1).join(' ') || undefined);
     case 'skills':
       await skillsCommand(rest[0], rest[1]);
       return 0;

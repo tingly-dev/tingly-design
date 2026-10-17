@@ -156,12 +156,14 @@ function watchProjects() {
     ready = true;
   });
   async function onChange(event: string, abs: string): Promise<void> {
+    // the first scan's files are what is already there, not changes; known now, since `ready` can turn while this reads
+    const initial = !ready;
     const at = split(abs);
     if (!at) return;
     const key = `${at.project}/${at.rel}`;
     // a dashboard's data file changed: pages re-read the datasets on it
     if (isDataPath(at.rel)) {
-      if (ready && (event === 'add' || event === 'change' || event === 'unlink')) publish(at.project, { type: 'assets', path: at.rel });
+      if (!initial && (event === 'add' || event === 'change' || event === 'unlink')) publish(at.project, { type: 'assets', path: at.rel });
       return;
     }
     if (event === 'unlink') {
@@ -179,7 +181,7 @@ function watchProjects() {
     }
     const before = seen.get(key);
     seen.set(key, content);
-    if (!ready) return;
+    if (initial) return;
     const version = versionOf(content);
     if (ownWrites.get(key) === version) return;
     if (before === content) return;
