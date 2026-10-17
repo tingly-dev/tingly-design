@@ -36,18 +36,25 @@ export interface ExportOutcome extends Omit<VideoResult, 'container' | 'ext'> {
   embeds: string[];
 }
 
+/** Whether the scene `id` is on screen at `ms` (video time): from its start until its transition into the next one ends. Unknown ids count as on screen. */
+function onScreen(stage: MotionStage, id: string | undefined, ms: number): boolean {
+  const at = ms * stage.speed;
+  const w = stage.scenes.find((s) => s.id === id);
+  if (!w) return true;
+  const end = w.start + w.duration + w.transition.duration;
+  // the last scene stays up on the piece's final instant (see the stage's setTime)
+  return at >= w.start && (at < end || (w === stage.scenes[stage.scenes.length - 1] && at <= end));
+}
+
+/** Leaves out the scenes off screen at `ms()`: every scene stays mounted, hidden, and copying those made a frame cost the whole piece, not what it shows. */
+const onlyOnScreen = (stage: MotionStage, ms: () => number) => (n: Node) => !(n instanceof HTMLElement && n.classList.contains('dc-slide-host') && !onScreen(stage, n.dataset.scene, ms()));
+
 /**
  * Pictures of the embeds on screen at `ms` (video time), each taken by its own
  * frame. Scenes whose embed gave none go into `missed`.
  */
 async function embedPictures(stage: MotionStage, root: HTMLElement, ms: number, missed?: Set<string>): Promise<Map<Element, string> | undefined> {
-  const at = ms * stage.speed;
-  const frames = Array.from(root.querySelectorAll<HTMLIFrameElement>('x-embed > iframe')).filter((f) => {
-    const id = f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene;
-    const w = stage.scenes.find((s) => s.id === id);
-    // a scene is on screen from its start until its transition into the next one ends
-    return !w || (at >= w.start && at < w.start + w.duration + w.transition.duration);
-  });
+  const frames = Array.from(root.querySelectorAll<HTMLIFrameElement>('x-embed > iframe')).filter((f) => onScreen(stage, f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene, ms));
   if (!frames.length) return undefined;
   const pics = await snapFrames(frames);
   if (missed) for (const f of frames) if (!pics.has(f)) missed.add(f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene ?? '');
@@ -66,8 +73,10 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   const audio = req.format !== 'gif' && whole && req.audio?.length ? await clock.time('audio', () => mixAudio(req.audio!, stage.duration / 1000)) : null;
   stage.pause();
   // the picture is vector: it is drawn at the file's size, so a small file is not a big one scaled down and a big one is not blown up
-  const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', clock });
+  let now = 0;
+  const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => now), clock });
   const prepare = async (ms: number) => {
+    now = from + ms;
     await clock.time('seek', () => stage.seek(from + ms));
     const pics = await clock.time('embeds', () => embedPictures(stage, root, from + ms, missed));
     return rasterizer.begin(root, pics);
@@ -121,7 +130,7 @@ export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { 
   await stage.seek(req.t);
   const pics = await embedPictures(stage, root, req.t);
   const scale = Math.max(1, Math.min(3, req.scale ?? 1));
-  const r = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '' });
+  const r = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => req.t) });
   try {
     const f = await r.begin(root, pics);
     await f.ready;
