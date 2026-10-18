@@ -28,7 +28,7 @@ Which model answers is set in one dialog (`apps/editor/src/components/AiSettings
 
 ## Frontend changes come back with screenshots
 
-A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description as `https://github.com/tingly-dev/tingly-design/blob/pr-assets/<path>?raw=true` (`raw.githubusercontent.com` links do not render in this private repository), and the thread that did the work attaches them to its reply.
+A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are embedded in the PR description as images (a table: language by light and dark) from `https://raw.githubusercontent.com/tingly-dev/tingly-design/pr-assets/<path>` (the repository is public, so the link renders in place), and the thread that did the work attaches them to its reply.
 
 ## Design the editor in itself
 
