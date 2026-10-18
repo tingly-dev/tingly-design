@@ -328,6 +328,7 @@ async function promptCommand(arg: string | undefined, text: string | undefined):
     resume: opts.continue,
     fresh: opts.new,
     fast: opts.fast,
+    source: 'cli',
     signal: stop.signal,
     onOpening: opening,
     onStep: tty() ? (step) => process.stderr.write(`  · ${t(`prompt.step.${step.op}`, { target: step.target ?? '', within: step.within ?? '' })}\n`) : undefined,

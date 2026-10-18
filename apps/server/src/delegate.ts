@@ -10,6 +10,7 @@ import { linkedProjects, projectDir } from './store';
 import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
 import { claudeLaunch } from './aiconfig';
+import { TurnWriter } from './transcript';
 
 /**
  * The slow agent: Claude Code, run headless in this repository (or the
@@ -92,6 +93,11 @@ export function stopDelegate(project: string, id: string): boolean {
   return true;
 }
 
+/** Whether this run's Claude Code process is alive in this server. */
+export function isDelegateRunning(id: string): boolean {
+  return children.has(id);
+}
+
 /** Which projects have a delegate running, so file changes can be credited to it. */
 export const activeDelegates = new Map<string, number>();
 
@@ -108,6 +114,10 @@ export interface DelegateRequest {
   resume?: string;
   /** start a new conversation instead of continuing the project's */
   fresh?: boolean;
+  /** where the request came from, for the project's conversation (default: the editor) */
+  source?: 'editor' | 'cli' | 'mcp';
+  /** the fast model handed this request over */
+  via?: 'fast';
 }
 
 const conversationFile = (project: string) => join(projectDir(project), '.claude-session.json');
@@ -186,9 +196,21 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const resume = sessionFor(req, readConversation(project));
 
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
-  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), ...(resume ? { continued: true } : {}) });
+  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), source: req.source === 'cli' || req.source === 'mcp' ? req.source : 'editor', ...(resume ? { continued: true } : {}) });
 
   const started = Date.now();
+  const log = new TurnWriter(project, {
+    id,
+    agent: 'claude',
+    prompt: req.prompt,
+    source: req.source === 'cli' || req.source === 'mcp' ? req.source : 'editor',
+    state: 'running',
+    ...(resume ? { continued: true } : { continued: false }),
+    ...(req.via === 'fast' ? { via: 'fast' as const } : {}),
+    startedAt: started,
+    steps: [],
+    files: [],
+  });
   let steps = 0;
   const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0, continued: !!resume };
   logInfo('delegate.start', meta);
@@ -210,6 +232,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     const fields = { ...meta, outcome, ms: Date.now() - started, steps };
     if (outcome === 'error') logWarn('delegate.finish', { ...fields, error: text.slice(0, 300) });
     else logInfo('delegate.finish', fields);
+    log.end(stopped ? 'stopped' : ok ? 'done' : 'error', stopped ? undefined : text);
     publish(project, { type: 'delegate', id, state: stopped ? 'stopped' : ok ? 'done' : 'error', text: stopped ? undefined : text });
   };
 
@@ -250,11 +273,16 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
           if (msg.type === 'assistant') {
             for (const part of msg.message?.content ?? []) {
               if (part.type === 'text' && part.text?.trim()) {
+                log.turn.steps.push({ say: part.text.trim().slice(0, 300), at: Date.now() });
+                log.touch();
                 publish(project, { type: 'delegate', id, state: 'progress', text: part.text.trim().slice(0, 300) });
               } else if (part.type === 'tool_use') {
                 steps++;
                 logDebug('delegate.step', { run: id, tool: String(part.name ?? ''), n: steps });
                 const step = describeTool(String(part.name ?? ''), part.input ?? {}, ROOT, absDir);
+                log.turn.steps.push({ step, at: Date.now() });
+                if (step.changed && !log.turn.files.includes(step.changed)) log.turn.files.push(step.changed);
+                log.touch();
                 publish(project, { type: 'delegate', id, state: 'progress', step });
               }
             }
@@ -281,6 +309,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
       if (resumeId && !session && !stopped && resumeLost(why)) {
         logWarn('delegate.resumeLost', { run: id, project });
         forgetConversation(project);
+        log.turn.continued = false;
         publish(project, { type: 'delegate', id, state: 'progress', continued: false });
         return attempt(undefined);
       }

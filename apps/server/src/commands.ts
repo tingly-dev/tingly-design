@@ -489,6 +489,8 @@ export interface PromptOptions {
   resume?: string;
   /** start a new conversation; by default the project's last one is continued */
   fresh?: boolean;
+  /** who is asking, for the project's conversation in the editor */
+  source?: 'cli' | 'mcp';
   /** each step Claude Code takes (read, search, edit, run), as the editor's run feed shows it */
   onStep?: (step: AgentStep) => void;
   /** Claude Code's own words while it works */
@@ -622,7 +624,7 @@ export async function prompt(ctx: Ctx, p: Project, o: PromptOptions): Promise<Pr
         if (!id) throw new CommandError(t('cli.noEditorPage', { detail: 'hand-off' }), 1);
         return { by: 'claude' as const, statements: r.lines, ...(await stream.follow(id)) };
       }
-      const r = await fetch(new URL('delegate', base), { method: 'POST', headers, body: JSON.stringify({ prompt: text, ...(o.file ? { file: o.file } : {}), ...(o.resume ? { resume: o.resume } : {}), ...(o.fresh ? { fresh: true } : {}) }) });
+      const r = await fetch(new URL('delegate', base), { method: 'POST', headers, body: JSON.stringify({ prompt: text, ...(o.file ? { file: o.file } : {}), ...(o.resume ? { resume: o.resume } : {}), ...(o.fresh ? { fresh: true } : {}), ...(o.source ? { source: o.source } : {}) }) });
       const v = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!r.ok || !v.id) throw new CommandError(v.error ?? `${r.status} ${r.statusText}`, 1);
       id = v.id;

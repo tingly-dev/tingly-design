@@ -225,7 +225,7 @@ async def main():
             rows = pg.locator('.run-history .hist')
             check('the history lists the requests of the session, newest first', await rows.count() >= 2 and '再改一下' in await rows.first.inner_text(), await pg.locator('.run-history').inner_text())
             check('the history says which request continued a conversation', '接着上次' in await rows.first.inner_text())
-            await rows.first.get_by_role('button').click()
+            await rows.first.get_by_role('button', name='把这条请求放回输入框').click()
             check('a history row can be put back in the box', await box.input_value() == 'SLOW 再改一下')
             await box.fill('')
             await pg.locator('.bar-tools button').first.click()

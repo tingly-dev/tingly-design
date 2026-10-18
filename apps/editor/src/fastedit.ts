@@ -197,6 +197,7 @@ export async function delegateToClaude(
     const { id } = await api.delegate(project, {
       prompt,
       ...(fresh ? { fresh: true } : {}),
+      ...(opts.via ? { via: opts.via } : {}),
       ...(context ? { context } : {}),
       file,
       pointed: file ? pointedInfo(file, tid) : null,

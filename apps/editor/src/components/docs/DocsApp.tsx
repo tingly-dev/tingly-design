@@ -1,3 +1,5 @@
+import { SideResizer } from '../SideResizer';
+import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
   IconArrowBackUp,
@@ -333,18 +335,21 @@ export function DocsApp() {
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
         <BarButton icon={<Message />} label={t('docs.app.comments')} on={rail} badge={open ? <span className="badge blue">{open}</span> : null} onClick={() => useDocs.setState({ rail: !rail })} />
       </TopBar>
-      <aside className="doctabs" aria-label={t('docs.app.tabs')}>
-        <h3>{t('docs.app.tabs')}</h3>
-        <ul>
-          {order.map((x) => (
-            <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
-          ))}
-        </ul>
-        <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
-          {t('docs.app.addTab')}
-        </button>
-        {tab && <Outline tab={tab} />}
-      </aside>
+      <ListColumn label={t('docs.app.tabs')} className="docs">
+        <aside className="doctabs" aria-label={t('docs.app.tabs')}>
+          <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
+          <h3>{t('docs.app.tabs')}</h3>
+          <ul>
+            {order.map((x) => (
+              <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
+            ))}
+          </ul>
+          <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
+            {t('docs.app.addTab')}
+          </button>
+          {tab && <Outline tab={tab} />}
+        </aside>
+      </ListColumn>
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">

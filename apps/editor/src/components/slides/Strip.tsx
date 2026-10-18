@@ -1,3 +1,5 @@
+import { SideResizer } from '../SideResizer';
+import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SLIDE_W, checkSlide, sectionsOf, slideFile } from '@dc/core';
@@ -117,28 +119,31 @@ export function Strip() {
   const { t } = useTranslation();
   let n = 0;
   return (
-    <aside className="strip" aria-label={t('slides.strip.label')}>
-      <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
-        {groups.map((g, gi) => (
-          <div key={g.key || gi} className="sgroup">
-            <SectionHead k={g.key} description={g.description} />
-            {g.ids.map((id) => (
-              <Thumb key={id} id={id} index={n++} />
-            ))}
-          </div>
-        ))}
-        <div
-          className="sdrop"
-          onDragOver={(e) => e.dataTransfer.types.includes('text/x-slide') && e.preventDefault()}
-          onDrop={(e) => {
-            const from = e.dataTransfer.getData('text/x-slide');
-            if (from) moveSlide(from, null);
-          }}
-        />
-      </div>
-      <button className="btn outline addslide" onClick={() => addSlide()}>
-        {t('slides.strip.addSlide')}
-      </button>
-    </aside>
+    <ListColumn label={t('slides.strip.tab')} className="slides">
+      <aside className="strip" aria-label={t('slides.strip.label')}>
+        <SideResizer id="strip" edge="end" name={t('slides.strip.label')} />
+        <div className="slist" role="listbox" aria-label={t('slides.strip.list')}>
+          {groups.map((g, gi) => (
+            <div key={g.key || gi} className="sgroup">
+              <SectionHead k={g.key} description={g.description} />
+              {g.ids.map((id) => (
+                <Thumb key={id} id={id} index={n++} />
+              ))}
+            </div>
+          ))}
+          <div
+            className="sdrop"
+            onDragOver={(e) => e.dataTransfer.types.includes('text/x-slide') && e.preventDefault()}
+            onDrop={(e) => {
+              const from = e.dataTransfer.getData('text/x-slide');
+              if (from) moveSlide(from, null);
+            }}
+          />
+        </div>
+        <button className="btn outline addslide" onClick={() => addSlide()}>
+          {t('slides.strip.addSlide')}
+        </button>
+      </aside>
+    </ListColumn>
   );
 }

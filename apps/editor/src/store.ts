@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { turnOfDelegate, turnOfFast, upsertTurn } from './turns';
 import {
   applyHumanOps,
   planRetype,
@@ -15,6 +16,7 @@ import {
   CANVAS_FILE,
   type Actor,
   type AgentStep,
+  type Turn,
   type CanvasJson,
   type HumanOp,
   type JournalEntry,
@@ -106,6 +108,8 @@ export interface DelegateState {
   result?: string;
   /** set when the fast model handed the request over */
   via?: 'fast';
+  /** where the request came from (the editor, unless the command line or an agent over MCP sent it) */
+  source?: 'editor' | 'cli' | 'mcp';
   /** Claude Code's session id, once it reports one: the next request can continue it */
   session?: string;
   /** this run continued an earlier session instead of starting a fresh one */
@@ -116,17 +120,6 @@ export interface DelegateState {
   before: Record<string, string | null>;
   after: Record<string, string>;
   undone?: boolean;
-}
-
-/** One request in the history list above the prompt, from either agent. */
-export interface RunRecord {
-  id: string;
-  agent: 'fast' | 'claude';
-  prompt: string;
-  at: number;
-  state: 'running' | 'done' | 'error' | 'stopped';
-  /** Claude Code: continued an earlier session (true) or started a fresh one (false) */
-  continued?: boolean;
 }
 
 /** Which run the prompt bar's feed shows: the fast model's, or a Claude Code run by id. */
@@ -214,12 +207,16 @@ export interface State {
   feeds: number;
   /** the prompt bar folded to a pill (kept across sessions) */
   barCollapsed: boolean;
-  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column on the right edge that hides until the pointer comes (`auto`) */
+  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column of conversation on the left (`left`) */
   barMode: BarMode;
   /** the list of earlier requests open above the bar */
   historyOpen: boolean;
-  /** every request of this editor session, oldest first */
-  history: RunRecord[];
+  /** the project's stored conversation, oldest first: runs that ended, from the server and from this session (the live ones are read from `delegates` and `fast`) */
+  turns: Turn[];
+  /** which tab of the conversation column shows when the kind has a list of its own */
+  chatTab: 'list' | 'chat';
+  /** the conversation tab's dot while the person is on the other tab: a result arrived, or a run failed */
+  chatNote: 'new' | 'failed' | null;
   /** the project's Claude Code conversation, kept by the server: the next request continues it */
   conversation: Conversation | null;
   /** the next Claude Code request starts a fresh session even though one could be continued */
@@ -267,9 +264,12 @@ export const useStore = create<State>(() => ({
   runHidden: false,
   feeds: 0,
   barCollapsed: readPref('dc.barCollapsed') === '1',
-  barMode: readPref('dc.barMode') === 'auto' ? 'auto' : 'float',
+  // the right-edge dock this value used to name (`auto`) is the left column now
+  barMode: readPref('dc.barMode') === 'left' || readPref('dc.barMode') === 'auto' ? 'left' : 'float',
   historyOpen: false,
-  history: [],
+  turns: [],
+  chatTab: 'chat',
+  chatNote: null,
   freshNext: false,
   toasts: [],
   undo: [],
@@ -374,12 +374,12 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], conversation: null, lastRun: null, runHidden: false, history: [], historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
-  const [{ files }, journal, conversation] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null)]);
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
+  const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, conversation: s.conversation ?? conversation }));
+  set((s) => ({ files: entries, journal, loaded: true, kind, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
@@ -439,6 +439,7 @@ function onEvent(e: ServerEvent): void {
         d.prompt = e.text ?? d.prompt;
         if (e.at) d.startedAt = e.at;
         if (e.continued) d.continued = true;
+        if (e.source) d.source = e.source;
       }
       if (e.session) d.session = e.session;
       if (e.continued === false) d.continued = false;
@@ -456,12 +457,14 @@ function onEvent(e: ServerEvent): void {
       if (e.state !== 'start') d.state = e.state;
       // a new run takes over the feed; a later event of an older run does not
       const fresh = i < 0;
-      const base = e.continued === false ? s.history.map((h) => (h.id === e.id ? { ...h, continued: false } : h)) : s.history;
-      const history = recordRun(base, { id: e.id, agent: 'claude', prompt: d.prompt, at: d.startedAt, state: 'running', continued: !!d.continued }, e.state === 'start' || e.state === 'progress' ? undefined : e.state === 'done' ? 'done' : e.state === 'stopped' ? 'stopped' : 'error');
       // the server keeps the conversation from the moment a run reports its session, whatever the run's end
       const conversation = e.session ? { session: e.session, prompt: d.prompt, at: now } : s.conversation;
-      return { delegates: list.slice(-5), history, conversation, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
+      return { delegates: list.slice(-5), conversation, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
     });
+    if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') {
+      const d = get().delegates.find((x) => x.id === e.id);
+      if (d) endTurn(turnOfDelegate(d));
+    }
     if (e.state === 'done' || e.state === 'error') {
       const ok = e.state === 'done';
       if (get().fast.status === 'delegated') setFastDone(ok);
@@ -471,22 +474,12 @@ function onEvent(e: ServerEvent): void {
   }
 }
 
-/** Add a request to the history, or move an existing one to its end state. */
-export function recordRun(history: RunRecord[], rec: RunRecord, end?: RunRecord['state']): RunRecord[] {
-  const i = history.findIndex((h) => h.id === rec.id);
-  if (i < 0) return [...history, end ? { ...rec, state: end } : rec].slice(-50);
-  if (!end || history[i].state === end) return history;
-  const next = [...history];
-  next[i] = { ...next[i], state: end };
-  return next;
-}
-
-export type BarMode = 'auto' | 'float';
+export type BarMode = 'left' | 'float';
 
 /** Where the prompt lives (kept across sessions, the same in every kind). */
 export function setBarMode(mode: BarMode): void {
   writePref('dc.barMode', mode);
-  set({ barMode: mode, historyOpen: false });
+  set({ barMode: mode, historyOpen: false, chatNote: null });
 }
 
 export function setBarCollapsed(on: boolean): void {
@@ -494,13 +487,27 @@ export function setBarCollapsed(on: boolean): void {
   set({ barCollapsed: on, historyOpen: false });
 }
 
-// a fast-model request is one store value; its entry in the history follows it
+/** A run ended: it joins the stored turns, and the conversation tab says so when the person is not on it. */
+function endTurn(turn: Turn): void {
+  set((s) => ({
+    turns: upsertTurn(s.turns, turn),
+    ...(s.chatTab !== 'chat' ? { chatNote: turn.state === 'done' ? (s.chatNote === 'failed' ? 'failed' : 'new') : turn.state === 'error' ? 'failed' : s.chatNote } : {}),
+  }));
+}
+
+// a fast-model request is one store value; when it ends it becomes a turn, kept here and by the server
+const settled = new Set<number>();
 useStore.subscribe((s, prev) => {
-  if (s.fast === prev.fast || s.fast.status === 'idle' || s.fast.mode !== 'ai' || !s.fast.startedAt) return;
-  const id = `fast-${s.fast.startedAt}`;
-  const end = s.fast.status === 'running' ? undefined : s.fast.status === 'error' ? 'error' : 'done';
-  const history = recordRun(s.history, { id, agent: 'fast', prompt: s.fast.prompt ?? '', at: s.fast.startedAt, state: 'running' }, end);
-  if (history !== s.history) set({ history });
+  if (s.fast === prev.fast || !s.fast.startedAt) return;
+  // a hand-over to Claude Code is Claude Code's turn, not the fast model's
+  if (s.fast.status === 'delegated') settled.add(s.fast.startedAt);
+  if (s.fast.status !== 'done' && s.fast.status !== 'error') return;
+  if (settled.has(s.fast.startedAt)) return;
+  const turn = turnOfFast(s.fast);
+  if (!turn) return;
+  settled.add(s.fast.startedAt);
+  endTurn(turn);
+  if (s.project) api.keepTurn(s.project, turn);
 });
 
 function setFastDone(ok: boolean): void {

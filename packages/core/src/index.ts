@@ -29,3 +29,4 @@ export * from './textRetype';
 export * from './projectArchive';
 export * from './conversation';
 export * from './project';
+export * from './transcript';

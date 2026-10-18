@@ -8,6 +8,7 @@ test-results/
 e2e/out/
 projects/*/.runs.json
 projects/*/.claude-session.json
+projects/*/.transcript.jsonl
 projects/*/renders/
 .tingly-design/
 projects/.links.json

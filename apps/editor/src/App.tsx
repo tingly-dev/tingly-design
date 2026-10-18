@@ -14,6 +14,7 @@ import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
 import { MotionApp } from './components/motion/MotionApp';
 import { Launcher } from './components/launcher/Launcher';
+import { ChatShell } from './components/ChatPanel';
 import { serverDefault } from './theme';
 import { announceReady } from './host';
 import { serverLanguage, t } from './i18n';
@@ -42,7 +43,16 @@ function Toasts() {
   );
 }
 
+/** The launcher, or a project in the shell that holds the conversation column. */
 export function App() {
+  return (
+    <ChatShell>
+      <Project />
+    </ChatShell>
+  );
+}
+
+function Project() {
   const project = new URLSearchParams(location.search).get('p');
   const loaded = useStore((s) => s.loaded);
   const mode = useStore((s) => s.mode);

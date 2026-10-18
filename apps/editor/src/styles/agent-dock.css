@@ -1,177 +1,471 @@
-/* The request bar docked at the right edge (AgentBar.tsx). Last, so the dock wins over each kind's placement of the bar. */
+/* The conversation column on the left (ChatPanel.tsx) and the request bar's input inside it (RequestBar.tsx). Last, so the column wins over each kind's placement of the bar. */
 
-/* ------------------------------------------- the prompt as a side dock (AgentBar.tsx)
-   A column on the right edge: hidden with only its tab showing, opened by the pointer on the
-   tab or the cursor in the box.
-   It is a child of <body>, so nothing in a kind's own layout moves when it opens. */
-
-
-:root {
-  --dock-w: 360px;
-}
+/* ------------------------------------------------------------- the shell
+   Around every kind's app. Not in the way when the column is closed; a row of [column][the app] when it
+   is open, the app given a containing block so what is fixed in it (the top bar, the stage) follows it
+   to the right of the column instead of the window. Menus and dialogs sit in <body> and stay put. */
 
 
-.prompt.agent-dock,
-.dsask.agent-dock {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: auto;
-  transform: none;
-  width: min(var(--dock-w), 100vw);
-  margin: 0;
-  padding: 0;
-  gap: 0;
-  border-radius: 0;
-  border-left: 1px solid var(--line);
-  box-shadow: none;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  z-index: 40;
-}
-
-
-.prompt.agent-dock.auto,
-.dsask.agent-dock.auto {
-  transform: translateX(100%);
-  pointer-events: none;
-  transition: transform 0.18s var(--ease) 0.35s, box-shadow 0.18s var(--ease) 0.35s;
-}
-
-
-.prompt.agent-dock.auto:hover,
-.dsask.agent-dock.auto:hover,
-.prompt.agent-dock.auto:has(:focus-visible),
-.dsask.agent-dock.auto:has(:focus-visible) {
-  transform: none;
-  pointer-events: auto;
-  box-shadow: var(--lift-shadow);
-  transition-delay: 0.12s;
-}
-
-
-.prompt.agent-dock:focus-within,
-.dsask.agent-dock:focus-within {
-  box-shadow: none;
-}
-
-
-.prompt.agent-dock.auto:hover,
-.dsask.agent-dock.auto:hover,
-.prompt.agent-dock.auto:has(:focus-visible),
-.dsask.agent-dock.auto:has(:focus-visible) {
-  box-shadow: var(--lift-shadow);
-}
-
-
-.dock-tab {
-  position: absolute;
-  left: -30px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 30px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 10px 0 0 10px;
-  background: var(--panel);
-  color: var(--ink-2);
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-
-.dock-tab:hover {
-  color: var(--ink);
-}
-
-
-.dock-tab.running {
-  color: var(--actor-claude);
-}
-
-
-.dock-tab.done svg {
-  color: var(--ok, var(--accent));
-}
-
-
-.dock-tab.failed svg {
-  color: var(--bad, #d14343);
-}
-
-
-/* head on top, the run (and the earlier requests) filling the middle, the box at the bottom */
-
-
-.agent-dock > .head {
-  order: 0;
-  flex-wrap: wrap;
-  padding: 10px 12px 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-
-.agent-dock > .runfeed,
-.agent-dock > .run-history {
-  position: static;
-  order: 1;
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: none;
-  margin: 8px;
-  box-shadow: none;
-  background: var(--panel-2);
-  border-radius: 10px;
-  overflow: auto;
-}
-
-
-.agent-dock > .attach-tray {
-  order: 2;
-}
-
-
-.agent-dock > .body {
-  order: 3;
-  margin-top: auto;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 4px 12px 12px;
-}
-
-
-.agent-dock .prompt-hint {
-  order: 4;
-}
-
-
-.agent-dock > .drop-hint {
-  position: absolute;
-  inset: 0;
-}
-
-
-.dsask:not(.agent-dock) > .body {
+.chat-shell,
+.chat-work {
   display: contents;
 }
 
 
-.dsask.agent-dock textarea,
-.prompt.agent-dock textarea {
+.chat-shell.left {
+  position: fixed;
+  inset: 0;
+  display: flex;
+}
+
+
+.chat-shell.left > .chat-work {
+  display: block;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  z-index: 1;
+  transform: translate(0);
+}
+
+
+/* a kind's own list is in the column's first tab: its grid has one column less */
+
+
+.chat-shell.left .app.slides {
+  grid-template-columns: 1fr auto;
+}
+
+
+.chat-shell.left .app.docs {
+  grid-template-columns: 1fr;
+}
+
+
+.chat-shell.left .app.docs.with-rail {
+  grid-template-columns: 1fr var(--w-docrail, 320px);
+}
+
+
+.chat-shell.left .app.ds {
+  grid-template-columns: 1fr;
+}
+
+
+/* ------------------------------------------------------------ the column */
+
+
+.chat-panel {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  width: min(var(--w-chat, 340px), max(280px, calc(100vw - var(--chat-need, 860px))));
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+
+
+.side-resizer[data-side='chat'] {
+  left: auto;
+  right: -5px;
+}
+
+
+.chat-head {
+  flex: none;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+
+.chat-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+
+.chat-tabs {
+  align-self: stretch;
+  display: flex;
+  gap: 2px;
+  margin: 0 -6px;
+}
+
+
+.chat-tabs button {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+
+.chat-tabs button:hover {
+  color: var(--ink);
+}
+
+
+.chat-tabs button.on {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+
+.chat-tabs button.on::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+
+.chat-dot {
+  display: inline-flex;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+
+.chat-dot.new {
+  background: var(--accent);
+}
+
+
+.chat-dot.failed {
+  background: var(--danger);
+}
+
+
+.chat-dot.running {
+  width: auto;
+  height: auto;
+  color: var(--actor-claude);
+}
+
+
+.chat-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.chat-list-slot,
+.chat-feed-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.chat-list-slot[hidden],
+.chat-feed-wrap[hidden] {
+  display: none;
+}
+
+
+/* a kind's list inside the column takes the column's width */
+
+
+.chat-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.chat-list > .strip,
+.chat-list > .doctabs,
+.chat-list > .dsnav {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  border-right: 0;
+}
+
+
+/* ------------------------------------------------------- the conversation */
+
+
+.chat-feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  user-select: text;
+}
+
+
+.chat-empty {
+  margin: auto 0;
+  padding: 0 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+
+.turn-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+
+.turn-divider::before,
+.turn-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+
+.turn-ask {
+  align-self: flex-end;
+  max-width: 92%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+
+.turn-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+
+.turn-source {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+
+.turn-bubble {
+  padding: 7px 11px;
+  border-radius: 12px 12px 3px 12px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+.turn-body.runfeed {
+  margin: 0;
+}
+
+
+.turn-body .run-steps {
+  max-height: none;
+}
+
+
+.turn-body .run-result {
+  max-height: none;
+  user-select: text;
+}
+
+
+.turn-body .run-head {
+  flex-wrap: wrap;
+}
+
+
+.turn-actions {
+  margin-left: 0;
+  flex-wrap: wrap;
+}
+
+
+.chat-jump {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel);
+  box-shadow: var(--lift-shadow);
+  color: var(--ink-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+
+.chat-jump:hover {
+  color: var(--ink);
+}
+
+
+.chat-jump.fresh::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+
+/* ---------------------------------------------- the input at the column's foot */
+
+
+.chat-composer-slot {
+  flex: none;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--line);
+}
+
+
+.prompt.chat-composer,
+.dsask.chat-composer {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: auto;
+  padding: 0;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+  z-index: auto;
+}
+
+
+.prompt.chat-composer:focus-within,
+.dsask.chat-composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+
+.chat-composer > .head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+  width: auto;
+  padding: 8px 10px 0;
+}
+
+
+.chat-composer > .head .target {
+  max-width: 100%;
+}
+
+
+.chat-composer > .head .seg {
+  margin-left: 0;
+}
+
+
+.chat-composer > .head .bar-tools {
+  margin-left: auto;
+}
+
+
+.chat-composer > .attach-tray {
+  padding: 6px 10px 0;
+}
+
+
+.chat-composer > .body {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 4px 10px 10px;
+}
+
+
+.dsask:not(.chat-composer) > .body {
+  display: contents;
+}
+
+
+.chat-composer textarea {
   flex: 1;
   min-width: 0;
 }
 
 
-.agent-dock .run-head {
-  flex-wrap: wrap;
+/* the hint of an empty box is long and the column narrow: where the browser can size a box to its content (hint included), it does; elsewhere the box grows with what is typed */
+
+
+@supports (field-sizing: content) {
+  .chat-composer textarea {
+    field-sizing: content;
+    height: auto !important;
+    max-height: 180px;
+  }
+
+  /* the empty box shows three lines of its hint at most */
+  .chat-composer textarea:placeholder-shown {
+    max-height: 70px;
+    overflow: hidden;
+  }
+}
+
+
+.chat-composer > .drop-hint {
+  position: absolute;
+  inset: 0;
+}
+
+
+.chat-composer .prompt-hint {
+  padding: 0 12px 8px;
 }
 
 
@@ -179,8 +473,7 @@
    the answer and steps are one hover away and stop covering the work the moment the person goes back to it */
 
 
-.prompt:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head),
-.dsask:not(.agent-dock):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head) {
+.prompt:not(.chat-composer):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head),
+.dsask:not(.chat-composer):not(:hover):not(:has(:focus-visible)) > .runfeed > :not(.run-head) {
   display: none;
 }
-

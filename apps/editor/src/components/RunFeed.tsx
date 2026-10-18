@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { elapsed, type AgentStep } from '@dc/core';
+import { elapsed, type AgentStep, type TurnEntry } from '@dc/core';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { undo, undoDelegate, useStore, type DelegateEntry, type DelegateState, type FastState } from '../store';
+import { undo, undoDelegate, useStore, type DelegateState, type FastState } from '../store';
 import {
   Chevron,
   Close,
@@ -28,7 +28,7 @@ import {
  * what changed, and how do I take it back. See .design/agent-feedback.md.
  */
 /** "12s", "1m 05s" in the language showing. */
-function elapsedLabel(t: TFunction, ms: number): string {
+export function elapsedLabel(t: TFunction, ms: number): string {
   const { m, s } = elapsed(ms);
   return m ? t('prompt.elapsed.minutes', { m, ss: String(s).padStart(2, '0') }) : t('prompt.elapsed.seconds', { s });
 }
@@ -57,7 +57,7 @@ export function RunFeed({ onReuse, onOpen }: { onReuse?: (prompt: string) => voi
 const close = () => useStore.setState({ runHidden: true });
 
 /** Re-render every second while `on`, for the elapsed time. */
-function useNow(on: boolean): number {
+export function useNow(on: boolean): number {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!on) return;
@@ -69,7 +69,7 @@ function useNow(on: boolean): number {
 }
 
 /** Keep a scrolling list pinned to its end while it grows, unless the person scrolled up to read. */
-function useFollow(ref: RefObject<HTMLElement | null>, dep: unknown) {
+export function useFollow(ref: RefObject<HTMLElement | null>, dep: unknown) {
   const pinned = useRef(true);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -89,7 +89,7 @@ function Ask({ text, code }: { text: string; code?: boolean }) {
   );
 }
 
-function StepIcon({ step }: { step: AgentStep }) {
+export function StepIcon({ step }: { step: AgentStep }) {
   switch (step.kind) {
     case 'read':
       return <StepRead />;
@@ -106,8 +106,13 @@ function StepIcon({ step }: { step: AgentStep }) {
   }
 }
 
-function Entry({ e, current }: { e: DelegateEntry; current: boolean }) {
+/** One line of a run: a step it took, something it said, or a count of steps the record left out. */
+export function Entry({ e, current }: { e: TurnEntry; current: boolean }) {
   const { t } = useTranslation();
+  if ('omitted' in e)
+    return (
+      <li className="run-divider">{t('prompt.chat.omitted', { count: e.omitted })}</li>
+    );
   if ('say' in e)
     return (
       <li className="run-say">
