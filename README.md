@@ -31,30 +31,21 @@ Canvases, slide decks, design systems, dashboards, documents and motion pieces a
 | **Minimal write-back** | Template holes like `{{price}}`, loops and your own formatting survive every edit. Tick a checkbox or change a colour and the git diff is one line. |
 | **Numbers you can check** | Every figure on a dashboard names the cell it comes from; anything that disagrees with its data is reported. |
 
-## From a terminal or an agent
+## Three ways to use it outside the editor
 
-The editor is not the only way in. The `tingly-design` command and an MCP server let a script, CI job or another agent do what the editor's buttons do, and the editor shows the result live.
+| | |
+|---|---|
+| **CLI** | `npx tingly-design prompt pitch "Tighten the title slide"` hands a request to Claude Code; the edits show up live in the open editor. `new`, `check`, `export` and `history` work the same way for scripts and CI. |
+| **Skill** | `npx tingly-design skills add` copies each kind's format reference into any repository, so Claude Code working there already knows the files. |
+| **MCP** | `claude mcp add tingly-design -- npx -y tingly-design mcp` gives an agent the same commands as tools. |
 
-```bash
-npx tingly-design new slides pitch --title "Q3 pitch"      # a project, in any folder you name
-npx tingly-design prompt pitch "Tighten the title slide"   # hand it to Claude Code; edits appear in the open editor
-npx tingly-design prompt pitch "Make the title bigger" --fast   # or the request bar's fast AI, in seconds
-npx tingly-design check pitch --snapshots                  # problems, plus a picture of every slide, and warnings for clipped or faint text
-npx tingly-design export pitch --as pdf                    # what the Export menu saves; motion exports mp4, gif or a single-file player
-npx tingly-design history pitch --since 30m                # who changed what: by hand, fast AI, Claude or outside
-claude mcp add tingly-design -- npx -y tingly-design mcp   # the same commands as MCP tools for an agent
-```
-
-`tingly-design skills add` copies each kind's format reference into any repository, so Claude Code working there already knows the files. See [command line](docs/en/cli.md).
+See [command line](docs/en/cli.md).
 
 ## Also in the box
 
 - **Any folder, and git.** Open or create a project anywhere on disk; commit it from the change log, which says which repository and branch first.
 - **A whole project as one `.zip`.** Export it with its history and installed design systems, import it on another machine.
-- **Settings in one place.** One dialog sets the model connection (Tingly Box suggested) for fast AI and Claude Code, or uses Claude Code's own sign-in.
-- **Copy as PNG.** Any element or board goes to the clipboard as a picture.
 - **Video that renders in the tab.** MP4 and GIF without installing anything; the command line renders frame by frame with Chrome and ffmpeg, and writes a single-file player anyone can open.
-- **One prompt bar in every kind.** It sits at the bottom or in a right-edge dock that hides until the pointer comes, with the steps of a run and its history.
 
 ## Six kinds, one workspace
 

@@ -44,7 +44,8 @@
   .card h3 { margin:0 0 6px; font-size:17px; }
   .card p { margin:0; color:var(--muted); font-size:15px; }
   .loop { margin:0 0 20px; }
-  .more { margin-top:16px; grid-template-columns:repeat(4,1fr); }
+  .more { margin-top:16px; grid-template-columns:repeat(3,1fr); }
+  .more pre { margin:12px 0 0; padding:10px 12px; font-size:13px; }
   @media (max-width:900px) { .more { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); } }
   .more .card { padding:14px 16px; }
   .loop figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; }
@@ -122,25 +123,22 @@
     <span lang="zh">无论谁改的，每次改动都记进同一份记录：谁、改了什么、什么时候，都能撤销。</span>
   </p>
 
-  <h2 lang="en">From your terminal, or your agent</h2>
-  <h2 lang="zh">在终端里，或交给 agent</h2>
-  <p lang="en" class="sub">The <code>tingly-design</code> command and an MCP server do what the editor's buttons do. Edits show up live in the editor you have open, credited to whoever made them.</p>
-  <p lang="zh" class="sub"><code>tingly-design</code> 命令和 MCP 服务能做编辑器按钮能做的事。改动实时出现在你已打开的编辑器里，并记在改动者名下。</p>
-  <pre>npx tingly-design new slides pitch --title "Q3 pitch"
-npx tingly-design prompt pitch "Tighten the title slide"        # Claude Code, same conversation
-npx tingly-design prompt pitch "Make the title bigger" --fast   # fast AI, in seconds
-npx tingly-design check pitch --snapshots                       # problems + a picture of each slide
-npx tingly-design export pitch --as pdf
-claude mcp add tingly-design -- npx -y tingly-design mcp        # the same, as MCP tools</pre>
+  <h2 lang="en">Beyond the editor: CLI, skill, MCP</h2>
+  <h2 lang="zh">编辑器之外：CLI、skill、MCP</h2>
+  <p lang="en" class="sub">Edits made this way show up live in the editor you have open, credited to whoever made them.</p>
+  <p lang="zh" class="sub">这样做出的改动，会实时出现在你已打开的编辑器里，并记在改动者名下。</p>
   <div class="grid more">
-    <div class="card"><h3 lang="en">Any folder, and git</h3><h3 lang="zh">任意文件夹，和 git</h3>
-      <p lang="en">Keep a project anywhere on disk and commit it from the change log.</p><p lang="zh">项目可放在磁盘任何位置，在改动记录里直接提交。</p></div>
-    <div class="card"><h3 lang="en">One <code>.zip</code> per project</h3><h3 lang="zh">整个项目一个 <code>.zip</code></h3>
-      <p lang="en">With its history and design systems. Import it anywhere.</p><p lang="zh">连同历史和设计系统，在哪都能导入。</p></div>
-    <div class="card"><h3 lang="en">Video without installing anything</h3><h3 lang="zh">不装任何东西就能出视频</h3>
-      <p lang="en">MP4 and GIF render in the browser tab; the command line adds a single-file player.</p><p lang="zh">MP4 和 GIF 直接在浏览器里渲染；命令行还能出单文件播放器。</p></div>
-    <div class="card"><h3 lang="en">One place for the model</h3><h3 lang="zh">模型只在一处设置</h3>
-      <p lang="en">One connection for fast AI and Claude Code, Tingly Box suggested.</p><p lang="zh">快速 AI 和 Claude Code 共用一个连接，推荐 Tingly Box。</p></div>
+    <div class="card"><h3>CLI</h3>
+      <p lang="en">Hand a request to Claude Code from a terminal, a script or CI.</p><p lang="zh">在终端、脚本或 CI 里把请求交给 Claude Code。</p>
+      <pre>npx tingly-design prompt pitch \
+  "Tighten the title slide"</pre></div>
+    <div class="card"><h3>Skill</h3>
+      <p lang="en">Teach Claude Code the file formats in any repository.</p><p lang="zh">让任意仓库里的 Claude Code 认得这些文件格式。</p>
+      <pre>npx tingly-design skills add</pre></div>
+    <div class="card"><h3>MCP</h3>
+      <p lang="en">Give an agent the same commands as tools.</p><p lang="zh">让 agent 以工具的方式用同样的命令。</p>
+      <pre>claude mcp add tingly-design \
+  -- npx -y tingly-design mcp</pre></div>
   </div>
 
   <h2 lang="en">Six project kinds</h2>

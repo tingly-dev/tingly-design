@@ -31,30 +31,21 @@
 | **最小补丁回写** | 模板里的 `{{占位}}`、循环和你的排版原样保留；勾一个待办、改一个颜色，git diff 只有一行。 |
 | **数字可核对** | 看板上每个数字都标明来自哪份数据的哪一格，对不上就报出来。 |
 
-## 在终端或 agent 里用
+## 编辑器之外的三种用法
 
-除了编辑器，还可以用 `tingly-design` 命令和 MCP 服务：脚本、CI 或别的 agent 能做编辑器按钮能做的事，编辑器里实时看到结果。
+| | |
+|---|---|
+| **CLI** | `npx tingly-design prompt pitch "把标题页精简一下"` 把请求交给 Claude Code，改动实时出现在已打开的编辑器里。`new`、`check`、`export`、`history` 同样可用于脚本和 CI。 |
+| **Skill** | `npx tingly-design skills add` 把每种项目的格式说明复制进任意仓库，在那里工作的 Claude Code 就认得这些文件。 |
+| **MCP** | `claude mcp add tingly-design -- npx -y tingly-design mcp` 让 agent 以工具的方式用同样的命令。 |
 
-```bash
-npx tingly-design new slides pitch --title "Q3 pitch"      # 在你指定的任意文件夹里新建项目
-npx tingly-design prompt pitch "把标题页精简一下"            # 交给 Claude Code；改动实时出现在已打开的编辑器里
-npx tingly-design prompt pitch "标题放大" --fast            # 或用提示栏的快速 AI，几秒完成
-npx tingly-design check pitch --snapshots                  # 问题清单，加每页的截图，并提示被裁掉或太淡的文字
-npx tingly-design export pitch --as pdf                    # 和导出菜单存出的一样；动效可导出 mp4、gif 或单文件播放器
-npx tingly-design history pitch --since 30m                # 谁改了什么：手改、快速 AI、Claude 还是外部
-claude mcp add tingly-design -- npx -y tingly-design mcp   # 同样的命令，作为 MCP 工具给 agent 用
-```
-
-`tingly-design skills add` 会把每种项目的格式说明复制进任意仓库，在那里工作的 Claude Code 就认得这些文件。见[命令行](docs/zh/cli.md)。
+见[命令行](docs/zh/cli.md)。
 
 ## 还有这些
 
 - **任意文件夹，和 git。** 项目可以放在磁盘上的任何位置；在改动记录里直接提交，提交前会先说明是哪个仓库、哪个分支。
 - **整个项目一个 `.zip`。** 连同历史记录和装入的设计系统一起导出，换台机器导入。
-- **设置只在一处。** 一个对话框设置快速 AI 和 Claude Code 共用的模型连接（推荐 Tingly Box），也可以用 Claude Code 自己的登录。
-- **复制为 PNG。** 任何元素或画板都能作为图片复制到剪贴板。
 - **在浏览器标签里渲染视频。** 不用装任何东西就能导出 MP4 和 GIF；命令行用 Chrome 和 ffmpeg 逐帧渲染，还能生成任何人都能打开的单文件播放器。
-- **每种项目一个提示栏。** 放在底部，或放在右边缘、指针靠近才出现的停靠栏里，带运行步骤和历史。
 
 ## 六种项目，一个工作区
 
