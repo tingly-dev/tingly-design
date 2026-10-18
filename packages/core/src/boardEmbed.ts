@@ -10,9 +10,9 @@
  * by frame and a slide can loop it while presenting. It draws from `time`
  * alone, never from a clock of its own.
  */
-import { CANVAS_FILE, isBoardFile, parseCanvas } from './canvas';
+import { CANVAS_FILE, isBoardFile, parseCanvas, type CanvasJson } from './canvas';
 import { parseTime } from './motion';
-import type { DcDoc, PropSpec } from './parse';
+import { parseDc, type DcDoc, type PropSpec } from './parse';
 
 /** Where an embed may point: an artboard file kept under uploads/. */
 export function isBoardEmbedPath(path: string): boolean {
@@ -80,6 +80,31 @@ export function boardTweaks(props: Record<string, PropSpec> | undefined): [strin
   return Object.entries(props ?? {})
     .filter(([k, s]) => !k.startsWith('$') && s && typeof s === 'object' && !Array.isArray(s) && (!!s.editor || 'default' in s))
     .map(([k, s]): [string, PropSpec] => [k, { ...s, editor: tweakEditor(s) }]);
+}
+
+/** The template values of one artboard, as the canvas panel lists them. */
+export interface BoardValues {
+  file: string;
+  /** what the canvas calls the artboard (its title, else its file name) */
+  title: string;
+  values: [string, PropSpec][];
+}
+
+/**
+ * The values every artboard of a canvas declares, in canvas order, for a
+ * panel that shows the whole canvas at once. An artboard that declares none
+ * (or whose file is not loaded yet) is left out. Same rules as `boardTweaks`.
+ */
+export function canvasTemplateValues(canvas: Pick<CanvasJson, 'boards' | 'order'>, sourceOf: (file: string) => string | undefined): BoardValues[] {
+  const out: BoardValues[] = [];
+  for (const file of canvas.order) {
+    const src = sourceOf(file);
+    const entry = canvas.boards[file];
+    if (src === undefined || !entry) continue;
+    const values = boardTweaks(parseDc(src).props);
+    if (values.length) out.push({ file, title: entry.title || file.replace(/\.dc\.html$/, ''), values });
+  }
+  return out;
 }
 
 /** An embed's `data-props` as an object (an unreadable one is empty). */

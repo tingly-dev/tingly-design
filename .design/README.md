@@ -34,7 +34,7 @@
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [canvas-check.md](./canvas-check.md) | 画布检查器：`checkCanvas` 把 `dc-canvas` 技能里写错了不报错的规则做成纯文本检查，返回规则 id 和参数，措辞留给命令行 / 编辑器 | 核心函数和 `check` 命令已实施；编辑器提示是方案 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
-| [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 方案（尚未实施） |
+| [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 已实施；同名值联动和脚本里未声明的值未定 |
 | [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome，本机没有时嵌入内容自己交出画面；其余类型的格式和共用菜单；速度怎么量、慢在哪、怎么看见 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |

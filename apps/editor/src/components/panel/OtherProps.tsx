@@ -70,7 +70,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
 
 // ---------------------------------------------------------------- tweaks
 
-function TweakField({ file, name, spec }: { file: string; name: string; spec: PropSpec }) {
+export function TweakField({ file, name, spec }: { file: string; name: string; spec: PropSpec }) {
   const setV = (value: unknown) => edit(file, (src) => setPropDefault(src, name, value).source, { actor: 'human', summary: `tweak ${name} → ${JSON.stringify(value)}` });
   return <TweakControl name={name} spec={spec} value={spec.default} onSet={setV} />;
 }

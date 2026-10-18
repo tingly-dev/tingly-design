@@ -82,6 +82,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 新建时导入（[import](./import-external-material.md)） | `packages/import`、`ImportDialog` | ✓ HTML、SVG | ✗ PPT 评估中 | — | ✗ 还不能从 CSV 新建 | ✗ 还不能从 Markdown 新建 | — | 启动页的入口，结果总是新画布 |
 | 往打开的项目里导入（[import-into-project](./import-into-project.md)） | `ImportHere`（按钮、拖放、粘贴）+ 各类型的 `ImportTarget` | ✓ 网页、SVG → 新画板；图片 → 画布上的图片 | ✓ 图片、SVG → 当前幻灯片；网页不收 | ✓ 字体 → 字体，图片、SVG → 素材 | ✓ CSV/TSV/JSON → 数据集 | ✓ Markdown → 新标签页 | ✓ 图片、SVG → 播放头所在场景，从播放头入场 | 原文件放 `uploads/`；看板数据在 `data/`、设计系统的字体和素材在它自己的目录 |
 | 从项目导入（[import-from-project](./import-from-project.md)） | `ImportHere` 菜单的"从项目导入…"、`BoardPicker`、`POST …/import-board`、`<x-embed src>`（`XBoard`、播放器的 `mountBoard`）、`BoardEmbedProps` | 来源：画板（会动的带 `$time`）；Tweaks 有时间滑块。不收：画布之间直接复制画板就行，用不着嵌入 | ✓ 当前这一页；放映时循环；HTML 导出带运行时 | ✗ 第一期没做：组件可以是来源，但装入设计系统已经覆盖"用别人的组件" | ✗ 看板页面是一份代码，没有可嵌入的位置 | ✗ 文档正文是 Markdown，没有嵌入块 | ✓ 播放头所在场景，`data-seek` 逐帧；播放器、命令行渲染都画 | 副本在 `uploads/<来源>-<画板>/`，来源记在索引的 `imports`；启动页预览、PNG 导出不画嵌入的画板 |
+| 画布的模板值（[canvas-template-values](./canvas-template-values.md)） | `TemplateValues`（`RightPanel` 什么都没选时）、核心 `canvasTemplateValues`，字段和写回用 Tweaks 的 `TweakField` / `setPropDefault` | ✓ 按画板分组，可折叠，30 个以上有过滤 | — 幻灯片没有模板值；嵌入画板的值在元素的属性里（`BoardEmbedProps`） | — 没有模板值 | — 没有模板值 | — 没有模板值 | — 嵌入画板的值在元素的属性里；场景没有模板值 | 有意只做画布：模板值是画布里画板的 `data-props`，别的类型没有"整份稿子的值"这个问题 |
 
 ## 4. 做跨类型功能时
 

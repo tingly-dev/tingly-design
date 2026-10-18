@@ -42,6 +42,8 @@ A project can also live anywhere on disk: the launcher's Open a folder, or a ful
 
 A whole project leaves and comes back as one `.zip` (`.design/project-archive.md`): the last two items of every kind's `FileMenu` (with or without the change log and installed design systems), the launcher card's ⋯ and its New menu's Import a project, and `tingly-design export <p> --as zip` / `import <file.zip>`. The archive holds project folders side by side plus `tingly-design.json`; what goes in and how a zip is read live in core's `projectArchive.ts`, the folders in `apps/server/src/archive.ts`. Local state (`.git`, `renders/`, `.runs.json`, `.claude-session.json`) never goes in.
 
+A canvas's template values (every artboard's `data-props`, grouped by artboard) are listed in the right panel when nothing is selected, `TemplateValues` over core's `canvasTemplateValues`, with the Tweaks fields and write-back; canvas only on purpose (`.design/canvas-template-values.md`).
+
 Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
 
 # Keep these in sync (read this before every change)
@@ -116,7 +118,7 @@ The command line names each command after the editor's word for the same action 
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `external_edit`, `tweak_text`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`, `check_snapshots`, `baseline` (the editor's screenshots against the `e2e-baselines` branch; re-recorded by hand from the E2E patrol workflow)); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `external_edit`, `tweak_text`, `template_values`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`, `check_snapshots`, `baseline` (the editor's screenshots against the `e2e-baselines` branch; re-recorded by hand from the E2E patrol workflow)); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
 
 # Issues
 

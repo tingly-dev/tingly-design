@@ -13,6 +13,7 @@ import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
 import { JQueryBox } from './JQueryBox';
+import { TemplateValues } from './TemplateValues';
 import { FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
@@ -23,6 +24,7 @@ export function RightPanel() {
   const canvas = useCanvas();
   const slides = useStore((s) => s.kind === 'slides');
   const motion = useStore((s) => s.kind === 'motion');
+  const isCanvas = useStore((s) => s.kind === 'design');
   // with nothing selected, the Code tab of a deck or a motion piece shows the slide or scene on stage
   const onStage = useStore((s) =>
     s.kind === 'slides' && s.slide ? `slides/${s.slide}.html` : s.kind === 'motion' && s.motionView?.scene ? `scenes/${s.motionView.scene}.html` : null,
@@ -64,9 +66,9 @@ export function RightPanel() {
   } else if (slides && sel?.kind === 'el' && file && doc && el && tab !== 'code') {
     body = (
       <>
-        {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
-        <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
-        <BuildRow file={file} tid={el.tid} />
+          {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
+          <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
+          <BuildRow file={file} tid={el.tid} />
       </>
     );
   } else if (slides && file && (sel?.kind === 'board' || !sel)) {
@@ -114,24 +116,29 @@ export function RightPanel() {
     body = <ItemProps id={sel.id} note={canvas.notes[sel.id]} />;
   } else {
     body = (
-      <div className="sec">
-        <div className="empty" style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-          <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{t('panel.empty.nothingSelected')}</div>
-          {t('panel.empty.nothingSelectedHint')}
+      <>
+        <div className="sec">
+          <div className="empty" style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+            <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{t('panel.empty.nothingSelected')}</div>
+            {t('panel.empty.nothingSelectedHint')}
+          </div>
+          <h3>{t('panel.canvas.title')}</h3>
+          <Row label={t('panel.canvas.name')}>
+            <Field value={canvas.title} numeric={false} onCommit={(v) => v.trim() && editCanvas((c) => (c.title = v.trim()), `title → ${v.trim()}`)} label={t('panel.canvas.nameLabel')} />
+          </Row>
+          <p className="hint" style={{ margin: 0 }}>
+            {t('panel.canvas.howTo')}
+          </p>
         </div>
-        <h3>{t('panel.canvas.title')}</h3>
-        <Row label={t('panel.canvas.name')}>
-          <Field value={canvas.title} numeric={false} onCommit={(v) => v.trim() && editCanvas((c) => (c.title = v.trim()), `title → ${v.trim()}`)} label={t('panel.canvas.nameLabel')} />
-        </Row>
-        <p className="hint" style={{ margin: 0 }}>
-          {t('panel.canvas.howTo')}
-        </p>
-        <DsInstall />
-        <h3>{t('panel.canvas.shortcuts')}</h3>
-        <p className="hint" style={{ margin: 0 }}>
-          {t('panel.canvas.shortcutList')}
-        </p>
-      </div>
+        {isCanvas && <TemplateValues />}
+        <div className="sec">
+          <DsInstall />
+          <h3>{t('panel.canvas.shortcuts')}</h3>
+          <p className="hint" style={{ margin: 0 }}>
+            {t('panel.canvas.shortcutList')}
+          </p>
+        </div>
+      </>
     );
   }
 
