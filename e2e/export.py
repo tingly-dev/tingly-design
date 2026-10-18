@@ -126,6 +126,10 @@ async def main():
         check('…and exports a GIF in one click', open(p5, 'rb').read(6) in (b'GIF87a', b'GIF89a') and d5.suggested_filename.endswith('-480p.gif'), d5.suggested_filename)
 
         # --- cancel -------------------------------------------------------------------------------
+        # two seconds export in well under one now, before the click lands: a long piece leaves time to cancel
+        open(PIECE + '/scenes/title.html', 'w').write(open(PIECE + '/scenes/title.html').read().replace('data-duration="2s"', 'data-duration="60s"'))
+        await pg.reload()
+        await expect(menu).to_be_enabled(timeout=15000)
         await start()
         await pg.locator('button', has_text='Cancel').click()
         await expect(pg.locator('.toast', has_text='cancelled')).to_be_visible(timeout=30000)
@@ -219,4 +223,8 @@ async def main():
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')
     if failed: raise SystemExit(1)
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+finally:
+    # a crash or a timeout must not leave zz-* projects behind: the next suite (embed) lists the samples
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])

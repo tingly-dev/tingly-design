@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { continuable, setBarCollapsed, setBarMode, useStore, type RunRecord } from '../store';
+import { setBarCollapsed, setBarMode, useStore, type RunRecord } from '../store';
 import { Chevron, Done, DockRight, Failed, Floating, History as HistoryIcon, Reuse, Sparkle, Spinner } from './icons';
 
 /** Narrower than this the side dock would take too much of the work, so the bar floats. */
@@ -173,7 +173,7 @@ export function DockTab() {
 /** Whether the next request starts from scratch or continues the last Claude Code conversation. */
 export function ContextChip({ target }: { target: 'ai' | 'claude' }) {
   const { t } = useTranslation();
-  const last = useStore((s) => continuable(s.delegates));
+  const last = useStore((s) => s.conversation);
   const fresh = useStore((s) => s.freshNext);
   if (target === 'ai')
     return (

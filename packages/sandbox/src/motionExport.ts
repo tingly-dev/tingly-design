@@ -43,18 +43,25 @@ export interface ExportOutcome extends Omit<VideoResult, 'container' | 'ext'> {
   embeds: string[];
 }
 
+/** Whether the scene `id` is on screen at `ms` (video time): from its start until its transition into the next one ends. Unknown ids count as on screen. */
+function onScreen(stage: MotionStage, id: string | undefined, ms: number): boolean {
+  const at = ms * stage.speed;
+  const w = stage.scenes.find((s) => s.id === id);
+  if (!w) return true;
+  const end = w.start + w.duration + w.transition.duration;
+  // the last scene stays up on the piece's final instant (see the stage's setTime)
+  return at >= w.start && (at < end || (w === stage.scenes[stage.scenes.length - 1] && at <= end));
+}
+
+/** Leaves out the scenes off screen at `ms()`: every scene stays mounted, hidden, and copying those made a frame cost the whole piece, not what it shows. */
+const onlyOnScreen = (stage: MotionStage, ms: () => number) => (n: Node) => !(n instanceof HTMLElement && n.classList.contains('dc-slide-host') && !onScreen(stage, n.dataset.scene, ms()));
+
 /**
  * Pictures of the embeds on screen at `ms` (video time), each taken by its own
  * frame. Scenes whose embed gave none go into `missed`.
  */
 async function embedPictures(stage: MotionStage, root: HTMLElement, ms: number, missed?: Set<string>): Promise<Map<Element, string> | undefined> {
-  const at = ms * stage.speed;
-  const frames = Array.from(root.querySelectorAll<HTMLIFrameElement>('x-embed > iframe')).filter((f) => {
-    const id = f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene;
-    const w = stage.scenes.find((s) => s.id === id);
-    // a scene is on screen from its start until its transition into the next one ends
-    return !w || (at >= w.start && at < w.start + w.duration + w.transition.duration);
-  });
+  const frames = Array.from(root.querySelectorAll<HTMLIFrameElement>('x-embed > iframe')).filter((f) => onScreen(stage, f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene, ms));
   if (!frames.length) return undefined;
   const pics = await snapFrames(frames);
   if (missed) for (const f of frames) if (!pics.has(f)) missed.add(f.closest<HTMLElement>('.dc-slide-host')?.dataset.scene ?? '');
@@ -73,18 +80,24 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   const audio = req.format !== 'gif' && whole && req.audio?.length ? await clock.time('audio', () => mixAudio(req.audio!, stage.duration / 1000)) : null;
   stage.pause();
   // the picture is vector: it is drawn at the file's size, so a small file is not a big one scaled down and a big one is not blown up
-  const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', clock });
+  let now = 0;
+  const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => now), clock });
   const cover = whole && req.format !== 'gif' ? req.cover : undefined;
   /** The cover, drawn: a moment of the piece, or a cover scene already mounted at its end. */
   const coverFrame = async (c: CoverSource) => {
-    if ('at' in c) await clock.time('seek', () => stage.seek(c.at));
+    if ('at' in c) {
+      now = c.at;
+      await clock.time('seek', () => stage.seek(c.at, { painted: false }));
+    }
     const [st, holder] = 'at' in c ? [stage, root] : [c.stage, c.root];
     const pics = await clock.time('embeds', () => embedPictures(st, holder, 'at' in c ? c.at : c.stage.duration));
     return rasterizer.begin(holder, pics);
   };
   const prepare = async (ms: number, i = -1) => {
     if (i === 0 && cover && req.coverFirst) return coverFrame(cover);
-    await clock.time('seek', () => stage.seek(from + ms));
+    now = from + ms;
+    // the copy reads computed styles, which hold the new time as soon as it is set; waiting for a paint only costs vsyncs
+    await clock.time('seek', () => stage.seek(from + ms, { painted: false }));
     const pics = await clock.time('embeds', () => embedPictures(stage, root, from + ms, missed));
     return rasterizer.begin(root, pics);
   };
@@ -151,10 +164,10 @@ export function exportCover(stage: MotionStage, root: HTMLElement, cover: CoverS
 /** A frame of the piece as a PNG: the picture at one moment, at the size on screen. */
 export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { t: number; scale?: number; fontCss?: string }): Promise<Blob> {
   stage.pause();
-  await stage.seek(req.t);
+  await stage.seek(req.t, { painted: false });
   const pics = await embedPictures(stage, root, req.t);
   const scale = Math.max(1, Math.min(3, req.scale ?? 1));
-  const r = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '' });
+  const r = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => req.t) });
   try {
     const f = await r.begin(root, pics);
     await f.ready;

@@ -27,9 +27,49 @@
 |---|---|
 | **界面手改** | 点任意文字直接打字，拖动、缩放都在舞台上完成。秒回。 |
 | **快速 AI** | 指着某处说想怎么改；逐行 jQuery，边写边显示。秒级。 |
-| **Claude Code** | 改整份文件、跨文件，从提示栏或终端发起。分钟级。 |
+| **Claude Code** | 改整份文件、跨文件，从提示栏或终端发起。分钟级。一个项目只有一段 Claude Code 对话，下一次请求不论从编辑器还是命令行发起，都接着上次继续。 |
 | **最小补丁回写** | 模板里的 `{{占位}}`、循环和你的排版原样保留；勾一个待办、改一个颜色，git diff 只有一行。 |
 | **数字可核对** | 看板上每个数字都标明来自哪份数据的哪一格，对不上就报出来。 |
+
+## 编辑器之外：CLI、skill、MCP
+
+三种都需要 Node 20 或更新版本；用到 AI 的部分还需要 `claude`（Claude Code）。在本仓库里，把 `npx tingly-design` 换成 `pnpm tingly-design`。
+
+**安装一次（可选）。** `npm i -g tingly-design` 会在 PATH 里放两个命令：`tingly-design` 和简写 `td`，是同一个程序，所以下面所有 `npx tingly-design …` 都可以写成 `td …`。不安装时，`npx tingly-design` 会按需下载。
+
+**CLI。** 新建项目、在编辑器里打开、让 Claude Code 来改：
+
+```bash
+npx tingly-design new slides pitch --title "Q3 pitch"     # 新建（写成 ./pitch 这样的路径，就建在你自己的文件夹里）
+npx tingly-design open pitch                              # 启动编辑器并在浏览器里打开；一直运行，Ctrl+C 停止
+npx tingly-design prompt pitch "把标题页精简一下"            # 在另一个终端：Claude Code 修改，已打开的编辑器实时变化
+```
+
+全局安装后，这三条就是 `td new slides pitch --title "Q3 pitch"`、`td open pitch`、`td prompt pitch "把标题页精简一下"`。
+
+只运行 `npx tingly-design` 会打开启动页；`serve` 只启动服务、不开浏览器。
+
+**Skill。** 让 Claude Code 认得这些文件格式，然后直接在你的文件夹里和它对话：
+
+```bash
+cd my-work && npx tingly-design skills add                # 把每种项目的格式说明复制到 .claude/skills/
+npx tingly-design new slides ./pitch                      # 在这个文件夹里建一个项目
+claude                                                    # “做一份 Q3 汇报幻灯片，放在 ./pitch”；想看过程：npx tingly-design open ./pitch
+```
+
+**MCP。** 让任何支持 MCP 的 agent 以工具的方式使用同样的命令：
+
+```bash
+claude mcp add tingly-design -- npx -y tingly-design mcp  # 然后对它说：“用 tingly-design 建一份叫 pitch 的幻灯片”
+```
+
+在终端里保持运行 `npx tingly-design`，就能在编辑器里看到 agent 的改动，MCP 服务会自动找到它。见[命令行](docs/zh/cli.md)。
+
+## 还有这些
+
+- **任意文件夹，和 git。** 项目可以放在磁盘上的任何位置；在改动记录里直接提交，提交前会先说明是哪个仓库、哪个分支。
+- **整个项目一个 `.zip`。** 连同历史记录和装入的设计系统一起导出，换台机器导入。
+- **在浏览器标签里渲染视频。** 不用装任何东西就能导出 MP4 和 GIF；命令行用 Chrome 和 ffmpeg 逐帧渲染，还能生成任何人都能打开的单文件播放器。
 
 ## 六种项目，一个工作区
 
@@ -69,16 +109,17 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 
 打开 http://localhost:5173 选一个项目，或直接打开 http://localhost:5173/?p=box-console 看示例画布。生产方式运行：`pnpm start`（先构建，再由服务端在 8787 端口同时提供 API 和编辑器）。
 
-在终端、脚本或 agent 的 skill 里，用 `tingly-design` 命令（本仓库里是 `pnpm tingly-design`，从 npm 是 `npx tingly-design`）打开、新建、列出、检查和导出项目，见[命令行](docs/zh/cli.md)。
+在终端、脚本或 agent 里，用 `tingly-design` 命令（本仓库里是 `pnpm tingly-design`，从 npm 是 `npx tingly-design`）打开、新建、列出、检查、导出项目、交给 Claude Code 处理并查看改动历史；`tingly-design mcp` 把同样的能力作为 MCP 工具提供，见[命令行](docs/zh/cli.md)。
 
 ### 配置
 
 | 环境变量 | 作用 |
 |---|---|
-| `ANTHROPIC_API_KEY` | 开启快速 AI（服务端用 Anthropic SDK 调模型）。也支持 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`。 |
+| `ANTHROPIC_API_KEY` | 开启快速 AI（服务端用 Anthropic SDK 调模型）。也支持 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`。不设变量也可以在编辑器里配置：启动页或项目菜单里的 **AI 模型设置**（推荐 Tingly Box）；环境变量优先于这里保存的值。 |
 | `DC_FAST_MODEL` | 快速 AI 用的模型，默认 `claude-haiku-5-5`。 |
 | `DC_LOG_LEVEL` | 服务端日志级别（输出到 stderr）：`error`、`warn`、`info`（默认）、`debug`、`silent`；见[开发](docs/zh/development.md#服务端日志)。 |
 | `DC_DELEGATE_MODEL` | 交给 Claude Code 时用的模型（不设则用 CLI 默认）。 |
+| `DC_CONFIG` | AI 模型设置的保存文件（含 key，仅所有者可读），默认在项目目录旁的 `.tingly-design/ai.json`。 |
 | `DC_PROJECTS` | 项目目录，默认仓库里的 `projects/`。 |
 | `PORT` | 服务端端口，默认 8787。 |
 | `DC_HOST` | 监听地址，默认 `127.0.0.1`；要让别的机器访问就设成 `0.0.0.0`。 |
@@ -92,7 +133,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 |---|---|
 | **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) · [动效](docs/zh/guide/motion.md) |
 | **[主题](docs/zh/theming.md)** | 浅色、深色和 Tingly Box 的预设主题，以及通过 URL、脚本、宿主页面或 `DC_THEME` 传入主题 |
-| **[命令行](docs/zh/cli.md)** | `tingly-design open`、`serve`、`new`、`list`、`check`、`export`，给脚本、CI 和 agent 的 skill 用 |
+| **[命令行](docs/zh/cli.md)** | `tingly-design open`、`serve`、`new`、`list`、`check`、`export`、`import`、`prompt`、`history`、`skills`、`mcp`，给脚本、CI 和 agent 用 |
 | **[嵌入](docs/zh/embedding.md)** | 跑在 Tingly Box 等其他应用里：打包（`pnpm bundle`）、挂在路径前缀下启动、宿主和编辑器之间的消息 |
 | **[工作原理](docs/zh/architecture.md)** | 源文件格式、回写引擎、快速 AI、协同、沙箱和项目结构 |
 | **[开发与测试](docs/zh/development.md)** | 单元测试、类型检查和 Playwright 端到端测试 |

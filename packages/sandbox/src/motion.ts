@@ -49,8 +49,11 @@ export interface MotionStage {
   issues: { scene: string; message: string; level: string }[];
   /** shader layers that could not draw (code: no-webgl2, shader, draw), as they report in */
   effectErrors: { scene: string; code: string; detail: string }[];
-  /** `ms` is video time; the authored time shown is `ms × speed`. */
-  seek(ms: number): Promise<void>;
+  /**
+   * `ms` is video time; the authored time shown is `ms × speed`. Resolves once the new time is painted,
+   * or, with `painted: false`, once the styles hold it (enough for a copy of the DOM, a vsync or two sooner).
+   */
+  seek(ms: number, o?: { painted?: boolean }): Promise<void>;
   play(from?: number, onTime?: (ms: number) => void): void;
   pause(): void;
   destroy(): void;
@@ -241,7 +244,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     scenes: timeline.scenes,
     issues,
     effectErrors,
-    async seek(ms) {
+    async seek(ms, o) {
       const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
       const live = embeds.filter((e) => {
@@ -250,7 +253,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       });
       await Promise.all(live.map((e) => seekEmbed(e.frame, t - e.sceneStart)));
       // the frame after next is the first one painted with the new time on every layer
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      if (o?.painted !== false) await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
     },
     play(from, onTime) {
       cancelAnimationFrame(raf);

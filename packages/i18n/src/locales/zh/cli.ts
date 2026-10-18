@@ -49,7 +49,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --limit <n>           history：最近 n 条（默认 20，带 --since 时全部）
   --file <文件>         prompt：请求针对的画板、幻灯片、标签页或场景
   --fast                prompt：用快速 AI 而不是 Claude Code（画布、幻灯片、动效）
-  --continue <会话>     prompt：接着之前某次 prompt 输出的会话说
+  --continue <会话>     prompt：接着之前某次 prompt 输出的某个会话说
+  --new                 prompt：开一段新对话（默认接着这个项目上一次的对话）
   --force               skills add：和这个版本不一样的副本也替换掉
   -v, --version         版本号
   -h, --help            本帮助`,
@@ -153,7 +154,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   promptChanged_one: '改动记录里多了 {{count}} 条：',
   promptChanged_other: '改动记录里多了 {{count}} 条：',
   promptNoChanges: '没有改动文件。',
-  promptContinue: '接着这次对话：tingly-design prompt {{project}} "…" --continue {{session}}',
+  promptContinue: '{{project}} 的下一条 prompt 会接着这段对话（会话 {{session}}）；加 --new 从头开始。',
   notListed: '{{path}} 不在这个编辑器的启动页里。先在启动页用"打开文件夹"打开它，或者用命令行导出。',
   skillsUsage: '用 tingly-design skills 列出它们，或用 tingly-design skills add [文件夹] 复制到一个文件夹里。',
   skill: {

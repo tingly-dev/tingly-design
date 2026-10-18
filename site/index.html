@@ -44,9 +44,15 @@
   .card h3 { margin:0 0 6px; font-size:17px; }
   .card p { margin:0; color:var(--muted); font-size:15px; }
   .loop { margin:0 0 20px; }
+  .more { margin-top:16px; grid-template-columns:repeat(3,1fr); }
+  .more pre { margin:12px 0 0; padding:10px 12px; font-size:13px; }
+  @media (max-width:900px) { .more { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); } }
+  .more .card { padding:14px 16px; }
+  .more .card p + pre { margin-bottom:12px; }
   .loop figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; }
   .kinds figure { margin:0; }
   .kinds figcaption { padding:8px 2px; color:var(--muted); font-size:14px; }
+  p.sub { color:var(--muted); max-width:720px; }
   pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow:auto; }
   footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); padding-top:20px; margin-top:64px; }
   footer a { color:inherit; }
@@ -60,6 +66,7 @@
   <nav>
     <b>Tingly Design</b>
     <span>
+      <a href="https://github.com/tingly-dev/tingly-design/blob/main/docs/en/cli.md"><span lang="en">Command line</span><span lang="zh">命令行</span></a>
       <a href="https://github.com/tingly-dev/tingly-design#documentation"><span lang="en">Docs</span><span lang="zh">文档</span></a>
       <a href="https://github.com/tingly-dev/tingly-design">GitHub</a>
       <button id="lang" type="button" aria-label="Language">中文 / EN</button>
@@ -117,6 +124,32 @@
     <span lang="zh">无论谁改的，每次改动都记进同一份记录：谁、改了什么、什么时候，都能撤销。</span>
   </p>
 
+  <h2 lang="en">Beyond the editor: CLI, skill, MCP</h2>
+  <h2 lang="zh">编辑器之外：CLI、skill、MCP</h2>
+  <p lang="en" class="sub">Needs Node 20 or newer. Edits made this way show up live in the editor you have open, credited to whoever made them.</p>
+  <p lang="zh" class="sub">需要 Node 20 或更新版本。这样做出的改动，会实时出现在你已打开的编辑器里，并记在改动者名下。</p>
+  <div class="grid more">
+    <div class="card"><h3>CLI</h3>
+      <p lang="en">Create a project, open it in the editor, ask Claude Code to change it.</p><p lang="zh">新建项目，在编辑器里打开，让 Claude Code 来改。</p>
+      <pre>npx tingly-design new slides pitch
+npx tingly-design open pitch
+npx tingly-design prompt pitch \
+  "Tighten the title slide"</pre>
+      <p lang="en"><code>open</code> starts the editor and stays up; run <code>prompt</code> in a second terminal. After <code>npm i -g tingly-design</code> write <code>td</code> for <code>npx tingly-design</code>.</p><p lang="zh"><code>open</code> 启动编辑器并保持运行，在另一个终端里运行 <code>prompt</code>。<code>npm i -g tingly-design</code> 之后，<code>td</code> 就是 <code>npx tingly-design</code>。</p></div>
+    <div class="card"><h3>Skill</h3>
+      <p lang="en">Teach Claude Code the file formats, then talk to it in your folder.</p><p lang="zh">让 Claude Code 认得文件格式，然后在你的文件夹里直接对话。</p>
+      <pre>cd my-work
+npx tingly-design skills add
+npx tingly-design new slides ./pitch
+claude</pre>
+      <p lang="en">Ask “Make a Q3 pitch deck in ./pitch”; watch it with <code>npx tingly-design open ./pitch</code>.</p><p lang="zh">对它说“做一份 Q3 汇报幻灯片，放在 ./pitch”；用 <code>npx tingly-design open ./pitch</code> 看过程。</p></div>
+    <div class="card"><h3>MCP</h3>
+      <p lang="en">Give any MCP-capable agent the same commands as tools.</p><p lang="zh">让任何支持 MCP 的 agent 以工具的方式用同样的命令。</p>
+      <pre>claude mcp add tingly-design \
+  -- npx -y tingly-design mcp</pre>
+      <p lang="en">Keep <code>npx tingly-design</code> running to watch its edits live.</p><p lang="zh">保持运行 <code>npx tingly-design</code>，就能实时看到它的改动。</p></div>
+  </div>
+
   <h2 lang="en">Six project kinds</h2>
   <h2 lang="zh">六种项目类型</h2>
   <figure class="loop">
@@ -140,8 +173,10 @@
 
   <h2 lang="en">Try it</h2>
   <h2 lang="zh">试一试</h2>
-  <pre>pnpm install
-pnpm dev   # editor at http://localhost:5173</pre>
+  <pre>npx tingly-design              # the launcher, in your browser
+# or from source:
+pnpm install
+pnpm dev                        # editor at http://localhost:5173</pre>
 
   <footer>
     Apache-2.0 ·
