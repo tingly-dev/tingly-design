@@ -63,13 +63,13 @@ const TOOLS = [
   },
   {
     name: 'check',
-    description: 'The problems the editor would show in a project: files it cannot read, references to missing files, markup the editor cannot pick. Fast, text only. Run after every edit.',
+    description: 'The problems the editor would show in a project: files it cannot read, references to missing files, markup the editor cannot pick. Fast, text only, no Chrome. `look` reports all of this too, so once you want to see the work you can go straight to `look`.',
     inputSchema: { type: 'object', properties: { project }, required: ['project'] },
     annotations: { readOnlyHint: true },
   },
   {
     name: 'look',
-    description: 'Draw the work in the editor (needs Chrome) and return the pictures, scaled down (full size on disk), with what the drawing found as problems: scripts that threw, files that did not load, layout warnings, and for motion a `seek` warning when a format would not match its preview. Give `pick` to draw one thing; without it every board, slide, tab or view is drawn and only the first few come back as pictures.',
+    description: 'Draw the work in the editor (needs Chrome) and return the pictures, scaled down (full size on disk), with everything `check` reports plus what the drawing found: scripts that threw, files that did not load, layout warnings (text cut off or past the edge, faint text, a board taller than its content), and for motion a `seek` warning when a format would not match its preview. Give `pick` to draw one thing; without it every board, slide, tab or view is drawn and only the first few come back as pictures.',
     inputSchema: { type: 'object', properties: { project, pick }, required: ['project'] },
     annotations: { readOnlyHint: true },
   },

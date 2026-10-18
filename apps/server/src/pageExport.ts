@@ -72,11 +72,11 @@ export interface Page {
   /** what went wrong in the work so far, each once */
   issues(): Promise<PageIssue[]>;
   /** what the layout probe finds in every work frame showing now; `fixed` when a frame is the work's own size */
-  layout(fixed: boolean): Promise<PageLayout[]>;
+  layout(fixed: boolean, page?: boolean): Promise<PageLayout[]>;
 }
 
 /** Opens `editor` on `project` and runs `jobs` in order; with `issues`, also what went wrong in the work while it showed. */
-export async function exportFromPage(o: PageOptions & { jobs: PageJob[]; layout?: { fixed: boolean } }): Promise<{ results: PageResult[]; issues: PageIssue[]; layout: PageLayout[] }> {
+export async function exportFromPage(o: PageOptions & { jobs: PageJob[]; layout?: { fixed: boolean; page?: boolean } }): Promise<{ results: PageResult[]; issues: PageIssue[]; layout: PageLayout[] }> {
   return withPage(o, async ({ call, quiet, issues, layout }) => {
     log('info', 'page.export.start', { project: o.project, jobs: o.jobs.length, editor: new URL(o.editor).origin });
     // the menu shows once the project has loaded; until then there is nothing to run
@@ -94,7 +94,7 @@ export async function exportFromPage(o: PageOptions & { jobs: PageJob[]; layout?
       const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, 120_000);
       out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
       // each job shows its own board, slide or view: look at what is on screen now, each finding once
-      if (o.layout) for (const f of await layout(o.layout.fixed)) looked.set(JSON.stringify(f), f);
+      if (o.layout) for (const f of await layout(o.layout.fixed, o.layout.page)) looked.set(JSON.stringify(f), f);
     }
     await quiet();
     const seen = await issues();
@@ -223,11 +223,11 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
       if (Date.now() > deadline) throw new PageExportError('no-editor', url.origin);
       await new Promise((r) => setTimeout(r, 200));
     }
-    const layout = async (fixed: boolean): Promise<PageLayout[]> => {
+    const layout = async (fixed: boolean, page = false): Promise<PageLayout[]> => {
       const out: PageLayout[] = [];
       for (const c of [...live.values()]) {
         if (!c.frame || c.frame === mainFrame) continue;
-        const r = await within(cdp.send<{ result: { value?: LayoutFinding[] } }>('Runtime.evaluate', { expression: layoutProbe(fixed), contextId: c.id, returnByValue: true }, c.sid), 5_000, 'failed', 'layout').catch(() => undefined);
+        const r = await within(cdp.send<{ result: { value?: LayoutFinding[] } }>('Runtime.evaluate', { expression: layoutProbe(fixed, page), contextId: c.id, returnByValue: true }, c.sid), 5_000, 'failed', 'layout').catch(() => undefined);
         const found = r?.result.value;
         if (!Array.isArray(found) || !found.length) continue;
         const where = await frameTitle(s, c.frame);

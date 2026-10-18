@@ -107,7 +107,7 @@ The canvas edits these files in place: a person selects an element and changes i
 - `data-props` declares Tweaks — a few real levers (an accent colour, a density enum, a dark toggle), never label copy. It is a single-quoted JSON attribute: escape `&` as `&amp;` and `'` as `&#39;`.
 - An artboard that moves with time (an effect: a backdrop, a glow, a looping chart) declares `"$time": {"loop": "8s", "still": "2s"}` in `data-props` (`loop` optional; `still` is the moment shown when nothing plays it). It draws **only** from `this.props.time` (ms): no `setInterval`, `requestAnimationFrame`, CSS animations or `Date.now()`, so a motion piece can show any frame of it exactly. Decks and motion pieces import such artboards (they copy it into their `uploads/`), and their embeds set its tweaks; the canvas's Tweaks tab has a time slider to look at any moment. `projects/box-console/Glow.dc.html` is an example.
 - Diagrams (boxes and arrows): one host `<div style="position:relative;width:…;height:…">`, every box an absolutely positioned `<div>` with its label as text, every straight arrow segment its own small `<svg>`. Never one big `<svg>`: the canvas would select it as a single block.
-- Sizes: phone screen 390×844; desktop screen or page width 1280–1440; the root element is fixed at the artboard's `w`×`h`.
+- Sizes: phone screen 390×844; desktop screen or page width 1280–1440. A board's size is written in three places that must agree: the root element's `width`×`height` in its style (what is drawn), `w`×`h` in `canvas.json` (`check` reports a mismatch as an error) and `$preview` in `data-props` (the size used when another file embeds the board; `check` warns on a mismatch). Change all three together. The height is a guess until you have drawn the board: `check --snapshots` warns when a band of the board is empty, so set the height from the content, not the other way round.
 
 ## Hidden and locked elements
 
@@ -119,7 +119,7 @@ The editor shows elements by handle ids such as `#dc12`. They are not in the fil
 
 ## Content
 
-No lorem ipsum and no invented numbers: unknown facts become placeholders like `[价格]`. Real `<button>`, `<a href>`, `<input>` + `<label>`; `aria-label` on icon-only buttons; text contrast at least 4.5:1.
+No lorem ipsum and no invented numbers: unknown facts become placeholders like `[价格]`. The exception is a brief that is itself invented (a made-up brand, a demo or sample page): then write plausible concrete figures and names, and say in your reply that they are made up. Real `<button>`, `<a href>`, `<input>` + `<label>`; `aria-label` on icon-only buttons; text contrast at least 4.5:1.
 
 ## Punctuation
 

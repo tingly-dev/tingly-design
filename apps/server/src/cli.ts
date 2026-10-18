@@ -227,7 +227,10 @@ async function check(arg: string | undefined): Promise<number> {
     table(r.problems.map((x) => [x.file, x.level, x.code === 'canvas' || x.code === 'layout' ? t(`cli.${x.code}Rules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { ...x.params, file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
     console.log(t('cli.problemCount', { count: r.problems.length }));
   }
-  if (r.snapshots && !opts.json) console.log(t('cli.snapshotsWrote', { count: r.snapshots.files.length, dir: show(r.snapshots.dir) }));
+  if (r.snapshots && !opts.json) {
+    console.log(t('cli.snapshotsWrote', { count: r.snapshots.files.length, dir: show(r.snapshots.dir) }));
+    for (const f of r.snapshots.files.slice(0, 20)) console.log(`  ${show(f)}`);
+  }
   return r.errors ? 1 : 0;
 }
 

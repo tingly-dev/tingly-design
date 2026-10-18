@@ -54,6 +54,15 @@ describe('checkCanvas', () => {
     ]);
   });
 
+  it('warns when $preview disagrees with the root, and keeps quiet when they match', () => {
+    const props = (w: number, h: number) => `<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":${w},"height":${h}}}'></script>`;
+    expect(run(canvas(), { 'Main.dc.html': board(ROOT, props(400, 300)) })).toEqual([]);
+    const issues = checkCanvas({ canvas: canvas(), boards: { 'Main.dc.html': board(ROOT, props(400, 500)) } });
+    expect(issues).toEqual([
+      { file: 'Main.dc.html', line: 14, rule: 'preview-size', level: 'warning', params: { previewWidth: 400, previewHeight: 500, width: 400, height: 300 } },
+    ]);
+  });
+
   it('needs a root with a fixed size, unless the board fills', () => {
     expect(run(canvas(), { 'Main.dc.html': board(`<div style="padding:8px"></div>`) })).toEqual(['Main.dc.html:12 root-size-missing']);
     expect(run(canvas(), { 'Main.dc.html': board(`<!-- note -->`) })).toEqual(['Main.dc.html:1 root-missing']);

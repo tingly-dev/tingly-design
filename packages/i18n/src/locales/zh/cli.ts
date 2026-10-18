@@ -101,6 +101,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     contrast: '文字和背景对比度太低（{{ratio}}:1），不易看清：“{{text}}”',
     contrastMany: '有 {{count}} 处文字和背景对比度太低（最低 {{ratio}}:1，“{{text}}”）',
     blank: '什么也没画出来',
+    gap: '从 {{at}} 像素起有一段 {{size}} 像素高（占 {{percent}}%）的空白；把画板改矮，或把内容铺开',
   },
   canvasRules: {
     'order-unknown': 'order 里的 {{file}} 不是画板',
@@ -111,6 +112,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     'root-missing': '第 {{line}} 行：x-dc 里没有根元素',
     'root-size-missing': '第 {{line}} 行：根元素的 style 里要写固定的宽和高',
     'root-size': '第 {{line}} 行：根元素是 {{width}}×{{height}}，canvas.json 里是 {{boardWidth}}×{{boardHeight}}',
+    'preview-size': '第 {{line}} 行：$preview 写的是 {{previewWidth}}×{{previewHeight}}，根元素是 {{width}}×{{height}}；别处嵌入这块画板时尺寸会不对',
     'whole-svg': '第 {{line}} 行：整块画板是一个 svg，画布会把它当成一个整体；请用盒子加小的 svg 箭头',
     'unquoted-attr': '第 {{line}} 行：<{{tag}}> 的 {{attr}} 值没有加引号',
     'unclosed-tag': '第 {{line}} 行：<{{tag}}> 没有闭合',

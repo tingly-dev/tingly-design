@@ -195,7 +195,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     return { dir, files };
   }
   // boards and slides are their own size, so text past the edge is lost; a dashboard or a view scrolls
-  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: p.kind === 'design' || p.kind === 'slides' });
+  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: p.kind === 'design' || p.kind === 'slides', page: p.kind === 'design' });
   for (const f of failed) fail(f.what, f.error);
   // a board that threw or a picture that never came still draws something; the picture alone would not say why
   const where = await frameFiles(p);
@@ -218,7 +218,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   for (const l of layout) {
     const file = (l.where && where.get(l.where)) ?? (p.kind === 'dashboard' ? 'files/index.html' : (l.where ?? p.name));
     if (l.rule !== 'contrast') {
-      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: { text: l.text ?? '' } });
+      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: l.rule === 'gap' ? { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 } : { text: l.text ?? '' } });
       continue;
     }
     const f = faint.get(file) ?? { count: 0, ratio: Infinity, text: '' };
@@ -424,7 +424,7 @@ async function withEditor<T>(ctx: Ctx, p: Project, page: boolean, fn: (at: { api
 }
 
 /** The files the menu's items made, written to `dir`; what failed, in words. */
-async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpening?: () => void, look?: { fixed: boolean }): Promise<ExportResult & { layout?: PageLayout[] }> {
+async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpening?: () => void, look?: { fixed: boolean; page?: boolean }): Promise<ExportResult & { layout?: PageLayout[] }> {
   const t = translator(ctx.lang);
   const { exportFromPage, PageExportError } = await import('./pageExport');
   onOpening?.();

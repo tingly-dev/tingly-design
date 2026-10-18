@@ -100,6 +100,7 @@ Options:
     contrast: 'text is hard to read on its background (contrast {{ratio}}:1): “{{text}}”',
     contrastMany: '{{count}} texts are hard to read on their background (the faintest at contrast {{ratio}}:1, “{{text}}”)',
     blank: 'nothing is drawn',
+    gap: 'a band {{size}} px tall ({{percent}}% of the height) is empty from {{at}} px down; shrink the board or spread the content',
   },
   canvasRules: {
     'order-unknown': 'order lists {{file}}, which is not a board',
@@ -110,6 +111,7 @@ Options:
     'root-missing': 'line {{line}}: x-dc holds no root element',
     'root-size-missing': 'line {{line}}: the root element needs a fixed width and height in its style',
     'root-size': 'line {{line}}: the root is {{width}}×{{height}} but canvas.json says {{boardWidth}}×{{boardHeight}}',
+    'preview-size': 'line {{line}}: $preview says {{previewWidth}}×{{previewHeight}} but the root is {{width}}×{{height}}; an embed of this board would be drawn at the wrong size',
     'whole-svg': 'line {{line}}: the board is one svg, which the canvas picks as a single block; draw boxes and small svg arrows',
     'unquoted-attr': 'line {{line}}: {{attr}} on <{{tag}}> has no quotes around its value',
     'unclosed-tag': 'line {{line}}: <{{tag}}> is never closed',
