@@ -31,15 +31,35 @@ Canvases, slide decks, design systems, dashboards, documents and motion pieces a
 | **Minimal write-back** | Template holes like `{{price}}`, loops and your own formatting survive every edit. Tick a checkbox or change a colour and the git diff is one line. |
 | **Numbers you can check** | Every figure on a dashboard names the cell it comes from; anything that disagrees with its data is reported. |
 
-## Three ways to use it outside the editor
+## Beyond the editor: CLI, skill, MCP
 
-| | |
-|---|---|
-| **CLI** | `npx tingly-design prompt pitch "Tighten the title slide"` hands a request to Claude Code; the edits show up live in the open editor. `new`, `check`, `export` and `history` work the same way for scripts and CI. |
-| **Skill** | `npx tingly-design skills add` copies each kind's format reference into any repository, so Claude Code working there already knows the files. |
-| **MCP** | `claude mcp add tingly-design -- npx -y tingly-design mcp` gives an agent the same commands as tools. |
+All three need Node 20 or newer, and `claude` (Claude Code) for the AI parts. In this repository, write `pnpm tingly-design` for `npx tingly-design`.
 
-See [command line](docs/en/cli.md).
+**CLI.** Create a project, open it in the editor, ask Claude Code to change it:
+
+```bash
+npx tingly-design new slides pitch --title "Q3 pitch"     # create (a path such as ./pitch puts it in your own folder)
+npx tingly-design open pitch                              # start the editor and open it in your browser; stays up until Ctrl+C
+npx tingly-design prompt pitch "Tighten the title slide"  # in a second terminal: Claude Code edits, the open editor changes live
+```
+
+`npx tingly-design` alone opens the launcher; `serve` runs the server without a browser.
+
+**Skill.** Teach Claude Code the file formats, then just talk to it in your folder:
+
+```bash
+cd my-work && npx tingly-design skills add                # copies each kind's format reference into .claude/skills/
+npx tingly-design new slides ./pitch                      # a project inside this folder
+claude                                                    # "Make a Q3 pitch deck in ./pitch"; watch it with: npx tingly-design open ./pitch
+```
+
+**MCP.** Give any MCP-capable agent the same commands as tools:
+
+```bash
+claude mcp add tingly-design -- npx -y tingly-design mcp  # then ask: "Create a slide deck called pitch with tingly-design"
+```
+
+Keep `npx tingly-design` running in a terminal to watch the agent's edits in the editor; the MCP server finds it. See [command line](docs/en/cli.md).
 
 ## Also in the box
 

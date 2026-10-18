@@ -31,15 +31,35 @@
 | **最小补丁回写** | 模板里的 `{{占位}}`、循环和你的排版原样保留；勾一个待办、改一个颜色，git diff 只有一行。 |
 | **数字可核对** | 看板上每个数字都标明来自哪份数据的哪一格，对不上就报出来。 |
 
-## 编辑器之外的三种用法
+## 编辑器之外：CLI、skill、MCP
 
-| | |
-|---|---|
-| **CLI** | `npx tingly-design prompt pitch "把标题页精简一下"` 把请求交给 Claude Code，改动实时出现在已打开的编辑器里。`new`、`check`、`export`、`history` 同样可用于脚本和 CI。 |
-| **Skill** | `npx tingly-design skills add` 把每种项目的格式说明复制进任意仓库，在那里工作的 Claude Code 就认得这些文件。 |
-| **MCP** | `claude mcp add tingly-design -- npx -y tingly-design mcp` 让 agent 以工具的方式用同样的命令。 |
+三种都需要 Node 20 或更新版本；用到 AI 的部分还需要 `claude`（Claude Code）。在本仓库里，把 `npx tingly-design` 换成 `pnpm tingly-design`。
 
-见[命令行](docs/zh/cli.md)。
+**CLI。** 新建项目、在编辑器里打开、让 Claude Code 来改：
+
+```bash
+npx tingly-design new slides pitch --title "Q3 pitch"     # 新建（写成 ./pitch 这样的路径，就建在你自己的文件夹里）
+npx tingly-design open pitch                              # 启动编辑器并在浏览器里打开；一直运行，Ctrl+C 停止
+npx tingly-design prompt pitch "把标题页精简一下"            # 在另一个终端：Claude Code 修改，已打开的编辑器实时变化
+```
+
+只运行 `npx tingly-design` 会打开启动页；`serve` 只启动服务、不开浏览器。
+
+**Skill。** 让 Claude Code 认得这些文件格式，然后直接在你的文件夹里和它对话：
+
+```bash
+cd my-work && npx tingly-design skills add                # 把每种项目的格式说明复制到 .claude/skills/
+npx tingly-design new slides ./pitch                      # 在这个文件夹里建一个项目
+claude                                                    # “做一份 Q3 汇报幻灯片，放在 ./pitch”；想看过程：npx tingly-design open ./pitch
+```
+
+**MCP。** 让任何支持 MCP 的 agent 以工具的方式使用同样的命令：
+
+```bash
+claude mcp add tingly-design -- npx -y tingly-design mcp  # 然后对它说：“用 tingly-design 建一份叫 pitch 的幻灯片”
+```
+
+在终端里保持运行 `npx tingly-design`，就能在编辑器里看到 agent 的改动，MCP 服务会自动找到它。见[命令行](docs/zh/cli.md)。
 
 ## 还有这些
 

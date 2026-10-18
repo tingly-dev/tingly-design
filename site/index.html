@@ -48,6 +48,7 @@
   .more pre { margin:12px 0 0; padding:10px 12px; font-size:13px; }
   @media (max-width:900px) { .more { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); } }
   .more .card { padding:14px 16px; }
+  .more .card p + pre { margin-bottom:12px; }
   .loop figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; }
   .kinds figure { margin:0; }
   .kinds figcaption { padding:8px 2px; color:var(--muted); font-size:14px; }
@@ -125,20 +126,28 @@
 
   <h2 lang="en">Beyond the editor: CLI, skill, MCP</h2>
   <h2 lang="zh">编辑器之外：CLI、skill、MCP</h2>
-  <p lang="en" class="sub">Edits made this way show up live in the editor you have open, credited to whoever made them.</p>
-  <p lang="zh" class="sub">这样做出的改动，会实时出现在你已打开的编辑器里，并记在改动者名下。</p>
+  <p lang="en" class="sub">Needs Node 20 or newer. Edits made this way show up live in the editor you have open, credited to whoever made them.</p>
+  <p lang="zh" class="sub">需要 Node 20 或更新版本。这样做出的改动，会实时出现在你已打开的编辑器里，并记在改动者名下。</p>
   <div class="grid more">
     <div class="card"><h3>CLI</h3>
-      <p lang="en">Hand a request to Claude Code from a terminal, a script or CI.</p><p lang="zh">在终端、脚本或 CI 里把请求交给 Claude Code。</p>
-      <pre>npx tingly-design prompt pitch \
-  "Tighten the title slide"</pre></div>
+      <p lang="en">Create a project, open it in the editor, ask Claude Code to change it.</p><p lang="zh">新建项目，在编辑器里打开，让 Claude Code 来改。</p>
+      <pre>npx tingly-design new slides pitch
+npx tingly-design open pitch
+npx tingly-design prompt pitch \
+  "Tighten the title slide"</pre>
+      <p lang="en"><code>open</code> starts the editor and stays up; run <code>prompt</code> in a second terminal.</p><p lang="zh"><code>open</code> 启动编辑器并保持运行，在另一个终端里运行 <code>prompt</code>。</p></div>
     <div class="card"><h3>Skill</h3>
-      <p lang="en">Teach Claude Code the file formats in any repository.</p><p lang="zh">让任意仓库里的 Claude Code 认得这些文件格式。</p>
-      <pre>npx tingly-design skills add</pre></div>
+      <p lang="en">Teach Claude Code the file formats, then talk to it in your folder.</p><p lang="zh">让 Claude Code 认得文件格式，然后在你的文件夹里直接对话。</p>
+      <pre>cd my-work
+npx tingly-design skills add
+npx tingly-design new slides ./pitch
+claude</pre>
+      <p lang="en">Ask “Make a Q3 pitch deck in ./pitch”; watch it with <code>npx tingly-design open ./pitch</code>.</p><p lang="zh">对它说“做一份 Q3 汇报幻灯片，放在 ./pitch”；用 <code>npx tingly-design open ./pitch</code> 看过程。</p></div>
     <div class="card"><h3>MCP</h3>
-      <p lang="en">Give an agent the same commands as tools.</p><p lang="zh">让 agent 以工具的方式用同样的命令。</p>
+      <p lang="en">Give any MCP-capable agent the same commands as tools.</p><p lang="zh">让任何支持 MCP 的 agent 以工具的方式用同样的命令。</p>
       <pre>claude mcp add tingly-design \
-  -- npx -y tingly-design mcp</pre></div>
+  -- npx -y tingly-design mcp</pre>
+      <p lang="en">Keep <code>npx tingly-design</code> running to watch its edits live.</p><p lang="zh">保持运行 <code>npx tingly-design</code>，就能实时看到它的改动。</p></div>
   </div>
 
   <h2 lang="en">Six project kinds</h2>
