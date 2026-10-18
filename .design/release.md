@@ -10,7 +10,7 @@
 
 一份与平台无关的 bundle，就是 `pnpm bundle` 产出的文件夹，两个渠道发同一个文件：
 
-- **npm**：同时发 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字，内容相同，只有 `package.json` 的 `name` 不同。作用域名和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起，是宿主钉版本用的正式名字；不带作用域的名字好记好搜，也防止被别人抢注，用户用的就是它：`npx tingly-design` 或 `npm i -g tingly-design`（`bin` 是 `cli.mjs`，见 [cli.md](./cli.md)）。和 TB 一样（`tingly-box` 加 `@tingly-dev/…`）。两个名字每次一起发，不留一个永远停在占位版本的空包。仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
+- **npm**：同时发 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字，内容相同，只有 `package.json` 的 `name` 不同。作用域名和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起，是宿主钉版本用的正式名字；不带作用域的名字好记好搜，也防止被别人抢注，用户用的就是它：`npx tingly-design` 或 `npm i -g tingly-design`（见 [cli.md](./cli.md)）。`bin` 有两个名字、指向同一个 `cli.mjs`：`tingly-design` 和简写 `td`。`td` 不和常见系统命令冲突（macOS/Linux 默认都没有；npm 上同名的 `td` 包是另一个无关的工具，只有同时全局装了它才会互相覆盖）；`npx tingly-design` 不受影响，npx 在多个 `bin` 里选和包名一致的那个。两个包名发同一份 `package.json`，所以 `@tingly-dev/tingly-design` 也带 `td`。和 TB 一样（`tingly-box` 加 `@tingly-dev/…`）。两个名字每次一起发，不留一个永远停在占位版本的空包。仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
 - **GitHub release**：`tingly-design-<ver>.tgz` 和 `tingly-design-<ver>.tgz.sha256`。这个 tgz 就是 `npm pack` 的产物改了名，和 npm 上 `@tingly-dev/tingly-design` 的内容相同；TB 钉的 sha256 以 release 上的文件为准。解开后顶层是 `package/`（npm 的打包格式），宿主解压时去掉这一层。
 
 包里不放源码、`.design/`、`docs/`、`e2e/`，只有 bundle 本来就有的东西，加上 `README.md`、`LICENSE`、`NOTICE` 和 `THIRD_PARTY_LICENSES.txt`。最后这个是必须的：`server.mjs`、`editor/`、`sandbox/` 把依赖打进了同一个文件，构建时又去掉了许可证注释（`legalComments: 'none'`），MIT/ISC/BSD 要求随副本附上版权声明，所以 `scripts/bundle.mjs` 从 `pnpm licenses list --prod` 收集每个生产依赖的许可证全文。

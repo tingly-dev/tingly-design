@@ -6,7 +6,7 @@
 
 ```bash
 npx tingly-design                 # 打开编辑器的启动页
-npm i -g tingly-design            # 或者装上，之后直接 tingly-design …
+npm i -g tingly-design            # 或者装上，之后直接 tingly-design …（或简写 td …）
 pnpm tingly-design …              # 在本仓库里
 ```
 

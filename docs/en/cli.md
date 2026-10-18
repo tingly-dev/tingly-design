@@ -6,7 +6,7 @@
 
 ```bash
 npx tingly-design                 # the editor, at the launcher
-npm i -g tingly-design            # or install it, then: tingly-design …
+npm i -g tingly-design            # or install it, then: tingly-design … (or the short td …)
 pnpm tingly-design …              # in this repository
 ```
 

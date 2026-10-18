@@ -41,6 +41,8 @@ curl -fsS -o /dev/null "$BASE/sandbox/runtime.js" || { echo "❌ the sandbox run
 [ -n "$(ls -A "$WORK/projects" 2>/dev/null)" ] || { echo "❌ the projects folder was not seeded with the samples"; exit 1; }
 
 # the same folder is the `tingly-design` command (the package's bin)
+# `npm i -g` links both names to cli.mjs
+node -e 'const b=require(process.argv[1]).bin; if(b["tingly-design"]!=="cli.mjs"||b.td!=="cli.mjs") process.exit(1)' "$DIR/package.json" || { echo "❌ the package bin must give tingly-design and td, both cli.mjs"; exit 1; }
 CLI=(node "$DIR/cli.mjs" --projects "$WORK/projects")
 [ "$("${CLI[@]}" --version)" = "$(node -p 'require(process.argv[1]).version' "$DIR/package.json")" ] || { echo "❌ tingly-design --version disagrees with package.json"; exit 1; }
 "${CLI[@]}" list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.length) process.exit(1)' || { echo "❌ tingly-design list found no projects"; exit 1; }

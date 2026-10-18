@@ -35,6 +35,8 @@ Canvases, slide decks, design systems, dashboards, documents and motion pieces a
 
 All three need Node 20 or newer, and `claude` (Claude Code) for the AI parts. In this repository, write `pnpm tingly-design` for `npx tingly-design`.
 
+**Install once (optional).** `npm i -g tingly-design` puts two commands on your PATH, `tingly-design` and the short `td`; they are the same program, so every `npx tingly-design …` below is also `td …`. Without installing, `npx tingly-design` fetches it on demand.
+
 **CLI.** Create a project, open it in the editor, ask Claude Code to change it:
 
 ```bash
@@ -42,6 +44,8 @@ npx tingly-design new slides pitch --title "Q3 pitch"     # create (a path such 
 npx tingly-design open pitch                              # start the editor and open it in your browser; stays up until Ctrl+C
 npx tingly-design prompt pitch "Tighten the title slide"  # in a second terminal: Claude Code edits, the open editor changes live
 ```
+
+After `npm i -g tingly-design` the same three are `td new slides pitch --title "Q3 pitch"`, `td open pitch` and `td prompt pitch "Tighten the title slide"`.
 
 `npx tingly-design` alone opens the launcher; `serve` runs the server without a browser.
 
