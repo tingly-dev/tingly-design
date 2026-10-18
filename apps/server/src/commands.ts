@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, journalSince, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { checkProject, journalSince, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -88,6 +88,14 @@ export async function outline(p: Project) {
 
 // ---------------------------------------------------------------- new
 
+/** A size typed for a kind: a canvas takes a named size too (`wechat`), as the New dialog does; anything else is a width and height. */
+function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
+  const t = translator(ctx.lang);
+  const size = kind === 'design' ? parseBoardSize(text) : validSize(text.split(/[x×,]/i).map(Number));
+  if (size) return size;
+  throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
+}
+
 export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string }): Promise<Project> {
   const t = translator(ctx.lang);
   if (!o.kind) throw new CommandError(t('cli.needKind'));
@@ -95,9 +103,7 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   if (!kind) throw new CommandError(t('cli.badKind', { kind: o.kind }));
   const target = o.target?.trim();
   if (!target) throw new CommandError(t('cli.needName', { kind: o.kind }));
-  // a canvas takes a named size too (`wechat`), as the New dialog does; a motion format is a width and height
-  const size = o.size ? (kind === 'design' ? parseBoardSize(o.size) : validSize(o.size.split(/[x×,]/i).map(Number))) : undefined;
-  if (o.size && !size) throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: o.size, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
+  const size = o.size ? sizeFor(ctx, kind, o.size) : undefined;
   const atPath = looksLikePath(target);
   const path = atPath ? resolve(expandHome(target)) : undefined;
   const title = o.title?.trim() || (path ? basename(path) : target);
@@ -116,6 +122,16 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
     throw e;
   });
   return { name, kind, dir: projectDir(name) };
+}
+
+/** What `new -i` was already told on the command line, checked, for the wizard to skip those questions. */
+export async function wizardGiven(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string }): Promise<WizardGiven> {
+  const t = translator(ctx.lang);
+  const kind = o.kind ? WIZARD_KINDS.find((w) => KINDS[w] === KINDS[o.kind!]) : undefined;
+  if (o.kind && !kind) throw new CommandError(t('cli.badKind', { kind: o.kind }));
+  // only a canvas and a motion piece have a size to ask for
+  const size = o.size && (!kind || kind === 'canvas' || kind === 'motion') ? sizeFor(ctx, KINDS[kind ?? 'canvas'], o.size) : undefined;
+  return { kind, target: o.target, title: o.title, ...(size ? { size } : {}) };
 }
 
 // ---------------------------------------------------------------- history

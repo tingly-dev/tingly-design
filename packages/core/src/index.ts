@@ -20,6 +20,7 @@ export * from './launcher';
 export * from './attachments';
 export * from './motion';
 export * from './boardSizes';
+export * from './newWizard';
 export * from './activity';
 export * from './aiConfig';
 export * from './boardEmbed';
