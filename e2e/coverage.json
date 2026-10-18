@@ -32,5 +32,6 @@
   "新建时导入": {"design": "no e2e checks this kind yet"},
   "往打开的项目里导入": {"design": ["import_here"], "slides": ["import_here"], "design-system": ["import_here"], "dashboard": ["import_here"], "docs": ["import_here"], "motion": ["import_here"]},
   "从项目导入": {"slides": ["import_board"], "motion": ["import_board"]},
-  "画布的模板值": {"design": ["template_values"]}
+  "画布的模板值": {"design": ["template_values"]},
+  "画板里模板文字和颜色的原地编辑": {"design": ["tweak_text"]}
 }

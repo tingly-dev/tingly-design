@@ -52,6 +52,12 @@ export function hasHoleValue(v: string): boolean {
   return /\{\{[^}]*\}\}/.test(v);
 }
 
+/** The name in `prop: {{name}}` when that is the whole winning declaration (a value the template takes from a hole). */
+export function styleHole(text: string, prop: string): string | null {
+  const v = getStyle(text, prop);
+  return v === undefined ? null : (/^\{\{\s*([A-Za-z_$][\w$]*)\s*\}\}$/.exec(v)?.[1] ?? null);
+}
+
 /** Last declaration of `prop` (the one that wins), as written. */
 export function getStyle(text: string, prop: string): string | undefined {
   const p = prop.toLowerCase();

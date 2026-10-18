@@ -116,16 +116,22 @@ export function ColorField({
   onCommit,
   label,
   allowNone = true,
+  bound,
+  onCommitBound,
 }: {
   value: string;
   computed?: string;
   onCommit: (v: string) => void;
   label: string;
   allowNone?: boolean;
+  /** the colour is one hole of the template: a colour tweak (edited through `onCommitBound`) or a value from the script */
+  bound?: { name: string; tweak: boolean };
+  onCommitBound?: (name: string) => (v: string) => void;
 }) {
   const { t } = useTranslation();
   const shown = value || computed || '';
   const none = !shown || isTransparent(shown);
+  const commit = bound?.tweak && onCommitBound ? onCommitBound(bound.name) : onCommit;
   const systems = useInstalled();
   const [open, setOpen] = useState(false);
   // the token this value is, when a design system is installed (its first theme)
@@ -137,10 +143,14 @@ export function ColorField({
     <div className="colorfield">
       <label className={`inp ${value === '' ? 'computed' : ''}`}>
         <span className={`swatch ${none ? 'none' : ''}`} style={none ? undefined : { background: shown }}>
-          <input type="color" aria-label={t('panel.color.pickerLabel', { label })} value={toHex(shown)} onChange={(e) => onCommit(e.currentTarget.value)} />
+          <input type="color" aria-label={t('panel.color.pickerLabel', { label })} value={toHex(shown)} onChange={(e) => commit(e.currentTarget.value)} />
         </span>
-        <ColorText value={value} placeholder={none ? (allowNone ? t('common.none') : '') : toHex(shown)} onCommit={onCommit} label={label} />
-        {token && <span className="tokname" title={t('panel.color.tokenHint')}>{token.c.name}</span>}
+        <ColorText value={value} placeholder={none ? (allowNone ? t('common.none') : '') : toHex(shown)} onCommit={commit} label={label} />
+        {bound ? (
+          <span className="tokname" title={t(bound.tweak ? 'panel.color.boundTo' : 'panel.color.fromScript', { name: bound.name })}>{bound.name}</span>
+        ) : (
+          token && <span className="tokname" title={t('panel.color.tokenHint')}>{token.c.name}</span>
+        )}
         {systems.some((x) => x.tokens.colors.length) && (
           <button type="button" className="tokbtn" aria-label={t('panel.color.fromDsLabel', { label })} aria-expanded={open} title={t('panel.color.fromDs')} onClick={(e) => (e.preventDefault(), setOpen(!open))}>
             ◆
@@ -163,7 +173,7 @@ export function ColorField({
                       aria-selected={token?.c === c}
                       title={`${c.name} ${v}${c.usage ? `\n${c.usage}` : ''}`}
                       onClick={() => {
-                        onCommit(v);
+                        commit(v);
                         setOpen(false);
                       }}
                     >

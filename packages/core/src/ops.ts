@@ -209,15 +209,33 @@ function encodeAttr(value: string, quote: string): string {
   return v;
 }
 
-/** Change a tweak's default in the `data-props` declaration, leaving the rest of the file as written. */
-export function setPropDefault(source: string, name: string, value: unknown): OpResult {
+/** Rewrite the `data-props` declaration with `change`, leaving the rest of the file as written. */
+function editProps(source: string, change: (props: Record<string, PropSpec>) => string): OpResult {
   const doc = parseDc(source);
   if (!doc.propsValue) throw new Error('This artboard declares no data-props.');
   const { range, quote } = doc.propsValue;
   const props = JSON.parse(decodeEntities(source.slice(range.start, range.end))) as Record<string, PropSpec>;
-  if (!props[name]) throw new Error(`No tweak named ${name}.`);
-  props[name] = { ...props[name], default: value };
+  const summary = change(props);
   const text = encodeAttr(JSON.stringify(props), quote);
   const out = source.slice(0, range.start) + text + source.slice(range.end);
-  return { source: out, changed: out !== source, summary: `tweak ${name} → ${JSON.stringify(value)}` };
+  return { source: out, changed: out !== source, summary };
+}
+
+/** Change a tweak's default in the `data-props` declaration, leaving the rest of the file as written. */
+export function setPropDefault(source: string, name: string, value: unknown): OpResult {
+  return editProps(source, (props) => {
+    if (!props[name]) throw new Error(`No tweak named ${name}.`);
+    props[name] = { ...props[name], default: value };
+    return `tweak ${name} → ${JSON.stringify(value)}`;
+  });
+}
+
+/** Change one field of one row of a list tweak (`"plans":{"default":[{"name":"Solo"}]}`). */
+export function setListItemField(source: string, name: string, index: number, key: string, value: unknown): OpResult {
+  return editProps(source, (props) => {
+    const list = props[name]?.default;
+    if (!Array.isArray(list) || !list[index] || typeof list[index] !== 'object') throw new Error(`No row ${index + 1} in the list tweak ${name}.`);
+    list[index] = { ...(list[index] as Record<string, unknown>), [key]: value };
+    return `tweak ${name}[${index + 1}].${key} → ${JSON.stringify(value)}`;
+  });
 }

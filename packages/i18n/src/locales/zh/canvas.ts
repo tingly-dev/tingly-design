@@ -68,6 +68,11 @@ export default {
   },
   text: {
     placeholder: '文字',
+    noedit: {
+      data: '这段文字来自画板脚本里的数据，不能在这里直接改。告诉 Claude 要改成什么，或到代码里改。',
+      span: '这段文字混着模板里的值。一次只改其中一部分，或到 Tweaks 里改值。',
+      nomatch: '这段文字和模板对不上（比如被样式转成了大写）。到代码或 Tweaks 里改。',
+    },
   },
   board: {
     nameLabel: '画板名称',

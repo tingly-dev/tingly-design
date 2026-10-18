@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import {
   applyHumanOps,
+  planRetype,
+  RetypeError,
+  setListItemField,
+  setPropDefault,
   editsForFormat,
   sceneIdOf,
   rebaseSwap,
@@ -361,7 +365,7 @@ export function toast(text: string, kind: Toast['kind'] = 'info', action?: Toast
   if (headlessRun(text, kind)) return;
   const id = ++toastId;
   set((s) => ({ toasts: [...s.toasts, { id, text, kind, action }].slice(-4) }));
-  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : action ? 6000 : 3500);
+  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : action ? 6000 : Math.max(3500, text.length * 60));
 }
 
 // ----------------------------------------------------------------- loading
@@ -655,6 +659,34 @@ export function editElement(file: string, ops: HumanOp[], actor: Actor = 'human'
     actor,
     summary: first.summary,
   });
+}
+
+/**
+ * Text with holes in it, retyped on the artboard (`Hello {{name}}!`): the edit
+ * lands in the template's literal text or in the tweak the hole shows, and the
+ * hole stays. Says why when it cannot (`.design/template-text-editing.md`).
+ */
+export function retypeText(file: string, tid: number, from: string, to: string, item: number | null): boolean {
+  const apply = (src: string) => {
+    const doc = parsed(src);
+    const el = doc.elements.find((e) => e.tid === tid);
+    if (!el) throw new Error(`element ${tid} is no longer in the design`);
+    const plan = planRetype(doc, el, from, to, item);
+    let out = plan.template === null ? src : applyHumanOps(src, [{ kind: 'text', tid, text: plan.template }], inertDocument()).source;
+    for (const s of plan.sets) out = ('index' in s ? setListItemField(out, s.prop, s.index, s.key, s.value) : setPropDefault(out, s.prop, s.value)).source;
+    return out;
+  };
+  const cur = display(get(), file);
+  if (cur === undefined) return false;
+  try {
+    apply(cur);
+  } catch (e) {
+    if (e instanceof RetypeError) {
+      toast(t(`canvas.text.noedit.${e.code}`), 'error');
+      return false;
+    }
+  }
+  return edit(file, apply, { actor: 'human', summary: `text → ${JSON.stringify(to.length > 40 ? to.slice(0, 39) + '…' : to)}` });
 }
 
 export function editCanvas(mutate: (c: CanvasJson) => void, summary: string, undoable = true): boolean {
