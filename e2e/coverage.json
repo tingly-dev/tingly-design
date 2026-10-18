@@ -7,6 +7,7 @@
   "手写 jQuery": {"design": ["e2e"], "slides": ["slides"], "motion": "no e2e checks this kind yet"},
   "附件": {"design": ["attach"], "slides": ["attach"], "design-system": "no e2e checks this kind yet", "dashboard": "no e2e checks this kind yet", "docs": ["attach"], "motion": "no e2e checks this kind yet"},
   "版本、409 重放、协作": {"design": ["e2e"], "slides": "no e2e checks this kind yet", "design-system": ["ds"], "dashboard": ["dash"], "docs": ["docs"], "motion": "no e2e checks this kind yet"},
+  "外部改动自动刷新": {"design": ["external_edit"], "slides": ["external_edit"], "design-system": ["external_edit"], "dashboard": ["external_edit"], "docs": ["external_edit"], "motion": ["external_edit"]},
   "日志": {"design": "no e2e checks this kind yet", "slides": "no e2e checks this kind yet", "design-system": "no e2e checks this kind yet", "dashboard": "no e2e checks this kind yet", "docs": "no e2e checks this kind yet", "motion": "no e2e checks this kind yet"},
   "撤销自己的改动": {"design": ["e2e"], "slides": ["slides"], "design-system": "no e2e checks this kind yet", "motion": "no e2e checks this kind yet"},
   "界面语言": {"design": ["i18n"], "slides": ["i18n"], "design-system": ["i18n"], "dashboard": ["i18n"], "docs": ["i18n"], "motion": ["i18n"]},
