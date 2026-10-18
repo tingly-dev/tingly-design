@@ -519,10 +519,14 @@ app.get('/api/projects/:p/raw/*', async (c) => {
   const rel = decodeURIComponent(c.req.path.replace(/^\/api\/projects\/[^/]+\/raw\//, ''));
   const bytes = await readAsset(p, rel);
   if (!bytes) return c.json({ error: 'not found' }, 404);
+  // a picture an outside edit replaced must show on the next load, so the browser asks each time and gets a 304 when it is unchanged
+  const etag = `"${createHash('sha1').update(bytes).digest('hex').slice(0, 16)}"`;
+  if (c.req.header('if-none-match') === etag) return c.body(null, 304, { etag, 'cache-control': 'private, no-cache', 'access-control-allow-origin': '*' });
   return c.body(new Uint8Array(bytes), 200, {
     'content-type': assetType(rel),
     'access-control-allow-origin': '*',
-    'cache-control': 'private, max-age=3600',
+    etag,
+    'cache-control': 'private, no-cache',
     'x-content-type-options': 'nosniff',
     // an SVG opened directly must not run scripts on this origin
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",

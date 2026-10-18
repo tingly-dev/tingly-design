@@ -157,6 +157,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   const claudeOn = useStore((s) => s.delegates.some((d) => (d.state === 'start' || d.state === 'progress') && d.files.includes(file)));
   const mode = useStore((s) => s.mode);
   const project = useStore((s) => s.project);
+  const assetRev = useStore((s) => s.assetRev);
   const zoom = useStore((s) => s.view.zoom);
   const selected = useStore((s) => (s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   const boardSelected = useStore((s) => s.selection?.kind === 'board' && s.selection.file === file);
@@ -287,12 +288,12 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   // keep the frame rendering the current source
   useEffect(() => {
     if (!ready || source === undefined) return;
-    post(file, { dc: 'render', file, source, files: imports, props: {}, mode, selected, base: project ? api.rawBase(project) : undefined });
+    post(file, { dc: 'render', file, source, files: imports, props: {}, mode, selected, base: project ? api.frameBase(project, assetRev) : undefined });
     if (pendingEdit.current !== null) {
       post(file, { dc: 'edit', tid: pendingEdit.current });
       pendingEdit.current = null;
     }
-  }, [ready, source, imports, mode, file, selected, project]);
+  }, [ready, source, imports, mode, file, selected, project, assetRev]);
 
   useEffect(() => {
     if (ready) post(file, { dc: 'hover', tid: hover });

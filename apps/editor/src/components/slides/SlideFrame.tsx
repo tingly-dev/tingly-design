@@ -52,6 +52,7 @@ export const SlideFrame = memo(function SlideFrame({
   const source = useStore((s) => display(s, file));
   const boards = useBoardFiles([file]);
   const project = useStore((s) => s.project);
+  const assetRev = useStore((s) => s.assetRev);
   const deckHead = useStore((s) => (scene ? '' : faceMarkup(deckOf(s))));
   const faces = scene?.faces;
   const head = useMemo(() => (faces ? faceMarkup({ faces } as DeckJson) : deckHead), [faces, deckHead]);
@@ -65,7 +66,7 @@ export const SlideFrame = memo(function SlideFrame({
   const hover = useStore((s) => (use === 'stage' && s.layerHover?.file === file ? s.layerHover.tid : null));
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   const mode = use === 'present' ? 'play' : 'edit';
-  const slide = useMemo(() => ({ head, base: project ? api.rawBase(project) : '', still: use === 'thumb' }), [head, project, use]);
+  const slide = useMemo(() => ({ head, base: project ? api.frameBase(project, assetRev) : '', still: use === 'thumb' }), [head, project, use, assetRev]);
   const stepsCb = useRef(onSteps);
   stepsCb.current = onSteps;
 
