@@ -75,6 +75,7 @@ export default {
     cancelHint: '停止导出',
     doneDetail: '已保存 {{name}}。{{where}}完成，用时 {{seconds}} 秒（{{fps}} 帧/秒）；最花时间的是{{step}}（{{percent}}%）',
     pace: '{{fps}} 帧/秒，约剩 {{left}} 秒',
+    paceShort: '{{fps}} 帧/秒 · 剩 {{left}} 秒',
     where: { browser: '在这个标签页里', server: '由本机的 Chrome' },
     steps: { audio: '混合声音', launch: '启动 Chrome', seek: '把作品推进到每一帧', embeds: '让每个嵌入内容交出画面', snapshot: '为每一帧复制页面', decode: '等画面画出来', paint: '绘制帧', capture: '逐帧截图', write: '等 ffmpeg', encode: '等编码器', finish: '收尾写文件' },
     done: '已保存 {{name}}',

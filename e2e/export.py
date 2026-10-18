@@ -73,6 +73,13 @@ async def main():
             await start()
             await expect(pg.locator('button', has_text='Exporting')).to_be_visible()
             check('the button shows progress and offers cancel', await pg.locator('button', has_text='Cancel').count() == 1)
+            # the readout keeps one size while the numbers change, so the bar around it does not move
+            boxes = set()
+            for _ in range(12):
+                box = await pg.evaluate("() => { const e = document.querySelector('[data-export-progress]'); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)] }")
+                if box: boxes.add(tuple(box))
+                await pg.wait_for_timeout(80)
+            check('the progress readout keeps its size and place while it counts', len(boxes) == 1, str(boxes))
         d = await dl.value
         path = OUT + d.suggested_filename
         await d.save_as(path)

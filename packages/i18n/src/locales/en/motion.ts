@@ -75,6 +75,7 @@ export default {
     cancelHint: 'Stop exporting',
     doneDetail: 'Saved {{name}}. Made {{where}} in {{seconds}} s ({{fps}} frames a second); most time went to {{step}} ({{percent}}%)',
     pace: '{{fps}} frames/s, about {{left}} s left',
+    paceShort: '{{fps}} fps · {{left}} s left',
     where: { browser: 'in this tab', server: 'by Chrome on this machine' },
     steps: { audio: 'mixing the sound', launch: 'starting Chrome', seek: 'moving the piece to each frame', embeds: 'asking each embed for its picture', snapshot: 'copying the page for each frame', decode: 'waiting for the picture to be drawn', paint: 'painting frames', capture: 'taking each screenshot', write: 'waiting for ffmpeg', encode: 'waiting for the encoder', finish: 'finishing the file' },
     done: 'Saved {{name}}',

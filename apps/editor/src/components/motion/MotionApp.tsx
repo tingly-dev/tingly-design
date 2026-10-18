@@ -8,7 +8,6 @@ import { FileMenu } from '../FileMenu';
 import { VideoExportDialog, type ScenePick } from './VideoExportDialog';
 import { TopBar, BarButton, ProjectTitle } from '../TopBar';
 import { display, isSaving, useStore } from '../../store';
-import { pace } from '../../exportReport';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
@@ -23,6 +22,7 @@ import { useElementSize } from '../../hooks';
 import { Timeline } from './Timeline';
 import { MotionIssues, MotionNotes } from './MotionSidePanes';
 import { useMotionExport } from './useMotionExport';
+import { ExportProgress } from './ExportProgress';
 
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -289,14 +289,7 @@ export function MotionApp() {
           onClick={() => setIssuesOpen(!issuesOpen)}
         />
         {exporting && (
-          <button className="btn ghost" onClick={cancel} title={`${where(exporting.route)}. ${t('motion.export.cancelHint')}`}>
-            {t('motion.export.progress', { percent: Math.floor((exporting.done / exporting.total) * 100) })}
-            {(() => {
-              const p = pace(exporting.done, exporting.total, exporting.startedAt);
-              return p ? ` · ${t('motion.export.pace', { fps: p.fps, left: p.left })}` : '';
-            })()}{' '}
-            · {t('motion.export.cancel')}
-          </button>
+          <ExportProgress exporting={exporting} where={where(exporting.route)} onCancel={cancel} />
         )}
         <FileMenu
           target={motionImport}
