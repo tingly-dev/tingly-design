@@ -76,7 +76,8 @@ writeFileSync(
       description: pkg.description,
       license: pkg.license,
       type: 'module',
-      bin: { 'tingly-design': 'cli.mjs' },
+      // `td` is the short alias for the same file; npx still picks the bin named like the package
+      bin: { 'tingly-design': 'cli.mjs', td: 'cli.mjs' },
       engines: pkg.engines,
       repository: pkg.repository,
       homepage: pkg.homepage,
@@ -92,7 +93,7 @@ writeFileSync(
   join(out, 'README.md'),
   `# Tingly Design ${pkg.version}\n\n` +
     `Canvases, slides, design systems, dashboards, docs and motion pieces as plain files, with an editor.\n\n` +
-    `\`\`\`\nnpx tingly-design            # open the editor\nnpx tingly-design --help     # new, list, check, export …\n\`\`\`\n\n` +
+    `\`\`\`\nnpx tingly-design            # open the editor\nnpx tingly-design --help     # new, list, check, export …\n\nnpm i -g tingly-design       # or install once: tingly-design and the short td are the same command\ntd new slides pitch\n\`\`\`\n\n` +
     `The command is described in [the command line guide](${pkg.homepage}/blob/main/docs/en/cli.md). ` +
     `A host such as Tingly Box runs \`node server.mjs\`; launch variables, the ready line and the host messages are in [Embedding](${pkg.homepage}/blob/main/docs/en/embedding.md).\n`,
 );

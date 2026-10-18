@@ -35,6 +35,8 @@
 
 三种都需要 Node 20 或更新版本；用到 AI 的部分还需要 `claude`（Claude Code）。在本仓库里，把 `npx tingly-design` 换成 `pnpm tingly-design`。
 
+**安装一次（可选）。** `npm i -g tingly-design` 会在 PATH 里放两个命令：`tingly-design` 和简写 `td`，是同一个程序，所以下面所有 `npx tingly-design …` 都可以写成 `td …`。不安装时，`npx tingly-design` 会按需下载。
+
 **CLI。** 新建项目、在编辑器里打开、让 Claude Code 来改：
 
 ```bash
@@ -42,6 +44,8 @@ npx tingly-design new slides pitch --title "Q3 pitch"     # 新建（写成 ./pi
 npx tingly-design open pitch                              # 启动编辑器并在浏览器里打开；一直运行，Ctrl+C 停止
 npx tingly-design prompt pitch "把标题页精简一下"            # 在另一个终端：Claude Code 修改，已打开的编辑器实时变化
 ```
+
+全局安装后，这三条就是 `td new slides pitch --title "Q3 pitch"`、`td open pitch`、`td prompt pitch "把标题页精简一下"`。
 
 只运行 `npx tingly-design` 会打开启动页；`serve` 只启动服务、不开浏览器。
 
