@@ -153,6 +153,7 @@ export default {
   },
   export: {
     noNotes: '(No notes)',
+    mdNotes: 'Notes:',
     notesFile: '{{name}} notes.txt',
     imagesDone: 'Saved {{total}} slide images',
     savePdf: 'Choose “Save as PDF” in the print window.',

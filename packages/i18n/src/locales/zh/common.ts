@@ -80,6 +80,7 @@ export default {
       slidesHtml: '一个文件，打开就能放映',
       slideOne: '当前这一页',
       slidesEvery: '每一页，各存一个文件',
+      slidesMarkdown: '标题、文字、列表和表格，适合阅读和分享',
       slidesNotes: '文本文件',
       docTab: '当前标签页',
       docWhole: '整篇文档，按标签页顺序',

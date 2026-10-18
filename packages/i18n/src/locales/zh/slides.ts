@@ -150,6 +150,7 @@ export default {
   },
   export: {
     noNotes: '（无备注）',
+    mdNotes: '备注：',
     notesFile: '{{name}} 备注.txt',
     imagesDone: '已保存 {{total}} 页图片',
     savePdf: '在打印窗口里选择“存储为 PDF”。',

@@ -1,4 +1,4 @@
-import { SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, type HumanOp } from '@dc/core';
+import { deckToMarkdown, SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, type HumanOp } from '@dc/core';
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
@@ -164,7 +164,7 @@ ${mode === 'print' ? '<script>addEventListener("load",function(){setTimeout(func
 `;
 }
 
-export async function exportDeck(kind: 'pdf' | 'html' | 'notes'): Promise<void> {
+export async function exportDeck(kind: 'pdf' | 'html' | 'md' | 'notes'): Promise<void> {
   const s = useStore.getState();
   const deck = deckOf(s);
   const name = (deck.title || 'deck').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'deck';
@@ -177,6 +177,13 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'notes'): Promise<void> 
         })
         .join('\n');
       return download(t('slides.export.notesFile', { name }), new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    }
+    if (kind === 'md') {
+      const slides = slideIds(s).flatMap((id) => {
+        const source = display(s, slideFile(id));
+        return source ? [{ id, source }] : [];
+      });
+      return download(`${name}.md`, new Blob([deckToMarkdown(deck, slides, { notesLabel: t('slides.export.mdNotes') })], { type: 'text/markdown;charset=utf-8' }));
     }
     if (kind === 'html') return download(`${name}.html`, new Blob([await buildHtml('player')], { type: 'text/html' }));
     // Chrome on the machine prints it and the file is saved; with none, the browser's print window opens and the person picks Save as PDF
@@ -231,6 +238,7 @@ export function slidesExportItems(direct: boolean | null): ExportItem[] {
     { id: 'png', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.slideOne'), icon: <Picture />, run: () => exportSlideImages(useStore.getState().slide) },
     { id: 'pngs', label: t('common.transfer.label.pngs'), hint: t('common.transfer.hint.slidesEvery'), icon: <Picture />, run: () => exportSlideImages(true) },
     { id: 'html', label: t('common.transfer.label.html'), hint: t('common.transfer.hint.slidesHtml'), icon: <FileText />, rule: true, run: () => exportDeck('html') },
+    { id: 'md', label: t('common.transfer.label.markdown'), hint: t('common.transfer.hint.slidesMarkdown'), icon: <FileText />, run: () => exportDeck('md') },
     { id: 'notes', label: t('common.transfer.label.notes'), hint: t('common.transfer.hint.slidesNotes'), icon: <FileText />, run: () => exportDeck('notes') },
   ];
 }

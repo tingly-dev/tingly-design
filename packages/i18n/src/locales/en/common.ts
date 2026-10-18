@@ -78,6 +78,7 @@ export default {
       slidesHtml: 'One file that plays the deck',
       slideOne: 'This slide',
       slidesEvery: 'Every slide, one file each',
+      slidesMarkdown: 'Titles, text, lists and tables, for reading and sharing',
       slidesNotes: 'A text file',
       docTab: 'This tab',
       docWhole: 'The whole doc, tabs in order',
