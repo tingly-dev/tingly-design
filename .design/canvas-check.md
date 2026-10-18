@@ -16,9 +16,11 @@
 
 ## 规则
 
-`canvas-json`、`board-file-missing`、`board-unlisted`、`order-unknown`、`order-missing`、`order-duplicate`、`no-x-dc`、`no-support-script`、`root-missing`、`root-size-missing`、`root-size`、`whole-svg`、`unquoted-attr`、`unclosed-tag`、`stray-close`。
+`canvas-json`、`board-file-missing`、`board-unlisted`、`order-unknown`、`order-missing`、`order-duplicate`、`no-x-dc`、`no-support-script`、`root-missing`、`root-size-missing`、`root-size`、`preview-size`、`whole-svg`、`unquoted-attr`、`unclosed-tag`、`stray-close`。
 
 `whole-svg` 的判断：根元素下只有一个 `<svg>`，或者有一个 `<svg>` 的宽高都达到画板的 90%。画板里一个个小的箭头 `<svg>` 是允许的。
+
+`root-size` 是错误：根元素的宽高和 `canvas.json` 里这块板子的 `w`×`h` 不一样，画出来的就不是登记的尺寸。`preview-size` 是警告：`data-props` 的 `$preview` 和根元素不一样，别的文件嵌入这块板子时会按 `$preview` 画，尺寸就错了；它不影响这块板子自己，所以不算错误。三处（根元素、`canvas.json`、`$preview`）要一起改，skill 里写明了。
 
 ## 接入
 

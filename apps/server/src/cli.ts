@@ -220,14 +220,17 @@ async function check(arg: string | undefined): Promise<number> {
   if (!arg) return machine();
   const p = await project(arg, 'check');
   if (opts.snapshots) opening();
-  const r = await cmd.check(ctx, p, { snapshots: opts.snapshots, out: opts.out }).finally(() => opts.snapshots && clearLine());
+  const r = await cmd.check(ctx, p, { snapshots: opts.snapshots, out: opts.out, pick: { board: opts.board, slide: opts.slide, tab: opts.tab, view: opts.view }, format: opts.format?.split(',').map((f) => f.trim()).filter(Boolean) }).finally(() => opts.snapshots && clearLine());
   if (opts.json) print({ name: r.name, kind: r.kind, problems: r.problems, ...(r.snapshots ? { snapshots: r.snapshots.files } : {}) });
   else if (!r.problems.length) console.log(t('cli.noProblems', { name: p.name }));
   else {
     table(r.problems.map((x) => [x.file, x.level, x.code === 'canvas' || x.code === 'layout' ? t(`cli.${x.code}Rules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { ...x.params, file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
     console.log(t('cli.problemCount', { count: r.problems.length }));
   }
-  if (r.snapshots && !opts.json) console.log(t('cli.snapshotsWrote', { count: r.snapshots.files.length, dir: show(r.snapshots.dir) }));
+  if (r.snapshots && !opts.json) {
+    console.log(t('cli.snapshotsWrote', { count: r.snapshots.files.length, dir: show(r.snapshots.dir) }));
+    for (const f of r.snapshots.files.slice(0, 20)) console.log(`  ${show(f)}`);
+  }
   return r.errors ? 1 : 0;
 }
 

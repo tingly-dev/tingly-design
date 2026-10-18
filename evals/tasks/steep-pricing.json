@@ -1,0 +1,10 @@
+{
+  "id": "steep-pricing",
+  "kind": "canvas",
+  "project": "steep",
+  "brief": "Make a design canvas project named `steep` containing ONE board: a landing-page pricing section for a fictional tea subscription called \"Steep\": a headline and subline, three plan cards (Sampler, Monthly, Connoisseur) with price, 3 bullet features each and the middle one highlighted, a short FAQ strip with 3 questions, and a footer. Warm, calm look, readable text. Make it good, then verify it with the tools' own checks and by looking at the picture, fix anything wrong, and export a PNG of the final board.",
+  "export": { "as": "png" },
+  "expect": { "board": 1 },
+  "mustContain": ["Steep", "Sampler", "Monthly", "Connoisseur"],
+  "rubric": "A pricing section for a tea subscription: a headline and subline; three plan cards named Sampler, Monthly and Connoisseur, each with a price and three bullets, the middle one visibly highlighted; a three-question FAQ strip; a footer. Warm and calm, text readable, no large empty areas, nothing cut off, the board no taller than its content needs."
+}

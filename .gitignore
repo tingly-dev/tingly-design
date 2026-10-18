@@ -13,3 +13,4 @@ projects/*/renders/
 projects/.links.json
 projects/.server.json
 __pycache__/
+evals/out/

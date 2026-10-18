@@ -12,6 +12,8 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 
 `pnpm e2e` 一条命令跑完下表里除 `delegate` 以外的所有套件：按组先起好各自要的东西（带 mock 模型的 `pnpm dev`；给 `ai_settings` 用的不配模型的 `pnpm dev`；自己起服务的套件先 `pnpm build`；`embed` 先 `pnpm bundle`），逐个跑完，最后打印一张表；哪些检查没过写在 `e2e/out/report.md` 和 `report.json`，每个套件的输出在 `e2e/out/logs/`。`pnpm e2e slides docs` 只跑这几个，`--smoke` 跑 PR 用的小集合，`--list` 列出分组，`--real` 加上 `delegate`。套件会改示例项目，再用 `git checkout` 改回去，所以 `projects/` 里有没提交的改动时它不开跑（`--force` 强制跑）。整套大约十分钟。
 
+`pnpm eval` 是另一种检查：让无头的 Claude Code 把同一个设计任务各做一遍，一遍用 skill 加命令行，一遍用 MCP 服务，再给它留下的东西打分，出一张对照表（过不过、工具调用数、`check` 和 `look` 的轮数、费用、用时）。需要登录好的 `claude` 和 Chrome，花几美元、要几分钟，所以不在 `pnpm test`、`pnpm e2e` 和 CI 里。`pnpm eval -- --list` 列出任务，`--task`、`--route`、`--runs`、`--model`、`--judge`（再请一次评审看最终的图）和 `--cli "node dist/tingly-design/cli.mjs"`（评测 bundle 或 npm 包，而不是源码）选跑什么，结果在 `evals/out/`。它的纯函数部分（读 transcript、打分）由 `pnpm test` 做单元测试；设计见 `.design/agent-evals.md`。
+
 单个套件仍然可以单独跑。端到端测试需要先 `pnpm dev`，以及 Python 版 Playwright（`pip install -r e2e/requirements.txt`）。用别的浏览器时设置 `DC_CHROME=/path/to/chrome`（装了 Playwright 的无头版时 `pnpm e2e` 会自动用它）；在无界面环境里请用 Playwright 的 `chromium_headless_shell`，完整版 Chromium 无头运行时点击缩放后的画板会点偏。
 
 | 命令 | 覆盖 |

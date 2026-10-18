@@ -93,6 +93,7 @@ projects/         sample projects, one per kind; `tingly-design-ui` is the edito
 .design/          design notes (index in .design/README.md)
 docs/en, docs/zh  guides and how-it-works pages, both languages
 e2e/              Playwright suites per kind and per cross-kind feature, a mock model
+evals/            agent evaluation: headless Claude Code does one design task through the skill + command line route and through the MCP route, scored as a black box (`pnpm eval`, `.design/agent-evals.md`); not run in CI
 artifact/         private reference material; never publish
 ```
 
@@ -101,6 +102,7 @@ artifact/         private reference material; never publish
 ```bash
 pnpm dev            # server + editor
 pnpm test           # core, import and i18n unit tests, and the matrix's e2e coverage (e2e/coverage.json)
+pnpm eval           # agent evaluation: the same design task by skill + command line and by MCP, with a comparison table (costs money; not in CI)
 pnpm e2e            # every e2e suite with what each needs started, one table and e2e/out/report.md (--smoke, --list, names)
 pnpm typecheck
 pnpm build

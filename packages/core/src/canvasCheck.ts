@@ -18,6 +18,7 @@ export type CanvasRule =
   | 'root-missing'
   | 'root-size-missing'
   | 'root-size'
+  | 'preview-size'
   | 'whole-svg'
   | 'unquoted-attr'
   | 'unclosed-tag'
@@ -153,8 +154,21 @@ function checkBoard(
   let root: { tag: Tag; depth: number } | null = null;
   let rootKids = 0;
   let svgDirect: Tag | null = null;
+  let preview: { width: number; height: number; line: number } | null = null;
 
   for (const t of tags(src)) {
+    if (t.name === 'script' && !t.close) {
+      // the size the board is drawn at when another file embeds it
+      const raw = attrOf(t, 'data-props');
+      if (raw) {
+        try {
+          const p = (JSON.parse(raw.replace(/&#39;/g, "'").replace(/&amp;/g, '&')) as { $preview?: { width?: unknown; height?: unknown } }).$preview;
+          if (typeof p?.width === 'number' && typeof p?.height === 'number') preview = { width: p.width, height: p.height, line: lineAt(t.offset) };
+        } catch {
+          // props that are not JSON are the editor's to report
+        }
+      }
+    }
     if (t.name === 'script' && !t.close && /support\.js$/.test(attrOf(t, 'src') ?? '')) sawSupport = true;
     if (t.close) {
       const at = stack.map((s) => s.name).lastIndexOf(t.name);
@@ -194,6 +208,10 @@ function checkBoard(
   if (w === null || h === null) add(file, line, 'root-size-missing', 'error');
   else if (entry && entry.expand !== 'fill' && typeof entry.w === 'number' && typeof entry.h === 'number' && (w !== entry.w || h !== entry.h)) {
     add(file, line, 'root-size', 'error', { width: w, height: h, boardWidth: entry.w, boardHeight: entry.h });
+  }
+
+  if (preview && w !== null && h !== null && (preview.width !== w || preview.height !== h)) {
+    add(file, preview.line, 'preview-size', 'warning', { previewWidth: preview.width, previewHeight: preview.height, width: w, height: h });
   }
 
   // a diagram is absolutely positioned boxes with small <svg> arrows; one <svg> that

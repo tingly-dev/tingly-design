@@ -41,7 +41,7 @@ Pictures, PDFs, HTML and Markdown (everything but zip and motion) are made by th
 
 ## As an MCP server
 
-An agent that speaks MCP gets the commands as tools: `list`, `read_skill`, `new`, `check`, `export`, `prompt` and `history`, with the same arguments, and each kind's format reference as a resource (`tingly-design://skills/<kind>`); `read_skill` with `page` returns one of the reference pages a format reference names (such as slides' `layout`). The agent edits a project's files with its own file tools; `check` with `snapshots: true` hands the pictures back in its result, scaled down to 1200 pixels on the longer side (up to 12 of them; the full-size files stay in `renders/check/`). Exports go to the project's `renders/`.
+An agent that speaks MCP gets one tool per step of the work: `projects` (what exists), `open` (enter a project, or make one when you give `kind`; returns its folder, outline and the uri of its format reference), `check` (the problems, as text, fast), `look` (draws the work and hands the pictures back, scaled to 1000 pixels on the longer side; `pick` draws one board, slide, tab or view, otherwise the first 6 come back and the rest stay on disk in `renders/check/`), `export` (`pick` names the one board, slide, tab or view), `history` and `prompt`. Each kind's format reference, and the reference pages it names, are resources (`tingly-design://skills/<kind>` and `…/<kind>/<page>`), and the prompts `make` and `edit` start the work with the reference already included. The agent edits a project's files with its own file tools; exports go to the project's `renders/`.
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # started by the agent, on stdio

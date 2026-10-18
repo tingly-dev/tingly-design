@@ -55,6 +55,7 @@
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
 | [harness.md](./harness.md) | 怎么确认一切都还好用：`pnpm e2e` 按组起环境跑全部套件、出一张表；全量 e2e 走每晚巡检和发布前，PR 只跑冒烟；`check --snapshots` 的版面检查（裁切、出界、对比度、空白）；编辑器截图基线（旁路分支、人看过再重录）；矩阵每个 ✓ 对上套件或写明没测的原因（`e2e/coverage.json`） | 已实施；调研在 `.research/harness.md` |
+| [agent-evals.md](./agent-evals.md) | 怎么量 agent 用 skill 或 MCP 能不能把设计做完：`pnpm eval` 用无头的 Claude Code 在两条路线上各做同一个题目，黑盒打分（确定性检查、过程指标、可选的图像评审），出一张对照表；不进 PR 和 CI，约每周手动跑一次 | 已实施 |
 | [issue-resolve.md](./issue-resolve.md) | Issue 自动跟进：每 5 小时拉取，团队的直接推进到 draft PR，外部的先评估回复、等维护者放行；阶段记在 issue 评论里 | 已实施；skill 在 `.claude/skills/issue-resolve/` |
 
 ## 宿主与 Tingly Box
