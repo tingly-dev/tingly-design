@@ -24,7 +24,7 @@ export const SKILLS: Record<Kind, string> = { design: 'dc-canvas', slides: 'slid
 /** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
 export const FORMATS: Record<Kind, string[]> = {
   design: ['png'],
-  slides: ['pdf', 'png', 'html', 'notes'],
+  slides: ['pdf', 'png', 'html', 'md', 'notes'],
   docs: ['pdf', 'html', 'md', 'png'],
   'design-system': ['png'],
   dashboard: ['png'],

@@ -12,6 +12,7 @@ export * from './rebase';
 export * from './layers';
 export * from './deck';
 export * from './slides';
+export * from './slidesMarkdown';
 export * from './slideArt';
 export * from './designSystem';
 export * from './dash';

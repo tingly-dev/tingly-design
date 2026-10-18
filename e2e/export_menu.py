@@ -21,7 +21,7 @@ def pages(path):
 # kind → (project, the exports it offers, by the name a person reads)
 KINDS = {
     'canvas': ('box-console', ['PNG image', 'PNG image @2x', 'PNG images', 'Source file']),
-    'slides': ('tingly-intro', ['PDF', 'PNG image', 'PNG images', 'HTML page', 'Speaker notes']),
+    'slides': ('tingly-intro', ['PDF', 'PNG image', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
     'design system': ('tingly-ds', ['PNG image']),
     'dashboard': ('box-usage', ['PNG image']),
     'docs': ('design-guide', ['PDF', 'Markdown', 'HTML page', 'PNG image']),
@@ -69,6 +69,21 @@ async def main():
             head = open(path, 'rb').read(5)
             check(f'{label}: PDF saves straight away', head == b'%PDF-' and d.suggested_filename.endswith('.pdf'), d.suggested_filename)
             check(f'{label}: …with {"a page per slide" if label == "slides" else "its content"}', pages(path) >= want, pages(path))
+
+        # --- Markdown: the deck as a document ---------------------------------------------------------
+        await pg.goto(f'{BASE}/?p=tingly-intro')
+        await pg.wait_for_timeout(3500)
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        async with pg.expect_download(timeout=30000) as dl:
+            await pg.get_by_role('menuitem', name=re.compile('^Markdown')).click()
+        d = await dl.value
+        path = OUT + d.suggested_filename
+        await d.save_as(path)
+        md = open(path, encoding='utf-8').read()
+        check('slides: Markdown saves as a .md file', d.suggested_filename.endswith('.md'), d.suggested_filename)
+        check('slides: …headed by the deck title, with the slide titles below it', md.startswith('# ') and md.count('\n### ') >= 3, md[:200])
+        check('slides: …with a table written as a table and the notes as quotes', '| --- |' in md and '\n> **' in md)
+        check('slides: …and no slide markup', '<section' not in md and 'style=' not in md)
 
         # --- no Chrome on the server: the print window ------------------------------------------------
         await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))
