@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, journalSince, type AgentStep, outlineProject, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { checkProject, journalSince, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -95,8 +95,9 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   if (!kind) throw new CommandError(t('cli.badKind', { kind: o.kind }));
   const target = o.target?.trim();
   if (!target) throw new CommandError(t('cli.needName', { kind: o.kind }));
-  const size = o.size ? validSize(o.size.split(/[x×,]/i).map(Number)) : undefined;
-  if (o.size && !size) throw new CommandError(t('errors.badSize'));
+  // a canvas takes a named size too (`wechat`), as the New dialog does; a motion format is a width and height
+  const size = o.size ? (kind === 'design' ? parseBoardSize(o.size) : validSize(o.size.split(/[x×,]/i).map(Number))) : undefined;
+  if (o.size && !size) throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: o.size, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
   const atPath = looksLikePath(target);
   const path = atPath ? resolve(expandHome(target)) : undefined;
   const title = o.title?.trim() || (path ? basename(path) : target);

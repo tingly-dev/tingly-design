@@ -97,6 +97,7 @@ export default {
     ds: 'Design system',
     dsNone: 'None',
     boardSize: 'Board size',
+    boardCustomFor: 'Any size from 1 to 7680 px.',
     dataFile: 'Data file',
     dataPick: 'Choose a CSV, TSV or JSON file…',
     dataClear: 'Remove',

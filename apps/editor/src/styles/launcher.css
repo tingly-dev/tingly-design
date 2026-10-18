@@ -1507,9 +1507,9 @@
 .szopt {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 10px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
   border: 1px solid var(--line-2);
   border-radius: 8px;
   background: var(--panel);
@@ -1530,6 +1530,17 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
   color: var(--ink);
+}
+
+
+.szsplit .szopt {
+  width: 100%;
+  flex: none;
+}
+
+
+.szsplit .szopt .dim {
+  margin-left: auto;
 }
 
 
@@ -1578,6 +1589,66 @@
 .szx:hover {
   color: var(--ink);
   background: var(--panel-2);
+}
+
+
+.szsplit {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+
+.szcats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+
+.szsplit .szrow {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  align-content: flex-start;
+  padding: 2px 6px 2px 2px;
+  scrollbar-width: thin;
+  /* a soft edge where more sizes wait above or below */
+  background:
+    linear-gradient(var(--panel) 30%, transparent) top / 100% 18px no-repeat local,
+    linear-gradient(transparent, var(--panel) 70%) bottom / 100% 18px no-repeat local,
+    linear-gradient(var(--line-2), transparent) top / 100% 6px no-repeat scroll,
+    linear-gradient(transparent, var(--line-2)) bottom / 100% 6px no-repeat scroll;
+}
+
+
+.szcat {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+
+.szcat:hover {
+  background: var(--panel-2);
+  color: var(--ink-2);
+}
+
+
+.szcat[aria-selected='true'] {
+  background: var(--accent-soft, var(--panel-2));
+  color: var(--ink);
 }
 
 

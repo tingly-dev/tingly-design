@@ -56,7 +56,7 @@ const TOOLS = [
         project,
         kind: { type: 'string', enum: Object.keys(KINDS), description: 'Create a project of this kind.' },
         title: { type: 'string', description: 'With kind: the title shown in the launcher (default: the name).' },
-        size: { type: 'string', description: 'With kind canvas or motion: the first artboard or format, as WxH (e.g. 1280x720).' },
+        size: { type: 'string', description: 'With kind canvas or motion: the first artboard or format, as WxH (e.g. 1280x720). A canvas also takes a named size from the New dialog (wechat, tall, story, og, wide, a4, mpu, …; an unknown name lists them all).' },
       },
       required: ['project'],
     },
