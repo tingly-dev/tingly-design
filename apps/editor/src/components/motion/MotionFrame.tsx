@@ -30,8 +30,10 @@ export interface MotionExportRequest {
   to?: number;
   fontCss?: string;
   audio?: { data: ArrayBuffer; start: number; gain: number }[];
-  /** the cover, put in frame 0 of a whole-piece MP4 or WebM */
+  /** the cover, embedded as the cover picture of a whole-piece MP4 or WebM */
   cover?: MotionCoverSpec;
+  /** with `cover`: also frame 0 of the video */
+  coverFirst?: boolean;
 }
 
 /** A cover for the frame to draw: a moment of the piece in authored ms (before speed), or a cover scene's source. */

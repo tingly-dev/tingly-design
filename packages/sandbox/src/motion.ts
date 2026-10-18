@@ -419,7 +419,7 @@ type HostMsg =
   | { dcm: 'seek'; t: number }
   | { dcm: 'play'; from?: number }
   | { dcm: 'pause' }
-  | ({ dcm: 'export'; id: string; fontCss?: string; audio?: AudioClip[]; cover?: CoverSpec } & Pick<ExportRequest, 'format' | 'width' | 'height' | 'fps' | 'quality' | 'from' | 'to'>)
+  | ({ dcm: 'export'; id: string; fontCss?: string; audio?: AudioClip[]; cover?: CoverSpec; coverFirst?: boolean } & Pick<ExportRequest, 'format' | 'width' | 'height' | 'fps' | 'quality' | 'from' | 'to'>)
   | { dcm: 'cover'; id: string; cover: CoverSpec; scale?: number; fontCss?: string }
   | { dcm: 'export-cancel'; id: string }
   | { dcm: 'snapshot'; id: string; t: number; scale?: number; fontCss?: string };
@@ -466,7 +466,7 @@ if (typeof document !== 'undefined' && document.getElementById('dc-app') && wind
       if (!stage) return post({ dcm: 'export-error', id: m.id, code: 'no-stage' });
       const ctl = new AbortController();
       exporting.set(m.id, ctl);
-      const req: ExportRequest = { format: m.format, width: m.width, height: m.height, fps: m.fps, quality: m.quality, from: m.from, to: m.to, fontCss: m.fontCss, audio: m.audio, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
+      const req: ExportRequest = { format: m.format, width: m.width, height: m.height, fps: m.fps, quality: m.quality, from: m.from, to: m.to, fontCss: m.fontCss, audio: m.audio, coverFirst: m.coverFirst, signal: ctl.signal, onProgress: (done, total) => post({ dcm: 'export-progress', id: m.id, done, total }) };
       try {
         const s = stage;
         const r = await withCover(m.cover, (cover) => exportVideo(s, stageBox!, { ...req, cover }));

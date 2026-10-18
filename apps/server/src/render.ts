@@ -155,10 +155,11 @@ export interface RenderOptions {
   out?: string;
   /**
    * Also write the cover as `<project>-<format>-cover.png` beside the video, embed it in an MP4
-   * as its cover art, and make it the first frame unless motion.json says `coverFirstFrame: false`,
-   * so apps that thumbnail frame 0 show it. The editor's export leaves this off.
+   * as its cover art. The editor's export leaves this off (it asks for the picture itself).
    */
   cover?: boolean;
+  /** With `cover`: also make the cover the video's first frame, for apps that thumbnail frame 0. motion.json's `coverFirstFrame` when left out; off without it. */
+  coverFirst?: boolean;
   /** The file's frame size, same aspect ratio as the piece; the piece's own when left out. */
   width?: number;
   height?: number;
@@ -350,7 +351,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     ffmpeg.stderr!.on('data', (d) => (ffmpegErr = (ffmpegErr + d).slice(-2000)));
     const closed = new Promise<number | null>((ok) => ffmpeg!.on('close', ok));
     ffmpeg.stdin!.on('error', () => {});
-    const coverFirst = coverFile && whole && motion.coverFirstFrame !== false;
+    const coverFirst = coverFile && whole && (o.coverFirst ?? motion.coverFirstFrame === true);
     for (let i = 0; i < frames; i++) {
       if (o.signal?.aborted) throw new RenderError('aborted');
       let frame: Buffer;

@@ -27,6 +27,8 @@ export interface ExportRequest {
   audio?: AudioClip[];
   /** What frame 0 shows when the whole piece goes to MP4 or WebM: a moment of the piece, or a cover scene already mounted (`mountCover`). A GIF loops, so it never gets one. */
   cover?: CoverSource;
+  /** With `cover`: also make it frame 0 of the video. Off: the cover goes in only as the file's cover picture. */
+  coverFirst?: boolean;
   onProgress?(done: number, total: number): void;
   signal?: AbortSignal;
 }
@@ -81,7 +83,7 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
     return rasterizer.begin(holder, pics);
   };
   const prepare = async (ms: number, i = -1) => {
-    if (i === 0 && cover) return coverFrame(cover);
+    if (i === 0 && cover && req.coverFirst) return coverFrame(cover);
     await clock.time('seek', () => stage.seek(from + ms));
     const pics = await clock.time('embeds', () => embedPictures(stage, root, from + ms, missed));
     return rasterizer.begin(root, pics);

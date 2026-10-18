@@ -15,6 +15,8 @@ export interface VideoExportOptions {
   /** a stretch of the piece in milliseconds on its timeline; absent: the whole piece */
   from?: number;
   to?: number;
+  /** put the cover in the first frame too (only offered when the piece has a cover) */
+  coverFirst?: boolean;
 }
 
 /** The scene under the playhead, as a range to offer: where it starts and ends on the played timeline. */
@@ -43,6 +45,8 @@ export function VideoExportDialog({
   fps,
   duration,
   scene,
+  hasCover,
+  coverFirst: coverFirstStart,
   viaServer,
   initialFormat,
   onStart,
@@ -53,6 +57,10 @@ export function VideoExportDialog({
   /** milliseconds of video, after speed */
   duration: number;
   scene: ScenePick | null;
+  /** the piece has a cover (it is always embedded in the file; the box adds it as the first frame) */
+  hasCover: boolean;
+  /** the box's starting state: motion.json's `coverFirstFrame` */
+  coverFirst: boolean;
   /** scenes with an embed or video layer when the server's Chrome will draw them, else null */
   viaServer: string[] | null;
   /** GIF when the dialog was opened from the menu's "GIF…" */
@@ -70,6 +78,7 @@ export function VideoExportDialog({
   const [rate, setRate] = useState(gifFirst ? Math.min(fps, 15) : fps);
   const [quality, setQuality] = useState<VideoQuality>('high');
   const [range, setRange] = useState<'whole' | 'scene'>('whole');
+  const [coverFirst, setCoverFirst] = useState(coverFirstStart);
 
 
   const rates = useMemo(() => [...new Set(format === 'gif' ? [10, 15, 24, fps].filter((r) => r <= Math.max(24, fps)) : [24, 30, 60, fps])].sort((a, b) => a - b), [format, fps]);
@@ -91,7 +100,8 @@ export function VideoExportDialog({
   const formatName = { auto: 'MP4', mp4: 'MP4', webm: 'WebM', gif: 'GIF' }[format];
   const summary = t('motion.export.summary', { format: formatName, size: `${width}×${outH}`, fps: rate, range: span ? t('motion.export.rangeSceneShort', { name: scene!.name }) : t('motion.export.rangeWholeShort'), length: seconds(length) });
 
-  const start = () => onStart({ format, width, height: outH, fps: rate, quality, ...(span ?? {}) });
+  const firstFrame = hasCover && format !== 'gif' && !span;
+  const start = () => onStart({ format, width, height: outH, fps: rate, quality, ...(span ?? {}), ...(firstFrame && coverFirst ? { coverFirst: true } : {}) });
 
   return (
     <Dialog label={t('motion.export.title')} className="vexport" onClose={onClose} onSubmit={() => start()}>
@@ -151,6 +161,12 @@ export function VideoExportDialog({
                   {scene && <option value="scene">{t('motion.export.rangeScene', { name: scene.name, length: seconds(scene.to - scene.from) })}</option>}
                 </select>
               </label>
+              {firstFrame && (
+                <label className="vcheck">
+                  <input type="checkbox" checked={coverFirst} onChange={(e) => setCoverFirst(e.target.checked)} />
+                  <span>{t('motion.export.coverFirst')}</span>
+                </label>
+              )}
               <p className="note">
                 {format === 'gif' ? t('motion.export.gifNote') : span ? t('motion.export.sceneNoSound') : t('motion.export.formatNote')} {t('motion.export.frames', { count: frames })}
               </p>

@@ -278,6 +278,17 @@
 }
 
 
+.vexport .vopts label.vcheck {
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+
+
+.vexport .vopts label.vcheck > span {
+  color: var(--ink-2);
+}
+
+
 .vexport footer {
   display: flex;
   justify-content: flex-end;

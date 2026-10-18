@@ -405,6 +405,8 @@ export function MotionApp() {
           fps={info.fps}
           duration={info.duration}
           scene={scenePick}
+          hasCover={!!coverSpec}
+          coverFirst={motion.coverFirstFrame === true}
           viaServer={exportDialog.viaServer}
           initialFormat={exportDialog.format}
           onClose={() => setExportDialog(null)}

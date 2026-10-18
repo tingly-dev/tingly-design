@@ -63,6 +63,7 @@ export default {
     range: 'Range',
     rangeWhole: 'The whole piece · {{length}}',
     rangeScene: 'Only the scene under the playhead: {{name}} · {{length}}',
+    coverFirst: 'Also put the cover in the first frame (for apps that only show a video’s first frame)',
     formatNote: 'MP4 plays everywhere; WebM is the fallback for browsers that cannot write H.264.',
     gifNote: 'A GIF has 256 colours a frame and no sound: best for short loops, at a small size.',
     sceneNoSound: 'A single scene is exported without sound.',

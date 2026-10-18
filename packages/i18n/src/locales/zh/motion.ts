@@ -63,6 +63,7 @@ export default {
     range: '范围',
     rangeWhole: '整段 · {{length}}',
     rangeScene: '只导出播放头所在的场景：{{name}} · {{length}}',
+    coverFirst: '同时把封面放在第一帧（给只显示视频第一帧的软件）',
     formatNote: 'MP4 到处都能播；WebM 是写不了 H.264 的浏览器的备选。',
     gifNote: 'GIF 每帧只有 256 色、没有声音：适合短的循环，尺寸要小。',
     sceneNoSound: '只导出一个场景时不带声音。',

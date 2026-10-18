@@ -105,6 +105,13 @@ async def main():
             await pg.get_by_role('button', name='导入 / 导出').click()
             await pg.get_by_text('封面图片').click()
         check('"Cover picture" saves a PNG named for the cover', (await dl.value).suggested_filename.endswith('-cover.png'))
+        # the first-frame box: in the dialog's more options, off by default
+        await pg.get_by_role('button', name='导入 / 导出').click()
+        await pg.get_by_text('视频…').click()
+        await pg.get_by_role('button', name='更多选项').click()
+        box = pg.locator('.vcheck input')
+        check('the dialog offers the cover as first frame, unchecked', await box.count() == 1 and not await box.is_checked())
+        await pg.keyboard.press('Escape')
         await pg.locator('.mcoverx').click(force=True)
         await pg.wait_for_timeout(500)
         await pg.locator('.mcoverclip.add').click()

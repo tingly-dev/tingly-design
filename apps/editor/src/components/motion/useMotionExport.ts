@@ -98,14 +98,13 @@ export function useMotionExport(p: {
       if (project && viaServer) {
         toast(t('motion.export.viaServer', { scenes: viaServer.join(', ') }));
         const ext = o.format === 'gif' ? 'gif' : 'mp4';
-        const { file, report } = await api.renderMotion(project, fmt, { container: ext, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, cover: !!cover }, progress, ctl.signal);
+        const { file, report } = await api.renderMotion(project, fmt, { container: ext, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, cover: !!cover, coverFirst: !!cover && o.coverFirst === true }, progress, ctl.signal);
         download(name(ext), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
         toast(doneMessage(name(ext), report));
       } else {
         const inputs = await exportInputs(motion, fontScenes, base);
-        // the cover goes in frame 0 (the thumbnail most apps take), as the command line's export does
-        const first = motion.coverFirstFrame !== false ? cover : undefined;
-        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs, cover: first }, progress, ctl.signal);
+        // the cover is embedded as the file's cover picture; the box in the dialog adds it as frame 0 too
+        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs, cover, coverFirst: o.coverFirst === true }, progress, ctl.signal);
         download(name(r.ext), r.blob);
         toast(doneMessage(name(r.ext), r.report));
         if (project) api.logExport(project, r.report, exactScenes(playScenes).length ? 'no-server-renderer' : undefined);
