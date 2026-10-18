@@ -1,6 +1,6 @@
 # MCP 流程与工具开销审查
 
-研究（未决：精简方案等 YZ 拍板）。起因：担心 MCP 内置工具太多、代价大。现状见 [`.design/cli.md`](../.design/cli.md) §4 的 MCP 一节；§6 已决定不做服务端推送和 `prompts`，本文不重议。数字都是在本仓库里实测的（`handleMcp` 直接调 `initialize` / `tools/list` / `tools/call`），token 按"英文约 4 字符、中文约 1.5 字符一个"估。
+研究（已决，见 §9）。起因：担心 MCP 内置工具太多、代价大。现状见 [`.design/cli.md`](../.design/cli.md) §4 的 MCP 一节；§6 已决定不做服务端推送和 `prompts`，本文不重议。数字都是在本仓库里实测的（`handleMcp` 直接调 `initialize` / `tools/list` / `tools/call`），token 按"英文约 4 字符、中文约 1.5 字符一个"估。
 
 ## 1. 结论
 
@@ -130,3 +130,13 @@
 
 1. 是否改成 8.2 的流程化形状（会改工具名和参数，等于重做一次 MCP 的接口；版本还早，没有已知的依赖者）。
 2. 改文件这一步是否要补一个 MCP 内的写文件工具，让 agent 不依赖本机文件权限。我的倾向是**暂时不补**：改动记录要把它记成"外部"还是"Claude"需要新设计，且现有 agent 都有文件工具。
+
+## 9. 决定与落实
+
+YZ 拍板：按 §8.2 的流程化形状改；改文件不走 MCP；格式说明和提示词要透出，但**不从工具透出**，用 MCP 自己的资源和提示。已落实：
+
+- 工具：`projects`、`open`、`check`、`look`、`export`、`prompt`、`history`。`read_skill`、`list`、`new` 取消；`open` 返回资源链接。
+- 资源：每种类型的格式说明加它的参考页（`tingly-design://skills/<kind>[/<page>]`）。提示：`make`、`edit`，把流程和格式说明一起发出。
+- `pick`：`export`、`look` 都有；命令行 `check --snapshots` 复用 `--board/--slide/--tab/--view/--format`。
+- 结果用紧凑 JSON；`look` 最多内联 6 张、长边 1000px。
+- 取代了 §5 的瘦身清单。`.design/cli.md` 的 MCP 一节和 §6（`prompts` 现在做了）已改写。

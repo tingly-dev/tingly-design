@@ -80,11 +80,14 @@
 
 **`check --snapshots`。** 同类工具里最有用的一道关卡是"检查完再看一眼"（HyperFrames 的 `check --snapshots`）。这里就是用上面的路把每个画板、幻灯片、标签页、设计系统视图画一遍（动效是每个画幅的封面，走 `render.ts`），画不出来的作为 `snapshot` 问题报出来。画的同时听着作品本身：画板、幻灯片、看板、预览都是沙箱框架（Chrome 可能把它们放进单独的进程，所以自动附着到每个框架，并让框架等到被听上才开始跑，第一行脚本的错也不漏），框架里抛出的错和渲染器接住后打印的错记成 `pageError`（错误），框架要的图片、字体、样式、脚本没到的记成 `notLoaded`（警告）；编辑器自己的请求和报错不算，它们不是人写的东西。指向项目里的文件（`…/raw/<path>`）而文件不在的，算作 `missingFile`，和文件之间的引用缺失是同一种问题。出处用框架元素的 `title` 找回文件（画板名、幻灯片编号；看板只有一页），同一张幻灯片的缩略图和大图报的同一个问题只算一次。动效还多一道 seek 检查（`checkSeek`）：每个画幅取 16 帧，顺着 seek 一遍再倒着 seek 一遍，在页面里逐像素比；精确渲染是逐帧 seek 的，场景读了时钟、随机绘制或自己在动，视频就和预览对不上，所以不一致记成 `seek` 警告。只差抗锯齿（最大差 ≤ 16、不到画面 0.1% 的像素）算一致，免得字体渲染的细微抖动误报。图放在 `renders/check/`（每次先清空；`--out` 给的文件夹不清），agent 把图读回去就是看到了自己做的东西。 画完还看版面：每个作品框架里跑一段探针，查文字被框裁掉、跑出固定尺寸的画板或幻灯片、在纯色背景上对比度不到 WCAG AA、整块空白，作为 `layout` 警告报出（为什么这样定见 [harness.md](./harness.md)）。
 
-**MCP。** 能说 MCP 的 agent（Claude Code、Claude Desktop、IDE）不用敲命令，直接拿到工具：`list`、`read_skill`、`new`、`check`、`export`、`history`，和命令同名同参数；资源是每种类型的格式 skill（`tingly-design://skills/<kind>`）。`initialize` 带一段说明：先 `read_skill`，再用 agent 自己的文件工具改项目文件夹，改完 `check`（`snapshots: true` 画出来看）。不另做"写文件"的工具：项目就是文件，agent 本来就会改文件，监听会把改动记进改动记录、推给编辑器。
+**MCP。** 能说 MCP 的 agent（Claude Code、Claude Desktop、IDE）不用敲命令，直接拿到工具。工具按工作的流程排，**一个工具是流程里完整的一步**，没有模式开关：`projects`（有哪些项目）→ `open`（进入项目，给了 `kind` 就是新建；返回文件夹、大纲和这个类型格式说明的 uri）→ 用 agent 自己的文件工具改 → `check`（只查文字问题，不要 Chrome，改一次查一次）→ `look`（画出来，返回图；`pick` 只画一个画板、幻灯片、标签页、视图或动效画幅）→ `export`（`pick` 指定要哪一个）；`history`、`prompt` 是交接。格式说明不从工具读：每种类型的格式 skill 和它点名的参考页是资源（`tingly-design://skills/<kind>`、`…/<kind>/<page>`），`open` 返回里带资源链接，提示 `make`、`edit` 把格式说明连同流程一起发给模型。`initialize` 的说明只有一段流程。不另做"写文件"的工具：项目就是文件，agent 本来就会改文件，监听会把改动记进改动记录、推给编辑器。
+
+考虑过、没选的：原来的七个工具（`list`、`read_skill`、`new`、`check`、`export`、`prompt`、`history`）：`list` 有无项目是两件事，`check` 加不加 `snapshots` 是两件事，`prompt` 有三种模式，要先读格式说明全靠 agent 自己记得。工具的固定开销本来就小（约 1.6K token），问题在流程而不在数量，所以工具数不变，改的是形状。让 `look` 不带 `pick` 时全画全回：一次十几张图；现在只回前 6 张，其余留在盘上。把格式说明放进工具返回（`read_skill`、`open` 内联）：格式说明是参考资料，不是某一步的结果，放资源里才不会每次都占上下文，客户端也能按自己的方式列出和引用。
+
 
 - 两条路，一个处理函数（`handleMcp`）：正在运行的编辑器在 `POST /mcp` 答（Streamable HTTP，回 JSON，不开 SSE、不要会话；通知回 202，`GET`、`DELETE` 回 405）；`tingly-design mcp` 在 stdio 上答，一行一条 JSON-RPC，stdout 只放协议（`console.log` 改写到 stderr，日志本来就在 stderr）。考虑过让 `mcp` 做转发到 `/mcp` 的桥：要先有编辑器在运行，而直接在进程里调同一个函数时，要画图的工具照样能用上正在运行的编辑器（`withEditor`），所以不做桥。
-- 协议手写：`initialize`、`ping`、`tools/list`、`tools/call`、`resources/list`、`resources/read`，回客户端要的协议版本（认得的话）。官方 SDK 要带上 zod 等依赖、进 bundle，换来的只是这几个方法。
-- `check` 带 `snapshots: true` 时把图直接放进结果，模型不用再调一次就能看。图先缩到长边 1200 像素（`shrinkPictures`，用同一个 Chrome 解码缩放）：原尺寸的画板一张就几 MB，模型看到的细节却和缩小后差不多，缩了以后一次能放 12 张（共不超过 4 MB），其余给路径；盘上的图仍是原尺寸，要细看就读文件。工具执行出错放在结果里（`isError`），模型能看到原因自己改；协议层的错（没有这个工具、方法）才是 JSON-RPC 错误。
+- 协议手写：`initialize`、`ping`、`tools/list`、`tools/call`、`resources/list`、`resources/read`、`prompts/list`、`prompts/get`，回客户端要的协议版本（认得的话）。官方 SDK 要带上 zod 等依赖、进 bundle，换来的只是这几个方法。
+- `look` 把图直接放进结果，模型不用再调一次就能看。图先缩到长边 1000 像素（`shrinkPictures`，用同一个 Chrome 解码缩放）：原尺寸的画板一张就几 MB，模型看到的细节却和缩小后差不多，缩了以后一次最多放 6 张（共不超过 4 MB），其余给路径；盘上的图仍是原尺寸，要细看就读文件。工具执行出错放在结果里（`isError`），模型能看到原因自己改；协议层的错（没有这个工具、方法）才是 JSON-RPC 错误。
 - 写文件只写在项目里：MCP 的 `export` 没有 `--out`，`zip` 也写进项目的 `renders/`，不写到服务进程碰巧所在的目录。
 - 在编辑器自己的 `/mcp` 里（`inServer`），要画图时用的就是这个编辑器（`ownEditor()`：服务开始监听就记下自己的地址，不管写没写 `.server.json`），不另起一个；启动页上没有的文件夹路径直接拒绝（`cli.notListed`），因为在这个进程里给它起名字就会出现在启动页上。
 - 安全：带 `Origin` 的请求只收本机或编辑器自己地址来的，别的网站不能借人的浏览器调它。服务默认只听 127.0.0.1；监听到网络上时，`/mcp` 和其余 `/api` 一样，谁能连上谁就能用。
@@ -111,4 +114,4 @@
 **考虑过、暂不做：**
 
 1. **命令行或 agent 的改动记成自己的身份。** 命令行本身不改项目文件：`new`、`import` 建项目，`export` 只写 `renders/`。记成“外部”的是通过 MCP 连上的 agent 用它自己的文件工具改的文件；要分出来只能按时间窗猜（agent 调过工具之后一段时间的外部改动都算它的），同一时间人在别的编辑器里手改也会被算进去。改动记录宁可说“外部”，也不该把人说成 agent。agent 要分清自己和人改了什么，用 `history --since`。
-2. **MCP 的服务端推送和 `prompts`。** 推送（资源变化通知）在 stdio 下好做，HTTP 下要另开 SSE 流；主流客户端基本不订阅资源变化，agent 想知道人改了什么，`history --since` 已经够用。`prompts` 只是给客户端预置几条请求模板，作用有限，还要维护两种语言的文案。等有客户端真的用上再做。
+2. **MCP 的服务端推送。** 资源变化通知在 stdio 下好做，HTTP 下要另开 SSE 流；主流客户端基本不订阅资源变化，agent 想知道人改了什么，`history --since` 已经够用。等有客户端真的用上再做。（`prompts` 原先也在这里，现在做了：`make`、`edit` 两条，作用是把格式说明和流程一起交给模型；文字写给模型，英文，不进两种语言的文案。）

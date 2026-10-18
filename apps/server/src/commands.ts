@@ -158,18 +158,19 @@ export async function history(ctx: Ctx, p: Project, o: { since?: string; limit?:
 // ---------------------------------------------------------------- check
 
 /** The problems the editor would show; with `snapshots`, also a picture of everything, each one that fails added as a problem. */
-export async function check(ctx: Ctx, p: Project, o: { snapshots?: boolean; out?: string } = {}) {
+export async function check(ctx: Ctx, p: Project, o: { snapshots?: boolean; out?: string; pick?: Pick<ExportOptions, 'board' | 'slide' | 'tab' | 'view'>; format?: string[] } = {}) {
   const problems = checkProject(p.kind, await texts(p.dir));
-  const pictures = o.snapshots ? await snapshots(ctx, p, problems, o.out) : undefined;
+  const pictures = o.snapshots ? await snapshots(ctx, p, problems, o.out, o.pick, o.format) : undefined;
   return { name: p.name, kind: p.kind, problems, errors: problems.filter((x) => x.level === 'error').length, ...(pictures ? { snapshots: pictures } : {}) };
 }
 
 /**
  * The half of `check` that looks: every board, slide, tab, design-system view or motion cover drawn
  * as the Export menu draws it, and the pictures kept for whoever checks (an agent reads them back).
- * Motion covers come from the exact renderer.
+ * Motion covers come from the exact renderer. `pick` (one board, slide, tab or view) or `formats`
+ * (motion) draws only that.
  */
-async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?: string): Promise<{ dir: string; files: string[] }> {
+async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?: string, pick: Pick<ExportOptions, 'board' | 'slide' | 'tab' | 'view'> = {}, formats?: string[]): Promise<{ dir: string; files: string[] }> {
   const t = translator(ctx.lang);
   const dir = out ? resolve(expandHome(out)) : resolve(p.dir, 'renders', 'check');
   // pictures of the last check would read as this one's; a folder named with --out is the person's, and stays
@@ -180,7 +181,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     const motion = parseMotion(await readFile(resolve(p.dir, 'motion.json'), 'utf8'));
     const runtime = resolve(SANDBOX_DIST, 'motion.js');
     const files: string[] = [];
-    for (const format of Object.keys(motion.formats)) {
+    for (const format of Object.keys(motion.formats).filter((f) => !formats?.length || formats.includes(f))) {
       try {
         files.push((await renderMotion({ dir: p.dir, runtime, format, container: 'png', out: dir })).file);
         // the exact render seeks frame by frame: a scene that is not the same picture at the same time renders wrong
@@ -194,7 +195,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     return { dir, files };
   }
   // boards and slides are their own size, so text past the edge is lost; a dashboard or a view scrolls
-  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', {}, true), dir, undefined, { fixed: p.kind === 'design' || p.kind === 'slides' });
+  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: p.kind === 'design' || p.kind === 'slides' });
   for (const f of failed) fail(f.what, f.error);
   // a board that threw or a picture that never came still draws something; the picture alone would not say why
   const where = await frameFiles(p);
@@ -283,6 +284,12 @@ export interface ExportResult {
   issues?: PageIssue[];
   /** a zip: what went in */
   zip?: { files: number; systems: string[] };
+}
+
+/** The one board, slide, tab or view a `pick` names, as the option of the kind it belongs to; dashboards and motion have none. */
+export function pickFor(kind: Kind, pick: string | undefined): Pick<ExportOptions, 'board' | 'slide' | 'tab' | 'view'> {
+  const field = ({ design: 'board', slides: 'slide', docs: 'tab', 'design-system': 'view' } as Partial<Record<Kind, 'board' | 'slide' | 'tab' | 'view'>>)[kind];
+  return field && pick?.trim() ? { [field]: pick.trim() } : {};
 }
 
 /** What the Export menu saves, by its name: `zip` for any project, the kind's formats (`FORMATS`) otherwise. */

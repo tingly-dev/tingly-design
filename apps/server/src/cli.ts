@@ -220,7 +220,7 @@ async function check(arg: string | undefined): Promise<number> {
   if (!arg) return machine();
   const p = await project(arg, 'check');
   if (opts.snapshots) opening();
-  const r = await cmd.check(ctx, p, { snapshots: opts.snapshots, out: opts.out }).finally(() => opts.snapshots && clearLine());
+  const r = await cmd.check(ctx, p, { snapshots: opts.snapshots, out: opts.out, pick: { board: opts.board, slide: opts.slide, tab: opts.tab, view: opts.view }, format: opts.format?.split(',').map((f) => f.trim()).filter(Boolean) }).finally(() => opts.snapshots && clearLine());
   if (opts.json) print({ name: r.name, kind: r.kind, problems: r.problems, ...(r.snapshots ? { snapshots: r.snapshots.files } : {}) });
   else if (!r.problems.length) console.log(t('cli.noProblems', { name: p.name }));
   else {
