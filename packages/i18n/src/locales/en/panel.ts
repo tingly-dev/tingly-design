@@ -153,6 +153,18 @@ export default {
     noTweaks: 'This artboard has no options. Add tweaks to its data-props in the canvas, then update it here.',
     missing: 'The artboard file is gone from this project: {{path}}',
   },
+  templateValues: {
+    title: 'Template values',
+    count_one: '{{count}} value',
+    count_other: '{{count}} values',
+    fold: 'Fold {{name}}',
+    unfold: 'Unfold {{name}}',
+    show: 'Show {{name}} on the canvas',
+    filter: 'Filter values by name',
+    filterPlaceholder: 'Filter by name',
+    none: 'No match for “{{q}}”.',
+    empty: 'No artboard declares values yet. Add them to an artboard’s data-props, like "heading":{"default":"…"}, and they appear here.',
+  },
   tweaks: {
     time: 'Time',
     play: 'Play',

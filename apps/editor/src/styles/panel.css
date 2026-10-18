@@ -798,3 +798,39 @@ textarea.code:focus {
   flex: none;
 }
 
+
+/* template values: every artboard's data-props in the nothing-selected panel */
+.tvgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tvhead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+}
+
+.tvname {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.tvname:hover {
+  background: var(--hover);
+}

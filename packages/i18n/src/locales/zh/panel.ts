@@ -154,6 +154,17 @@ export default {
     noTweaks: '这个画板没有可调选项。到画布里给它的 data-props 加上参数，再回来更新。',
     missing: '这个项目里已经没有这个画板文件：{{path}}',
   },
+  templateValues: {
+    title: '模板值',
+    count_other: '{{count}} 个值',
+    fold: '折叠 {{name}}',
+    unfold: '展开 {{name}}',
+    show: '在画布上定位 {{name}}',
+    filter: '按名字过滤模板值',
+    filterPlaceholder: '按名字过滤',
+    none: '没有匹配“{{q}}”的值。',
+    empty: '还没有画板声明模板值。在画板的 data-props 里写，比如 "heading":{"default":"…"}，它们就会出现在这里。',
+  },
   tweaks: {
     time: '时间',
     play: '播放',

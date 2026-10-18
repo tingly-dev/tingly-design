@@ -7,6 +7,7 @@ import {
   boardSize,
   boardTime,
   boardTweaks,
+  canvasTemplateValues,
   boardsOf,
   checkSlide,
   coverFit,
@@ -46,6 +47,22 @@ describe('artboards imported into slides and scenes', () => {
     expect(embedProps('{"accent":"#fff"}')).toEqual({ accent: '#fff' });
     expect(embedProps('nope')).toEqual({});
     expect(embedProps('[1]')).toEqual({});
+  });
+
+  it('sums up every artboard’s values in canvas order', () => {
+    const canvas = { boards: { 'A.dc.html': { x: 0, y: 0, w: 1, h: 1, title: 'Cover' }, 'B.dc.html': { x: 0, y: 0, w: 1, h: 1 }, 'C.dc.html': { x: 0, y: 0, w: 1, h: 1 }, 'D.dc.html': { x: 0, y: 0, w: 1, h: 1 } }, order: ['C.dc.html', 'A.dc.html', 'B.dc.html', 'D.dc.html'] };
+    const files: Record<string, string> = {
+      'A.dc.html': BOARD('{"heading":{"default":"Hi"},"dark":{"default":false},"$time":{"loop":"6s"}}'),
+      'B.dc.html': BOARD('{"$preview":{"width":10,"height":10}}'),
+      'C.dc.html': BOARD('{"accent":{"editor":"color","default":"#000"}}'),
+    };
+    const got = canvasTemplateValues(canvas, (f) => files[f]);
+    // B declares only reserved keys and D is not loaded: both are left out
+    expect(got.map((g) => [g.file, g.title, g.values.map(([k, s]) => [k, s.editor])])).toEqual([
+      ['C.dc.html', 'C', [['accent', 'color']]],
+      ['A.dc.html', 'Cover', [['heading', 'text'], ['dark', 'boolean']]],
+    ]);
+    expect(canvasTemplateValues(canvas, () => undefined)).toEqual([]);
   });
 
   it('collects the siblings an artboard mounts and the files it shows', () => {

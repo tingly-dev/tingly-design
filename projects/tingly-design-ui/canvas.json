@@ -103,6 +103,13 @@
       "w": 1720,
       "h": 1110,
       "title": "Agent bar"
+    },
+    "TemplateValues.dc.html": {
+      "x": 5400,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas template values"
     }
   },
   "order": [
@@ -114,6 +121,7 @@
     "Launcher.dc.html",
     "Menus.dc.html",
     "Canvas.dc.html",
+    "TemplateValues.dc.html",
     "Slides.dc.html",
     "DesignSystem.dc.html",
     "Dashboard.dc.html",
