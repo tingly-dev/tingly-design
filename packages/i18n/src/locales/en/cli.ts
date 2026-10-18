@@ -101,6 +101,9 @@ Options:
     contrastMany: '{{count}} texts are hard to read on their background (the faintest at contrast {{ratio}}:1, “{{text}}”)',
     blank: 'nothing is drawn',
     gap: 'a band {{size}} px tall ({{percent}}% of the height) is empty from {{at}} px down; shrink the board or spread the content',
+    boxOutside: 'a box runs past the edge and is cut off: “{{text}}”',
+    boxOverflow: 'a box is wider than the row or grid that holds it, so it pushes its neighbours aside: “{{text}}”',
+    squeezed: 'text is squeezed into a column a few characters wide ({{lines}} lines): “{{text}}”',
   },
   canvasRules: {
     'order-unknown': 'order lists {{file}}, which is not a board',
