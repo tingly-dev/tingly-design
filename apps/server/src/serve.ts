@@ -8,14 +8,14 @@ import { readFile } from 'node:fs/promises';
 import { isAbsolute, relative, sep } from 'node:path';
 import { serve } from '@hono/node-server';
 import chokidar from 'chokidar';
-import { DS_TOKENS, isDataPath, type Actor } from '@dc/core';
+import { DS_TOKENS, type Actor } from '@dc/core';
 import { afterTokens, app } from './app';
 import { activeDelegates, stopDelegates } from './delegate';
 import { lineDiffSummary, publish, record } from './hub';
 import { BASE_PATH, BUNDLED, PROJECTS_DIR, PROTOCOL, VERSION } from './layout';
 import { logError, logInfo } from './log';
 import { announce, retire, serving } from './running';
-import { isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, seedSamples, versionOf } from './store';
+import { assetRel, isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, seedSamples, versionOf } from './store';
 
 export interface ServerOptions {
   port: number;
@@ -143,13 +143,22 @@ function watchProjects() {
       const rel = relative(dir, abs);
       if (!rel || rel.startsWith('..') || isAbsolute(rel)) continue;
       const r = rel.split(sep).join('/');
-      return isTracked(r) || isDataPath(r) ? { project, rel: r } : null;
+      return isTracked(r) || isAsset(r) ? { project, rel: r } : null;
     }
     const r = relative(PROJECTS_DIR, abs).split(sep);
     if (r.length < 2 || !isProjectName(r[0])) return null;
     const rel = r.slice(1).join('/');
-    return isTracked(rel) || isDataPath(rel) ? { project: r[0], rel } : null;
+    return isTracked(rel) || isAsset(rel) ? { project: r[0], rel } : null;
   }
+
+  const isAsset = (rel: string) => {
+    try {
+      assetRel(rel);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   let ready = false;
   watcher.on('ready', () => {
@@ -161,8 +170,8 @@ function watchProjects() {
     const at = split(abs);
     if (!at) return;
     const key = `${at.project}/${at.rel}`;
-    // a dashboard's data file changed: pages re-read the datasets on it
-    if (isDataPath(at.rel)) {
+    // a dashboard's data file, or a picture or font, changed: pages re-read them
+    if (!isTracked(at.rel)) {
       if (!initial && (event === 'add' || event === 'change' || event === 'unlink')) publish(at.project, { type: 'assets', path: at.rel });
       return;
     }

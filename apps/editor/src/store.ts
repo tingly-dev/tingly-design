@@ -25,6 +25,7 @@ import {
   type DeckJson,
   type ProjectKind,
   type Conversation,
+  isDataPath,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
@@ -169,6 +170,8 @@ export interface State {
   /** the AI settings dialog (components/AiSettings.tsx), opened from the launcher, the project menu and the prompt bar */
   aiSettingsOpen: boolean;
   connected: boolean;
+  /** counts the outside changes to pictures and fonts, so frames drawing them ask for the new file (api.frameBase) */
+  assetRev: number;
   loaded: boolean;
   files: Record<string, FileEntry>;
   drafts: Record<string, string>;
@@ -231,6 +234,7 @@ export const useStore = create<State>(() => ({
   health: null,
   aiSettingsOpen: false,
   connected: false,
+  assetRev: 0,
   loaded: false,
   files: {},
   drafts: {},
@@ -380,6 +384,13 @@ export async function openProject(name: string): Promise<void> {
   stopEvents = api.events(name, onEvent, (st) => set({ connected: st === 'open' }));
 }
 
+let assetTimer: ReturnType<typeof setTimeout> | undefined;
+/** An import or an agent can touch many pictures in a burst; the frames redraw once after it. */
+function bumpAssetRev(): void {
+  clearTimeout(assetTimer);
+  assetTimer = setTimeout(() => set((s) => ({ assetRev: s.assetRev + 1 })), 150);
+}
+
 function onEvent(e: ServerEvent): void {
   if (e.type === 'file') {
     set((s) => {
@@ -405,6 +416,7 @@ function onEvent(e: ServerEvent): void {
     });
   } else if (e.type === 'assets') {
     void import('./components/ds/ds').then((m) => m.assetsChanged());
+    if (e.path && !isDataPath(e.path)) bumpAssetRev();
     if (get().kind === 'dashboard') void import('./components/dash/dash').then((m) => m.dataChanged(e.path));
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));

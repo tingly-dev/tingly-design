@@ -68,7 +68,8 @@ export function MotionApp() {
   const barDock = useDock();
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
-  const base = project ? api.rawBase(project) : '';
+  const assetRev = useStore((s) => s.assetRev);
+  const base = project ? api.frameBase(project, assetRev) : '';
   const { motionText, scenes } = useSources();
   const boardFiles = useBoardFiles(Object.keys(scenes).map(sceneFile));
   const motion = useMemo(() => parseMotion(motionText), [motionText]);

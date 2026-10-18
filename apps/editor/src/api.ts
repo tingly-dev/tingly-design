@@ -226,6 +226,8 @@ export const api = {
     void call(at(`api/projects/${enc(p)}/export-report`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ report, why }) }).catch(() => {}),
   renderedUrl: (p: string, file: string) => `${SERVER}/api/projects/${enc(p)}/render/${enc(file)}`,
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
+  /** rawBase for the frames that draw a project's pictures: `rev` changes when an outside edit replaces one, so the frame asks for it again */
+  frameBase: (p: string, rev: number) => `${SERVER}/api/projects/${enc(p)}/raw/${rev ? `?v=${rev}` : ''}`,
 
   fastEdit: (p: string, messages: ModelMessage[], signal: AbortSignal, kind?: string) =>
     call(at(`api/projects/${enc(p)}/fast-edit`), {
