@@ -44,9 +44,14 @@
   .card h3 { margin:0 0 6px; font-size:17px; }
   .card p { margin:0; color:var(--muted); font-size:15px; }
   .loop { margin:0 0 20px; }
+  .more { margin-top:16px; grid-template-columns:repeat(3,1fr); }
+  .more pre { margin:12px 0 0; padding:10px 12px; font-size:13px; }
+  @media (max-width:900px) { .more { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); } }
+  .more .card { padding:14px 16px; }
   .loop figcaption { padding:8px 2px 0; color:var(--muted); font-size:14px; }
   .kinds figure { margin:0; }
   .kinds figcaption { padding:8px 2px; color:var(--muted); font-size:14px; }
+  p.sub { color:var(--muted); max-width:720px; }
   pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow:auto; }
   footer { color:var(--muted); font-size:14px; border-top:1px solid var(--line); padding-top:20px; margin-top:64px; }
   footer a { color:inherit; }
@@ -60,6 +65,7 @@
   <nav>
     <b>Tingly Design</b>
     <span>
+      <a href="https://github.com/tingly-dev/tingly-design/blob/main/docs/en/cli.md"><span lang="en">Command line</span><span lang="zh">命令行</span></a>
       <a href="https://github.com/tingly-dev/tingly-design#documentation"><span lang="en">Docs</span><span lang="zh">文档</span></a>
       <a href="https://github.com/tingly-dev/tingly-design">GitHub</a>
       <button id="lang" type="button" aria-label="Language">中文 / EN</button>
@@ -117,6 +123,24 @@
     <span lang="zh">无论谁改的，每次改动都记进同一份记录：谁、改了什么、什么时候，都能撤销。</span>
   </p>
 
+  <h2 lang="en">Beyond the editor: CLI, skill, MCP</h2>
+  <h2 lang="zh">编辑器之外：CLI、skill、MCP</h2>
+  <p lang="en" class="sub">Edits made this way show up live in the editor you have open, credited to whoever made them.</p>
+  <p lang="zh" class="sub">这样做出的改动，会实时出现在你已打开的编辑器里，并记在改动者名下。</p>
+  <div class="grid more">
+    <div class="card"><h3>CLI</h3>
+      <p lang="en">Hand a request to Claude Code from a terminal, a script or CI.</p><p lang="zh">在终端、脚本或 CI 里把请求交给 Claude Code。</p>
+      <pre>npx tingly-design prompt pitch \
+  "Tighten the title slide"</pre></div>
+    <div class="card"><h3>Skill</h3>
+      <p lang="en">Teach Claude Code the file formats in any repository.</p><p lang="zh">让任意仓库里的 Claude Code 认得这些文件格式。</p>
+      <pre>npx tingly-design skills add</pre></div>
+    <div class="card"><h3>MCP</h3>
+      <p lang="en">Give an agent the same commands as tools.</p><p lang="zh">让 agent 以工具的方式用同样的命令。</p>
+      <pre>claude mcp add tingly-design \
+  -- npx -y tingly-design mcp</pre></div>
+  </div>
+
   <h2 lang="en">Six project kinds</h2>
   <h2 lang="zh">六种项目类型</h2>
   <figure class="loop">
@@ -140,8 +164,10 @@
 
   <h2 lang="en">Try it</h2>
   <h2 lang="zh">试一试</h2>
-  <pre>pnpm install
-pnpm dev   # editor at http://localhost:5173</pre>
+  <pre>npx tingly-design              # the launcher, in your browser
+# or from source:
+pnpm install
+pnpm dev                        # editor at http://localhost:5173</pre>
 
   <footer>
     Apache-2.0 ·

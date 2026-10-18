@@ -27,9 +27,25 @@ Canvases, slide decks, design systems, dashboards, documents and motion pieces a
 |---|---|
 | **Direct manipulation** | Click any text and type, drag to move, resize on the stage. Instant. |
 | **Fast AI** | Point at something and say what you want; jQuery statements run as they stream in. Seconds. |
-| **Claude Code** | Whole files, several at once, from the prompt bar or a terminal. Minutes. |
+| **Claude Code** | Whole files, several at once, from the prompt bar or a terminal. Minutes. A project keeps one Claude Code conversation, so the next request, from the editor or the command line, carries on where it stopped. |
 | **Minimal write-back** | Template holes like `{{price}}`, loops and your own formatting survive every edit. Tick a checkbox or change a colour and the git diff is one line. |
 | **Numbers you can check** | Every figure on a dashboard names the cell it comes from; anything that disagrees with its data is reported. |
+
+## Three ways to use it outside the editor
+
+| | |
+|---|---|
+| **CLI** | `npx tingly-design prompt pitch "Tighten the title slide"` hands a request to Claude Code; the edits show up live in the open editor. `new`, `check`, `export` and `history` work the same way for scripts and CI. |
+| **Skill** | `npx tingly-design skills add` copies each kind's format reference into any repository, so Claude Code working there already knows the files. |
+| **MCP** | `claude mcp add tingly-design -- npx -y tingly-design mcp` gives an agent the same commands as tools. |
+
+See [command line](docs/en/cli.md).
+
+## Also in the box
+
+- **Any folder, and git.** Open or create a project anywhere on disk; commit it from the change log, which says which repository and branch first.
+- **A whole project as one `.zip`.** Export it with its history and installed design systems, import it on another machine.
+- **Video that renders in the tab.** MP4 and GIF without installing anything; the command line renders frame by frame with Chrome and ffmpeg, and writes a single-file player anyone can open.
 
 ## Six kinds, one workspace
 
@@ -69,7 +85,7 @@ pnpm dev            # editor at http://localhost:5173, server on :8787
 
 Open http://localhost:5173 to pick a project, or go straight to http://localhost:5173/?p=box-console for the sample canvas. For a production-style run, `pnpm start` builds the editor and serves it together with the API on port 8787.
 
-From a terminal, a script or an agent's skill, the `tingly-design` command (`pnpm tingly-design` here, `npx tingly-design` from npm) opens, creates, lists, checks and exports projects; see [command line](docs/en/cli.md).
+From a terminal, a script or an agent, the `tingly-design` command (`pnpm tingly-design` here, `npx tingly-design` from npm) opens, creates, lists, checks, exports and prompts projects and reads their history, and `tingly-design mcp` offers the same as MCP tools; see [command line](docs/en/cli.md).
 
 ### Configuration
 
@@ -93,7 +109,7 @@ From a terminal, a script or an agent's skill, the `tingly-design` command (`pnp
 |---|---|
 | **Guides** | [Canvas](docs/en/guide/canvas.md) · [Slides](docs/en/guide/slides.md) · [Design system](docs/en/guide/design-system.md) · [Dashboard](docs/en/guide/dashboard.md) · [Docs](docs/en/guide/docs.md) · [Motion](docs/en/guide/motion.md) |
 | **[Themes](docs/en/theming.md)** | Light, dark and Tingly Box's presets, and passing a theme in by URL, script, a host page or `DC_THEME` |
-| **[Command line](docs/en/cli.md)** | `tingly-design open`, `serve`, `new`, `list`, `check` and `export`, for scripts, CI and agent skills |
+| **[Command line](docs/en/cli.md)** | `tingly-design open`, `serve`, `new`, `list`, `check`, `export`, `import`, `prompt`, `history`, `skills` and `mcp`, for scripts, CI and agents |
 | **[Embedding](docs/en/embedding.md)** | Running inside another app such as Tingly Box: the bundle (`pnpm bundle`), launching it under a path prefix, and the messages between host and editor |
 | **[How it works](docs/en/architecture.md)** | The source format, the write-back engine, fast AI, collaboration, sandboxing and the repository layout |
 | **[Development and tests](docs/en/development.md)** | Unit tests, typecheck and the Playwright end-to-end suites |
