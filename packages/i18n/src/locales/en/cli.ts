@@ -8,6 +8,7 @@ Usage: tingly-design [command] [options]
   open [project]                   open a project in the editor
   serve                            run the server only (for a host or a service)
   new <kind> <name or folder>      create a project: canvas, slides, design-system, dashboard, doc, motion
+  new -i                           ask for the kind, title, folder and size (also: new with nothing, in a terminal)
   list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets)
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
@@ -34,6 +35,7 @@ Options:
   --port <n>            serve, open: the port (0 picks a free one)
   --host <address>      serve, open: the address to listen on (default 127.0.0.1)
   --title <text>        new: the title shown in the launcher
+  -i, --interactive     new: ask for whatever is not given, then offer to open the project
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size; a canvas also takes a
                         name from the New dialog's list (wechat, tall, story, og, a4, wide, mpu, …)
   --format <a,b>        export: the motion formats to render (default: all)
@@ -73,6 +75,28 @@ Options:
   historyNone: 'No changes in {{name}} since then.',
   historyMore: '{{count}} earlier changes not shown (--limit, or --json for all).',
   words: '{{n}} words',
+  needTerminal: 'Interactive creation needs a terminal. Give the kind and name instead: tingly-design new <kind> <name or folder>',
+  cancelled: 'Cancelled, nothing was created.',
+  createdNext: 'Open it with: tingly-design open {{name}}',
+  wizard: {
+    kind: 'What are you making?',
+    group: 'Size category',
+    size: 'Size',
+    format: 'Size',
+    title: 'Title',
+    name: 'Folder name, or a path to keep it somewhere else',
+    custom: 'Width x height',
+    default: '(default)',
+    choose: 'Choose a number or a name{{default}}:',
+    openNow: 'Open it in the editor now?',
+    complaint: {
+      empty: 'Give it a title.',
+      badName: 'A folder name can only use letters, digits, - and _, and must start with a letter or digit.',
+      taken: 'projects/{{name}} already exists.',
+      badSize: 'Width and height are each from 1 to 7680 px, like 1080x1440.',
+      badChoice: 'Not one of the choices.',
+    },
+  },
   kind: {
     design: 'canvas',
     slides: 'slides',

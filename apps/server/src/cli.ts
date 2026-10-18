@@ -53,6 +53,7 @@ const { values: opts, positionals } = (() => {
         file: { type: 'string' },
         continue: { type: 'string' },
         new: { type: 'boolean' },
+        interactive: { type: 'boolean', short: 'i' },
         fast: { type: 'boolean' },
         since: { type: 'string' },
         limit: { type: 'string' },
@@ -159,9 +160,31 @@ async function serve(): Promise<void> {
 // ---------------------------------------------------------------- new
 
 async function create(kind: string | undefined, target: string | undefined): Promise<void> {
-  const p = await cmd.create(ctx, { kind, target, title: opts.title, size: opts.size });
-  if (opts.json) print({ name: p.name, kind, dir: p.dir });
-  else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));
+  // `new` with nothing to go on, in a terminal, asks; -i asks for what is missing even when some is given
+  const ask = opts.interactive || (!kind && !target && process.stdin.isTTY && process.stderr.isTTY);
+  if (!ask) {
+    const p = await cmd.create(ctx, { kind, target, title: opts.title, size: opts.size });
+    if (opts.json) print({ name: p.name, kind, dir: p.dir });
+    else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));
+    return;
+  }
+  if (!process.stdin.isTTY) throw new CliError(t('cli.needTerminal'));
+  const { terminalWizard } = await import('./wizard');
+  const w = terminalWizard(t as (key: string, params?: Record<string, string>) => string, process.stdin, process.stderr);
+  try {
+    const given = await cmd.wizardGiven(ctx, { kind, target, title: opts.title, size: opts.size });
+    const answer = await w.run(given, new Set((await cmd.projects()).map((c) => c.name)));
+    const p = await cmd.create(ctx, { kind: answer.kind, target: answer.target, title: answer.title, size: answer.size ? answer.size.join('x') : undefined });
+    if (opts.json) print({ name: p.name, kind: answer.kind, dir: p.dir });
+    else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));
+    // the next step of the journey: open it, or say how
+    if (!opts.json && (await w.confirm('openNow'))) {
+      w.close();
+      await open(p.name);
+    } else if (!opts.json) console.log(t('cli.createdNext', { name: p.name }));
+  } finally {
+    w.close();
+  }
 }
 
 // ---------------------------------------------------------------- list

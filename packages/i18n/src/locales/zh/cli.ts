@@ -10,6 +10,7 @@ export default {
   open [项目]                      在编辑器里打开一个项目
   serve                            只运行服务（给宿主或常驻服务用）
   new <类型> <名字或文件夹>        新建项目：canvas、slides、design-system、dashboard、doc、motion
+  new -i                           依次询问类型、标题、文件夹和尺寸（在终端里单打 new 也一样）
   list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
@@ -35,6 +36,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --port <端口>         serve、open：端口（0 表示自动挑一个空闲端口）
   --host <地址>         serve、open：监听的地址（默认 127.0.0.1）
   --title <文字>        new：启动页上显示的标题
+  -i, --interactive     new：没给出的都问一遍，建好后问要不要打开
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
                         尺寸名（wechat、tall、story、og、a4、wide、mpu……）
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
@@ -74,6 +76,28 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   historyNone: '从那以后 {{name}} 没有改动。',
   historyMore: '更早的 {{count}} 条没有列出（用 --limit，或 --json 看全部）。',
   words: '{{n}} 字',
+  needTerminal: '交互式创建需要在终端里运行。请直接给出类型和名字：tingly-design new <类型> <名字或文件夹>',
+  cancelled: '已取消，没有创建任何东西。',
+  createdNext: '用这个命令打开：tingly-design open {{name}}',
+  wizard: {
+    kind: '要做什么？',
+    group: '尺寸分类',
+    size: '尺寸',
+    format: '尺寸',
+    title: '标题',
+    name: '文件夹名，或放到别处的路径',
+    custom: '宽 x 高',
+    default: '（默认）',
+    choose: '输入编号或名字{{default}}：',
+    openNow: '现在就在编辑器里打开？',
+    complaint: {
+      empty: '请给它一个标题。',
+      badName: '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。',
+      taken: 'projects/{{name}} 已经存在。',
+      badSize: '宽和高都要在 1 到 7680 像素之间，例如 1080x1440。',
+      badChoice: '不在可选项里。',
+    },
+  },
   kind: {
     design: '画布',
     slides: '幻灯片',
