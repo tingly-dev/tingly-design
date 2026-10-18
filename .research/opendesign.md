@@ -156,3 +156,42 @@ How it gets fast for the user:
 5. HyperFrames importer spike (research only).
 
 Open questions for the owner: whether to depend on OpenDesign's `DESIGN.md` as an interchange format at all (a de-facto but unspecified format owned by another project); whether packs are curated in this repository or in a separate one; whether dashboard and docs should take a design system.
+
+## Part 3. The templates, read from a clone
+
+Added after a sparse clone of `design-templates/` (Apache-2.0 repository; 40 MB, 116 entries). Part 1 and 2 had only the READMEs; this part is from the files. What was *not* done: no template was run through a model, and the video templates (`hyperframes/`, `video-shortform/`) and the brand-looking entries (`orbit-*`, `kami-*`, `replit-deck`, `open-design-landing*`) were not examined.
+
+### 3.1 What is in it
+
+| Mode | Count | Examples |
+|---|---|---|
+| deck | 53 | `html-ppt-*` (15 full decks), 32 `html-ppt-zhangzara-*`, `simple-deck`, `kami-deck` |
+| prototype | 49 | `web-prototype`, `saas-landing`, `dashboard`, `mobile-app`, wireframes, `pricing-page` |
+| video / template / image / audio | 2 / 2 / 1 / 1 | `hyperframes`, `video-shortform`, `motion-frames` |
+
+An entry is a folder: `SKILL.md` (frontmatter with triggers and an `od` block: mode, preview entry, whether a design system is required), a baked `example.html`, optional `assets/` and `references/`. 32 of them also carry `template.json` and a `LICENSE`. Four renders looked at (`vellum`, `taste-editorial`, `coral`, `motion-frames`): the quality is high and distinct, which is what makes a gallery worth having.
+
+### 3.2 Licences
+
+OpenDesign itself is Apache-2.0. The templates that come from other people say so: 32 `zhangzara-*` are MIT (Zara Zhang, upstream `beautiful-html-templates`), `html-ppt` is MIT (lewis), `guizang-ppt` MIT (op7418), a few more MIT. MIT permits copying with the notice kept. Not checked: any template that imitates a real brand.
+
+### 3.3 Why most of it does not drop in
+
+A deck template is viewport CSS (`100vw`, classes, `<style>`, a navigation script, Google Fonts links). Our slide format is a closed subset: inline px only, no classes, no `var()`, no scripts (`.claude/skills/slides/SKILL.md`). There is no mechanical conversion, and an importer that flattened the CSS would produce fragile pages. The 49 prototypes are ordinary HTML pages and are a different case: the existing HTML importer (`import-external-material.md`) would be the way in, untested here. What *does* carry over is the look, as data (§3.4), and the page as a visual reference a model re-authors in our subset.
+
+### 3.4 What transfers: the themes, as design systems
+
+`html-ppt/assets/themes/` holds 36 CSS themes, 32 KB in all, each one `:root{…}` with the same variables (`--bg --bg-soft --surface --text-1..3 --accent..3 --good --warn --bad --radius* --shadow* --font-sans --font-display`). That is almost `tokens.json` already.
+
+Spike: [`.research/opendesign-templates/html-ppt-themes-to-ds.mjs`](./opendesign-templates/html-ppt-themes-to-ds.mjs) creates one design system per theme through the CLI and replaces `tokens.json`. Result on all 36: **33 pass `tingly-design check` with no problems; 3 have one warning each** (a shadow written with `var(--accent)`, which our grammar does not read). Two were also drawn with `check --snapshots` and looked right in the colours view. Limits seen: gradients and per-theme decoration (glow, blur, `text-shadow`) are not tokens and are dropped; text styles and spacing are generic starting values; the font families are assumed to exist on Google Fonts, not verified per theme; a few "faint text" colours land around 4:1 and the editor flags them, correctly.
+
+The 32 `template.json` files (mood, occasion, density, `best_for`, `avoid_for`, partial palette and typography) are good picker metadata, but the palette is empty for many, so they describe a look rather than define one.
+
+### 3.5 Consequence for the decision
+
+This supports "import, not bundle", and makes it concrete:
+
+1. **An import that turns a theme file into a design system** (a CSS `:root` theme, an OpenDesign `DESIGN.md`/`tokens.css`) is small and already works as a spike. It is user-initiated, keeps the notice in the README, and ships nothing.
+2. **Templates as references, not conversions**: the person (or Claude) points at an example page and the deck is written in our subset in that look. This needs no format work, only a way to hand an example to the delegation (an attachment already can).
+3. **Bundling stays optional**: if a few starting looks are wanted in the box, three or four MIT themes converted by the script, with the notice, are 32 KB; that is a choice for the maintainers, not a need.
+4. For the motion taste contract: `hyperframes/` carries `house-style.md`, `references/motion-principles.md` and palette notes under the same Apache-2.0. They were not read; they are the first thing to read before writing the skill section in `.design/motion-taste.md`.
