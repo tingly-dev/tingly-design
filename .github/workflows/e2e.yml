@@ -59,6 +59,8 @@ jobs:
         env:
           SUITES: ${{ inputs.suites }}
           MODE: ${{ github.event_name == 'pull_request' && '--smoke' || '' }}
+          # the runner's AppArmor blocks the user namespaces Chrome's sandbox needs (render.ts chromeArgs)
+          DC_CHROME_SANDBOX: '0'
         run: |
           # shellcheck disable=SC2086  # SUITES and MODE are word lists
           python3 e2e/run.py $MODE $SUITES
