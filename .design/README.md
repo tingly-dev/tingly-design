@@ -21,6 +21,7 @@
 | [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；已登记为类型，编辑舞台和播放器已实施 |
 | [motion-editing.md](./motion-editing.md) | 动效的细粒度编辑：为什么场景原来点不动，舞台点选、尺寸覆盖、时间轴、关键帧的交互和实现（图：[motion-editing.pencil.md](./motion-editing.pencil.md)） | 第一期已实施（点选、改字、缩放、尺寸、快速 AI）；时间轴、关键帧是方案 |
 | [motion-effects.md](./motion-effects.md) | 动效里的着色器特效层：可 seek 的 embed 装一个 GLSL 片元着色器，WebGL2 在页面里画；输入、单位、确定性，以及什么样的特效好看 | 契约和 WebGL2 运行时已实施（示例 `projects/motion-effects/`）；注入运行时、检查器报错、预设库是方案；WebGPU / vgpu 的调研在 `.research/motion-effects.md` |
+| [motion-taste.md](./motion-taste.md) | 动效的手艺：时长区间、缓动、主角与停顿写进 skill，检查器加两条警告；哪些网页动效规则不适用于视频 | 方案；调研在 `.research/opendesign.md` |
 
 ## 编辑器功能
 
