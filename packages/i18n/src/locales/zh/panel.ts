@@ -91,6 +91,8 @@ export default {
     tokenHint: '设计系统里的颜色',
     fromDs: '从设计系统选',
     fromDsLabel: '{{label}}：从设计系统选',
+    boundTo: '由 “{{name}}” 这个 tweak 管着。在这里改的是 tweak，用到它的地方一起变。',
+    fromScript: '由画板脚本里的 {{name}} 提供。在这里改会在上面再盖一个固定颜色。',
     dsColorsLabel: '{{label}}：设计系统的颜色',
   },
   code: {
@@ -165,6 +167,8 @@ export default {
     time: '时间',
     play: '播放',
     pause: '暂停',
+    list_other: '{{count}} 行',
+    listHint: '在画板上双击里面的文字来改某一行。',
     on: '开',
     off: '关',
     empty: '这个画板没有声明可调参数。参数写在画板脚本的 data-props 里，比如一个强调色或密度开关。',

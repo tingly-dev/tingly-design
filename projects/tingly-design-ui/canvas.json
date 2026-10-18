@@ -117,6 +117,13 @@
       "w": 1320,
       "h": 640,
       "title": "New project dialog"
+    },
+    "TemplateText.dc.html": {
+      "x": 7200,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas template text and colours"
     }
   },
   "order": [
@@ -130,6 +137,7 @@
     "NewDialog.dc.html",
     "Canvas.dc.html",
     "TemplateValues.dc.html",
+    "TemplateText.dc.html",
     "Slides.dc.html",
     "DesignSystem.dc.html",
     "Dashboard.dc.html",

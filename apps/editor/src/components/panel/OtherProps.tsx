@@ -78,6 +78,16 @@ export function TweakField({ file, name, spec }: { file: string; name: string; s
 export function TweakControl({ name, spec, value: v, onSet: setV }: { name: string; spec: PropSpec; value: unknown; onSet: (value: unknown) => void }) {
   const { t } = useTranslation();
   let control: React.ReactElement;
+  // a list (or any object) is edited on the artboard, row by row; as a text field it would be written back as one string
+  if (v !== null && typeof v === 'object')
+    return (
+      <Row label={name}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+          {Array.isArray(v) && <span>{t('panel.tweaks.list', { count: v.length })}</span>}
+          <span className="hint">{t('panel.tweaks.listHint')}</span>
+        </div>
+      </Row>
+    );
   switch (spec.editor) {
     case 'color':
       control = (

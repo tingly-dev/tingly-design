@@ -44,6 +44,8 @@ A whole project leaves and comes back as one `.zip` (`.design/project-archive.md
 
 A canvas's template values (every artboard's `data-props`, grouped by artboard) are listed in the right panel when nothing is selected, `TemplateValues` over core's `canvasTemplateValues`, with the Tweaks fields and write-back; canvas only on purpose (`.design/canvas-template-values.md`).
 
+Text and colours an artboard's template manages are edited where they are drawn: double-click retypes copy with holes (`Hello {{name}}!`, `{{plan.name}}` in an `<sc-for>` over a list declared in `data-props`) into the literal text or the tweak, holes kept (core's `textRetype.ts`, `retypeText` in the store); text fed only by the script says why it cannot be; the Properties panel shows a colour set by a hole as its real colour and edits the tweak (`.design/template-text-editing.md`; canvas only on purpose).
+
 Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
 
 # Keep these in sync (read this before every change)

@@ -27,7 +27,9 @@ import {
   parseDc,
   styleObject,
   isTextEditable,
-  tweakTextBinding,
+  retypeKind,
+  planRetype,
+  RetypeError,
   VOID_ELEMENTS,
   type DcDoc,
   type DcElement,
@@ -189,6 +191,7 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
     }
   }
   if (ctx.tagged) p['data-dc-tid'] = el.tid;
+  if (ctx.tagged && typeof scope.$index === 'number') p['data-dc-item'] = scope.$index;
   if (ctx.slide) {
     const z = paintLayer(el);
     if (z !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), zIndex: z };
@@ -1237,7 +1240,7 @@ document.addEventListener('mouseleave', () => {
 
 function editableTids(): Set<number> {
   const doc = docFor(current.source);
-  return new Set(doc.elements.filter((e) => isTextEditable(e) || tweakTextBinding(doc, e)).map((e) => e.tid));
+  return new Set(doc.elements.filter((e) => retypeKind(doc, e) !== null).map((e) => e.tid));
 }
 
 let editingOriginal = '';
@@ -1271,6 +1274,8 @@ document.addEventListener(
     if (!el) return;
     const tid = Number(el.getAttribute('data-dc-tid'));
     if (!editableTids().has(tid) || isLocked(el)) return;
+    // text made only of values from the script: say so instead of doing nothing
+    if (retypeKind(docFor(current.source), docFor(current.source).elements[tid]) === 'data') return void post({ dc: 'noedit', tid, why: 'data' });
     beginText(el);
   },
   true,
@@ -1285,7 +1290,23 @@ function commitText(cancel = false) {
   el.style.outlineOffset = '';
   const text = el.innerText.replace(/\n$/, '');
   const tid = Number(el.getAttribute('data-dc-tid'));
-  if (!cancel && text !== editingOriginal) post({ dc: 'text', tid, text });
+  const item = el.hasAttribute('data-dc-item') ? Number(el.getAttribute('data-dc-item')) : null;
+  const doc = docFor(current.source);
+  const mixed = !!doc.elements[tid] && retypeKind(doc, doc.elements[tid]) === 'mixed';
+  let refused: RetypeError | null = null;
+  if (!cancel && mixed && text !== editingOriginal) {
+    try {
+      planRetype(doc, doc.elements[tid], editingOriginal, text, item);
+    } catch (e) {
+      if (!(e instanceof RetypeError)) throw e;
+      refused = e;
+    }
+  }
+  if (refused) {
+    post({ dc: 'noedit', tid, why: refused.code });
+    renderKey++;
+    render();
+  } else if (!cancel && text !== editingOriginal) post({ dc: 'text', tid, text, from: editingOriginal, item });
   else {
     renderKey++;
     render();

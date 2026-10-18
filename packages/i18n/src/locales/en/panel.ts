@@ -90,6 +90,8 @@ export default {
     fromDs: 'Pick from the design system',
     fromDsLabel: '{{label}}: pick from the design system',
     dsColorsLabel: '{{label}}: design system colors',
+    boundTo: 'Set by the “{{name}}” tweak. Changing it here changes the tweak, and everything that uses it.',
+    fromScript: 'Set by {{name}} in the artboard’s script. Changing it here puts a fixed color on top.',
   },
   code: {
     quoted: '“{{text}}”',
@@ -165,6 +167,9 @@ export default {
     time: 'Time',
     play: 'Play',
     pause: 'Pause',
+    list_one: '{{count}} row',
+    list_other: '{{count}} rows',
+    listHint: 'Double-click its text on the artboard to change a row.',
     on: 'On',
     off: 'Off',
     empty: 'This artboard declares no tweakable parameters. They go in the artboard script\'s data-props, such as an accent color or a density switch.',

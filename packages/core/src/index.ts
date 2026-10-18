@@ -24,6 +24,7 @@ export * from './newWizard';
 export * from './activity';
 export * from './aiConfig';
 export * from './boardEmbed';
+export * from './textRetype';
 export * from './projectArchive';
 export * from './conversation';
 export * from './project';
