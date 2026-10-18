@@ -1,9 +1,9 @@
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { snapSceneMs, type MotionJson, type motionTimeline } from '@dc/core';
-import { addCover, removeCover, setSceneDuration } from './motion';
+import { addCover, removeCover, setCoverAt, setSceneDuration } from './motion';
 import { notesOf } from '../slides/slides';
-import { PauseFilled, PlayFilled } from '../icons';
+import { PauseFilled, Picture, PlayFilled } from '../icons';
 import { useElementSize } from '../../hooks';
 
 export const secs = (ms: number) => (ms / 1000).toFixed(1);
@@ -14,7 +14,8 @@ type Clip = Line['scenes'][number];
 /**
  * The bar under the stage: play, the time, the scene's length, where the
  * playhead is; then the cover slot, the ruler and one clip per scene, whose
- * right edge drags (or arrows) to set the scene's length.
+ * right edge drags (or arrows) to set the scene's length. A cover that is a
+ * frame of the video stands on the ruler as a pin that drags to another frame.
  */
 export function Timeline(p: {
   motion: MotionJson;
@@ -30,6 +31,8 @@ export function Timeline(p: {
   playing: boolean;
   cover: boolean;
   coverScene: string | null;
+  /** a cover that is a frame of the video: its time in authored ms */
+  coverAt: number | null;
   current: Clip | undefined;
   stageAt: number;
   stageLanded: boolean;
@@ -41,6 +44,11 @@ export function Timeline(p: {
 }) {
   const { t } = useTranslation();
   const { motion, scenes, timeline, axisMs, axis, rate, time, duration, playing, cover, coverScene, current, stageAt, stageLanded, play, pause, seek } = p;
+  // the cover pin while it is dragged (authored ms), written once on release
+  const [pinMs, setPinMs] = useState<number | null>(null);
+  const coverAt = pinMs ?? (p.coverAt !== null ? Math.min(p.coverAt, timeline.duration) : null);
+  const frameMs = 1000 / (motion.fps || 30);
+  const onCoverFrame = !cover && coverAt !== null && Math.abs(time * rate - coverAt) < frameMs * rate;
 
   // ruler: a labelled tick at least ~64 px apart, four minor ticks between labels
   const [lanesRef, lanes] = useElementSize<HTMLDivElement>();
@@ -66,6 +74,38 @@ export function Timeline(p: {
       window.removeEventListener('keydown', key, true);
       p.onDrag(null);
       if (commit && last !== d0) setSceneDuration(id, last);
+    };
+    const up = () => end(true);
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape') return;
+      ev.stopPropagation();
+      end(false);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('keydown', key, true);
+  };
+  // the cover pin: drag along the axis to another frame; the stage follows so the frame shows as it moves
+  const dragPin = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pause();
+    const rect = (e.currentTarget.closest('.maxis') as HTMLElement).getBoundingClientRect();
+    const at = (x: number) => Math.max(0, Math.min(timeline.duration, ((x - rect.left) / Math.max(1, rect.width)) * axisMs));
+    let last = at(e.clientX);
+    setPinMs(last);
+    seek(last / rate);
+    const move = (ev: PointerEvent) => {
+      last = at(ev.clientX);
+      setPinMs(last);
+      seek(last / rate);
+    };
+    const end = (commit: boolean) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('keydown', key, true);
+      setPinMs(null);
+      if (commit) setCoverAt(last);
     };
     const up = () => end(true);
     const key = (ev: KeyboardEvent) => {
@@ -113,9 +153,17 @@ export function Timeline(p: {
             s
           </label>
         )}
-        <span className="mwhere" title={cover ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
+        {!cover && current && !onCoverFrame && (
+          <button className="btn ghost sm mcoverset" onClick={() => (pause(), setCoverAt(time * rate))} title={t('motion.stage.coverFrameHint')}>
+            <Picture />
+            {t('motion.stage.coverFrame')}
+          </button>
+        )}
+        <span className="mwhere" title={cover || onCoverFrame ? t('motion.stage.whereCover') : stageLanded ? t('motion.stage.whereLanded') : t('motion.stage.whereHint')}>
           {cover
             ? t('motion.stage.whereCover')
+            : onCoverFrame
+              ? t('motion.stage.whereCoverAt', { time: secs(time) })
             : current
               ? stageLanded
                 ? t('motion.stage.whereLandedValue', { scene: current.id, time: secs(stageAt) })
@@ -140,6 +188,21 @@ export function Timeline(p: {
                     {notesOf(scenes[coverScene]) && <i className="mnotedot" title={t('motion.notes.onScene')} />}
                   </span>
                   <span className="mlen">{coverScene}</span>
+                </button>
+                <button className="mcoverx" aria-label={t('motion.stage.coverRemove')} title={t('motion.stage.coverRemoveHint')} onClick={removeCover}>
+                  ×
+                </button>
+              </>
+            ) : coverAt !== null ? (
+              <>
+                <button
+                  className={`mcoverclip frame${onCoverFrame ? ' on' : ''}`}
+                  aria-pressed={onCoverFrame}
+                  onClick={() => seek(coverAt / rate)}
+                  title={t('motion.stage.coverAtHint', { time: secs(coverAt / rate) })}
+                >
+                  <span className="mname">{t('motion.stage.cover')}</span>
+                  <span className="mlen">{t('motion.stage.coverAtShort', { time: secs(coverAt / rate) })}</span>
                 </button>
                 <button className="mcoverx" aria-label={t('motion.stage.coverRemove')} title={t('motion.stage.coverRemoveHint')} onClick={removeCover}>
                   ×
@@ -212,6 +275,31 @@ export function Timeline(p: {
             })}
           </div>
           {!cover && axis > 0 && <div className="mhead" style={{ left: `${(time / axis) * 100}%` }} />}
+          {coverAt !== null && axisMs > 0 && (
+            <div className={`mcoverpin${pinMs !== null ? ' dragging' : ''}`} style={{ left: `${(coverAt / axisMs) * 100}%` }}>
+              <span
+                role="slider"
+                tabIndex={0}
+                aria-label={t('motion.stage.coverPinLabel')}
+                aria-valuemin={0}
+                aria-valuemax={Math.round(duration)}
+                aria-valuenow={Math.round(coverAt / rate)}
+                aria-valuetext={t('motion.stage.coverAt', { time: secs(coverAt / rate) })}
+                title={t('motion.stage.coverPin', { time: secs(coverAt / rate) })}
+                onPointerDown={dragPin}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const next = Math.max(0, Math.min(timeline.duration, coverAt + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1000 : frameMs)));
+                  setCoverAt(next);
+                  seek(next / rate);
+                }}
+              >
+                <Picture />
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -136,6 +136,15 @@ export function addCover(): string {
   return id;
 }
 
+/**
+ * Make a moment of the video the cover, in authored time (before speed, like every time in the
+ * piece), rounded to 10 ms so the file reads `"2.43s"`. A cover scene it replaces keeps its file.
+ */
+export function setCoverAt(ms: number): void {
+  const at = Math.max(0, Math.round(ms / 10) * 10);
+  editMotion((raw) => void (raw.cover = formatTime(at)), t('motion.journal.coverAt', { time: +(at / 1000).toFixed(2) }));
+}
+
 /** The piece goes back to showing its first frame; the cover's scene file stays, in case it comes back. */
 export function removeCover(): void {
   editMotion((raw) => void delete raw.cover, t('motion.journal.coverRemoved'));

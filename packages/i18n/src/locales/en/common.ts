@@ -66,6 +66,7 @@ export default {
       video: 'Video…',
       gif: 'GIF…',
       frame: 'Picture of this frame',
+      cover: 'Cover picture',
     },
     hint: {
       project: 'Every file, with the change log and design systems · import it again from the home page',
@@ -86,6 +87,8 @@ export default {
       motionGif: '256 colours, no sound · small and looping, starts at 15 fps',
       motionVideo: '{{size}} · {{fps}} fps · MP4 or WebM, more in the next step',
       motionFrame: 'The frame at the playhead',
+      motionCover: 'The picture that stands for the video, also its first frame',
+      motionCoverNone: 'No cover set yet, so the video’s first frame',
     },
   },
   image: {

@@ -735,7 +735,7 @@ app.post('/api/projects/:p/render', async (c) => {
   if ((await kindOf(dir)) !== 'motion') throw new HttpError(400, 'badRequest', { detail: 'not a motion piece' });
   const caps = await renderCapabilities();
   if (!caps.chrome || !caps.ffmpeg) throw new HttpError(501, 'noRenderer');
-  type Body = { format?: string; speed?: number; container?: string; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number };
+  type Body = { format?: string; speed?: number; container?: string; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number; cover?: boolean; coverFirst?: boolean };
   const body = await c.req.json<Body>().catch(() => ({}) as Body);
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
   const t = trOf(c);
@@ -746,7 +746,7 @@ app.post('/api/projects/:p/render', async (c) => {
     c.header('content-type', 'application/x-ndjson');
     const line = (v: unknown) => s.write(JSON.stringify(v) + '\n');
     try {
-      const { file, report } = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, container: body.container === 'gif' ? 'gif' : 'mp4', width: num(body.width), height: num(body.height), fps: num(body.fps), quality: body.quality === 'low' || body.quality === 'medium' ? body.quality : 'high', from: num(body.from), to: num(body.to), signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
+      const { file, report } = await renderMotion({ dir, runtime: join(SANDBOX_DIST, 'motion.js'), format: body.format, speed: body.speed, container: body.container === 'gif' ? 'gif' : 'mp4', width: num(body.width), height: num(body.height), fps: num(body.fps), quality: body.quality === 'low' || body.quality === 'medium' ? body.quality : 'high', from: num(body.from), to: num(body.to), cover: body.cover === true && body.container !== 'gif', coverFirst: body.coverFirst === true, signal: ctl.signal, onProgress: (done, total) => void line({ progress: [done, total] }) });
       await line({ done: basename(file), report });
     } catch (e) {
       const code = e instanceof RenderError ? e.code : 'failed';

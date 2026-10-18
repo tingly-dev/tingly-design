@@ -9,7 +9,7 @@ import { fileStem, saveImage } from '../../imageExport';
 import { slowestStage } from '../../exportReport';
 import { frameFonts } from './motionImage';
 import { exactScenes, exportInputs } from './motionExport';
-import { MotionExportError, type MotionControl, type MotionInfo } from './MotionFrame';
+import { MotionExportError, type MotionControl, type MotionCoverSpec, type MotionInfo } from './MotionFrame';
 import type { VideoExportOptions } from './VideoExportDialog';
 
 export type Exporting = { done: number; total: number; route: 'browser' | 'server'; startedAt: number };
@@ -31,9 +31,13 @@ export function useMotionExport(p: {
   pause: () => void;
   /** the scene a stretch starting at `from` (played ms) begins in */
   sceneName: (from: number) => string;
+  /** the piece's cover, when it has one */
+  cover?: MotionCoverSpec;
 }) {
   const { t } = useTranslation();
-  const { motion, fmt, info, playScenes, base, project, control } = p;
+  const { motion, fmt, info, playScenes, base, project, control, cover } = p;
+  // the text the fonts are built for: the cover scene's too
+  const fontScenes = cover && 'scene' in cover ? { ...playScenes, [cover.scene]: cover.html } : playScenes;
   const [exporting, setExporting] = useState<Exporting | null>(null);
   const exportCtl = useRef<AbortController | null>(null);
   // the export dialog, and whether the server's Chrome will draw this piece (it holds an embed or a video layer)
@@ -94,12 +98,13 @@ export function useMotionExport(p: {
       if (project && viaServer) {
         toast(t('motion.export.viaServer', { scenes: viaServer.join(', ') }));
         const ext = o.format === 'gif' ? 'gif' : 'mp4';
-        const { file, report } = await api.renderMotion(project, fmt, { container: ext, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to }, progress, ctl.signal);
+        const { file, report } = await api.renderMotion(project, fmt, { container: ext, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, cover: !!cover, coverFirst: !!cover && o.coverFirst === true }, progress, ctl.signal);
         download(name(ext), await (await fetch(api.renderedUrl(project, file), { signal: ctl.signal })).blob());
         toast(doneMessage(name(ext), report));
       } else {
-        const inputs = await exportInputs(motion, playScenes, base);
-        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs }, progress, ctl.signal);
+        const inputs = await exportInputs(motion, fontScenes, base);
+        // the cover is embedded as the file's cover picture; the box in the dialog adds it as frame 0 too
+        const r = await control.current!.exportVideo({ format: o.format, width: o.width === W0 ? undefined : o.width, height: o.height === H0 ? undefined : o.height, fps: o.fps === info.fps ? undefined : o.fps, quality: o.quality, from: o.from, to: o.to, ...inputs, cover, coverFirst: o.coverFirst === true }, progress, ctl.signal);
         download(name(r.ext), r.blob);
         toast(doneMessage(name(r.ext), r.report));
         if (project) api.logExport(project, r.report, exactScenes(playScenes).length ? 'no-server-renderer' : undefined);
@@ -123,5 +128,13 @@ export function useMotionExport(p: {
     control.current?.seek(at);
   };
 
-  return { exporting, cancel: () => exportCtl.current?.abort(), where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame };
+  /** The cover as a PNG, in the format showing: the picture that stands for the video. */
+  const saveCover = async () => {
+    const at = p.at.current;
+    p.pause();
+    await saveImage(`${fileStem(motion.title, 'motion')}-${fmt}-cover.png`, async () => control.current!.cover({ cover, scale: 1, fontCss: await frameFonts(motion, fontScenes, base) }));
+    control.current?.seek(at);
+  };
+
+  return { exporting, cancel: () => exportCtl.current?.abort(), where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame, saveCover };
 }

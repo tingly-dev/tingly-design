@@ -168,7 +168,8 @@ describe('motion: project and timeline', () => {
     expect(parseCover('poster')).toEqual({ scene: 'poster' });
     expect(parseCover('../etc')).toBeUndefined();
     expect(parseCover(3)).toBeUndefined();
-    expect(parseMotion('{"cover":"poster","coverFirstFrame":false}')).toMatchObject({ cover: { scene: 'poster' }, coverFirstFrame: false });
+    expect(parseMotion('{"cover":"poster","coverFirstFrame":true}')).toMatchObject({ cover: { scene: 'poster' }, coverFirstFrame: true });
+    expect(parseMotion('{"cover":"poster","coverFirstFrame":false}').coverFirstFrame).toBeUndefined();
     expect(parseMotion('{}').cover).toBeUndefined();
   });
 

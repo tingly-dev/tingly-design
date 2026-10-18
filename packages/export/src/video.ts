@@ -24,6 +24,8 @@ export interface VideoOptions {
   prepareFrame?(ms: number, i: number): Promise<Frame>;
   /** The finished mix, if the piece has sound (see `mixAudio`). Without it the file gets a silent track of the same length. */
   audio?: AudioBuffer;
+  /** A PNG to embed as the file's cover picture (what a file browser or player shows as its thumbnail). */
+  coverArt?: Uint8Array;
   onProgress?(done: number, total: number): void;
   /** Collects the time of each stage; `renderFrame` times its own stages (seek, raster, paint) on the same clock; encoding and finishing are timed here. */
   clock?: Clock;
@@ -63,6 +65,7 @@ export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
   const target = new BufferTarget();
   const out = new Output({ format: plan.container === 'mp4' ? new Mp4OutputFormat({ fastStart: 'in-memory' }) : new WebMOutputFormat(), target });
   const quality = { low: QUALITY_LOW, medium: QUALITY_MEDIUM, high: QUALITY_HIGH }[o.quality ?? 'high'];
+  if (o.coverArt) out.setMetadataTags({ images: [{ data: o.coverArt, mimeType: 'image/png', kind: 'coverFront' }] });
   const video = new CanvasSource(canvas, { codec: plan.videoCodec, quality, keyFrameInterval: 2 });
   out.addVideoTrack(video, { frameRate: o.fps });
   const audio = o.audio && plan.audioCodec ? new AudioBufferSource({ codec: plan.audioCodec, quality: QUALITY_HIGH }) : null;

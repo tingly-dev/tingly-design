@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SLIDE_H, SLIDE_W, sandboxDoc, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
+import { SLIDE_H, SLIDE_W, sandboxDoc, speedOf, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
 import { api } from '../../api';
 import { SERVER } from '../../base';
 import { MotionFrame } from '../motion/MotionFrame';
@@ -185,13 +185,13 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
   );
 }
 
-/** A still of a motion piece: its cover scene at the end of its entrances, or most of the way through its first scene. */
-function MotionStill({ still, format, width, base }: { still: { motion: MotionJson; id: string; source: string }; format: string; width: number; base: string }) {
+/** A still of a motion piece: its cover scene at the end of its entrances, its cover frame, or most of the way through its first scene. */
+function MotionStill({ still, format, width, base }: { still: { motion: MotionJson; id: string; source: string; at?: number }; format: string; width: number; base: string }) {
   const { t } = useTranslation();
   const motion = useMemo(() => ({ ...still.motion, order: [still.id] }), [still]);
   const scenes = useMemo(() => ({ [still.id]: still.source }), [still]);
   const cover = !still.motion.order.includes(still.id);
   // the preview sits 6px in from the card on each side, at 16:10
   const bw = width - 12;
-  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
+  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : still.at !== undefined ? still.at / speedOf(still.motion.speed) : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
 }

@@ -25,9 +25,16 @@ export interface ExportRequest {
   /** @font-face CSS with the fonts inlined, built by the host (`fontCss`). */
   fontCss?: string;
   audio?: AudioClip[];
+  /** What frame 0 shows when the whole piece goes to MP4 or WebM: a moment of the piece, or a cover scene already mounted (`mountCover`). A GIF loops, so it never gets one. */
+  cover?: CoverSource;
+  /** With `cover`: also make it frame 0 of the video. Off: the cover goes in only as the file's cover picture. */
+  coverFirst?: boolean;
   onProgress?(done: number, total: number): void;
   signal?: AbortSignal;
 }
+
+/** The cover: a moment of the video (ms after speed), or a cover scene's own stage, drawn finished. */
+export type CoverSource = { at: number } | { stage: MotionStage; root: HTMLElement };
 
 export interface ExportOutcome extends Omit<VideoResult, 'container' | 'ext'> {
   container: Container | 'gif';
@@ -75,7 +82,19 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   // the picture is vector: it is drawn at the file's size, so a small file is not a big one scaled down and a big one is not blown up
   let now = 0;
   const rasterizer = new FrameRasterizer({ width: stage.width, height: stage.height, fontEmbedCSS: req.fontCss ?? '', filter: onlyOnScreen(stage, () => now), clock });
-  const prepare = async (ms: number) => {
+  const cover = whole && req.format !== 'gif' ? req.cover : undefined;
+  /** The cover, drawn: a moment of the piece, or a cover scene already mounted at its end. */
+  const coverFrame = async (c: CoverSource) => {
+    if ('at' in c) {
+      now = c.at;
+      await clock.time('seek', () => stage.seek(c.at, { painted: false }));
+    }
+    const [st, holder] = 'at' in c ? [stage, root] : [c.stage, c.root];
+    const pics = await clock.time('embeds', () => embedPictures(st, holder, 'at' in c ? c.at : c.stage.duration));
+    return rasterizer.begin(holder, pics);
+  };
+  const prepare = async (ms: number, i = -1) => {
+    if (i === 0 && cover && req.coverFirst) return coverFrame(cover);
     now = from + ms;
     // the copy reads computed styles, which hold the new time as soon as it is set; waiting for a paint only costs vsyncs
     await clock.time('seek', () => stage.seek(from + ms, { painted: false }));
@@ -106,7 +125,19 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
       const frames = Math.max(1, Math.round(((to - from) / 1000) * fps));
       return { blob, container: 'gif', ext: 'gif', mime: 'image/gif', videoCodec: 'gif', audioCodec: null, frames, report: clock.report({ route: 'browser', frames, width: outW, height: outH }), embeds: embeds() };
     }
+    // the cover also goes in as the file's cover picture, at the file's size
+    let coverArt: Uint8Array | undefined;
+    if (cover) {
+      const art = document.createElement('canvas');
+      art.width = outW;
+      art.height = outH;
+      const f = await coverFrame(cover);
+      await f.ready;
+      f.draw(art);
+      coverArt = new Uint8Array(await (await canvasPng(art)).arrayBuffer());
+    }
     const result = await encodeVideo({
+      coverArt,
       width: outW,
       height: outH,
       fps,
@@ -123,6 +154,11 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   } finally {
     rasterizer.dispose();
   }
+}
+
+/** The cover as a PNG: a moment of the piece, or a cover scene at its end. */
+export function exportCover(stage: MotionStage, root: HTMLElement, cover: CoverSource, req: { scale?: number; fontCss?: string }): Promise<Blob> {
+  return 'at' in cover ? exportFrame(stage, root, { ...req, t: cover.at }) : exportFrame(cover.stage, cover.root, { ...req, t: cover.stage.duration });
 }
 
 /** A frame of the piece as a PNG: the picture at one moment, at the size on screen. */
@@ -145,4 +181,4 @@ export async function exportFrame(stage: MotionStage, root: HTMLElement, req: { 
   }
 }
 
-(window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo, exportFrame };
+(window as unknown as { dcMotionExport: unknown }).dcMotionExport = { exportVideo, exportFrame, exportCover };
