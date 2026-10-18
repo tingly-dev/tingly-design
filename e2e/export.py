@@ -223,4 +223,8 @@ async def main():
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')
     if failed: raise SystemExit(1)
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+finally:
+    # a crash or a timeout must not leave zz-* projects behind: the next suite (embed) lists the samples
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
