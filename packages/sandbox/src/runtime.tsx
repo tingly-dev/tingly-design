@@ -27,6 +27,7 @@ import {
   parseDc,
   styleObject,
   isTextEditable,
+  tweakTextBinding,
   VOID_ELEMENTS,
   type DcDoc,
   type DcElement,
@@ -1236,7 +1237,7 @@ document.addEventListener('mouseleave', () => {
 
 function editableTids(): Set<number> {
   const doc = docFor(current.source);
-  return new Set(doc.elements.filter(isTextEditable).map((e) => e.tid));
+  return new Set(doc.elements.filter((e) => isTextEditable(e) || tweakTextBinding(doc, e)).map((e) => e.tid));
 }
 
 let editingOriginal = '';

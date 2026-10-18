@@ -47,7 +47,7 @@
 
 - 沿用幻灯片子集里已有的 `<x-embed>`（钉住、`<section>` 的直接子元素），只是多了 `src`：有 `src` 的嵌入块是空的，`src` 必须是 `uploads/` 下的画板（`checkSlide` 检查）。没有 `src` 的嵌入块照旧是一段内联的小网页。
 - 画板由画板运行时在自己的 iframe 里画，按 cover 方式铺满嵌入块。iframe 是嵌入块的直接子元素，动效舞台的 `showTime` 可以直接找到它。
-- `data-props` 覆盖画板自己的 Tweaks 默认值，只写和默认不同的键。面板（`BoardEmbedProps.tsx`）用和画布 Tweaks 同一个控件（`TweakControl`）改它，另有"还原"、"打开原画板"、"从原画板更新"，并说明来源。
+- `data-props` 覆盖画板自己的 Tweaks 默认值，只写和默认不同的键。Tweaks 列出 `data-props` 里所有带 `default` 的属性（`boardTweaks`）：没写 `editor` 的按默认值的类型当作文字、开关或数字，画布上内容只是 `{{prop}}` 的文字双击即改这个属性的默认值（`tweakTextBinding`）。面板（`BoardEmbedProps.tsx`）用和画布 Tweaks 同一个控件（`TweakControl`）改它，另有"还原"、"打开原画板"、"从原画板更新"，并说明来源。
 - 会动的画板放在页面第一个（最底层），铺满；静止的画板居中、不超过页面的 60%。动效里静止的画板和图片一样从播放头淡入。
 
 ### 3.4 "会动"是什么：`$time`
