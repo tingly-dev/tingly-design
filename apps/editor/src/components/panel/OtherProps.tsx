@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NOTE_SIZES, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
+import { NOTE_SIZES, boardTweaks, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
 import { duplicateBoard, updateBoard, updateNote } from '../../actions';
 import { BOARD_PRESETS } from '../../boardPresets';
 import { deleteBoard, display, edit, useStore } from '../../store';
@@ -126,7 +126,7 @@ export function TweakControl({ name, spec, value: v, onSet: setV }: { name: stri
 
 export function Tweaks({ file, doc }: { file: string; doc: DcDoc }) {
   const { t } = useTranslation();
-  const tweaks = Object.entries(doc.props).filter(([k, s]) => !k.startsWith('$') && s && s.editor);
+  const tweaks = boardTweaks(doc.props);
   const time = timeSpec(doc.props);
   return (
     <div className="sec">

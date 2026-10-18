@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
-import { elementSource, roleOf, rootElement, sandboxDoc, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
-import { canvasOf, display, editElement, parsed, toast, useStore } from '../../store';
+import { elementSource, roleOf, rootElement, sandboxDoc, setPropDefault, tweakTextBinding, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
+import { canvasOf, display, edit, editElement, parsed, toast, useStore } from '../../store';
 import { focusBoard, onPage } from './view';
 import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
@@ -213,9 +213,16 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           useStore.setState({ menu: { x: r.left + m.x * z, y: r.top + m.y * z } });
           break;
         }
-        case 'text':
-          editElement(file, [{ kind: 'text', tid: m.tid, text: m.text }]);
+        case 'text': {
+          // text that shows a text tweak (`{{heading}}`) is retyped by changing the tweak
+          const src = display(s, file);
+          const doc = src ? parsed(src) : null;
+          const el = doc?.elements.find((e) => e.tid === m.tid);
+          const prop = doc && el ? tweakTextBinding(doc, el) : null;
+          if (prop) edit(file, (cur) => setPropDefault(cur, prop, m.text).source, { actor: 'human', summary: `tweak ${prop} → ${JSON.stringify(m.text)}` });
+          else editElement(file, [{ kind: 'text', tid: m.tid, text: m.text }]);
           break;
+        }
         case 'move': {
           const src = display(s, file);
           const slice = src ? elementSource(parsed(src), m.tid) : null;

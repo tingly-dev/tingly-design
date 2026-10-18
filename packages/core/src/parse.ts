@@ -324,6 +324,22 @@ export function isTextEditable(el: DcElement): boolean {
   return hasText || el.children.length === 0;
 }
 
+/**
+ * The `data-props` prop a text element shows on its own: `<h2>{{heading}}</h2>`
+ * with `heading` declared as a text tweak (no editor or `"text"`, a string
+ * default). Retyping such an element sets the tweak's default; any other hole
+ * stays read-only.
+ */
+export function tweakTextBinding(doc: DcDoc, el: DcElement): string | null {
+  if (RAW_TEXT_ELEMENTS.has(el.tag) || VOID_ELEMENTS.has(el.tag) || el.tag.startsWith('sc-') || el.tag === 'dc-import' || el.tag === 'helmet') return null;
+  if (el.children.some((c) => c.kind === 'el')) return null;
+  const m = /^\s*\{\{\s*([A-Za-z_$][\w$]*)\s*\}\}\s*$/.exec(templateText(el));
+  if (!m) return null;
+  const spec = doc.props[m[1]] as PropSpec | undefined;
+  if (!spec || typeof spec !== 'object' || (spec.editor && spec.editor !== 'text')) return null;
+  return spec.default === undefined || typeof spec.default === 'string' ? m[1] : null;
+}
+
 /** Plain text of an element as written in the template (holes kept as written). */
 export function templateText(el: DcElement): string {
   let s = '';

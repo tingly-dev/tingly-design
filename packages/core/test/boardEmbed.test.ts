@@ -15,6 +15,7 @@ import {
   isBoardEmbedPath,
   parseDc,
   timeSpec,
+  tweakTextBinding,
 } from '../src';
 
 const BOARD = (props: string, body = '<div>x</div>') =>
@@ -40,7 +41,8 @@ describe('artboards imported into slides and scenes', () => {
   it('knows its size, its tweaks and what an embed sets', () => {
     const props = parseDc(BOARD('{"accent":{"editor":"color","default":"#000"},"n":{"default":3},"$preview":{"width":1920,"height":1080}}')).props;
     expect(boardSize(props)).toEqual([1920, 1080]);
-    expect(boardTweaks(props).map(([k]) => k)).toEqual(['accent']);
+    // a prop with no editor is listed too, edited as its default suggests
+    expect(boardTweaks(props).map(([k, s]) => [k, s.editor])).toEqual([['accent', 'color'], ['n', 'float']]);
     expect(embedProps('{"accent":"#fff"}')).toEqual({ accent: '#fff' });
     expect(embedProps('nope')).toEqual({});
     expect(embedProps('[1]')).toEqual({});
@@ -70,6 +72,17 @@ describe('artboards imported into slides and scenes', () => {
     expect(boardFrameDoc({ src: '/sandbox/runtime.js' })).toContain('<script src="/sandbox/runtime.js"></script>');
     expect(boardFrameDoc({ inline: 'a("</script>")' })).toContain('a("<\\/script>")');
     expect(coverFit([1920, 1080], [960, 960])).toEqual({ scale: 960 / 1080, x: (960 - 1920 * (960 / 1080)) / 2, y: 0 });
+  });
+
+  it('retypes text that shows a text tweak by changing the tweak', () => {
+    const doc = parseDc(
+      BOARD(
+        '{"heading":{"default":"Hi"},"name":{"editor":"text","default":"Ann"},"accent":{"editor":"color","default":"#000"},"n":{"default":3}}',
+        '<h2>{{heading}}</h2><p>Hello {{name}}</p><p>{{name}}</p><i>{{accent}}</i><b>{{n}}</b><u>{{other}}</u>',
+      ),
+    );
+    const bound = doc.elements.map((e) => [e.tag, tweakTextBinding(doc, e)]).filter(([, p]) => p);
+    expect(bound).toEqual([['h2', 'heading'], ['p', 'name']]);
   });
 
   it('lets a slide embed an imported artboard and nothing else by src', () => {

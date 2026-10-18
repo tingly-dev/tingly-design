@@ -59,9 +59,27 @@ export function boardSize(props: Record<string, PropSpec> | undefined): [number,
   return w > 0 && h > 0 ? [Math.round(w), Math.round(h)] : null;
 }
 
-/** The tweaks a person can set on an embed: the artboard's own, minus `$…` keys. */
+/**
+ * How a prop that names no `editor` is edited, by the type of its default: a
+ * boolean is a switch, a number a number field, anything else text.
+ */
+export function tweakEditor(spec: PropSpec): NonNullable<PropSpec['editor']> {
+  if (spec.editor) return spec.editor;
+  if (typeof spec.default === 'boolean') return 'boolean';
+  if (typeof spec.default === 'number') return 'float';
+  return 'text';
+}
+
+/**
+ * Every prop an artboard declares in `data-props` (minus `$…` keys): what a
+ * person can set on the artboard and on an embed of it. A prop without an
+ * `editor` is listed too, as the editor its default suggests; leaving it out
+ * would hide a field the template is already bound to.
+ */
 export function boardTweaks(props: Record<string, PropSpec> | undefined): [string, PropSpec][] {
-  return Object.entries(props ?? {}).filter(([k, s]) => !k.startsWith('$') && s && typeof s === 'object' && !!s.editor);
+  return Object.entries(props ?? {})
+    .filter(([k, s]) => !k.startsWith('$') && s && typeof s === 'object' && !Array.isArray(s) && (!!s.editor || 'default' in s))
+    .map(([k, s]): [string, PropSpec] => [k, { ...s, editor: tweakEditor(s) }]);
 }
 
 /** An embed's `data-props` as an object (an unreadable one is empty). */
