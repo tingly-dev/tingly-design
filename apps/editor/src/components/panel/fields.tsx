@@ -229,7 +229,7 @@ export function Select({
   narrow,
 }: {
   value: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; group?: string }[];
   onChange: (v: string) => void;
   label: string;
   narrow?: boolean;
@@ -237,10 +237,23 @@ export function Select({
   const opts = options.some((o) => o.value === value) ? options : [...options, { value, label: value || '—' }];
   return (
     <select className={`sel-inp ${narrow ? 'narrow' : ''}`} aria-label={label} value={value} onChange={(e) => onChange(e.currentTarget.value)}>
-      {opts.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
+      {opts
+        .filter((o) => !o.group)
+        .map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      {[...new Set(opts.map((o) => o.group).filter(Boolean))].map((g) => (
+        <optgroup key={g} label={g}>
+          {opts
+            .filter((o) => o.group === g)
+            .map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+        </optgroup>
       ))}
     </select>
   );

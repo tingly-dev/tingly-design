@@ -91,6 +91,7 @@ export default {
     ds: '设计系统',
     dsNone: '不用',
     boardSize: '画板尺寸',
+    boardCustomFor: '宽高各在 1 到 7680 像素之间。',
     dataFile: '数据文件',
     dataPick: '选一个 CSV、TSV 或 JSON 文件…',
     dataClear: '移除',

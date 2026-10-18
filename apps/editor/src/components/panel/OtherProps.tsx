@@ -1,9 +1,8 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NOTE_SIZES, boardTweaks, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
+import { BOARD_SIZES, NOTE_SIZES, boardTweaks, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
 import { duplicateBoard, updateBoard, updateNote } from '../../actions';
-import { BOARD_PRESETS } from '../../boardPresets';
 import { deleteBoard, display, edit, useStore } from '../../store';
 import { TEXT_COLORS, sizeOf } from '../canvas/Item';
 import { frames } from '../canvas/Board';
@@ -35,7 +34,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
             value=""
             options={[
               { value: '', label: t('panel.board.presetPlaceholder') },
-              ...BOARD_PRESETS.map((p) => ({ value: `${p.size[0]}x${p.size[1]}`, label: p.key ? t(p.key, { w: p.size[0], h: p.size[1] }) : p.label! })),
+              ...BOARD_SIZES.map((p) => ({ value: `${p.size[0]}x${p.size[1]}`, label: `${t(`canvas.boardSize.${p.id}`)} ${p.size[0]} × ${p.size[1]}`, group: t(`canvas.boardGroup.${p.group}`) })),
             ]}
             onChange={(v) => {
               const [w, h] = v.split('x').map(Number);

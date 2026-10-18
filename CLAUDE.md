@@ -28,7 +28,7 @@ Which model answers is set in one dialog (`apps/editor/src/components/AiSettings
 
 ## Frontend changes come back with screenshots
 
-A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are linked from the PR description as `https://github.com/tingly-dev/tingly-design/blob/pr-assets/<path>?raw=true` (`raw.githubusercontent.com` links do not render in this private repository), and the thread that did the work attaches them to its reply.
+A PR that changes anything a person sees (the editor, the launcher, the homepage in `site/`) carries screenshots of the result, in light and dark and in both languages where they differ. They go to the `pr-assets` branch and are embedded in the PR description as images (a table: language by light and dark) from `https://raw.githubusercontent.com/tingly-dev/tingly-design/pr-assets/<path>` (the repository is public, so the link renders in place), and the thread that did the work attaches them to its reply.
 
 ## Design the editor in itself
 
@@ -80,7 +80,7 @@ Rules of thumb:
 # Layout
 
 ```
-packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher; `canvasCheck.ts` lints a canvas folder as data, `.design/canvas-check.md`)
+packages/core     formats, write-back, prompts, per-kind logic (canvas, deck, designSystem, dash, docs, motion, attachments, launcher; `boardSizes.ts` is the one list of named artboard sizes (id + width × height) the New dialog, the board panel's preset menu and `new --size` share, their names and notes in the `canvas` i18n area; `canvasCheck.ts` lints a canvas folder as data, `.design/canvas-check.md`)
 packages/export   exporting from the browser with nothing to install (picture of a DOM tree and PNG, `FrameRasterizer` for the frames of a video, `frameSnap.ts` for an embed's frame to hand over a picture of itself, MP4/WebM, GIF, audio mix, inlined fonts, what each browser can write, `Clock` / `ExportReport` timing every stage of an export); no dependency on the editor, server or core (see .design/export.md for video, .design/export-image.md for pictures)
 packages/i18n     UI strings for every language (locales/<lang>/<area>.ts), language detection helpers, the translator the server and importer use
 packages/sandbox  artboard / dashboard / motion runtimes and the AI executor, as IIFEs; sceneAnim.ts draws a

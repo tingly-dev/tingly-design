@@ -7,7 +7,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
-MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales']
+MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales', 'zz-cli-wechat', 'zz-cli-wxh', 'zz-cli-bad']
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
@@ -171,7 +171,7 @@ async def main():
         await pg.locator('.lnewbtn').click()
         await pg.locator('.menu [data-new="design"] .mi').click()
         dlg = pg.locator('[role=dialog]')
-        check('the dialog offers all six kinds', await dlg.locator('[role=radio]').count() == 6)
+        check('the dialog offers all six kinds', await dlg.locator('.kinds [role=radio]').count() == 6)
         await expect(dlg.locator('input[aria-label="标题"]')).to_be_focused()
         check('the dialog shows only the chosen kind\'s blurb', await dlg.locator('.kblurb').count() == 1)
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Launch')
@@ -220,11 +220,40 @@ async def main():
         await dlg.locator('[role=radio][data-kind="design"]').click()
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Phone')
         await dlg.locator('.nopts select').first.select_option('tingly-ds')
-        await dlg.locator('.nopts select').nth(1).select_option('390x844')
+        # the sizes are a picker of named, concrete sizes with where each is used under it
+        cats = await dlg.locator('.szcat').evaluate_all('els => els.map(e => e.dataset.group)')
+        check('the categories are listed on the left, Custom last', cats == ['screen', 'slides', 'social', 'ads', 'print', 'custom'], str(cats))
+        names = []
+        for g in cats[:-1]:
+            await dlg.locator(f'.szcat[data-group="{g}"]').click()
+            names += await dlg.locator('.sizes .szopt').evaluate_all('els => els.map(e => e.dataset.size)')
+        check('each category shows only its own sizes', len(names) >= 20 and {'wechat', 'tall', 'story', 'og', 'a4', 'mobile', 'mpu', 'thumbnail'} <= set(names), str(names))
+        await dlg.locator('.szcat[data-group="social"]').click()
+        check('the sizes show their width and height', '900×383' in await dlg.locator('.sizes [data-size="wechat"]').inner_text())
+        await dlg.locator('.sizes [data-size="wechat"]').click()
+        check('picking a size says where it is used', '公众号' in await dlg.locator('.sizes .szfor').inner_text(), await dlg.locator('.sizes .szfor').inner_text())
+        await dlg.locator('.szcat[data-group="custom"]').click()
+        await dlg.locator('.szcustom input').first.fill('0')
+        check('a size out of range cannot be created', await dlg.locator('button[type=submit]').is_disabled())
+        await dlg.locator('.szcat[data-group="screen"]').click()
+        await dlg.locator('.sizes [data-size="mobile"]').click()
         await dlg.locator('button[type=submit]').click()
         await pg.wait_for_url('**/?p=zz-phone')
         canvas = json.load(open(os.path.join(REPO, 'projects/zz-phone/canvas.json'), encoding='utf-8'))
         check('a canvas starts at the board size picked, with the design system installed', list(canvas['boards'].values())[0]['w'] == 390 and any(r.get('namespace') == 'tingly' for r in canvas.get('designSystems', [])), json.dumps(canvas)[:200])
+        # the command line takes the same sizes, by name or as WxH
+        def cli(*args):
+            return subprocess.run(['pnpm', '-s', 'tingly-design', *args], cwd=REPO, capture_output=True, text=True)
+        r = cli('new', 'canvas', 'zz-cli-wechat', '--size', 'wechat')
+        made = os.path.join(REPO, 'projects/zz-cli-wechat/canvas.json')
+        sized = os.path.exists(made) and list(json.load(open(made, encoding='utf-8'))['boards'].values())[0]
+        check('new --size wechat makes a canvas with that cover size', bool(sized) and (sized['w'], sized['h']) == (900, 383), r.stdout + r.stderr)
+        r = cli('new', 'canvas', 'zz-cli-wxh', '--size', '1080x1440')
+        made = os.path.join(REPO, 'projects/zz-cli-wxh/canvas.json')
+        sized = os.path.exists(made) and list(json.load(open(made, encoding='utf-8'))['boards'].values())[0]
+        check('new --size 1080x1440 works too', bool(sized) and (sized['w'], sized['h']) == (1080, 1440), r.stdout + r.stderr)
+        r = cli('new', 'canvas', 'zz-cli-bad', '--size', 'nonsense')
+        check('an unknown size is refused and names the choices', r.returncode != 0 and 'wechat' in (r.stdout + r.stderr) and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-bad')), r.stdout + r.stderr)
         csv = os.path.join(REPO, 'projects/.zz-sales.csv')
         open(csv, 'w').write('month,revenue\n2026-01,120\n2026-02,150\n')
         await pg.goto(BASE + '/')
@@ -269,7 +298,7 @@ async def main():
         await pg.locator('.pmenu > button.tb').click()
         await pg.locator('.menu button.mi', has_text='新建项目').click()
         await expect(dlg).to_have_count(1)
-        check('"new project" in the menu opens the same dialog', await dlg.locator('[role=radio][aria-checked=true]').count() == 1)
+        check('"new project" in the menu opens the same dialog', await dlg.locator('.kinds [role=radio][aria-checked=true]').count() == 1)
         await pg.keyboard.press('Escape')
         await pg.goto(BASE + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()

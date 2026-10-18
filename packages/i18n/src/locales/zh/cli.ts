@@ -35,7 +35,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --port <端口>         serve、open：端口（0 表示自动挑一个空闲端口）
   --host <地址>         serve、open：监听的地址（默认 127.0.0.1）
   --title <文字>        new：启动页上显示的标题
-  --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸
+  --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
+                        尺寸名（wechat、tall、story、og、a4、wide、mpu……）
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
   --board、--slide、--tab、--view <名字>   export：只导出一个画板（文件名或标题）、一页幻灯片（编号或第几页）、
                         一个标签页（编号或标题）或设计系统的一个视图，而不是全部
@@ -59,6 +60,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   needKind: '请指定类型：canvas、slides、design-system、dashboard、doc 或 motion',
   badKind: '{{kind}} 不是项目类型。类型有：canvas、slides、design-system、dashboard、doc、motion',
   badPage: '{{page}} 不是这种类型的参考页。参考页有：{{pages}}',
+  badBoardSize: '--size {{size}} 既不是宽x高（如 1080x1440），也不是已命名的尺寸：{{sizes}}。',
   needName: '请给项目起名或指定文件夹：tingly-design new {{kind}} <名字或文件夹>',
   noProjectAt: '{{path}} 里没有项目',
   created: '已新建{{kind}} {{name}}，位置：{{path}}',

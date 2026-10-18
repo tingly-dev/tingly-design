@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type ProjectKind } from '@dc/core';
+import { DEFAULT_BOARD_SIZE, type ProjectKind } from '@dc/core';
 import { api, type FolderInfo } from '../../api';
 import { toast, useStore } from '../../store';
 import { NAME_RE, freeName, slugOf } from '../../projectName';
 import { SizePicker } from '../motion/SizePicker';
-import { readSizes, rememberSize, type Size } from '../motion/motionSizes';
-import { BOARD_PRESETS, DEFAULT_BOARD_SIZE } from '../../boardPresets';
+import { readSizes, rememberSize, sameSize, type Size } from '../motion/motionSizes';
+import { BoardSizePicker } from './BoardSizePicker';
 import { applyNewOptions, checkDataFile, type NewOptions } from '../../newProject';
 import { Dialog } from '../Dialog';
 import { KINDS, KindIcon } from './kinds';
@@ -50,7 +50,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // the rest is optional: a design system (canvas, slides), a board size (canvas), a table (dashboard)
   const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
   const [designSystem, setDesignSystem] = useState('');
-  const [board, setBoard] = useState(DEFAULT_BOARD_SIZE.join('x'));
+  const [board, setBoard] = useState<Size | null>(DEFAULT_BOARD_SIZE);
   const [dataFile, setDataFile] = useState<{ file: File; rows: number } | null>(null);
   const [dataError, setDataError] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
@@ -66,7 +66,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // a full path puts the project there instead of in the projects folder
   const path = linksOn && isFolderPath(name) ? name : null;
   const info = useFolderInfo(path);
-  const sizeBad = kind === 'motion' && !size;
+  const sizeBad = (kind === 'motion' && !size) || (kind === 'design' && !board);
   const problem = !name
     ? ''
     : path
@@ -94,12 +94,11 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
     if (!name || problem || waiting || busy || sizeBad) return;
     setBusy(true);
     try {
-      const boardSize = board.split('x').map(Number) as Size;
       const { name: made, gitError } = await api.createProject(
         path ? { path } : name,
         title.trim() || (path ? path.split(/[\\/]/).filter(Boolean).pop() || kind : name),
         kind,
-        kind === 'motion' && size ? size : kind === 'design' && board !== DEFAULT_BOARD_SIZE.join('x') ? boardSize : undefined,
+        kind === 'motion' && size ? size : kind === 'design' && board && !sameSize(board, DEFAULT_BOARD_SIZE) ? board : undefined,
         { git: offerGit && git },
       );
       if (gitError) toast(t('launcher.new.gitFailed', { error: gitError }), 'error');
@@ -128,6 +127,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
       <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
       <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
       {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
+      {kind === 'design' && <BoardSizePicker value={board} onChange={setBoard} />}
       {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
         <div className="nopts" data-options={kind}>
           <span className="nopt-h">{t('launcher.new.options')}</span>
@@ -139,18 +139,6 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
                 {systems.map((s) => (
                   <option key={s.name} value={s.name}>
                     {s.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {kind === 'design' && (
-            <label className="nopt">
-              <span>{t('launcher.new.boardSize')}</span>
-              <select className="input" value={board} onChange={(e) => setBoard(e.target.value)} aria-label={t('launcher.new.boardSize')}>
-                {BOARD_PRESETS.map((p) => (
-                  <option key={p.size.join('x')} value={p.size.join('x')}>
-                    {p.key ? t(p.key, { w: p.size[0], h: p.size[1] }) : p.label}
                   </option>
                 ))}
               </select>
