@@ -116,7 +116,7 @@ The command line names each command after the editor's word for the same action 
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`, `check_snapshots`, `baseline` (the editor's screenshots against the `e2e-baselines` branch; re-recorded by hand from the E2E patrol workflow)); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `external_edit`, `dock`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `archive`, `check_snapshots`, `baseline` (the editor's screenshots against the `e2e-baselines` branch; re-recorded by hand from the E2E patrol workflow)); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
 
 # Issues
 
