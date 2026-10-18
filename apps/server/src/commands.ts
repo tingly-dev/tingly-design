@@ -218,7 +218,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   for (const l of layout) {
     const file = (l.where && where.get(l.where)) ?? (p.kind === 'dashboard' ? 'files/index.html' : (l.where ?? p.name));
     if (l.rule !== 'contrast') {
-      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: l.rule === 'gap' ? { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 } : { text: l.text ?? '' } });
+      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: l.rule === 'gap' ? { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 } : l.rule === 'squeezed' ? { text: l.text ?? '', lines: l.lines ?? 0 } : { text: l.text ?? '' } });
       continue;
     }
     const f = faint.get(file) ?? { count: 0, ratio: Infinity, text: '' };

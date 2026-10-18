@@ -32,8 +32,19 @@ try:
                  '<p style="position:absolute;left:100px;top:1000px;font-size:20px;color:#DDDDDD">Faint caption</p>') + s[i:]
     open(box, 'w', encoding='utf-8').write(s)
     open(os.path.join(bad, 'slides', 'empty.html'), 'w').write('<section id="empty" style="background:#FFFFFF"></section>\n')
+    # the two-column slide of a generated deck: a 1600px list in a 1fr 1fr grid pushes the card to the edge and squeezes it
+    open(os.path.join(bad, 'slides', 'grid.html'), 'w').write(
+        '<section id="grid" style="background:#FFFFFF;padding:60px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">'
+        '<ul style="width:1600px;font-size:32px;color:#111111"><li>One point</li><li>Another point</li></ul>'
+        '<div style="background:#EEF2FF;padding:20px"><p style="font-size:52px;color:#111111;margin:0">最优重设价格是未来边际成本的加权平均</p></div>'
+        '</div>'
+        # a card placed half past the right edge, and a row whose child will not shrink to fit it
+        '<div style="position:absolute;left:1500px;top:700px;width:700px;height:200px;background:#FDE68A;font-size:30px;color:#111111">Card cut by the edge</div>'
+        '<div style="display:flex;width:800px;margin-top:300px"><div style="flex:none;width:1200px;height:80px;background:#BBF7D0;font-size:30px;color:#111111">Row child that will not fit</div></div>'
+        '</section>\n')
     deck = json.load(open(os.path.join(bad, 'deck.json')))
     deck['order'].append('empty')
+    deck['order'].append('grid')
     json.dump(deck, open(os.path.join(bad, 'deck.json'), 'w'), indent=2)
 
     clean = run(projects, 'zz-clean')
@@ -45,6 +56,9 @@ try:
     faint = got.get(('slides/box.html', 'contrast'))
     check('a faint caption on a plain background is reported with its contrast', faint and faint['params']['text'] == 'Faint caption' and faint['params']['ratio'] < 2, json.dumps(faint))
     check('an empty slide is reported as blank', ('slides/empty.html', 'blank') in got, str(list(got)))
+    check('a box pushed past the slide edge is reported', ('slides/grid.html', 'boxOutside') in got or ('slides/grid.html', 'boxOverflow') in got, str(list(got)))
+    check('a box wider than its grid is reported', ('slides/grid.html', 'boxOverflow') in got, str(list(got)))
+    check('text squeezed into a narrow column is reported', ('slides/grid.html', 'squeezed') in got, str(list(got)))
     check('layout findings are warnings, so the check still passes', all(p['level'] == 'warning' for p in got.values()))
     check('each slide is still drawn', len(r['snapshots']) == len(deck['order']), str(r.get('snapshots'))[:300])
 finally:

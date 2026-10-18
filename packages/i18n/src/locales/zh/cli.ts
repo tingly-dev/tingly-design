@@ -102,6 +102,9 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     contrastMany: '有 {{count}} 处文字和背景对比度太低（最低 {{ratio}}:1，“{{text}}”）',
     blank: '什么也没画出来',
     gap: '从 {{at}} 像素起有一段 {{size}} 像素高（占 {{percent}}%）的空白；把画板改矮，或把内容铺开',
+    boxOutside: '有个盒子越过边缘被裁掉了：“{{text}}”',
+    boxOverflow: '有个盒子比装它的行或网格还宽，把旁边的挤开了：“{{text}}”',
+    squeezed: '文字被挤进只有几个字宽的一列（断成 {{lines}} 行）：“{{text}}”',
   },
   canvasRules: {
     'order-unknown': 'order 里的 {{file}} 不是画板',
