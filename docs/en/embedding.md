@@ -26,7 +26,7 @@ pnpm bundle        # builds, then writes dist/tingly-design/
 | `server.mjs` | `tingly-design serve`: the server alone, for a host. |
 | `tingly-design.json` | `{ name, version, protocol, entry, node }`: check `protocol` before launching. |
 | `editor/`, `sandbox/` | The built editor and the artboard runtime. |
-| `samples/` | The sample projects, copied into a projects folder that does not exist yet. |
+| `samples/` | The sample projects, copied into a projects folder that does not exist yet, filed together in a launcher group named `tingly-design`. Only the projects' files go in; whatever a machine keeps beside them (journal, run reports, Claude Code session, transcript) does not. |
 | `scripts/`, `.claude/skills/` | What Claude Code reads and runs when work is handed to it. |
 
 Copy the folder anywhere; it does not need this repository or `node_modules`.

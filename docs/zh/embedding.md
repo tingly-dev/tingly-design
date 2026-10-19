@@ -26,7 +26,7 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 | `server.mjs` | 就是 `tingly-design serve`：只起服务端，给宿主用。 |
 | `tingly-design.json` | `{ name, version, protocol, entry, node }`：启动前先核对 `protocol`。 |
 | `editor/`、`sandbox/` | 构建好的编辑器和画板运行时。 |
-| `samples/` | 示例项目，会复制进一个还不存在的项目文件夹。 |
+| `samples/` | 示例项目，会复制进一个还不存在的项目文件夹，并放进启动页的 `tingly-design` 分组。只带项目自己的文件；这台机器放在旁边的东西（改动记录、运行记录、Claude Code 会话、对话记录）不带。 |
 | `scripts/`、`.claude/skills/` | 交给 Claude Code 时它要读的格式说明和要跑的脚本。 |
 
 这个文件夹可以拷到任何地方，不需要本仓库，也不需要 `node_modules`。

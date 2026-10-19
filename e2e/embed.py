@@ -72,6 +72,8 @@ async def main():
     seeded = sorted(d for d in os.listdir(projects) if os.path.isdir(os.path.join(projects, d)))
     check('a fresh projects folder starts with the samples', seeded == samples, f'{seeded} != {samples}')
     check('…without anyone\'s journal or run reports', not any(f.startswith('.') for d in seeded for f in os.listdir(os.path.join(projects, d))))
+    groups = json.load(open(os.path.join(projects, '.groups.json'), encoding='utf-8'))
+    check('…filed together in the tingly-design group, and nothing else is grouped', groups == {n: 'tingly-design' for n in samples}, str(groups))
     status, body, _ = get(root + PREFIX + '/api/health')
     health = json.loads(body)
     check('health answers under the base path', status == 200 and health['basePath'] == PREFIX and health['protocol'] == 1 and health['version'] == manifest['version'], str(health))
