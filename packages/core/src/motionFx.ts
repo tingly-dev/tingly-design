@@ -268,9 +268,10 @@ const PRESETS: Record<FxPreset, PresetSpec> = {
     float zoom = mix(14.0, 0.6, d);
     vec2 q = p * zoom + fk * 13.7;
     ivec2 cell = ivec2(floor(q));
-    vec2 o = hash2(cell + ivec2(k * 101));
+    // kept off the cell's edges, so a near star's glow fades out before the next cell cuts it
+    vec2 o = 0.2 + 0.6 * hash2(cell + ivec2(k * 101));
     vec2 r = fract(q) - o;
-    float star = exp(-dot(r, r) * mix(900.0, 60.0, d)) * smoothstep(0.0, 0.3, d) * smoothstep(1.0, 0.85, d);
+    float star = exp(-dot(r, r) * mix(900.0, 200.0, d)) * smoothstep(0.0, 0.3, d) * smoothstep(1.0, 0.85, d);
     c += pal(hash(cell) * float(NC)) * star * (0.4 + 0.6 * hash(cell + ivec2(7))) * 1.4 * AMOUNT;
   }
   return opaque(c);
@@ -615,9 +616,24 @@ export function fxShader(spec: FxSpec): string {
  * later. When WebGL2 or the shader fails it draws the CSS stand-in and posts
  * `effect-error`, so the editor can say why. `live` runs its own clock (a
  * slide being presented); otherwise it stands at `at` until it is sought.
+ *
+ * A page keeps only 16 WebGL contexts alive and drops the oldest past that, so
+ * a long piece with an effect in every scene lost them all. The context is
+ * made on the first draw and given back once the embed has not been sought for
+ * a while (its scene is off screen), or while a live one is hidden.
  */
 const RUNTIME = `(function (cfg) {
-  var cv = document.querySelector('canvas'), q = cfg.quality, g = null, ut, ua, us, last = cfg.at || 0, fb = null;
+  var cv = document.querySelector('canvas'), q = cfg.quality, g = null, ut, ua, us, last = cfg.at || 0, fb = null, idle = 0;
+  // give the context back: a still copy of the last frame stays on screen, a fresh canvas waits for the next draw
+  var still = null;
+  function release() {
+    if (!g || !cv.isConnected) return;
+    still = cv.cloneNode(false); still.width = cv.width; still.height = cv.height;
+    var c2 = still.getContext('2d'); if (c2) c2.drawImage(cv, 0, 0);
+    var x = g.getExtension('WEBGL_lose_context'), n = cv.cloneNode(false);
+    g = null; if (x) x.loseContext();
+    cv.replaceWith(still); cv = n; watch();
+  }
   function fail(code, detail) {
     g = null; console.error('[fx] ' + code + (detail ? ': ' + detail : ''));
     parent.postMessage({ dcMotion: 'effect-error', code: code, detail: detail || '', fallback: true }, '*');
@@ -656,6 +672,7 @@ const RUNTIME = `(function (cfg) {
   }
   function compile(type, src) { var x = g.createShader(type); g.shaderSource(x, src); g.compileShader(x); if (!g.getShaderParameter(x, g.COMPILE_STATUS)) throw { code: 'shader', detail: g.getShaderInfoLog(x) }; return x; }
   function init() {
+    if (still) { still.replaceWith(cv); still = null; }
     g = cv.getContext('webgl2', { premultipliedAlpha: true, preserveDrawingBuffer: true });
     if (!g) return fail('no-webgl2');
     try {
@@ -671,28 +688,37 @@ const RUNTIME = `(function (cfg) {
       ut = g.getUniformLocation(pr, 'time'); ua = g.getUniformLocation(pr, 'u_aspect'); us = g.getUniformLocation(pr, 'u_size');
     } catch (e) { fail(e.code || 'shader', e.detail || String(e)); }
   }
-  init();
   // a lost context (the GPU reset, too many canvases) comes back empty: build it again and draw the last time
-  cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); g = null; });
-  cv.addEventListener('webglcontextrestored', function () { init(); window.seek(last); });
+  function watch() {
+    cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); g = null; });
+    cv.addEventListener('webglcontextrestored', function () { init(); window.seek(last); });
+  }
+  watch();
   window.seek = function (ms) {
     last = ms;
+    var fresh = !g && !fb;
     if (fb) paint(ms);
-    else if (g) {
+    else {
+      if (fresh) init();
+      if (g) draw(ms);
+    }
+    if (!cfg.live) { clearTimeout(idle); idle = setTimeout(release, 1500); }
+    // a canvas presents a frame late, a new one later still: wait until this one is on screen
+    return new Promise(function (r) { var n = fresh ? 4 : 2; (function f() { if (--n < 0) r(); else requestAnimationFrame(f); })(); });
+  };
+  function draw(ms) {
       var r = devicePixelRatio || 1, w = Math.max(1, Math.round(innerWidth * r * q)), h = Math.max(1, Math.round(innerHeight * r * q));
       try {
         if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
         g.viewport(0, 0, w, h); g.clearColor(0, 0, 0, 0); g.clear(g.COLOR_BUFFER_BIT);
         g.uniform1f(ut, ms / 1000); g.uniform1f(ua, w / h); g.uniform2f(us, innerWidth, innerHeight); g.drawArrays(g.TRIANGLES, 0, 3);
       } catch (e) { fail('draw', String(e)); }
-    }
-    // a canvas that just came into view presents a frame late: wait until this one is on screen
-    return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
-  };
-  addEventListener('resize', function () { window.seek(last); });
-  if (cfg.live) { var t0 = performance.now() - last; (function tick() { window.seek(performance.now() - t0); requestAnimationFrame(tick); })(); }
-  // draw once at load, so the canvas already has a layer on screen when its scene first shows
-  else window.seek(last);
+  }
+  addEventListener('resize', function () { if (g || fb) window.seek(last); });
+  // a live one (a slide being presented) draws only while it can be seen: a hidden slide's frame is 0 wide
+  if (cfg.live) { var t0 = performance.now() - last; (function tick() { if (innerWidth > 0) window.seek(performance.now() - t0); else release(); requestAnimationFrame(tick); })(); }
+  // otherwise nothing is drawn until the embed is sought: a piece mounts every scene's embeds at once, and a
+  // context made for each at load would pass the page's limit before the first frame
 })`;
 
 /**

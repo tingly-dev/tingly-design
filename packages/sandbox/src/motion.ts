@@ -251,11 +251,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     async seek(ms, o) {
       const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
-      const live = embeds.filter((e) => {
-        const h = hosts.find((h) => h.win.start === e.sceneStart);
-        return h && t >= h.win.start && t <= h.win.start + h.win.duration;
-      });
-      await Promise.all(live.map((e) => seekEmbed(e.frame, t - e.sceneStart)));
+      await Promise.all(liveAt(t).map((e) => seekEmbed(e.frame, t - e.sceneStart)));
       // the frame after next is the first one painted with the new time on every layer
       if (o?.painted !== false) await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
     },
@@ -273,7 +269,8 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
           t %= timeline.duration;
         }
         setTime(t);
-        for (const e of embeds) e.frame.contentWindow?.postMessage({ dcMotion: 'seek', t: t - e.sceneStart, n: -1 }, '*');
+        // only the embeds on screen: one that is not sought lets its WebGL context go
+        for (const e of liveAt(t)) e.frame.contentWindow?.postMessage({ dcMotion: 'seek', t: t - e.sceneStart, n: -1 }, '*');
         onTime?.(t / speed);
         raf = requestAnimationFrame(tick);
       };
@@ -287,6 +284,14 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       root.innerHTML = '';
     },
   };
+
+  /** The embeds whose scene is on screen at authored time `t`. */
+  function liveAt(t: number) {
+    return embeds.filter((e) => {
+      const h = hosts.find((h) => h.win.start === e.sceneStart);
+      return h && t >= h.win.start && t <= h.win.start + h.win.duration;
+    });
+  }
 
   function setTime(t: number) {
     for (const a of anims) a.setTime(t);
@@ -401,7 +406,8 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
     const onMsg = (e: MessageEvent) => {
       if (e.source === frame.contentWindow && e.data?.dcMotion === 'seeked' && e.data.n === n) finish();
     };
-    const timer = setTimeout(finish, 1000);
+    // generous: an effect builds its WebGL context on its first seek, which a software renderer takes a while over
+    const timer = setTimeout(finish, 5000);
     function finish() {
       clearTimeout(timer);
       window.removeEventListener('message', onMsg);
