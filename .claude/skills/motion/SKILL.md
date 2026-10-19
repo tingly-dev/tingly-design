@@ -80,16 +80,28 @@ For light, noise, grain or glow that CSS cannot draw, start from a built-in effe
 <x-embed data-fx="edge-glow; box: 760x460 @50% 42%; radius: 36" data-seek data-in="fade 1s @0.15s" style="position:absolute;left:0;top:0;width:100%;height:100%"></x-embed>
 ```
 
-| Preset | Use it for | Where it goes | Values (all optional) |
+| Preset | Use it for | Where it goes | Values (all optional; every preset also takes `quality` and `region`) |
 |---|---|---|---|
-| `flow` | ink-like currents of colour, an opening or closing background | first child | `colors` (3), `background`, `speed`, `amount` |
-| `aurora` | curtains of light across the top of a dark frame | first child | `colors`, `background`, `speed`, `amount` |
-| `mesh` | soft fields of colour drifting, a calm background | first child | `colors` (up to 4), `background`, `speed`, `amount` |
-| `edge-glow` | light flowing around a card that is working | just before the card | `colors`, `speed`, `amount`, `box` (`760x460 @50% 42%`: size in px, centre in % of the frame; give the card the same numbers), `radius` (px) |
-| `sweep` | a band of light crossing a title once per period | just after the title | `colors` (the first), `speed`, `amount` (0.35), `every` (`3s`), `angle` (deg) |
-| `grain` | film grain over everything | last child | `speed`, `amount` (0.07) |
+| `flow` | ink-like currents of colour folding into each other, an opening or closing | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `aurora` | curtains of light across the top of a dark frame | background | `colors`, `background`, `speed`, `amount`, `scale` |
+| `mesh` | soft fields of colour drifting into each other, calm | background | `colors` (up to 4), `background`, `speed`, `amount`, `scale` |
+| `plasma` | bright bands of colour bending through each other, loud | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `waves` | contour lines of a slowly changing landscape, technical | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `grid` | a perspective floor rolling towards the viewer under a glowing horizon; text goes in the sky | background | `colors` (lines, horizon), `background`, `speed`, `amount`, `scale` |
+| `stars` | flying forward through stars streaming from a point | background | `colors`, `background`, `speed`, `amount`, `at` |
+| `halftone` | a dot grid growing and shrinking like print | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `edge-glow` | light flowing around a card that is working | layer just before the card | `colors`, `speed`, `amount`, `box` (`760x460 @50% 42%`: size in px, centre in % of the frame; give the card the same numbers), `radius` (px) |
+| `sweep` | a band of light crossing a title once per period | layer just after the title | `colors` (the first), `speed`, `amount` (0.35), `every` (`3s`), `angle` (deg) |
+| `rays` | shafts of light falling from a point, slowly turning | layer over a background | `colors`, `speed`, `amount`, `at` (`50% 0%` for light from above) |
+| `ripple` | rings spreading from a point, one every period: behind a mark or a button | layer just before the mark | `colors`, `speed`, `amount`, `scale`, `at`, `every` |
+| `particles` | soft points of light drifting and twinkling | layer over a background | `colors`, `speed`, `amount`, `scale`, `direction` (270, up) |
+| `light-leak` | warm light spilling in from the edges, as from a lens | layer last, over the text | `colors`, `speed`, `amount` (0.55) |
+| `scanlines` | the lines and slow rolling band of an old screen | layer last | `speed`, `amount` (0.25), `scale` |
+| `grain` | film grain | layer last | `speed`, `amount` (0.07) |
 
 - Values are `key: value` after the name, separated by `;`. Colours are hex (`colors: #3d7bff #9861ff`), `speed` multiplies the motion, `amount` is the strength, `quality` the share of pixels drawn. A name or value that does not read is an error from `tingly-design check`.
+- The shared values change the shape, not only the colour: `scale: 2` draws the pattern twice as large, `direction: 270` (degrees: 0 right, 90 down, 270 up) is where a field or particles drift, `at: 50% 0%` is where rays, ripples and stars come from, and `region: 0% 55% 100% 45%` (left, top, width, height in % of the frame) fits the whole effect into that part of the frame with a soft edge, for an aurora along the bottom only.
+- Layer two when one is not enough: a background first, a light layer (`particles`, `rays`, `light-leak`) over it, `grain` or `scanlines` last.
 - `data-fx-tall="edge-glow; box: …"` replaces it in one format, like `data-in-tall`.
 - The embed stays empty: the player writes the shader in. When WebGL2 is off, a built-in effect draws a simpler CSS version and the editor says so.
 - Fade a framing effect in with what it frames (`data-in` on the embed), and keep to one or two effects a scene.

@@ -91,7 +91,7 @@ At most 200 elements on a slide.
 
 ### Built-in effects
 
-A background of moving light, drawn with WebGL2: an empty embed whose `data-fx` names one of `flow`, `aurora`, `mesh`, `edge-glow`, `sweep`, `grain` and, after `;`, its values (`colors: #3d7bff #9861ff; speed: 0.5`). The presets and their values are in `.claude/skills/motion/SKILL.md` (Shader effects). It stands still while editing and in the PDF, moves while presenting and in the downloaded HTML, and draws a simpler CSS version where WebGL2 is off. A background goes first in the section; keep one per slide and the text readable over it.
+A background of moving light, drawn with WebGL2: an empty embed whose `data-fx` names one of the sixteen presets (backgrounds such as `flow`, `aurora`, `mesh`, `plasma`, `waves`, `grid`, `stars`, `halftone`; layers such as `particles`, `rays`, `light-leak`) and, after `;`, its values (`colors: #3d7bff #9861ff; speed: 0.5`). The presets and their values are in `.claude/skills/motion/SKILL.md` (Shader effects). It stands still while editing and in the PDF, moves while presenting and in the downloaded HTML, and draws a simpler CSS version where WebGL2 is off. A background goes first in the section; keep one per slide and the text readable over it.
 
 ```html
 <x-embed data-fx="aurora; colors: #3d7bff #9861ff" style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>

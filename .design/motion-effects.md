@@ -1,6 +1,6 @@
 # Motion effects: shader layers in a motion piece
 
-Status: **已实施** (the contract, the WebGL2 runtime, six built-in presets behind `data-fx` with a CSS stand-in when WebGL2 is off, and a sample, `projects/motion-effects/`); checker errors for hand-written GLSL and a preset picker in the editor are open (§6). The engines weighed, and the measurements behind the choice, are in `.research/motion-effects.md`.
+Status: **已实施** (the contract, the WebGL2 runtime, sixteen built-in presets behind `data-fx` with shared values that reshape them with a CSS stand-in when WebGL2 is off, and a sample, `projects/motion-effects/`); checker errors for hand-written GLSL and a preset picker in the editor are open (§6). The engines weighed, and the measurements behind the choice, are in `.research/motion-effects.md`.
 
 The effects layer of the motion kind (`.design/motion.md`): what an effect is, how it stays frame-exact in export, which engine draws it, and what makes an effect worth having on screen.
 
@@ -33,15 +33,26 @@ The effects layer of the motion kind (`.design/motion.md`): what an effect is, h
 <x-embed data-fx="edge-glow; box: 760x460 @50% 42%; radius: 36" data-seek data-in="fade 1s @0.15s" style="position:absolute;left:0;top:0;width:100%;height:100%"></x-embed>
 ```
 
-| Preset | What it is | Its place | Values besides `quality` |
+| Preset | What it is | Its place | Values besides `quality` and `region` |
 |---|---|---|---|
-| `flow` | ink-like currents of colour folding into each other (domain-warped noise) | background | `colors` (3), `background`, `speed`, `amount` |
-| `aurora` | curtains of light drifting across the top of a dark frame | background | `colors`, `background`, `speed`, `amount` |
-| `mesh` | soft fields of colour drifting into each other | background | `colors` (4), `background`, `speed`, `amount` |
-| `edge-glow` | light flowing around a box: a card that is working | layer under the card | `colors`, `speed`, `amount`, `box` (`760x460 @50% 42%`: size in px, centre in % of the embed), `radius` (px) |
-| `sweep` | a band of light crossing once per period, then resting out of frame | layer over a title | `colors` (the first), `speed`, `amount`, `every` (`3s`), `angle` (deg) |
-| `grain` | film grain, a new pattern every 1/24 s | layer over everything | `speed`, `amount` |
+| `flow` | ink-like currents of colour folding into each other, an opening or closing | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `aurora` | curtains of light across the top of a dark frame | background | `colors`, `background`, `speed`, `amount`, `scale` |
+| `mesh` | soft fields of colour drifting into each other, calm | background | `colors` (up to 4), `background`, `speed`, `amount`, `scale` |
+| `plasma` | bright bands of colour bending through each other, loud | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `waves` | contour lines of a slowly changing landscape, technical | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `grid` | a perspective floor rolling towards the viewer under a glowing horizon; text goes in the sky | background | `colors` (lines, horizon), `background`, `speed`, `amount`, `scale` |
+| `stars` | flying forward through stars streaming from a point | background | `colors`, `background`, `speed`, `amount`, `at` |
+| `halftone` | a dot grid growing and shrinking like print | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `edge-glow` | light flowing around a card that is working | layer just before the card | `colors`, `speed`, `amount`, `box` (`760x460 @50% 42%`: size in px, centre in % of the frame; give the card the same numbers), `radius` (px) |
+| `sweep` | a band of light crossing a title once per period | layer just after the title | `colors` (the first), `speed`, `amount` (0.35), `every` (`3s`), `angle` (deg) |
+| `rays` | shafts of light falling from a point, slowly turning | layer over a background | `colors`, `speed`, `amount`, `at` (`50% 0%` for light from above) |
+| `ripple` | rings spreading from a point, one every period: behind a mark or a button | layer just before the mark | `colors`, `speed`, `amount`, `scale`, `at`, `every` |
+| `particles` | soft points of light drifting and twinkling | layer over a background | `colors`, `speed`, `amount`, `scale`, `direction` (270, up) |
+| `light-leak` | warm light spilling in from the edges, as from a lens | layer last, over the text | `colors`, `speed`, `amount` (0.55) |
+| `scanlines` | the lines and slow rolling band of an old screen | layer last | `speed`, `amount` (0.25), `scale` |
+| `grain` | film grain | layer last | `speed`, `amount` (0.07) |
 
+- **Shared values reshape any preset.** Besides its own values, a preset reads `scale` (the pattern's size), `direction` (where a field drifts, in degrees: 0 right, 90 down) and `at` (the point rays, ripples and stars come from) where they mean something, and every preset reads `region` (`0% 55% 100% 45%`: left, top, width, height): the shader runs as if the region were the whole embed and its edge is feathered, so an effect is fitted into part of the frame rather than cut out of it. These answer "can it look different" without a new preset per variant; what they cannot change is the kind of motion, which is what a preset is. A composable graph (noise, palette, mask, motion as parts) was weighed and left: it covers more, but its values stop being concrete and a person can no longer say what a line does.
 - **One attribute, values written out.** The preset name, then `key: value` pairs separated by `;`, the way `data-keys` reads. Values are concrete (`#3d7bff`, `760x460 @50% 42%`, `3s`), never aliases, and a value left out takes the preset's default (brand colours on near-black). `data-fx-<format>` replaces it in one format, like the timing attributes, for a box that sits elsewhere in a tall frame.
 - **Generated where it is drawn.** `fxMarkup` in core (`motionFx.ts`) turns the value into the embed's page: a canvas, the preset's shader with the values as constants, and the runtime. The motion player and renderer, the editing stage, a slide and a deck's downloaded HTML and PDF all call it, so the file stays one line and a fix to a preset reaches every piece. The cost is that a preset's look can change under an existing piece when the preset is improved; a person who wants it frozen copies the markup in by hand.
 - **Checked like the subset.** An unknown preset, a value the preset does not read or a value that does not parse is an error from `fxIssues`, through the slide checker that scenes share, so a model's typo comes back with a message instead of quietly falling back to a default.
@@ -79,4 +90,5 @@ What it gives up is compute shaders, so simulations (fluid, many-particle physic
 
 - **Picking a preset in the editor.** Presets are written by hand or by a model today. The import menu could offer them beside "From a project…", and the panel could show a selected effect's values as fields (colours, the box, speed), written back to `data-fx`.
 - **Errors in the checker.** GLSL compile errors in a hand-written shader reach the editor at run time (§3) but not the motion checker, so a model's broken shader does not come back with a line number, like a slide subset error. Built-in presets are checked (§2.1).
-- **More presets** when a piece needs one: particles drifting to a point, a light leak, a focus pull. Each needs a job (§5), a CSS stand-in and a row in §2.1.
+- **More presets** when a piece needs one: a focus pull, a liquid distortion over the content (needs the scene as a texture, which the page does not have), particles gathering into a shape. Each needs a job (§5), a CSS stand-in or a stated reason for none, and a row in §2.1.
+- **CSS stand-ins** are soft gradients for every background preset; the layers that only add light (rays, ripple, particles, scanlines, grain) draw nothing without WebGL2.

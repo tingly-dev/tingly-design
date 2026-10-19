@@ -14,6 +14,21 @@ describe('built-in effects (data-fx)', () => {
     expect(parseFx('lava')).toBeNull();
   });
 
+  it('reads the shared values: scale, direction, a point and a region', () => {
+    const s = parseFx('particles; scale: 2; direction: 0; region: 0% 50% 100% 50%')!;
+    expect(s.scale).toBe(2);
+    expect(s.direction).toBe(0);
+    expect(s.region).toEqual([0, 50, 100, 50]);
+    expect(parseFx('particles')!.direction).toBe(270);
+    expect(parseFx('rays; at: 50% 0%')!.center).toEqual([50, 0]);
+    expect(parseFx('rays')!.region).toEqual([0, 0, 100, 100]);
+    expect(fxIssues('grain; region: 0% 0% 50% 50%')).toEqual([]);
+    expect(fxIssues('rays; at: middle')[0]).toMatch(/a point/);
+    expect(fxIssues('aurora; region: 0% 0% 0% 50%')[0]).toMatch(/left, top, width and height/);
+    expect(fxIssues('grain; at: 50% 50%')[0]).toMatch(/does not use "at"/);
+    expect(fxShader(parseFx('aurora; region: 0% 50% 100% 50%')!)).toContain('const vec4 REGION = vec4(0.0, 0.5, 1.0, 0.5);');
+  });
+
   it('says what does not read', () => {
     expect(fxIssues('aurora; colors: #3d7bff #9861ff; speed: 0.5')).toEqual([]);
     expect(fxIssues('lava')[0]).toMatch(/not an effect/);
