@@ -1,3 +1,4 @@
+import { SideResizer } from '../SideResizer';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { attr } from '@dc/core';
@@ -149,6 +150,7 @@ export function RightPanel() {
   ];
   return (
     <aside className="panel" aria-label={t('panel.label')}>
+      <SideResizer id="inspector" edge="start" name={t('panel.label')} />
       <div className="tabs" role="tablist">
         {tabs.map((x) => (
           <button key={x.id} role="tab" aria-selected={tab === x.id} onClick={() => useStore.setState({ panelTab: x.id })}>

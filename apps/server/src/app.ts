@@ -48,6 +48,7 @@ import {
   INDEX_FILE,
   cleanGroup,
   retitle,
+  isTurn,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -82,7 +83,8 @@ import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
 import { packProject, unpackProject } from './archive';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
-import { claudeAvailable, forgetConversation, readConversation, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
+import { readTranscript, recordTurn } from './transcript';
+import { claudeAvailable, forgetConversation, isDelegateRunning, readConversation, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
 import { logError, logInfo, logWarn } from './log';
 import { PdfError, printPdf } from './pdf';
 import type { ExportReport } from '@dc/export/timing';
@@ -707,6 +709,31 @@ app.get('/api/projects/:p/conversation', (c) => {
   const p = c.req.param('p');
   projectDir(p);
   return c.json(readConversation(p));
+});
+
+/** What was said and done in the project, newest turns last (.design/chat-panel.md). */
+app.get('/api/projects/:p/transcript', (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  // a turn the server lost with its process (a restart, a crash) is not still running
+  const now = Date.now();
+  return c.json(
+    readTranscript(p).map((turn) =>
+      turn.state === 'running' && turn.agent === 'claude' && now - turn.startedAt > 20_000 && !isDelegateRunning(turn.id)
+        ? { ...turn, state: 'error' as const, answer: turn.answer ?? trOf(c)('prompt.run.interrupted') }
+        : turn,
+    ),
+  );
+});
+
+/** A turn the editor ran itself (the fast model's), written when it ends. Claude Code's turns are written by the run. */
+app.post('/api/projects/:p/transcript', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  const turn = await c.req.json<unknown>();
+  if (!isTurn(turn) || turn.agent !== 'fast' || turn.source !== 'editor') throw new HttpError(400, 'badRequest', { detail: 'turn' });
+  recordTurn(p, turn);
+  return c.json({ ok: true });
 });
 
 app.delete('/api/projects/:p/conversation', (c) => {

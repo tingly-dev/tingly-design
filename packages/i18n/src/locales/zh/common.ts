@@ -15,6 +15,8 @@ export default {
   duplicate: '复制一份',
   edit: '编辑',
   loading: '加载中…',
+  resizeSide: '调整{{name}}的宽度',
+  resizeSideHint: '拖动调整宽度，双击恢复默认',
   more: '更多',
   none: '无',
   ok: '好',

@@ -33,6 +33,7 @@ export default {
   app: {
     docTitle: '{{title}} · 设计系统',
     label: '设计系统',
+    listTab: '列表',
     nameLabel: '设计系统名称',
     renameHint: '双击改名',
     theme: '主题',

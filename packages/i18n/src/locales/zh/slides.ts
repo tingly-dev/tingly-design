@@ -54,6 +54,7 @@ export default {
   },
   strip: {
     label: '幻灯片',
+    tab: '页面',
     list: '幻灯片列表',
     thumb: '第 {{n}} 页：{{title}}',
     skipped: '跳过',

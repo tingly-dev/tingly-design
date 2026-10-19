@@ -12,6 +12,8 @@ export default {
   duplicate: 'Duplicate',
   edit: 'Edit',
   loading: 'Loading…',
+  resizeSide: 'Resize {{name}}',
+  resizeSideHint: 'Drag to resize, double-click to reset',
   more: 'More',
   none: 'None',
   ok: 'OK',

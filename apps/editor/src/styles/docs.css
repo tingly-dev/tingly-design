@@ -4,7 +4,7 @@
 
 
 .app.docs {
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: var(--w-doctabs, 220px) 1fr;
   grid-template-rows: 1fr;
   background: var(--panel-2);
   --doc-sans: system-ui, -apple-system, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
@@ -13,7 +13,7 @@
 
 
 .app.docs.with-rail {
-  grid-template-columns: 220px 1fr 320px;
+  grid-template-columns: var(--w-doctabs, 220px) 1fr var(--w-docrail, 320px);
 }
 
 

@@ -30,7 +30,7 @@ SUITES = {
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',
     'ai_settings': 'dev-bare',
     'conversation': 'fake-claude',
-    'attach': 'build', 'run_feed': 'build', 'dock': 'build', 'import_here': 'build', 'import_board': 'build',
+    'attach': 'build', 'run_feed': 'build', 'chat_panel': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',
     'check_snapshots': 'build',
     'embed': 'bundle',
     'delegate': 'real',

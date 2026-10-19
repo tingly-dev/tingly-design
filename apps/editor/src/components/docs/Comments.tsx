@@ -1,3 +1,4 @@
+import { SideResizer } from '../SideResizer';
 import { useState } from 'react';
 import { tabFile, type DocThread } from '@dc/core';
 import { delegateToClaude } from '../../fastedit';
@@ -108,6 +109,7 @@ export function CommentsRail() {
   if (!tab) return null;
   return (
     <aside className="crail" aria-label={tr('docs.comments.title')}>
+      <SideResizer id="docrail" edge="start" name={tr('docs.comments.title')} />
       <header>
         <h3>{tr('docs.comments.title')}</h3>
         {resolvedCount > 0 && (

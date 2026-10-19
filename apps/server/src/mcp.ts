@@ -169,7 +169,7 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
     case 'prompt': {
       const p = await resolveProject(ctx, str(a.project), 'prompt');
       const session = str(a.session);
-      const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: session === 'new' ? undefined : session, fresh: session === 'new', fast: a.fast === true });
+      const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: session === 'new' ? undefined : session, fresh: session === 'new', fast: a.fast === true, source: 'mcp' });
       // a run that failed or was stopped still says so in `outcome`, with what it changed before it ended
       return json(r);
     }

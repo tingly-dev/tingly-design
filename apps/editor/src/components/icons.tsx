@@ -45,7 +45,8 @@ import {
   IconLayoutGrid,
   IconLayoutRows,
   IconLayoutSidebarRight,
-  IconPictureInPicture,
+  IconLayoutSidebar,
+  IconLayoutBottombar,
   IconLine,
   IconLink,
   IconLock,
@@ -134,8 +135,8 @@ export const Lock = tabler(IconLock, 14);
 export const Unlock = tabler(IconLockOpen, 14);
 export const Caret = () => <IconChevronDown size={12} stroke={2} aria-hidden="true" />;
 export const History = tabler(IconHistory, 14);
-export const DockRight = tabler(IconLayoutSidebarRight, 14);
-export const Floating = tabler(IconPictureInPicture, 14);
+export const DockLeft = tabler(IconLayoutSidebar, 14);
+export const DockBottom = tabler(IconLayoutBottombar, 14);
 export const Expand = tabler(IconArrowsMaximize, 14);
 export const Download = tabler(IconDownload, 14);
 export const Plus = tabler(IconPlus, 14);

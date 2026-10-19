@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { Attachment } from '@dc/core';
 import { toast, useStore, type LastRun } from '../store';
@@ -6,14 +7,16 @@ import { stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
-import { BarPill, BarTools, DockHost, DockTab, HistoryList, useDock, useDockKeys } from './AgentBar';
+import { BarPill, BarTools, HistoryList, useBarKeys } from './AgentBar';
+import { useChat } from './ChatPanel';
 import { Send, Stop } from './icons';
 
 /**
  * The request bar every kind shares: the run feed (or the request history)
  * above, a head row, attachments, the box with send or stop, and the hints
- * under it. Docked to the right edge or floating at the bottom, folding to a
- * pill. What the head says and where a request goes are the kind's: the canvas,
+ * under it. Floating at the bottom of the work and folding to a pill, or, when
+ * the person put it on the left, only the input part at the bottom of the
+ * conversation column (the column itself is `ChatPanel`). What the head says and where a request goes are the kind's: the canvas,
  * deck and motion bar (`PromptBar`) picks Fast AI or Claude Code and names what
  * is pointed at; the other kinds (`AskClaude`) hand everything to Claude Code.
  */
@@ -52,8 +55,9 @@ export function RequestBar({
   const attach = useAttachments();
   const collapsed = useStore((s) => s.barCollapsed);
   const historyOpen = useStore((s) => s.historyOpen);
-  const { docked, mode } = useDock();
-  useDockKeys(box);
+  const chat = useChat();
+  const inColumn = chat.left && !!chat.composer;
+  useBarKeys(box);
   useAutoGrow(box, text);
 
   const busy = !!busyRun;
@@ -87,6 +91,7 @@ export function RequestBar({
     }
     // the request moves into the feed at once; it comes back if the run could not start
     setText('');
+    if (chat.left) useStore.setState({ chatTab: 'chat' });
     if (await onSend(req, files)) attach.clear();
     else setText((cur) => cur || req);
   };
@@ -94,69 +99,77 @@ export function RequestBar({
     setText(p);
     requestAnimationFrame(() => box.current?.focus());
   };
+  // the column's record puts a request back in the box and shows a file through this bar
+  const { bridge } = chat;
+  const latest = useRef({ reuse, onOpen });
+  latest.current = { reuse, onOpen };
+  useEffect(() => {
+    if (!chat.left) return;
+    bridge.current = { onOpen: (f) => latest.current.onOpen?.(f), onReuse: (p) => latest.current.reuse(p) };
+    return () => {
+      bridge.current = {};
+    };
+  }, [chat.left, bridge]);
 
-  if (collapsed && !docked)
+  if (collapsed && !inColumn)
     return (
       <div className={`${variant} collapsed`} role="region" aria-label={label}>
         <BarPill />
       </div>
     );
 
-  return (
-    <DockHost docked={docked}>
-      <div
-        className={`${variant}${docked ? ` agent-dock ${mode}` : ''}${attach.over ? ' dropping' : ''}`}
-        role="region"
-        aria-label={label}
-        onDragOver={attach.handlers.onDragOver}
-        onDragLeave={attach.handlers.onDragLeave}
-        onDrop={attach.handlers.onDrop}
-      >
-        {docked && mode === 'auto' && <DockTab />}
-        {historyOpen ? <HistoryList onReuse={reuse} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />}
-        <div className="head">
-          {head}
-          <BarTools />
-        </div>
-        <AttachTray items={attach.items} onRemove={attach.remove} />
-        <div className="body">
-          <AttachButton onFiles={(f) => void attach.add(f)} />
-          <textarea
-            ref={box}
-            rows={1}
-            value={text}
-            placeholder={placeholder}
-            aria-label={t('prompt.bar.request')}
-            onChange={(e) => setText(e.target.value)}
-            onPaste={attach.handlers.onPaste}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === 'Escape' && docked && mode === 'auto') e.currentTarget.blur();
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-          />
-          {busy ? (
-            <button className="btn outline send" onClick={() => stopRun(busyRun)}>
-              <Stop /> {t('common.stop')}
-            </button>
-          ) : (
-            <button className="btn primary send" onClick={() => void submit()} disabled={disabled || keeping || !text.trim()}>
-              <Send /> {t('common.send')}
-            </button>
-          )}
-        </div>
-        {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
-        {blocked ? (
-          <div className="prompt-hint warn" role="status">
-            {busyText}
-          </div>
+  const bar = (
+    <div
+      className={`${variant}${inColumn ? ' chat-composer' : ''}${attach.over ? ' dropping' : ''}`}
+      role="region"
+      aria-label={label}
+      onDragOver={attach.handlers.onDragOver}
+      onDragLeave={attach.handlers.onDragLeave}
+      onDrop={attach.handlers.onDrop}
+    >
+      {!inColumn && (historyOpen ? <HistoryList onReuse={reuse} onOpen={onOpen} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />)}
+      <div className="head">
+        {head}
+        <BarTools />
+      </div>
+      <AttachTray items={attach.items} onRemove={attach.remove} />
+      <div className="body">
+        <AttachButton onFiles={(f) => void attach.add(f)} />
+        <textarea
+          ref={box}
+          rows={1}
+          value={text}
+          placeholder={placeholder}
+          aria-label={t('prompt.bar.request')}
+          onChange={(e) => setText(e.target.value)}
+          onPaste={attach.handlers.onPaste}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void submit();
+            }
+          }}
+        />
+        {busy ? (
+          <button className="btn outline send" onClick={() => stopRun(busyRun)}>
+            <Stop /> {t('common.stop')}
+          </button>
         ) : (
-          text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
+          <button className="btn primary send" onClick={() => void submit()} disabled={disabled || keeping || !text.trim()}>
+            <Send /> {t('common.send')}
+          </button>
         )}
       </div>
-    </DockHost>
+      {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
+      {blocked ? (
+        <div className="prompt-hint warn" role="status">
+          {busyText}
+        </div>
+      ) : (
+        text.includes('\n') && <div className="prompt-hint">{t('prompt.bar.enterHint')}</div>
+      )}
+    </div>
   );
+  return inColumn ? createPortal(bar, chat.composer!) : bar;
 }

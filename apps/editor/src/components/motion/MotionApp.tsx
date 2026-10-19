@@ -11,7 +11,7 @@ import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
-import { useDock } from '../AgentBar';
+import { useChat } from '../ChatPanel';
 import { Checklist, Film, Gif as GifIcon, Note, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
@@ -65,7 +65,7 @@ export function MotionApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const panelOpen = useStore((s) => s.panelOpen);
   const barCollapsed = useStore((s) => s.barCollapsed);
-  const barDock = useDock();
+  const barInColumn = useChat().left;
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const assetRev = useStore((s) => s.assetRev);
@@ -384,7 +384,7 @@ export function MotionApp() {
         />
         {notesOpen && <MotionNotes motion={motion} scenes={scenes} sceneId={stage.id} />}
         {issuesOpen && <MotionIssues info={info} />}
-        <div className={`mprompt${barDock.docked ? ' docked' : barCollapsed ? ' collapsed' : ''}`}>
+        <div className={`mprompt${barInColumn ? ' in-column' : barCollapsed ? ' collapsed' : ''}`}>
           <PromptBar
             onOpen={(f) => {
               const w = timeline.scenes.find((x) => sceneFile(x.id) === f);

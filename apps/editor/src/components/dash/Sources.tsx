@@ -1,3 +1,4 @@
+import { SideResizer } from '../SideResizer';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -401,6 +402,7 @@ export function SourcesPanel() {
   const calc = open ? calcs.find((c) => c.id === open) : undefined;
   return (
     <aside className="dashside" aria-label={t('dash.sources.label')}>
+      <SideResizer id="dashside" edge="start" name={t('dash.sources.label')} />
       {open && (entry || calc) ? (
         <div className="sview">
           <button className="btn ghost" onClick={() => useDash.setState({ open: null, pick: null })}>

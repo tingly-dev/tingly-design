@@ -4,7 +4,7 @@
 
 
 .app.slides {
-  grid-template-columns: 216px 1fr auto;
+  grid-template-columns: var(--w-strip, 216px) 1fr auto;
 }
 
 

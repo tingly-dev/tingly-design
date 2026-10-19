@@ -10,7 +10,7 @@
 
 
 .app.ds {
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: var(--w-dsnav, 220px) 1fr;
   background: var(--panel-2);
 }
 

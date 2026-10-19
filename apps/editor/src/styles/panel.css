@@ -4,7 +4,7 @@
 
 
 .panel {
-  width: var(--panel-w);
+  width: var(--w-inspector, var(--panel-w));
   background: var(--panel);
   border-left: 1px solid var(--line);
   display: flex;
@@ -833,4 +833,85 @@ textarea.code:focus {
 
 .tvname:hover {
   background: var(--hover);
+}
+
+
+/* ------------------------------------------------------- side resizing */
+
+
+/* the edge of a side column the person drags (SideResizer), placed by the column's width against the .app that holds it */
+.side-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 6;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+
+.side-resizer[data-side='strip'] {
+  left: calc(var(--w-strip, 216px) - 5px);
+}
+
+
+.side-resizer[data-side='doctabs'] {
+  left: calc(var(--w-doctabs, 220px) - 5px);
+}
+
+
+.side-resizer[data-side='dsnav'] {
+  left: calc(var(--w-dsnav, 220px) - 5px);
+}
+
+
+.side-resizer[data-side='inspector'] {
+  right: calc(var(--w-inspector, var(--panel-w)) - 5px);
+}
+
+
+.side-resizer[data-side='docrail'] {
+  right: calc(var(--w-docrail, 320px) - 5px);
+}
+
+
+.side-resizer[data-side='dashside'] {
+  right: calc(var(--w-dashside, 400px) - 5px);
+}
+
+
+.side-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+
+.side-resizer:hover::after,
+.side-resizer:focus-visible::after,
+body.resizing-side .side-resizer::after {
+  opacity: 0.8;
+}
+
+
+.side-resizer:focus-visible {
+  outline: none;
+}
+
+
+body.resizing-side {
+  cursor: col-resize;
+  user-select: none;
+}
+
+
+body.resizing-side iframe {
+  pointer-events: none;
 }

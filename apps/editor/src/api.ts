@@ -1,4 +1,4 @@
-import type { Actor, AgentStep, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -86,7 +86,7 @@ export type ServerEvent =
   | { type: 'file'; path: string; content: string; version: string; actor: Actor }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
-  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean }
+  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
   | { type: 'assets'; path?: string };
 
 async function json<T>(res: Response): Promise<T> {
@@ -243,6 +243,13 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then((r) => json<{ id: string }>(r)),
+
+  /** the project's stored conversation record, oldest first (.design/chat-panel.md) */
+  transcript: (p: string) => call(at(`api/projects/${enc(p)}/transcript`)).then((r) => json<Turn[]>(r)),
+
+  /** hand the server a finished fast-model turn to keep; best effort */
+  keepTurn: (p: string, turn: Turn) =>
+    void call(at(`api/projects/${enc(p)}/transcript`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(turn) }).catch(() => {}),
 
   conversation: (p: string) => call(at(`api/projects/${enc(p)}/conversation`)).then((r) => json<Conversation | null>(r)),
 

@@ -1,3 +1,5 @@
+import { SideResizer } from '../SideResizer';
+import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useState } from 'react';
 import { DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
@@ -201,36 +203,39 @@ export function DsApp() {
     </TopBar>
     <div className="app ds" data-theme={theme}>
       <style>{pageCss}</style>
-      <nav className="dsnav" aria-label={tr('ds.app.label')}>
-        <div className="hint ns">window.{index.namespace}</div>
-        {VIEWS.map((v) => (
-          <button key={v} className="navi" aria-current={view === v ? 'page' : undefined} onClick={() => setView(v)}>
-            {tr(`ds.nav.${v}`)}
-            <span className="cnt">
-              {v === 'colors' ? t.colors.length : v === 'type' ? t.groups.reduce((n, g) => n + g.styles.length, 0) : v === 'space' ? t.others.reduce((n, f) => n + f.tokens.length, 0) : ''}
-            </span>
-          </button>
-        ))}
-        {t.issues.length > 0 && (
-          <button className="navi warn" aria-current={view === 'issues' ? 'page' : undefined} onClick={() => setView('issues')}>
-            {tr('ds.nav.issues')} <span className="cnt">{t.issues.length}</span>
-          </button>
-        )}
-        <div className="navfoot">
-          {t.themes.length > 1 && (
-            <label className="themes">
-              {tr('ds.app.theme')}
-              <select value={theme} onChange={(e) => setTheme(e.target.value)} aria-label={tr('ds.app.theme')}>
-                {t.themes.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+      <ListColumn label={tr('ds.app.listTab')} className="ds">
+        <nav className="dsnav" aria-label={tr('ds.app.label')}>
+          <SideResizer id="dsnav" edge="end" name={tr('ds.app.label')} />
+          <div className="hint ns">window.{index.namespace}</div>
+          {VIEWS.map((v) => (
+            <button key={v} className="navi" aria-current={view === v ? 'page' : undefined} onClick={() => setView(v)}>
+              {tr(`ds.nav.${v}`)}
+              <span className="cnt">
+                {v === 'colors' ? t.colors.length : v === 'type' ? t.groups.reduce((n, g) => n + g.styles.length, 0) : v === 'space' ? t.others.reduce((n, f) => n + f.tokens.length, 0) : ''}
+              </span>
+            </button>
+          ))}
+          {t.issues.length > 0 && (
+            <button className="navi warn" aria-current={view === 'issues' ? 'page' : undefined} onClick={() => setView('issues')}>
+              {tr('ds.nav.issues')} <span className="cnt">{t.issues.length}</span>
+            </button>
           )}
-        </div>
-      </nav>
+          <div className="navfoot">
+            {t.themes.length > 1 && (
+              <label className="themes">
+                {tr('ds.app.theme')}
+                <select value={theme} onChange={(e) => setTheme(e.target.value)} aria-label={tr('ds.app.theme')}>
+                  {t.themes.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        </nav>
+      </ListColumn>
       <main className="dsmain">
         {view === 'overview' && <Overview theme={theme} />}
         {view === 'colors' && <ColorsView t={t} theme={theme} />}
