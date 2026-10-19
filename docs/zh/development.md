@@ -10,7 +10,7 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 
 其他套件按中文的标签找元素，所以浏览器用 `zh-CN` 语言运行；英文由 `i18n.py` 覆盖。
 
-`pnpm e2e` 一条命令跑完下表里除 `delegate` 以外的所有套件：按组先起好各自要的东西（带 mock 模型的 `pnpm dev`；给 `ai_settings` 用的不配模型的 `pnpm dev`；自己起服务的套件先 `pnpm build`；`embed` 先 `pnpm bundle`），逐个跑完，最后打印一张表；哪些检查没过写在 `e2e/out/report.md` 和 `report.json`，每个套件的输出在 `e2e/out/logs/`。`pnpm e2e slides docs` 只跑这几个，`--smoke` 跑 PR 用的小集合，`--list` 列出分组，`--real` 加上 `delegate`。套件会改示例项目，再用 `git checkout` 改回去，所以 `projects/` 里有没提交的改动时它不开跑（`--force` 强制跑）。整套大约十分钟。
+`pnpm e2e` 一条命令跑完下表里除 `delegate` 以外的所有套件：按组先起好各自要的东西（带 mock 模型的 `pnpm dev`；给 `ai_settings` 用的不配模型的 `pnpm dev`；自己起服务的套件先 `pnpm build`；`embed` 先 `pnpm bundle`），逐个跑完，最后打印一张表（`--jobs 4` 把整套切成四片同时跑，每片用自己的一份仓库副本和自己的端口；`--shard 2/4` 只跑其中一片，CI 就是这样把整套分到四台机器上）；哪些检查没过写在 `e2e/out/report.md` 和 `report.json`，每个套件的输出在 `e2e/out/logs/`。`pnpm e2e slides docs` 只跑这几个，`--smoke` 跑 PR 用的小集合，`--list` 列出分组，`--real` 加上 `delegate`。套件会改示例项目，再用 `git checkout` 改回去，所以 `projects/` 里有没提交的改动时它不开跑（`--force` 强制跑）。整套串行大约十四分钟，切四片并行大约是它的四分之一。
 
 `pnpm eval` 是另一种检查：让无头的 Claude Code 把同一个设计任务各做一遍，一遍用 skill 加命令行，一遍用 MCP 服务，再给它留下的东西打分，出一张对照表（过不过、工具调用数、`check` 和 `look` 的轮数、费用、用时）。需要登录好的 `claude` 和 Chrome，花几美元、要几分钟，所以不在 `pnpm test`、`pnpm e2e` 和 CI 里。`pnpm eval -- --list` 列出任务，`--task`、`--route`、`--runs`、`--model`、`--judge`（再请一次评审看最终的图）和 `--cli "node dist/tingly-design/cli.mjs"`（评测 bundle 或 npm 包，而不是源码）选跑什么，结果在 `evals/out/`。它的纯函数部分（读 transcript、打分）由 `pnpm test` 做单元测试；设计见 `.design/agent-evals.md`。
 
@@ -63,7 +63,7 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 ## CI 里的 e2e
 
-`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report` 产物。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。界面是有意改的时候，先在红了的那次运行的报告里看差异图，再手动运行 E2E patrol 这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
+`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report-<片号>` 产物（全量切成四片，每片一个作业）。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。界面是有意改的时候，先在红了的那次运行的报告里看差异图，再手动运行 E2E patrol 这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
 
 ## 发版
 

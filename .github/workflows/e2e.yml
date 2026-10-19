@@ -11,7 +11,10 @@ name: E2E
 #                set, and a red run stops the release
 #
 # Kept read-only, so a caller (release.yml) needs to grant it nothing more.
-# The report and every suite's output are uploaded as the `e2e-report` artifact.
+# The full set is cut into balanced slices (e2e/run.py --shard), one job each on
+# its own runner, so a run takes the time of its slowest slice, not the sum; the
+# smoke subset is one slice. A slice's report and every suite's output are
+# uploaded as the `e2e-report-<slice>` artifact.
 # See .design/harness.md and docs/en/development.md.
 
 on:
@@ -40,9 +43,13 @@ permissions:
 
 jobs:
   e2e:
-    name: E2E (${{ github.event_name == 'pull_request' && 'smoke' || 'full' }})
+    name: E2E (${{ github.event_name == 'pull_request' && 'smoke' || format('full {0}/4', matrix.shard) }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false  # a red slice should not hide what the others found
+      matrix:
+        shard: ${{ github.event_name == 'pull_request' && fromJSON('[1]') || fromJSON('[1,2,3,4]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -59,17 +66,18 @@ jobs:
         env:
           SUITES: ${{ inputs.suites }}
           MODE: ${{ github.event_name == 'pull_request' && '--smoke' || '' }}
+          SLICE: ${{ github.event_name == 'pull_request' && '1/1' || format('{0}/4', matrix.shard) }}
           # the runner's AppArmor blocks the user namespaces Chrome's sandbox needs (render.ts chromeArgs)
           DC_CHROME_SANDBOX: '0'
         run: |
           # shellcheck disable=SC2086  # SUITES and MODE are word lists
-          python3 e2e/run.py $MODE $SUITES
+          python3 e2e/run.py $MODE --shard "$SLICE" $SUITES
 
       - name: Upload the report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-report
+          name: e2e-report-${{ matrix.shard }}
           path: e2e/out/
           retention-days: 14
 

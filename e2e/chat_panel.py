@@ -13,7 +13,7 @@ from playwright.async_api import async_playwright, expect
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHROME = os.environ.get('DC_CHROME')
-MOCK_PORT = 8793
+MOCK_PORT = 8793 + int(os.environ.get('DC_E2E_OFFSET', 0))  # a parallel lane shifts every port (e2e/run.py)
 
 results = []
 def check(name, ok, extra=''):

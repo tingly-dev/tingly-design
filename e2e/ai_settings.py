@@ -5,6 +5,7 @@ python3 e2e/ai_settings.py  (DC_CHROME=/path/to/chrome to use another Chromium; 
 import os, asyncio, json, urllib.request
 from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
+MOCK = f"http://127.0.0.1:{8790 + int(os.environ.get('DC_E2E_OFFSET', 0))}"  # the mock run.py started for this lane
 SHOTS = os.environ.get('SHOTS')
 CHROME = os.environ.get('DC_CHROME')
 ok = True
@@ -47,7 +48,7 @@ async def main():
         await dlg.locator('[data-preset=custom]').click()
         await dlg.locator('input[placeholder="https://"]').fill('ftp://nope')
         await expect(dlg.locator('.status.bad').first).to_contain_text('http://')
-        await dlg.locator('input[placeholder="https://"]').fill('http://127.0.0.1:8790')
+        await dlg.locator('input[placeholder="https://"]').fill(MOCK)
         await dlg.locator('input[type=password]').fill('test-key')
         await dlg.get_by_role('button', name='Test').click()
         await expect(dlg.locator('.testrow .status.ok')).to_contain_text('Works', timeout=10000)
@@ -55,7 +56,7 @@ async def main():
         await dlg.get_by_role('button', name='Save').click()
         await expect(dlg).to_have_count(0)
         cfg = json.load(urllib.request.urlopen(BASE + '/api/ai-config'))
-        check(cfg['baseUrl']['value'] == 'http://127.0.0.1:8790' and cfg['key'] == {'set': True, 'source': 'saved'}, 'saved, and the key is not sent back')
+        check(cfg['baseUrl']['value'] == MOCK and cfg['key'] == {'set': True, 'source': 'saved'}, 'saved, and the key is not sent back')
         check('test-key' not in json.dumps(cfg), 'no key in the response')
         check(json.load(urllib.request.urlopen(BASE + '/api/health'))['fastEdit'] is True, 'health: fast AI is ready')
         check(cfg['claudeRoute']['value'] == 'shared', 'Claude Code defaults to the shared connection once there is a key')
