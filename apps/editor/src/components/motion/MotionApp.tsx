@@ -355,7 +355,7 @@ export function MotionApp() {
           {error && <div className="dashhint">{error}</div>}
           {effectErrorGroups.map((g) => (
             <div key={`${g.code}:${g.detail}`} className="dashhint">
-              {t(g.code === 'no-webgl2' ? 'motion.effect.noWebgl2' : g.code === 'shader' ? 'motion.effect.shader' : 'motion.effect.draw', { scenes: g.scenes.map((x) => `“${x}”`).join(', '), detail: g.detail })}
+              {t(g.code === 'fallback' ? 'motion.effect.fallback' : g.code === 'no-webgl2' ? 'motion.effect.noWebgl2' : g.code === 'shader' ? 'motion.effect.shader' : 'motion.effect.draw', { scenes: g.scenes.map((x) => `“${x}”`).join(', '), detail: g.detail })}
             </div>
           ))}
         </div>

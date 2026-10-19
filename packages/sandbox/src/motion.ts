@@ -7,7 +7,7 @@
  * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
  */
 import { resolveSrc, urlsAgainst } from './urls';
-import { attrsForFormat, boardFrameDoc, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
+import { attrsForFormat, boardFrameDoc, fxMarkup, isFxEmbed, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 import type { CoverSource, ExportOutcome, ExportRequest } from './motionExport';
 import type { AudioClip } from '@dc/export';
@@ -156,7 +156,9 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     // embeds keep their markup as a string; what's inside them is not part of the scene's DOM
     const embedHtml = new Map<Element, string>();
     for (const x of Array.from(section.querySelectorAll('x-embed'))) {
-      embedHtml.set(x, x.innerHTML);
+      // a built-in effect (data-fx) is handed the preset's markup
+      const fx = x.getAttribute('data-fx');
+      embedHtml.set(x, fx !== null && isFxEmbed({ 'data-fx': fx }, x.innerHTML) ? (fxMarkup(fx) ?? '') : x.innerHTML);
       x.innerHTML = '';
     }
     host.appendChild(section);
@@ -192,7 +194,9 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       if (seekable) {
         window.addEventListener('message', (e) => {
           if (e.source !== frame.contentWindow || e.data?.dcMotion !== 'effect-error') return;
-          const err = { scene: id, code: String(e.data.code ?? ''), detail: String(e.data.detail ?? '') };
+          // a built-in effect draws its CSS version when WebGL2 is off: say so, not that it is gone
+          const code = String(e.data.code ?? '');
+          const err = { scene: id, code: e.data.fallback && code === 'no-webgl2' ? 'fallback' : code, detail: String(e.data.detail ?? '') };
           effectErrors.push(err);
           window.parent.postMessage({ dcm: 'effect-error', ...err }, '*');
         });

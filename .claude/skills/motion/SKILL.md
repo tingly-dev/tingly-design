@@ -73,7 +73,28 @@ Files people brought in (attachments, imported pictures) live under `uploads/`. 
 
 ## Shader effects
 
-For light, noise, grain or glow that CSS cannot draw, put a GLSL ES 3.0 fragment shader in a seekable embed (see `projects/motion-effects/` and copy its runtime script as is):
+For light, noise, grain or glow that CSS cannot draw, start from a built-in effect: an empty seekable embed whose `data-fx` names a preset and its values (`projects/motion-effects/` uses them):
+
+```html
+<x-embed data-fx="aurora" data-seek style="position:absolute;left:0;top:0;width:100%;height:100%"></x-embed>
+<x-embed data-fx="edge-glow; box: 760x460 @50% 42%; radius: 36" data-seek data-in="fade 1s @0.15s" style="position:absolute;left:0;top:0;width:100%;height:100%"></x-embed>
+```
+
+| Preset | Use it for | Where it goes | Values (all optional) |
+|---|---|---|---|
+| `flow` | ink-like currents of colour, an opening or closing background | first child | `colors` (3), `background`, `speed`, `amount` |
+| `aurora` | curtains of light across the top of a dark frame | first child | `colors`, `background`, `speed`, `amount` |
+| `mesh` | soft fields of colour drifting, a calm background | first child | `colors` (up to 4), `background`, `speed`, `amount` |
+| `edge-glow` | light flowing around a card that is working | just before the card | `colors`, `speed`, `amount`, `box` (`760x460 @50% 42%`: size in px, centre in % of the frame; give the card the same numbers), `radius` (px) |
+| `sweep` | a band of light crossing a title once per period | just after the title | `colors` (the first), `speed`, `amount` (0.35), `every` (`3s`), `angle` (deg) |
+| `grain` | film grain over everything | last child | `speed`, `amount` (0.07) |
+
+- Values are `key: value` after the name, separated by `;`. Colours are hex (`colors: #3d7bff #9861ff`), `speed` multiplies the motion, `amount` is the strength, `quality` the share of pixels drawn. A name or value that does not read is an error from `tingly-design check`.
+- `data-fx-tall="edge-glow; box: …"` replaces it in one format, like `data-in-tall`.
+- The embed stays empty: the player writes the shader in. When WebGL2 is off, a built-in effect draws a simpler CSS version and the editor says so.
+- Fade a framing effect in with what it frames (`data-in` on the embed), and keep to one or two effects a scene.
+
+Only when no preset gives the look, write a GLSL ES 3.0 fragment shader in a seekable embed (copy the runtime script from `projects/motion-effects/scenes/outro.html` as is):
 
 ```html
 <x-embed data-seek style="position:absolute;left:0;top:0;width:100%;height:100%">

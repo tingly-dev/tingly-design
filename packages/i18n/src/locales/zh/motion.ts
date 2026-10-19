@@ -125,6 +125,7 @@ export default {
   /** a shader layer (WebGL2 embed) that could not draw; the piece plays on without it */
   effect: {
     noWebgl2: '{{scenes}} 里的特效没有生效：这个浏览器无法启动 WebGL2。请在 Chrome 的“设置 › 系统”里打开“使用图形加速”后刷新。作品会在没有特效的情况下继续播放。',
+    fallback: '{{scenes}} 里的特效显示的是简化版：这个浏览器无法启动 WebGL2。请在 Chrome 的“设置 › 系统”里打开“使用图形加速”后刷新。在服务器上导出的视频仍是完整特效。',
     shader: '{{scenes}} 里的特效没有生效：着色器无法编译。{{detail}}',
     draw: '{{scenes}} 里的特效停止绘制：{{detail}}',
   },
