@@ -343,10 +343,16 @@ export async function seedSamples(): Promise<boolean> {
   // whatever a person's machine keeps beside a project (journal, run reports, Claude Code's
   // conversation, the transcript: every dotfile) belongs to whoever used the samples before
   await cp(SAMPLES_DIR, PROJECTS_DIR, { recursive: true, filter: (src) => !/[/\\]\.[^/\\]+$/.test(src) });
+  // the samples arrive filed together, so a new install's launcher shows them as one group and the person's
+  // own projects land beside it, not mixed in; the grouping is this machine's, like any other
+  const samples = (await readdir(SAMPLES_DIR, { withFileTypes: true })).filter((e) => e.isDirectory() && isProjectName(e.name));
+  await writeFile(join(PROJECTS_DIR, GROUPS_FILE), JSON.stringify(Object.fromEntries(samples.map((e) => [e.name, SAMPLES_GROUP])), null, 2) + '\n', 'utf8');
   return true;
 }
 
 const GROUPS_FILE = '.groups.json';
+/** The launcher group the bundled samples are filed under on a fresh install. */
+export const SAMPLES_GROUP = 'tingly-design';
 
 /** Which launcher group each project is filed under; kept beside the projects, not inside one. */
 export async function readGroups(): Promise<Record<string, string>> {
