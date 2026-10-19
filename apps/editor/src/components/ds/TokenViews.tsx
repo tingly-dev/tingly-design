@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { styleDeclarations, type DsColor, type DsTokens, type DsTypeGroup, type DsTypeStyle } from '@dc/core';
+import { shadowIn, styleDeclarations, type DsColor, type DsTokens, type DsTypeGroup, type DsTypeStyle } from '@dc/core';
 import { addFonts, editTokens, familyList, typeOf } from './ds';
 import { contrastRatio, toHex } from '../panel/fields';
 import { useTranslation } from 'react-i18next';
@@ -397,7 +397,7 @@ export function FamiliesView({ t, theme }: { t: DsTokens; theme: string }) {
                     ) : key === 'radius' ? (
                       <span className="rad" style={{ borderRadius: v }} />
                     ) : key === 'shadow' ? (
-                      <span className="shd" style={{ boxShadow: v }} />
+                      <span className="shd" style={{ boxShadow: shadowIn(t, v, theme) }} />
                     ) : null}
                   </span>
                   <code className="nm">{x.name}</code>
