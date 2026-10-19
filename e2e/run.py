@@ -11,6 +11,9 @@ and report.json with every suite's checks, failures and time; each suite's outpu
   python3 e2e/run.py --list          the suites, their group and whether they are in the smoke subset
   --real      also run delegate.py   --force   run even when projects/ has uncommitted changes
   --timeout N seconds per suite (default 600; also --timeout=N)
+  --shard I/N run only the I-th of N balanced slices of the picked suites (CI runs one per job; I counts from 1)
+  --jobs N    run N slices side by side on this machine, each in its own copy of the repository with its own
+              ports (a suite edits the samples in place, so two cannot share a checkout); one report for all
 
 The suites edit the sample projects in place and put them back with `git checkout`, so the run refuses to
 start when projects/ has uncommitted changes. DC_CHROME defaults to Playwright's chromium_headless_shell
@@ -20,7 +23,9 @@ import glob, json, os, re, shutil, signal, socket, subprocess, sys, tempfile, ti
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 OUT = os.path.join(HERE, 'out')
-MOCK_PORT = 8790
+# A parallel lane shifts every port by its offset (DC_E2E_OFFSET, 100 per lane), so lanes on one machine do not meet.
+OFFSET = int(os.environ.get('DC_E2E_OFFSET', 0))
+MOCK_PORT, API_PORT, EDITOR_PORT = 8790 + OFFSET, 8787 + OFFSET, 5173 + OFFSET
 
 # suite -> group. A group is what has to be running before the suite starts.
 SUITES = {
@@ -37,6 +42,11 @@ SUITES = {
 }
 # The per-PR subset: open, edit and save in every kind, plus the request bar's run feed.
 SMOKE = ['e2e', 'slides', 'ds', 'dash', 'docs', 'motion', 'run_feed']
+# Rough seconds per suite from a full run, to balance the slices (an unlisted suite counts WEIGHT_DEFAULT).
+WEIGHTS = {'baseline': 162, 'run_feed': 40, 'chat_panel': 36, 'external_edit': 32, 'copy_png': 29, 'import_here': 23, 'import_board': 19,
+           'side_resize': 17, 'attach': 13, 'ai_settings': 9, 'check_snapshots': 8, 'fast': 6, 'fast_slides': 6, 'fast_motion': 6,
+           'embed': 6, 'conversation': 3}
+WEIGHT_DEFAULT = 20
 GROUP_ORDER = ['dev', 'dev-bare', 'fake-claude', 'build', 'bundle', 'real']
 
 
@@ -83,6 +93,7 @@ def base_env(tmp):
                        + glob.glob(f'{root}/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell'))
         if shell: env['DC_CHROME'] = shell[-1]
     env['DC_CONFIG'] = os.path.join(tmp, 'ai.json')  # never the person's own saved model settings
+    env.update(DC_URL=f'http://localhost:{EDITOR_PORT}', DC_API=f'http://localhost:{API_PORT}', DC_E2E_OFFSET=str(OFFSET))
     return env
 
 
@@ -103,10 +114,10 @@ class Group:
 
     def start(self):
         if self.name in ('dev', 'dev-bare', 'fake-claude'):
-            busy = [p for p in (5173, 8787, MOCK_PORT) if port_busy(p)]
-            if busy: raise RuntimeError(f'ports {busy} are in use; stop the running `pnpm dev` (or mock) first')
+            busy = [p for p in (EDITOR_PORT, API_PORT, MOCK_PORT) if port_busy(p)]
+            if busy: raise RuntimeError(f'ports {busy} are in use; stop the running dev server (or mock) first')
             # the fast suites read what the model was sent from the mock's default log, e2e/out/mock.log
-            self.procs.append(start([sys.executable, os.path.join(HERE, 'mock_anthropic.py')], self.env, self.log('mock')))
+            self.procs.append(start([sys.executable, os.path.join(HERE, 'mock_anthropic.py'), os.path.join(OUT, 'mock.log'), str(MOCK_PORT)], self.env, self.log('mock')))
             if self.name == 'dev':
                 self.env.update(ANTHROPIC_API_KEY='x', ANTHROPIC_BASE_URL=f'http://127.0.0.1:{MOCK_PORT}')
             self.env['DC_CONFIG'] = os.path.join(self.tmp, f'ai-{self.name}.json')
@@ -114,9 +125,13 @@ class Group:
                 # a stand-in `claude` first on PATH, so no real model is called and every call is recorded
                 self.env['PATH'] = os.path.join(HERE, 'fake-claude') + os.pathsep + self.env['PATH']
                 self.env['FAKE_CLAUDE_LOG'] = os.path.join(self.tmp, 'fake-claude.log')
-            self.procs.append(start(['pnpm', 'dev'], self.env, self.log('server')))
-            if not (wait_http('http://localhost:8787/api/projects') and wait_http('http://localhost:5173/')):
-                raise RuntimeError(f'`pnpm dev` did not come up; see e2e/out/logs/_{self.name}-server.log')
+            # what `pnpm dev` runs, with ports of this lane: the server and the editor take different PORTs
+            if subprocess.run(['pnpm', '--filter', '@dc/sandbox', 'build'], cwd=REPO, env=self.env, stdout=self.log('sandbox'), stderr=subprocess.STDOUT).returncode:
+                raise RuntimeError(f'the sandbox did not build; see e2e/out/logs/_{self.name}-sandbox.log')
+            self.procs.append(start(['pnpm', '--filter', '@dc/server', 'dev'], {**self.env, 'PORT': str(API_PORT)}, self.log('server')))
+            self.procs.append(start(['pnpm', '--filter', '@dc/editor', 'dev'], {**self.env, 'PORT': str(EDITOR_PORT), 'DC_SERVER_PORT': str(API_PORT)}, self.log('editor')))
+            if not (wait_http(f'http://localhost:{API_PORT}/api/projects') and wait_http(f'http://localhost:{EDITOR_PORT}/')):
+                raise RuntimeError(f'the dev server did not come up; see e2e/out/logs/_{self.name}-server.log and -editor.log')
         elif self.name in ('build', 'bundle'):
             cmd = ['pnpm', self.name]
             say(f'  {" ".join(cmd)} …')
@@ -172,6 +187,56 @@ def report(results, total_s):
     return body, bad
 
 
+def shard_of(names, i, n):
+    """The i-th (from 1) of n slices: the heaviest suite goes to the lightest slice so far."""
+    slices = [[] for _ in range(n)]
+    load = [0] * n
+    for name in sorted(names, key=lambda x: -WEIGHTS.get(x, WEIGHT_DEFAULT)):
+        k = load.index(min(load))
+        slices[k].append(name); load[k] += WEIGHTS.get(name, WEIGHT_DEFAULT)
+    keep = set(slices[i - 1])
+    return [x for x in names if x in keep]
+
+
+def run_jobs(picked, n, argv):
+    """n lanes at once, each a copy of this checkout (the suites edit projects/ in place and `git checkout` it back)."""
+    n = max(1, min(n, len(picked)))
+    base = tempfile.mkdtemp(prefix='dc-e2e-lanes-')
+    flags = [a for a in argv if a.startswith('--timeout') or a in ('--real',)]
+    lanes, t0 = [], time.time()
+    for k in range(1, n + 1):
+        names = shard_of(picked, k, n)
+        if not names: continue
+        root = os.path.join(base, f'lane{k}')
+        shutil.copytree(REPO, root, symlinks=True, ignore=lambda d, names: ['out'] if d == HERE else [])
+        say(f'lane {k}: {", ".join(names)}')
+        log = open(os.path.join(base, f'lane{k}.log'), 'w')
+        proc = subprocess.Popen([sys.executable, os.path.join(root, 'e2e', 'run.py'), '--force', *flags, *names],
+                                cwd=root, env={**os.environ, 'DC_E2E_OFFSET': str((k - 1) * 100)}, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        lanes.append((k, root, proc))
+    results = []
+    for k, root, proc in lanes:
+        proc.wait()
+        try: results += json.load(open(os.path.join(root, 'e2e', 'out', 'report.json')))['suites']
+        except (OSError, ValueError): say(f'lane {k} left no report; see {base}/lane{k}.log')
+        say(f'lane {k} finished')
+    logs = os.path.join(OUT, 'logs')
+    shutil.rmtree(logs, ignore_errors=True); os.makedirs(logs)
+    for k, root, _ in lanes:
+        src = os.path.join(root, 'e2e', 'out', 'logs')
+        if os.path.isdir(src): shutil.copytree(src, logs, dirs_exist_ok=True)
+    for r in results:
+        if r.get('log'): r['log'] = os.path.join('e2e', 'out', 'logs', os.path.basename(r['log']))
+    got = {r['suite'] for r in results}
+    results += [{'suite': s_, 'group': SUITES[s_], 'status': 'error', 'passed': 0, 'failed': 0, 'failures': [], 'seconds': 0, 'tail': 'its lane left no result'} for s_ in picked if s_ not in got]
+    results.sort(key=lambda r: picked.index(r['suite']))
+    body, bad = report(results, time.time() - t0)
+    say('\n' + body)
+    say('Report: e2e/out/report.md')
+    shutil.rmtree(base, ignore_errors=True)
+    return 1 if bad else 0
+
+
 def main(argv):
     timeout = 600
     if '--timeout' in argv:  # also `--timeout 300`
@@ -181,8 +246,16 @@ def main(argv):
         if a.startswith('--timeout='):
             try: timeout = int(a.split('=', 1)[1])
             except ValueError: say('--timeout takes a number of seconds'); return 2
+    opts = {}
+    for o in ('--shard', '--jobs'):  # also `--jobs 4`
+        if o in argv:
+            i = argv.index(o)
+            argv = argv[:i] + [f'{o}={argv[i + 1] if i + 1 < len(argv) else ""}'] + argv[i + 2:]
+    for a in argv:
+        for o in ('--shard', '--jobs'):
+            if a.startswith(o + '='): opts[o] = a.split('=', 1)[1]
     args = [a for a in argv if not a.startswith('--')]
-    flags = {a for a in argv if a.startswith('--') and not a.startswith('--timeout')}
+    flags = {a for a in argv if a.startswith('--') and not a.startswith(('--timeout', '--shard', '--jobs'))}
     if '--list' in flags:
         for s, g in SUITES.items(): say(f"{s:14} {g:9} {'smoke' if s in SMOKE else ''}")
         return 0
@@ -190,6 +263,15 @@ def main(argv):
     if unknown:
         say(f'unknown suite(s): {", ".join(unknown)}; see --list'); return 2
     picked = args or (SMOKE if '--smoke' in flags else [s for s, g in SUITES.items() if g != 'real' or '--real' in flags])
+    try:
+        if '--shard' in opts:
+            i, n = (int(x) for x in opts['--shard'].split('/'))
+            if not 1 <= i <= n: raise ValueError
+            picked = shard_of(picked, i, n)
+            say(f'slice {i}/{n}: {", ".join(picked) or "(nothing)"}')
+        jobs = int(opts['--jobs']) if '--jobs' in opts else 0
+    except ValueError:
+        say('--shard takes I/N (I from 1 to N) and --jobs a number'); return 2
     dirty = subprocess.run(['git', 'status', '--porcelain', '--', 'projects'], cwd=REPO, capture_output=True, text=True).stdout
     # a folder holding only ignored files (a change log left by an earlier run) is not in git status, but takes a name
     tracked = {f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2}
@@ -200,6 +282,8 @@ def main(argv):
             'Commit or stash them first, or pass --force to run anyway (they will be lost).\n' + dirty)
         return 2
 
+    if jobs > 1: return run_jobs(picked, jobs, argv)
+    if not picked: return 0
     logs = os.path.join(OUT, 'logs')
     shutil.rmtree(logs, ignore_errors=True); os.makedirs(logs)
     tmp = tempfile.mkdtemp(prefix='dc-e2e-')

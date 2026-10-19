@@ -17,7 +17,7 @@ fi
 
 BODY="The nightly e2e patrol on main is $RESULT: $RUN_URL
 
-The \`e2e-report\` artifact on that run has \`report.md\` (which suites failed and their last lines) and every suite's log."
+The \`e2e-report-*\` artifacts on that run (one per slice) have \`report.md\` (which suites failed and their last lines) and every suite's log."
 if [ -n "$OPEN" ]; then
   gh issue comment "$OPEN" --body "$BODY"
 else
