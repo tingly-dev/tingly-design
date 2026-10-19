@@ -340,8 +340,9 @@ export async function seedSamples(): Promise<boolean> {
   if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return false;
   if (await stat(PROJECTS_DIR).catch(() => null)) return false;
   if (!(await stat(SAMPLES_DIR).catch(() => null))) return false;
-  // journals and dashboard run reports belong to whoever used the samples before
-  await cp(SAMPLES_DIR, PROJECTS_DIR, { recursive: true, filter: (src) => !/[/\\]\.(journal\.jsonl|runs\.json)$/.test(src) });
+  // whatever a person's machine keeps beside a project (journal, run reports, Claude Code's
+  // conversation, the transcript: every dotfile) belongs to whoever used the samples before
+  await cp(SAMPLES_DIR, PROJECTS_DIR, { recursive: true, filter: (src) => !/[/\\]\.[^/\\]+$/.test(src) });
   return true;
 }
 
