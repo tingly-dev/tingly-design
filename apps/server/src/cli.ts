@@ -43,8 +43,6 @@ const { values: opts, positionals } = (() => {
         speed: { type: 'string' },
         fps: { type: 'string' },
         quality: { type: 'string' },
-        edit: { type: 'string' },
-        dir: { type: 'string' },
         width: { type: 'string' },
         height: { type: 'string' },
         board: { type: 'string' },
@@ -237,16 +235,6 @@ async function history(arg: string | undefined): Promise<void> {
   if (h.more) console.log(t('cli.historyMore', { count: h.more }));
   const when = (at: string) => new Date(at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   table(h.entries.map((e) => [e.id, when(e.at), t(`app.actor.${e.actor}`, { defaultValue: e.actor }), e.file, e.prompt ? `${e.summary} · “${e.prompt.replace(/\s+/g, ' ').slice(0, 60)}”` : e.summary]));
-}
-
-// ---------------------------------------------------------------- image
-
-/** A picture made through the image address in the AI settings, kept in the project. */
-async function image(arg: string | undefined, text: string | undefined): Promise<void> {
-  const p = await project(arg, 'image');
-  const r = await cmd.image(ctx, p, { text, size: opts.size, quality: opts.quality, edit: opts.edit, dir: opts.dir });
-  if (opts.json) return print({ name: r.name, path: r.path, file: r.file, size: r.size, model: r.model, ms: r.ms });
-  console.log(t('cli.imageMade', { path: r.path, file: r.file, model: r.model, seconds: (r.ms / 1000).toFixed(1) }));
 }
 
 /** The editor running on this projects folder, if any (running.ts). */
@@ -465,9 +453,6 @@ async function main(): Promise<number> {
       return 0;
     case 'history':
       await history(rest[0]);
-      return 0;
-    case 'image':
-      await image(rest[0], rest.slice(1).join(' ') || undefined);
       return 0;
     case 'prompt':
       return promptCommand(rest[0], rest.slice(1).join(' ') || undefined);

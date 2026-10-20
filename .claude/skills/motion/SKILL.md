@@ -71,8 +71,6 @@ A person can import an artboard of a canvas project into a piece (import menu �
 
 Files people brought in (attachments, imported pictures) live under `uploads/`. A scene shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; the editor, the player and the renderer all resolve it. Don't move or rename them.
 
-Pictures you make: when the request needs a picture that does not exist yet (or a change to one in `uploads/`) and image generation is set up in the editor's AI settings, make it with the MCP tool `image`, or `tingly-design image <folder> "<a full description>"` (`--edit uploads/<file>` changes one; `--size 1536x1024` for a wide picture). It keeps the result in `uploads/` named by its content and prints the path; a scene shows it as `<img src="uploads/…">`, exactly like a picture a person attached. Without an image address the command fails with a message saying so: say that, don't draw a stand-in.
-
 ## Shader effects
 
 For light, noise, grain or glow that CSS cannot draw, start from a built-in effect: an empty seekable embed whose `data-fx` names a preset and its values (`projects/motion-effects/` uses them):

@@ -38,7 +38,7 @@ The layers panel's hide and lock are written as data-hide and data-lock on eleme
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Added to Claude Code's instructions while image generation is configured: how to get a picture into the work. */
-const IMAGE_NOTE = `You can make pictures (the kind's skill says where each is referenced). When the request needs a picture that does not exist yet, or asks you to change one from uploads/, run: node scripts/image-gen.mjs <the folder you were given> "<a full description of the picture>" [--size 1024x1024|1536x1024|1024x1536] [--edit uploads/<file>] [--dir assets/<Group>]. It prints the path of the new picture inside the folder (under uploads/, or the group in a design system's assets/); reference it exactly as .claude/skills says a picture from uploads/ is referenced. Make a picture only when asked for one or when the request cannot be done without it, and describe it in the language of the request.`;
+const IMAGE_NOTE = `You can make pictures. When the request needs a picture that does not exist yet, or asks you to change one from uploads/, run: node scripts/image-gen.mjs <the folder you were given> "<a full description of the picture>" [--size 1024x1024|1536x1024|1024x1536] [--edit uploads/<file>]. It prints the path of the new picture inside the folder, under uploads/; reference it exactly as .claude/skills says a picture from uploads/ is referenced. Make a picture only when asked for one or when the request cannot be done without it, and describe it in the language of the request.`;
 
 const SLIDES_SYSTEM = `You are editing a slide deck stored as files. A deck folder holds deck.json (title, slide order, sections, typefaces) and one slides/<id>.html per slide: exactly one <section id="<id>"> on a fixed 1920x1080 canvas, every style inline, in a closed subset of HTML and CSS.
 Before you change any file, read .claude/skills/slides/SKILL.md in the current directory: it is the full format reference.
@@ -159,8 +159,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const dash = kind === 'dashboard';
   const docs = kind === 'docs';
   const motion = kind === 'motion';
-  // a dashboard reads files only from data/, so it gets no pictures
-  const images = aiResolved().image.ready && !dash;
+  // a dashboard reads files only from data/ and a design system keeps its pictures in its own assets/: neither gets the tool
+  const images = aiResolved().image.ready && !dash && !ds;
   const lines = [
     `${slides ? 'Deck' : ds ? 'Design system' : dash ? 'Dashboard' : docs ? 'Doc' : motion ? 'Motion' : 'Canvas'} folder: ${dir}/`,
     req.file ? `The person is looking at the ${slides ? 'slide' : dash ? 'page file' : docs ? 'tab' : motion ? 'scene' : 'artboard'} ${dir}/${req.file}.` : '',

@@ -30,7 +30,6 @@
 | `check [project]` | 带项目：编辑器会报的问题，有错时退出码 1；`--snapshots` 再把每个画板、幻灯片、标签页、视图或封面画一遍，画不出来的算错，图留下来看；不带：这台机器能做什么（Chrome、ffmpeg、`claude`、快速 AI） | 已实施 |
 | `export <project> --as <fmt>` | 和导出菜单同名同做法；每种类型都有 `zip`（整个项目，`--files-only` 不带改动记录和设计系统，见 [project-archive.md](./project-archive.md)）；画布 `png`，幻灯片 `pdf`、`png`、`html`、`md`、`notes`，文档 `pdf`、`html`、`md`、`png`，设计系统和看板 `png`（由编辑器的页面画，见 §4）；动效 `mp4`、`gif`、`png`（封面，由 `render.ts` 画）、`html`（单文件播放器，不用 Chrome）；`--scale 2` 画布出 @2x，动效每帧按 2 倍画再由 ffmpeg 缩回；`--board`、`--slide`、`--tab`、`--view` 只要一个 | 已实施 |
 | `import <file.zip>` | 和启动页的“导入项目（.zip）”同名同做法 | 已实施；导入 HTML、SVG 还没有 |
-| `image <project> <描述>` | 用 AI 设置里的图片地址生成一张图，存进项目；`--edit` 改一张已有的图（见 [image-generation.md](./image-generation.md)） | 已实施 |
 | `history <project>` | 改动记录：时间、谁改的、哪个文件、改了什么；`--since` 接一条记录的编号、一个时间或多久以前 | 已实施 |
 | `skills [add [folder]]` | 列出每种类型的格式 skill；`add` 复制到一个文件夹的 `.claude/skills/`，内容不同的副本留着，`--force` 才换 | 已实施 |
 | `mcp` | 上面这些命令作为 stdio 上的 MCP 服务（正在运行的编辑器在 `/mcp` 也提供同一份），见 §4 | 已实施 |

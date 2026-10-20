@@ -7,13 +7,13 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
-import { createProject, HttpError, isProjectName, kindOf, linkFolder, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
+import { createProject, isProjectName, kindOf, linkFolder, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
 export type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed, and the internal names they map to. */
@@ -759,31 +759,4 @@ export async function addSkills(o: { to?: string; force?: boolean } = {}) {
     done.push({ name: s.name, file, state });
   }
   return { root, skills: done };
-}
-
-// ---------------------------------------------------------------- image
-
-export interface ImageOptions {
-  text?: string;
-  size?: string;
-  quality?: string;
-  /** a picture of the project (uploads/…) to change instead of making a new one */
-  edit?: string;
-  /** where to keep it: uploads (default), or a design system's assets/<Group> */
-  dir?: string;
-}
-
-/** Make a picture (or change one) through the image address in the AI settings, and keep it in the project. */
-export async function image(ctx: Ctx, p: Project, o: ImageOptions) {
-  const t = translator(ctx.lang);
-  const text = o.text?.trim();
-  if (!text) throw new CommandError(t('cli.needImagePrompt', { project: p.name }));
-  const { generateImage } = await import('./imagegen');
-  try {
-    const r = await generateImage(p.name, { prompt: text, size: o.size, quality: o.quality, edit: o.edit, dir: o.dir });
-    return { name: p.name, ...r, file: join(p.dir, r.path) };
-  } catch (e) {
-    if (e instanceof HttpError) throw new CommandError(t(`errors.${e.key}`, e.params), 1);
-    throw e;
-  }
 }

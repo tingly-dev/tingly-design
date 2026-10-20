@@ -26,7 +26,6 @@ pnpm tingly-design …              # 在本仓库里
 | `export <项目> --as <格式>` | “导出”菜单能存的格式，用它的名字，写进项目的 `renders/` 或 `--out`：画布 `png`（每个画板，或 `--board <文件名或标题>`；`--scale 2` 是 PNG @2x）；幻灯片 `pdf`、`png`（每一页，或 `--slide <编号或第几页>`）、`html`、`md`、`notes`；文档 `pdf`、`html`、`md`（整篇，或 `--tab <编号或标题>`；有图片时是带图片的 `.zip`）、`png`（每个标签页）；设计系统 `png`（总览，或 `--view colors`…）；看板 `png`。这些由编辑器自己在 Chrome 里画，和菜单按钮存的是同一个文件（见下）。动效导出为 `mp4`、`gif`、`png`（封面）或 `html`（谁都能打开的单文件播放器，含所有格式、进度条和速度，不需要 Chrome）：`--format wide,tall` 选格式；`--speed`、`--fps`、`--quality low|medium|high`、`--width`、`--height` 和导出对话框一样（只给一边时另一边按作品比例算）；`--scale 2` 每帧按两倍大小画再缩回，文字更清晰；MP4 带着封面图（`motion.json` 里写 `"coverFirstFrame": true` 时，整段 MP4 的第一帧也是封面），封面 PNG 写在旁边。任何项目都可以导出 `zip`（见下）。 |
 | `export <项目> --as zip` | 整个项目存成一个 `.zip`，放在当前文件夹或 `--out`，和编辑器里的“整个项目（.zip）”一样：所有文件、改动记录，以及装进来的设计系统（并排放着）。`--files-only` 不带改动记录和设计系统。 |
 | `prompt <项目> <请求>` | 把请求交给 Claude Code，和请求栏的“交给 Claude Code”一样。由编辑器来跑（项目文件夹上已经打开的那个，或者为这次起一个），所以改动实时显示，改动记录里记成 Claude。工作时列出每一步，最后输出它说的话、改动记录里多出的条目，以及会话号。项目会记住它的 Claude Code 对话（存在 `.claude-session.json`），所以下一条 `prompt`、无论来自哪个窗口或编辑器，都会接着说；`--new` 开一段新的，`--continue <会话>` 接某一段指定的。`--file <文件>` 说明请求针对哪个画板、幻灯片、标签页或场景。Ctrl+C 停止。需要 `claude` 命令。`--fast`（画布、幻灯片、动效）改用请求栏的快速 AI：Chrome 打开编辑器，快速模型几秒内改一个文件（`--file`，或者第一个画板、幻灯片、场景），太大的请求它会自己交给 Claude Code。 |
-| `image <项目> <描述>` | 用 AI 设置里的图片地址（OpenAI 风格的 images 接口；Tingly Box 的地址会自动跟上）生成一张图，按内容命名存进项目的 `uploads/`，和你附上的图一样；打印它的路径。`--size 1536x1024`、`--quality high`；`--edit uploads/<文件>` 改那张图（原图不动）；`--dir assets/<组>` 存进设计系统的素材。每次生成都按图片模型计费；没有图片地址时只说明原因，不做别的。 |
 | `history <项目>` | 改动记录：什么时候、谁（手改、快速 AI、Claude、外部、撤销）、哪个文件、改了什么，最新的在最后。默认列最近 20 条（`--limit <n>`）；`--since` 接 `--json` 里的记录编号、一个时间或多久以前（`30m`、`2h`、`1d`），列出那之后的全部。编号不在记录里时报错（退出码 1），不当成“没有改动”。 |
 | `export <项目> --as claude-design` | 画布、幻灯片、设计系统或看板，按原版 Claude 类型的文件布局存成一个 `.zip`，附一份给 Claude Code 的 README，和编辑器里的“Claude Design 包（.zip）”一样（[指南](guide/claude-design.md)）。 |
 | `import <文件.zip或文件夹>` | 从这样的 `.zip`（或自己压缩的项目文件夹）、Claude Design 包（`.zip`，或 Claude Code 从原版作品存下来的文件夹）、Claude Docs 导出的 `.md` 导入项目，和首页的“导入项目（.zip）…”一样。导入到项目文件夹，名字被占用时加 `-2`，并输出新名字。 |
@@ -44,7 +43,7 @@ pnpm tingly-design …              # 在本仓库里
 
 ## 作为 MCP 服务
 
-能说 MCP 的 agent 拿到的是工作流程里每一步一个工具：`projects`（有哪些项目）、`open`（进入项目，给了 `kind` 就是新建；返回文件夹、大纲和格式说明的 uri）、`check`（只查问题，文字，很快）、`look`（把作品画出来，图缩到长边 1000 像素放在结果里；`pick` 只画一个画板、幻灯片、标签页或视图，不给时前 6 张放进结果，其余留在 `renders/check/`）、`export`（`pick` 指定要哪一个画板、幻灯片、标签页或视图）、`history`、`prompt` 和 `image`（给作品生成一张图，存进 `uploads/`）。每种类型的格式说明和它点名的参考页是资源（`tingly-design://skills/<类型>`、`…/<类型>/<页>`），提示 `make`、`edit` 带着格式说明开始干活。agent 用自己的文件工具改项目文件；导出写到项目的 `renders/`。
+能说 MCP 的 agent 拿到的是工作流程里每一步一个工具：`projects`（有哪些项目）、`open`（进入项目，给了 `kind` 就是新建；返回文件夹、大纲和格式说明的 uri）、`check`（只查问题，文字，很快）、`look`（把作品画出来，图缩到长边 1000 像素放在结果里；`pick` 只画一个画板、幻灯片、标签页或视图，不给时前 6 张放进结果，其余留在 `renders/check/`）、`export`（`pick` 指定要哪一个画板、幻灯片、标签页或视图）、`history` 和 `prompt`。每种类型的格式说明和它点名的参考页是资源（`tingly-design://skills/<类型>`、`…/<类型>/<页>`），提示 `make`、`edit` 带着格式说明开始干活。agent 用自己的文件工具改项目文件；导出写到项目的 `renders/`。
 
 ```bash
 claude mcp add tingly-design -- npx -y tingly-design mcp          # 由 agent 启动，走 stdio

@@ -17,10 +17,6 @@ export interface ImageRequest {
   quality?: string;
   /** a picture in the project to change (`uploads/…`), instead of making one from nothing */
   edit?: string;
-  /** an optional mask for the edit: transparent where the picture may change */
-  mask?: string;
-  /** where to keep the result: `uploads` (default), or a design system's `assets/<Group>` */
-  dir?: string;
 }
 
 const SIZE = /^(auto|\d{3,4}x\d{3,4})$/;
@@ -66,11 +62,8 @@ export async function generateImage(project: string, req: ImageRequest): Promise
   if (prompt.length > 8000) throw new HttpError(400, 'badRequest', { detail: 'prompt is longer than 8000 characters' });
   if (req.size && !SIZE.test(req.size)) throw new HttpError(400, 'badRequest', { detail: `size ${req.size}` });
   if (req.quality && !QUALITY.has(req.quality)) throw new HttpError(400, 'badRequest', { detail: `quality ${req.quality}` });
-  const dir = req.dir && /^(assets(\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|ds\/[a-z0-9][a-z0-9_-]{0,63}\/assets)$/.test(req.dir) ? req.dir : 'uploads';
 
   const edit = req.edit ? await fromProject(project, req.edit) : null;
-  const mask = req.mask ? await fromProject(project, req.mask) : null;
-  if (mask && !edit) throw new HttpError(400, 'badRequest', { detail: 'a mask needs a picture to edit' });
 
   const started = Date.now();
   const meta = { project, op: edit ? 'edit' : 'generate', model: ep.model, host: new URL(ep.baseUrl).host, promptChars: prompt.length, size: req.size };
@@ -86,7 +79,6 @@ export async function generateImage(project: string, req: ImageRequest): Promise
       if (req.size) form.set('size', req.size);
       if (req.quality) form.set('quality', req.quality);
       form.set('image', new Blob([new Uint8Array(edit.bytes)], { type: mimeOf(edit.ext) }), `image.${edit.ext}`);
-      if (mask) form.set('mask', new Blob([new Uint8Array(mask.bytes)], { type: mimeOf(mask.ext) }), `mask.${mask.ext}`);
       res = await fetch(`${ep.baseUrl}/images/edits`, { method: 'POST', headers, body: form, signal });
     } else {
       const body = { model: ep.model, prompt, n: 1, ...(req.size ? { size: req.size } : {}), ...(req.quality ? { quality: req.quality } : {}) };
@@ -122,7 +114,7 @@ export async function generateImage(project: string, req: ImageRequest): Promise
   }
   const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 8);
   const slug = prompt.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24).replace(/-+$/g, '') || 'image';
-  const path = `${dir}/${slug}-${hash}.${ext}`;
+  const path = `uploads/${slug}-${hash}.${ext}`;
   await writeAsset(project, path, bytes);
   const ms = Date.now() - started;
   logInfo('image.done', { ...meta, ms, bytes: bytes.length, path });

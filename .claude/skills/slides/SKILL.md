@@ -11,7 +11,6 @@ A deck is a folder under `projects/<name>/`, laid out as the original Slides typ
 - `slides/<id>.html` — one file per slide: exactly one `<section id="<id>" …>` on a fixed 1920×1080 canvas.
 - `assets/…` — images and fonts the slides use (uploaded from the editor; served beside the deck).
 - `uploads/…` — files people attached to requests (images, PDFs, text). A slide can show an image from here by its path, `src="uploads/…"`.
-  - Pictures you make: when the request needs a picture that does not exist yet (or a change to one in `uploads/`) and image generation is set up in the editor's AI settings, make it with the MCP tool `image`, or `tingly-design image <folder> "<a full description>"` (`--edit uploads/<file>` changes one; `--size 1536x1024` for a wide picture). The result is kept in `uploads/` and its path printed; show it as `src="uploads/…"`. Without an image address the command fails with a message saying so: say that, don't draw a stand-in.
 
 A new deck starts from a plain light cover holding only the title. That is a blank start, not the person's chosen look: pick the look from their request or the design system, don't copy the starter.
 

@@ -23,8 +23,6 @@ export default {
                                    实时显示；最后列出改了什么
                                    （--fast：由快速 AI 在 Chrome 里改一个画板、幻灯片或场景）
   history <项目>                   改动记录：谁改了哪个文件，最新的在最后
-  image <项目> <描述>              用 AI 设置里的图片地址生成一张图，存进项目的 uploads/
-                                   （--edit uploads/<文件>：改这张图，而不是新做一张）
   skills [add [文件夹]]            agent 改项目前要读的格式说明；
                                    add 把它们复制到文件夹的 .claude/skills/ 里（默认：当前文件夹）
   mcp                              以 stdio 上的 MCP 服务提供这些命令，给 agent 启动用
@@ -53,9 +51,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
                         图留在 renders/check/（或 --out）里可以看
   --out <文件夹>        export：输出位置（默认：项目的 renders/；zip 放在当前文件夹）
   --files-only          export --as zip：不带改动记录和装进来的设计系统
-  --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置；image：--size 1536x1024、--quality
-  --edit <uploads/文件> image：改项目里的这张图，而不是新做一张
-  --dir <文件夹>        image：存进 uploads/（默认），或设计系统的 assets/<组>
+  --speed、--fps、--quality low|medium|high、--width、--height   export：视频设置
   --since <编号或时间>  history：某条记录（编号见 --json）、某个时间或多久以前（30m、2h、1d）之后的改动
   --limit <n>           history：最近 n 条（默认 20，带 --since 时全部）
   --file <文件>         prompt：请求针对的画板、幻灯片、标签页或场景
@@ -84,8 +80,6 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   attached: '在已经运行的编辑器（进程 {{pid}}）里打开 {{url}}。',
   badSince: '--since {{since}} 不是记录编号、时间，也不是多久以前（30m、2h、1d）。',
   noEntry: '{{name}} 的改动记录里没有 {{id}}（只保留最近 500 条）。',
-  needImagePrompt: '请描述这张图：tingly-design image {{project}} "<描述>"',
-  imageMade: '已生成 {{path}}（{{file}}），用 {{model}}，{{seconds}} 秒。',
   historyEmpty: '{{name}} 还没有改动记录。',
   historyNone: '从那以后 {{name}} 没有改动。',
   historyMore: '更早的 {{count}} 条没有列出（用 --limit，或 --json 看全部）。',

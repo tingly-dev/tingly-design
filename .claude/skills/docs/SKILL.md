@@ -13,7 +13,7 @@ A doc is a folder under `projects/<name>/`. The original Docs type keeps a doc i
 | `tabs/<id>.md` | one tab's contents. `<id>` is `[A-Za-z0-9_-]`, 1–64 characters. |
 | `comments.json` | `{"threads": [{"id", "tab", "quote", "prefix"?, "suffix"?, "resolved"?, "comments": [{"id", "author", "text", "at"}]}]}` |
 | `assets/` | uploaded images, linked from a tab as `../assets/<file>`. |
-| `uploads/` | files people attached to requests (images, PDFs, text); an image here is linked as `../uploads/<file>`. A picture the request needs and does not exist yet can be made with the MCP tool `image` or `tingly-design image <folder> "<a full description>"` when image generation is set up in the AI settings; it lands here and prints its path (without an address it fails with a message: say so, don't draw a stand-in). |
+| `uploads/` | files people attached to requests (images, PDFs, text); an image here is linked as `../uploads/<file>`. |
 
 Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/design-guide` (the Tingly Design handbook) is a full example: a subtab, tables, a task list, a quote, a code block and comment threads, one of them resolved.
 

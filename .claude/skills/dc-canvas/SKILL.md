@@ -40,8 +40,6 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files. An
 
 Files people brought in (attachments, imported pages and pictures) live under `uploads/`. An artboard shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; don't move or rename them.
 
-Pictures you make: when the request needs a picture that does not exist yet (or a change to one in `uploads/`) and image generation is set up in the editor's AI settings, make it with the MCP tool `image`, or `tingly-design image <folder> "<a full description>"` (`--edit uploads/<file>` changes one; `--size 1536x1024` for a wide picture). It keeps the result in `uploads/` named by its content and prints the path; an artboard shows it as `<img src="uploads/…">`, exactly like a picture a person attached. Without an image address the command fails with a message saying so: say that, don't draw a stand-in.
-
 ## An artboard file
 
 ```html

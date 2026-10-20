@@ -19,7 +19,6 @@ import {
   DS_TOKENS_CSS,
   FAST_EDIT_SYSTEM,
   FAST_EDIT_SLIDES,
-  FAST_EDIT_IMAGES,
   FAST_EDIT_MOTION,
   FAST_EDIT_DOCS,
   DASH_RUNS,
@@ -650,7 +649,7 @@ app.post('/api/projects/:p/fast-edit', async (c) => {
     const ms = anthropic.messages.stream({
       model,
       max_tokens: 4096,
-      system: system + (aiResolved().image.ready && body.kind !== 'docs' ? '\n\n' + FAST_EDIT_IMAGES : '') + '\n\n' + lang,
+      system: system + '\n\n' + lang,
       messages: body.messages as Anthropic.MessageParam[],
     });
     let chars = 0;
@@ -712,7 +711,7 @@ app.post('/api/projects/:p/images', async (c) => {
   projectDir(p);
   const body = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
   const str = (k: string) => (typeof body[k] === 'string' ? (body[k] as string) : undefined);
-  const out = await generateImage(p, { prompt: str('prompt') ?? '', size: str('size'), quality: str('quality'), edit: str('edit'), mask: str('mask'), dir: str('dir') });
+  const out = await generateImage(p, { prompt: str('prompt') ?? '', size: str('size'), quality: str('quality'), edit: str('edit') });
   publish(p, { type: 'assets', path: out.path });
   return c.json(out);
 });

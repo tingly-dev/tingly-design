@@ -17,7 +17,7 @@ A design system is a folder under `projects/<name>/`, laid out as the original D
 | `components/<Comp>/preview.html` | a live preview (contract below). `components/Cover/preview.html` is the cover above the brand book. |
 | `components/bundle.js` | ONE classic script assigning `window.<namespace>`; line 1 `/* @ds-bundle: {"format":4,"namespace":"…","components":[{"name":"…"}]} */` orders the components. No `import`, no network, no literal `</script`. |
 | `components/bundle.css`, `components/index.d.ts` | the stylesheet (loaded after tokens.css) and the props as types. |
-| `assets/<Group>/<file>` | logos, icons, images; `assets/<Group>/README.md` says what each is (and names a single-ink mark's ink). A picture the system needs and does not exist yet can be made with the MCP tool `image` or `tingly-design image <folder> "<a full description>" --dir assets/<Group>` when image generation is set up in the AI settings; add its line to the group's README. Never invent a brand's mark: make pictures only for illustration and photography styles the system calls for. |
+| `assets/<Group>/<file>` | logos, icons, images; `assets/<Group>/README.md` says what each is (and names a single-ink mark's ink). |
 | `fonts/<file>` | font files, listed by `tokens.json` `type.fonts[].file`. |
 
 The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/tingly-ds` is a full example: two themes, Instrument Serif and Inter, four components; the deck in `projects/tingly-intro` is built from it.

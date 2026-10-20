@@ -1,6 +1,6 @@
 /**
  * Tingly Design as an MCP server: the command line's commands as tools, one per step of the work
- * (projects, open, check, look, export, history, prompt, image); each kind's format reference (and its
+ * (projects, open, check, look, export, history, prompt); each kind's format reference (and its
  * pages) as resources and, with a brief, as prompts, so an agent that speaks MCP (Claude Code,
  * Claude Desktop, an IDE) learns the files before it edits them with its own tools. The editor serves it at `/mcp` (Streamable HTTP, JSON replies); `tingly-design mcp` serves
  * the same handler over stdio. Both call `commands.ts`, as the command line does (.design/cli.md §4).
@@ -13,7 +13,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { hasClaudeDesign } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
-import { check, CommandError, create, looksLikePath, exportProject, FORMATS, history, image, KINDS, outline, pickFor, projects, prompt, resolveProject, skillPages, skills, type Ctx, type Kind, type Project } from './commands';
+import { check, CommandError, create, looksLikePath, exportProject, FORMATS, history, KINDS, outline, pickFor, projects, prompt, resolveProject, skillPages, skills, type Ctx, type Kind, type Project } from './commands';
 import { VERSION } from './layout';
 import { log } from './log';
 import { HttpError } from './store';
@@ -109,23 +109,6 @@ const TOOLS = [
     },
   },
   {
-    name: 'image',
-    description:
-      "Make a picture with the image model set up in the editor's AI settings (an OpenAI-style images address) and keep it in the project: it goes to uploads/ (a design system's assets/<Group> with `dir`), and the result's `path` is what a board, slide, scene (`src=\"uploads/…\"`) or doc tab (`../uploads/…`) references. With `edit`, changes that picture of the project instead of making a new one; the original stays. Takes seconds to a minute, and costs what the image model costs. Fails with a message when no image address is set up; there is no fallback.",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        project,
-        prompt: { type: 'string', description: 'A full description of the picture (or, with edit, of the change), in the language of the work.' },
-        size: { type: 'string', description: '1024x1024, 1536x1024, 1024x1536 or auto; the model\'s default when left out.' },
-        quality: { type: 'string', enum: ['low', 'medium', 'high', 'auto'] },
-        edit: { type: 'string', description: 'A picture of the project to change, as uploads/<file>.' },
-        dir: { type: 'string', description: 'A design system: assets/<Group> to keep it with the system\'s assets instead of uploads/.' },
-      },
-      required: ['project', 'prompt'],
-    },
-  },
-  {
     name: 'history',
     description: "A project's change log, newest last: who changed which file (person, fast AI, Claude Code, outside edit) and how.",
     inputSchema: {
@@ -191,10 +174,6 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: session === 'new' ? undefined : session, fresh: session === 'new', fast: a.fast === true, source: 'mcp' });
       // a run that failed or was stopped still says so in `outcome`, with what it changed before it ended
       return json(r);
-    }
-    case 'image': {
-      const p = await resolveProject(ctx, str(a.project), 'image');
-      return json(await image(ctx, p, { text: str(a.prompt), size: str(a.size), quality: str(a.quality), edit: str(a.edit), dir: str(a.dir) }));
     }
     case 'history': {
       const p = await resolveProject(ctx, str(a.project), 'history');

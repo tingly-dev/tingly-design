@@ -21,8 +21,6 @@ Usage: tingly-design [command] [options]
                                    files, the open editor shows it live; prints what it changed
                                    (--fast: the fast AI edits one board, slide or scene in Chrome)
   history <project>                the change history: who changed which file, newest last
-  image <project> <description>    make a picture through the image address in AI settings and keep it in the
-                                   project's uploads/ (--edit uploads/<file>: change that picture instead)
   skills [add [folder]]            the format references an agent reads before editing a project;
                                    add copies them into the folder's .claude/skills/ (default: here)
   mcp                              these commands as an MCP server on stdio, for an agent to start
@@ -52,9 +50,7 @@ Options:
                         and keep the pictures (in renders/check/, or --out) to look at
   --out <folder>        export: where files go (default: the project's renders/; a zip goes to the current folder)
   --files-only          export --as zip: leave out the change log and the design systems it installed
-  --speed, --fps, --quality low|medium|high, --width, --height   export: video settings; image: --size 1536x1024, --quality
-  --edit <uploads/file> image: change this picture of the project instead of making a new one
-  --dir <folder>        image: keep it in uploads/ (default), or a design system's assets/<Group>
+  --speed, --fps, --quality low|medium|high, --width, --height   export: video settings
   --since <id or time>  history: after an entry id (from --json), a time, or how long ago (30m, 2h, 1d)
   --limit <n>           history: the last n entries (default 20, all with --since)
   --file <file>         prompt: the board, slide, tab or scene the request is about
@@ -83,8 +79,6 @@ Options:
   attached: 'Opening {{url}} in the editor already running (process {{pid}}).',
   badSince: '--since {{since}} is not an entry id, a time or how long ago (30m, 2h, 1d).',
   noEntry: '{{name}}’s change history has no entry {{id}} (it keeps the last 500).',
-  needImagePrompt: 'Describe the picture: tingly-design image {{project}} "<description>"',
-  imageMade: 'Made {{path}} ({{file}}) with {{model}} in {{seconds}} s.',
   historyEmpty: 'No changes recorded in {{name}} yet.',
   historyNone: 'No changes in {{name}} since then.',
   historyMore: '{{count}} earlier changes not shown (--limit, or --json for all).',
