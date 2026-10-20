@@ -1,5 +1,5 @@
 import { strToU8, zipSync, type Zippable } from 'fflate';
-import { DOC_INDEX, docToMarkdown, tabFile } from '@dc/core';
+import { DOC_INDEX, docToMarkdown, keptName, tabFile } from '@dc/core';
 import { api } from '../../api';
 import { download } from '../../local';
 import { t } from '../../i18n';
@@ -16,7 +16,7 @@ export async function saveDocMarkdown(name: string, only?: string): Promise<void
   if (!images.length) return download(`${name}.md`, markdown, 'text/markdown');
 
   // inside the zip the file name has to be one the import keeps (.design/import-into-project.md), or it comes back without its original
-  const entry = name.replace(/[^\p{L}\p{N}_. ()+-]+/gu, '-').replace(/^[^\p{L}\p{N}_]+/u, '').slice(0, 100) || 'doc';
+  const entry = keptName(name, 'doc');
   const zip: Zippable = { [`${entry}.md`]: strToU8(markdown) };
   const got = await Promise.all(
     images.map(async (path) => {

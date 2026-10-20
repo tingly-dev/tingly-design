@@ -19,6 +19,8 @@ export interface RunningEditor {
   version: string;
   protocol: number;
   startedAt: string;
+  /** false when that server keeps every project in its own projects folder (DC_LINKS=0), from its health answer */
+  links?: boolean;
 }
 
 let own: Pick<RunningEditor, 'url' | 'editor'> | null = null;
@@ -78,7 +80,9 @@ export async function findEditor(): Promise<RunningEditor | null> {
   }
   try {
     const r = await fetch(new URL('api/health', info.url), { signal: AbortSignal.timeout(1500) });
-    return r.ok ? info : null;
+    if (!r.ok) return null;
+    const health = (await r.json().catch(() => ({}))) as { links?: boolean };
+    return { ...info, links: health.links !== false };
   } catch {
     return null;
   }

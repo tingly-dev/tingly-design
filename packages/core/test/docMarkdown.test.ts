@@ -66,6 +66,12 @@ describe('docToMarkdown', () => {
     expect(images).toEqual(['assets/z.png']);
   });
 
+  it('does not open a fence inside an indented code block', () => {
+    const { markdown } = docToMarkdown(index('D', [{ id: 'a', title: 'A' }]), files({ a: 'Write:\n\n    ```\n    code\n\n## Next\n\n==hi==\n' }));
+    expect(markdown).toContain('\n### Next\n');
+    expect(markdown).toContain('<mark>hi</mark>');
+  });
+
   it('keeps a # that ends a title, and a stray % in a picture path', () => {
     const { markdown, images } = docToMarkdown(index('C#', [{ id: 'a', title: 'x' }]), files({ a: '# C#\n\n![](../assets/50%off.png)\n' }));
     expect(markdown).toBe('# C#\n\n![](assets/50%off.png)\n');

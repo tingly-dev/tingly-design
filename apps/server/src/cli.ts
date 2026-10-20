@@ -173,7 +173,7 @@ async function create(kind: string | undefined, target: string | undefined): Pro
   if (!process.stdin.isTTY) throw new CliError(t('cli.needTerminal'));
   const { terminalWizard } = await import('./wizard');
   // a bare name lands in the current directory unless --global, so that is where a name has to be free
-  const global = cmd.bareNamesGlobal(opts.global);
+  const global = await cmd.bareNamesGlobal(ctx, opts.global);
   const w = terminalWizard(t as (key: string, params?: Record<string, string>) => string, process.stdin, process.stderr, global ? 'projects' : '.');
   try {
     const given = await cmd.wizardGiven(ctx, { kind, target, title: opts.title, size: opts.size });

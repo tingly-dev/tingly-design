@@ -96,9 +96,14 @@ function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
   throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
 }
 
-/** Whether a bare name goes to the projects folder: asked for, or the host keeps every project there (DC_LINKS=0), where a folder here could not be linked. */
-export function bareNamesGlobal(global: boolean | undefined): boolean {
-  return !!global || !LINKS_ON;
+/**
+ * Whether a bare name goes to the projects folder: asked for, or the server that will create it keeps
+ * every project there (DC_LINKS=0; the running editor's setting when there is one), so a folder here could not be linked.
+ */
+export async function bareNamesGlobal(ctx: Ctx, global: boolean | undefined): Promise<boolean> {
+  if (global) return true;
+  const running = ctx.inServer ? null : await findEditor();
+  return running ? running.links === false : !LINKS_ON;
 }
 
 export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string; global?: boolean }): Promise<Project> {
@@ -111,7 +116,7 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   const size = o.size ? sizeFor(ctx, kind, o.size) : undefined;
   // a bare name is a folder of that name here, as `git init`, `cargo new` and `npm create` do; `global` keeps it in the projects folder
   if (o.global && looksLikePath(target)) throw new CommandError(t('cli.globalPath', { target }));
-  const global = looksLikePath(target) ? false : bareNamesGlobal(o.global);
+  const global = looksLikePath(target) ? false : await bareNamesGlobal(ctx, o.global);
   if (global && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
   const path = global ? undefined : resolve(expandHome(target));
   const title = o.title?.trim() || (path ? basename(path) : target);

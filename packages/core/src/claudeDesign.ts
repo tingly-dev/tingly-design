@@ -71,18 +71,18 @@ export function detectClaudeDesign(paths: string[]): PackageMatch | null {
   if (best) return best;
   // a dashboard saved without its meta document: datasets and a page beside them are enough,
   // unless a dash.json says it is one of ours (a Tingly dashboard folder, zipped by hand or imported as a folder)
-  const ds = paths.find((p) => /^(.*\/)?datasets\/[^/]+(\.json)?$/.test(p));
-  if (!ds) return null;
-  const root = /^(.*\/)?datasets\//.exec(ds)![1] ?? '';
-  const hasPage = paths.includes(`${root}index.html`) || paths.includes(`${root}files/index.html`);
-  if (hasPage && !paths.includes(`${root}${DASH_INDEX}`)) return { kind: 'dashboard', root };
+  const roots = new Set(paths.map((p) => /^(.*\/)?datasets\/[^/]+(\.json)?$/.exec(p)).filter((m) => m).map((m) => m![1] ?? ''));
+  for (const root of [...roots].sort((a, b) => a.split('/').length - b.split('/').length)) {
+    const hasPage = paths.includes(`${root}index.html`) || paths.includes(`${root}files/index.html`);
+    if (hasPage && !paths.includes(`${root}${DASH_INDEX}`)) return { kind: 'dashboard', root };
+  }
   return null;
 }
 
 // ------------------------------------------------------------------ pictures
 
 /** `/_blob/<id>`: how the original refers to a picture or file in its asset store. */
-const BLOB_RE = /(?<![\w.~%/-])\/?_blob\/([0-9a-f]{32})\b/g;
+const BLOB_RE = /(?<![\w.~%/-])(?:\.{1,2})?\/?_blob\/([0-9a-f]{32})\b/g;
 const TEXT_FILE_RE = /\.(html?|css|js|json|md|svg|txt)$/i;
 
 /** Files in the package that look like stored assets: named `<id>.<ext>` or just `<id>`, which is how Claude Code saves an asset it reads. */
@@ -111,8 +111,9 @@ function bringPictures(project: Files, assets: Map<string, { path: string; ext: 
       }
       const to = `uploads/${id}${a.ext}`;
       if (!project[to]) project[to] = all[a.path];
-      // a design system's pages resolve from their own folder (components/<name>/); canvases and slides from the project's
-      return fromFile && !/\.json$/i.test(rel) ? '../'.repeat(rel.split('/').length - 1) + to : to;
+      // a design system's component files are drawn in a frame based at components/<name>/ (bundle.css and
+      // bundle.js inlined into it too); everything else, and canvases and slides, resolve from the project's folder
+      return fromFile && rel.startsWith('components/') && !/\.(json|md)$/i.test(rel) ? `../../${to}` : to;
     });
     if (next !== src) project[rel] = bytes(next);
   }
@@ -215,6 +216,8 @@ function dashboardFrom(here: Files, notes: ClaudeDesignNote[]): ClaudeDesignImpo
       const ext = named.toLowerCase();
       if (from && DASH_DATA_TYPES[ext]) {
         let n = safeDataName(src.name ?? (id && from === blobs.get(id)?.path ? `${m[1]}.${ext}` : from.split('/').pop()!));
+        // the dashboard reads a data file by its extension
+        if (!n.toLowerCase().endsWith(`.${ext}`)) n = `${n}.${ext}`;
         while (taken.has(n)) n = `${m[1]}-${n}`;
         taken.add(n);
         files[`data/${n}`] = here[from];
@@ -338,7 +341,8 @@ function readme(kind: ClaudeDesignKind, title: string, files: string[], notes: C
 
 /** A Claude Docs export (Markdown) as a new doc: one tab, titled by its first heading. */
 export function docFromMarkdown(source: string, fallbackTitle: string, lang: string = /[\u3400-\u9fff]/.test(source) ? 'zh-CN' : 'en'): Files {
-  const heading = /^#\s+(.+?)\s*#*\s*$/m.exec(source)?.[1];
+  // a closing run of # only after a space, as the doc export writes it: `# C#` is titled C#
+  const heading = /^#[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/m.exec(source)?.[1];
   const title = heading ?? fallbackTitle;
   const d: DocJson = { title, tabs: [{ id: 'main', title }], settings: { ...DEFAULT_SETTINGS, lang } };
   return { [DOC_INDEX]: bytes(stringifyDoc(d)), [tabFile('main')]: bytes(source.endsWith('\n') ? source : source + '\n') };

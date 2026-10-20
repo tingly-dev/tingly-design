@@ -26,8 +26,10 @@ export interface DocMarkdown {
 }
 
 const LOCAL = /^(?:\.\.\/)?((?:assets|uploads)\/[^)\s"'>]+)/;
-/** A fence, also one opening a list item or inside a quote (`- ```bash`, `> ````); any indent closes it. */
-const FENCE = /^(?:[ \t>]*(?:[-*+]|\d{1,9}[.)])[ \t]+)*[ \t>]*(`{3,}|~{3,})/;
+/** A fence that opens, also one opening a list item or inside a quote (`- ```bash`, `> ````), never in an indented code block. */
+const FENCE = /^(?: {0,3}(?:>[ \t]?|(?:[-*+]|\d{1,9}[.)])[ \t]+))* {0,3}(`{3,}|~{3,})/;
+/** A fence that closes: at any indent, since a list item's or a quote's closing fence sits at its content's. */
+const CLOSE = /^[ \t>]*(`{3,}|~{3,})/;
 
 /** Runs `fn` over the lines outside fenced code blocks, handing it each line's text. */
 function mapOutsideCode(source: string, fn: (line: string) => string): string {
@@ -35,7 +37,7 @@ function mapOutsideCode(source: string, fn: (line: string) => string): string {
   return source
     .split('\n')
     .map((line) => {
-      const m = FENCE.exec(line);
+      const m = (fence ? CLOSE : FENCE).exec(line);
       if (fence) {
         if (m && m[1][0] === fence[0] && m[1].length >= fence.length && !line.slice(m[0].length).trim()) fence = null;
         return line;
