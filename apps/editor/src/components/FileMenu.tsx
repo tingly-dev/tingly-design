@@ -4,7 +4,7 @@ import { toast } from '../store';
 import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
 import { offerExports, type Pick } from '../headless';
-import { saveProjectArchive } from '../projectArchive';
+import { saveClaudeDesign, saveProjectArchive } from '../projectArchive';
 import { Caret, FileText, FileZip, Frame, Transfer } from './icons';
 
 /**
@@ -37,6 +37,7 @@ export function FileMenu({
   pick,
   button = 'icon',
   align = 'right',
+  claudeDesign = false,
 }: {
   target: ImportTarget;
   /** the kind as a noun in the language showing, for "Import into this {label}" */
@@ -47,6 +48,8 @@ export function FileMenu({
   pick?: Pick;
   button?: 'icon' | 'text';
   align?: 'left' | 'right';
+  /** this kind has an original Claude type with files to exchange (docs go through Markdown, motion has none; .design/claude-design-format.md) */
+  claudeDesign?: boolean;
 }) {
   const { t } = useTranslation();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -75,7 +78,8 @@ export function FileMenu({
     pos && project
       ? [
           ...own,
-          { id: 'project', label: t('common.transfer.label.project'), hint: t('common.transfer.hint.project'), icon: <FileZip />, rule: own.length > 0, run: () => saveProjectArchive(project, true) },
+          ...(claudeDesign ? [{ id: 'claude-design', rule: own.length > 0, label: t('common.transfer.label.claudeDesign'), hint: t('common.transfer.hint.claudeDesign'), icon: <FileZip />, run: () => saveClaudeDesign(project) }] : []),
+          { id: 'project', label: t('common.transfer.label.project'), hint: t('common.transfer.hint.project'), icon: <FileZip />, rule: !claudeDesign && own.length > 0, run: () => saveProjectArchive(project, true) },
           { id: 'project-files', label: t('common.transfer.label.projectFiles'), hint: t('common.transfer.hint.projectFiles'), icon: <FileZip />, run: () => saveProjectArchive(project, false) },
         ]
       : own;

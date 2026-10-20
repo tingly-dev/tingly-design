@@ -31,3 +31,4 @@ export * from './projectArchive';
 export * from './conversation';
 export * from './project';
 export * from './transcript';
+export * from './claudeDesign';

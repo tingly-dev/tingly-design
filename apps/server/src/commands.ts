@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, journalSince, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -303,6 +303,8 @@ export interface ExportResult {
   issues?: PageIssue[];
   /** a zip: what went in */
   zip?: { files: number; systems: string[] };
+  /** a Claude Design package: what to know before publishing it (the command line words them) */
+  notes?: ClaudeDesignNote[];
 }
 
 /** The one board, slide, tab or view a `pick` names, as the option of the kind it belongs to; dashboards and motion have none. */
@@ -317,7 +319,8 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   if (!o.as) throw new CommandError(t('cli.needAs', { project: p.name }));
   const as = o.as.toLowerCase();
   if (as === 'zip') return exportZip(p, o);
-  if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip'].join(', ') }));
+  if (as === 'claude-design') return exportClaudeDesign(ctx, p, o);
+  if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip', ...(hasClaudeDesign(p.kind) ? ['claude-design'] : [])].join(', ') }));
   if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);
@@ -366,6 +369,18 @@ async function exportPlayer(ctx: Ctx, p: Project, o: ExportOptions): Promise<Exp
   const file = resolve(dir, `${basename(p.dir)}.html`);
   await writeFile(file, motionPlayer({ dir: p.dir, runtime: resolve(SANDBOX_DIST, 'motion.js'), labels: { play: t('cli.player.play'), time: t('cli.player.time'), format: t('cli.player.format'), speed: t('cli.player.speed') } }));
   return { files: [file], failed: [] };
+}
+
+/** The project in Claude's own format, the same as the editor's Claude Design item (.design/claude-design-format.md). */
+async function exportClaudeDesign(ctx: Ctx, p: Project, o: ExportOptions): Promise<ExportResult> {
+  if (!hasClaudeDesign(p.kind)) throw new CommandError(translator(ctx.lang)('cli.noClaudeDesign', { kind: translator(ctx.lang)(`cli.kind.${p.kind}`) }), 1);
+  const { packClaudeDesign } = await import('./archive');
+  const { bytes, file, files, notes } = await packClaudeDesign(p.name, p.dir);
+  const dir = o.out ? resolve(expandHome(o.out)) : process.cwd();
+  await mkdir(dir, { recursive: true });
+  const out = resolve(dir, file);
+  await writeFile(out, bytes);
+  return { files: [out], failed: [], zip: { files, systems: [] }, notes };
 }
 
 /** The whole project as one .zip, the same as the editor's Whole project / Project files only (.design/project-archive.md). */

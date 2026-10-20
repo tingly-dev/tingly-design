@@ -27,6 +27,7 @@
   "放映 / 播放": {"design": ["e2e"], "slides": ["slides"], "motion": ["motion"]},
   "图层树": {"design": ["layers"], "slides": ["layers"], "motion": ["layers"]},
   "整个项目导出 / 导入": {"design": ["archive"], "slides": ["archive"], "design-system": ["archive"], "dashboard": ["archive"], "docs": ["archive"], "motion": ["archive"]},
+  "和原版 Claude Design 互相搬作品": {"design": ["claude_design"], "slides": ["claude_design"], "design-system": ["claude_design"], "dashboard": ["claude_design"]},
   "批注 / 备注": {"design": "no e2e checks this kind yet", "slides": ["slides"], "motion": ["motion"]},
   "元素缩放手柄": {"design": "no e2e checks this kind yet", "slides": "no e2e checks this kind yet", "motion": ["motion"]},
   "新建时导入": {"design": "no e2e checks this kind yet"},

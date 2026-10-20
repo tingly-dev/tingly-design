@@ -12,9 +12,11 @@ Usage: tingly-design [command] [options]
   list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets)
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
+                                   claude-design: the original Claude type's files (canvas, slides, design system, dashboard);
                                    canvas png; slides pdf, png, html, notes; doc pdf, html, md, png;
                                    design system and dashboard png; motion mp4, gif, png (its cover), html (a player)
-  import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
+  import <file.zip or folder>      a project from a .zip made by export --as zip (or a zipped project folder), a Claude
+                                   Design package (the .zip, or the folder Claude Code saved) or a Claude Docs .md export
   prompt <project> <request>       hand a request to Claude Code, as the request bar does: it edits the
                                    files, the open editor shows it live; prints what it changed
                                    (--fast: the fast AI edits one board, slide or scene in Chrome)
@@ -197,7 +199,9 @@ Options:
     kept: 'Kept {{file}}, which differs from this version’s',
   },
   skillsKept: 'Add --force to replace the copies that differ.',
-  needZip: 'Name the .zip to import: tingly-design import <file.zip>',
+  needZip: 'Name the .zip to import: tingly-design import <file.zip or folder>',
+  noClaudeDesign: 'A {{kind}} has no Claude Design format. Docs go through Markdown (--as md); motion has no original type.',
+  importedClaudeDesign: 'Imported {{name}} ({{kind}} from Claude Design) into {{path}}',
   noFileAt: 'There is no file at {{path}}',
   imported: 'Imported {{name}} into {{path}}',
   importedSystems: 'With the design system {{systems}}.',

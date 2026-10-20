@@ -124,7 +124,7 @@ async def main():
         async with pg.expect_file_chooser() as fc:
             await pg.get_by_role('menuitem', name='Import a project (.zip)…').click()
         await (await fc.value).set_files(bad)
-        await expect(pg.get_by_text('There is no Tingly Design project in this .zip', exact=False)).to_be_visible()
+        await expect(pg.get_by_text('There is no Tingly Design project or Claude Design package in this .zip', exact=False)).to_be_visible()
         check('import: a zip with no project is refused in words', True)
 
         # --- Chinese, dark ---------------------------------------------------------------------------

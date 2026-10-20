@@ -31,7 +31,7 @@ MOCK_PORT, API_PORT, EDITOR_PORT = 8790 + OFFSET, 8787 + OFFSET, 5173 + OFFSET
 SUITES = {
     'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev', 'tweak_text': 'dev', 'template_values': 'dev',
     'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
-    'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'archive': 'dev', 'copy_png': 'dev',
+    'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev',
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',
     'ai_settings': 'dev-bare',
     'conversation': 'fake-claude',

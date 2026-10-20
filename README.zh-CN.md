@@ -131,7 +131,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 
 | | |
 |---|---|
-| **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) · [动效](docs/zh/guide/motion.md) |
+| **使用指南** | [画布](docs/zh/guide/canvas.md) · [幻灯片](docs/zh/guide/slides.md) · [设计系统](docs/zh/guide/design-system.md) · [看板](docs/zh/guide/dashboard.md) · [文档](docs/zh/guide/docs.md) · [动效](docs/zh/guide/motion.md) · [Claude Design](docs/zh/guide/claude-design.md) |
 | **[主题](docs/zh/theming.md)** | 浅色、深色和 Tingly Box 的预设主题，以及通过 URL、脚本、宿主页面或 `DC_THEME` 传入主题 |
 | **[命令行](docs/zh/cli.md)** | `tingly-design open`、`serve`、`new`、`list`、`check`、`export`、`import`、`prompt`、`history`、`skills`、`mcp`，给脚本、CI 和 agent 用 |
 | **[嵌入](docs/zh/embedding.md)** | 跑在 Tingly Box 等其他应用里：打包（`pnpm bundle`）、挂在路径前缀下启动、宿主和编辑器之间的消息 |

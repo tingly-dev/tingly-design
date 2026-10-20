@@ -59,6 +59,7 @@ export default {
     label: {
       project: '整个项目（.zip）',
       projectFiles: '仅项目文件（.zip）',
+      claudeDesign: 'Claude Design 包（.zip）',
       png: 'PNG 图片',
       pngs: 'PNG 图片（多张）',
       pngRetina: 'PNG 图片 @2x',
@@ -76,6 +77,7 @@ export default {
     hint: {
       project: '所有文件，含改动记录和设计系统 · 可在首页重新导入',
       projectFiles: '不含改动记录和设计系统',
+      claudeDesign: '原版 Claude 类型的文件，交给 Claude Code 发布 · 可以从首页再导入',
       boardOne: '选中的画板',
       boardEvery: '这一页的每个画板，各存一个文件',
       boardSource: '画板的 .dc.html 文件',

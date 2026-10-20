@@ -238,6 +238,7 @@ export function DashApp() {
         <BarButton icon={<Target />} label={t('dash.bar.dataMode')} title={t('dash.bar.dataModeTitle')} on={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} />
         <BarButton icon={theme === 'dark' ? <Sun /> : <Moon />} label={t('dash.bar.toggleTheme')} title={theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
         <FileMenu
+          claudeDesign
           target={dashImport}
           label={t('dash.kind')}
           items={[

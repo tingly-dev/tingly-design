@@ -84,6 +84,8 @@ export default {
   },
   archive: {
     import: 'Import a project (.zip)…',
+    importHint: 'A Tingly Design project, a Claude Design package, or a Claude Docs export (.md)',
+    importedClaude: 'Imported “{{name}}” from Claude Design ({{kind}})',
     export: 'Export (.zip)',
     imported: 'Imported “{{name}}”',
     importedWith: 'Imported “{{name}}”, with the design system {{systems}}',
