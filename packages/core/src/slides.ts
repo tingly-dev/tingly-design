@@ -1,6 +1,7 @@
 import { attr, type DcDoc, type DcElement } from './parse';
 import { parseStyle } from './style';
 import { isBoardEmbedPath } from './boardEmbed';
+import { fxIssues } from './motionFx';
 
 /**
  * The slide subset (the original Slides type's `format.md`), as a checker.
@@ -169,6 +170,12 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
         if (el.parent !== section) add(el, 'error', '<x-embed> must be a direct child of <section>.');
         if (!isPinned(el)) add(el, 'error', '<x-embed> must be pinned: position:absolute with left/top and width/height.');
         const src = attr(el, 'src');
+        const fx = attr(el, 'data-fx');
+        if (fx !== undefined) {
+          for (const m of fxIssues(fx)) add(el, 'error', m);
+          if (src !== undefined) add(el, 'error', '<x-embed data-fx> draws a built-in effect; it takes no src.');
+          if (el.inner && doc.source.slice(el.inner.start, el.inner.end).trim()) add(el, 'error', '<x-embed data-fx> draws a built-in effect; it holds no markup of its own.');
+        }
         if (src !== undefined) {
           if (!isBoardEmbedPath(src)) add(el, 'error', `<x-embed src="${src}"> must name an artboard imported under uploads/ (uploads/<from>-<board>/X.dc.html).`);
           if (el.inner && doc.source.slice(el.inner.start, el.inner.end).trim()) add(el, 'error', '<x-embed src> shows the artboard; it holds no markup of its own.');

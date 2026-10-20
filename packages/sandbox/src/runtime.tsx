@@ -16,6 +16,9 @@ import {
   LOCK_ATTR,
   SLIDE_BASE_CSS,
   attrsForFormat,
+  fxMarkup,
+  isFxEmbed,
+  FX_STILL_MS,
   boardTime,
   embedProps,
   isBoardEmbedPath,
@@ -298,11 +301,15 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
               live={ctx.mode === 'play' && !ctx.motion}
             />
           );
+        const own = innerSource(ctx.slide.source, el.inner);
+        const fx = a('data-fx');
+        // a built-in effect: on a stage it waits to be sought, presenting a slide it runs on its own clock, editing one it stands still
+        const markup = fx !== undefined && isFxEmbed({ 'data-fx': fx }, own) ? (fxMarkup(fx, { live: ctx.mode === 'play' && !ctx.motion, at: ctx.motion ? 0 : FX_STILL_MS }) ?? '') : own;
         return (
           <XEmbed
             key={key}
             props={sp()}
-            html={innerSource(ctx.slide.source, el.inner) + (ctx.motion && el.attrs.some((x) => x.name === 'data-seek') ? SEEK_BRIDGE : '')}
+            html={markup + (ctx.motion && el.attrs.some((x) => x.name === 'data-seek') ? SEEK_BRIDGE : '')}
             mode={ctx.mode}
             still={ctx.slide.still}
           />

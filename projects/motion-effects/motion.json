@@ -19,6 +19,16 @@
   "order": [
     "intro",
     "card-glow",
+    "presets",
+    "plasma",
+    "waves",
+    "grid",
+    "stars",
+    "halftone",
+    "rays",
+    "particles",
+    "leak",
+    "region",
     "outro"
   ],
   "audio": [],

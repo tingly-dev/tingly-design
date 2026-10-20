@@ -1,4 +1,4 @@
-import { deckToMarkdown, SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, type HumanOp } from '@dc/core';
+import { deckToMarkdown, SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, fxMarkup, FX_STILL_MS, type HumanOp } from '@dc/core';
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
@@ -35,8 +35,8 @@ async function dataUrl(url: string): Promise<string | null> {
   }
 }
 
-/** A slide's markup for a standalone page: relative images inlined, embeds as sandboxed srcdoc frames. */
-async function standalone(source: string, base: string): Promise<string> {
+/** A slide's markup for a standalone page: relative images inlined, embeds as sandboxed srcdoc frames; built-in effects run on their own clock when `live`, else stand still. */
+async function standalone(source: string, base: string, live = false): Promise<string> {
   // the subset's paint order, written out as z-index, and text boxes' list indent
   const ops: HumanOp[] = [];
   for (const el of parseDc(source).elements) {
@@ -59,6 +59,9 @@ async function standalone(source: string, base: string): Promise<string> {
   );
   // <x-embed style="…">inner</x-embed> → a sandboxed frame running the same markup
   out = out.replace(/<x-embed\b(?![^>]*\bdata-board=)([^>]*)>([\s\S]*?)<\/x-embed>/g, (_m, attrs: string, inner: string) => {
+    // a built-in effect (data-fx) is handed the preset's page
+    const fx = /\bdata-fx="([^"]*)"/.exec(attrs);
+    if (fx && !inner.trim()) inner = fxMarkup(fx[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'), live ? { live: true } : { at: FX_STILL_MS }) ?? '';
     const doc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${EMBED_CSP}"><style>html,body{margin:0;background:transparent}</style>${inner}`;
     return `<x-embed${attrs}><iframe sandbox="allow-scripts" srcdoc="${esc(doc)}" style="display:block;width:100%;height:100%;border:0;background:transparent"></iframe></x-embed>`;
   });
@@ -137,7 +140,7 @@ async function buildHtml(mode: 'player' | 'print' | 'pdf'): Promise<string> {
     const src = display(s, slideFile(id));
     if (src) {
       sources.push(src);
-      parts.push(`<div class="dc-slide-host">${await standalone(src, base)}</div>`);
+      parts.push(`<div class="dc-slide-host">${await standalone(src, base, !print)}</div>`);
     }
   }
   const boards = await boardData(sources);

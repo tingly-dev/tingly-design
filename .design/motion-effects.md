@@ -1,6 +1,6 @@
 # Motion effects: shader layers in a motion piece
 
-Status: **已实施** (the contract, the WebGL2 runtime and a sample, `projects/motion-effects/`); injecting the runtime, checker errors and a preset library are open (§6). The engines weighed, and the measurements behind the choice, are in `.research/motion-effects.md`.
+Status: **已实施** (the contract, the WebGL2 runtime, sixteen built-in presets behind `data-fx` with shared values that reshape them with a CSS stand-in when WebGL2 is off, and a sample, `projects/motion-effects/`); checker errors for hand-written GLSL and a preset picker in the editor are open (§6). The engines weighed, and the measurements behind the choice, are in `.research/motion-effects.md`.
 
 The effects layer of the motion kind (`.design/motion.md`): what an effect is, how it stays frame-exact in export, which engine draws it, and what makes an effect worth having on screen.
 
@@ -23,8 +23,40 @@ The effects layer of the motion kind (`.design/motion.md`): what an effect is, h
 - **Inputs:** `time` (seconds into the scene), `aspect` (width / height) and `uv` with a top-left origin. The same inputs would carry over to WGSL line by line if a WebGPU engine is added (§3).
 - **Output:** premultiplied alpha. An effect is either a full background (`a = 1`) or a layer between the page's elements; its place in the stack is its place in the DOM, like any other element.
 - **One shader for every format.** Geometry is in units of the frame's short side, `(uv - c) * vec2(aspect, 1) / min(aspect, 1)`, so 16:9 and 9:16 share a shader. When an effect wraps an HTML element (a glow around a card), the element uses the same numbers in both formats; the shader and the markup describe one shape.
+- **Built in or hand-written.** `data-fx="<preset>; key: value; …"` on an empty embed names a built-in effect (§2.1); the markup is generated where the embed is drawn. Hand-written GLSL with the runtime copied in stays possible for a look no preset gives.
 - **`data-quality`** is the share of the layer's device pixels the shader draws, upscaled by the canvas. Soft fields lose nothing at 0.5 and cost a quarter as much; anything with a sharp edge needs 1.
-- **Parameters** (colours, speed, the wrapped shape) are constants at the top of the shader. The ones a person will want to change should become attributes shown as concrete values (`hue 0.06/s`, `card 760 × 460 @ 42 %`), not aliases.
+- **Parameters** (colours, speed, the wrapped shape) are constants at the top of the shader. In a built-in effect they are the values of `data-fx`, written as concrete values (`colors: #3d7bff #9861ff`, `box: 760x460 @50% 42%`), not aliases, and turned into those constants.
+
+### 2.1 Built-in effects (`data-fx`)
+
+```html
+<x-embed data-fx="edge-glow; box: 760x460 @50% 42%; radius: 36" data-seek data-in="fade 1s @0.15s" style="position:absolute;left:0;top:0;width:100%;height:100%"></x-embed>
+```
+
+| Preset | What it is | Its place | Values besides `quality` and `region` |
+|---|---|---|---|
+| `flow` | ink-like currents of colour folding into each other, an opening or closing | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `aurora` | curtains of light across the top of a dark frame | background | `colors`, `background`, `speed`, `amount`, `scale` |
+| `mesh` | soft fields of colour drifting into each other, calm | background | `colors` (up to 4), `background`, `speed`, `amount`, `scale` |
+| `plasma` | bright bands of colour bending through each other, loud | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `waves` | contour lines of a slowly changing landscape, technical | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `grid` | a perspective floor rolling towards the viewer under a glowing horizon; text goes in the sky | background | `colors` (lines, horizon), `background`, `speed`, `amount`, `scale` |
+| `stars` | flying forward through stars streaming from a point | background | `colors`, `background`, `speed`, `amount`, `at` |
+| `halftone` | a dot grid growing and shrinking like print | background | `colors`, `background`, `speed`, `amount`, `scale`, `direction` |
+| `edge-glow` | light flowing around a card that is working | layer just before the card | `colors`, `speed`, `amount`, `box` (`760x460 @50% 42%`: size in px, centre in % of the frame; give the card the same numbers), `radius` (px) |
+| `sweep` | a band of light crossing a title once per period | layer just after the title | `colors` (the first), `speed`, `amount` (0.35), `every` (`3s`), `angle` (deg) |
+| `rays` | shafts of light falling from a point, slowly turning | layer over a background | `colors`, `speed`, `amount`, `at` (`50% 0%` for light from above) |
+| `ripple` | rings spreading from a point, one every period: behind a mark or a button | layer just before the mark | `colors`, `speed`, `amount`, `scale`, `at`, `every` |
+| `particles` | soft points of light drifting and twinkling | layer over a background | `colors`, `speed`, `amount`, `scale`, `direction` (270, up) |
+| `light-leak` | warm light spilling in from the edges, as from a lens | layer last, over the text | `colors`, `speed`, `amount` (0.55) |
+| `scanlines` | the lines and slow rolling band of an old screen | layer last | `speed`, `amount` (0.25), `scale` |
+| `grain` | film grain | layer last | `speed`, `amount` (0.07) |
+
+- **Shared values reshape any preset.** Besides its own values, a preset reads `scale` (the pattern's size), `direction` (where a field drifts, in degrees: 0 right, 90 down) and `at` (the point rays, ripples and stars come from) where they mean something, and every preset reads `region` (`0% 55% 100% 45%`: left, top, width, height): the shader runs as if the region were the whole embed and its edge is feathered, so an effect is fitted into part of the frame rather than cut out of it. These answer "can it look different" without a new preset per variant; what they cannot change is the kind of motion, which is what a preset is. A composable graph (noise, palette, mask, motion as parts) was weighed and left: it covers more, but its values stop being concrete and a person can no longer say what a line does.
+- **One attribute, values written out.** The preset name, then `key: value` pairs separated by `;`, the way `data-keys` reads. Values are concrete (`#3d7bff`, `760x460 @50% 42%`, `3s`), never aliases, and a value left out takes the preset's default (brand colours on near-black). `data-fx-<format>` replaces it in one format, like the timing attributes, for a box that sits elsewhere in a tall frame.
+- **Generated where it is drawn.** `fxMarkup` in core (`motionFx.ts`) turns the value into the embed's page: a canvas, the preset's shader with the values as constants, and the runtime. The motion player and renderer, the editing stage, a slide and a deck's downloaded HTML and PDF all call it, so the file stays one line and a fix to a preset reaches every piece. The cost is that a preset's look can change under an existing piece when the preset is improved; a person who wants it frozen copies the markup in by hand.
+- **Checked like the subset.** An unknown preset, a value the preset does not read or a value that does not parse is an error from `fxIssues`, through the slide checker that scenes share, so a model's typo comes back with a message instead of quietly falling back to a default.
+- **Slides too.** A slide's embed takes `data-fx` the same way: editing, the effect stands at 2 s; presenting and in the downloaded HTML it runs on its own clock; the PDF prints it standing still.
 
 ## 3. Engine: WebGL2 inside the page
 
@@ -32,7 +64,11 @@ The shader is drawn with WebGL2 by a small runtime inside the embed: a fullscree
 
 **Where the embed runs.** The motion stage's own page forbids inline scripts, and a `srcdoc` frame inherits that policy, so an embed written into the stage as `srcdoc` never ran its runtime: the editor's player showed no effect in any browser while the exact renderer (a plain page with no policy) drew it. In the editor the embed loads `embed.html`, the same page slides use (inline scripts allowed, no network, opaque origin), and is handed its markup once it is up; the renderer keeps `srcdoc`, since its page has no policy and no server to load from.
 
-**When the layer cannot draw.** A browser can refuse WebGL2 (hardware acceleration off, a blocklisted GPU, a lost context) and a model's shader can fail to compile or link. A canvas that stays blank with nothing said looks like a broken product, so the runtime reports instead of throwing: it posts `effect-error` with a code (`no-webgl2`, `shader` with the GLSL log, `draw`), the motion stage collects them and the editor words them under the stage in the user's language. The scene itself still plays, since every shader scene sets its own background colour, so the piece degrades to the layer's absence rather than to a failure. A lost context is rebuilt on `webglcontextrestored` and redraws the last time. The runtime also falls back to `mediump` where the GPU has no fragment `highp`, and binds a vertex array so the attribute-less triangle is legal on every ANGLE backend.
+**When the layer cannot draw.** A browser can refuse WebGL2 (hardware acceleration off, a blocklisted GPU, a lost context) and a model's shader can fail to compile or link. A canvas that stays blank with nothing said looks like a broken product, so the runtime reports instead of throwing: it posts `effect-error` with a code (`no-webgl2`, `shader` with the GLSL log, `draw`), the motion stage collects them and the editor words them under the stage in the user's language. A built-in effect also draws a CSS stand-in of itself (radial gradients for the fields, a box shadow for the edge glow, a gradient band for the sweep; grain has none), still a function of time, and reports `fallback`, which the editor words as "a simpler version" rather than "off". A hand-written shader has no stand-in: the scene plays on its own background colour, so the piece degrades to the layer's absence rather than to a failure.
+
+**The renderer's Chrome.** The exact renderer, the page exports and the PDF start Chrome with `--disable-gpu --use-angle=swiftshader --enable-unsafe-swiftshader`: WebGL always draws on SwiftShader on the CPU, so a render is the same picture on a machine with a GPU and one without. Since Chrome 137 a headless Chrome no longer falls back to SwiftShader by itself; without the last flag every effect rendered blank on the server while the editor showed it. "Unsafe" is about running untrusted pages on a JIT'd software GPU; the renderer runs the person's own project, and every embed keeps its sandbox. A lost context is rebuilt on `webglcontextrestored` and redraws the last time. The runtime also falls back to `mediump` where the GPU has no fragment `highp`, and binds a vertex array so the attribute-less triangle is legal on every ANGLE backend.
+
+**Only the scenes on screen hold a context.** A page keeps at most 16 live WebGL contexts and drops the oldest past that, and a piece mounts every scene's embeds at once, so a sample with an effect in every scene lost them all. An embed therefore makes its context on its first seek, not at load; the stage seeks only the embeds whose scene is on screen (while playing too); and an embed not sought for 1.5 s copies its last frame onto a 2D canvas and gives the context back (a live one does the same while its slide is hidden). The first seek after that builds the shader again, which takes over a second on SwiftShader, so the stage waits up to 5 s for an embed to answer before it moves on.
 
 Cost: with no GPU, the sample renders at about 4.5 frames a second against 6 to 14 for plain motion; `data-quality` 0.5 on soft fields is most of the saving.
 
@@ -54,6 +90,7 @@ What it gives up is compute shaders, so simulations (fluid, many-particle physic
 
 ## 6. Open questions
 
-- **Injecting the runtime.** Today each embed carries a copy of it. A `data-fx` attribute with the motion runtime injecting the code would remove the copy and let the editor list effects as presets.
-- **Errors in the checker.** GLSL compile errors reach the editor at run time (§3) but not the motion checker, so a model's broken shader comes back with a line number, like a slide subset error.
-- **A first preset library:** aurora, edge glow, film grain, gradient mesh, light sweep across text, each with one sentence on when to use it (§5), not just a name.
+- **Picking a preset in the editor.** Presets are written by hand or by a model today. The import menu could offer them beside "From a project…", and the panel could show a selected effect's values as fields (colours, the box, speed), written back to `data-fx`.
+- **Errors in the checker.** GLSL compile errors in a hand-written shader reach the editor at run time (§3) but not the motion checker, so a model's broken shader does not come back with a line number, like a slide subset error. Built-in presets are checked (§2.1).
+- **More presets** when a piece needs one: a focus pull, a liquid distortion over the content (needs the scene as a texture, which the page does not have), particles gathering into a shape. Each needs a job (§5), a CSS stand-in or a stated reason for none, and a row in §2.1.
+- **CSS stand-ins** are soft gradients for every background preset; the layers that only add light (rays, ripple, particles, scanlines, grain) draw nothing without WebGL2.

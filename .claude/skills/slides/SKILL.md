@@ -85,8 +85,17 @@ Elements:
 | `x-connector x1 y1 x2 y2 head route style` | an arrow in slide coordinates: `head="end|both|none"`, `route="straight|hv|vh|elbow"`, `style="color;border-width;border-style"` |
 | `x-embed style` | a live mini page (HTML/CSS/JS, ≤ 16 KB, ≤ 8 per slide), a **direct, pinned** child of the section; runs sandboxed with no network; the deck's fonts don't reach it |
 | `x-embed src data-props style` | an artboard imported from a canvas (see below): empty, `src` is its copy under `uploads/`, `data-props` a JSON object of its tweaks |
+| `x-embed data-fx style` | a built-in WebGL effect (see below): empty, `data-fx` names the preset and its values |
 
 At most 200 elements on a slide.
+
+### Built-in effects
+
+A background of moving light, drawn with WebGL2: an empty embed whose `data-fx` names one of the sixteen presets (backgrounds such as `flow`, `aurora`, `mesh`, `plasma`, `waves`, `grid`, `stars`, `halftone`; layers such as `particles`, `rays`, `light-leak`) and, after `;`, its values (`colors: #3d7bff #9861ff; speed: 0.5`). The presets and their values are in `.claude/skills/motion/SKILL.md` (Shader effects). It stands still while editing and in the PDF, moves while presenting and in the downloaded HTML, and draws a simpler CSS version where WebGL2 is off. A background goes first in the section; keep one per slide and the text readable over it.
+
+```html
+<x-embed data-fx="aurora; colors: #3d7bff #9861ff" style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>
+```
 
 ### Artboards imported from a canvas (effects)
 

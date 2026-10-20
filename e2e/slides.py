@@ -194,6 +194,9 @@ async def main():
 
         # --- jQuery runs on a slide too, from the Code tab ---------------------------------
         await pg.keyboard.press('Escape')
+        # the reverted file reloads the deck: pick the slide again so the Code tab shows it, not the cover
+        await pg.locator('.thumb[data-slide="powerups"]').click()
+        await expect(pg.locator('.thumb.on')).to_have_attribute('data-slide', 'powerups')
         await pg.locator('.panel [role="tab"]', has_text='代码').click()
         await expect(pg.locator('.panel textarea[aria-label="幻灯片源文件"]')).to_have_value(re.compile('<h2'))
         await pg.locator('.jqbox textarea').fill("$('h2').css('color', '#ff5c8a')")

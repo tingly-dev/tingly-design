@@ -7,7 +7,7 @@
  * window.dcMotion.mount({ motion, scenes, format, root }) → Promise<MotionStage>
  */
 import { resolveSrc, urlsAgainst } from './urls';
-import { attrsForFormat, boardFrameDoc, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
+import { attrsForFormat, boardFrameDoc, fxMarkup, isFxEmbed, boardSize, coverFit, drawSlideArt, embedProps, isBoardEmbedPath, parseDc, faceMarkup, motionTimeline, sceneBaseCss, speedOf, SLIDE_BASE_CSS, type DeckJson, type MotionJson, type SceneWindow } from '@dc/core';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 import type { CoverSource, ExportOutcome, ExportRequest } from './motionExport';
 import type { AudioClip } from '@dc/export';
@@ -156,7 +156,9 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     // embeds keep their markup as a string; what's inside them is not part of the scene's DOM
     const embedHtml = new Map<Element, string>();
     for (const x of Array.from(section.querySelectorAll('x-embed'))) {
-      embedHtml.set(x, x.innerHTML);
+      // a built-in effect (data-fx) is handed the preset's markup
+      const fx = x.getAttribute('data-fx');
+      embedHtml.set(x, fx !== null && isFxEmbed({ 'data-fx': fx }, x.innerHTML) ? (fxMarkup(fx) ?? '') : x.innerHTML);
       x.innerHTML = '';
     }
     host.appendChild(section);
@@ -192,7 +194,9 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       if (seekable) {
         window.addEventListener('message', (e) => {
           if (e.source !== frame.contentWindow || e.data?.dcMotion !== 'effect-error') return;
-          const err = { scene: id, code: String(e.data.code ?? ''), detail: String(e.data.detail ?? '') };
+          // a built-in effect draws its CSS version when WebGL2 is off: say so, not that it is gone
+          const code = String(e.data.code ?? '');
+          const err = { scene: id, code: e.data.fallback && code === 'no-webgl2' ? 'fallback' : code, detail: String(e.data.detail ?? '') };
           effectErrors.push(err);
           window.parent.postMessage({ dcm: 'effect-error', ...err }, '*');
         });
@@ -247,11 +251,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     async seek(ms, o) {
       const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
-      const live = embeds.filter((e) => {
-        const h = hosts.find((h) => h.win.start === e.sceneStart);
-        return h && t >= h.win.start && t <= h.win.start + h.win.duration;
-      });
-      await Promise.all(live.map((e) => seekEmbed(e.frame, t - e.sceneStart)));
+      await Promise.all(liveAt(t).map((e) => seekEmbed(e.frame, t - e.sceneStart)));
       // the frame after next is the first one painted with the new time on every layer
       if (o?.painted !== false) await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
     },
@@ -269,7 +269,8 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
           t %= timeline.duration;
         }
         setTime(t);
-        for (const e of embeds) e.frame.contentWindow?.postMessage({ dcMotion: 'seek', t: t - e.sceneStart, n: -1 }, '*');
+        // only the embeds on screen: one that is not sought lets its WebGL context go
+        for (const e of liveAt(t)) e.frame.contentWindow?.postMessage({ dcMotion: 'seek', t: t - e.sceneStart, n: -1 }, '*');
         onTime?.(t / speed);
         raf = requestAnimationFrame(tick);
       };
@@ -283,6 +284,14 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
       root.innerHTML = '';
     },
   };
+
+  /** The embeds whose scene is on screen at authored time `t`. */
+  function liveAt(t: number) {
+    return embeds.filter((e) => {
+      const h = hosts.find((h) => h.win.start === e.sceneStart);
+      return h && t >= h.win.start && t <= h.win.start + h.win.duration;
+    });
+  }
 
   function setTime(t: number) {
     for (const a of anims) a.setTime(t);
@@ -397,7 +406,8 @@ function seekEmbed(frame: HTMLIFrameElement, t: number): Promise<void> {
     const onMsg = (e: MessageEvent) => {
       if (e.source === frame.contentWindow && e.data?.dcMotion === 'seeked' && e.data.n === n) finish();
     };
-    const timer = setTimeout(finish, 1000);
+    // generous: an effect builds its WebGL context on its first seek, which a software renderer takes a while over
+    const timer = setTimeout(finish, 5000);
     function finish() {
       clearTimeout(timer);
       window.removeEventListener('message', onMsg);

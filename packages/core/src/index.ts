@@ -33,3 +33,4 @@ export * from './conversation';
 export * from './project';
 export * from './transcript';
 export * from './claudeDesign';
+export * from './motionFx';

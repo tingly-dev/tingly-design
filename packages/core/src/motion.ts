@@ -597,14 +597,14 @@ export function attrsForFormat(attrs: Record<string, string>, format: string, fo
   if (only != null && only.trim() && !only.trim().split(/\s+/).includes(format)) return null;
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(attrs)) {
-    const m = /^data-(in|out|keys|duration|transition)-([a-z][a-z0-9]*)$/.exec(k);
+    const m = /^data-(in|out|keys|duration|transition|fx)-([a-z][a-z0-9]*)$/.exec(k);
     if (m && formats.includes(m[2])) continue;
     if (k.startsWith('data-') && formats.includes(k.slice(5))) continue;
     out[k] = v;
   }
   const over = attrs[`data-${format}`];
   if (over) out.style = mergeStyle(attrs.style ?? '', over);
-  for (const p of ['in', 'out', 'keys', 'duration', 'transition']) {
+  for (const p of ['in', 'out', 'keys', 'duration', 'transition', 'fx']) {
     const v = attrs[`data-${p}-${format}`];
     if (v != null) out[`data-${p}`] = v;
   }
