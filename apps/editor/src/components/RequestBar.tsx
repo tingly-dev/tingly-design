@@ -168,7 +168,7 @@ export function RequestBar({
           </button>
         ) : (
           <button
-            className={`send${text.trim() ? ' ready' : ''}`}
+            className={`send${text.trim() && !disabled && !keeping ? ' ready' : ''}`}
             aria-label={t('common.send')}
             title={t('common.send')}
             onClick={() => void submit()}

@@ -147,7 +147,7 @@ async def main():
         await pg2.goto(BASE + '/')
         await pg2.locator('button[aria-label="AI 模型设置"]').click()
         d2 = pg2.locator('[role=dialog]')
-        await expect(d2.locator('[data-image-section]')).to_contain_text('ImageGen')
+        await expect(d2.get_by_label('ImageGen 地址')).to_be_visible()
         await d2.locator('[data-image-section]').scroll_into_view_if_needed()
         await shot(pg2, '4-zh-dark.png')
         await pg2.goto(f'{BASE}/?p={PROJECT}')

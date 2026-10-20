@@ -91,12 +91,6 @@
 }
 
 
-.prompt .tools .opts + .seg,
-.prompt .tools > .seg:first-of-type {
-  margin-left: auto;
-}
-
-
 .prompt:focus-within,
 .dsask:focus-within {
   box-shadow: var(--lift-shadow), 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
@@ -143,10 +137,23 @@
 }
 
 
+.prompt .send:focus-visible,
+.dsask .send:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+
+.prompt .send:disabled,
+.dsask .send:disabled {
+  cursor: default;
+}
+
+
 .prompt .send.ready,
 .dsask .send.ready {
   background: var(--accent);
-  color: var(--accent-fg, #fff);
+  color: var(--on-accent);
 }
 
 
@@ -155,18 +162,6 @@
   background: var(--panel);
   color: var(--ink-2);
   box-shadow: inset 0 0 0 1.5px var(--line);
-}
-
-
-.prompt .tools > .seg,
-.dsask .tools > .seg {
-  margin-left: auto;
-}
-
-
-.prompt .tools > .opts ~ .seg,
-.dsask .tools > .opts ~ .seg {
-  margin-left: 0;
 }
 
 

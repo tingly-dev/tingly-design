@@ -1,6 +1,6 @@
 # AI 模型设置：一个连接，三个用途
 
-状态：**已实施**（快速 AI、Claude Code、图像生成）。图像生成这一块见 [image-generation.md](./image-generation.md)。测试是 `packages/core/test/aiConfig.test.ts` 和 `e2e/ai_settings.py`。
+状态：**已实施**（快速 AI、Claude Code、ImageGen）。图像生成这一块见 [image-generation.md](./image-generation.md)。测试是 `packages/core/test/aiConfig.test.ts` 和 `e2e/ai_settings.py`。
 
 ## 1. 要解决的问题
 
