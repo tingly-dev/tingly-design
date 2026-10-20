@@ -61,7 +61,9 @@ export async function renderCapabilities(): Promise<RenderCapabilities> {
  * not allow; `DC_CHROME_SANDBOX=0` turns it off there.
  */
 export function chromeArgs(profile: string): string[] {
-  const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`, 'about:blank'];
+  // WebGL (a shader effect) draws on SwiftShader, the CPU: the same picture on every machine, GPU or not.
+  // Chrome stopped falling back to it on its own (137+), so without the last flag every effect came out blank
+  const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars', '--mute-audio', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`, 'about:blank'];
   if (process.getuid?.() === 0 || process.env.DC_CHROME_SANDBOX === '0') args.unshift('--no-sandbox');
   return args;
 }
