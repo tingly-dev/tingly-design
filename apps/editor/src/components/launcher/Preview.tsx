@@ -216,9 +216,9 @@ function CoverFrame({ cover, project, near }: { cover: { html: string; tokens: D
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [id]);
-  // laid out at a width that keeps the cover's own proportions in the card, then scaled down to it
+  // laid out at a width that keeps the cover's own proportions in the card, then scaled to cover it (no strip of page below)
   const w = size.h ? Math.min(1440, Math.max(720, (h * size.w) / size.h)) : 960;
-  const scale = size.w / w;
+  const scale = Math.max(size.w / w, size.h / h);
   return (
     <div ref={box} className="lp-cover">
       {near && size.w > 0 && (
