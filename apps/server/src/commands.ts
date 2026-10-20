@@ -106,7 +106,7 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   const size = o.size ? sizeFor(ctx, kind, o.size) : undefined;
   // a bare name is a folder of that name here, as `git init`, `cargo new` and `npm create` do; `global` keeps it in the projects folder
   if (o.global && looksLikePath(target)) throw new CommandError(t('cli.globalPath', { target }));
-  if (!looksLikePath(target) && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
+  if (o.global && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
   const path = o.global ? undefined : resolve(expandHome(target));
   const title = o.title?.trim() || (path ? basename(path) : target);
   const sized = size && (kind === 'design' || kind === 'motion') ? { size } : {};
