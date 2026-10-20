@@ -420,17 +420,23 @@
 }
 
 
-/* the column is narrow: a chip gives up its words before the toolbar wraps (the title keeps them) */
-.chat-composer > .tools .ctx-chip {
-  max-width: 110px;
+/* the column is narrow: the request's settings take a row of their own above paperclip, who answers and send */
+.chat-composer > .tools {
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 
-.chat-composer > .tools .imgtoggle {
-  padding: 0 8px;
-  font-size: 0;
-  gap: 0;
-  text-decoration: none;
+.chat-composer > .tools .opts {
+  order: -1;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  padding: 0 2px;
+}
+
+
+.chat-composer > .tools .attach {
+  margin-right: auto;
 }
 
 

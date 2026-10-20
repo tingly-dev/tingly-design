@@ -51,6 +51,7 @@
 | [chat-panel.md](./chat-panel.md) | 对话面板：请求栏的位置收成底部和左侧（左侧一直打开，取代右侧自动隐藏；已有左列的类型用页签），面板里是一份能回头读的对话记录（每轮的请求、步骤、回答、改动），存在服务端，命令行和 MCP 的请求也在里面；窄窗口放不下时退回底部 | 已实施；§7 是没做的 |
 | [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的 |
 | [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
+| [composer.md](./composer.md) | 请求栏的外形：一张卡三行（头、输入、工具条），设置是药丸、整栏的工具是图标，谁来回答放在发送旁边，窄列里设置独占一行；ImageGen 的命名 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：快速 AI 和 Claude Code 共用一个连接、各有模型名；环境变量 > 已保存 > 默认；Tingly Box 为推荐 | 已实施；§6 是没做的 |
 | [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
