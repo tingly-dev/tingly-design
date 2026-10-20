@@ -59,6 +59,6 @@
 
 ## 6. 还开着的问题
 
-- 概览的小样（`Specimen`）和启动页的卡片还只用 tokens 画，不加载 `bundle.css`，所以描边粗细、渐变字、发光在那里看不到；封面就在小样下面，所以打开系统时能看到风格，但在启动页挑项目时看不到。
+- 概览的小样（`Specimen`）只用 tokens 画，描边粗细、渐变字、发光在那里看不到；它下面就是真实的封面，所以留着它做浅色 | 深色的对照。启动页卡片已经改画封面，见 [design-system-glance.md](./design-system-glance.md)。
 - **导入 DESIGN.md / tokens.css**：用户自己带来的文件转成 `tokens.json`，说明文字进 README；不内置品牌包。
 - 风格的名字目前直接沿用原主题名；`catppuccin`、`dracula` 等编辑器配色是别人的配色方案，名字只用于标明出处。

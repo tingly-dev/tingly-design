@@ -163,8 +163,10 @@ export function previewDoc(opts: {
   libraries: { name: string; version: string; file?: string }[];
   libFiles: Record<string, string>;
   frameId: string;
+  /** the system's project, when the frame is drawn outside its editor (the launcher card) */
+  project?: string;
 }): string {
-  const project = get().project ?? '';
+  const project = opts.project ?? get().project ?? '';
   const raw = api.rawBase(project);
   const origin = SERVER;
   const css = compileTokensCss(opts.tokens, { title: opts.title, fontBase: raw });

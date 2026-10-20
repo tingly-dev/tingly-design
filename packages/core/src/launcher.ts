@@ -2,7 +2,7 @@ import { CANVAS_FILE, parseCanvas } from './canvas';
 import { DASH_INDEX, parseDash } from './dash';
 import { DECK_FILE, faceMarkup, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DOC_INDEX, parseDoc, tabFile } from './docs';
-import { DS_INDEX, DS_TOKENS, componentNames, dsGlance, type DsGlance, parseDsIndex, resolveTokens } from './designSystem';
+import { DS_COVER, DS_INDEX, DS_TOKENS, componentNames, dsGlance, type DsGlance, type DsTokens, parseDsIndex, resolveTokens } from './designSystem';
 import { MOTION_FILE, motionTimeline, parseMotion, primaryFormat, sceneFile, sceneTiming, speedOf, type MotionJson } from './motion';
 
 /** What the launcher shows on a project's card: a title, counts and a small preview. */
@@ -57,7 +57,19 @@ export type ProjectPreview =
       board?: { file: string; w: number; h: number; source: string };
     }
   | { kind: 'slides'; cover?: { file: string; source: string; head: string } }
-  | { kind: 'design-system'; colors: string[]; components: string[]; fonts: string[]; glance: DsGlance; /** the second theme, when there is one, for a light | dark sample */ alt?: { name: string; glance: DsGlance }; /** Google Fonts stylesheets the sample's faces need */ hosted: string[] }
+  | {
+      kind: 'design-system';
+      colors: string[];
+      components: string[];
+      fonts: string[];
+      glance: DsGlance;
+      /** the second theme, when there is one, for a light | dark sample */
+      alt?: { name: string; glance: DsGlance };
+      /** Google Fonts stylesheets the sample's faces need */
+      hosted: string[];
+      /** the system's cover (components/Cover/preview.html) with what it is drawn with, so the card shows the real look */
+      cover?: { html: string; tokens: DsTokens; css?: string };
+    }
   | { kind: 'dashboard'; datasets: string[] }
   | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string }
   | {
@@ -140,7 +152,9 @@ export async function projectCard(
     const colors = [...roles, ...rest];
     const components = componentNames(files, await read('components/bundle.js'));
     const fonts = [...new Set(Object.values(tokens.families).map((f) => f.split(',')[0].replace(/["']/g, '').trim()))].filter(Boolean);
-    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3), glance, alt: tokens.themes[1] ? { name: tokens.themes[1].name, glance: dsGlance(tokens, tokens.themes[1].id) } : undefined, hosted: tokens.hosted.map((h) => h.href).slice(0, 4) } };
+    const coverHtml = await small(DS_COVER);
+    const cover = coverHtml ? { html: coverHtml, tokens, css: await small('components/bundle.css') } : undefined;
+    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3), glance, alt: tokens.themes[1] ? { name: tokens.themes[1].name, glance: dsGlance(tokens, tokens.themes[1].id) } : undefined, hosted: tokens.hosted.map((h) => h.href).slice(0, 4), cover } };
   }
   if (kind === 'dashboard') {
     const dash = parseDash(await read(DASH_INDEX));

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SLIDE_H, SLIDE_W, sandboxDoc, speedOf, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
+import { DS_COVER, SLIDE_H, SLIDE_W, parseCardMarker, sandboxDoc, speedOf, type DsTokens, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
 import { api } from '../../api';
 import { SERVER } from '../../base';
 import { MotionFrame } from '../motion/MotionFrame';
 import { htmlLang } from '../../i18n';
 import { Specimen } from '../ds/Specimen';
+import { previewDoc } from '../ds/ds';
+import { useElementSize } from '../../hooks';
 
 /** Calls back once the element has scrolled near the viewport. */
 function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
@@ -115,7 +117,11 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
   } else if (p.kind === 'design-system') {
     body = (
       <div className="lp-ds">
-        <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
+        {p.cover ? (
+          <CoverFrame cover={p.cover} project={project} near={near} />
+        ) : (
+          <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
+        )}
         <div className="foot">
           <div className="faces">
             {[p.glance.headingFont, p.glance.bodyFont]
@@ -181,6 +187,45 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
   return (
     <div ref={ref} className={`lpreview k-${p.kind}`}>
       {body}
+    </div>
+  );
+}
+
+let coverSeq = 0;
+
+/**
+ * A design system's cover, drawn the way its overview draws it (tokens.css, then components/bundle.css) and
+ * scaled to fill the card, so the card shows the system's own look: border weight, gradient text, glow, grid.
+ * Scripts in the cover still run, but bundle.js and the libraries are not loaded here, to keep the list light.
+ */
+function CoverFrame({ cover, project, near }: { cover: { html: string; tokens: DsTokens; css?: string }; project: string; near: boolean }) {
+  const { t } = useTranslation();
+  const [box, size] = useElementSize<HTMLDivElement>();
+  const [id] = useState(() => `lc${++coverSeq}`);
+  const marked = parseCardMarker(cover.html).height ?? 400;
+  const [h, setH] = useState(marked);
+  const theme = cover.tokens.themes[0]?.id ?? '';
+  const doc = useMemo(
+    () => previewDoc({ html: cover.html, comp: 'Cover', theme, tokens: cover.tokens, title: '', bundleCss: cover.css, libraries: [], libFiles: {}, frameId: id, project }),
+    [cover, theme, id, project],
+  );
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.dsPreview === id && typeof e.data.height === 'number') setH(Math.min(4000, Math.max(40, e.data.height)));
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [id]);
+  // laid out at a width that keeps the cover's own proportions in the card, then scaled down to it
+  const w = size.h ? Math.min(1440, Math.max(720, (h * size.w) / size.h)) : 960;
+  const scale = size.w / w;
+  return (
+    <div ref={box} className="lp-cover">
+      {near && size.w > 0 && (
+        <div style={{ width: w, height: Math.max(h, size.h / scale), transform: `scale(${scale})`, transformOrigin: '0 0' }}>
+          <iframe title={t('launcher.preview.frame', { file: DS_COVER })} sandbox="allow-scripts" srcDoc={doc} tabIndex={-1} aria-hidden="true" />
+        </div>
+      )}
     </div>
   );
 }
