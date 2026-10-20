@@ -18,6 +18,7 @@
 import type { DeckFace } from './deck';
 import type { HumanOp } from './ops';
 import { attr, type DcDoc, type DcElement } from './parse';
+import { fxIssues } from './motionFx';
 import { checkSlide, type SlideIssue } from './slides';
 import { parseStyle } from './style';
 
@@ -734,6 +735,8 @@ export function checkScene(doc: DcDoc, id: string, duration?: number): SlideIssu
   const tr = attr(section, 'data-transition');
   if (tr && !(TRANSITION_KINDS as readonly string[]).includes(tr.trim().split(/\s+/)[0])) out.push({ tid: section.tid, level: 'error', message: `data-transition is cut, fade, push or magic, not "${tr}".` });
   const els = doc.elements.filter((e) => e === section || within(e, section));
+  // `data-fx-tall` and the like replace the effect in one format, so they are read as data-fx is
+  for (const e of els) for (const a of e.attrs) if (/^data-fx-[\w-]+$/.test(a.name)) for (const m of fxIssues(a.value)) out.push({ tid: e.tid, level: 'error', message: m.replace(/^data-fx/, a.name) });
   const plan = planScene(
     els.map((e) => ({ tag: e.tag, attrs: Object.fromEntries(e.attrs.map((a) => [a.name, a.value])), text: e.children.some((c) => c.kind === 'el') ? undefined : e.children.map((c) => (c.kind === 'text' ? c.text : '')).join('') })),
     duration ?? parseTime(attr(section, 'data-duration')) ?? DEFAULT_SCENE_MS,

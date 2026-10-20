@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { attrsForFormat, checkSlide, FX_PRESETS, fxIssues, fxMarkup, fxShader, parseDc, parseFx, splitFx } from '../src';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { attrsForFormat, checkScene, checkSlide, FX_PRESETS, fxIssues, fxKeys, fxMarkup, fxShader, parseDc, parseFx, splitFx } from '../src';
 
 describe('built-in effects (data-fx)', () => {
   it('reads a preset and its values, with defaults for the rest', () => {
@@ -69,5 +71,40 @@ describe('built-in effects (data-fx)', () => {
     expect(issues(`<section id="a"><x-embed data-fx="aurora" data-seek style="${pin}"></x-embed></section>`).filter((m) => /fx|embed/.test(m))).toEqual([]);
     expect(issues(`<section id="a"><x-embed data-fx="lava" data-seek style="${pin}"></x-embed></section>`).some((m) => /not an effect/.test(m))).toBe(true);
     expect(issues(`<section id="a"><x-embed data-fx="aurora" data-seek style="${pin}"><canvas></canvas></x-embed></section>`).some((m) => /no markup/.test(m))).toBe(true);
+  });
+});
+
+describe('what agents read about the effects', () => {
+  const skill = (kind: string) => readFileSync(resolve(__dirname, '../../../.claude/skills', kind, 'SKILL.md'), 'utf8');
+
+  it("motion's skill lists every preset once, with exactly the values it reads", () => {
+    const rows = new Map<string, string[]>();
+    for (const line of skill('motion').split('\n')) {
+      const m = /^\| `([\w-]+)` \|.*\| ([^|]*) \|$/.exec(line);
+      if (!m) continue;
+      expect(rows.has(m[1]), `${m[1]} is listed twice`).toBe(false);
+      rows.set(m[1], [...m[2].matchAll(/(?:^|, )`([\w-]+)`/g)].map((k) => k[1]));
+    }
+    expect([...rows.keys()].sort()).toEqual([...FX_PRESETS].sort());
+    for (const [preset, keys] of rows) expect([...keys, 'quality', 'region'].sort(), preset).toEqual(fxKeys(preset)!.sort());
+  });
+
+  it("the skills' examples are effects check accepts", () => {
+    for (const kind of ['motion', 'slides']) {
+      const values = [...skill(kind).matchAll(/data-fx(?:-[\w-]+)?="([^"]+)"/g)].map((m) => m[1]).filter((v) => !v.includes('…'));
+      expect(values.length, kind).toBeGreaterThan(0);
+      for (const v of values) expect(fxIssues(v), `${kind}: ${v}`).toEqual([]);
+    }
+  });
+});
+
+describe('an effect in one format (data-fx-tall)', () => {
+  const pin = 'position:absolute;left:0;top:0;width:100%;height:100%';
+  const issues = (html: string) => checkScene(parseDc(html), 'a').map((i) => i.message);
+
+  it('is checked as data-fx is, under its own name', () => {
+    expect(issues(`<section id="a"><x-embed data-fx="aurora" data-fx-tall="rays; at: 50% 0%" data-seek style="${pin}"></x-embed></section>`).filter((m) => /fx/.test(m))).toEqual([]);
+    expect(issues(`<section id="a"><x-embed data-fx="aurora" data-fx-tall="lava" data-seek style="${pin}"></x-embed></section>`)).toContain(`data-fx-tall="lava" is not an effect; use ${FX_PRESETS.join(', ')}.`);
+    expect(issues(`<section id="a"><x-embed data-fx="aurora" data-fx-tall="grain; at: 50% 50%" data-seek style="${pin}"></x-embed></section>`).some((m) => /^data-fx-tall: grain does not use "at"/.test(m))).toBe(true);
   });
 });

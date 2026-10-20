@@ -482,6 +482,11 @@ function percents(v: string | undefined, n: number): number[] | null {
   return out.every(Number.isFinite) ? out : null;
 }
 
+/** The values a preset reads, its own then the shared ones (`quality`, `region`); null for a preset that does not exist. */
+export function fxKeys(preset: string): string[] | null {
+  return (FX_PRESETS as readonly string[]).includes(preset) ? [...PRESETS[preset as FxPreset].keys, ...SHARED] : null;
+}
+
 /** `data-fx`'s parts: the preset name and its `key: value` pairs, as written. */
 export function splitFx(value: string): { preset: string; values: Record<string, string> } {
   const [head, ...rest] = value.split(';');
