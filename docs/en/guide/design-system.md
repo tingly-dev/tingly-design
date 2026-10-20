@@ -34,3 +34,13 @@ Format reference: [`.claude/skills/design-system/SKILL.md`](../../../.claude/ski
 ---
 
 Back to the [README](../../../README.md)
+
+## Start from a look
+
+A new design system can start blank or from one of 36 looks, in five groups by feel: Clean and light, Editorial, Bold and playful, Technical, Editor palettes. In the New dialog pick Design system, then a group, then a look (each is drawn in its own page colour, ink, accent and type). From the command line:
+
+```bash
+tingly-design new design-system acme --look swiss-grid
+```
+
+A look sets the colours (in one theme), font families, corner radii and shadows; text styles and spacing are generic, and the README credits the look's source (the themes of the html-ppt template, MIT). It is a starting point, not a link: the system is yours to edit afterwards.

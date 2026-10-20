@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -96,7 +96,7 @@ function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
   throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
 }
 
-export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string; global?: boolean }): Promise<Project> {
+export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string; look?: string; global?: boolean }): Promise<Project> {
   const t = translator(ctx.lang);
   if (!o.kind) throw new CommandError(t('cli.needKind'));
   const kind = KINDS[o.kind];
@@ -109,7 +109,9 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   if (o.global && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
   const path = o.global ? undefined : resolve(expandHome(target));
   const title = o.title?.trim() || (path ? basename(path) : target);
-  const sized = size && (kind === 'design' || kind === 'motion') ? { size } : {};
+  if (o.look && kind !== 'design-system') throw new CommandError(t('cli.lookOnlyDs'));
+  if (o.look && !lookOf(o.look)) throw new CommandError(t('cli.badLook', { look: o.look, looks: LOOKS.map((l) => l.id).join(', ') }));
+  const sized = { ...(size && (kind === 'design' || kind === 'motion') ? { size } : {}), ...(o.look ? { look: o.look } : {}) };
   // with an editor open on this folder, the editor creates it: a linked folder then lives in its list
   // of links too (it keeps them in memory and writes them back), and the launcher shows the card at once
   const running = ctx.inServer ? null : await findEditor();

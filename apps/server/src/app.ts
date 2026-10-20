@@ -49,6 +49,7 @@ import {
   cleanGroup,
   retitle,
   isTurn,
+  lookOf,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -141,17 +142,22 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
-  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; git?: boolean }>();
+  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; look?: string; git?: boolean }>();
   const { title, kind, size } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
   if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  if (body.look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
+  if (body.look !== undefined && !lookOf(String(body.look))) throw new HttpError(400, 'badLook', { look: String(body.look) });
   const name = body.path !== undefined ? await linkFolder(String(body.path), true) : body.name!;
   await createProject(
     name,
     title || name,
     kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
     langOf(c),
-    (kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {},
+    {
+      ...((kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {}),
+      ...(body.look ? { look: String(body.look) } : {}),
+    },
   ).catch(async (e) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});
     throw e;

@@ -7,6 +7,7 @@ import { NAME_RE, freeName, slugOf } from '../../projectName';
 import { SizePicker } from '../motion/SizePicker';
 import { readSizes, rememberSize, sameSize, type Size } from '../motion/motionSizes';
 import { BoardSizePicker } from './BoardSizePicker';
+import { LookPicker } from './LookPicker';
 import { applyNewOptions, checkDataFile, type NewOptions } from '../../newProject';
 import { Dialog } from '../Dialog';
 import { KINDS, KindIcon } from './kinds';
@@ -51,6 +52,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
   const [designSystem, setDesignSystem] = useState('');
   const [board, setBoard] = useState<Size | null>(DEFAULT_BOARD_SIZE);
+  const [look, setLook] = useState('');
   const [dataFile, setDataFile] = useState<{ file: File; rows: number } | null>(null);
   const [dataError, setDataError] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
@@ -99,7 +101,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
         title.trim() || (path ? path.split(/[\\/]/).filter(Boolean).pop() || kind : name),
         kind,
         kind === 'motion' && size ? size : kind === 'design' && board && !sameSize(board, DEFAULT_BOARD_SIZE) ? board : undefined,
-        { git: offerGit && git },
+        { git: offerGit && git, look: kind === 'design-system' && look ? look : undefined },
       );
       if (gitError) toast(t('launcher.new.gitFailed', { error: gitError }), 'error');
       if (kind === 'motion' && size) rememberSize(size);
@@ -128,6 +130,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
       <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
       {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
       {kind === 'design' && <BoardSizePicker value={board} onChange={setBoard} />}
+      {kind === 'design-system' && <LookPicker value={look} onChange={setLook} />}
       {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
         <div className="nopts" data-options={kind}>
           <span className="nopt-h">{t('launcher.new.options')}</span>

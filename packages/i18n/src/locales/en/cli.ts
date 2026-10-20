@@ -41,6 +41,7 @@ Options:
   --global              new: keep a bare name in the projects folder instead of a folder of that name here
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size; a canvas also takes a
                         name from the New dialog's list (wechat, tall, story, og, a4, wide, mpu, …)
+  --look <name>         new design-system: start from a look (nord, swiss-grid, dracula, …) instead of blank
   --format <a,b>        export: the motion formats to render (default: all)
   --board, --slide, --tab, --view <name>   export: one board (file or title), slide (id or number),
                         tab (id or title) or design-system view, instead of all of them
@@ -64,6 +65,8 @@ Options:
   needKind: 'Name a kind: canvas, slides, design-system, dashboard, doc or motion',
   badKind: '{{kind}} is not a kind. Kinds: canvas, slides, design-system, dashboard, doc, motion',
   badPage: '{{page}} is not a reference page of this kind. Pages: {{pages}}',
+  badLook: '--look {{look}} is not one of the looks: {{looks}}.',
+  lookOnlyDs: '--look only applies to a design system.',
   badBoardSize: '--size {{size}} is neither a width and height (1080x1440) nor one of the named sizes: {{sizes}}.',
   needName: 'Name the project or give a folder: tingly-design new {{kind}} <name or folder>',
   globalPath: '--global keeps a project in the projects folder, so it takes a name, not a path: {{target}}',

@@ -1747,3 +1747,41 @@
   font-size: 12px;
 }
 
+
+
+/* the look step of the new-design-system dialog: a swatch drawn in the look's own page colour, ink, accent and type */
+
+
+.lookopt {
+  height: 32px;
+}
+
+
+.looksw {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 22px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+
+.looksw i {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+
+.szsplit .lookrow {
+  max-height: 250px;
+}
