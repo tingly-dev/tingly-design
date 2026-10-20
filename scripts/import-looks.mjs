@@ -82,6 +82,8 @@ const PREFER = {
   background: ['surface-raised', 'surface', 'surface-soft', 'surface-raised-2', 'accent', 'accent-2', 'accent-3', 'ink'],
   color: ['ink', 'ink-muted', 'ink-faint', 'accent', 'accent-2', 'accent-3', 'surface'],
   other: ['line-strong', 'line', 'ink', 'accent', 'accent-2', 'accent-3', 'ink-muted', 'surface'],
+  // a gradient's stops are accents (it fills gradient text and accent dividers)
+  gradient: ['accent', 'accent-2', 'accent-3', 'ink', 'surface-raised', 'surface', 'surface-soft', 'surface-raised-2'],
 };
 const hex = (c) => {
   const m = c.toLowerCase().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/);
@@ -89,7 +91,7 @@ const hex = (c) => {
 };
 const tokenColours = (body, colours) =>
   body.replace(/([a-z-]+)\s*:([^;]*)/g, (decl, prop, value) => {
-    const order = PREFER[prop.startsWith('background') ? 'background' : prop === 'color' ? 'color' : 'other'];
+    const order = PREFER[prop === 'gradient' ? 'gradient' : prop.startsWith('background') ? 'background' : prop === 'color' ? 'color' : 'other'];
     return `${prop}:${value.replace(/#[0-9a-fA-F]{3,6}\b/g, (lit) => {
       const name = order.find((n) => colours[n] && hex(colours[n]) === hex(lit));
       return name ? `var(--${name})` : lit;
@@ -101,10 +103,10 @@ const renameSelector = (sel) =>
     .replace(/\bh2\.title\b|\.h2\b/g, '.lk-h2')
     .replace(/\.h([34])\b/g, '.lk-h$1')
     // base.css styles bare h3/h4; ours style them only inside a look's page or a preview
-    .replace(/(^|,)\s*h([34])(?![\w-])/g, '$1:where(.lk-page,.lk-stage) h$2')
+    .replace(/^h([34])(?![\w-])/, ':where(.lk-page,.lk-stage,.lk-card) h$1')
     // a theme's slide is our page surface (the cover is one); its rules (grid lines, a side bar, scanlines, padding) come along
     .replace(/\.slide(?![\w-])/g, '.lk-page')
-    .replace(/\bhtml,\s*body\b/g, 'body')
+    .replace(/^html$/, 'body')
     .replace(new RegExp(`\\.(${CLASSES.join('|')})(?![\\w-])`, 'g'), '.lk-$1');
 // top-level rules, keeping an @keyframes block whole
 const rules = (css) => {
@@ -132,7 +134,8 @@ const wanted = (rule, theme) => {
 const cssOf = (css, colours = {}, theme = true) => rules(css).filter((r) => wanted(r, theme)).map((r) => {
   if (r.startsWith('@keyframes')) return renameVars(r);
   const i = r.indexOf('{');
-  const sel = [...new Set(renameSelector(r.slice(0, i).trim()).split(/\s*,\s*/))].join(',');
+  // rename each selector of the list on its own: a renamed one may hold a comma of its own (:where(…))
+  const sel = [...new Set(r.slice(0, i).trim().split(/\s*,\s*/).map(renameSelector))].join(',');
   return `${sel}{${tokenColours(renameVars(r.slice(i + 1, -1).trim().replace(/\s*\n\s*/g, ' ')), colours)}}`;
 }).join('\n');
 const BASE_RULES = cssOf(BASE_CSS.slice(BASE_CSS.indexOf('html,body'), BASE_CSS.indexOf('/* ================= CHROME')), {}, false);
@@ -161,7 +164,7 @@ for (const [group, ids] of Object.entries(GROUPS)) {
       radius: [px(v['radius-sm']), px(v.radius), px(v['radius-lg'])],
       shadow: [v.shadow, v['shadow-lg']].map((s) => (s && s !== 'none' ? shadowOf(s, id) : null)),
       // what tokens cannot say: the theme's gradients and spacing, and its own rules
-      vars: Object.fromEntries(KEPT.filter((k) => v[k]).map((k) => [k, tokenColours(`background:${renameVars(v[k]).replace(/\s+/g, ' ')}`, c).slice('background:'.length)])),
+      vars: Object.fromEntries(KEPT.filter((k) => v[k]).map((k) => [k, tokenColours(`gradient:${renameVars(v[k]).replace(/\s+/g, ' ')}`, c).slice('gradient:'.length)])),
       css: cssOf(text.slice(text.indexOf('}', text.indexOf(':root')) + 1), c),
     };
     looks.push(look);

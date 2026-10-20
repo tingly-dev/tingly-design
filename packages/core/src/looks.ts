@@ -130,7 +130,7 @@ export function lookKit(look: LookData, namespace: string, title: string, words:
     `:root{${Object.entries(look.vars).map(([k, v]) => `--${k}:${v}`).join(';')}}\n` +
     // html-ppt sizes every box border-box; a look's page is a slide drawn in place, not positioned by a deck;
     // these come first so the theme's own rules (a page's padding, say) win
-    '[class*="lk-"],[class*="lk-"] *{box-sizing:border-box}\n' +
+    '[class^="lk-"],[class*=" lk-"],:where(.lk-page,.lk-stage) *{box-sizing:border-box}\n' +
     '.lk-page{position:relative;overflow:hidden;padding:72px 96px;display:flex;flex-direction:column;justify-content:center}\n' +
     '.lk-stage{padding:24px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}\n' +
     '.lk-stage>.lk-card{flex:1 1 160px;min-width:160px}\n' +
@@ -177,8 +177,8 @@ export interface DividerProps { accent?: boolean }
 <html>
 <head><meta charset="utf-8">
 <style>
-  body { margin: 0; }
-  .cv { min-height: 640px; }
+  /* a theme's page padding is sized for a 1920px slide; the cover is narrower */
+  .lk-page.cv { min-height: 640px; padding: 56px 64px; }
   .cv .lk-h1 { margin-top: 12px; }
   .cv .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 28px; }
   .cv .kpi { font-family: var(--font-display); font-size: 44px; font-weight: 800; line-height: 1.1; margin: 4px 0 8px; }

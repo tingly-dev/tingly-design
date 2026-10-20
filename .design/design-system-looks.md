@@ -36,24 +36,26 @@
 | 文案 | 预览和 README 的字在 `starter.lookKit.*`，用新建者的语言写 | 和其他起始文案一样 |
 | 组件之后 | 和其他设计系统的组件一样，用户可以改；`bundle.css` 里的变量和规则也是用户的 | 风格是起点 |
 
-## 5. 还原度：怎么量，差在哪，为什么
+## 5. 还原度：带什么规则，怎么量，哪里故意不同
 
-**怎么量**：把 html-ppt 演示稿的前两页（封面、目录）原样拿来，类名换成 `lk-*`，只加载新建系统的 `tokens.css` 和 `components/bundle.css`，和原版同尺寸（1920×1080）各截一张，逐像素算平均差（0–255）。36 个风格各两页，脚本和图在 `/mnt/project-files/ds-looks/audit/`。
+**带过来的规则和原因**：
 
-**曾经差的地方和原因**（都已修）：
-
-| 现象 | 原因 | 处理 |
+| 原版的规则 | 我们的处理 | 为什么 |
 |---|---|---|
-| swiss-grid 没有网格线，news-broadcast 没有左侧红条，retro-tv 没有扫描线，japanese-minimal、pitch-deck-vc 的留白不对 | 这些规则写在主题的 `.slide` / `.slide::before` 上，生成器把所有 `.slide` 规则当成 deck 的翻页机制一起丢了 | 主题的 `.slide` 规则改名为 `.lk-page` 带过来；只丢 base.css 里定位用的 `.slide` 和 `.slide.is-*`、`.slide-number` |
-| 卡片、标题的尺寸和原版差几个像素 | base.css 的 `*{box-sizing:border-box}` 被当成全局规则丢了；`h3` / `h4` 只写了元素选择器，也被筛掉，卡片里的小标题落回浏览器默认大小；我们自己又给卡片标题加了一条字号规则 | `lk-*` 元素统一 `border-box`；`h3` / `h4` 只在 `.lk-page` 和组件预览里生效（`:where()`，不改变优先级）；删掉自加的规则 |
-| arctic-cool 的标题字体读不出来 | base.css 的 `--font-display: var(--font-sans)` 在合并后没有解引用 | 只对字体变量解引用 |
-| 改了 accent，aurora 等的渐变字不变 | 主题自己的 `--grad` 写的是颜色值，没换成 token | 变量值里的颜色也按同样规则换成 token |
+| 主题写在 `.slide`、`.slide::before` 上的（swiss-grid 的网格线、news-broadcast 的左侧红条、retro-tv 的扫描线、japanese-minimal 和 pitch-deck-vc 的留白） | 改名为 `.lk-page`，一页的外观；base.css 里 deck 定位用的 `.slide`、`.slide.is-*`、`.slide-number` 不带 | 这些是风格的一部分，不是翻页机制 |
+| base.css 的 `*{box-sizing:border-box}` | 只给 `lk-` 元素和一页、预览里的元素 | 尺寸要和原版一样，又不能改到用户自己的元素 |
+| base.css 的裸 `h3`、`h4` | 只在 `.lk-page`、组件预览和 `.lk-card` 里生效（`:where()`，不抬高优先级） | 卡片小标题要和原版同样大小，但不该改写用户页面里的标题 |
+| 字体变量互相引用（`--font-display: var(--font-sans)`） | 生成时解开 | tokens.json 的字体栈不能是 `var()` |
+| 规则和渐变里写死的颜色 | 等于主题某个颜色的换成那个 token，按用途挑（背景先找 surface，文字先找 ink，描边先找 line，渐变先找 accent） | 改 token 时整个风格跟着变 |
+| 封面的留白 | 封面固定 56px 64px，不用主题按 1920px 幻灯片定的留白 | 封面卡片只有约 960px 宽 |
 
-修完后 30 个风格两页的平均差都在 4 以下（多数不到 1，余下是字体抗锯齿和页面留白）。
+**怎么量**：`scripts/audit-looks.py <html-ppt 目录>`（要开着 `pnpm dev`）。它从每个风格新建一个系统，把 html-ppt 演示稿的前两页原样换成 `lk-` 类名，只加载这个系统的 `tokens.css` 和 `components/bundle.css`，和原版同尺寸（1920×1080）各截一张，逐像素算平均差（0–255）。另外再算一遍"把页面盖上一层纯色"后的差，也就是原版 deck 的画法。
 
-**剩下 6 个差得多的：aurora、vaporwave、y2k-chrome、glassmorphism、cyberpunk-neon、retro-tv（平均差 14–35）**。原因不在我们：这 6 个主题把招牌效果（极光光晕、蒸汽波落日、铬金属反光、玻璃背后的色块、霓虹暗角、复古电视暗角）画在 `body` 的背景上，而 html-ppt 自己的 deck 外层 `.deck{background:var(--bg)}` 是一块纯色，把它整个盖住了，所以原版演示稿里这些效果其实看不到。把我们的页面也盖上一层纯色背景后，这 6 个的平均差降到 0.1–2.9，证明其余部分已经一致。我们现在让这些背景露出来（封面、组件预览都能看到），因为这是主题作者想要的效果，也是"一眼看出风格"要的东西；代价是和原版演示稿的截图不同。
+**现在的结果**：30 个风格两页的平均差都不超过 1，余下是字体抗锯齿。
 
-**没有带过来、也不打算带的**：动画（html-ppt 另有一套 `anim-*`，属于动效，不属于设计系统的外观）、卡片悬停（`card-hover`）、页眉页脚和页码（deck 的部件）。
+**故意不同的 6 个：aurora、vaporwave、y2k-chrome、glassmorphism、cyberpunk-neon、retro-tv（平均差 14–35）**。这 6 个主题把招牌效果画在 `body` 的背景上：极光光晕、蒸汽波落日、铬金属反光、玻璃背后的色块、霓虹和复古电视的暗角。html-ppt 自己的 deck 外层 `.deck{background:var(--bg)}` 是一块纯色，把这些背景整个盖住了，所以原版演示稿里看不到它们。把我们的页面也盖上纯色后，平均差降到 0.1–2.9，说明其余部分一致。我们让背景露出来（YZ 选的）：这是主题作者要的效果，也是"一眼看出风格"要的东西；代价是和原版演示稿的截图不同。
+
+**不带过来的**：动画（html-ppt 另有一套 `anim-*`，属于动效，不属于设计系统的外观）、卡片悬停（`card-hover`）、页眉页脚和页码（deck 的部件）。
 
 ## 6. 还开着的问题
 

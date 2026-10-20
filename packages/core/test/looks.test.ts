@@ -92,5 +92,12 @@ describe('LOOKS', () => {
     expect(kit('swiss-grid')).toMatch(/\.lk-page\{background-image:linear-gradient/);
     expect(kit('news-broadcast')).toContain('.lk-page::before{');
     expect(lookOf('aurora')!.vars.grad).toContain('var(--accent-3)');
+    // a selector list renamed one by one: no :where(…) is split at its own comma
+    for (const l of LOOKS)
+      for (const line of kit(l.id).split('\n')) {
+        const sel = line.split('{')[0];
+        expect(sel.split('(').length, `${l.id}: ${sel}`).toBe(sel.split(')').length);
+      }
+    expect(kit('bauhaus')).toContain(':where(.lk-page,.lk-stage,.lk-card) h4,.lk-h4{');
   });
 });
