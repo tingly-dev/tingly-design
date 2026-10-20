@@ -10,7 +10,7 @@
   transform: translateX(-50%);
   width: min(640px, calc(100% - 32px));
   background: var(--panel);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: var(--lift-shadow);
   transition: box-shadow 0.15s var(--ease);
   display: flex;
@@ -19,11 +19,13 @@
 }
 
 
-.prompt .head {
+/* the composer is one card of three rows: head (what it is about, the bar's tools), the box, and a toolbar (paperclip, settings of this request, who answers, send) */
+.prompt .head,
+.dsask .head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px 0;
+  padding: 10px 12px 0;
 }
 
 
@@ -31,12 +33,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
   background: var(--panel-2);
   color: var(--ink-2);
-  font-size: 12px;
+  font-size: 12.5px;
   max-width: 320px;
   overflow: hidden;
   white-space: nowrap;
@@ -50,22 +52,42 @@
 }
 
 
-.prompt .seg {
+.prompt .seg,
+.dsask .seg {
   flex: none;
-  margin-left: auto;
+  margin-left: 0;
+  height: 28px;
 }
 
 
-.prompt .seg button {
-  padding: 0 9px;
+.prompt .seg button,
+.dsask .seg button {
+  padding: 0 10px;
+  font-size: 12.5px;
 }
 
 
-.prompt .body {
+.prompt .body,
+.dsask .body {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  padding: 4px 14px 0;
+}
+
+
+.prompt .tools,
+.dsask .tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px 10px;
+}
+
+
+.prompt .tools .opts,
+.dsask .tools .opts {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
 }
 
 
@@ -75,17 +97,19 @@
 }
 
 
-.prompt textarea {
+.prompt textarea,
+.dsask textarea {
   flex: 1;
+  min-width: 0;
   border: 0;
   resize: none;
   outline: none;
-  min-height: 38px;
+  min-height: 44px;
   max-height: 180px;
-  padding: 8px 2px;
+  padding: 6px 0;
   background: transparent;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 14.5px;
+  line-height: 1.5;
 }
 
 
@@ -95,21 +119,61 @@
 }
 
 
-.prompt .send {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 9px;
+/* send is a round button: grey while the box is empty, accent when ready, an outlined square while running */
+.prompt .send,
+.dsask .send {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel-2);
+  color: var(--faint);
+  cursor: pointer;
+}
+
+
+.prompt .send:focus-visible,
+.dsask .send:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+
+.prompt .send:disabled,
+.dsask .send:disabled {
+  cursor: default;
+}
+
+
+.prompt .send.ready,
+.dsask .send.ready {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+
+.prompt .send.stop,
+.dsask .send.stop {
+  background: var(--panel);
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1.5px var(--line);
 }
 
 
 /* attachments on a request: chips above the input, a paperclip beside it, files dropped anywhere on the bar */
 
 
-.prompt .body .attach,
-.dsask .attach {
-  height: 34px;
-  width: 30px;
-  align-self: flex-end;
+
+.prompt .tools .attach,
+.dsask .tools .attach {
+  height: 32px;
+  width: 32px;
+  flex: none;
 }
 
 
@@ -125,14 +189,16 @@
 .ctx-chip.imgtoggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   max-width: none;
+  color: var(--faint);
   text-decoration: line-through;
 }
 
 
 .ctx-chip.imgtoggle.on {
   background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--panel));
   color: var(--accent-ink);
   text-decoration: none;
 }
@@ -279,6 +345,7 @@
 }
 
 
+.prompt .head .bar-tools,
 .dsask .head .bar-tools {
   margin-left: auto;
 }
@@ -309,15 +376,15 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: 190px;
-  height: 22px;
-  padding: 0 8px;
-  border: 0;
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--panel-2);
-  color: var(--muted);
+  background: var(--panel);
+  color: var(--ink-2);
   font: inherit;
-  font-size: 11.5px;
-  line-height: 22px;
+  font-size: 12.5px;
+  line-height: 26px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -336,6 +403,7 @@
 
 .ctx-chip.continues {
   background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--panel));
   color: var(--accent-ink);
 }
 
@@ -743,7 +811,7 @@ button.file-chip:hover {
 
 
 .prompt-hint {
-  padding: 0 14px 8px;
+  padding: 0 14px 10px;
   color: var(--faint);
   font-size: 11.5px;
 }

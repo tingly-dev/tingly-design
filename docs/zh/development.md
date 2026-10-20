@@ -23,7 +23,7 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 | `python3 e2e/ds.py` | 设计系统：封面与品牌手册、改颜色/改名带别名/增删、文字与圆角、组件预览、上传资源、外部改坏后的提示、新建、装进幻灯片后选 token 与文字样式、移除（22 项） |
 | `python3 e2e/dash.py` | 看板：查询/CSV/JSON 加载、标注核对、筛选与点行筛选、数据模式、改查询（拒绝写入）、停止与恢复自动刷新、外部改数据文件与页面、失败状态、`.runs.json`、代码面板、新建（25 项） |
 | `python3 e2e/docs.py` | 文档：标签页与大纲、浏览不写盘、打字/勾待办/改单元格都只改一行、`/` 菜单、格式菜单、外部改动实时进来且不被覆盖、评论（回复/解决/新建）、标签页增删改、版式、AI 改写（有模拟模型时）、导出 HTML、新建（25 项） |
-| `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的“图像生成”一块（Anthropic 没有、跟着 Tingly Box 的地址、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
+| `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的 ImageGen 一块（Anthropic 没有、跟着 Tingly Box 的地址、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
 | `python3 e2e/export_menu.py` | 共用的导入 / 导出菜单：每种类型的栏里都有，列出这种类型收什么、能存什么；幻灯片和文档一键存成 PDF（真的 PDF，页数对）、服务端没有 Chrome 时回到打印窗口、状态条（28 项检查） |
 | `python3 e2e/archive.py` | 整个项目导出成 .zip：每种类型导入 / 导出菜单最后的两项；整个项目带改动记录、并排带上设计系统和清单，仅文件两样都不带，都不带本机状态；从启动页“新建”菜单导入、重名换名（没变的设计系统不重复导入）；启动页卡片的导出；没有项目的 zip 会说明原因；英文浅色和中文深色（23 项检查） |
 | `python3 e2e/claude_design.py` | Claude Design 包：画布、幻灯片、设计系统、看板的菜单里“Claude Design 包”排在“整个项目”前面，文档和动效没有；各类型包的布局和 README；保存；打开按 Claude Code 存下原版画布的方式做出的包（按标题起名，`/_blob` 图片进 `uploads/`）；Claude Docs 的 `.md` 变成文档；没有项目的 zip 会说明原因；英文浅色和中文深色（23 项检查） |

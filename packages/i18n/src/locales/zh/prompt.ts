@@ -153,10 +153,10 @@ export default {
     noBoards: '没有画板',
   },
   image: {
-    label: '图像生成',
-    on: '本项目允许 Claude Code 生成图片，点一下关闭图像生成。',
-    off: '本项目已关闭图像生成，点一下允许 Claude Code 生成图片。',
-    globalOff: '已在 AI 设置里对所有项目关闭图像生成。',
+    label: 'ImageGen',
+    on: '本项目允许 Claude Code 生成图片，点一下关闭 ImageGen。',
+    off: '本项目已关闭 ImageGen，点一下允许 Claude Code 生成图片。',
+    globalOff: '已在 AI 设置里对所有项目关闭 ImageGen。',
   },
   attach: {
     keepFailed: '附件没能存进项目：{{error}}',

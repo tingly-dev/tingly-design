@@ -13,8 +13,9 @@ import { Send, Stop } from './icons';
 
 /**
  * The request bar every kind shares: the run feed (or the request history)
- * above, a head row, attachments, the box with send or stop, and the hints
- * under it. Floating at the bottom of the work and folding to a pill, or, when
+ * above, a head row (what the request is about and the bar's tools), attachments, the
+ * box, a toolbar (paperclip, this request's settings, who answers, send or
+ * stop) and the hints under it. Floating at the bottom of the work and folding to a pill, or, when
  * the person put it on the left, only the input part at the bottom of the
  * conversation column (the column itself is `ChatPanel`). What the head says and where a request goes are the kind's: the canvas,
  * deck and motion bar (`PromptBar`) picks Fast AI or Claude Code and names what
@@ -25,6 +26,7 @@ export function RequestBar({
   label,
   head,
   options,
+  picker,
   placeholder,
   disabled,
   busyRun,
@@ -38,8 +40,10 @@ export function RequestBar({
   label: string;
   /** the head row before its tools: what the request is about, where it goes */
   head: ReactNode;
-  /** the row under the box: settings of this request (a conversation to continue, pictures) */
+  /** the toolbar's left, after the paperclip: settings of this request (a conversation to continue, ImageGen) */
   options?: ReactNode;
+  /** the toolbar's right, before send: who answers (Fast AI or Claude Code) */
+  picker?: ReactNode;
   placeholder: string;
   /** sending is impossible (nothing to point at, no model, no CLI) */
   disabled?: boolean;
@@ -137,7 +141,6 @@ export function RequestBar({
       </div>
       <AttachTray items={attach.items} onRemove={attach.remove} />
       <div className="body">
-        <AttachButton onFiles={(f) => void attach.add(f)} />
         <textarea
           ref={box}
           rows={1}
@@ -154,17 +157,27 @@ export function RequestBar({
             }
           }}
         />
+      </div>
+      <div className="tools">
+        <AttachButton onFiles={(f) => void attach.add(f)} />
+        {options && <div className="opts">{options}</div>}
+        {picker}
         {busy ? (
-          <button className="btn outline send" onClick={() => stopRun(busyRun)}>
-            <Stop /> {t('common.stop')}
+          <button className="send stop" aria-label={t('common.stop')} title={t('common.stop')} onClick={() => stopRun(busyRun)}>
+            <Stop />
           </button>
         ) : (
-          <button className="btn primary send" onClick={() => void submit()} disabled={disabled || keeping || !text.trim()}>
-            <Send /> {t('common.send')}
+          <button
+            className={`send${text.trim() && !disabled && !keeping ? ' ready' : ''}`}
+            aria-label={t('common.send')}
+            title={t('common.send')}
+            onClick={() => void submit()}
+            disabled={disabled || keeping || !text.trim()}
+          >
+            <Send />
           </button>
         )}
       </div>
-      {options && <div className="opts">{options}</div>}
       {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
       {blocked ? (
         <div className="prompt-hint warn" role="status">

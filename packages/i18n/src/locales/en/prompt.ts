@@ -156,10 +156,10 @@ export default {
     noBoards: 'No artboards',
   },
   image: {
-    label: 'Image generation',
+    label: 'ImageGen',
     on: 'Claude Code may make pictures in this project. Click to turn off.',
-    off: 'Image generation is off in this project. Click to let Claude Code make pictures.',
-    globalOff: 'Image generation is switched off for every project in AI settings.',
+    off: 'ImageGen is off in this project. Click to let Claude Code make pictures.',
+    globalOff: 'ImageGen is switched off for every project in AI settings.',
   },
   attach: {
     keepFailed: 'Couldn\'t save the attachments to the project: {{error}}',

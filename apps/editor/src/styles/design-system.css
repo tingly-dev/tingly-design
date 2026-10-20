@@ -644,27 +644,14 @@ textarea.dsin {
   bottom: 16px;
   width: min(640px, calc(100vw - 260px));
   background: var(--panel);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: var(--float-shadow);
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 8px 10px;
+  flex-direction: column;
   z-index: 25;
 }
 
 
-.dsask textarea {
-  flex: 1;
-  border: 0;
-  resize: none;
-  outline: none;
-  max-height: 180px;
-  padding: 8px 2px;
-  font-size: 14px;
-  background: transparent;
-}
 
 
 .app.ds .journal-pop,
