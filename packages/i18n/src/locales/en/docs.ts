@@ -112,8 +112,12 @@ export default {
     empty: 'Select some text, then click “Comment”.',
     me: 'Me',
   },
+  export: {
+    missing_one: '{{count}} picture could not be read and was left out of the .zip.',
+    missing_other: '{{count}} pictures could not be read and were left out of the .zip.',
+  },
   import: {
-    what: 'Each Markdown file becomes a new tab, titled by its first heading. The original stays in the project’s uploads/; import it with its folder and the images it references stay too.',
+    what: 'Each Markdown file becomes a new tab, titled by its first heading. The original stays in the project’s uploads/; import it with its folder, or the .zip a doc was exported as, and the images it references stay too.',
     addedOne: 'Added {{name}} as a new tab.',
     addedMany_one: 'Added {{count}} tab.',
     addedMany_other: 'Added {{count}} tabs.',

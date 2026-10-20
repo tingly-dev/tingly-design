@@ -6,7 +6,7 @@ import { toast, useStore } from '../store';
 import { clipText } from '../clipboard';
 import { api } from '../api';
 import { t as tNow } from '../i18n';
-import { droppedFiles, pickedFromText, readPicked, type Picked } from '../importer';
+import { droppedFiles, expandZips, pickedFromText, readPicked, type Picked } from '../importer';
 import { Menu, MenuItem } from './Menu';
 import { BoardPicker } from './BoardPicker';
 import { FileText, Frame, ImportI } from './icons';
@@ -120,7 +120,8 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
     }
   };
   const takeList = async (list: { file: File; path: string }[], at?: { x: number; y: number }) => {
-    if (list.length) await take(await readPicked(list), at);
+    // a doc's Markdown comes back from the .zip it was exported as (with its pictures)
+    if (list.length) await take(await readPicked(live.current.target.accepts.includes('markdown') ? await expandZips(list) : list), at);
   };
 
   useEffect(() => dirRef.current?.setAttribute('webkitdirectory', ''), []);
@@ -193,7 +194,7 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
     };
   }, []);
 
-  const accept = target.accepts.map((m) => MATERIAL[m].accept).join(',');
+  const accept = target.accepts.map((m) => MATERIAL[m].accept).concat(target.accepts.includes('markdown') ? ['.zip'] : []).join(',');
   const fromInput = (input: HTMLInputElement) => {
     const list = [...(input.files ?? [])].map((file) => ({ file, path: file.webkitRelativePath || file.name }));
     input.value = '';

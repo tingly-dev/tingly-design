@@ -4,7 +4,7 @@ canvas or the open slide, Markdown becomes doc tabs, a CSV a dashboard dataset, 
 design system's own; pictures onto the motion scene under the playhead. Originals a person brings in are kept in uploads/.
 Run after `pnpm build`: python3 e2e/import_here.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh copy of the sample projects."""
-import os, sys, asyncio, json, shutil, subprocess, tempfile, threading, time
+import os, sys, asyncio, json, shutil, subprocess, tempfile, threading, time, zipfile
 from playwright.async_api import async_playwright, expect
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -208,6 +208,22 @@ async def main():
             loaded = await pg.wait_for_function("() => [...document.querySelectorAll('.docbody img')].some((i) => i.naturalWidth > 0)", timeout=8000)
             check('docs: …and it opens, picture showing', bool(loaded))
             await pg.screenshot(path=OUT + 'import-here-docs.png')
+
+            # --- docs: the .zip a doc was exported as comes back as a tab, picture and highlight kept ---
+            zpath = os.path.join(tmp, 'memo.zip')
+            with zipfile.ZipFile(zpath, 'w') as z:
+                z.writestr('memo.md', '# Memo\n\nA <mark>marked</mark> word.\n\n![dot](assets/dot.png)\n')
+                z.write(os.path.join(notes, 'img', 'dot.png'), 'assets/dot.png')
+            tabs = len(json.loads(read('design-guide', 'doc.json'))['tabs'])
+            await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
+            async with pg.expect_file_chooser() as fc:
+                await pg.locator('.menu .mi', has_text='导入 Markdown').click()
+            await (await fc.value).set_files(zpath)
+            ok = await wait_for(lambda: len(json.loads(read('design-guide', 'doc.json'))['tabs']) == tabs + 1)
+            doc = json.loads(read('design-guide', 'doc.json'))
+            tab = read('design-guide', 'tabs', doc['tabs'][-1]['id'] + '.md') if ok else ''
+            check('docs: a .zip of Markdown and its picture becomes a tab', ok and doc['tabs'][-1]['title'] == 'Memo', doc['tabs'][-1])
+            check('docs: …<mark> read as the editor highlight, the picture kept in uploads/', '==marked==' in tab and '](../uploads/memo-' in tab, repr(tab))
 
             # --- dashboard: a CSV becomes a dataset, opened in Sources ---------------------------------
             await pg.goto(base + '/?p=box-usage')

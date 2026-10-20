@@ -1,6 +1,7 @@
 import { embeddedAssets, packPage, parseSvg, readSvg, toCanvas, type Extracted, type Generated, type InFile, type ImportReport } from '@dc/import';
 import { extractPage } from '@dc/import/extract';
 import { isKeptPath } from '@dc/core';
+import { unzipSync } from 'fflate';
 import { api } from './api';
 import { slugOf } from './projectName';
 import { t } from './i18n';
@@ -236,4 +237,32 @@ export async function importPicked(picked: Picked, name: string, title: string, 
     if ('conflict' in r) throw new Error(t('importer.changedWhileImporting', { path }));
   }
   return { report: out.report };
+}
+
+/**
+ * A .zip among the picked files becomes the files inside it, as if its folder had been picked:
+ * the Markdown a doc exported with its pictures comes back the same way. A project archive
+ * (`tingly-design.json`) is left alone, it is opened from the home page.
+ */
+export async function expandZips(list: { file: File; path: string }[]): Promise<{ file: File; path: string }[]> {
+  const out: { file: File; path: string }[] = [];
+  for (const item of list) {
+    if (!/\.zip$/i.test(item.path)) {
+      out.push(item);
+      continue;
+    }
+    let entries: Record<string, Uint8Array>;
+    try {
+      entries = unzipSync(new Uint8Array(await item.file.arrayBuffer()), { filter: (e) => !e.name.endsWith('/') && !/(^|\/)(__MACOSX\/|\.DS_Store$)/.test(e.name) });
+    } catch {
+      out.push(item);
+      continue;
+    }
+    if ('tingly-design.json' in entries) {
+      out.push(item);
+      continue;
+    }
+    for (const [path, bytes] of Object.entries(entries)) out.push({ file: new File([bytes as BlobPart], path.split('/').pop()!), path });
+  }
+  return out;
 }
