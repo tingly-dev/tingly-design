@@ -229,7 +229,7 @@ async def main():
             await expect(ask.locator('.attach-chip')).to_have_count(2)
             await ask.screenshot(path=OUT + 'attach-docs.png')
             await ask.locator('textarea').fill('Add a short section on the Q3 numbers')
-            await ask.locator('button.primary').click()
+            await ask.locator('button.send').click()
             ok = await wait_for(lambda: len(lines(claude_log)) >= 2, 10)
             run = lines(claude_log)[1] if ok else {}
             check('the doc bar hands its attachments to Claude Code', ok and len(run.get('files', {})) == 2 and 'Doc folder' in run.get('prompt', ''), run.get('prompt', '')[-300:])

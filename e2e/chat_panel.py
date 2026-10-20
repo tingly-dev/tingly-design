@@ -119,7 +119,7 @@ async def main():
             await expect(pg.locator('.turn')).to_have_count(2)
             await expect(pg.locator('.turn').last.locator('.run-stop')).to_be_visible(timeout=8000)
             check('while it runs the column says so and offers to stop', 'Claude Code 正在' in await pg.locator('.turn').last.inner_text())
-            check('the box becomes a stop button too', await pg.locator('.chat-composer .send').inner_text() == '停止')
+            check('the box becomes a stop button too', await pg.locator('.chat-composer .send.stop').count() == 1)
             await pg.locator('.turn').last.locator('.run-stop').click()
             await expect(pg.locator('.turn').last).to_contain_text('已停止', timeout=10000)
             check('stopping leaves the turn in the record', True)
