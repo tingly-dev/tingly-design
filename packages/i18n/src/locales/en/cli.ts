@@ -97,7 +97,7 @@ Options:
     complaint: {
       empty: 'Give it a title.',
       badName: 'A folder name can only use letters, digits, - and _, and must start with a letter or digit.',
-      taken: 'projects/{{name}} already exists.',
+      taken: '{{where}}/{{name}} already exists.',
       badSize: 'Width and height are each from 1 to 7680 px, like 1080x1440.',
       badChoice: 'Not one of the choices.',
     },
