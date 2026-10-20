@@ -15,6 +15,8 @@ export const DS_INDEX = 'design-system.json';
 export const DS_TOKENS = 'tokens.json';
 export const DS_TOKENS_CSS = 'tokens.css';
 export const DS_README = 'README.md';
+/** The system's cover: the page its overview opens with and the face its launcher card shows. */
+export const DS_COVER = 'components/Cover/preview.html';
 
 // ------------------------------------------------------------------ index
 

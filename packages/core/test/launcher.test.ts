@@ -51,6 +51,11 @@ describe('projectCard', () => {
     expect(c.preview).toMatchObject({ kind: 'design-system', colors: ['#111111', '#2563eb'], components: ['Button'], fonts: ['Inter'] });
     if (c.preview.kind !== 'design-system') throw new Error('kind');
     expect(c.preview.glance).toMatchObject({ ink: '#111111', accent: '#2563eb', bodyFont: "'Inter', Arial, sans-serif", colors: 2, themes: ['Light'] });
+    // the card draws the cover when there is one, else the sample
+    expect(c.preview.cover).toBe(true);
+    const { 'components/Cover/preview.html': _, ...bare } = files;
+    const plain = await projectCard('brand', 'design-system', Object.keys(bare), reader(bare));
+    expect(plain.preview.kind === 'design-system' && plain.preview.cover).toBe(false);
   });
 
   it('a dashboard lists its datasets by title, falling back to the file name', async () => {

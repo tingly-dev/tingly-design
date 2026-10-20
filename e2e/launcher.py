@@ -59,8 +59,9 @@ async def main():
         await expect(board.locator('h1').first).to_have_text('Team settings')
         check('the canvas card renders the board it opens on', True)
         check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 5)
-        check('the design system card shows its swatches and a specimen',
+        check('the design system card shows its swatches and its faces, under its cover',
               await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Instrument Serif' in await pg.locator('.lcard[data-project="tingly-ds"] .lp-ds').inner_text())
+        await expect(pg.locator('.lcard[data-project="tingly-ds"] .lp-cover iframe')).to_have_count(1)
         await expect(pg.locator('.lcard[data-project="box-usage"] .lp-dash li').first).to_have_text('September provider budgets')
         await expect(pg.locator('.lcard[data-project="design-guide"] .lp-doc li').nth(2)).to_have_attribute('style', 'padding-left: 10px;')
         check('dashboard and doc cards show datasets and the tab outline', True)
@@ -281,6 +282,12 @@ async def main():
         await expect(card).to_have_count(4)
         bw = await card.first.evaluate('e => getComputedStyle(e).borderTopWidth')
         check("a look's card is drawn with the theme's own rule (bauhaus: a 2px border)", bw == '2px', bw)
+        # its launcher card draws that cover with the same rules, not a sample from tokens alone
+        await pg.goto(BASE + '/')
+        lc = pg.locator('.lcard[data-project="zz-look"] .lp-cover iframe').content_frame.locator('.lk-card')
+        await expect(lc).to_have_count(3)
+        bw = await lc.first.evaluate('e => getComputedStyle(e).borderTopWidth')
+        check("a look's launcher card shows its cover, with the theme's rules (a 2px border)", bw == '2px' and await pg.locator('.lcard[data-project="zz-look"] .specimen').count() == 0, bw)
         r = cli('new', 'design-system', 'zz-cli-look', '--global', '--look', 'swiss-grid')
         made = os.path.join(REPO, 'projects/zz-cli-look/tokens.json')
         check('new design-system --look makes a system from that look', r.returncode == 0 and os.path.exists(made) and bool(open(made, encoding='utf-8').read().strip()), r.stdout + r.stderr)
