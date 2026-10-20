@@ -20,6 +20,7 @@ const env = (): AiEnv => ({
   imageBaseUrl: process.env.DC_IMAGE_BASE_URL,
   imageKey: process.env.DC_IMAGE_API_KEY,
   imageModel: process.env.DC_IMAGE_MODEL,
+  imageEnabled: process.env.DC_IMAGE_ENABLED,
 });
 
 let saved: AiSaved | null = null;
@@ -56,7 +57,7 @@ export async function saveAi(next: AiSaved, keep: { key: boolean; imageKey?: boo
 /** Where image requests go (an OpenAI-compatible base URL), with which key and model; null while image generation is off. */
 export function imageEndpoint(draft?: AiSaved): { baseUrl: string; key: string; model: string } | null {
   const r = aiResolved(draft).image;
-  if (!r.ready) return null;
+  if (!r.active) return null;
   const e = env();
   const key = (e.imageKey ?? '').trim() || (draft?.imageKey ?? saved?.imageKey ?? '').trim() || keyOf(draft);
   return { baseUrl: r.baseUrl.value, key, model: r.model.value };

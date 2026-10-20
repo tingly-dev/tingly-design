@@ -91,7 +91,7 @@ import { PdfError, printPdf } from './pdf';
 import type { ExportReport } from '@dc/export/timing';
 import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
-import { generateImage } from './imagegen';
+import { generateImage, imageState, setProjectImageOn } from './imagegen';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
 import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
@@ -127,7 +127,7 @@ app.get('/api/health', async (c) => {
     ok: true,
     fastEdit: fastReady(aiResolved()),
     fastModel: aiResolved().fastModel.value,
-    imageGen: aiResolved().image.ready,
+    imageGen: aiResolved().image.active,
     claudeCli: cliChecked,
     projectsDir: fromRoot(PROJECTS_DIR),
     projectsInRepo: !!(await repoOf(PROJECTS_DIR)),
@@ -716,6 +716,21 @@ app.post('/api/projects/:p/images', async (c) => {
   return c.json(out);
 });
 
+/** Whether pictures can be made in this project: configured in the settings, allowed globally, and not switched off for the project. */
+app.get('/api/projects/:p/image-gen', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  return c.json(await imageState(p));
+});
+
+app.put('/api/projects/:p/image-gen', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
+  await setProjectImageOn(p, b.enabled !== false);
+  return c.json(await imageState(p));
+});
+
 // ---------------------------------------------------------------- delegate
 
 app.post('/api/projects/:p/delegate', async (c) => {
@@ -730,7 +745,7 @@ app.post('/api/projects/:p/delegate', async (c) => {
   if (!req.prompt?.trim()) throw new HttpError(400, 'promptMissing');
   const bad = checkUploads(req.attachments);
   if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
-  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c)) });
+  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c), (await imageState(p)).on) });
 });
 
 /** The Claude Code conversation the project keeps: the next request continues it unless it asks for a new one. */

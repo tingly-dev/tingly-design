@@ -74,6 +74,8 @@ export interface AiConfig {
     model: { value: string; source: AiSource };
     key: { set: boolean; source: AiSource | 'connection' | 'none' };
     ready: boolean;
+    enabled: { value: boolean; source: AiSource };
+    active: boolean;
   };
   claudeCli: boolean;
   box: { reachable: boolean };
@@ -92,6 +94,16 @@ export interface AiDraft {
   imageBaseUrl?: string;
   imageKey?: string;
   imageModel?: string;
+  /** false switches image generation off for every project; left out means on */
+  imageEnabled?: boolean;
+}
+
+/** GET /api/projects/:p/image-gen: why Claude Code is, or is not, offered the picture tool here. */
+export interface ImageState {
+  configured: boolean;
+  global: boolean;
+  project: boolean;
+  on: boolean;
 }
 
 export type ServerEvent =
@@ -114,6 +126,9 @@ export const api = {
   aiConfig: () => call(at('api/ai-config')).then((r) => json<AiConfig>(r)),
   saveAiConfig: (d: AiDraft) =>
     call(at('api/ai-config'), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: true }>(r)),
+  imageState: (p: string) => call(at(`api/projects/${enc(p)}/image-gen`)).then((r) => json<ImageState>(r)),
+  setImageState: (p: string, enabled: boolean) =>
+    call(at(`api/projects/${enc(p)}/image-gen`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled }) }).then((r) => json<ImageState>(r)),
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),

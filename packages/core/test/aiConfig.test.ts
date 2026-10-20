@@ -54,6 +54,19 @@ describe('resolveAi image generation', () => {
     expect(r.image.key).toEqual({ set: true, source: 'saved' });
     expect(r.image.ready).toBe(true);
   });
+  it('is on by default; the saved switch or the host can turn it off without losing the settings', () => {
+    const base = { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k' };
+    expect(resolveAi({}, base).image).toMatchObject({ ready: true, active: true, enabled: { value: true, source: 'default' } });
+    const off = resolveAi({}, { ...base, imageEnabled: false }).image;
+    expect(off).toMatchObject({ ready: true, active: false, enabled: { value: false, source: 'saved' } });
+    expect(resolveAi({ imageEnabled: '0' }, base).image.enabled).toEqual({ value: false, source: 'env' });
+    expect(resolveAi({ imageEnabled: '1' }, { ...base, imageEnabled: false }).image.enabled.value).toBe(false);
+    expect(resolveAi({}, { imageEnabled: false }).image.active).toBe(false);
+  });
+  it('keeps only an explicit off when saving', () => {
+    expect(sanitizeSaved({ imageEnabled: false }).imageEnabled).toBe(false);
+    expect('imageEnabled' in sanitizeSaved({ imageEnabled: true })).toBe(false);
+  });
   it('lets DC_IMAGE_* from the host win, field by field', () => {
     const r = resolveAi({ imageBaseUrl: 'https://img.example/v1', imageModel: 'm' }, { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k', imageModel: 'x' });
     expect(r.image.baseUrl.source).toBe('env');

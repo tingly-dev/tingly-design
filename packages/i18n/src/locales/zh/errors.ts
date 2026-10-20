@@ -48,6 +48,7 @@ export default {
   noFastModel: '快速 AI 还没有密钥，请先在「AI 模型设置」里配置（也可以改用 jQuery 模式直接写语句）。',
   noImageModel: '还没有设置图片生成。请在 AI 设置里填上图片地址。',
   imageFailed: '图片没有生成：{{detail}}',
+  imageOff: '图像生成已关闭。可在 AI 设置里打开，或在项目菜单里为当前项目打开。',
   imageEditSource: '这张图片不能修改：{{path}}',
   badBaseUrl: '地址要以 http:// 或 https:// 开头。',
   noPdf: '这台机器没有 Chrome 或 Edge，不能直接保存 PDF。',

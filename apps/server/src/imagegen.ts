@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
-import { imageEndpoint } from './aiconfig';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { aiResolved, imageEndpoint } from './aiconfig';
 import { logError, logInfo } from './log';
-import { HttpError, readAsset, writeAsset } from './store';
+import { HttpError, projectDir, readAsset, writeAsset } from './store';
 
 /**
  * Image generation through an OpenAI-style gateway (.design/ai-settings.md, .design/image-generation.md):
@@ -53,10 +55,38 @@ async function fromProject(project: string, rel: string): Promise<{ bytes: Buffe
   return { bytes, ext: sniffImage(bytes) ?? 'png' };
 }
 
+const SWITCH_FILE = '.image.json';
+
+/**
+ * A project's own switch for image generation: on unless this machine turned it off for the project.
+ * Local state like `.runs.json` (kept out of the zip and out of a commit), so a shared project does not carry one person's choice.
+ */
+export async function projectImageOn(project: string): Promise<boolean> {
+  try {
+    return (JSON.parse(await readFile(join(projectDir(project), SWITCH_FILE), 'utf8')) as { enabled?: unknown }).enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+export async function setProjectImageOn(project: string, on: boolean): Promise<void> {
+  const dir = projectDir(project);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, SWITCH_FILE), on ? '{}\n' : JSON.stringify({ enabled: false }) + '\n');
+}
+
+/** Where a project stands: the settings configure it, the global switch allows it, the project's own switch picks. `on` is what Claude Code is offered. */
+export async function imageState(project: string): Promise<{ configured: boolean; global: boolean; project: boolean; on: boolean }> {
+  const r = aiResolved().image;
+  const own = await projectImageOn(project);
+  return { configured: r.ready, global: r.enabled.value, project: own, on: r.active && own };
+}
+
 /** Make or change one picture and keep it; returns where it was kept. */
 export async function generateImage(project: string, req: ImageRequest): Promise<{ path: string; size: number; model: string; ms: number }> {
   const ep = imageEndpoint();
-  if (!ep) throw new HttpError(501, 'noImageModel');
+  if (!ep) throw new HttpError(aiResolved().image.ready ? 403 : 501, aiResolved().image.ready ? 'imageOff' : 'noImageModel');
+  if (!(await projectImageOn(project))) throw new HttpError(403, 'imageOff');
   const prompt = (req.prompt ?? '').trim();
   if (!prompt) throw new HttpError(400, 'promptMissing');
   if (prompt.length > 8000) throw new HttpError(400, 'badRequest', { detail: 'prompt is longer than 8000 characters' });

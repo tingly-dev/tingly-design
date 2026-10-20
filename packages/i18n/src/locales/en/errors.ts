@@ -46,6 +46,7 @@ export default {
   noFastModel: 'Fast AI has no key yet. Set it up in AI settings (you can also write statements directly in jQuery mode).',
   noImageModel: 'Image generation is not set up. Add an image address in AI settings.',
   imageFailed: 'The image could not be made: {{detail}}',
+  imageOff: 'Image generation is switched off. Turn it on in AI settings, or in the project menu for this project.',
   imageEditSource: 'This picture cannot be edited: {{path}}',
   badBaseUrl: 'The address must start with http:// or https://.',
   noPdf: 'This machine has no Chrome or Edge, so it cannot save a PDF directly.',

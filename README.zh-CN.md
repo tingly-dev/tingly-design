@@ -119,7 +119,7 @@ pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 | `DC_FAST_MODEL` | 快速 AI 用的模型，默认 `claude-haiku-5-5`。 |
 | `DC_LOG_LEVEL` | 服务端日志级别（输出到 stderr）：`error`、`warn`、`info`（默认）、`debug`、`silent`；见[开发](docs/zh/development.md#服务端日志)。 |
 | `DC_DELEGATE_MODEL` | 交给 Claude Code 时用的模型（不设则用 CLI 默认）。 |
-| `DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY` | 图片生成走 OpenAI 风格的 `…/v1/images/generations` 地址（请求需要图片时由 Claude Code 生成）。不设也可以在编辑器的「AI 模型设置」里填「图片生成」：Tingly Box 自带地址，Anthropic 没有。密钥默认用连接的。 |
+| `DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY`、`DC_IMAGE_ENABLED` | 图片生成走 OpenAI 风格的 `…/v1/images/generations` 地址（请求需要图片时由 Claude Code 生成）。不设也可以在编辑器的「AI 模型设置」里填「图片生成」：Tingly Box 自带地址，Anthropic 没有。密钥默认用连接的。 `DC_IMAGE_ENABLED=0` 全部关闭；每个项目在项目菜单里也有自己的开关。|
 | `DC_CONFIG` | AI 模型设置的保存文件（含 key，仅所有者可读），默认在项目目录旁的 `.tingly-design/ai.json`。 |
 | `DC_PROJECTS` | 项目目录，默认仓库里的 `projects/`。 |
 | `PORT` | 服务端端口，默认 8787。 |

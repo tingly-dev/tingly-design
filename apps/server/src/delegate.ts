@@ -152,7 +152,7 @@ export function forgetConversation(project: string): void {
   }
 }
 
-export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en'): string {
+export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en', imageOn = false): string {
   const id = randomUUID().slice(0, 8);
   const dir = fromRoot(projectDir(project));
   const slides = kind === 'slides';
@@ -161,7 +161,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const docs = kind === 'docs';
   const motion = kind === 'motion';
   // a dashboard reads files only from data/ and a design system keeps its pictures in its own assets/: neither gets the tool
-  const images = aiResolved().image.ready && !dash && !ds;
+  const images = imageOn && !dash && !ds;
   const lines = [
     `${slides ? 'Deck' : ds ? 'Design system' : dash ? 'Dashboard' : docs ? 'Doc' : motion ? 'Motion' : 'Canvas'} folder: ${dir}/`,
     req.file ? `The person is looking at the ${slides ? 'slide' : dash ? 'page file' : docs ? 'tab' : motion ? 'scene' : 'artboard'} ${dir}/${req.file}.` : '',

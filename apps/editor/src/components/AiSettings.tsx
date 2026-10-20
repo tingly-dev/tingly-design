@@ -39,6 +39,7 @@ function AiSettings() {
   const [imageUrl, setImageUrl] = useState('');
   const [imageKey, setImageKey] = useState('');
   const [imageModel, setImageModel] = useState('');
+  const [imageOn, setImageOn] = useState(true);
   // null until the person chooses: then it follows whether there is a key, as the server's default does
   const [chosen, setChosen] = useState<'shared' | 'login' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +56,7 @@ function AiSettings() {
         setClaudeModel(c.claudeModel.source === 'saved' ? c.claudeModel.value : '');
         setImageUrl(c.image.baseUrl.source === 'saved' ? c.image.baseUrl.value : '');
         setImageModel(c.image.model.source === 'saved' ? c.image.model.value : '');
+        setImageOn(c.image.enabled.value);
         setChosen(c.claudeRoute.source === 'saved' ? c.claudeRoute.value : null);
       },
       (e) => {
@@ -77,6 +79,7 @@ function AiSettings() {
   const imgUrlLocked = cfg.image.baseUrl.source === 'env';
   const followsBox = preset === 'tingly-box' && !imgUrlLocked;
   const imgUrl = imgUrlLocked ? cfg.image.baseUrl.value : followsBox ? TINGLY_BOX_IMAGEGEN : imageUrl.trim();
+  const imgOnLocked = cfg.image.enabled.source === 'env';
   const imgKeyLocked = cfg.image.key.source === 'env';
   const imgProblem = !validBaseUrl(imgUrl) ? t('aiSettings.badUrl') : '';
   const imgDflt = resolveAi({}, { baseUrl, imageBaseUrl: imgUrl }).image;
@@ -85,6 +88,7 @@ function AiSettings() {
     imageBaseUrl: imgUrlLocked || followsBox ? '' : imgUrl,
     ...(imageKey.trim() ? { imageKey: imageKey.trim() } : {}),
     imageModel: imageModel.trim(),
+    ...(imageOn || imgOnLocked ? {} : { imageEnabled: false }),
     baseUrl: urlLocked ? '' : baseUrl,
     ...(key.trim() ? { apiKey: key.trim() } : {}),
     fastModel: fastModel.trim(),
@@ -246,8 +250,13 @@ function AiSettings() {
               />
               <Locked source={cfg.image.model.source} />
             </label>
-            <p className={`status ${imgReady ? 'ok' : ''}`} data-image-state={imgReady ? 'ready' : 'off'}>
-              {imgReady ? t('aiSettings.imageReady') : t('aiSettings.imageOff')}
+            <label className={`check${imgReady ? '' : ' off'}`} data-image-switch>
+              <input type="checkbox" checked={imgReady && (imgOnLocked ? cfg.image.enabled.value : imageOn)} disabled={!imgReady || imgOnLocked} onChange={(e) => setImageOn(e.target.checked)} />
+              <span>{t('aiSettings.imageSwitch')}</span>
+              <Locked source={cfg.image.enabled.source} />
+            </label>
+            <p className={`status ${imgReady && imageOn ? 'ok' : ''}`} data-image-state={!imgReady ? 'off' : imageOn ? 'ready' : 'paused'}>
+              {!imgReady ? t('aiSettings.imageOff') : imageOn ? t('aiSettings.imageReady') : t('aiSettings.imagePaused')}
             </p>
           </>
         )}
