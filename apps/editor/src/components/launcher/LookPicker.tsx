@@ -45,7 +45,7 @@ export function LookPicker({ value, onChange }: { value: string; onChange: (look
                   Aa
                   <i style={{ background: l.colors.accent }} />
                 </span>
-                <span className="name">{t(`ds.look.${l.id}`)}</span>
+                <span className="name">{t(`ds.look.${l.id}`, { defaultValue: l.id })}</span>
               </button>
             ))}
           </div>
