@@ -106,11 +106,11 @@ export const api = {
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
   /** `where` is a folder name in the projects folder, or `{ path }` for a missing or empty folder anywhere; the project's name comes back */
-  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean } = {}) =>
+  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean; look?: string } = {}) =>
     call(at('api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}), ...(opts.git ? { git: true } : {}) }),
+      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}), ...(opts.git ? { git: true } : {}), ...(opts.look ? { look: opts.look } : {}) }),
     })
       .then((r) => json<{ ok: true; name?: string; gitError?: string }>(r))
       .then((r) => ({ name: r.name ?? (typeof where === 'string' ? where : ''), gitError: r.gitError })),

@@ -15,6 +15,7 @@
   "宿主消息": {"design": ["embed"], "slides": "embed checks host messages on one project", "design-system": "embed checks host messages on one project", "dashboard": "embed checks host messages on one project", "docs": "embed checks host messages on one project", "motion": "embed checks host messages on one project"},
   "顶栏：项目名、同步状态和改动记录、导入 / 导出、\"更多\"": {"design": ["export_menu"], "slides": ["export_menu"], "design-system": ["export_menu"], "dashboard": ["export_menu"], "docs": ["export_menu"], "motion": ["export_menu"]},
   "离开项目：回首页、切换、新建": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},
+  "新建时选起点": {"design-system": ["launcher"]},
   "新建时选尺寸": {"motion": "the size picker is not driven by any e2e yet"},
   "AI 模型设置": {"design": ["ai_settings"], "slides": "a global setting; ai_settings opens it from one project", "design-system": "a global setting; ai_settings opens it from one project", "dashboard": "a global setting; ai_settings opens it from one project", "docs": "a global setting; ai_settings opens it from one project", "motion": "a global setting; ai_settings opens it from one project"},
   "启动页卡片和预览": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},

@@ -58,6 +58,7 @@ const TOOLS = [
         kind: { type: 'string', enum: Object.keys(KINDS), description: 'Create a project of this kind.' },
         title: { type: 'string', description: 'With kind: the title shown in the launcher (default: the name).' },
         size: { type: 'string', description: 'With kind canvas or motion: the first artboard or format, as WxH (e.g. 1280x720). A canvas also takes a named size from the New dialog (wechat, tall, story, og, wide, a4, mpu, …; an unknown name lists them all).' },
+        look: { type: 'string', description: 'With kind design-system: start from a look instead of a blank system (minimal-white, swiss-grid, editorial-serif, bauhaus, blueprint, nord, dracula, …; an unknown name lists them all).' },
       },
       required: ['project'],
     },
@@ -135,7 +136,7 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       return json(await projects());
     case 'open': {
       if (str(a.kind)) {
-        const made = await create(ctx, { kind: str(a.kind), target: str(a.project), title: str(a.title), size: str(a.size), global: !looksLikePath(str(a.project) ?? '') });
+        const made = await create(ctx, { kind: str(a.kind), target: str(a.project), title: str(a.title), size: str(a.size), look: str(a.look), global: !looksLikePath(str(a.project) ?? '') });
         return opened(made);
       }
       return opened(await resolveProject(ctx, str(a.project), 'list'));

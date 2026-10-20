@@ -42,6 +42,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --global              new：名字不建在当前目录，建在项目目录里
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
                         尺寸名（wechat、tall、story、og、a4、wide、mpu……）
+  --look <名字>         new design-system：从一个风格开始（nord、swiss-grid、dracula……），而不是空白
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
   --board、--slide、--tab、--view <名字>   export：只导出一个画板（文件名或标题）、一页幻灯片（编号或第几页）、
                         一个标签页（编号或标题）或设计系统的一个视图，而不是全部
@@ -65,6 +66,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   needKind: '请指定类型：canvas、slides、design-system、dashboard、doc 或 motion',
   badKind: '{{kind}} 不是项目类型。类型有：canvas、slides、design-system、dashboard、doc、motion',
   badPage: '{{page}} 不是这种类型的参考页。参考页有：{{pages}}',
+  badLook: '--look {{look}} 不是已有的风格：{{looks}}。',
+  lookOnlyDs: '--look 只用于设计系统。',
   badBoardSize: '--size {{size}} 既不是宽x高（如 1080x1440），也不是已命名的尺寸：{{sizes}}。',
   needName: '请给项目起名或指定文件夹：tingly-design new {{kind}} <名字或文件夹>',
   globalPath: '--global 把项目放在项目目录里，所以只收名字，不收路径：{{target}}',

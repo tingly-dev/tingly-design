@@ -22,6 +22,10 @@ A design system is a folder under `projects/<name>/`, laid out as the original D
 
 The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/tingly-ds` is a full example: two themes, Instrument Serif and Inter, four components; the deck in `projects/tingly-intro` is built from it.
 
+## Starting from a look
+
+`tingly-design new design-system <name> --look <id>` (or the New dialog's "Start from a look") writes a system from one of 36 ready-made looks instead of the blank starter: its colours (one theme), font families, radii and shadows, plus the generic text styles and spacing, and a README that keeps the look's MIT credit. The ids: clean `minimal-white corporate-clean swiss-grid arctic-cool soft-pastel xiaohongshu-white pitch-deck-vc`; editorial `editorial-serif magazine-bold academic-paper news-broadcast japanese-minimal midcentury`; bold `bauhaus memphis-pop neo-brutalism rainbow-gradient sunset-warm y2k-chrome vaporwave`; tech `blueprint engineering-whiteprint cyberpunk-neon terminal-green retro-tv sharp-mono glassmorphism aurora`; palettes `catppuccin-latte catppuccin-mocha dracula gruvbox-dark nord rose-pine solarized-light tokyo-night`. A look is only a start: edit tokens.json afterwards like any other system, and keep the README's credit line.
+
 ## tokens.json
 
 ```json
