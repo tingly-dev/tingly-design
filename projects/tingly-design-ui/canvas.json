@@ -124,6 +124,13 @@
       "w": 1720,
       "h": 940,
       "title": "Canvas template text and colours"
+    },
+    "Composer.dc.html": {
+      "x": 0,
+      "y": 9400,
+      "w": 1900,
+      "h": 1360,
+      "title": "Composer"
     }
   },
   "order": [
@@ -143,7 +150,8 @@
     "Dashboard.dc.html",
     "Doc.dc.html",
     "Motion.dc.html",
-    "AgentBar.dc.html"
+    "AgentBar.dc.html",
+    "Composer.dc.html"
   ],
   "notes": {
     "t0": {
