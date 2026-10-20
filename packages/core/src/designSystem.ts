@@ -89,8 +89,14 @@ export function newDsIndex(title: string, namespace: string, at = new Date().toI
 export function namespaceOf(title: string): string {
   const words = title.normalize('NFKD').replace(/[^A-Za-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
   const ns = words.map((w) => w[0].toUpperCase() + w.slice(1)).join('');
-  return /^[A-Za-z_$]/.test(ns) ? ns.slice(0, 40) : 'DS' + ns.slice(0, 38);
+  const out = /^[A-Za-z_$]/.test(ns) ? ns.slice(0, 40) : 'DS' + ns.slice(0, 38);
+  // bundle.js assigns window.<namespace>; a browser global of that name (Math, JSON, Image…) would be replaced
+  return BROWSER_GLOBALS.has(out) ? out + 'DS' : out;
 }
+
+const BROWSER_GLOBALS = new Set(
+  'Array Audio Blob Boolean Date Document Element Error Event File Function Image Infinity Intl JSON Location Map Math NaN Node Number Object Option Promise Proxy Reflect RegExp Set String Symbol Text URL Window'.split(' '),
+);
 
 /** A folder name for a system installed into a canvas or deck (`ds/<folder>/`). */
 export function dsFolderOf(namespace: string): string {

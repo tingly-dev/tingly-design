@@ -43,4 +43,4 @@ projects/<name>/
 tingly-design new design-system acme --look swiss-grid
 ```
 
-风格决定颜色（一套主题）、字体族、圆角和阴影；文字样式和间距是通用的，README 里写明风格的来源（html-ppt 模板的主题，MIT 许可）。它只是起点，不是链接：建好之后这套系统由你自己改。
+风格决定颜色（一套主题）、字体族、圆角和阴影；文字样式和间距是通用的，README 里写明风格的来源（html-ppt 模板的主题，MIT 许可）。它还带着这个风格的组件（Title、Kicker、Card、Pill、Divider，用原主题自己的描边、阴影和渐变画）和一张同样风格的封面，打开概览一眼就能看出是什么风格。它只是起点，不是链接：建好之后这套系统由你自己改。
