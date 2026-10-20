@@ -5,6 +5,7 @@ import { display, parsed, useCanvas, useStore, type LastRun } from '../store';
 import { focusBoard } from './canvas/view';
 import { delegateToClaude, runFastEdit } from '../fastedit';
 import { ContextChip } from './AgentBar';
+import { ImageToggle } from './ImageToggle';
 import { RequestBar } from './RequestBar';
 import { offerPrompt } from '../headless';
 import { slideIdOf } from '@dc/core';
@@ -119,7 +120,6 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
               t('prompt.target.noBoards')
             )}
           </span>
-          <ContextChip target={target} />
           <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
             {(
               [
@@ -137,6 +137,12 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
               {t('prompt.bar.setUp')}
             </button>
           )}
+        </>
+      }
+      options={
+        <>
+          <ContextChip target={target} />
+          {target === 'claude' && <ImageToggle />}
         </>
       }
       placeholder={why ?? placeholder[target]}

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { delegateToClaude } from '../fastedit';
 import { useStore } from '../store';
 import { ContextChip } from './AgentBar';
+import { ImageToggle } from './ImageToggle';
 import { RequestBar } from './RequestBar';
 
 /**
@@ -30,7 +31,13 @@ export function AskClaude({
     <RequestBar
       variant="dsask"
       label={t('prompt.askClaude.label')}
-      head={<ContextChip target="claude" />}
+      head={null}
+      options={
+        <>
+          <ContextChip target="claude" />
+          <ImageToggle />
+        </>
+      }
       placeholder={noCli ? t('prompt.bar.noClaudeCli') : (placeholder ?? t('prompt.askClaude.placeholder'))}
       disabled={noCli}
       busyRun={active ? { kind: 'delegate', id: active.id } : null}

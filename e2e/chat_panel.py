@@ -128,6 +128,7 @@ async def main():
             await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
             check('a finished turn has its answer', '改好了标题。' in await pg.locator('.turn').last.inner_text())
             check('and a chip for the file it changed', await pg.locator('.turn').last.locator('.file-chip').count() >= 1)
+            await expect(pg.locator('.turn').last.get_by_role('button', name='撤销这次改动')).to_have_count(1)  # it appears a moment after the chip
             check('undo is offered on the newest turn only', await pg.get_by_role('button', name='撤销这次改动').count() == 1 and await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').count() == 1)
             check('every turn can be put back in the box', await pg.get_by_role('button', name='放回输入框').count() == 3)
             await pg.locator('.turn').first.get_by_role('button', name='放回输入框').click()
