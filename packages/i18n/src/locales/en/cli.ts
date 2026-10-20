@@ -36,6 +36,7 @@ Options:
   --host <address>      serve, open: the address to listen on (default 127.0.0.1)
   --title <text>        new: the title shown in the launcher
   -i, --interactive     new: ask for whatever is not given, then offer to open the project
+  --global              new: keep a bare name in the projects folder instead of a folder of that name here
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size; a canvas also takes a
                         name from the New dialog's list (wechat, tall, story, og, a4, wide, mpu, …)
   --format <a,b>        export: the motion formats to render (default: all)
@@ -63,6 +64,8 @@ Options:
   badPage: '{{page}} is not a reference page of this kind. Pages: {{pages}}',
   badBoardSize: '--size {{size}} is neither a width and height (1080x1440) nor one of the named sizes: {{sizes}}.',
   needName: 'Name the project or give a folder: tingly-design new {{kind}} <name or folder>',
+  globalPath: '--global keeps a project in the projects folder, so it takes a name, not a path: {{target}}',
+  nameTaken: 'There is already a project called {{name}}. Pick another name, or give a path.',
   noProjectAt: 'There is no project at {{path}}',
   created: 'Created {{kind}} {{name}} in {{path}}',
   listEmpty: 'No projects yet in {{dir}}. Create one with tingly-design new <kind> <name>.',
