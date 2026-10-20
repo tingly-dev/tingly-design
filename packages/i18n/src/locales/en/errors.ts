@@ -1,6 +1,8 @@
 /** What the server answers when it refuses a request, and other failures shown to people. */
 export default {
   badProjectName: 'A project name can only use letters, digits, - and _',
+  lookOnlyDs: 'Only a design system starts from a look',
+  badLook: 'No look called {{look}}',
   badSize: 'A size is a width and a height in pixels, each from 1 to 7680',
   notProjectFile: 'Not a project file: {{path}}',
   notAssetPath: 'Not an asset path: {{path}}',
@@ -29,7 +31,8 @@ export default {
   unsupportedFileType: 'This file type is not supported: {{type}}',
   emptyFile: 'The file is empty',
   archiveUnreadable: 'This file is not a .zip that can be read',
-  archiveNoProject: 'There is no Tingly Design project in this .zip',
+  archiveNoProject: 'There is no Tingly Design project or Claude Design package in this .zip',
+  noClaudeDesign: 'This kind of project has no Claude Design format. Docs go through Markdown; motion has no original type.',
   archiveTooBig: 'This .zip unpacks to more than 1 GB or 20,000 files',
   fileTooLarge: 'The file is larger than {{size}}',
   cannotKeep: 'This file cannot be saved: {{path}}',

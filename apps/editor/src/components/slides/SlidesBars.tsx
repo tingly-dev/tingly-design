@@ -105,7 +105,7 @@ export function SlidesTopBar() {
           <Caret />
         </span>
       </button>
-      <FileMenu target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} pick={pickSlide} />
+      <FileMenu claudeDesign target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} pick={pickSlide} />
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />

@@ -14,9 +14,11 @@ export default {
   list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
+                                   claude-design：原版 Claude 类型的文件（画布、幻灯片、设计系统、看板）；
                                    画布 png；幻灯片 pdf、png、html、notes；文档 pdf、html、md、png；
                                    设计系统和看板 png；动效 mp4、gif、png（封面）、html（播放器）
-  import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
+  import <文件.zip或文件夹>        从 export --as zip 导出的 .zip（或压缩的项目文件夹）、Claude Design 包（.zip，或
+                                   Claude Code 存下来的文件夹）、Claude Docs 导出的 .md 导入项目
   prompt <项目> <请求>             把请求交给 Claude Code，和请求栏一样：它改文件，打开着的编辑器
                                    实时显示；最后列出改了什么
                                    （--fast：由快速 AI 在 Chrome 里改一个画板、幻灯片或场景）
@@ -37,8 +39,10 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --host <地址>         serve、open：监听的地址（默认 127.0.0.1）
   --title <文字>        new：启动页上显示的标题
   -i, --interactive     new：没给出的都问一遍，建好后问要不要打开
+  --global              new：名字不建在当前目录，建在项目目录里
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
                         尺寸名（wechat、tall、story、og、a4、wide、mpu……）
+  --look <名字>         new design-system：从一个风格开始（nord、swiss-grid、dracula……），而不是空白
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
   --board、--slide、--tab、--view <名字>   export：只导出一个画板（文件名或标题）、一页幻灯片（编号或第几页）、
                         一个标签页（编号或标题）或设计系统的一个视图，而不是全部
@@ -62,8 +66,12 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   needKind: '请指定类型：canvas、slides、design-system、dashboard、doc 或 motion',
   badKind: '{{kind}} 不是项目类型。类型有：canvas、slides、design-system、dashboard、doc、motion',
   badPage: '{{page}} 不是这种类型的参考页。参考页有：{{pages}}',
+  badLook: '--look {{look}} 不是已有的风格：{{looks}}。',
+  lookOnlyDs: '--look 只用于设计系统。',
   badBoardSize: '--size {{size}} 既不是宽x高（如 1080x1440），也不是已命名的尺寸：{{sizes}}。',
   needName: '请给项目起名或指定文件夹：tingly-design new {{kind}} <名字或文件夹>',
+  globalPath: '--global 把项目放在项目目录里，所以只收名字，不收路径：{{target}}',
+  nameTaken: '已经有叫 {{name}} 的项目了。换个名字，或者给一个路径。',
   noProjectAt: '{{path}} 里没有项目',
   created: '已新建{{kind}} {{name}}，位置：{{path}}',
   listEmpty: '{{dir}} 里还没有项目。用 tingly-design new <类型> <名字> 新建一个。',
@@ -93,7 +101,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     complaint: {
       empty: '请给它一个标题。',
       badName: '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。',
-      taken: 'projects/{{name}} 已经存在。',
+      taken: '{{where}}/{{name}} 已经存在。',
       badSize: '宽和高都要在 1 到 7680 像素之间，例如 1080x1440。',
       badChoice: '不在可选项里。',
     },
@@ -195,7 +203,9 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     kept: '保留了 {{file}}，它和这个版本的不一样',
   },
   skillsKept: '加上 --force 替换不一样的副本。',
-  needZip: '请给出要导入的 .zip：tingly-design import <文件.zip>',
+  needZip: '请给出要导入的 .zip：tingly-design import <文件.zip或文件夹>',
+  noClaudeDesign: '{{kind}}没有 Claude Design 格式。文档请用 --as md；动效在原版里没有对应类型。',
+  importedClaudeDesign: '已导入 {{name}}（来自 Claude Design 的{{kind}}），位于 {{path}}',
   noFileAt: '{{path}} 没有这个文件',
   imported: '已导入 {{name}}，位于 {{path}}',
   importedSystems: '同时导入了设计系统 {{systems}}。',

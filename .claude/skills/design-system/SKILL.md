@@ -22,6 +22,10 @@ A design system is a folder under `projects/<name>/`, laid out as the original D
 
 The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/tingly-ds` is a full example: two themes, Instrument Serif and Inter, four components; the deck in `projects/tingly-intro` is built from it.
 
+## Starting from a look
+
+`tingly-design new design-system <name> --look <id>` (or the New dialog's "Start from a look") writes a system from one of 36 ready-made looks instead of the blank starter: its colours (one theme), font families, radii and shadows, plus the generic text styles and spacing, and a README that keeps the look's MIT credit. The ids: clean `minimal-white corporate-clean swiss-grid arctic-cool soft-pastel xiaohongshu-white pitch-deck-vc`; editorial `editorial-serif magazine-bold academic-paper news-broadcast japanese-minimal midcentury`; bold `bauhaus memphis-pop neo-brutalism rainbow-gradient sunset-warm y2k-chrome vaporwave`; tech `blueprint engineering-whiteprint cyberpunk-neon terminal-green retro-tv sharp-mono glassmorphism aurora`; palettes `catppuccin-latte catppuccin-mocha dracula gruvbox-dark nord rose-pine solarized-light tokyo-night`. A look is only a start: edit tokens.json afterwards like any other system, and keep the README's credit line.
+
 ## tokens.json
 
 ```json
@@ -56,7 +60,7 @@ What the page reads (anything else drops, and the editor's 问题 view says why)
 - Lengths (`fontSize`, `letterSpacing`, spacing, radius): `px`, `rem`, `em`, `%` or a number (px). `lineHeight`: a length or a unitless number under 10. `fontWeight`: 1–1000, `"300 800"`, `normal`, `bold`.
 - `type.families`: font stacks ≤ 200 characters, no `; { } < > \` or functions. `type.fonts[].file` is a path under `fonts/`.
 - `type.hosted` (this repository's extension; the original page keeps but ignores it): faces loaded from a `https://fonts.googleapis.com/css2?…` link. Installing the system into a deck turns them into the deck's typefaces.
-- `shadow`: a box-shadow per token (or per theme like colours). Any other top-level `{tokens:[…]}` key (`opacity`, `zIndex`…) becomes its own section. There is no motion family.
+- `shadow`: a box-shadow per token (or per theme like colours). A colour of the system may appear as `var(--colour)` (only that exact form, only a colour token), so the shadow follows the theme: `0 0 24px var(--accent)`; any other `var()` or `url()` drops the token. Any other top-level `{tokens:[…]}` key (`opacity`, `zIndex`…) becomes its own section. There is no motion family.
 - Every token gets a `usage` note. A text colour's note names the surfaces it is legible on — "on surface and surface-raised" — and the editor shows the contrast on each.
 
 ## preview.html

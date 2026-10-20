@@ -22,7 +22,8 @@ projects/<name>/
 - **Pages**: overview (a sample card in the system's own colours, fonts and corner radius, its typefaces, shape, themes and counts, the full palette, then the cover and brand book with the Markdown editable in place; the launcher card draws the same sample, so two systems differ at a glance), colours (switch themes; a usage note that says "on surface" shows the contrast on that surface; aliases show what they point to), type (each style rendered in its own face and size), spacing, radius and shadow, components (each preview loads tokens.css, bundle.css and bundle.js in a sandbox), and assets (upload, download and delete per group).
 - **Import / Export**: the “Import / Export” button at the bottom of the left column brings in fonts and images, and saves the page you are on (overview, colours, type…) as a PNG. Component previews run in their own frames and come out blank in it. At the end of the same menu, “Whole project (.zip)” saves the project itself: every file and its change log; “Project files only (.zip)” leaves the change log out. “Import a project (.zip)…” in the home page's New menu opens it again (a name already taken gets `-2`), and so does a project folder you zipped yourself.
 - **Edit tokens in place**: open a row to change its value, rename it (aliases follow), write its usage, add or remove it. The edit is saved as data in tokens.json, and tokens.css is rebuilt with only the lines that changed.
-- **Checks**: anything in tokens.json outside the original grammar (colour names, `var()`, missing or circular aliases, DTCG maps…) is dropped and listed under 问题 (issues) with the reason.
+- **Shadows** are written as CSS box-shadows. A shadow may name one of the system's own colours as `var(--accent)`, so it follows the theme; no other `var()` is read.
+- **Checks**: anything in tokens.json outside the original grammar (colour names, `var()` in a colour, missing or circular aliases, DTCG maps…) is dropped and listed under 问题 (issues) with the reason.
 - **Install into a canvas or deck**: in that project's panel, with nothing selected, pick the system under 设计系统 and install it. tokens.json is copied to `ds/<folder>/` in that project and recorded in its `designSystems`; from then on every colour field has a ◆ to pick its colours and shows which token the current value is, and the text-style menu lists its styles. A deck also gets the system's typefaces. Slides store the colour value itself, since the subset has no `var()`.
 - **Hosted fonts**: `type.hosted: [{family, href}]` in tokens.json is an extension of this repository (the original only reads font files) that loads Google Fonts css2 links, in previews and in decks that install the system.
 - **AI**: like the original, the design system page has no in-page model; changes go to Claude Code.
@@ -33,3 +34,13 @@ Format reference: [`.claude/skills/design-system/SKILL.md`](../../../.claude/ski
 ---
 
 Back to the [README](../../../README.md)
+
+## Start from a look
+
+A new design system can start blank or from one of 36 looks, in five groups by feel: Clean and light, Editorial, Bold and playful, Technical, Editor palettes. In the New dialog pick Design system, then a group, then a look (each is drawn in its own page colour, ink, accent and type). From the command line:
+
+```bash
+tingly-design new design-system acme --look swiss-grid
+```
+
+A look sets the colours (in one theme), font families, corner radii and shadows; text styles and spacing are generic, and the README credits the look's source (the themes of the html-ppt template, MIT). It is a starting point, not a link: the system is yours to edit afterwards.

@@ -6,6 +6,7 @@
  * the server's modules read it, so everything past argument parsing is imported lazily.
  */
 import { spawn } from 'node:child_process';
+import { readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -34,6 +35,7 @@ const { values: opts, positionals } = (() => {
         host: { type: 'string' },
         title: { type: 'string' },
         size: { type: 'string' },
+        look: { type: 'string' },
         as: { type: 'string' },
         'files-only': { type: 'boolean' },
         format: { type: 'string' },
@@ -54,6 +56,7 @@ const { values: opts, positionals } = (() => {
         continue: { type: 'string' },
         new: { type: 'boolean' },
         interactive: { type: 'boolean', short: 'i' },
+        global: { type: 'boolean' },
         fast: { type: 'boolean' },
         since: { type: 'string' },
         limit: { type: 'string' },
@@ -163,18 +166,21 @@ async function create(kind: string | undefined, target: string | undefined): Pro
   // `new` with nothing to go on, in a terminal, asks; -i asks for what is missing even when some is given
   const ask = opts.interactive || (!kind && !target && process.stdin.isTTY && process.stderr.isTTY);
   if (!ask) {
-    const p = await cmd.create(ctx, { kind, target, title: opts.title, size: opts.size });
+    const p = await cmd.create(ctx, { kind, target, title: opts.title, size: opts.size, look: opts.look, global: opts.global });
     if (opts.json) print({ name: p.name, kind, dir: p.dir });
     else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));
     return;
   }
   if (!process.stdin.isTTY) throw new CliError(t('cli.needTerminal'));
   const { terminalWizard } = await import('./wizard');
-  const w = terminalWizard(t as (key: string, params?: Record<string, string>) => string, process.stdin, process.stderr);
+  // a bare name lands in the current directory unless --global, so that is where a name has to be free
+  const global = await cmd.bareNamesGlobal(ctx, opts.global);
+  const w = terminalWizard(t as (key: string, params?: Record<string, string>) => string, process.stdin, process.stderr, global ? 'projects' : '.');
   try {
     const given = await cmd.wizardGiven(ctx, { kind, target, title: opts.title, size: opts.size });
-    const answer = await w.run(given, new Set((await cmd.projects()).map((c) => c.name)));
-    const p = await cmd.create(ctx, { kind: answer.kind, target: answer.target, title: answer.title, size: answer.size ? answer.size.join('x') : undefined });
+    const taken = global ? (await cmd.projects()).map((c) => c.name) : await readdir(process.cwd()).catch(() => []);
+    const answer = await w.run(given, new Set(taken));
+    const p = await cmd.create(ctx, { kind: answer.kind, target: answer.target, title: answer.title, size: answer.size ? answer.size.join('x') : undefined, look: opts.look, global: opts.global });
     if (opts.json) print({ name: p.name, kind: answer.kind, dir: p.dir });
     else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));
     // the next step of the journey: open it, or say how
@@ -306,10 +312,11 @@ async function exportProject(arg: string | undefined): Promise<number> {
       onOpening: opening,
     })
     .finally(clearLine);
-  if (opts.json) print(r.zip ? { file: r.files[0], ...r.zip } : r.formats ? r.formats : { files: r.files, failed: r.failed });
+  if (opts.json) print(r.zip ? { file: r.files[0], ...r.zip, ...(r.notes ? { notes: r.notes } : {}) } : r.formats ? r.formats : { files: r.files, failed: r.failed });
   else {
     for (const f of r.files) console.log(t('cli.wrote', { file: show(f) }));
     for (const f of r.failed) console.error(t('cli.exportFailed', f));
+    for (const n of r.notes ?? []) console.log(`  ${t(`claudeDesign.note.${n.key}`, n.params)}`);
   }
   return r.failed.length ? 1 : 0;
 }
@@ -396,19 +403,22 @@ async function mcp(): Promise<void> {
 
 // ---------------------------------------------------------------- import
 
-/** A project from a .zip, the same as the launcher's Import a project. */
+/** A project from a .zip, a Claude Design package (a .zip or the folder Claude Code saved), or a Claude Docs Markdown export, the same as the launcher's Import a project. */
 async function importProject(arg: string | undefined): Promise<void> {
   if (!arg) throw new CliError(t('cli.needZip'));
-  const { readFile } = await import('node:fs/promises');
+  const { readFile, stat } = await import('node:fs/promises');
   const path = resolve(expandHome(arg));
-  const bytes = await readFile(path).catch(() => {
+  const info = await stat(path).catch(() => {
     throw new CliError(t('cli.noFileAt', { path: show(path) }), 1);
   });
-  const { unpackProject } = await import('./archive');
+  const { unpackProject, importFiles, readTree } = await import('./archive');
   const { projectDir } = await import('./store');
-  const done = await unpackProject(new Uint8Array(bytes), basename(path));
+  const done = info.isDirectory() ? await importFiles(await readTree(path), basename(path)) : await unpackProject(new Uint8Array(await readFile(path)), basename(path));
   if (opts.json) print({ ...done, dir: projectDir(done.name) });
-  else console.log(t('cli.imported', { name: done.name, path: show(projectDir(done.name)) }) + (done.systems.length ? ` ${t('cli.importedSystems', { systems: done.systems.join(', ') })}` : ''));
+  else {
+    console.log(t(done.claudeDesign ? 'cli.importedClaudeDesign' : 'cli.imported', { name: done.name, path: show(projectDir(done.name)), kind: done.claudeDesign ? t(`cli.kind.${done.claudeDesign}`) : '' }) + (done.systems.length ? ` ${t('cli.importedSystems', { systems: done.systems.join(', ') })}` : ''));
+    for (const n of done.notes) console.log(`  ${t(`claudeDesign.note.${n.key}`, n.params)}`);
+  }
 }
 
 // ---------------------------------------------------------------- main

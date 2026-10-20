@@ -9,6 +9,7 @@ import {
   parseBundleHeader,
   parseCardMarker,
   resolveTokens,
+  shadowIn,
   sectionFiles,
   starterTokens,
   styleDeclarations,
@@ -53,7 +54,14 @@ const TOKENS = {
   },
   spacing: { tokens: [{ name: 'space-1.5', value: 6 }, { name: 'space-4', value: '1rem' }, { name: 'ink', value: '2px' }] },
   radius: { brand: { $value: '4px' } },
-  shadow: { tokens: [{ name: 'card', value: { light: '0 1px 2px rgba(0,0,0,.1)', dark: '0 1px 2px #000' } }] },
+  shadow: {
+    tokens: [
+      { name: 'card', value: { light: '0 1px 2px rgba(0,0,0,.1)', dark: '0 1px 2px #000' } },
+      { name: 'glow', value: '0 0 24px var(--ember), 4px 4px 0 var(--link)' },
+      { name: 'ghost-glow', value: '0 0 8px var(--nowhere)' },
+      { name: 'loose-glow', value: '0 0 8px var(--ember, red)' },
+    ],
+  },
   zIndex: { tokens: [{ name: 'z-menu', value: 30 }] },
   motion: { tokens: [{ name: 'fast', value: '120ms' }] },
 };
@@ -82,6 +90,8 @@ describe('tokens.json', () => {
     expect(why).toMatch(/"broken": fontSize "huge" is not a length/);
     expect(why).toMatch(/radius is \{"tokens"/);
     expect(why).toMatch(/There is no motion family/);
+    expect(why).toMatch(/"ghost-glow": var\(--nowhere\) is not one of the system's colours/);
+    expect(why).toMatch(/"loose-glow": var\(--ember, red\) is not one of the system's colours/);
     expect(why).toMatch(/spacing\.tokens\[2\]: "ink" is used twice/);
   });
 
@@ -94,10 +104,15 @@ describe('tokens.json', () => {
     ]);
     expect(t.others.map((f) => [f.key, f.tokens.map((x) => x.value)])).toEqual([
       ['spacing', ['6px', '1rem']],
-      ['shadow', ['0 1px 2px rgba(0,0,0,.1)']],
+      ['shadow', ['0 1px 2px rgba(0,0,0,.1)', '0 0 24px var(--ember), 4px 4px 0 var(--link)']],
       ['zIndex', ['30']],
     ]);
     expect(t.others[2].title).toBe('Z index');
+  });
+
+  it('draws a shadow with its colours filled in', () => {
+    expect(shadowIn(t, '0 0 24px var(--ember)', 'dark')).toBe('0 0 24px oklch(0.75 0.15 50)');
+    expect(shadowIn(t, '0 0 24px var(--nope)', 'dark')).toBe('0 0 24px var(--nope)');
   });
 
   it('compiles tokens.css like the original', () => {
@@ -105,6 +120,7 @@ describe('tokens.json', () => {
     expect(css).toContain(':root, [data-theme="light"] {\n  --surface: #FBF7F1;');
     expect(css).toContain('  --link: var(--ember);');
     expect(css).toContain('[data-theme="dark"] {\n  --surface: #1d1a17;');
+    expect(css).toContain('  --glow: 0 0 24px var(--ember), 4px 4px 0 var(--link);');
     expect(css).toContain('  --space-1\\.5: 6px;');
     expect(css).toContain('  --font-sans: "Acme Sans", system-ui, sans-serif;');
     expect(css).toContain('.title {\n  font-family: var(--font-sans);\n  font-size: 40px;');

@@ -3,6 +3,8 @@ import type { Locale } from '../../types';
 
 export default {
   badProjectName: '项目名只能用字母、数字、- 和 _',
+  lookOnlyDs: '只有设计系统可以从一个风格开始',
+  badLook: '没有叫 {{look}} 的风格',
   badSize: '尺寸是宽和高两个像素值，各在 1 到 7680 之间',
   notProjectFile: '不是项目里的文件：{{path}}',
   notAssetPath: '不是素材路径：{{path}}',
@@ -31,7 +33,8 @@ export default {
   unsupportedFileType: '不支持的文件类型：{{type}}',
   emptyFile: '文件是空的',
   archiveUnreadable: '这个文件不是能读取的 .zip',
-  archiveNoProject: '这个 .zip 里没有 Tingly Design 项目',
+  archiveNoProject: '这个 .zip 里没有 Tingly Design 项目或 Claude Design 包',
+  noClaudeDesign: '这种项目没有 Claude Design 格式：文档走 Markdown，动效在原版里没有对应类型。',
   archiveTooBig: '这个 .zip 解开后超过 1 GB 或 20000 个文件',
   fileTooLarge: '文件超过 {{size}}',
   cannotKeep: '不能保存这个文件：{{path}}',

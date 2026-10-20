@@ -34,6 +34,7 @@ import { CommentsRail } from './Comments';
 import { FileMenu, type ExportItem } from '../FileMenu';
 import { FilePdf, FileText, Picture } from '../icons';
 import { t as tNow } from '../../i18n';
+import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 import { LayoutCols, Message } from '../icons';
@@ -214,7 +215,6 @@ function pickTab(d: DocJson, what: string): boolean {
 
 /** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
 function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
-  const s = useStore.getState();
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
   return [
     {
@@ -225,27 +225,20 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => savePdf(`${name}.pdf`, { html: docHtml(d), paper: 'a4', print: () => void printWindow(docHtml(d), true) }),
     },
     {
-      id: 'md',
-      label: tNow('common.transfer.label.markdown'),
-      hint: tNow('common.transfer.hint.docTab'),
-      icon: <FileText />,
-      disabled: !tab,
-      rule: true,
-      run: () => download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'),
-    },
-    {
       id: 'mdAll',
       label: tNow('common.transfer.label.markdown'),
-      hint: tNow('common.transfer.hint.docWhole'),
+      hint: tNow('common.transfer.hint.docMdWhole'),
       icon: <FileText />,
-      run: () =>
-        download(
-          `${name}.md`,
-          tabOrder(d)
-            .map((x) => display(s, tabFile(x.id)) ?? '')
-            .join('\n\n---\n\n'),
-          'text/markdown',
-        ),
+      rule: true,
+      run: () => saveDocMarkdown(name),
+    },
+    {
+      id: 'md',
+      label: tNow('common.transfer.label.markdownTab'),
+      hint: tNow('common.transfer.hint.docMdTab'),
+      icon: <FileText />,
+      disabled: !tab,
+      run: () => saveDocMarkdown(name, tab!),
     },
     { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
     {

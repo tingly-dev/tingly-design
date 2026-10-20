@@ -460,9 +460,17 @@ export function resolveTokens(input: unknown): DsTokens {
             const v = (tok.value as Record<string, unknown>)[th.id];
             if (typeof v === 'string') per[th.id] = v.trim();
           }
-        const ok = Object.values(per).length > 0 && Object.values(per).every((v) => SHADOW_RE.test(v) && !/var\(|url\(/i.test(v));
+        const ok = Object.values(per).length > 0 && Object.values(per).every((v) => SHADOW_RE.test(v) && !/url\(/i.test(v));
         if (!ok || !per[first]) {
           drop(at, `"${name}": not a box-shadow the page reads.`);
+          continue;
+        }
+        // a colour of the system may be named as var(--colour), so a shadow follows the theme
+        const unknown = Object.values(per)
+          .flatMap((v) => [...v.matchAll(/var\(([^)]*)\)/gi)].map((m) => m[1].trim()))
+          .find((ref) => !/^--[A-Za-z0-9_-]+$/.test(ref) || !colors.some((c) => c.name === ref.slice(2)));
+        if (unknown !== undefined) {
+          drop(at, `"${name}": var(${unknown}) is not one of the system's colours; a shadow may use var(--colour) of a colour token only.`);
           continue;
         }
         taken.add(name);
@@ -495,6 +503,10 @@ export interface DsGlance {
   bodyFont?: string;
   /** the first radius token, e.g. 14px */
   radius?: string;
+  /** the colour of hairlines and card borders, when the system has one */
+  line?: string;
+  /** the first shadow token, `var(--colour)` filled in */
+  shadowValue?: string;
   shadow: boolean;
   themes: string[];
   colors: number;
@@ -516,8 +528,10 @@ export function dsGlance(t: DsTokens, themeId?: string): DsGlance {
   const theme = themeId ?? t.themes[0]?.id;
   const value = (c?: DsColor) => (c && theme ? c.values[theme] : undefined) ?? (c ? Object.values(c.values)[0] : undefined);
   const find = (re: RegExp) => value(t.colors.find((c) => re.test(c.name)));
-  const paper = find(/^(paper|background|bg|page|canvas|base)\b/i) ?? find(/(paper|background|^bg)/i);
-  const surface = find(/^(surface|card|panel|elevated)\b/i);
+  // a system whose page colour is called `surface` (the starter's, and every look's) keeps its cards in `surface-raised`
+  const named_paper = find(/^(paper|background|bg|page|canvas|base)\b/i) ?? find(/(paper|background|^bg)/i);
+  const paper = named_paper ?? find(/^surface$/i);
+  const surface = named_paper ? find(/^(surface|card|panel|elevated)\b/i) : find(/^(card|panel|elevated|surface-raised|raised)\b/i);
   const ink = find(/^(ink|text|foreground|fg|content)(?!.*(muted|faint|soft|secondary|subtle))/i);
   const named = find(/^(brand|primary|accent)$/i);
   const accent =
@@ -534,6 +548,9 @@ export function dsGlance(t: DsTokens, themeId?: string): DsGlance {
   const headingFont = t.families.display ?? t.families.heading ?? groupFamily(/display|head|title/i) ?? stacks[0];
   const bodyFont = t.families.sans ?? t.families.body ?? groupFamily(/body|text|ui/i) ?? stacks[1] ?? stacks[0];
   const radius = t.others.find((f) => f.key === 'radius')?.tokens[0]?.value;
+  const line = find(/^(line|border|stroke|outline|divider|hairline)(?!.*strong)/i);
+  const shadowToken = t.others.find((f) => f.key === 'shadow')?.tokens[0];
+  const shadowValue = shadowToken ? shadowIn(t, (theme && shadowToken.values?.[theme]) || shadowToken.value, theme) : undefined;
   return {
     paper,
     surface,
@@ -542,6 +559,8 @@ export function dsGlance(t: DsTokens, themeId?: string): DsGlance {
     headingFont,
     bodyFont,
     radius,
+    line,
+    shadowValue: shadowValue || undefined,
     shadow: !!t.others.find((f) => f.key === 'shadow')?.tokens.length,
     themes: t.themes.map((x) => x.name),
     colors: t.colors.length,
@@ -615,6 +634,11 @@ export function colorIn(t: DsTokens, name: string, theme?: string): string | und
   const c = t.colors.find((x) => x.name === name);
   if (!c) return undefined;
   return c.values[theme ?? t.themes[0].id] ?? c.values[t.themes[0].id];
+}
+
+/** A shadow with its `var(--colour)` references replaced by that colour's value in `theme`, for drawing outside the system's own tokens.css. */
+export function shadowIn(t: DsTokens, value: string, theme?: string): string {
+  return value.replace(/var\(\s*--([A-Za-z0-9_-]+)\s*\)/g, (m, name: string) => colorIn(t, name, theme) ?? m);
 }
 
 const remPx = (v: string) => {

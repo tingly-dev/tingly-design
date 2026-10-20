@@ -8,12 +8,12 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, journalSince, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
-import { createProject, kindOf, linkFolder, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
+import { createProject, isProjectName, kindOf, linkFolder, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
 export type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed, and the internal names they map to. */
@@ -96,7 +96,17 @@ function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
   throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
 }
 
-export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string }): Promise<Project> {
+/**
+ * Whether a bare name goes to the projects folder: asked for, or the server that will create it keeps
+ * every project there (DC_LINKS=0; the running editor's setting when there is one), so a folder here could not be linked.
+ */
+export async function bareNamesGlobal(ctx: Ctx, global: boolean | undefined): Promise<boolean> {
+  if (global) return true;
+  const running = ctx.inServer ? null : await findEditor();
+  return running ? running.links === false : !LINKS_ON;
+}
+
+export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string; look?: string; global?: boolean }): Promise<Project> {
   const t = translator(ctx.lang);
   if (!o.kind) throw new CommandError(t('cli.needKind'));
   const kind = KINDS[o.kind];
@@ -104,10 +114,15 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   const target = o.target?.trim();
   if (!target) throw new CommandError(t('cli.needName', { kind: o.kind }));
   const size = o.size ? sizeFor(ctx, kind, o.size) : undefined;
-  const atPath = looksLikePath(target);
-  const path = atPath ? resolve(expandHome(target)) : undefined;
+  // a bare name is a folder of that name here, as `git init`, `cargo new` and `npm create` do; `global` keeps it in the projects folder
+  if (o.global && looksLikePath(target)) throw new CommandError(t('cli.globalPath', { target }));
+  const global = looksLikePath(target) ? false : await bareNamesGlobal(ctx, o.global);
+  if (global && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
+  const path = global ? undefined : resolve(expandHome(target));
   const title = o.title?.trim() || (path ? basename(path) : target);
-  const sized = size && (kind === 'design' || kind === 'motion') ? { size } : {};
+  if (o.look && kind !== 'design-system') throw new CommandError(t('cli.lookOnlyDs'));
+  if (o.look && !lookOf(o.look)) throw new CommandError(t('cli.badLook', { look: o.look, looks: LOOKS.map((l) => l.id).join(', ') }));
+  const sized = { ...(size && (kind === 'design' || kind === 'motion') ? { size } : {}), ...(o.look ? { look: o.look } : {}) };
   // with an editor open on this folder, the editor creates it: a linked folder then lives in its list
   // of links too (it keeps them in memory and writes them back), and the launcher shows the card at once
   const running = ctx.inServer ? null : await findEditor();
@@ -301,6 +316,8 @@ export interface ExportResult {
   issues?: PageIssue[];
   /** a zip: what went in */
   zip?: { files: number; systems: string[] };
+  /** a Claude Design package: what to know before publishing it (the command line words them) */
+  notes?: ClaudeDesignNote[];
 }
 
 /** The one board, slide, tab or view a `pick` names, as the option of the kind it belongs to; dashboards and motion have none. */
@@ -315,7 +332,8 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   if (!o.as) throw new CommandError(t('cli.needAs', { project: p.name }));
   const as = o.as.toLowerCase();
   if (as === 'zip') return exportZip(p, o);
-  if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip'].join(', ') }));
+  if (as === 'claude-design') return exportClaudeDesign(ctx, p, o);
+  if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip', ...(hasClaudeDesign(p.kind) ? ['claude-design'] : [])].join(', ') }));
   if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);
@@ -364,6 +382,18 @@ async function exportPlayer(ctx: Ctx, p: Project, o: ExportOptions): Promise<Exp
   const file = resolve(dir, `${basename(p.dir)}.html`);
   await writeFile(file, motionPlayer({ dir: p.dir, runtime: resolve(SANDBOX_DIST, 'motion.js'), labels: { play: t('cli.player.play'), time: t('cli.player.time'), format: t('cli.player.format'), speed: t('cli.player.speed') } }));
   return { files: [file], failed: [] };
+}
+
+/** The project in Claude's own format, the same as the editor's Claude Design item (.design/claude-design-format.md). */
+async function exportClaudeDesign(ctx: Ctx, p: Project, o: ExportOptions): Promise<ExportResult> {
+  if (!hasClaudeDesign(p.kind)) throw new CommandError(translator(ctx.lang)('cli.noClaudeDesign', { kind: translator(ctx.lang)(`cli.kind.${p.kind}`) }), 1);
+  const { packClaudeDesign } = await import('./archive');
+  const { bytes, file, files, notes } = await packClaudeDesign(p.name, p.dir);
+  const dir = o.out ? resolve(expandHome(o.out)) : process.cwd();
+  await mkdir(dir, { recursive: true });
+  const out = resolve(dir, file);
+  await writeFile(out, bytes);
+  return { files: [out], failed: [], zip: { files, systems: [] }, notes };
 }
 
 /** The whole project as one .zip, the same as the editor's Whole project / Project files only (.design/project-archive.md). */

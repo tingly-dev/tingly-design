@@ -11,7 +11,8 @@ export class Cancelled extends Error {}
 /** Keys here are composed from the choices (a size's id, a kind), which the typed translator cannot follow. */
 type T = (key: string, params?: Record<string, string>) => string;
 
-export function terminalWizard(t: T, input: Readable, output: Writable) {
+/** `where` is how a taken name's folder is shown: `.` for the current directory, `projects` for the projects folder. */
+export function terminalWizard(t: T, input: Readable, output: Writable, where = 'projects') {
   const rl = createInterface({ input, output, terminal: !!(input as { isTTY?: boolean }).isTTY });
   let reject: ((e: Error) => void) | null = null;
   // Ctrl+C and Ctrl+D end the questions
@@ -47,7 +48,7 @@ export function terminalWizard(t: T, input: Readable, output: Writable) {
       return line(t(`cli.wizard.${id}`) + (initial ? ` [${initial}]` : '') + ': ');
     },
     complain(why, params) {
-      write(`${t(`cli.wizard.complaint.${why}`, params)}\n`);
+      write(`${t(`cli.wizard.complaint.${why}`, { where, ...params })}\n`);
     },
   };
 

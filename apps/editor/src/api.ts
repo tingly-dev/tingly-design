@@ -1,4 +1,4 @@
-import type { Actor, AgentStep, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -106,11 +106,11 @@ export const api = {
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
   /** `where` is a folder name in the projects folder, or `{ path }` for a missing or empty folder anywhere; the project's name comes back */
-  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean } = {}) =>
+  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean; look?: string } = {}) =>
     call(at('api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}), ...(opts.git ? { git: true } : {}) }),
+      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}), ...(opts.git ? { git: true } : {}), ...(opts.look ? { look: opts.look } : {}) }),
     })
       .then((r) => json<{ ok: true; name?: string; gitError?: string }>(r))
       .then((r) => ({ name: r.name ?? (typeof where === 'string' ? where : ''), gitError: r.gitError })),
@@ -127,9 +127,15 @@ export const api = {
     if (!res.ok) await json(res);
     return res.blob();
   },
-  /** a project from a .zip; the name it was given (and the design systems that came with it) come back */
+  /** the project in Claude's own format, as one .zip, and what to know before publishing it */
+  claudeDesign: async (p: string): Promise<{ blob: Blob; notes: ClaudeDesignNote[] }> => {
+    const res = await call(at(`api/projects/${enc(p)}/claude-design`));
+    if (!res.ok) await json(res);
+    return { blob: await res.blob(), notes: JSON.parse(decodeURIComponent(res.headers.get('x-dc-notes') ?? '[]')) };
+  },
+  /** a project from a .zip, a Claude Design package or a Claude Docs .md; the name it was given (and the design systems or notes that came with it) come back */
   importArchive: (file: File) =>
-    call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[] }>(r)),
+    call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[]; claudeDesign?: ClaudeDesignKind | 'docs'; notes: ClaudeDesignNote[] }>(r)),
   /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
   patchProject: (p: string, patch: { title?: string; group?: string }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),

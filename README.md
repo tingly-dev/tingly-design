@@ -131,7 +131,7 @@ From a terminal, a script or an agent, the `tingly-design` command (`pnpm tingly
 
 | | |
 |---|---|
-| **Guides** | [Canvas](docs/en/guide/canvas.md) · [Slides](docs/en/guide/slides.md) · [Design system](docs/en/guide/design-system.md) · [Dashboard](docs/en/guide/dashboard.md) · [Docs](docs/en/guide/docs.md) · [Motion](docs/en/guide/motion.md) |
+| **Guides** | [Canvas](docs/en/guide/canvas.md) · [Slides](docs/en/guide/slides.md) · [Design system](docs/en/guide/design-system.md) · [Dashboard](docs/en/guide/dashboard.md) · [Docs](docs/en/guide/docs.md) · [Motion](docs/en/guide/motion.md) · [Claude Design](docs/en/guide/claude-design.md) |
 | **[Themes](docs/en/theming.md)** | Light, dark and Tingly Box's presets, and passing a theme in by URL, script, a host page or `DC_THEME` |
 | **[Command line](docs/en/cli.md)** | `tingly-design open`, `serve`, `new`, `list`, `check`, `export`, `import`, `prompt`, `history`, `skills` and `mcp`, for scripts, CI and agents |
 | **[Embedding](docs/en/embedding.md)** | Running inside another app such as Tingly Box: the bundle (`pnpm bundle`), launching it under a path prefix, and the messages between host and editor |

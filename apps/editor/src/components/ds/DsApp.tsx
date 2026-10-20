@@ -183,6 +183,7 @@ export function DsApp() {
     <>
     <TopBar title={<ProjectTitle value={index.title} label={tr('ds.app.nameLabel')} hint={tr('ds.app.renameHint')} onRename={(v) => editDsIndex((d) => (d.title = v), `title → ${v}`)} />}>
   <FileMenu
+        claudeDesign
         target={dsImport}
         label={tr('ds.app.label')}
         pick={(what) => ALL_VIEWS.includes(what as View) && (setView(what as View), true)}

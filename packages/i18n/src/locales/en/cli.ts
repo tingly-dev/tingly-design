@@ -12,9 +12,11 @@ Usage: tingly-design [command] [options]
   list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets)
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
+                                   claude-design: the original Claude type's files (canvas, slides, design system, dashboard);
                                    canvas png; slides pdf, png, html, notes; doc pdf, html, md, png;
                                    design system and dashboard png; motion mp4, gif, png (its cover), html (a player)
-  import <file.zip>                a project from a .zip made by export --as zip (or a zipped project folder)
+  import <file.zip or folder>      a project from a .zip made by export --as zip (or a zipped project folder), a Claude
+                                   Design package (the .zip, or the folder Claude Code saved) or a Claude Docs .md export
   prompt <project> <request>       hand a request to Claude Code, as the request bar does: it edits the
                                    files, the open editor shows it live; prints what it changed
                                    (--fast: the fast AI edits one board, slide or scene in Chrome)
@@ -36,8 +38,10 @@ Options:
   --host <address>      serve, open: the address to listen on (default 127.0.0.1)
   --title <text>        new: the title shown in the launcher
   -i, --interactive     new: ask for whatever is not given, then offer to open the project
+  --global              new: keep a bare name in the projects folder instead of a folder of that name here
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size; a canvas also takes a
                         name from the New dialog's list (wechat, tall, story, og, a4, wide, mpu, …)
+  --look <name>         new design-system: start from a look (nord, swiss-grid, dracula, …) instead of blank
   --format <a,b>        export: the motion formats to render (default: all)
   --board, --slide, --tab, --view <name>   export: one board (file or title), slide (id or number),
                         tab (id or title) or design-system view, instead of all of them
@@ -61,8 +65,12 @@ Options:
   needKind: 'Name a kind: canvas, slides, design-system, dashboard, doc or motion',
   badKind: '{{kind}} is not a kind. Kinds: canvas, slides, design-system, dashboard, doc, motion',
   badPage: '{{page}} is not a reference page of this kind. Pages: {{pages}}',
+  badLook: '--look {{look}} is not one of the looks: {{looks}}.',
+  lookOnlyDs: '--look only applies to a design system.',
   badBoardSize: '--size {{size}} is neither a width and height (1080x1440) nor one of the named sizes: {{sizes}}.',
   needName: 'Name the project or give a folder: tingly-design new {{kind}} <name or folder>',
+  globalPath: '--global keeps a project in the projects folder, so it takes a name, not a path: {{target}}',
+  nameTaken: 'There is already a project called {{name}}. Pick another name, or give a path.',
   noProjectAt: 'There is no project at {{path}}',
   created: 'Created {{kind}} {{name}} in {{path}}',
   listEmpty: 'No projects yet in {{dir}}. Create one with tingly-design new <kind> <name>.',
@@ -92,7 +100,7 @@ Options:
     complaint: {
       empty: 'Give it a title.',
       badName: 'A folder name can only use letters, digits, - and _, and must start with a letter or digit.',
-      taken: 'projects/{{name}} already exists.',
+      taken: '{{where}}/{{name}} already exists.',
       badSize: 'Width and height are each from 1 to 7680 px, like 1080x1440.',
       badChoice: 'Not one of the choices.',
     },
@@ -194,7 +202,9 @@ Options:
     kept: 'Kept {{file}}, which differs from this version’s',
   },
   skillsKept: 'Add --force to replace the copies that differ.',
-  needZip: 'Name the .zip to import: tingly-design import <file.zip>',
+  needZip: 'Name the .zip to import: tingly-design import <file.zip or folder>',
+  noClaudeDesign: 'A {{kind}} has no Claude Design format. Docs go through Markdown (--as md); motion has no original type.',
+  importedClaudeDesign: 'Imported {{name}} ({{kind}} from Claude Design) into {{path}}',
   noFileAt: 'There is no file at {{path}}',
   imported: 'Imported {{name}} into {{path}}',
   importedSystems: 'With the design system {{systems}}.',

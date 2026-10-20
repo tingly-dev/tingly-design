@@ -49,6 +49,7 @@ import {
   cleanGroup,
   retitle,
   isTurn,
+  lookOf,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -81,7 +82,7 @@ import {
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
-import { packProject, unpackProject } from './archive';
+import { packClaudeDesign, packProject, unpackProject } from './archive';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { readTranscript, recordTurn } from './transcript';
 import { claudeAvailable, forgetConversation, isDelegateRunning, readConversation, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
@@ -141,17 +142,22 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
-  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; git?: boolean }>();
+  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; look?: string; git?: boolean }>();
   const { title, kind, size } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
   if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  if (body.look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
+  if (body.look !== undefined && !lookOf(String(body.look))) throw new HttpError(400, 'badLook', { look: String(body.look) });
   const name = body.path !== undefined ? await linkFolder(String(body.path), true) : body.name!;
   await createProject(
     name,
     title || name,
     kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
     langOf(c),
-    (kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {},
+    {
+      ...((kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {}),
+      ...(body.look ? { look: String(body.look) } : {}),
+    },
   ).catch(async (e) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});
     throw e;
@@ -194,13 +200,21 @@ app.get('/api/projects/:p/archive', async (c) => {
   return c.body(bytes as Uint8Array<ArrayBuffer>, 200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
 });
 
-/** A project from a .zip made by the route above (or a project folder zipped by hand); its name comes back. */
+/** The project in Claude's own format (.design/claude-design-format.md): the original type's layout as one .zip. */
+app.get('/api/projects/:p/claude-design', async (c) => {
+  const p = c.req.param('p');
+  const { bytes, file, files, notes } = await packClaudeDesign(p);
+  logInfo('claudeDesign.export', { project: p, files, notes: notes.map((n) => n.key), bytes: bytes.length });
+  return c.body(bytes as Uint8Array<ArrayBuffer>, 200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${file}"`, 'x-dc-notes': encodeURIComponent(JSON.stringify(notes)), 'access-control-expose-headers': 'x-dc-notes', 'cache-control': 'no-store' });
+});
+
+/** A project from a .zip made by the route above (or a project folder zipped by hand), a Claude Design package or a Claude Docs Markdown export; its name comes back. */
 app.post('/api/archive', async (c) => {
   const bytes = new Uint8Array(await c.req.arrayBuffer());
   if (!bytes.length) throw new HttpError(400, 'emptyFile');
   const from = c.req.query('file') ?? 'project';
   const done = await unpackProject(bytes, from);
-  logInfo('archive.import', { file: from, project: done.name, systems: done.systems, bytes: bytes.length });
+  logInfo('archive.import', { file: from, project: done.name, systems: done.systems, claudeDesign: done.claudeDesign, notes: done.notes.map((n) => n.key), bytes: bytes.length });
   return c.json(done);
 });
 
