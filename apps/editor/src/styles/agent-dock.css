@@ -380,7 +380,7 @@
   flex-wrap: nowrap;
   align-items: stretch;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: none;
   z-index: auto;
 }
@@ -394,25 +394,13 @@
 
 
 .chat-composer > .head {
-  flex-wrap: wrap;
-  row-gap: 6px;
-  width: auto;
   padding: 8px 10px 0;
 }
 
 
 .chat-composer > .head .target {
   max-width: 100%;
-}
-
-
-.chat-composer > .head .seg {
-  margin-left: 0;
-}
-
-
-.chat-composer > .head .bar-tools {
-  margin-left: auto;
+  min-width: 0;
 }
 
 
@@ -422,15 +410,32 @@
 
 
 .chat-composer > .body {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 4px 10px 10px;
+  padding: 4px 12px 0;
 }
 
 
-.dsask:not(.chat-composer) > .body {
-  display: contents;
+.chat-composer > .tools {
+  padding: 4px 8px 8px;
+  gap: 4px;
+}
+
+
+/* the column is narrow: a chip gives up its words before the toolbar wraps (the title keeps them) */
+.chat-composer > .tools .ctx-chip {
+  max-width: 110px;
+}
+
+
+.chat-composer > .tools .imgtoggle {
+  padding: 0 8px;
+  font-size: 0;
+  gap: 0;
+  text-decoration: none;
+}
+
+
+.chat-composer > .tools .seg button {
+  padding: 0 7px;
 }
 
 

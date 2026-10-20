@@ -120,6 +120,16 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
               t('prompt.target.noBoards')
             )}
           </span>
+        </>
+      }
+      options={
+        <>
+          <ContextChip target={target} />
+          {target === 'claude' && <ImageToggle />}
+        </>
+      }
+      picker={
+        <>
           <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
             {(
               [
@@ -137,12 +147,6 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
               {t('prompt.bar.setUp')}
             </button>
           )}
-        </>
-      }
-      options={
-        <>
-          <ContextChip target={target} />
-          {target === 'claude' && <ImageToggle />}
         </>
       }
       placeholder={why ?? placeholder[target]}
