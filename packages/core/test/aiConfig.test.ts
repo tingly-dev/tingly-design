@@ -67,11 +67,16 @@ describe('resolveAi image generation', () => {
     expect(sanitizeSaved({ imageEnabled: false }).imageEnabled).toBe(false);
     expect('imageEnabled' in sanitizeSaved({ imageEnabled: true })).toBe(false);
   });
+  it('lends the connection key only to an address that follows the connection', () => {
+    expect(resolveAi({}, { apiKey: 'k', imageBaseUrl: 'https://api.openai.com/v1' }).image).toMatchObject({ ready: false, key: { set: false } });
+    expect(resolveAi({}, { baseUrl: 'https://api.openai.com', apiKey: 'k', imageBaseUrl: 'https://api.openai.com/v1' }).image.ready).toBe(true);
+    expect(resolveAi({}, { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k', imageBaseUrl: 'https://api.openai.com/v1' }).image.model.value).toBe('gpt-image-1');
+  });
   it('lets DC_IMAGE_* from the host win, field by field', () => {
     const r = resolveAi({ imageBaseUrl: 'https://img.example/v1', imageModel: 'm' }, { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k', imageModel: 'x' });
     expect(r.image.baseUrl.source).toBe('env');
     expect(r.image.model).toEqual({ value: 'm', source: 'env' });
-    expect(r.image.key.source).toBe('connection');
+    expect(r.image.key.source).toBe('none');
   });
 });
 

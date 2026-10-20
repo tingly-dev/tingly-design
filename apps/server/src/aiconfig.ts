@@ -59,7 +59,7 @@ export function imageEndpoint(draft?: AiSaved): { baseUrl: string; key: string; 
   const r = aiResolved(draft).image;
   if (!r.active) return null;
   const e = env();
-  const key = (e.imageKey ?? '').trim() || (draft?.imageKey ?? saved?.imageKey ?? '').trim() || keyOf(draft);
+  const key = (e.imageKey ?? '').trim() || (draft?.imageKey ?? saved?.imageKey ?? '').trim() || (r.key.source === 'connection' ? keyOf(draft) : '');
   return { baseUrl: r.baseUrl.value, key, model: r.model.value };
 }
 

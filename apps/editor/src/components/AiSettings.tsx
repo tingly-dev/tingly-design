@@ -83,7 +83,9 @@ function AiSettings() {
   const imgKeyLocked = cfg.image.key.source === 'env';
   const imgProblem = !validBaseUrl(imgUrl) ? t('aiSettings.badUrl') : '';
   const imgDflt = resolveAi({}, { baseUrl, imageBaseUrl: imgUrl }).image;
-  const imgReady = Boolean(imgUrl) && (imgKeyLocked || cfg.image.key.source === 'saved' || imageKey.trim() !== '' || hasKey) && !imgProblem;
+  // the connection's key is lent only to an address that follows the connection (the same rule as the server's)
+  const lent = resolveAi({}, { baseUrl, imageBaseUrl: imgUrl, ...(hasKey ? { apiKey: 'x' } : {}) }).image.key.set;
+  const imgReady = Boolean(imgUrl) && (imgKeyLocked || cfg.image.key.source === 'saved' || imageKey.trim() !== '' || lent) && !imgProblem;
   const draft = (): AiDraft => ({
     imageBaseUrl: imgUrlLocked || followsBox ? '' : imgUrl,
     ...(imageKey.trim() ? { imageKey: imageKey.trim() } : {}),
@@ -216,7 +218,7 @@ function AiSettings() {
               {imgUrl}
             </code>
           ) : (
-            <input className="input mono" placeholder="https://api.openai.com/v1" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} aria-label={t('aiSettings.image') + ' ' + t('aiSettings.address')} />
+            <input className="input mono" placeholder="https://api.openai.com/v1" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} aria-label={t('aiSettings.imageAddress')} />
           )}
           <Locked source={cfg.image.baseUrl.source} />
         </label>
@@ -234,7 +236,7 @@ function AiSettings() {
                 placeholder={imgKeyLocked ? '••••••••' : cfg.image.key.source === 'saved' ? t('aiSettings.keyKept') : t('aiSettings.imageKeyShared')}
                 value={imageKey}
                 onChange={(e) => setImageKey(e.target.value)}
-                aria-label={t('aiSettings.image') + ' ' + t('aiSettings.key')}
+                aria-label={t('aiSettings.imageKeyLabel')}
               />
               <Locked source={cfg.image.key.source} />
             </label>
@@ -246,7 +248,7 @@ function AiSettings() {
                 placeholder={imgDflt.model.value}
                 value={cfg.image.model.source === 'env' ? cfg.image.model.value : imageModel}
                 onChange={(e) => setImageModel(e.target.value)}
-                aria-label={t('aiSettings.image') + ' ' + t('aiSettings.model')}
+                aria-label={t('aiSettings.imageModelLabel')}
               />
               <Locked source={cfg.image.model.source} />
             </label>

@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectCard } from '@dc/core';
-import { api, type ImageState } from '../api';
+import { api } from '../api';
 import { at } from '../base';
 import { useStore } from '../store';
-import { Caret, Home, Picture, Plus, Sliders } from './icons';
+import { Caret, Home, Plus, Sliders } from './icons';
 import { Menu, MenuItem } from './Menu';
 import { open, readRecent } from './launcher/recent';
 import { KindIcon } from './launcher/kinds';
@@ -37,15 +37,12 @@ export function ProjectMenu() {
   const [list, setList] = useState<ProjectCard[] | null>(null);
   const [all, setAll] = useState<ProjectCard[]>([]);
   const [creating, setCreating] = useState(false);
-  const [image, setImage] = useState<ImageState | null>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const others = useMemo(() => nextUp(list ?? [], current), [list, current]);
   const toggle = () => {
     if (pos) return setPos(null);
     const r = btn.current?.getBoundingClientRect();
     setPos({ x: r?.left ?? 0, y: (r?.bottom ?? 0) + 8 });
-    // a dashboard and a design system keep their own pictures: the switch is not theirs
-    if (current && kind !== 'dashboard' && kind !== 'design-system') api.imageState(current).then(setImage, () => setImage(null));
     api.projects().then(
       (l) => {
         setList(l);
@@ -80,18 +77,6 @@ export function ProjectMenu() {
             }}
           />
           <hr />
-          {image?.configured && (
-            <MenuItem
-              label={t('aiSettings.imageProject')}
-              hint={image.global ? t('aiSettings.imageProjectNote') : t('aiSettings.imageProjectGlobalOff')}
-              icon={<Picture />}
-              checked={image.on}
-              disabled={!image.global}
-              onSelect={() => {
-                if (current) api.setImageState(current, !image.project).then(setImage, () => {});
-              }}
-            />
-          )}
           <MenuItem
             label={t('aiSettings.menu')}
             icon={<Sliders />}

@@ -38,7 +38,7 @@ The layers panel's hide and lock are written as data-hide and data-lock on eleme
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Added to Claude Code's instructions while image generation is configured: how to get a picture into the work. */
-const IMAGE_NOTE = `You can make pictures. When the request needs a picture that does not exist yet, or asks you to change one from uploads/, run: node scripts/image-gen.mjs <the folder you were given> "<a full description of the picture>" [--size 1024x1024|1536x1024|1024x1536] [--edit uploads/<file>]. It prints the path of the new picture inside the folder, under uploads/; reference it exactly as .claude/skills says a picture from uploads/ is referenced. Make a picture only when asked for one or when the request cannot be done without it, and describe it in the language of the request.`;
+const imageNote = (project: string) => `You can make pictures. When the request needs a picture that does not exist yet, or asks you to change one from uploads/, run: node scripts/image-gen.mjs ${project} "<a full description of the picture>" [--size 1024x1024|1536x1024|1024x1536] [--edit uploads/<file>]. It prints the path of the new picture inside the folder, under uploads/; reference it exactly as .claude/skills says a picture from uploads/ is referenced. Make a picture only when asked for one or when the request cannot be done without it, and describe it in the language of the request. A picture can take a minute or two: give that command a Bash timeout of 200000 ms, and if it fails, say so instead of running it again at once.`;
 
 const SLIDES_SYSTEM = `You are editing a slide deck stored as files. A deck folder holds deck.json (title, slide order, sections, typefaces) and one slides/<id>.html per slide: exactly one <section id="<id>"> on a fixed 1920x1080 canvas, every style inline, in a closed subset of HTML and CSS.
 Before you change any file, read .claude/skills/slides/SKILL.md in the current directory: it is the full format reference.
@@ -188,7 +188,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--allowedTools',
     ['Read,Edit,Write,Glob,Grep', dash ? 'Bash(node scripts/dash-query.mjs:*)' : '', images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
     '--append-system-prompt',
-    `${(slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM)}${images ? '\n' + IMAGE_NOTE : ''}\n${PUNCTUATION}`,
+    `${(slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM)}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}`,
   ];
   const launch = claudeLaunch();
   if (launch.model) args.push('--model', launch.model);

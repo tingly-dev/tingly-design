@@ -48,7 +48,7 @@ export async function startServer(o: ServerOptions): Promise<RunningServer> {
     server.once('error', fail);
   });
   // where Claude Code's scripts (scripts/image-gen.mjs) find this server
-  process.env.DC_SERVER_URL = `http://${o.host === '0.0.0.0' || o.host === '::' ? '127.0.0.1' : o.host}:${port}${BASE_PATH}`;
+  process.env.DC_SERVER_URL = `http://${o.host === '0.0.0.0' || o.host === '::' ? '127.0.0.1' : o.host.includes(':') ? `[${o.host}]` : o.host}:${port}${BASE_PATH}`;
   // only once the port is ours: a caller that retries on another port must not leave a second watcher behind
   const watcher = watchProjects();
 

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { aiResolved, imageEndpoint } from './aiconfig';
 import { logError, logInfo } from './log';
@@ -70,9 +70,10 @@ export async function projectImageOn(project: string): Promise<boolean> {
 }
 
 export async function setProjectImageOn(project: string, on: boolean): Promise<void> {
-  const dir = projectDir(project);
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, SWITCH_FILE), on ? '{}\n' : JSON.stringify({ enabled: false }) + '\n');
+  // a name that is not a project has no folder to write into
+  await writeFile(join(projectDir(project), SWITCH_FILE), on ? '{}\n' : JSON.stringify({ enabled: false }) + '\n').catch(() => {
+    throw new HttpError(404, 'noProject', { name: project });
+  });
 }
 
 /** Where a project stands: the settings configure it, the global switch allows it, the project's own switch picks. `on` is what Claude Code is offered. */

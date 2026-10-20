@@ -152,6 +152,12 @@ export default {
     noScenes: '没有场景',
     noBoards: '没有画板',
   },
+  image: {
+    label: '图片',
+    on: '本项目允许 Claude Code 生成图片，点一下关闭。',
+    off: '本项目已关闭生成图片，点一下允许 Claude Code 生成。',
+    globalOff: '已在 AI 设置里对所有项目关闭图片生成。',
+  },
   attach: {
     keepFailed: '附件没能存进项目：{{error}}',
     dropHint: '松开即可附加，作为这次请求的参考',

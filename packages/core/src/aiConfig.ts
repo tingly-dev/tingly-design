@@ -116,14 +116,14 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
       ? { value: saved.claudeRoute, source: 'saved' }
       : { value: key.set ? 'shared' : 'login', source: 'default' };
   const imgUrl = pick(cleanUrl(env.imageBaseUrl), cleanUrl(saved.imageBaseUrl), box ? TINGLY_BOX_IMAGEGEN : '');
-  const imgModel = pick(clean(env.imageModel), clean(saved.imageModel), box || presetOfImage(imgUrl.value) === 'tingly-box' ? TINGLY_BOX_MODEL : OPENAI_IMAGE_MODEL);
+  const imgModel = pick(clean(env.imageModel), clean(saved.imageModel), presetOfImage(imgUrl.value) === 'tingly-box' ? TINGLY_BOX_MODEL : OPENAI_IMAGE_MODEL);
   const imgKeyEnv = clean(env.imageKey);
   const imgKeySaved = clean(saved.imageKey);
   const imgKey: AiImage['key'] = imgKeyEnv
     ? { set: true, source: 'env' }
     : imgKeySaved
       ? { set: true, source: 'saved' }
-      : key.set
+      : key.set && (presetOfImage(imgUrl.value) === 'tingly-box' || sameOrigin(imgUrl.value, baseUrl.value))
         ? { set: true, source: 'connection' }
         : { set: false, source: 'none' };
   const ready = Boolean(imgUrl.value && imgKey.set && imgModel.value);
@@ -138,6 +138,14 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
 }
 
 /** Whether an image address is Tingly Box's gateway (its model alias is the default there). */
+/** Whether two addresses are the same host: the connection's key goes only where the connection already goes. */
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
 function presetOfImage(url: string): AiPreset {
   return url.replace(/^http:\/\/127\.0\.0\.1:/, 'http://localhost:') === TINGLY_BOX_IMAGEGEN ? 'tingly-box' : 'custom';
 }
