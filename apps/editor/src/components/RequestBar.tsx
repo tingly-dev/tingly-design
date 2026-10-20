@@ -5,7 +5,6 @@ import type { Attachment } from '@dc/core';
 import { toast, useStore, type LastRun } from '../store';
 import { stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
-import { ImageToggle } from './ImageToggle';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
 import { BarPill, BarTools, HistoryList, useBarKeys } from './AgentBar';

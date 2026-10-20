@@ -24,7 +24,7 @@ export function ImageToggle() {
   const hint = !state.global ? t('prompt.image.globalOff') : state.project ? t('prompt.image.on') : t('prompt.image.off');
   return (
     <button
-      className={`ctx-chip action imgtoggle${state.on ? ' continues' : ''}`}
+      className={`ctx-chip action imgtoggle${state.on ? ' on' : ''}`}
       aria-pressed={state.on}
       disabled={!state.global}
       title={hint}

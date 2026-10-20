@@ -115,22 +115,26 @@
 
 .opts {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 0 2px;
 }
 
 
-.imgtoggle {
+.ctx-chip.imgtoggle {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   max-width: none;
+  text-decoration: line-through;
 }
 
 
-.imgtoggle:not(.continues) {
-  text-decoration: line-through;
+.ctx-chip.imgtoggle.on {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  text-decoration: none;
 }
 
 
