@@ -80,7 +80,8 @@ export function lookTokens(look: LookData, name: string): string {
           ],
         },
         spacing: { tokens: [4, 8, 16, 32].map((n, i) => ({ name: `space-${i + 1}`, value: `${n}px`, usage: 'Layout rhythm.' })) },
-        radius: { tokens: pick(['radius-s', 'radius-m', 'radius-l'], look.radius, ['Chips and small controls.', 'Cards.', 'Large panels.']) },
+        // a theme that gives no radius at all draws square corners
+        radius: { tokens: pick(['radius-s', 'radius-m', 'radius-l'], look.radius.some(Boolean) ? look.radius : ['0px', '0px', '0px'], ['Chips and small controls.', 'Cards.', 'Large panels.']) },
         shadow: { tokens: pick(['raised', 'overlay'], look.shadow, ['Cards.', 'Menus and dialogs.']) },
       },
       null,

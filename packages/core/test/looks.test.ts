@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '../../i18n/src';
-import { LOOKS, LOOK_GROUPS, compileTokensCss, lookOf, lookTokens, resolveTokens } from '../src';
+import { LOOKS, LOOK_GROUPS, compileTokensCss, dsGlance, lookOf, lookTokens, resolveTokens } from '../src';
 
 type Bundle = { ds: { look: Record<string, string>; lookGroup: Record<string, string> } };
 const en = resources.en.translation as unknown as Bundle;
@@ -33,5 +33,14 @@ describe('LOOKS', () => {
   it('finds a look by id', () => {
     expect(lookOf('nord')?.group).toBe('palette');
     expect(lookOf('nope')).toBeUndefined();
+  });
+
+  it('gives the specimen the page, card, hairline and shadow a look really has', () => {
+    const g = dsGlance(resolveTokens(lookTokens(lookOf('bauhaus')!, 'B')));
+    expect(g.paper).toBe('#f4efe3');
+    expect(g.surface).toBe('#ffffff');
+    expect(g.line).toBe('#111111');
+    expect(g.shadowValue).toBe('4px 4px 0 #111');
+    expect(g.radius).toBe('0px');
   });
 });

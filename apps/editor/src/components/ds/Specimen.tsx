@@ -14,9 +14,12 @@ function Pane({ glance: g, title, label }: { glance: DsGlance; title: string; la
     '--sp-accent': g.accent ?? FALLBACK.accent,
     '--sp-radius': g.radius ?? '8px',
   } as CSSProperties;
+  // the system's own shadow and hairline colour, so a hard offset or a heavy border shows as it is
+  const cardStyle: CSSProperties | undefined =
+    g.shadowValue || g.line ? { ...(g.shadowValue ? { boxShadow: g.shadowValue } : {}), ...(g.line ? { border: `1px solid ${g.line}` } : {}) } : undefined;
   return (
     <div className="sp-pane" style={style}>
-      <div className={`sp-card ${g.shadow ? 'raised' : ''}`}>
+      <div className={`sp-card ${g.shadow ? 'raised' : ''}`} style={cardStyle}>
         <div className="sp-head" style={{ fontFamily: g.headingFont }}>
           {title}
         </div>
