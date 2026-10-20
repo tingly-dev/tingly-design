@@ -141,7 +141,7 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
-  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; git?: boolean }>();
+  const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; look?: string; git?: boolean }>();
   const { title, kind, size } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
   if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
@@ -151,7 +151,10 @@ app.post('/api/projects', async (c) => {
     title || name,
     kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
     langOf(c),
-    (kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {},
+    {
+      ...((kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {}),
+      ...(kind === 'design-system' && body.look ? { look: body.look } : {}),
+    },
   ).catch(async (e) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});
     throw e;

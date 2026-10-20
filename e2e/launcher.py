@@ -7,7 +7,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
-MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales', 'zz-cli-wechat', 'zz-cli-wxh', 'zz-cli-bad']
+MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales', 'zz-cli-wechat', 'zz-cli-wxh', 'zz-cli-bad', 'zz-look', 'zz-cli-look', 'zz-cli-badlook']
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
@@ -244,16 +244,37 @@ async def main():
         # the command line takes the same sizes, by name or as WxH
         def cli(*args):
             return subprocess.run(['pnpm', '-s', 'tingly-design', *args], cwd=REPO, capture_output=True, text=True)
-        r = cli('new', 'canvas', 'zz-cli-wechat', '--size', 'wechat')
+        r = cli('new', 'canvas', 'zz-cli-wechat', '--global', '--size', 'wechat')
         made = os.path.join(REPO, 'projects/zz-cli-wechat/canvas.json')
         sized = os.path.exists(made) and list(json.load(open(made, encoding='utf-8'))['boards'].values())[0]
         check('new --size wechat makes a canvas with that cover size', bool(sized) and (sized['w'], sized['h']) == (900, 383), r.stdout + r.stderr)
-        r = cli('new', 'canvas', 'zz-cli-wxh', '--size', '1080x1440')
+        r = cli('new', 'canvas', 'zz-cli-wxh', '--global', '--size', '1080x1440')
         made = os.path.join(REPO, 'projects/zz-cli-wxh/canvas.json')
         sized = os.path.exists(made) and list(json.load(open(made, encoding='utf-8'))['boards'].values())[0]
         check('new --size 1080x1440 works too', bool(sized) and (sized['w'], sized['h']) == (1080, 1440), r.stdout + r.stderr)
-        r = cli('new', 'canvas', 'zz-cli-bad', '--size', 'nonsense')
+        r = cli('new', 'canvas', 'zz-cli-bad', '--global', '--size', 'nonsense')
         check('an unknown size is refused and names the choices', r.returncode != 0 and 'wechat' in (r.stdout + r.stderr) and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-bad')), r.stdout + r.stderr)
+        # a design system can start from a look, grouped by feel; the command line takes the same ids
+        await pg.goto(BASE + '/')
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="design-system"] .mi').click()
+        groups = await dlg.locator('[data-looks] .szcat').evaluate_all('els => els.map(e => e.dataset.group)')
+        check('the looks are grouped, Blank first', groups == ['blank', 'clean', 'editorial', 'bold', 'tech', 'palette'], str(groups))
+        await dlg.locator('[data-looks] .szcat[data-group="palette"]').click()
+        shown = await dlg.locator('[data-looks] [data-look]').evaluate_all('els => els.map(e => e.dataset.look)')
+        check('a group lists only its own looks', 'nord' in shown and 'dracula' in shown and 'swiss-grid' not in shown, str(shown))
+        await dlg.locator('input[aria-label="标题"]').fill('ZZ Look')
+        await dlg.locator('[data-look="nord"]').click()
+        await dlg.locator('button[type=submit]').click()
+        await pg.wait_for_url('**/?p=zz-look')
+        tk = json.load(open(os.path.join(REPO, 'projects/zz-look/tokens.json'), encoding='utf-8'))
+        readme = open(os.path.join(REPO, 'projects/zz-look/README.md'), encoding='utf-8').read()
+        check('a design system starts from the look picked, with its credit in the README', any(c['name'] == 'accent' for c in tk['color']['tokens']) and 'Nord' in readme and 'MIT' in readme, readme[:200])
+        r = cli('new', 'design-system', 'zz-cli-look', '--global', '--look', 'swiss-grid')
+        made = os.path.join(REPO, 'projects/zz-cli-look/tokens.json')
+        check('new design-system --look makes a system from that look', r.returncode == 0 and os.path.exists(made) and bool(open(made, encoding='utf-8').read().strip()), r.stdout + r.stderr)
+        r = cli('new', 'design-system', 'zz-cli-badlook', '--global', '--look', 'nonsense')
+        check('an unknown look is refused and names the choices', r.returncode != 0 and 'nord' in (r.stdout + r.stderr) and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-badlook')), r.stdout + r.stderr)
         csv = os.path.join(REPO, 'projects/.zz-sales.csv')
         open(csv, 'w').write('month,revenue\n2026-01,120\n2026-02,150\n')
         await pg.goto(BASE + '/')

@@ -34,6 +34,7 @@ const { values: opts, positionals } = (() => {
         host: { type: 'string' },
         title: { type: 'string' },
         size: { type: 'string' },
+        look: { type: 'string' },
         as: { type: 'string' },
         'files-only': { type: 'boolean' },
         format: { type: 'string' },
@@ -164,7 +165,7 @@ async function create(kind: string | undefined, target: string | undefined): Pro
   // `new` with nothing to go on, in a terminal, asks; -i asks for what is missing even when some is given
   const ask = opts.interactive || (!kind && !target && process.stdin.isTTY && process.stderr.isTTY);
   if (!ask) {
-    const p = await cmd.create(ctx, { kind, target, title: opts.title, size: opts.size, global: opts.global });
+    const p = await cmd.create(ctx, { kind, target, title: opts.title, size: opts.size, look: opts.look, global: opts.global });
     if (opts.json) print({ name: p.name, kind, dir: p.dir });
     else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));
     return;

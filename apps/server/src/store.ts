@@ -39,6 +39,8 @@ import {
   parseDsIndex,
   resolveTokens,
   starterTokens,
+  lookOf,
+  lookTokens,
   stringifyDsIndex,
   isBoardFile,
   isSlideFile,
@@ -537,15 +539,17 @@ export async function removeFile(name: string, rel: string): Promise<void> {
 }
 
 /** A new project, its starter copy in `lang`: the language of whoever created it. */
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number] } = {}): Promise<void> {
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
   const t: TFunction = translator(lang);
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
   await mkdir(dir, { recursive: true });
   if (kind === 'design-system') {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
-    await writeAtomic(name, DS_TOKENS, starterTokens(title));
-    await writeAtomic(name, DS_README, t('starter.dsReadme', { title }));
+    const look = opts.look ? lookOf(opts.look) : undefined;
+    if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
+    await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
+    await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`) }) : t('starter.dsReadme', { title }));
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
     return;
