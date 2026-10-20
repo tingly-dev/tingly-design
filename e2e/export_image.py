@@ -77,7 +77,7 @@ async def main():
         await pg.wait_for_selector('.thumb', timeout=20000)
         await pg.wait_for_timeout(1500)
         await pg.locator('button[aria-label="Import / Export"]').click()
-        await save(pg, 'img-slide.png', lambda: pg.get_by_role('menuitem', name='PNG image This slide').click(), 1920, 1080)
+        await save(pg, 'img-slide.png', lambda: pg.get_by_role('menuitem', name='PNG image', exact=True).click(), 1920, 1080)
         await pg.locator('button[aria-label="Import / Export"]').click()
         n = await pg.locator('.thumb:not(.skipped)').count()
         got = []
@@ -97,7 +97,7 @@ async def main():
         await pg.goto(BASE + '/?p=tingly-ds')
         await pg.wait_for_selector('.dsview', timeout=20000)
         await pg.wait_for_timeout(1000)
-        await pg.locator('.dsnav button[aria-label="Import / Export"]').click()
+        await pg.locator('header.topbar button[aria-label="Import / Export"]').click()
         await save(pg, 'img-ds.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 600, 300)
 
         # motion: frame at the playhead

@@ -1,4 +1,4 @@
-import type { Actor, AgentStep, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -15,6 +15,28 @@ export interface FileState {
   version: string;
 }
 
+export interface GitState {
+  /** the repository holding the project's folder (`~/…`), or null when it is in none */
+  repo: string | null;
+  /** the branch a commit lands on; empty on a detached head */
+  branch: string;
+  /** files of this project a commit would take */
+  changes: number;
+  /** the project's own folder (`~/…`), where a new repository would go */
+  folder: string;
+}
+
+export interface FolderInfo {
+  /** the folder as the server read it, `~/…` under the home folder */
+  path: string;
+  state: 'project' | 'free' | 'busy' | 'file';
+  kind?: ProjectKind;
+  /** the name it is already listed under, if any */
+  name?: string;
+  /** the repository a project here commits to, if the folder is in one */
+  repo?: string;
+}
+
 export interface Health {
   ok: boolean;
   fastEdit: boolean;
@@ -23,6 +45,10 @@ export interface Health {
   imageGen?: boolean;
   claudeCli: boolean;
   projectsDir: string;
+  /** whether the projects folder is inside a git repository */
+  projectsInRepo?: boolean;
+  /** false when the host keeps every project in its own projects folder (DC_LINKS=0): no opening folders elsewhere */
+  links?: boolean;
   version?: string;
   /** the host contract's version (docs/en/embedding.md) */
   protocol?: number;
@@ -72,7 +98,7 @@ export type ServerEvent =
   | { type: 'file'; path: string; content: string; version: string; actor: Actor }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
-  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean }
+  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
   | { type: 'assets'; path?: string };
 
 async function json<T>(res: Response): Promise<T> {
@@ -91,10 +117,40 @@ export const api = {
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
-  createProject: (name: string, title: string, kind: ProjectKind = 'design', size?: [number, number]) =>
-    call(at('api/projects'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, title, kind, ...(size ? { size } : {}) }) }).then((r) =>
-      json<{ ok: true }>(r),
-    ),
+  /** `where` is a folder name in the projects folder, or `{ path }` for a missing or empty folder anywhere; the project's name comes back */
+  createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean; look?: string } = {}) =>
+    call(at('api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...(typeof where === 'string' ? { name: where } : { path: where.path }), title, kind, ...(size ? { size } : {}), ...(opts.git ? { git: true } : {}), ...(opts.look ? { look: opts.look } : {}) }),
+    })
+      .then((r) => json<{ ok: true; name?: string; gitError?: string }>(r))
+      .then((r) => ({ name: r.name ?? (typeof where === 'string' ? where : ''), gitError: r.gitError })),
+  /** what is at a folder anywhere on disk: a project, a free (missing or empty) folder, other files, or a file */
+  folder: (path: string) => call(at(`api/folder?path=${enc(path)}`)).then((r) => json<FolderInfo>(r)),
+  /** open a project folder that lives anywhere; the name it is listed under comes back */
+  link: (path: string) =>
+    call(at('api/links'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<{ name: string }>(r)),
+  /** take a linked project off the launcher; its folder stays as it is */
+  unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+  /** the whole project as one .zip; `full: false` leaves out the change log and the design systems it installed */
+  archive: async (p: string, full: boolean): Promise<Blob> => {
+    const res = await call(at(`api/projects/${enc(p)}/archive${full ? '' : '?journal=0&systems=0'}`));
+    if (!res.ok) await json(res);
+    return res.blob();
+  },
+  /** the project in Claude's own format, as one .zip, and what to know before publishing it */
+  claudeDesign: async (p: string): Promise<{ blob: Blob; notes: ClaudeDesignNote[] }> => {
+    const res = await call(at(`api/projects/${enc(p)}/claude-design`));
+    if (!res.ok) await json(res);
+    return { blob: await res.blob(), notes: JSON.parse(decodeURIComponent(res.headers.get('x-dc-notes') ?? '[]')) };
+  },
+  /** a project from a .zip, a Claude Design package or a Claude Docs .md; the name it was given (and the design systems or notes that came with it) come back */
+  importArchive: (file: File) =>
+    call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[]; claudeDesign?: ClaudeDesignKind | 'docs'; notes: ClaudeDesignNote[] }>(r)),
+  /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
+  patchProject: (p: string, patch: { title?: string; group?: string }) =>
+    call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
   journal: (p: string) => call(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 
@@ -140,6 +196,14 @@ export const api = {
       body: JSON.stringify({ from }),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
 
+  /** Copy a canvas's artboard into this deck or motion piece (uploads/<from>-<board>/…); the caller puts the embed on the page. */
+  importBoard: (p: string, from: string, board: string) =>
+    call(at(`api/projects/${enc(p)}/import-board`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from, board }),
+    }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
+
   uninstallDs: (p: string, namespace: string) =>
     call(at(`api/projects/${enc(p)}/design-systems?namespace=${enc(namespace)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
 
@@ -156,8 +220,8 @@ export const api = {
    * Render a motion piece on the server. Progress arrives as lines; resolves to the video's file name
    * (fetch it with `renderedUrl`) and where the time went. Aborting the signal stops the render.
    */
-  renderMotion: async (p: string, format: string, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<{ file: string; report: ExportReport }> => {
-    const res = await call(at(`api/projects/${enc(p)}/render`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format }), signal });
+  renderMotion: async (p: string, format: string, opts: { container?: 'mp4' | 'gif'; width?: number; height?: number; fps?: number; quality?: string; from?: number; to?: number; cover?: boolean; coverFirst?: boolean }, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<{ file: string; report: ExportReport }> => {
+    const res = await call(at(`api/projects/${enc(p)}/render`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format, ...opts }), signal });
     if (!res.ok || !res.body) return json<never>(res);
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '';
@@ -180,6 +244,8 @@ export const api = {
     void call(at(`api/projects/${enc(p)}/export-report`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ report, why }) }).catch(() => {}),
   renderedUrl: (p: string, file: string) => `${SERVER}/api/projects/${enc(p)}/render/${enc(file)}`,
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
+  /** rawBase for the frames that draw a project's pictures: `rev` changes when an outside edit replaces one, so the frame asks for it again */
+  frameBase: (p: string, rev: number) => `${SERVER}/api/projects/${enc(p)}/raw/${rev ? `?v=${rev}` : ''}`,
 
   fastEdit: (p: string, messages: ModelMessage[], signal: AbortSignal, kind?: string) =>
     call(at(`api/projects/${enc(p)}/fast-edit`), {
@@ -196,14 +262,26 @@ export const api = {
       body: JSON.stringify(body),
     }).then((r) => json<{ id: string }>(r)),
 
+  /** the project's stored conversation record, oldest first (.design/chat-panel.md) */
+  transcript: (p: string) => call(at(`api/projects/${enc(p)}/transcript`)).then((r) => json<Turn[]>(r)),
+
+  /** hand the server a finished fast-model turn to keep; best effort */
+  keepTurn: (p: string, turn: Turn) =>
+    void call(at(`api/projects/${enc(p)}/transcript`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(turn) }).catch(() => {}),
+
+  conversation: (p: string) => call(at(`api/projects/${enc(p)}/conversation`)).then((r) => json<Conversation | null>(r)),
+
   stopDelegate: (p: string, id: string) => call(at(`api/projects/${enc(p)}/delegate/${enc(id)}`), { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
 
-  commit: (p: string, message: string) =>
+  /** `init`: the project is in no repository, and the person agreed to give it one of its own */
+  commit: (p: string, message: string, init = false) =>
     call(at(`api/projects/${enc(p)}/commit`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, init }),
     }).then((r) => r.json() as Promise<{ ok: boolean; output: string }>),
+  /** where a commit of this project would land */
+  git: (p: string) => call(at(`api/projects/${enc(p)}/git`)).then((r) => json<GitState>(r)),
 
   events(p: string, on: (e: ServerEvent) => void, onStatus: (s: 'open' | 'closed') => void): () => void {
     const es = new EventSource(at(`api/projects/${enc(p)}/events`));

@@ -23,9 +23,10 @@ import {
 import { api } from './api';
 import { t } from './i18n';
 import { ExecSession, replay } from './executor';
-import { canvasOf, continuable, deckOf, display, enqueueResult, slideIds, toast, useStore, visibleBoards, type FastLine, type LastRun } from './store';
-import { slideTitle } from './slides';
-import { motionOf } from './motion';
+import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, type FastLine, type LastRun } from './store';
+import { visibleBoards } from './components/canvas/view';
+import { slideTitle } from './components/slides/slides';
+import { motionOf } from './components/motion/motion';
 
 /** A deck's outline for the model: sections and slide titles, the current one marked. */
 function deckOutline(file: string): string {
@@ -191,11 +192,12 @@ export async function delegateToClaude(
     const view = get().kind === 'motion' ? get().motionView : null;
     const where = view?.scene ? view.landed ? `Stopped at the start of scene ${view.scene} (looking at the whole page as it lands), viewing the ${view.format} format.` : `Stopped at ${(view.at / 1000).toFixed(1)} s into scene ${view.scene}, viewing the ${view.format} format.` : '';
     const context = [where, opts.context].filter(Boolean).join('\n\n');
-    // a request typed to Claude Code continues the last finished session unless the person asked for a fresh one
-    const resume = opts.via || get().freshNext ? undefined : continuable(get().delegates)?.session;
+    // the server continues the project's conversation unless the request says otherwise: a hand-over from fast AI brings its own context, and a person can ask for a new one
+    const fresh = !!opts.via || get().freshNext;
     const { id } = await api.delegate(project, {
       prompt,
-      ...(resume ? { resume } : {}),
+      ...(fresh ? { fresh: true } : {}),
+      ...(opts.via ? { via: opts.via } : {}),
       ...(context ? { context } : {}),
       file,
       pointed: file ? pointedInfo(file, tid) : null,

@@ -1,6 +1,8 @@
 import type { ComponentType } from 'react';
+import { IconFolder, IconFolderOpen, IconLayoutList, IconUnlink } from '@tabler/icons-react';
 import {
   IconAlignCenter,
+  IconFileZip,
   IconAlignJustified,
   IconAlignLeft,
   IconAlignRight,
@@ -31,6 +33,8 @@ import {
   IconFrame,
   IconHandStop,
   IconHistory,
+  IconGif,
+  IconInfoCircle,
   IconMovie,
   IconLayoutAlignBottom,
   IconLayoutAlignCenter,
@@ -41,6 +45,8 @@ import {
   IconLayoutGrid,
   IconLayoutRows,
   IconLayoutSidebarRight,
+  IconLayoutSidebar,
+  IconLayoutBottombar,
   IconLine,
   IconLink,
   IconLock,
@@ -80,6 +86,17 @@ import {
   IconCornerLeftUp,
   IconHome,
   IconStar,
+  IconDots,
+  IconRefresh,
+  IconMoon,
+  IconSun,
+  IconCode,
+  IconDatabase,
+  IconTarget,
+  IconLayoutColumns,
+  IconMessage,
+  IconChecklist,
+  IconPresentation,
   IconBug,
   IconLanguage,
   IconExternalLink,
@@ -118,6 +135,8 @@ export const Lock = tabler(IconLock, 14);
 export const Unlock = tabler(IconLockOpen, 14);
 export const Caret = () => <IconChevronDown size={12} stroke={2} aria-hidden="true" />;
 export const History = tabler(IconHistory, 14);
+export const DockLeft = tabler(IconLayoutSidebar, 14);
+export const DockBottom = tabler(IconLayoutBottombar, 14);
 export const Expand = tabler(IconArrowsMaximize, 14);
 export const Download = tabler(IconDownload, 14);
 export const Plus = tabler(IconPlus, 14);
@@ -125,11 +144,28 @@ export const Minus = tabler(IconMinus, 14);
 export const Close = tabler(IconX, 14);
 export const Home = tabler(IconHome);
 export const Star = tabler(IconStar, 14);
+export const More = tabler(IconDots);
+export const Refresh = tabler(IconRefresh);
+export const Moon = tabler(IconMoon);
+export const Sun = tabler(IconSun);
+export const CodeI = tabler(IconCode);
+export const Database = tabler(IconDatabase);
+export const Target = tabler(IconTarget);
+export const LayoutCols = tabler(IconLayoutColumns);
+export const Message = tabler(IconMessage);
+export const Checklist = tabler(IconChecklist);
+export const Presentation = tabler(IconPresentation);
 export const Bug = tabler(IconBug, 14);
 export const Language = tabler(IconLanguage, 15);
 export const Sliders = tabler(IconAdjustmentsHorizontal, 15);
 export const External = tabler(IconExternalLink, 12);
 export const Check = tabler(IconCheck, 14);
+export const Rename = tabler(IconPencil, 14);
+export const GroupFolder = tabler(IconFolder, 14);
+export const FolderOpen = tabler(IconFolderOpen, 14);
+export const Unlink = tabler(IconUnlink, 14);
+export const ListLayout = tabler(IconLayoutList, 16);
+export const GridLayout = tabler(IconLayoutGrid, 16);
 export const Trash = tabler(IconTrash, 14);
 export const Undo = tabler(IconArrowBackUp);
 export const Redo = tabler(IconArrowForwardUp);
@@ -160,7 +196,10 @@ export const FileText = tabler(IconFileText, 14);
 export const ImportI = tabler(IconFileImport);
 export const Transfer = tabler(IconArrowsExchange);
 export const Film = tabler(IconMovie, 14);
+export const Gif = tabler(IconGif, 14);
+export const Info = tabler(IconInfoCircle, 14);
 export const FilePdf = tabler(IconFileTypePdf, 14);
+export const FileZip = tabler(IconFileZip, 14);
 
 // what an agent is doing (RunFeed)
 export const StepRead = tabler(IconBook, 14);

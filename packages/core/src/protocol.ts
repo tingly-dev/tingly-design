@@ -38,7 +38,7 @@ export type ToRuntime =
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }
   | { dc: 'mode'; mode: Mode }
-  | { dc: 'export'; id: string; scale: number }
+  | { dc: 'export'; id: string; scale: number; tid?: number }
   /** start retyping an element's text in place */
   | { dc: 'edit'; tid: number }
   /** presenting a slide: show its builds up to this step */
@@ -72,7 +72,10 @@ export type FromRuntime =
   | { dc: 'resize'; tid: number; set: Record<string, string | null> }
   | { dc: 'exported'; id: string; dataUrl?: string; error?: string }
   | { dc: 'hover'; tid: number | null }
-  | { dc: 'text'; tid: number; text: string }
+  /** retyped text; `from` and `item` (the row of the nearest <sc-for>) let text with holes find what changed */
+  | { dc: 'text'; tid: number; text: string; from?: string; item?: number | null }
+  /** a double-click on text that cannot be retyped here, and why (`why` is a RetypeError code) */
+  | { dc: 'noedit'; tid: number; why: 'data' | 'span' | 'nomatch' }
   | { dc: 'wheel'; dx: number; dy: number; ctrl: boolean; x: number; y: number }
   | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean }
   | { dc: 'error'; message: string | null }

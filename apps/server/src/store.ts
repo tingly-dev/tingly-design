@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, sep } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   CANVAS_FILE,
   MOTION_FILE,
@@ -37,6 +39,8 @@ import {
   parseDsIndex,
   resolveTokens,
   starterTokens,
+  lookOf,
+  lookTokens,
   stringifyDsIndex,
   isBoardFile,
   isSlideFile,
@@ -47,11 +51,13 @@ import {
   slideFile,
   stringifyCanvas,
   stringifyDeck,
+  cleanGroup,
   projectCard,
   type ProjectCard,
   type ProjectKind,
 } from '@dc/core';
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
+import { repoOf } from './git';
 import type { ErrorKey, Language, TFunction } from '@dc/i18n';
 import { translator } from '@dc/i18n';
 
@@ -72,7 +78,151 @@ export function isProjectName(name: string): boolean {
 
 export function projectDir(name: string): string {
   if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
-  return join(PROJECTS_DIR, name);
+  return links.get(name) ?? join(PROJECTS_DIR, name);
+}
+
+// ---------------------------------------------------------------- projects kept elsewhere
+
+/**
+ * A project folder anywhere on disk, opened or created from the launcher, is
+ * listed in `.links.json` beside the projects (`{ name: absolute path }`), so
+ * it gets a flat name like every other project and the rest of the server,
+ * the editor's `?p=` and Claude Code delegation need no second kind of
+ * address. Removing a link never touches the folder. DC_LINKS=0 turns it off
+ * for a host that keeps every project in its own data folder.
+ */
+const LINKS_FILE = '.links.json';
+export const LINKS_ON = process.env.DC_LINKS !== '0';
+const links = new Map<string, string>(LINKS_ON ? readLinks() : []);
+
+function readLinks(): [string, string][] {
+  try {
+    const raw = JSON.parse(readFileSync(join(PROJECTS_DIR, LINKS_FILE), 'utf8')) as Record<string, unknown>;
+    return Object.entries(raw).filter((e): e is [string, string] => isProjectName(e[0]) && typeof e[1] === 'string' && isAbsolute(e[1]));
+  } catch {
+    return [];
+  }
+}
+
+/** Every linked project: name → absolute folder. */
+export function linkedProjects(): ReadonlyMap<string, string> {
+  return links;
+}
+
+/** A path as a person typed it (`~/work/site`, an absolute path) made absolute, or null when it is neither. */
+export function folderPath(input: string): string | null {
+  const v = input.trim();
+  if (!v) return null;
+  if (v === '~' || v.startsWith('~/') || v.startsWith('~\\')) return resolve(homedir(), v.slice(2));
+  return isAbsolute(v) ? resolve(v) : null;
+}
+
+/** The path to show for a folder: `~/…` under the home folder. */
+export function showPath(abs: string): string {
+  const rel = relative(homedir(), abs);
+  return rel && !rel.startsWith('..') && !isAbsolute(rel) ? `~/${rel.split(sep).join('/')}` : abs;
+}
+
+/** What is at a folder: a project of some kind, nothing (free to create in), or something else. */
+export async function inspectFolder(input: string): Promise<{ path: string; state: 'project' | 'free' | 'busy' | 'file'; kind?: ProjectKind; name?: string; repo?: string }> {
+  const abs = folderPath(input);
+  if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
+  const path = showPath(abs);
+  const st = await stat(abs).catch(() => null);
+  // the repository a project here would commit to, if any
+  const repo = await repoOf(abs);
+  const inRepo = repo ? { repo: showPath(repo) } : {};
+  if (!st) return { path, state: 'free', ...inRepo };
+  if (!st.isDirectory()) return { path, state: 'file' };
+  const kind = await kindOf(abs);
+  if (kind) return { path, state: 'project', kind, name: nameOfFolder(abs), ...inRepo };
+  const entries = (await readdir(abs).catch(() => [])).filter((e) => !e.startsWith('.'));
+  return { path, state: entries.length ? 'busy' : 'free', ...inRepo };
+}
+
+/** The project name a folder already answers to: a folder in the projects folder, or one already linked. */
+export function nameOfFolder(abs: string): string | undefined {
+  for (const [name, dir] of links) if (dir === abs) return name;
+  if (dirname(abs) === PROJECTS_DIR && isProjectName(basename(abs))) return basename(abs);
+  return undefined;
+}
+
+async function takenNames(): Promise<Set<string>> {
+  const names = new Set(links.keys());
+  for (const e of await readdir(PROJECTS_DIR).catch(() => [] as string[])) names.add(e);
+  return names;
+}
+
+/** A free project name for a folder, from its own name. */
+async function nameFor(abs: string): Promise<string> {
+  const base = basename(abs).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-_]+|-+$/g, '').slice(0, 56) || 'project';
+  const taken = await takenNames();
+  if (!taken.has(base)) return base;
+  for (let i = 2; ; i++) if (!taken.has(`${base}-${i}`)) return `${base}-${i}`;
+}
+
+let linksWrite: Promise<unknown> = Promise.resolve();
+function saveLinks(): Promise<void> {
+  const next = linksWrite.then(async () => {
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    const tmp = join(PROJECTS_DIR, `${LINKS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(Object.fromEntries(links), null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, LINKS_FILE));
+  });
+  linksWrite = next.catch(() => {});
+  return next;
+}
+
+/** Listeners told when a folder is linked or unlinked (the file watcher). */
+const linkListeners = new Set<(name: string, dir: string | null) => void>();
+export function onLinksChange(fn: (name: string, dir: string | null) => void): void {
+  linkListeners.add(fn);
+}
+
+/**
+ * A name for a project folder in this process only, without adding it to the list on disk: the
+ * command line exporting a folder given by its path opens it in the editor this way, and the
+ * launcher never shows it.
+ */
+export async function visitFolder(abs: string): Promise<string> {
+  const known = nameOfFolder(abs);
+  if (known) return known;
+  const name = await nameFor(abs);
+  links.set(name, abs);
+  return name;
+}
+
+/**
+ * Opens a project folder that lives anywhere: its name when it already has
+ * one, else a new link. `create` links a folder that is missing or empty, for
+ * a new project to be written into.
+ */
+export async function linkFolder(input: string, create = false): Promise<string> {
+  if (!LINKS_ON) throw new HttpError(403, 'linksOff');
+  const abs = folderPath(input);
+  if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
+  const at = await inspectFolder(abs);
+  if (create ? at.state !== 'free' : at.state !== 'project') {
+    throw new HttpError(create ? 409 : 404, create ? (at.state === 'project' ? 'folderHasProject' : 'folderNotEmpty') : at.state === 'free' ? 'noFolder' : 'noProjectInFolder', { path: at.path });
+  }
+  const known = nameOfFolder(abs);
+  if (known) {
+    if (create) throw new HttpError(409, 'folderHasProject', { path: at.path });
+    return known;
+  }
+  const name = await nameFor(abs);
+  links.set(name, abs);
+  await saveLinks();
+  for (const fn of linkListeners) fn(name, abs);
+  return name;
+}
+
+/** Takes a linked project off the list. Its folder and files stay where they are. */
+export async function unlinkProject(name: string): Promise<void> {
+  if (!links.has(name)) throw new HttpError(404, 'notLinked', { name });
+  links.delete(name);
+  await saveLinks();
+  for (const fn of linkListeners) fn(name, null);
 }
 
 /**
@@ -192,17 +342,59 @@ export async function seedSamples(): Promise<boolean> {
   if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return false;
   if (await stat(PROJECTS_DIR).catch(() => null)) return false;
   if (!(await stat(SAMPLES_DIR).catch(() => null))) return false;
-  // journals and dashboard run reports belong to whoever used the samples before
-  await cp(SAMPLES_DIR, PROJECTS_DIR, { recursive: true, filter: (src) => !/[/\\]\.(journal\.jsonl|runs\.json)$/.test(src) });
+  // whatever a person's machine keeps beside a project (journal, run reports, Claude Code's
+  // conversation, the transcript: every dotfile) belongs to whoever used the samples before
+  await cp(SAMPLES_DIR, PROJECTS_DIR, { recursive: true, filter: (src) => !/[/\\]\.[^/\\]+$/.test(src) });
+  // the samples arrive filed together, so a new install's launcher shows them as one group and the person's
+  // own projects land beside it, not mixed in; the grouping is this machine's, like any other
+  const samples = (await readdir(SAMPLES_DIR, { withFileTypes: true })).filter((e) => e.isDirectory() && isProjectName(e.name));
+  await writeFile(join(PROJECTS_DIR, GROUPS_FILE), JSON.stringify(Object.fromEntries(samples.map((e) => [e.name, SAMPLES_GROUP])), null, 2) + '\n', 'utf8');
   return true;
+}
+
+const GROUPS_FILE = '.groups.json';
+/** The launcher group the bundled samples are filed under on a fresh install. */
+export const SAMPLES_GROUP = 'tingly-design';
+
+/** Which launcher group each project is filed under; kept beside the projects, not inside one. */
+export async function readGroups(): Promise<Record<string, string>> {
+  try {
+    const raw = JSON.parse(await readFile(join(PROJECTS_DIR, GROUPS_FILE), 'utf8')) as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw)) if (isProjectName(k) && cleanGroup(v)) out[k] = cleanGroup(v);
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+let groupsWrite: Promise<unknown> = Promise.resolve();
+/** Files a project under a group, or out of every group when `group` is empty. */
+export function setGroup(name: string, group: string): Promise<void> {
+  const next = groupsWrite.then(async () => {
+    const all = await readGroups();
+    if (group) all[name] = group;
+    else delete all[name];
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    const tmp = join(PROJECTS_DIR, `${GROUPS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(all, null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, GROUPS_FILE));
+  });
+  groupsWrite = next.catch(() => {});
+  return next;
 }
 
 export async function listProjects(): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
+  const groups = await readGroups();
   const out: ProjectCard[] = [];
+  const found: { name: string; dir: string; path?: string }[] = [];
   for (const e of await readdir(PROJECTS_DIR, { withFileTypes: true })) {
-    if (!e.isDirectory() || !isProjectName(e.name)) continue;
-    const dir = join(PROJECTS_DIR, e.name);
+    if (e.isDirectory() && isProjectName(e.name) && !links.has(e.name)) found.push({ name: e.name, dir: join(PROJECTS_DIR, e.name) });
+  }
+  for (const [name, dir] of links) found.push({ name, dir, path: showPath(dir) });
+  for (const e of found) {
+    const dir = e.dir;
     const kind = await kindOf(dir);
     if (!kind) continue;
     try {
@@ -217,7 +409,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null));
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path } : {}) });
     } catch {
       // unreadable index
     }
@@ -228,6 +420,11 @@ export async function listProjects(): Promise<ProjectCard[]> {
 export async function readProject(name: string): Promise<Record<string, FileState>> {
   const dir = projectDir(name);
   if (!(await kindOf(dir))) throw new HttpError(404, 'noProject', { name });
+  return readFolder(dir);
+}
+
+/** A project folder's tracked files, wherever it is (the CLI reads a folder it was given without linking it). */
+export async function readFolder(dir: string): Promise<Record<string, FileState>> {
   const files: string[] = [];
   await walk(dir, dir, files);
   const out: Record<string, FileState> = {};
@@ -342,15 +539,18 @@ export async function removeFile(name: string, rel: string): Promise<void> {
 }
 
 /** A new project, its starter copy in `lang`: the language of whoever created it. */
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number] } = {}): Promise<void> {
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
   const t: TFunction = translator(lang);
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
+  // a look is checked before anything is written, so a bad one leaves no folder behind
+  const look = opts.look ? lookOf(opts.look) : undefined;
+  if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
   await mkdir(dir, { recursive: true });
   if (kind === 'design-system') {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
-    await writeAtomic(name, DS_TOKENS, starterTokens(title));
-    await writeAtomic(name, DS_README, t('starter.dsReadme', { title }));
+    await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
+    await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id }) : t('starter.dsReadme', { title }));
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
     return;
@@ -361,7 +561,7 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     return;
   }
   if (kind === 'motion') {
-    const { motion, scenes } = newMotion(title, t('starter.motionHint'), opts);
+    const { motion, scenes } = newMotion(title, '', opts);
     for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
     await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
     return;
@@ -384,20 +584,20 @@ export async function createProject(name: string, title: string, kind: ProjectKi
       designSystems: [],
     }));
     await writeAtomic(name, slideFile('cover'), newSlideSource('cover', {
-      like: "background:#14161c;color:#f4f1ea;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:40px",
       title,
-      body: t('starter.deckHint'),
+      body: '',
     }).replace('font-size:72px', 'font-size:112px'));
     await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
     return;
   }
+  const [boardW, boardH] = opts.size ?? [1200, 760];
   const canvas = parseCanvas(JSON.stringify({
     v: 3,
     title,
     createdOnFiles: { v: 1, at: new Date().toISOString() },
-    boards: { 'Main.dc.html': { x: 0, y: 0, w: 1200, h: 760, title } },
+    boards: { 'Main.dc.html': { x: 0, y: 0, w: boardW, h: boardH, title } },
     order: ['Main.dc.html'],
   }));
   await writeAtomic(name, CANVAS_FILE, stringifyCanvas(canvas));
-  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: 1200, h: 760, lang, hint: t('starter.canvasHint') }));
+  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: boardW, h: boardH, lang, hint: t('starter.canvasHint') }));
 }

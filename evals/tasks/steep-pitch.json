@@ -1,0 +1,10 @@
+{
+  "id": "steep-pitch",
+  "kind": "slides",
+  "project": "steep-deck",
+  "brief": "Make a slide deck project named `steep-deck`: a four-slide pitch for a fictional tea subscription called \"Steep\" (cover, the problem, how it works in three steps, pricing with three plans). Calm, warm look, one idea per slide, readable text. Make it good, then verify it with the tools' own checks and by looking at the pictures, fix anything wrong, and export the slides as PNG.",
+  "export": { "as": "png" },
+  "expect": { "slide": 4 },
+  "mustContain": ["Steep"],
+  "rubric": "Four slides: a cover, the problem, how it works in three steps, pricing with three plans. One idea per slide, large readable text, a consistent warm and calm look, nothing cut off or crowded, no placeholder left unexplained."
+}

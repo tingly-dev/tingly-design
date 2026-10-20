@@ -4,10 +4,11 @@ import type { ProjectCard } from '@dc/core';
 import { api } from '../api';
 import { at } from '../base';
 import { useStore } from '../store';
-import { ISSUES_URL, REPO_URL } from '../links';
-import { Bug, Caret, External, Home, Plus, Sliders, Star } from './icons';
+import { Caret, Home, Plus, Sliders } from './icons';
 import { Menu, MenuItem } from './Menu';
-import { KindIcon, NewDialog, open, readRecent } from './Launcher';
+import { open, readRecent } from './launcher/recent';
+import { KindIcon } from './launcher/kinds';
+import { NewDialog } from './launcher/NewDialog';
 
 const SHOWN = 8;
 
@@ -26,8 +27,7 @@ function nextUp(list: ProjectCard[], current: string | null): ProjectCard[] {
 
 /**
  * The way out of a project, in every kind's editor: a home button that goes straight to the launcher,
- * and next to it a menu to jump to another project, start one, or reach the repository to report
- * an issue or star it. Rendered by each kind's own bar, so no kind needs the launcher to move around.
+ * and next to it a menu to jump to another project, start one, or open the AI settings. Rendered by each kind's own bar, so no kind needs the launcher to move around.
  */
 export function ProjectMenu() {
   const { t } = useTranslation();
@@ -85,25 +85,6 @@ export function ProjectMenu() {
               useStore.setState({ aiSettingsOpen: true });
             }}
           />
-          <hr />
-          <a className="mi" role="menuitem" href={ISSUES_URL} target="_blank" rel="noopener noreferrer" onClick={() => setPos(null)}>
-            <span className="ic">
-              <Bug />
-            </span>
-            {t('launcher.links.report')}
-            <span className="k">
-              <External />
-            </span>
-          </a>
-          <a className="mi" role="menuitem" href={REPO_URL} target="_blank" rel="noopener noreferrer" onClick={() => setPos(null)}>
-            <span className="ic">
-              <Star />
-            </span>
-            {t('launcher.links.star')}
-            <span className="k">
-              <External />
-            </span>
-          </a>
         </Menu>
       )}
       {creating && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} onClose={() => setCreating(false)} />}

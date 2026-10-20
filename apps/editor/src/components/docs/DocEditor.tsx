@@ -12,7 +12,7 @@ import { Markdown } from '@tiptap/markdown';
 import { docsUserMessage, quoteAt, tabFile } from '@dc/core';
 import { api } from '../../api';
 import { display, toast, useStore } from '../../store';
-import { dateLocale, saveTab, useComments, useDocs, threadsOf } from '../../docs';
+import { dateLocale, saveTab, useComments, useDocs, threadsOf } from './docs';
 import { useTranslation } from 'react-i18next';
 import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';

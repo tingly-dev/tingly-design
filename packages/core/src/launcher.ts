@@ -14,7 +14,38 @@ export interface ProjectCard {
   updatedAt: string | null;
   /** one count that says how big it is, e.g. 4 boards */
   count: number;
+  /** the group the person filed it under on the launcher, if any */
+  group?: string;
+  /** where its folder is, when it lives outside the projects folder (`~/…` under the home folder) */
+  path?: string;
   preview: ProjectPreview;
+}
+
+/** The file that holds a project's title, per kind. */
+export const INDEX_FILE: Record<ProjectKind, string> = {
+  design: CANVAS_FILE,
+  slides: DECK_FILE,
+  'design-system': DS_INDEX,
+  dashboard: DASH_INDEX,
+  docs: DOC_INDEX,
+  motion: MOTION_FILE,
+};
+
+/** The index file's text with a new title, or undefined when it is not a JSON object. */
+export function retitle(source: string | undefined, title: string): string | undefined {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(source ?? '{}');
+  } catch {
+    return undefined;
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  return JSON.stringify({ ...(raw as Record<string, unknown>), title }, null, 2) + '\n';
+}
+
+/** A group's name as stored: trimmed, one line, at most 40 characters; empty means no group. */
+export function cleanGroup(v: unknown): string {
+  return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
 }
 
 export type ProjectPreview =
@@ -35,8 +66,8 @@ export type ProjectPreview =
       formats: { name: string; w: number; h: number }[];
       /** seconds of video, after speed */
       seconds: number;
-      /** what the card shows standing still: the cover scene, else the first scene at its end */
-      still?: { motion: MotionJson; id: string; source: string };
+      /** what the card shows standing still: the cover scene, the scene a cover frame falls in with `at` (authored ms into it), else most of the way through the first scene */
+      still?: { motion: MotionJson; id: string; source: string; at?: number };
     };
 
 /** A source the launcher frame renders; larger ones show the schematic preview only. */
@@ -77,7 +108,10 @@ export async function projectCard(
     const ids = motion.order.filter((id) => id in sources);
     const timeline = motionTimeline(ids.map((id) => ({ id, ...sceneTiming(sources[id]) })));
     const coverId = motion.cover && 'scene' in motion.cover ? motion.cover.scene : undefined;
-    const stillId = coverId && (await small(sceneFile(coverId))) !== undefined ? coverId : ids[0];
+    // a cover frame: the scene under it, stopped that far in (a transition in progress shows the scene coming in)
+    const coverAt = motion.cover && 'at' in motion.cover ? Math.min(motion.cover.at, timeline.duration) : undefined;
+    const under = coverAt !== undefined ? timeline.scenes.findLast((w) => coverAt >= w.start) : undefined;
+    const stillId = coverId && (await small(sceneFile(coverId))) !== undefined ? coverId : (under?.id ?? ids[0]);
     const stillSource = stillId ? (stillId === coverId ? await small(sceneFile(stillId)) : sources[stillId]) : undefined;
     const primary = primaryFormat(motion);
     const formats = [primary, ...Object.keys(motion.formats).filter((f) => f !== primary)].map((name) => ({ name, w: motion.formats[name].size[0], h: motion.formats[name].size[1] }));
@@ -91,7 +125,7 @@ export async function projectCard(
         kind,
         formats,
         seconds: Math.round(timeline.duration / speedOf(motion.speed) / 100) / 10,
-        still: stillId && stillSource !== undefined && stillSource.length <= MAX_PREVIEW_SOURCE ? { motion, id: stillId, source: stillSource } : undefined,
+        still: stillId && stillSource !== undefined && stillSource.length <= MAX_PREVIEW_SOURCE ? { motion, id: stillId, source: stillSource, ...(under && stillId === under.id ? { at: coverAt! - under.start } : {}) } : undefined,
       },
     };
   }

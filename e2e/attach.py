@@ -11,7 +11,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'out') + '/'
 CHROME = os.environ.get('DC_CHROME')
-MOCK_PORT = 8791
+MOCK_PORT = 8791 + int(os.environ.get('DC_E2E_OFFSET', 0))  # a parallel lane shifts every port (e2e/run.py)
 
 results = []
 def check(name, ok, extra=''):

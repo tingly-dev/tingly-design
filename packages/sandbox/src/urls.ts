@@ -6,7 +6,9 @@
 export function resolveSrc(src: unknown, base: string): unknown {
   if (typeof src !== 'string' || !base) return src;
   if (/^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(src)) return src;
-  return base + src.replace(/^\.?\//, '');
+  // a base can carry a query (?v=3) that busts the browser's copy of a picture that changed; it goes after the path
+  const [dir, query] = base.split('?');
+  return dir + src.replace(/^\.?\//, '') + (query && !src.includes('?') ? '?' + query : '');
 }
 
 /** The relative url()s in a CSS text, resolved against `base`. */

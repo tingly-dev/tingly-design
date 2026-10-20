@@ -1,6 +1,11 @@
 import { create } from 'zustand';
+import { turnOfDelegate, turnOfFast, upsertTurn } from './turns';
 import {
   applyHumanOps,
+  planRetype,
+  RetypeError,
+  setListItemField,
+  setPropDefault,
   editsForFormat,
   sceneIdOf,
   rebaseSwap,
@@ -11,13 +16,12 @@ import {
   CANVAS_FILE,
   type Actor,
   type AgentStep,
+  type Turn,
   type CanvasJson,
   type HumanOp,
   type JournalEntry,
   type Mode,
   type Inspect,
-  type NoteEntry,
-  noteBox,
   DECK_FILE,
   deckOrder,
   parseDeck,
@@ -26,9 +30,13 @@ import {
   stringifyDeck,
   type DeckJson,
   type ProjectKind,
+  type Conversation,
+  isDataPath,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
+import { headlessRun } from './headless';
+import { readPref, writePref } from './local';
 
 /** What a failed edit says to the person: a rebase conflict in the editor's own words, anything else as thrown. */
 function errorText(e: unknown): string {
@@ -100,6 +108,8 @@ export interface DelegateState {
   result?: string;
   /** set when the fast model handed the request over */
   via?: 'fast';
+  /** where the request came from (the editor, unless the command line or an agent over MCP sent it) */
+  source?: 'editor' | 'cli' | 'mcp';
   /** Claude Code's session id, once it reports one: the next request can continue it */
   session?: string;
   /** this run continued an earlier session instead of starting a fresh one */
@@ -110,17 +120,6 @@ export interface DelegateState {
   before: Record<string, string | null>;
   after: Record<string, string>;
   undone?: boolean;
-}
-
-/** One request in the history list above the prompt, from either agent. */
-export interface RunRecord {
-  id: string;
-  agent: 'fast' | 'claude';
-  prompt: string;
-  at: number;
-  state: 'running' | 'done' | 'error' | 'stopped';
-  /** Claude Code: continued an earlier session (true) or started a fresh one (false) */
-  continued?: boolean;
 }
 
 /** Which run the prompt bar's feed shows: the fast model's, or a Claude Code run by id. */
@@ -138,6 +137,8 @@ export interface Toast {
   id: number;
   text: string;
   kind: 'info' | 'error';
+  /** one thing the toast offers to do, such as undoing what it reports */
+  action?: { label: string; run: () => void };
 }
 
 /** Presenting a deck: which slide, how far its builds have played, how many steps it has. */
@@ -150,7 +151,7 @@ export interface Present {
   notes: boolean;
 }
 
-interface State {
+export interface State {
   project: string | null;
   /** design canvas or slide deck, from the project's files */
   kind: ProjectKind | null;
@@ -166,6 +167,8 @@ interface State {
   /** the AI settings dialog (components/AiSettings.tsx), opened from the launcher, the project menu and the prompt bar */
   aiSettingsOpen: boolean;
   connected: boolean;
+  /** counts the outside changes to pictures and fonts, so frames drawing them ask for the new file (api.frameBase) */
+  assetRev: number;
   loaded: boolean;
   files: Record<string, FileEntry>;
   drafts: Record<string, string>;
@@ -204,10 +207,18 @@ interface State {
   feeds: number;
   /** the prompt bar folded to a pill (kept across sessions) */
   barCollapsed: boolean;
+  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column of conversation on the left (`left`) */
+  barMode: BarMode;
   /** the list of earlier requests open above the bar */
   historyOpen: boolean;
-  /** every request of this editor session, oldest first */
-  history: RunRecord[];
+  /** the project's stored conversation, oldest first: runs that ended, from the server and from this session (the live ones are read from `delegates` and `fast`) */
+  turns: Turn[];
+  /** which tab of the conversation column shows when the kind has a list of its own */
+  chatTab: 'list' | 'chat';
+  /** the conversation tab's dot while the person is on the other tab: a result arrived, or a run failed */
+  chatNote: 'new' | 'failed' | null;
+  /** the project's Claude Code conversation, kept by the server: the next request continues it */
+  conversation: Conversation | null;
   /** the next Claude Code request starts a fresh session even though one could be continued */
   freshNext: boolean;
   toasts: Toast[];
@@ -224,6 +235,7 @@ export const useStore = create<State>(() => ({
   health: null,
   aiSettingsOpen: false,
   connected: false,
+  assetRev: 0,
   loaded: false,
   files: {},
   drafts: {},
@@ -231,13 +243,7 @@ export const useStore = create<State>(() => ({
   selection: null,
   tool: 'select',
   mode: 'edit',
-  panelOpen: (() => {
-    try {
-      return localStorage.getItem('dc.panelOpen') !== '0';
-    } catch {
-      return true;
-    }
-  })(),
+  panelOpen: readPref('dc.panelOpen') !== '0',
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -252,19 +258,18 @@ export const useStore = create<State>(() => ({
   runtimeErrors: {},
   fast: { status: 'idle', mode: 'ai', lines: [] },
   delegates: [],
+  conversation: null,
   jqDraft: '',
   lastRun: null,
   runHidden: false,
   feeds: 0,
-  barCollapsed: (() => {
-    try {
-      return localStorage.getItem('dc.barCollapsed') === '1';
-    } catch {
-      return false;
-    }
-  })(),
+  barCollapsed: readPref('dc.barCollapsed') === '1',
+  // the right-edge dock this value used to name (`auto`) is the left column now
+  barMode: readPref('dc.barMode') === 'left' || readPref('dc.barMode') === 'auto' ? 'left' : 'float',
   historyOpen: false,
-  history: [],
+  turns: [],
+  chatTab: 'chat',
+  chatNote: null,
   freshNext: false,
   toasts: [],
   undo: [],
@@ -355,10 +360,12 @@ export function useSource(file: string): string | undefined {
 // ----------------------------------------------------------------- toasts
 
 let toastId = 0;
-export function toast(text: string, kind: Toast['kind'] = 'info'): void {
+export function toast(text: string, kind: Toast['kind'] = 'info', action?: Toast['action']): void {
+  // an export run from the command line reports its errors there, and nothing else needs showing
+  if (headlessRun(text, kind)) return;
   const id = ++toastId;
-  set((s) => ({ toasts: [...s.toasts, { id, text, kind }].slice(-4) }));
-  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : 3500);
+  set((s) => ({ toasts: [...s.toasts, { id, text, kind, action }].slice(-4) }));
+  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), kind === 'error' ? 7000 : action ? 6000 : Math.max(3500, text.length * 60));
 }
 
 // ----------------------------------------------------------------- loading
@@ -367,18 +374,25 @@ let stopEvents: (() => void) | null = null;
 
 export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], lastRun: null, runHidden: false, history: [], historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
-  const [{ files }, journal] = await Promise.all([api.files(name), api.journal(name)]);
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false, slide: null, present: null, motionView: null });
+  const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set({ files: entries, journal, loaded: true, kind });
+  set((s) => ({ files: entries, journal, loaded: true, kind, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
     set({ slide: want && ids.includes(want) ? want : ids[0] ?? null });
   }
   stopEvents = api.events(name, onEvent, (st) => set({ connected: st === 'open' }));
+}
+
+let assetTimer: ReturnType<typeof setTimeout> | undefined;
+/** An import or an agent can touch many pictures in a burst; the frames redraw once after it. */
+function bumpAssetRev(): void {
+  clearTimeout(assetTimer);
+  assetTimer = setTimeout(() => set((s) => ({ assetRev: s.assetRev + 1 })), 150);
 }
 
 function onEvent(e: ServerEvent): void {
@@ -405,8 +419,9 @@ function onEvent(e: ServerEvent): void {
       return { files };
     });
   } else if (e.type === 'assets') {
-    void import('./ds').then((m) => m.assetsChanged());
-    if (get().kind === 'dashboard') void import('./dash').then((m) => m.dataChanged(e.path));
+    void import('./components/ds/ds').then((m) => m.assetsChanged());
+    if (e.path && !isDataPath(e.path)) bumpAssetRev();
+    if (get().kind === 'dashboard') void import('./components/dash/dash').then((m) => m.dataChanged(e.path));
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {
@@ -424,8 +439,10 @@ function onEvent(e: ServerEvent): void {
         d.prompt = e.text ?? d.prompt;
         if (e.at) d.startedAt = e.at;
         if (e.continued) d.continued = true;
+        if (e.source) d.source = e.source;
       }
       if (e.session) d.session = e.session;
+      if (e.continued === false) d.continued = false;
       if (e.state === 'progress') {
         if (e.step) {
           d.log = [...d.log, { step: e.step, at: now }].slice(-60);
@@ -440,9 +457,14 @@ function onEvent(e: ServerEvent): void {
       if (e.state !== 'start') d.state = e.state;
       // a new run takes over the feed; a later event of an older run does not
       const fresh = i < 0;
-      const history = recordRun(s.history, { id: e.id, agent: 'claude', prompt: d.prompt, at: d.startedAt, state: 'running', continued: !!d.continued }, e.state === 'start' || e.state === 'progress' ? undefined : e.state === 'done' ? 'done' : e.state === 'stopped' ? 'stopped' : 'error');
-      return { delegates: list.slice(-5), history, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
+      // the server keeps the conversation from the moment a run reports its session, whatever the run's end
+      const conversation = e.session ? { session: e.session, prompt: d.prompt, at: now } : s.conversation;
+      return { delegates: list.slice(-5), conversation, ...(fresh ? { lastRun: { kind: 'delegate', id: e.id } as LastRun, runHidden: false } : {}) };
     });
+    if (e.state === 'done' || e.state === 'error' || e.state === 'stopped') {
+      const d = get().delegates.find((x) => x.id === e.id);
+      if (d) endTurn(turnOfDelegate(d));
+    }
     if (e.state === 'done' || e.state === 'error') {
       const ok = e.state === 'done';
       if (get().fast.status === 'delegated') setFastDone(ok);
@@ -452,37 +474,40 @@ function onEvent(e: ServerEvent): void {
   }
 }
 
-/** Add a request to the history, or move an existing one to its end state. */
-export function recordRun(history: RunRecord[], rec: RunRecord, end?: RunRecord['state']): RunRecord[] {
-  const i = history.findIndex((h) => h.id === rec.id);
-  if (i < 0) return [...history, end ? { ...rec, state: end } : rec].slice(-50);
-  if (!end || history[i].state === end) return history;
-  const next = [...history];
-  next[i] = { ...next[i], state: end };
-  return next;
-}
+export type BarMode = 'left' | 'float';
 
-/** The Claude Code session the next request would continue: that of the newest run that finished. */
-export function continuable(delegates: DelegateState[]): DelegateState | undefined {
-  return [...delegates].reverse().find((d) => d.session && d.state === 'done');
+/** Where the prompt lives (kept across sessions, the same in every kind). */
+export function setBarMode(mode: BarMode): void {
+  writePref('dc.barMode', mode);
+  set({ barMode: mode, historyOpen: false, chatNote: null });
 }
 
 export function setBarCollapsed(on: boolean): void {
-  try {
-    localStorage.setItem('dc.barCollapsed', on ? '1' : '0');
-  } catch {
-    // private window
-  }
+  writePref('dc.barCollapsed', on ? '1' : '0');
   set({ barCollapsed: on, historyOpen: false });
 }
 
-// a fast-model request is one store value; its entry in the history follows it
+/** A run ended: it joins the stored turns, and the conversation tab says so when the person is not on it. */
+function endTurn(turn: Turn): void {
+  set((s) => ({
+    turns: upsertTurn(s.turns, turn),
+    ...(s.chatTab !== 'chat' ? { chatNote: turn.state === 'done' ? (s.chatNote === 'failed' ? 'failed' : 'new') : turn.state === 'error' ? 'failed' : s.chatNote } : {}),
+  }));
+}
+
+// a fast-model request is one store value; when it ends it becomes a turn, kept here and by the server
+const settled = new Set<number>();
 useStore.subscribe((s, prev) => {
-  if (s.fast === prev.fast || s.fast.status === 'idle' || s.fast.mode !== 'ai' || !s.fast.startedAt) return;
-  const id = `fast-${s.fast.startedAt}`;
-  const end = s.fast.status === 'running' ? undefined : s.fast.status === 'error' ? 'error' : 'done';
-  const history = recordRun(s.history, { id, agent: 'fast', prompt: s.fast.prompt ?? '', at: s.fast.startedAt, state: 'running' }, end);
-  if (history !== s.history) set({ history });
+  if (s.fast === prev.fast || !s.fast.startedAt) return;
+  // a hand-over to Claude Code is Claude Code's turn, not the fast model's
+  if (s.fast.status === 'delegated') settled.add(s.fast.startedAt);
+  if (s.fast.status !== 'done' && s.fast.status !== 'error') return;
+  if (settled.has(s.fast.startedAt)) return;
+  const turn = turnOfFast(s.fast);
+  if (!turn) return;
+  settled.add(s.fast.startedAt);
+  endTurn(turn);
+  if (s.project) api.keepTurn(s.project, turn);
 });
 
 function setFastDone(ok: boolean): void {
@@ -643,6 +668,34 @@ export function editElement(file: string, ops: HumanOp[], actor: Actor = 'human'
   });
 }
 
+/**
+ * Text with holes in it, retyped on the artboard (`Hello {{name}}!`): the edit
+ * lands in the template's literal text or in the tweak the hole shows, and the
+ * hole stays. Says why when it cannot (`.design/template-text-editing.md`).
+ */
+export function retypeText(file: string, tid: number, from: string, to: string, item: number | null): boolean {
+  const apply = (src: string) => {
+    const doc = parsed(src);
+    const el = doc.elements.find((e) => e.tid === tid);
+    if (!el) throw new Error(`element ${tid} is no longer in the design`);
+    const plan = planRetype(doc, el, from, to, item);
+    let out = plan.template === null ? src : applyHumanOps(src, [{ kind: 'text', tid, text: plan.template }], inertDocument()).source;
+    for (const s of plan.sets) out = ('index' in s ? setListItemField(out, s.prop, s.index, s.key, s.value) : setPropDefault(out, s.prop, s.value)).source;
+    return out;
+  };
+  const cur = display(get(), file);
+  if (cur === undefined) return false;
+  try {
+    apply(cur);
+  } catch (e) {
+    if (e instanceof RetypeError) {
+      toast(t(`canvas.text.noedit.${e.code}`), 'error');
+      return false;
+    }
+  }
+  return edit(file, apply, { actor: 'human', summary: `text → ${JSON.stringify(to.length > 40 ? to.slice(0, 39) + '…' : to)}` });
+}
+
 export function editCanvas(mutate: (c: CanvasJson) => void, summary: string, undoable = true): boolean {
   return edit(
     CANVAS_FILE,
@@ -700,114 +753,7 @@ export async function deleteBoard(file: string): Promise<void> {
   if (v) await api.remove(project, file, v);
 }
 
-// ----------------------------------------------------------------- view
-
-export function setView(v: Partial<State['view']>): void {
-  set((s) => ({ view: { ...s.view, ...v } }));
-}
-
-export function zoomAt(factor: number, sx: number, sy: number): void {
-  const { view } = get();
-  const zoom = Math.min(4, Math.max(0.05, view.zoom * factor));
-  const k = zoom / view.zoom;
-  setView({ zoom, x: sx - (sx - view.x) * k, y: sy - (sy - view.y) * k });
-}
-
-export function fitTo(rect: { x: number; y: number; w: number; h: number }, pad = 64): void {
-  const { viewport } = get();
-  const zoom = Math.min(2, Math.max(0.05, Math.min((viewport.w - pad * 2) / rect.w, (viewport.h - pad * 2) / rect.h)));
-  setView({ zoom, x: (viewport.w - rect.w * zoom) / 2 - rect.x * zoom, y: (viewport.h - rect.h * zoom) / 2 - rect.y * zoom });
-}
-
-/** Is a board or note on the current page? Items without a page sit on the first page. */
-export function onPage(c: CanvasJson, page: string | undefined, current: string): boolean {
-  const first = c.pages[0]?.id ?? '';
-  const p = page ?? first;
-  return (current || first) === p || (!page && !current);
-}
-
-export function contentBounds(c: CanvasJson, page = get().page): { x: number; y: number; w: number; h: number } | null {
-  const rects: { x: number; y: number; w: number; h: number }[] = [];
-  for (const b of Object.values(c.boards)) if (onPage(c, b.page, page)) rects.push({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 });
-  for (const n of Object.values(c.notes)) if (typeof n.x === 'number' && onPage(c, n.page, page)) rects.push(noteBox(n));
-  if (!rects.length) return null;
-  const x = Math.min(...rects.map((r) => r.x));
-  const y = Math.min(...rects.map((r) => r.y));
-  return { x, y, w: Math.max(...rects.map((r) => r.x + r.w)) - x, h: Math.max(...rects.map((r) => r.y + r.h)) - y };
-}
-
-export function fitAll(): void {
-  const b = contentBounds(canvasOf(get()));
-  if (b) fitTo(b);
-}
-
-export function focusBoard(file: string): void {
-  const c = canvasOf(get());
-  const b = c.boards[file];
-  if (!b) return;
-  if (b.page && b.page !== get().page) set({ page: b.page });
-  fitTo({ x: b.x, y: b.y - 40, w: b.w, h: b.h + 40 }, 80);
-}
-
-/** Zoom to whatever is selected (Shift+2). */
-export function zoomToSelection(): void {
-  const s = get();
-  const c = canvasOf(s);
-  const sel = s.selection;
-  if (sel?.kind === 'board' || sel?.kind === 'el') focusBoard(sel.file);
-  else if (sel?.kind === 'note' && c.notes[sel.id]) {
-    const b = noteBox(c.notes[sel.id]);
-    fitTo({ x: b.x, y: b.y, w: Math.max(b.w, 200), h: Math.max(b.h, 120) }, 120);
-  } else fitAll();
-}
-
-export function visibleBoards(): string[] {
-  const s = get();
-  const c = canvasOf(s);
-  const { view, viewport } = s;
-  const x0 = -view.x / view.zoom;
-  const y0 = -view.y / view.zoom;
-  const x1 = x0 + viewport.w / view.zoom;
-  const y1 = y0 + viewport.h / view.zoom;
-  return c.order.filter((f) => {
-    const b = c.boards[f];
-    return b && onPage(c, b.page, s.page) && b.x < x1 && b.x + b.w > x0 && b.y < y1 && b.y + b.h > y0;
-  });
-}
-
-/** Screen point → canvas point. */
-export function toCanvas(sx: number, sy: number): { x: number; y: number } {
-  const { view } = get();
-  return { x: (sx - view.x) / view.zoom, y: (sy - view.y) / view.zoom };
-}
-
-// ----------------------------------------------------------------- clipboard
-
-export type Clip = { kind: 'el'; html: string } | { kind: 'items'; items: NoteEntry[] };
-let clip: Clip | null = null;
-export function setClip(c: Clip): void {
-  clip = c;
-  try {
-    navigator.clipboard?.writeText(clipText()).catch(() => {});
-  } catch {
-    // clipboard permission is optional: the in-app clipboard still works
-  }
-}
-export function getClip(): Clip | null {
-  return clip;
-}
-/** The text the in-app clipboard put on the system clipboard: pasting it back is a paste, not an import. */
-export function clipText(): string {
-  return !clip ? '' : clip.kind === 'el' ? clip.html : JSON.stringify(clip.items, null, 2);
-}
-
 // remember whether the panel is open, per browser
 useStore.subscribe((st, prev) => {
-  if (st.panelOpen !== prev.panelOpen) {
-    try {
-      localStorage.setItem('dc.panelOpen', st.panelOpen ? '1' : '0');
-    } catch {
-      // storage unavailable: the default applies next time
-    }
-  }
+  if (st.panelOpen !== prev.panelOpen) writePref('dc.panelOpen', st.panelOpen ? '1' : '0');
 });

@@ -104,6 +104,12 @@ export function isUploadPath(rel: string): boolean {
 const KEPT_EXTRA = new Set(['woff', 'woff2', 'ttf', 'otf', 'avif', 'ico']);
 const KEPT_SEGMENT = /^[\p{L}\p{N}_][\p{L}\p{N}_. ()+-]{0,120}$/u;
 
+/** `name` made into a file name a kept folder keeps (see `isKeptPath`): other characters become `-`; `fallback` when nothing is left. */
+export function keptName(name: string, fallback: string): string {
+  const n = name.replace(/[^\p{L}\p{N}_. ()+-]+/gu, '-').replace(/^[^\p{L}\p{N}_]+/u, '').slice(0, 100);
+  return KEPT_SEGMENT.test(n) ? n : fallback;
+}
+
 /**
  * Any file a person brought into the project and it keeps under uploads/: an
  * attachment (uploads/<name>-<hash>.<ext>), or a file of an imported folder,

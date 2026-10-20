@@ -1,9 +1,9 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { attr, getStyle, isRepeated, roleOf, styleDeclarations, styleInFormat, templateText, type DcElement, type Inspect } from '@dc/core';
-import { useInstalled } from '../../ds';
-import { display, editElement, parsed, useStore } from '../../store';
+import { attr, getStyle, hasHoleValue, isRepeated, setPropDefault, styleHole, roleOf, styleDeclarations, styleInFormat, templateText, type DcElement, type Inspect } from '@dc/core';
+import { useInstalled } from '../ds/ds';
+import { display, edit, editElement, parsed, useStore } from '../../store';
 import { Menu, MenuItem } from '../Menu';
 import {
   AlignBottom,
@@ -57,7 +57,11 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
     view && view.format !== view.primary
       ? styleInFormat(Object.fromEntries(el.attrs.map((a) => [a.name, a.value])), view.format)
       : (attr(el, 'style') ?? '');
-  const sv = (p: string) => getStyle(style, p) ?? '';
+  // a value the template takes from a hole (`color:{{accent}}`) is drawn by the artboard: the panel shows what it came to, not the hole
+  const sv = (p: string) => {
+    const v = getStyle(style, p) ?? '';
+    return hasHoleValue(v) ? '' : v;
+  };
   const cv = (p: string) => info?.computed[p] ?? '';
   const installed = useInstalled();
   const slides = useStore((s) => s.kind === 'slides' || s.kind === 'motion');
@@ -70,6 +74,15 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
   const abs = (sv('position') || cv('position')) === 'absolute';
   const special = el.tag.startsWith('sc-') || el.tag === 'helmet' || el.tag === 'dc-import';
   const doc = parsed(display(useStore.getState(), file) ?? '');
+  // a colour that is one hole: set by a colour tweak (edit the tweak) or by the script (shown, not rewritten)
+  const colorHole = (...props: string[]) => {
+    const name = props.map((p) => styleHole(style, p)).find(Boolean) ?? null;
+    if (!name) return undefined;
+    const spec = doc.props[name];
+    const tweak = !!spec && typeof spec === 'object' && (spec.editor === 'color' || (!spec.editor && typeof spec.default === 'string' && /^(#|rgb|hsl)/i.test(spec.default)));
+    return { name, tweak };
+  };
+  const putTweak = (name: string) => (v: string) => v.trim() && edit(file, (src) => setPropDefault(src, name, v.trim()).source, { actor: 'human', summary: `tweak ${name} → ${JSON.stringify(v.trim())}` });
   const repeated = isRepeated(doc, tid) || (info?.count ?? 1) > 1;
   const role = roleOf(el);
   const hasText = !!templateText(el) || role === 'Text' || role === 'Button' || role === 'Link';
@@ -381,7 +394,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
             />
           </Row>
           <Row label={t('panel.field.color')}>
-            <ColorField value={sv('color')} computed={cv('color')} onCommit={(v) => set({ color: v.trim() || null })} label={t('panel.field.textColor')} allowNone={false} />
+            <ColorField value={sv('color')} computed={cv('color')} onCommit={(v) => set({ color: v.trim() || null })} label={t('panel.field.textColor')} allowNone={false} bound={colorHole('color')} onCommitBound={putTweak} />
           </Row>
           {ratio !== null && (
             <span className={`contrast ${ratio >= 4.5 || (big && ratio >= 3) ? '' : ratio >= 3 ? 'warn' : 'bad'}`} title={t('panel.el.contrastTitle', { color: toHex(info!.backdrop) })}>
@@ -425,7 +438,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
         <div className="sec">
           <h3>{t('panel.el.appearance')}</h3>
           <Row label={t('panel.field.fill')}>
-            <ColorField value={bg} computed={cv('background-color')} onCommit={(v) => set({ background: v.trim() || null, 'background-color': null })} label={t('panel.field.fillColor')} />
+            <ColorField value={bg} computed={cv('background-color')} onCommit={(v) => set({ background: v.trim() || null, 'background-color': null })} label={t('panel.field.fillColor')} bound={colorHole('background', 'background-color')} onCommitBound={putTweak} />
             {bg && (
               <button className="ib" title={t('panel.el.removeFill')} aria-label={t('panel.el.removeFill')} onClick={() => set({ background: null, 'background-color': null })}>
                 <NoneI />
@@ -476,7 +489,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
           {borderStyle !== 'none' && (
             <Row label="">
               <Field value={px(sv('border-width'))} placeholder={px(cv('border-top-width'))} onCommit={one('border-width')} label={t('panel.field.borderWidth')} unit="px" width={80} />
-              <ColorField value={sv('border-color')} computed={cv('border-top-color')} onCommit={(v) => set({ 'border-color': v.trim() || null })} label={t('panel.field.borderColor')} />
+              <ColorField value={sv('border-color')} computed={cv('border-top-color')} onCommit={(v) => set({ 'border-color': v.trim() || null })} label={t('panel.field.borderColor')} bound={colorHole('border-color')} onCommitBound={putTweak} />
             </Row>
           )}
         </div>

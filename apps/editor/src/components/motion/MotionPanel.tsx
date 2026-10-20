@@ -16,7 +16,7 @@ import {
   type DcElement,
 } from '@dc/core';
 import { display, editElement, parsed, useStore } from '../../store';
-import { FORMAT_PRESETS, addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from '../../motion';
+import { FORMAT_PRESETS, addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { ElementLayers } from '../panel/LayerTree';
 

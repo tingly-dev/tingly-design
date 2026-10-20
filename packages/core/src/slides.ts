@@ -1,5 +1,7 @@
 import { attr, type DcDoc, type DcElement } from './parse';
 import { parseStyle } from './style';
+import { isBoardEmbedPath } from './boardEmbed';
+import { fxIssues } from './motionFx';
 
 /**
  * The slide subset (the original Slides type's `format.md`), as a checker.
@@ -167,6 +169,25 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
         if (text.length > MAX_EMBED) add(el, 'error', `This <x-embed> is ${Math.round(text.length / 1024)} KB; at most 16 KB.`);
         if (el.parent !== section) add(el, 'error', '<x-embed> must be a direct child of <section>.');
         if (!isPinned(el)) add(el, 'error', '<x-embed> must be pinned: position:absolute with left/top and width/height.');
+        const src = attr(el, 'src');
+        const fx = attr(el, 'data-fx');
+        if (fx !== undefined) {
+          for (const m of fxIssues(fx)) add(el, 'error', m);
+          if (src !== undefined) add(el, 'error', '<x-embed data-fx> draws a built-in effect; it takes no src.');
+          if (el.inner && doc.source.slice(el.inner.start, el.inner.end).trim()) add(el, 'error', '<x-embed data-fx> draws a built-in effect; it holds no markup of its own.');
+        }
+        if (src !== undefined) {
+          if (!isBoardEmbedPath(src)) add(el, 'error', `<x-embed src="${src}"> must name an artboard imported under uploads/ (uploads/<from>-<board>/X.dc.html).`);
+          if (el.inner && doc.source.slice(el.inner.start, el.inner.end).trim()) add(el, 'error', '<x-embed src> shows the artboard; it holds no markup of its own.');
+          if (attr(el, 'data-props') !== undefined) {
+            try {
+              const v = JSON.parse(attr(el, 'data-props')!);
+              if (!v || typeof v !== 'object' || Array.isArray(v)) throw 0;
+            } catch {
+              add(el, 'error', "<x-embed data-props> must be a JSON object of the artboard's tweaks.");
+            }
+          }
+        }
         return;
       }
       case 'x-shape': {
@@ -205,6 +226,9 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
       case 'ol':
         for (let a = el.parent; a; a = a.parent) if (a.tag === 'li') add(el, 'error', 'Lists do not nest.');
         break;
+      case 'div':
+        if (attr(el, 'data-text') !== undefined) checkTextBox(el, add);
+        break;
       case 'span': {
         const st = parseStyle(attr(el, 'style') ?? '');
         if (st.some((d) => d.prop === 'font-size' || d.prop === 'font-family')) add(el, 'warning', 'A <span> takes no size or font: use two blocks.');
@@ -228,6 +252,31 @@ export function checkSlide(doc: DcDoc, id?: string): SlideIssue[] {
   if (count > MAX_ELEMENTS) add(section, 'error', `${count} elements: a slide holds at most ${MAX_ELEMENTS}.`);
   if (embeds > MAX_EMBEDS) add(section, 'error', `${embeds} <x-embed>s: at most ${MAX_EMBEDS} per slide.`);
   return out;
+}
+
+/** What a text box (`<div data-text>`) may hold: unstyled paragraphs and one-level lists, styled once on the box. */
+const TEXT_BOX_BLOCKS = new Set(['p', 'ul', 'ol']);
+
+function checkTextBox(el: DcElement, add: (el: DcElement, level: IssueLevel, message: string) => void): void {
+  const v = attr(el, 'data-text') ?? '';
+  if (v !== '' && textBoxIndent(el) === undefined) add(el, 'error', `data-text="${v}" is the lists' indent in px (a number), or empty.`);
+  for (const c of el.children) {
+    if (c.kind !== 'el') continue;
+    if (!TEXT_BOX_BLOCKS.has(c.tag)) {
+      add(c, 'error', `A text box (<div data-text>) holds only <p>, <ul> and <ol>, not <${c.tag}>: put it beside the box.`);
+      continue;
+    }
+    const styled = [c, ...(c.tag === 'p' ? [] : c.children.filter((g): g is DcElement => g.kind === 'el'))].filter((x) => attr(x, 'style'));
+    for (const x of styled) add(x, 'warning', 'Style the text box, not its paragraphs: a style here makes it two looks in one box.');
+  }
+}
+
+/** A text box's list indent in px (`data-text="N"`); undefined when it sets none. */
+export function textBoxIndent(el: DcElement): number | undefined {
+  const v = (attr(el, 'data-text') ?? '').trim();
+  if (!v || el.tag !== 'div') return undefined;
+  const n = px(v);
+  return n !== null && n >= 0 ? n : undefined;
 }
 
 function checkStyle(el: DcElement, add: (el: DcElement, level: IssueLevel, message: string) => void): void {

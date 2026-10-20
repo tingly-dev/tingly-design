@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { componentNames, parseCardMarker, type DsIndex, type DsTokens } from '@dc/core';
 import { api } from '../../api';
-import { FONT_RE, IMAGE_RE, markdown, previewDoc, rawUrl, uploadTo, useAssets, assetsChanged, type AssetFile } from '../../ds';
+import { FONT_RE, IMAGE_RE, markdown, previewDoc, rawUrl, uploadTo, useAssets, assetsChanged, type AssetFile } from './ds';
 import { display, edit, toast, useStore } from '../../store';
 import { useTranslation } from 'react-i18next';
 
@@ -126,7 +126,7 @@ export function ComponentsView({ t, index, theme }: { t: DsTokens; index: DsInde
       {bundle !== undefined && (
         <div className="dsgroup">
           <h3>bundle</h3>
-          <p className="hint">{tr('ds.components.bundleHint', { ns: index.namespace })}</p>
+          <p className="hint">{tr('ds.components.bundleHint', { name: index.namespace })}</p>
         </div>
       )}
     </section>

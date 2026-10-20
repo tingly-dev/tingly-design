@@ -55,7 +55,7 @@ Claude Code 另有一个出口：**用它自己的登录**。装了 `claude` 并
 
 ## 6. 没做的
 
-- 图片生成的**测试按钮**：生成每次都花钱，见 [image-generation.md](./image-generation.md) §6。
+- 图片生成的**测试按钮**：生成每次都花钱，见 [image-generation.md](./image-generation.md) §7。
 - 多个具名配置（"工作""个人"）：现在只有一套。
 - 按项目覆盖：模型是人的偏好，不是作品的一部分，所以不进项目文件夹。
 - 对 Claude Code 的"测试"：只检查 `claude` 命令在不在，不真的发一次请求（会开一个子进程、花额度）。

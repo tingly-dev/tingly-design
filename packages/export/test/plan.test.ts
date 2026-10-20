@@ -22,26 +22,29 @@ describe('planVideo', () => {
 
   it('writes MP4 where H.264 and AAC encode', async () => {
     browser(['avc1', 'vp09'], ['mp4a', 'opus']);
-    expect(await plan({ width: 1280, height: 720, sound: true })).toMatchObject({ container: 'mp4', videoCodec: 'avc', audioCodec: 'aac' });
+    expect(await plan({ width: 1280, height: 720 })).toMatchObject({ container: 'mp4', videoCodec: 'avc', audioCodec: 'aac' });
   });
 
   it('falls back to WebM and says it is for want of H.264', async () => {
     browser(['vp09', 'vp8'], ['opus']);
-    expect(await plan({ width: 1280, height: 720, sound: true })).toMatchObject({ container: 'webm', videoCodec: 'vp9', audioCodec: 'opus', note: 'no-h264' });
+    expect(await plan({ width: 1280, height: 720 })).toMatchObject({ container: 'webm', videoCodec: 'vp9', audioCodec: 'opus', note: 'no-h264' });
   });
 
-  it('keeps a silent piece in MP4 when only AAC is missing', async () => {
+  it('falls back to WebM when AAC is missing, since every video carries a track', async () => {
     browser(['avc1', 'vp09'], ['opus']);
-    expect(await plan({ width: 1280, height: 720 })).toMatchObject({ container: 'mp4', audioCodec: null });
-  });
-
-  it('falls back to WebM for a piece with sound when AAC is missing', async () => {
-    browser(['avc1', 'vp09'], ['opus']);
-    expect(await plan({ width: 1280, height: 720, sound: true })).toMatchObject({ container: 'webm', note: 'no-aac' });
+    expect(await plan({ width: 1280, height: 720 })).toMatchObject({ container: 'webm', note: 'no-aac' });
   });
 
   it('gives WebM without a note when WebM is what was asked for', async () => {
     browser(['avc1', 'vp09'], ['mp4a', 'opus']);
     expect(await plan({ width: 1280, height: 720, format: 'webm' })).toMatchObject({ container: 'webm' });
+  });
+});
+
+describe('silentChunks', () => {
+  it('adds up to the length of the video, a second at a time', async () => {
+    const { silentChunks } = await import('../src/audio');
+    expect(silentChunks(2.5, 48000)).toEqual([48000, 48000, 24000]);
+    expect(silentChunks(0, 48000).reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
   });
 });

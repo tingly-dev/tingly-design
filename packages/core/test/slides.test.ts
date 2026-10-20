@@ -14,6 +14,8 @@ import {
   withSlideId,
   faceMarkup,
   isSlideFile,
+  textBoxIndent,
+  roleOf,
 } from '../src';
 
 const doc = () => new HappyWindow({ url: 'http://localhost/' }).document as unknown as Document;
@@ -92,6 +94,8 @@ describe('slide files', () => {
   });
 
   it('a new slide copies the look of its neighbour', () => {
+    expect(newSlideSource('x', { title: 'T', body: '' })).not.toContain('<p');
+    expect(newSlideSource('x', { title: 'T', body: '' })).toContain('background:#fbfbf8');
     const s = newSlideSource('next', { like: 'background:#111;color:#eee;margin:0;padding:128px;z-index:2' });
     expect(s).toMatch(/^<section id="next" style="background:#111;color:#eee;padding:128px">/);
     expect(checkSlide(parseDc(s), 'next')).toEqual([]);
@@ -160,5 +164,49 @@ describe('connectors', () => {
   it('take border-width and border-style', () => {
     const src = '<section id="c" style="background:#fff"><x-connector x1="0" y1="0" x2="100" y2="100" style="color:#000;border-width:4px;border-style:dashed"></x-connector></section>';
     expect(checkSlide(parseDc(src), 'c')).toEqual([]);
+  });
+});
+
+describe('text boxes', () => {
+  const box = (inner: string, attrv = '') =>
+    `<section id="t" style="background:#fff"><div data-text${attrv} style="font-size:32px;gap:16px">${inner}</div></section>`;
+  const issues = (src: string) => checkSlide(parseDc(src), 't').map((i) => i.level + ' ' + i.message);
+
+  it('accepts unstyled paragraphs and lists', () => {
+    expect(issues(box('<p>One <b>two</b></p><ul><li>a</li><li>b</li></ul><ol><li>c</li></ol>'))).toEqual([]);
+  });
+
+  it('refuses other blocks inside', () => {
+    expect(issues(box('<p>a</p><h2>b</h2><img src="x.png" alt="">'))).toEqual([
+      expect.stringMatching(/^error .*not <h2>/),
+      expect.stringMatching(/^error .*not <img>/),
+    ]);
+  });
+
+  it('warns on styled paragraphs and items', () => {
+    const out = issues(box('<p style="color:#f00">a</p><ul><li style="font-size:40px">b</li></ul>'));
+    expect(out).toHaveLength(2);
+    expect(out.every((m) => m.startsWith('warning Style the text box'))).toBe(true);
+  });
+
+  it('reads the list indent', () => {
+    const el = (v: string) => parseDc(box('<p>a</p>', v)).elements.find((e) => e.tag === 'div')!;
+    expect(textBoxIndent(el('="24"'))).toBe(24);
+    expect(textBoxIndent(el('="24px"'))).toBe(24);
+    expect(textBoxIndent(el(''))).toBeUndefined();
+    expect(textBoxIndent(el('="wide"'))).toBeUndefined();
+    expect(issues(box('<p>a</p>', '="wide"'))).toEqual([expect.stringMatching(/^error data-text="wide"/)]);
+  });
+
+  it('is one Text layer', () => {
+    const el = parseDc(box('<p>a</p><p>b</p>')).elements.find((e) => e.tag === 'div')!;
+    expect(roleOf(el)).toBe('Text');
+  });
+
+  it('carries the indent through a style op', () => {
+    const src = box('<ul><li>a</li></ul>', '="40"');
+    const tid = parseDc(src).elements.find((e) => e.tag === 'div')!.tid;
+    const out = applyHumanOps(src, [{ kind: 'style', tid, prop: '--dc-indent', value: '40px' }], doc()).source;
+    expect(out).toContain('--dc-indent:40px');
   });
 });

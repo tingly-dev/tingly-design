@@ -1,6 +1,7 @@
 import { AudioBufferSource, BufferTarget, CanvasSource, Mp4OutputFormat, Output, QUALITY_HIGH, QUALITY_LOW, QUALITY_MEDIUM, WebMOutputFormat } from 'mediabunny';
 import type { Frame } from './frames';
 import { Clock, type ExportReport } from './timing';
+import { silentChunks } from './audio';
 import { planVideo, type Container, type VideoNote, type VideoPlan } from './capabilities';
 
 export interface VideoOptions {
@@ -21,8 +22,10 @@ export interface VideoOptions {
    * the encoder takes the one before, so a frame costs the longest of the three, not their sum.
    */
   prepareFrame?(ms: number, i: number): Promise<Frame>;
-  /** The finished mix, if the piece has sound (see `mixAudio`). */
+  /** The finished mix, if the piece has sound (see `mixAudio`). Without it the file gets a silent track of the same length. */
   audio?: AudioBuffer;
+  /** A PNG to embed as the file's cover picture (what a file browser or player shows as its thumbnail). */
+  coverArt?: Uint8Array;
   onProgress?(done: number, total: number): void;
   /** Collects the time of each stage; `renderFrame` times its own stages (seek, raster, paint) on the same clock; encoding and finishing are timed here. */
   clock?: Clock;
@@ -48,15 +51,21 @@ export class NoEncoderError extends Error {
   }
 }
 
+/** An empty stereo track as long as the video, a second at a time so a long piece does not hold the whole silence in memory. */
+async function addSilence(source: AudioBufferSource, seconds: number, sampleRate = 48000): Promise<void> {
+  for (const length of silentChunks(seconds, sampleRate)) await source.add(new AudioBuffer({ length, sampleRate, numberOfChannels: 2 }));
+}
+
 /** Frames in, a video file out: seek and paint each frame, encode with WebCodecs, mux in memory. */
 export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
   const clock = o.clock ?? new Clock();
-  const plan: VideoPlan | null = await planVideo({ width: o.width, height: o.height, sound: !!o.audio, format: o.format });
+  const plan: VideoPlan | null = await planVideo({ width: o.width, height: o.height, format: o.format });
   if (!plan) throw new NoEncoderError();
   const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(o.width, o.height) : Object.assign(document.createElement('canvas'), { width: o.width, height: o.height });
   const target = new BufferTarget();
   const out = new Output({ format: plan.container === 'mp4' ? new Mp4OutputFormat({ fastStart: 'in-memory' }) : new WebMOutputFormat(), target });
   const quality = { low: QUALITY_LOW, medium: QUALITY_MEDIUM, high: QUALITY_HIGH }[o.quality ?? 'high'];
+  if (o.coverArt) out.setMetadataTags({ images: [{ data: o.coverArt, mimeType: 'image/png', kind: 'coverFront' }] });
   const video = new CanvasSource(canvas, { codec: plan.videoCodec, quality, keyFrameInterval: 2 });
   out.addVideoTrack(video, { frameRate: o.fps });
   const audio = o.audio && plan.audioCodec ? new AudioBufferSource({ codec: plan.audioCodec, quality: QUALITY_HIGH }) : null;
@@ -64,7 +73,7 @@ export async function encodeVideo(o: VideoOptions): Promise<VideoResult> {
   const total = Math.max(1, Math.round((o.duration / 1000) * o.fps));
   try {
     await out.start();
-    if (audio && o.audio) await audio.add(o.audio);
+    if (audio) await (o.audio ? audio.add(o.audio) : addSilence(audio, o.duration / 1000));
     // the frame prepared last, waiting for the browser to decode it; and the encoder's answer to the frame before
     let waiting: { frame: Frame; i: number } | null = null;
     let encoding: Promise<void> = Promise.resolve();

@@ -12,6 +12,8 @@ export interface MotionInfo {
   /** in authored time */
   scenes: SceneWindow[];
   issues: { scene: string; message: string; level: string }[];
+  /** shader layers that could not draw before the piece loaded */
+  effectErrors?: { scene: string; code: string; detail: string }[];
 }
 
 import type { ExportReport } from '@dc/export/timing';
@@ -28,7 +30,14 @@ export interface MotionExportRequest {
   to?: number;
   fontCss?: string;
   audio?: { data: ArrayBuffer; start: number; gain: number }[];
+  /** the cover, embedded as the cover picture of a whole-piece MP4 or WebM */
+  cover?: MotionCoverSpec;
+  /** with `cover`: also frame 0 of the video */
+  coverFirst?: boolean;
 }
+
+/** A cover for the frame to draw: a moment of the piece in authored ms (before speed), or a cover scene's source. */
+export type MotionCoverSpec = { at: number } | { scene: string; html: string };
 
 export interface MotionExportResult {
   blob: Blob;
@@ -56,6 +65,8 @@ export interface MotionControl {
   exportVideo(req: MotionExportRequest, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<MotionExportResult>;
   /** One frame at time `t` as a PNG, drawn in the frame. */
   snapshot(req: { t: number; scale?: number; fontCss?: string }): Promise<Blob>;
+  /** The cover as a PNG, drawn in the frame; with none, the first frame. */
+  cover(req: { cover?: MotionCoverSpec; scale?: number; fontCss?: string }): Promise<Blob>;
 }
 
 /**
@@ -66,6 +77,7 @@ export interface MotionControl {
 export function MotionFrame({
   motion,
   scenes,
+  files,
   format,
   speed,
   at,
@@ -77,6 +89,7 @@ export function MotionFrame({
   onTime,
   onEnded,
   onError,
+  onEffectError,
 }: {
   motion: MotionJson;
   scenes: Record<string, string>;
@@ -85,6 +98,8 @@ export function MotionFrame({
   at?: number | 'end' | 'still';
   /** where the project's files are served, for relative image paths in scenes */
   base?: string;
+  /** the artboards the scenes embed (imported from a canvas), and the siblings they mount */
+  files?: Record<string, string>;
   box: { w: number; h: number };
   title: string;
   control?: React.MutableRefObject<MotionControl | null>;
@@ -92,14 +107,16 @@ export function MotionFrame({
   onTime?: (t: number) => void;
   onEnded?: () => void;
   onError?: (message: string) => void;
+  /** a shader layer in `scene` could not draw: `code` is no-webgl2, shader or draw */
+  onEffectError?: (e: { scene: string; code: string; detail: string }) => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
   const [shown, setShown] = useState(false);
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'motion'), []);
-  const cb = useRef({ onLoaded, onTime, onEnded, onError });
+  const cb = useRef({ onLoaded, onTime, onEnded, onError, onEffectError });
   const snaps = useRef(new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>());
-  cb.current = { onLoaded, onTime, onEnded, onError };
+  cb.current = { onLoaded, onTime, onEnded, onError, onEffectError };
   const atRef = useRef(at);
   atRef.current = at;
   const exports = useRef(new Map<string, { ok: (r: MotionExportResult) => void; fail: (e: MotionExportError) => void; progress?: (done: number, total: number) => void }>());
@@ -117,6 +134,7 @@ export function MotionFrame({
       } else if (m.dcm === 'time' && typeof m.t === 'number') cb.current.onTime?.(m.t);
       else if (m.dcm === 'ended') cb.current.onEnded?.();
       else if (m.dcm === 'error') cb.current.onError?.(String(m.message ?? ''));
+      else if (m.dcm === 'effect-error') cb.current.onEffectError?.({ scene: String(m.scene ?? ''), code: String(m.code ?? ''), detail: String(m.detail ?? '') });
       else if (m.dcm === 'export-progress') exports.current.get(String(m.id))?.progress?.(Number(m.done), Number(m.total));
       else if (m.dcm === 'exported') exports.current.get(String(m.id))?.ok(m as unknown as MotionExportResult);
       else if (m.dcm === 'export-error') exports.current.get(String(m.id))?.fail(new MotionExportError(m.code as MotionExportError['code'], String(m.message ?? '')));
@@ -130,6 +148,12 @@ export function MotionFrame({
   useEffect(() => {
     if (!control) return;
     const post = (m: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(m, '*');
+    const picture = (m: Record<string, unknown>) =>
+      new Promise<Blob>((resolve, reject) => {
+        const id = Math.random().toString(36).slice(2);
+        snaps.current.set(id, { ok: (b) => (snaps.current.delete(id), resolve(b)), fail: (e) => (snaps.current.delete(id), reject(e)) });
+        post({ ...m, id });
+      });
     control.current = {
       seek: (t) => post({ dcm: 'seek', t }),
       play: (from) => post({ dcm: 'play', from }),
@@ -148,12 +172,8 @@ export function MotionFrame({
           signal?.addEventListener('abort', cancel);
           post({ dcm: 'export', id, ...req });
         }),
-      snapshot: (req) =>
-        new Promise((resolve, reject) => {
-          const id = Math.random().toString(36).slice(2);
-          snaps.current.set(id, { ok: (b) => (snaps.current.delete(id), resolve(b)), fail: (e) => (snaps.current.delete(id), reject(e)) });
-          post({ dcm: 'snapshot', id, ...req });
-        }),
+      snapshot: (req) => picture({ dcm: 'snapshot', ...req }),
+      cover: (req) => picture({ dcm: 'cover', ...req }),
     };
     return () => {
       control.current = null;
@@ -162,8 +182,8 @@ export function MotionFrame({
 
   useEffect(() => {
     if (!ready) return;
-    frame.current?.contentWindow?.postMessage({ dcm: 'load', motion, scenes, format, speed, at: atRef.current, base }, '*');
-  }, [ready, motion, scenes, format, speed, base]);
+    frame.current?.contentWindow?.postMessage({ dcm: 'load', motion, scenes, files, format, speed, at: atRef.current, base }, '*');
+  }, [ready, motion, scenes, files, format, speed, base]);
 
   const [w, h] = motion.formats[format]?.size ?? [1920, 1080];
   const scale = Math.max(0.01, Math.min(box.w / w, box.h / h));

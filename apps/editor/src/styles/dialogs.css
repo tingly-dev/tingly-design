@@ -1,0 +1,297 @@
+/* Dialogs shared across kinds: AI settings, importing an artboard, exporting video. */
+
+/* ------------------------------------------------------------- AI settings */
+
+
+.aiset {
+  width: min(560px, 100%);
+}
+
+
+.aiset section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+
+.aiset h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+
+.aiset .note {
+  margin: -4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+
+.aiset .kopt .tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+
+.aiset .kopt {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft, var(--hover));
+}
+
+
+.aiset .field {
+  grid-template-columns: 64px 1fr auto;
+}
+
+
+.aiset .field .lock {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+
+.aiset .addr {
+  font: 12px var(--mono);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+
+.aiset .mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+
+.aiset .status {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+
+.aiset .status.ok {
+  color: var(--ok, var(--ink-2));
+}
+
+
+.aiset .status.bad {
+  color: var(--danger, #c0392b);
+}
+
+
+.aiset .status a {
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+
+.aiset .testrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+.aiset .seg {
+  align-self: flex-start;
+}
+
+
+.aiset footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+
+/* importing an artboard from a project: the picker, and the selected embed's panel */
+
+
+.ldialog.bpick {
+  width: min(760px, 100%);
+}
+
+
+.bpick .hint {
+  margin: -6px 0 0;
+}
+
+
+.bpick-group h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+
+.bpick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 10px;
+}
+
+
+.bpick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+
+.bpick-item:hover,
+.bpick-item:focus-visible {
+  border-color: var(--accent);
+}
+
+
+.bpick-thumb {
+  position: relative;
+  display: block;
+  width: 196px;
+  max-height: 196px;
+  overflow: hidden;
+  border-radius: calc(var(--r) - 2px);
+  background: var(--panel-2);
+}
+
+
+.bpick-thumb iframe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+
+.bpick-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+
+.bpick-item .faint {
+  font: 11px var(--mono);
+  color: var(--faint);
+}
+
+
+.bembed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+.bembed h3 {
+  margin: 0;
+}
+
+
+.bembed-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+
+.bembed-a a.btn {
+  text-decoration: none;
+}
+
+
+/* ------------------------------------------------------------ export video dialog */
+
+
+.vexport {
+  width: min(520px, 100%);
+}
+
+
+.vexport .vsummary {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--hover);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.vexport .note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+
+.vexport .vmore {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+
+.vexport .vopts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+.vexport .vopts label {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+
+.vexport .vopts label > span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+
+.vexport .vopts label.vcheck {
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+
+
+.vexport .vopts label.vcheck > span {
+  color: var(--ink-2);
+}
+
+
+.vexport footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+

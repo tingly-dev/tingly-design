@@ -1,3 +1,4 @@
+import { SideResizer } from '../SideResizer';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASH_INDEX, datasetIdOf } from '@dc/core';
@@ -40,6 +41,7 @@ export function CodePanel() {
   };
   return (
     <aside className="dashside code" aria-label={t('dash.code.label')}>
+      <SideResizer id="dashside" edge="start" name={t('dash.code.label')} />
       <div className="row">
         <select className="input" value={path} aria-label={t('dash.code.file')} onChange={(e) => setPath(e.target.value)}>
           {list.map((p) => (

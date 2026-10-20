@@ -21,11 +21,11 @@ def pages(path):
 # kind → (project, the exports it offers, by the name a person reads)
 KINDS = {
     'canvas': ('box-console', ['PNG image', 'PNG image @2x', 'PNG images', 'Source file']),
-    'slides': ('tingly-intro', ['PDF', 'PNG image', 'PNG images', 'HTML page', 'Speaker notes']),
+    'slides': ('tingly-intro', ['PDF', 'PNG image', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
     'design system': ('tingly-ds', ['PNG image']),
     'dashboard': ('box-usage', ['PNG image']),
-    'docs': ('design-guide', ['PDF', 'Markdown', 'HTML page', 'PNG image']),
-    'motion': ('design-motion', ['Video…', 'PNG image']),
+    'docs': ('design-guide', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image']),
+    'motion': ('design-motion', ['Video…', 'GIF…', 'PNG image']),
 }
 
 async def main():
@@ -48,7 +48,7 @@ async def main():
             menu = pg.get_by_role('menu', name='Import / Export')
             await expect(menu).to_be_visible()
             names = [re.sub(r'\s+', ' ', (await i.inner_text()).split('\n')[0]) for i in await menu.get_by_role('menuitem').all()]
-            check(f'{kind}: the menu lists import and export', 'Choose files…' in names and all(w in names for w in wants), names)
+            check(f'{kind}: the menu lists import and export', any(n.startswith('Import ') for n in names) and all(w in names for w in wants), names)
             check(f'{kind}: …under Import and Export headings', await menu.locator('.head', has_text='Import').count() == 1 and await menu.locator('.head', has_text='Export').count() == 1)
             await pg.screenshot(path=OUT + f'menu-{kind.replace(" ", "-")}.png')
             await pg.keyboard.press('Escape')
@@ -69,6 +69,36 @@ async def main():
             head = open(path, 'rb').read(5)
             check(f'{label}: PDF saves straight away', head == b'%PDF-' and d.suggested_filename.endswith('.pdf'), d.suggested_filename)
             check(f'{label}: …with {"a page per slide" if label == "slides" else "its content"}', pages(path) >= want, pages(path))
+
+        # --- Markdown: the deck as a document ---------------------------------------------------------
+        await pg.goto(f'{BASE}/?p=tingly-intro')
+        await pg.wait_for_timeout(3500)
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        async with pg.expect_download(timeout=30000) as dl:
+            await pg.get_by_role('menuitem', name=re.compile('^Markdown')).click()
+        d = await dl.value
+        path = OUT + d.suggested_filename
+        await d.save_as(path)
+        md = open(path, encoding='utf-8').read()
+        check('slides: Markdown saves as a .md file', d.suggested_filename.endswith('.md'), d.suggested_filename)
+        check('slides: …headed by the deck title, with the slide titles below it', md.startswith('# ') and md.count('\n### ') >= 3, md[:200])
+        check('slides: …with a table written as a table and the notes as quotes', '| --- |' in md and '\n> **' in md)
+        check('slides: …and no slide markup', '<section' not in md and 'style=' not in md)
+
+        # --- Markdown: the doc as one document ------------------------------------------------------
+        await pg.goto(f'{BASE}/?p=design-guide')
+        await pg.wait_for_timeout(3500)
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        async with pg.expect_download(timeout=30000) as dl:
+            await pg.get_by_role('menuitem', name=re.compile('^Markdown$')).click()
+        d = await dl.value
+        path = OUT + d.suggested_filename
+        await d.save_as(path)
+        md = open(path, encoding='utf-8').read()
+        check('docs: the whole doc saves as a .md file', d.suggested_filename.endswith('.md'), d.suggested_filename)
+        check('docs: …headed by the doc title, with each tab a section under it', md.startswith('# Tingly Design handbook\n') and md.count('\n## ') >= 3 and '\n---\n' not in md, md[:200])
+        outside = re.sub(r'```.*?```', '', md, flags=re.S)
+        check('docs: …and no tab keeps a second top-level heading', len(re.findall(r'^# ', outside, flags=re.M)) == 1)
 
         # --- no Chrome on the server: the print window ------------------------------------------------
         await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))

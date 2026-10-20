@@ -1,5 +1,6 @@
 """End-to-end checks for exporting from the browser: a motion piece to a video file made in the tab
-(no server, no ffmpeg), with progress and cancel. A new piece keeps it short.
+(no server, no ffmpeg), with progress and cancel, and embeds drawn there from the picture each frame
+hands over when the machine has no Chrome. A new piece keeps it short.
 Run with `pnpm dev` up: python3 e2e/export.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
 import os, json, asyncio, subprocess
 from playwright.async_api import async_playwright, expect
@@ -10,6 +11,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 PIECE = os.path.join(REPO, 'projects/zz-export')
 EMBED = os.path.join(REPO, 'projects/zz-export-embed')
+BOARD = os.path.join(REPO, 'projects/zz-export-board')
 
 results = []
 def check(name, ok, extra=''):
@@ -22,11 +24,17 @@ def probe(path):
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['rm', '-rf', PIECE, EMBED])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
     os.makedirs(PIECE + '/scenes')
     os.makedirs(EMBED + '/scenes')
     open(EMBED + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-embed', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
     open(EMBED + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;padding:96px"><x-embed style="display:block;width:600px;height:300px"><div style="background:#ee3333;width:100%;height:100%"></div></x-embed></section>')
+    # an artboard imported from a canvas (box-console's Glow, moving), behind a title
+    os.makedirs(BOARD + '/scenes')
+    os.makedirs(BOARD + '/uploads/box-console-Glow')
+    subprocess.run(['cp', os.path.join(REPO, 'projects/box-console/Glow.dc.html'), BOARD + '/uploads/box-console-Glow/'])
+    open(BOARD + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-board', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['glow'], 'audio': [], 'faces': {}}))
+    open(BOARD + '/scenes/glow.html', 'w').write('<section id="glow" data-duration="2s" style="background:#0b1020;color:#fff;font-family:Arial,sans-serif;padding:96px"><x-embed src="uploads/box-console-Glow/Glow.dc.html" style="position:absolute;left:0px;top:0px;width:1280px;height:720px"></x-embed><h1 style="position:relative;font-size:80px">Glow</h1></section>')
     open(PIECE + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export', 'formats': {'wide': {'size': [1920, 1080]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
     open(PIECE + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;color:#f4f1ea;font-family:Arial,sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px"><h1 data-in="rise 500ms" style="font-size:112px;font-weight:800">Export</h1><p data-in="fade 500ms" style="font-size:40px;color:#a9a59c">Made in the tab</p></section>')
     async with async_playwright() as p:
@@ -65,6 +73,13 @@ async def main():
             await start()
             await expect(pg.locator('button', has_text='Exporting')).to_be_visible()
             check('the button shows progress and offers cancel', await pg.locator('button', has_text='Cancel').count() == 1)
+            # the readout keeps one size while the numbers change, so the bar around it does not move
+            boxes = set()
+            for _ in range(12):
+                box = await pg.evaluate("() => { const e = document.querySelector('[data-export-progress]'); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)] }")
+                if box: boxes.add(tuple(box))
+                await pg.wait_for_timeout(80)
+            check('the progress readout keeps its size and place while it counts', len(boxes) == 1, str(boxes))
         d = await dl.value
         path = OUT + d.suggested_filename
         await d.save_as(path)
@@ -105,7 +120,23 @@ async def main():
         v4 = next(s for s in probe(p4)['streams'] if s.get('width'))
         check('…at 480 lines, not the piece\'s 1080', v4['height'] == 480, str(v4))
 
+        # --- the menu's own GIF… entry: the same dialog, GIF already chosen and the options open ---------
+        await menu.click()
+        await pg.get_by_role('menuitem', name='GIF…').click()
+        dlg5 = pg.get_by_role('dialog', name='Export video')
+        check('GIF… opens the dialog with GIF chosen, small and slow by default', await dlg5.get_by_label('Format').input_value() == 'gif' and 'GIF' in await dlg5.locator('[data-summary]').inner_text() and '15 fps' in await dlg5.locator('[data-summary]').inner_text(), await dlg5.locator('[data-summary]').inner_text())
+        async with pg.expect_download(timeout=120000) as dl5:
+            await dlg5.get_by_role('button', name='Export', exact=True).click()
+        d5 = await dl5.value
+        p5 = OUT + d5.suggested_filename
+        await d5.save_as(p5)
+        check('…and exports a GIF in one click', open(p5, 'rb').read(6) in (b'GIF87a', b'GIF89a') and d5.suggested_filename.endswith('-480p.gif'), d5.suggested_filename)
+
         # --- cancel -------------------------------------------------------------------------------
+        # two seconds export in well under one now, before the click lands: a long piece leaves time to cancel
+        open(PIECE + '/scenes/title.html', 'w').write(open(PIECE + '/scenes/title.html').read().replace('data-duration="2s"', 'data-duration="60s"'))
+        await pg.reload()
+        await expect(menu).to_be_enabled(timeout=15000)
         await start()
         await pg.locator('button', has_text='Cancel').click()
         await expect(pg.locator('.toast', has_text='cancelled')).to_be_visible(timeout=30000)
@@ -120,7 +151,10 @@ async def main():
         await menu.click()
         await pg.get_by_role('menuitem', name='Video…').click()
         dlg2 = pg.get_by_role('dialog', name='Export video')
-        check('a piece Chrome draws says so instead of offering options', await dlg2.get_by_role('button', name='More options').count() == 0 and 'Chrome on this machine' in await dlg2.inner_text())
+        check('a piece Chrome draws says so, and still offers the options', 'Chrome on this machine' in await dlg2.inner_text() and await dlg2.get_by_role('button', name='More options').count() == 1)
+        await dlg2.get_by_role('button', name='More options').click()
+        fmts = await dlg2.get_by_label('Format').locator('option').all_inner_texts()
+        check('…MP4 and GIF, no WebM or automatic', fmts == ['MP4', 'GIF'], fmts)
         async with pg.expect_download(timeout=120000) as dl2:
             await dlg2.get_by_role('button', name='Export', exact=True).click()
             await expect(pg.locator('.toast', has_text='Chrome on this machine')).to_be_visible(timeout=15000)
@@ -131,12 +165,73 @@ async def main():
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-ss', '1', '-i', path2, '-frames:v', '1', OUT + 'export-embed-frame.png'])
         px = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-embed-frame.png', '-vf', 'crop=1:1:300:300,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
         check('the embed is on the frame, not blank', len(px) == 3 and px[0] > 180 and px[1] < 100, str(list(px)))
+        # the server route honours size and frame rate, and makes a GIF
+        await menu.click()
+        await pg.get_by_role('menuitem', name='Video…').click()
+        dlg6 = pg.get_by_role('dialog', name='Export video')
+        await dlg6.get_by_role('button', name='More options').click()
+        await dlg6.get_by_label('Format').select_option('mp4')
+        await dlg6.get_by_label('Size').select_option('360')
+        await dlg6.get_by_label('Frame rate').select_option('24')
+        async with pg.expect_download(timeout=120000) as dl7:
+            await dlg6.get_by_role('button', name='Export', exact=True).click()
+        d7 = await dl7.value
+        p7 = OUT + d7.suggested_filename
+        await d7.save_as(p7)
+        v7 = next(s for s in probe(p7)['streams'] if s.get('width'))
+        check('the server route honours size and frame rate', (v7['width'], v7['height']) == (640, 360) and v7['r_frame_rate'] == '24/1' and d7.suggested_filename.endswith('-360p.mp4'), f'{v7} {d7.suggested_filename}')
+        await menu.click()
+        await pg.get_by_role('menuitem', name='GIF…').click()
+        dlg8 = pg.get_by_role('dialog', name='Export video')
+        async with pg.expect_download(timeout=120000) as dl8:
+            await dlg8.get_by_role('button', name='Export', exact=True).click()
+        d8 = await dl8.value
+        p8 = OUT + d8.suggested_filename
+        await d8.save_as(p8)
+        v8 = next(s for s in probe(p8)['streams'] if s.get('width'))
+        check('the server route makes a GIF, 480 lines by default', open(p8, 'rb').read(6) in (b'GIF87a', b'GIF89a') and v8['height'] == 480 and d8.suggested_filename == 'zz-export-embed-wide-480p.gif', f'{v8} {d8.suggested_filename}')
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', p8, '-frames:v', '1', OUT + 'export-embed-gif.png'])
+        px8 = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-embed-gif.png', '-vf', 'crop=1:1:100:100,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
+        check('…with the embed on the GIF\'s frame', len(px8) == 3 and px8[0] > 180 and px8[1] < 100, str(list(px8)))
+
+        # --- without Chrome and ffmpeg, the tab draws embeds from the picture each one hands over -------
+        await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))
+        async def in_tab(project):
+            await pg.goto(BASE + '/?p=' + project)
+            await expect(pg.locator('.dashtitle')).to_have_text(project)
+            await expect(menu).to_be_enabled(timeout=15000)
+            await pg.wait_for_timeout(1500)
+            await menu.click()
+            await pg.get_by_role('menuitem', name='Video…').click()
+            dlg = pg.get_by_role('dialog', name='Export video')
+            async with pg.expect_download(timeout=120000) as dl:
+                await dlg.get_by_role('button', name='Export', exact=True).click()
+            d = await dl.value
+            path = OUT + 'tab-' + d.suggested_filename
+            await d.save_as(path)
+            png = path + '.png'
+            subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-ss', '1', '-i', path, '-frames:v', '1', png])
+            return png
+        p9 = await in_tab('zz-export-embed')
+        px9 = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', p9, '-vf', 'crop=1:1:300:300,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
+        check('with no Chrome, a video made in the tab has the embed on the frame', len(px9) == 3 and px9[0] > 180 and px9[1] < 100, str(list(px9)))
+        check('…and does not warn that it is blank', await pg.locator('.toast', has_text='blank').count() == 0)
+        p10 = await in_tab('zz-export-board')
+        # Glow is coloured light on #0b1020: drawn, the frame's 8×8 average spans far more than the plain background
+        g = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', p10, '-vf', 'scale=8:8,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
+        spread = max(g) - min(g) if g else 0
+        check('…and an artboard imported from a canvas too', len(g) == 192 and spread > 60, f'spread {spread}')
+        await pg.unroute('**/api/render')
 
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
-    subprocess.run(['rm', '-rf', PIECE, EMBED])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
     failed = [n for n, ok in results if not ok]
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')
     if failed: raise SystemExit(1)
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+finally:
+    # a crash or a timeout must not leave zz-* projects behind: the next suite (embed) lists the samples
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])

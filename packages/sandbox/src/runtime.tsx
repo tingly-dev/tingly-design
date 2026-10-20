@@ -16,12 +16,23 @@ import {
   LOCK_ATTR,
   SLIDE_BASE_CSS,
   attrsForFormat,
+  fxMarkup,
+  isFxEmbed,
+  FX_STILL_MS,
+  boardTime,
+  embedProps,
+  isBoardEmbedPath,
   parseTime,
+  timeSpec,
   sceneBaseCss,
   paintLayer,
+  textBoxIndent,
   parseDc,
   styleObject,
   isTextEditable,
+  retypeKind,
+  planRetype,
+  RetypeError,
   VOID_ELEMENTS,
   type DcDoc,
   type DcElement,
@@ -32,12 +43,15 @@ import {
   type MotionStageInfo,
   type ToRuntime,
 } from '@dc/core';
-import { BUILD_CSS, XArt, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
+import { BUILD_CSS, XArt, XBoard, XEmbed, innerSource, resolveSrc, showSteps } from './slide';
 import { urlsAgainst } from './urls';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 import { msg } from './msg';
+import { answerSnaps } from '@dc/export/snap';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
+// an artboard embedded in a slide or scene hands the page a picture of itself when it exports (.design/export.md)
+answerSnaps();
 
 // ------------------------------------------------------------------ holes
 
@@ -180,9 +194,12 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
     }
   }
   if (ctx.tagged) p['data-dc-tid'] = el.tid;
+  if (ctx.tagged && typeof scope.$index === 'number') p['data-dc-item'] = scope.$index;
   if (ctx.slide) {
     const z = paintLayer(el);
     if (z !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), zIndex: z };
+    const indent = textBoxIndent(el);
+    if (indent !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), '--dc-indent': `${indent}px` };
   }
   return p;
 }
@@ -268,16 +285,36 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
       case 'x-icon':
       case 'x-connector':
         return <XArt key={key} tag={el.tag} props={sp()} attrs={Object.fromEntries(el.attrs.map((x) => [x.name, String(interp(x.value, scope) ?? '')]))} />;
-      case 'x-embed':
+      case 'x-embed': {
+        const src = a('src');
+        if (src && isBoardEmbedPath(src))
+          return (
+            <XBoard
+              key={key}
+              props={sp()}
+              src={src}
+              files={ctx.files}
+              tweaks={embedProps(a('data-props'))}
+              base={ctx.slide.base}
+              mode={ctx.mode}
+              still={ctx.slide.still}
+              live={ctx.mode === 'play' && !ctx.motion}
+            />
+          );
+        const own = innerSource(ctx.slide.source, el.inner);
+        const fx = a('data-fx');
+        // a built-in effect: on a stage it waits to be sought, presenting a slide it runs on its own clock, editing one it stands still
+        const markup = fx !== undefined && isFxEmbed({ 'data-fx': fx }, own) ? (fxMarkup(fx, { live: ctx.mode === 'play' && !ctx.motion, at: ctx.motion ? 0 : FX_STILL_MS }) ?? '') : own;
         return (
           <XEmbed
             key={key}
             props={sp()}
-            html={innerSource(ctx.slide.source, el.inner) + (ctx.motion && el.attrs.some((x) => x.name === 'data-seek') ? SEEK_BRIDGE : '')}
+            html={markup + (ctx.motion && el.attrs.some((x) => x.name === 'data-seek') ? SEEK_BRIDGE : '')}
             mode={ctx.mode}
             still={ctx.slide.still}
           />
         );
+      }
       case 'img': {
         const p = sp();
         p.src = resolveSrc(p.src, ctx.slide.base);
@@ -415,6 +452,8 @@ interface State {
   step: number;
   /** a motion scene on the editor stage */
   motion: MotionStageInfo | null;
+  /** an artboard that moves with time, drawn inside an embed: the time its host last sought (null = its still) */
+  time: number | null;
   ctx(): Ctx;
 }
 
@@ -432,6 +471,7 @@ const current: State = {
   base: '',
   step: 0,
   motion: null,
+  time: null,
   ctx() {
     return {
       tagged: true,
@@ -453,6 +493,11 @@ let committedSource = '';
 function Committed({ source }: { source: string }) {
   React.useLayoutEffect(() => {
     committedSource = source;
+    if (!boardReady && window.parent !== window && !current.slide && timeSpec(docFor(source).props)) {
+      // a moving artboard inside an embed: its host may seek it now
+      boardReady = true;
+      post({ dcMotion: 'embed-ready' } as unknown as FromRuntime);
+    }
     if (current.slide && current.mode === 'play') post({ dc: 'steps', total: showSteps(mount, current.step) });
   }, [source]);
   return null;
@@ -492,7 +537,10 @@ function render() {
   const doc = docFor(current.source);
   post({ dc: 'error', message: doc.errors.length ? doc.errors.join('\n') : null });
   if (doc.slide) slideHead();
-  const body = <DcComponent key={current.source} source={current.source} file={current.file} props={current.props} ctx={current.ctx()} />;
+  // an artboard that declares $time draws from a time prop: the one its host sought, else what the editor set, else its still
+  const spec = doc.slide ? null : timeSpec(doc.props);
+  const props = spec ? { ...current.props, time: boardTime(spec, current.time ?? (current.props.time as number | undefined)) } : current.props;
+  const body = <DcComponent key={current.source} source={current.source} file={current.file} props={props} ctx={current.ctx()} />;
   const tree = (
     <Boundary key={renderKey} file={current.file}>
       {doc.slide ? <div className="dc-slide-host">{body}</div> : body}
@@ -639,9 +687,12 @@ function drawBoxes() {
   requestAnimationFrame(loop);
 })();
 
-/** What a click lands on: the element under the pointer, or the nearest one outside a locked branch. */
+/** What a click lands on: the element under the pointer (a slide's text box as a whole), or the nearest one outside a locked branch. */
 function tidOf(target: EventTarget | null): number | null {
   let el = (target as Element | null)?.closest?.('[data-dc-tid]') ?? null;
+  // a slide's text box is one box: a click on one of its paragraphs picks the box (a double click still types in the paragraph)
+  const box = current.slide ? el?.closest('[data-text][data-dc-tid]') : null;
+  if (box) el = box;
   const locked = el?.closest(`[${LOCK_ATTR}]`);
   if (locked) el = locked.parentElement?.closest('[data-dc-tid]') ?? null;
   if (!el) return null;
@@ -1196,7 +1247,7 @@ document.addEventListener('mouseleave', () => {
 
 function editableTids(): Set<number> {
   const doc = docFor(current.source);
-  return new Set(doc.elements.filter(isTextEditable).map((e) => e.tid));
+  return new Set(doc.elements.filter((e) => retypeKind(doc, e) !== null).map((e) => e.tid));
 }
 
 let editingOriginal = '';
@@ -1230,6 +1281,8 @@ document.addEventListener(
     if (!el) return;
     const tid = Number(el.getAttribute('data-dc-tid'));
     if (!editableTids().has(tid) || isLocked(el)) return;
+    // text made only of values from the script: say so instead of doing nothing
+    if (retypeKind(docFor(current.source), docFor(current.source).elements[tid]) === 'data') return void post({ dc: 'noedit', tid, why: 'data' });
     beginText(el);
   },
   true,
@@ -1244,7 +1297,23 @@ function commitText(cancel = false) {
   el.style.outlineOffset = '';
   const text = el.innerText.replace(/\n$/, '');
   const tid = Number(el.getAttribute('data-dc-tid'));
-  if (!cancel && text !== editingOriginal) post({ dc: 'text', tid, text });
+  const item = el.hasAttribute('data-dc-item') ? Number(el.getAttribute('data-dc-item')) : null;
+  const doc = docFor(current.source);
+  const mixed = !!doc.elements[tid] && retypeKind(doc, doc.elements[tid]) === 'mixed';
+  let refused: RetypeError | null = null;
+  if (!cancel && mixed && text !== editingOriginal) {
+    try {
+      planRetype(doc, doc.elements[tid], editingOriginal, text, item);
+    } catch (e) {
+      if (!(e instanceof RetypeError)) throw e;
+      refused = e;
+    }
+  }
+  if (refused) {
+    post({ dc: 'noedit', tid, why: refused.code });
+    renderKey++;
+    render();
+  } else if (!cancel && text !== editingOriginal) post({ dc: 'text', tid, text, from: editingOriginal, item });
   else {
     renderKey++;
     render();
@@ -1308,10 +1377,10 @@ function exportError(err: unknown): string {
   return typeof err === 'string' && err ? err : 'the picture could not be made';
 }
 
-async function exportPng(id: string, scale: number) {
+async function exportPng(id: string, scale: number, tid?: number) {
   const prevSel = current.selected;
   try {
-    const node = mount.querySelector('[data-dc-tid]') as HTMLElement | null;
+    const node = (tid === undefined ? mount.querySelector('[data-dc-tid]') : instances(tid)[0]) as HTMLElement | null;
     if (!node) throw new Error('nothing to export');
     const broken = [...node.querySelectorAll('img')].find((i) => i.complete && !i.naturalWidth && i.getAttribute('src'));
     if (broken) throw new Error(`could not load the picture ${broken.getAttribute('src')!.slice(0, 120)}`);
@@ -1369,7 +1438,7 @@ function onMessage(m: ToRuntime) {
     current.step = m.step;
     post({ dc: 'steps', total: showSteps(mount, m.step) });
   } else if (m.dc === 'export') {
-    void exportPng(m.id, m.scale);
+    void exportPng(m.id, m.scale, m.tid);
   } else if (m.dc === 'edit') {
     // the element may only exist after the render that is on its way
     let tries = 0;
@@ -1387,8 +1456,22 @@ function onMessage(m: ToRuntime) {
   }
 }
 
+/**
+ * An artboard drawn inside an embed (a slide's or a motion scene's): its host
+ * seeks it like any seekable embed. It draws that time at once and answers
+ * once the frame has it, so a render waits for the right picture.
+ */
+let boardReady = false;
+function seekBoard(t: number, n: number) {
+  current.time = t;
+  if (current.source && !docFor(current.source).slide) flushSync(render);
+  requestAnimationFrame(() => post({ dcMotion: 'seeked', n } as unknown as FromRuntime));
+}
+
 window.addEventListener('message', (e) => {
   if (e.source !== window.parent) return;
+  const d = e.data as { dcMotion?: string; t?: unknown; n?: unknown } | null;
+  if (d && d.dcMotion === 'seek' && typeof d.t === 'number') return seekBoard(d.t, typeof d.n === 'number' ? d.n : -1);
   const m = e.data as ToRuntime;
   if (!m || typeof m !== 'object' || !('dc' in m)) return;
   onMessage(m);

@@ -27,6 +27,15 @@ async def wait_for(pred, timeout=6.0):
         await asyncio.sleep(0.1)
     return False
 
+async def wait_for_async(count, timeout=6.0):
+    t = time.time()
+    while time.time() - t < timeout:
+        try:
+            if await count(): return True
+        except Exception: pass
+        await asyncio.sleep(0.1)
+    return False
+
 results = []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
@@ -71,6 +80,9 @@ async def main():
         check('the stage shows the slide in the URL', await pg.locator('.thumb.on').get_attribute('data-slide') == 'box')
         check('embeds run on the stage', await pg.frame_locator(f'{STAGE} iframe').locator('x-embed iframe').count() == 1)
         check('thumbnails keep embeds still', await pg.frame_locator('.thumb[data-slide="box"] iframe').locator('x-embed iframe').count() == 0)
+        # a frame that loads again (reloaded or moved in the DOM) is drawn again, not left blank
+        await pg.locator('.thumb[data-slide="team"] iframe').evaluate("f => { const d = f.srcdoc; f.srcdoc = ''; f.srcdoc = d; }")
+        check('a reloaded thumbnail is drawn again', await wait_for_async(lambda: pg.frame_locator('.thumb[data-slide="team"] iframe').locator('section').count()))
         await pg.screenshot(path=OUT + 's1-deck.png')
 
         # --- selection and text ------------------------------------------------------
@@ -95,6 +107,32 @@ async def main():
         await pg.keyboard.press('Control+z')
         ok = await wait_for(lambda: 'One endpoint for every agent</h2>' in src('slides/box.html'))
         check('undo brings it back', ok)
+
+        # --- a text box: one box of paragraphs and lists ------------------------------------
+        restore()
+        lead = '<p style="font-size:30px;line-height:1.55;color:#4A4F5A;width:580px">Agents keep their native protocol. Tingly Box translates Anthropic, OpenAI and Gemini formats both ways.</p>'
+        tbox = ('<div data-text="36" style="font-size:30px;line-height:1.55;color:#4A4F5A;width:580px;gap:12px">\n'
+                '<p>Agents keep their native protocol.</p>\n<ul>\n<li>Anthropic</li>\n<li>OpenAI</li>\n</ul>\n</div>')
+        path = os.path.join(DECK, 'slides/box.html')
+        text = src('slides/box.html').replace(lead, tbox)
+        with open(path, 'w', encoding='utf-8') as f: f.write(text)
+        await pg.reload()
+        await stage_ready(pg, 'box')
+        fr = pg.frame_locator(f'{STAGE} iframe')
+        indent = await fr.locator('[data-text] ul').evaluate('e => getComputedStyle(e).paddingLeft')
+        check('a text box sets its lists\' indent', indent == '36px', indent)
+        await click_in(pg, '[data-text] li', 1)
+        ok = await wait_for_async(lambda: pg.locator('.prompt .target').filter(has_text='<div>').count())
+        await pg.screenshot(path=OUT + 's3-text-box.png')
+        check('a click inside a text box picks the whole box', ok)
+        await click_in(pg, '[data-text] li', 1, count=2)
+        await pg.wait_for_timeout(200)
+        await pg.keyboard.press('Control+a')
+        await pg.keyboard.type('Gemini')
+        await pg.keyboard.press('Enter')
+        ok = await wait_for(lambda: '<li>Gemini</li>' in src('slides/box.html'))
+        check('double-click types in one paragraph of the box', ok and '<li>Anthropic</li>' in src('slides/box.html'))
+        await pg.wait_for_timeout(400)
 
         # --- dragging a pinned element ------------------------------------------------
         restore()
@@ -156,6 +194,9 @@ async def main():
 
         # --- jQuery runs on a slide too, from the Code tab ---------------------------------
         await pg.keyboard.press('Escape')
+        # the reverted file reloads the deck: pick the slide again so the Code tab shows it, not the cover
+        await pg.locator('.thumb[data-slide="powerups"]').click()
+        await expect(pg.locator('.thumb.on')).to_have_attribute('data-slide', 'powerups')
         await pg.locator('.panel [role="tab"]', has_text='代码').click()
         await expect(pg.locator('.panel textarea[aria-label="幻灯片源文件"]')).to_have_value(re.compile('<h2'))
         await pg.locator('.jqbox textarea').fill("$('h2').css('color', '#ff5c8a')")
@@ -181,7 +222,7 @@ async def main():
         await expect(pg.locator('.present')).to_have_count(0)
 
         # --- export -------------------------------------------------------------------
-        await pg.locator('.bar.right [aria-label="导入 / 导出"]').click()
+        await pg.locator('.topbar [aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:
             await pg.get_by_role('menuitem', name='HTML 网页').click()
         path = await (await dl.value).path()

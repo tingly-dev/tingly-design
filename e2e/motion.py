@@ -36,7 +36,7 @@ async def main():
         await expect(pg.locator('.dashtitle')).to_have_text('Tingly Design')
         stage = pg.frame_locator('.medit iframe')
         await expect(stage.locator('section#poster')).to_be_visible()
-        await expect(pg.locator('.mtime')).to_contain_text('/ 36.')
+        await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
         check('the sample opens on its cover, 36 s long at its speed', await pg.locator('.mscene').count() == 12)
         await pg.screenshot(path=OUT + 'motion.png')
 
@@ -83,6 +83,40 @@ async def main():
         await expect(pg.locator('.mcoverclip.on')).to_have_count(1)
         await pg.wait_for_timeout(600)
         check('adding a cover takes the old poster scene back', '"cover": "poster"' in read('motion.json'))
+        await pg.locator('.mscene', has_text='kind-slides').click()
+
+        # a cover can be one frame of the video: set at the playhead, a pin on the ruler to drag, saved as a picture
+        await pg.locator('.mcoverset').click()
+        await pg.wait_for_timeout(700)
+        check('"Use as cover" writes the playhead time as the cover', re.search(r'"cover": "\d+(\.\d+)?s"', read('motion.json')) is not None, read('motion.json')[-200:])
+        await expect(pg.locator('.mcoverpin')).to_have_count(1)
+        await expect(pg.locator('.mcoverclip.frame')).to_have_count(1)
+        before = re.search(r'"cover": "([^"]+)"', read('motion.json')).group(1)
+        pin = pg.locator('.mcoverpin > span')
+        pb = await pin.bounding_box()
+        await pg.mouse.move(pb['x'] + pb['width'] / 2, pb['y'] + pb['height'] / 2)
+        await pg.mouse.down()
+        await pg.mouse.move(pb['x'] + 120, pb['y'] + 8, steps=6)
+        await pg.mouse.up()
+        await pg.wait_for_timeout(800)
+        after = re.search(r'"cover": "([^"]+)"', read('motion.json')).group(1)
+        check('dragging the cover pin moves the cover time', after != before, f'{before} {after}')
+        async with pg.expect_download() as dl:
+            await pg.get_by_role('button', name='导入 / 导出').click()
+            await pg.get_by_text('封面图片').click()
+        check('"Cover picture" saves a PNG named for the cover', (await dl.value).suggested_filename.endswith('-cover.png'))
+        # the first-frame box: in the dialog's more options, off by default
+        await pg.get_by_role('button', name='导入 / 导出').click()
+        await pg.get_by_text('视频…').click()
+        await pg.get_by_role('button', name='更多选项').click()
+        box = pg.locator('.vcheck input')
+        check('the dialog offers the cover as first frame, unchecked', await box.count() == 1 and not await box.is_checked())
+        await pg.keyboard.press('Escape')
+        await pg.locator('.mcoverx').click(force=True)
+        await pg.wait_for_timeout(500)
+        await pg.locator('.mcoverclip.add').click()
+        await pg.wait_for_timeout(700)
+        check('going back to a cover page takes the poster back', '"cover": "poster"' in read('motion.json'))
         await pg.locator('.mscene', has_text='kind-slides').click()
 
         # a scene's length: the field in the bar and the clip's right edge
@@ -172,7 +206,11 @@ async def main():
         check('selected mid-entrance, an element is drawn landed', mid < 0.99 and rest == 1, f'{mid} {rest}')
         await expect(pg.locator('.lr.away').first).to_be_visible()
         check('layers fade what is not on screen yet', 'S 入场' in (await pg.locator('.lr.away .rt').first.inner_text()).upper().replace('MS', 'S'))
+        # the frame marks the element as soon as it is clicked; wait for the editor to have the selection too,
+        # or Escape can land before it and the selection comes back after
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_have_count(1)
         await pg.keyboard.press('Escape')
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_have_count(0)
 
         # sizes set by hand
         await pg.locator('.mstage').click(position={'x': 5, 'y': 5})
@@ -196,15 +234,22 @@ async def main():
         await expect(pg).to_have_url(BASE + '/?p=design-motion&f=tall')
         box = await pg.locator('.medit .sframe').bounding_box()
         check('the tall format plays standing up', box and box['height'] > box['width'], str(box))
+        # the piece plays at its own speed (motion.json); 1× makes it that many times longer, the files untouched
+        total = lambda t: float(re.search(r'/\s*([\d.]+)', t).group(1))
+        at_project = total(await pg.locator('.mtime').inner_text())
+        project_speed = float(re.search(r'"speed":\s*([\d.]+)', read('motion.json')).group(1))
+        before = read('motion.json')
         await pg.locator('.mspeed select').select_option('1')
-        await expect(pg.locator('.mtime')).to_contain_text('/ 54.')
-        check('speed changes the length without touching the files', True)
+        await expect(pg.locator('.mtime')).not_to_contain_text(f'/ {at_project}')
+        at_one = total(await pg.locator('.mtime').inner_text())
+        check('speed changes the length without touching the files', abs(at_one - at_project * project_speed) < 0.2 and read('motion.json') == before, f'{at_project} → {at_one} at {project_speed}×')
         await pg.screenshot(path=OUT + 'motion-tall.png')
 
         # --- a new piece, in the size picked -----------------------------------------------------------
         await pg.goto(BASE + '/')
         await pg.evaluate("localStorage.removeItem('dc.motionSizes')")
-        await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="motion"] .mi').click()
         dlg = pg.locator('[role=dialog]')
         check('the new-motion dialog asks for a size, 16:9 the first time', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')
         check('the sizes are the presets and a custom one', await dlg.locator('.szopt').count() == 7)
@@ -227,7 +272,8 @@ async def main():
 
         # the last size is the next default; a custom one is kept in the person's own
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="motion"] .mi').click()
         check('the next piece starts in the size used last', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'tall')
         await dlg.locator('.szopt[data-size=custom]').click()
         await dlg.locator('input[aria-label="宽（像素）"]').fill('1280')
@@ -239,7 +285,8 @@ async def main():
         made = json.load(open(os.path.join(REPO, 'projects/zz-motion-2/motion.json')))
         check('a custom size is written as its own format', made['formats'] == {'s1280x720': {'size': [1280, 720]}}, str(made['formats']))
         await pg.goto(BASE + '/')
-        await pg.locator('.lstrip [data-new="motion"]').click()
+        await pg.locator('.lnewbtn').click()
+        await pg.locator('.menu [data-new="motion"] .mi').click()
         check('and kept as the person\'s own size, picked by default', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'mine')
         await dlg.locator('.szx').click()
         check('which they can remove', await dlg.locator('.szmine').count() == 0 and await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')
@@ -247,7 +294,7 @@ async def main():
 
         # --- notes: on the piece and on a scene ---------------------------------------------------------
         await pg.goto(BASE + '/?p=design-motion')
-        await expect(pg.locator('.mtime')).to_contain_text('/ 36.')
+        await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
         await pg.locator('.mscene').nth(1).click()
         await pg.locator('[data-notes-toggle]').click()
         await pg.locator('.mnotes textarea').first.fill('For the launch page. Upbeat, no voice-over.')

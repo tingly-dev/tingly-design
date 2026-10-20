@@ -53,6 +53,7 @@ export default {
   },
   strip: {
     label: 'Slides',
+    tab: 'Pages',
     list: 'Slide list',
     thumb: 'Slide {{n}}: {{title}}',
     skipped: 'Skipped',
@@ -147,9 +148,13 @@ export default {
     what: 'Pictures and SVGs go onto the current slide; the original files stay in the project’s uploads/.',
     placedOne: 'Placed {{name}}.',
     placedMany: 'Placed {{count}} images.',
+    boardWhat: 'An artboard is copied into this deck and goes onto the current slide. One that moves (an effect) fills the slide behind everything and plays while presenting; set its options in the panel.',
+    boardPlaced: 'Imported {{title}} onto this slide.',
+    noSlide: 'Open a slide before importing.',
   },
   export: {
     noNotes: '(No notes)',
+    mdNotes: 'Notes:',
     notesFile: '{{name}} notes.txt',
     imagesDone: 'Saved {{total}} slide images',
     savePdf: 'Choose “Save as PDF” in the print window.',

@@ -10,7 +10,7 @@ from playwright.async_api import async_playwright, expect
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHROME = os.environ.get('DC_CHROME')
-MOCK_PORT = 8792
+MOCK_PORT = 8792 + int(os.environ.get('DC_E2E_OFFSET', 0))  # a parallel lane shifts every port (e2e/run.py)
 
 results = []
 def check(name, ok, extra=''):
@@ -225,7 +225,7 @@ async def main():
             rows = pg.locator('.run-history .hist')
             check('the history lists the requests of the session, newest first', await rows.count() >= 2 and '再改一下' in await rows.first.inner_text(), await pg.locator('.run-history').inner_text())
             check('the history says which request continued a conversation', '接着上次' in await rows.first.inner_text())
-            await rows.first.get_by_role('button').click()
+            await rows.first.get_by_role('button', name='把这条请求放回输入框').click()
             check('a history row can be put back in the box', await box.input_value() == 'SLOW 再改一下')
             await box.fill('')
             await pg.locator('.bar-tools button').first.click()
@@ -236,7 +236,7 @@ async def main():
             await box.press('Enter')
             await expect(feed).to_contain_text('Claude Code 完成', timeout=15000)
             check('a request marked as new starts a fresh session', lines(claude_log)[n]['resume'] is None, lines(claude_log)[n])
-            await pg.locator('.bar-tools button').nth(1).click()
+            await pg.get_by_role('button', name='收起输入栏').click()
             check('the bar folds to a pill', await pg.locator('.bar-pill').count() == 1 and await box.count() == 0)
             await pg.reload()
             await pg.wait_for_selector('.bar-pill')

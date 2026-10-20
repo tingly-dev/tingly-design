@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glow backdrop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: {{base}}">
+  <sc-for list="{{blobs}}" as="b" hint-placeholder-count="3">
+    <div style="position:absolute;left:{{b.x}}px;top:{{b.y}}px;width:{{b.r}}px;height:{{b.r}}px;border-radius:50%;background:radial-gradient(closest-side,{{b.c}},transparent);opacity:{{b.o}}"></div>
+  </sc-for>
+  <sc-for list="{{dots}}" as="d" hint-placeholder-count="12">
+    <div style="position:absolute;left:{{d.x}}px;top:{{d.y}}px;width:4px;height:4px;border-radius:2px;background:#ffffff;opacity:{{d.o}}"></div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2f6fed","options":["#2f6fed","#7c3aed","#0e9f6e","#e8590c"]},"glow":{"editor":"color","default":"#22d3ee"},"base":{"editor":"color","default":"#0b1020"},"dots":{"editor":"boolean","default":true},"$time":{"loop":"8s","still":"2s"},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  // drawn from this.props.time (ms) alone, so a motion piece can show any frame of it
+  renderVals() {
+    const t = (this.props.time ?? 2000) / 8000;
+    const turn = t * Math.PI * 2;
+    const blobs = [
+      { x: 360 + Math.cos(turn) * 260, y: 120 + Math.sin(turn) * 140, r: 1100, c: this.props.accent, o: 0.85 },
+      { x: 980 + Math.cos(turn + 2.1) * 300, y: 320 + Math.sin(turn * 2 + 1) * 120, r: 900, c: this.props.glow, o: 0.55 },
+      { x: -200 + Math.sin(turn + 4) * 220, y: 520 + Math.cos(turn + 4) * 160, r: 800, c: this.props.accent, o: 0.45 },
+    ].map((b) => ({ ...b, x: Math.round(b.x), y: Math.round(b.y) }));
+    const dots = [];
+    if (this.props.dots) {
+      for (let i = 0; i < 48; i++) {
+        const col = i % 12;
+        const row = Math.floor(i / 12);
+        const wave = Math.sin(turn + col * 0.5 + row * 0.9);
+        dots.push({ x: 180 + col * 140, y: 300 + row * 160 + Math.round(wave * 18), o: (0.18 + 0.32 * (wave + 1) / 2).toFixed(2) });
+      }
+    }
+    return { base: this.props.base, blobs, dots };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_SIZES, validSize } from '@dc/core';
-import { forgetSize, readSizes, sameSize, type Size } from '../../motionSizes';
+import { forgetSize, readSizes, sameSize, type Size } from './motionSizes';
 import { Close } from '../icons';
 
 const label = (s: Size) => `${s[0]}×${s[1]}`;
 
 /** The shape of a size, drawn at a fixed height budget, so 9:16 and 16:9 read as different at a glance. */
-function Ratio({ size }: { size: Size }) {
+export function Ratio({ size }: { size: Size }) {
   const k = 16 / Math.max(size[0], size[1]);
   return <i className="szratio" style={{ width: Math.max(4, Math.round(size[0] * k)), height: Math.max(4, Math.round(size[1] * k)) }} />;
 }

@@ -168,7 +168,8 @@ describe('motion: project and timeline', () => {
     expect(parseCover('poster')).toEqual({ scene: 'poster' });
     expect(parseCover('../etc')).toBeUndefined();
     expect(parseCover(3)).toBeUndefined();
-    expect(parseMotion('{"cover":"poster","coverFirstFrame":false}')).toMatchObject({ cover: { scene: 'poster' }, coverFirstFrame: false });
+    expect(parseMotion('{"cover":"poster","coverFirstFrame":true}')).toMatchObject({ cover: { scene: 'poster' }, coverFirstFrame: true });
+    expect(parseMotion('{"cover":"poster","coverFirstFrame":false}').coverFirstFrame).toBeUndefined();
     expect(parseMotion('{}').cover).toBeUndefined();
   });
 
@@ -186,6 +187,16 @@ describe('motion: project and timeline', () => {
     expect(src).toContain('<section id="poster"');
     expect(src).not.toMatch(/data-(in|out|duration|keys)/);
     expect(src).toContain('A b');
+    expect(src).toContain('background:#fbfbf8');
+    expect(newCoverScene('poster', 'T')).not.toContain('<p');
+  });
+
+  it('starts from a light page holding the title, with no hint line', () => {
+    const src = newMotion('T').scenes.title;
+    expect(src).toContain('background:#fbfbf8');
+    expect(src).not.toContain('14161c');
+    expect(src).not.toContain('<p');
+    expect(newMotion('T', 'Hint').scenes.title).toContain('<p');
   });
 
   it('overlaps scenes by their transitions', () => {

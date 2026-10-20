@@ -1,9 +1,11 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../store';
-import { ImportHere, type ImportControls, type ImportTarget } from './ImportHere';
+import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
-import { Caret, FileText, Transfer } from './icons';
+import { offerExports, type Pick } from '../headless';
+import { saveClaudeDesign, saveProjectArchive } from '../projectArchive';
+import { Caret, FileText, FileZip, Frame, Transfer } from './icons';
 
 /**
  * Everything that moves files across the project's edge, in one place: one button in every
@@ -32,16 +34,22 @@ export function FileMenu({
   target,
   label,
   items,
+  pick,
   button = 'icon',
   align = 'right',
+  claudeDesign = false,
 }: {
   target: ImportTarget;
   /** the kind as a noun in the language showing, for "Import into this {label}" */
   label: string;
   /** a function when the list depends on what is selected: it is read when the menu opens */
   items: ExportItem[] | (() => ExportItem[]);
+  /** shows one board, slide, tab or view by id or name, for `tingly-design export --board/--slide/--tab/--view` (headless.ts) */
+  pick?: Pick;
   button?: 'icon' | 'text';
   align?: 'left' | 'right';
+  /** this kind has an original Claude type with files to exchange (docs go through Markdown, motion has none; .design/claude-design-format.md) */
+  claudeDesign?: boolean;
 }) {
   const { t } = useTranslation();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -52,6 +60,8 @@ export function FileMenu({
     setPos({ x: align === 'right' ? r.right : r.left, y: r.bottom + 8 });
   };
   const close = () => setPos(null);
+  // the command line runs the same items without opening the menu
+  useEffect(() => offerExports(items, pick));
   const run = async (item: ExportItem) => {
     close();
     try {
@@ -61,7 +71,18 @@ export function FileMenu({
     }
   };
   const name = t('common.transfer.button');
-  const list = pos ? (typeof items === 'function' ? items() : items) : [];
+  const project = new URLSearchParams(location.search).get('p');
+  const own = pos ? (typeof items === 'function' ? items() : items) : [];
+  // the whole project, the same two items in every kind (.design/project-archive.md)
+  const list: ExportItem[] =
+    pos && project
+      ? [
+          ...own,
+          ...(claudeDesign ? [{ id: 'claude-design', rule: own.length > 0, label: t('common.transfer.label.claudeDesign'), hint: t('common.transfer.hint.claudeDesign'), icon: <FileZip />, run: () => saveClaudeDesign(project) }] : []),
+          { id: 'project', label: t('common.transfer.label.project'), hint: t('common.transfer.hint.project'), icon: <FileZip />, rule: !claudeDesign && own.length > 0, run: () => saveProjectArchive(project, true) },
+          { id: 'project-files', label: t('common.transfer.label.projectFiles'), hint: t('common.transfer.hint.projectFiles'), icon: <FileZip />, run: () => saveProjectArchive(project, false) },
+        ]
+      : own;
   return (
     <>
       <button
@@ -89,8 +110,8 @@ export function FileMenu({
         <Menu x={pos.x} y={pos.y} align={align} label={name} onClose={close}>
           <div className="head">{t('common.transfer.import')}</div>
           <MenuItem
-            label={t('importer.here.chooseFiles')}
-            hint={target.what}
+            label={importFilesLabel(t, target.accepts)}
+            hint={`${target.what} ${target.accepts.includes('drawing') || target.accepts.includes('image') ? t('importer.here.dragOrPaste') : t('importer.here.drag')}`}
             icon={<FileText />}
             onSelect={() => {
               close();
@@ -99,7 +120,7 @@ export function FileMenu({
           />
           {(target.accepts.includes('page') || target.accepts.includes('markdown')) && (
             <MenuItem
-              label={t('importer.here.chooseFolder')}
+              label={t('importer.here.importFolder')}
               icon={<FileText />}
               onSelect={() => {
                 close();
@@ -107,7 +128,17 @@ export function FileMenu({
               }}
             />
           )}
-          <div className="mhint faint">{target.accepts.includes('drawing') || target.accepts.includes('image') ? t('importer.here.dragOrPaste') : t('importer.here.drag')}</div>
+          {target.board && (
+            <MenuItem
+              label={t('importer.here.fromProject')}
+              hint={target.board.what}
+              icon={<Frame />}
+              onSelect={() => {
+                close();
+                controls.current?.pickProject();
+              }}
+            />
+          )}
           <hr />
           <div className="head">{t('common.transfer.export')}</div>
           {list.length === 0 && <div className="mhint faint">{t('common.transfer.exportNone')}</div>}

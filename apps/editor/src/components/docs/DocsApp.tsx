@@ -1,3 +1,5 @@
+import { SideResizer } from '../SideResizer';
+import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
   IconArrowBackUp,
@@ -23,7 +25,7 @@ import DOMPurify from 'dompurify';
 import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
-import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from '../../docs';
+import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { htmlToPng, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
@@ -32,9 +34,12 @@ import { CommentsRail } from './Comments';
 import { FileMenu, type ExportItem } from '../FileMenu';
 import { FilePdf, FileText, Picture } from '../icons';
 import { t as tNow } from '../../i18n';
+import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
-import { ProjectMenu } from '../ProjectMenu';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
+import { LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
+import { download } from '../../local';
 
 function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
   const { t } = useTranslation();
@@ -178,14 +183,6 @@ function Toolbar() {
   );
 }
 
-function download(name: string, text: string, type: string): void {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
 /** The doc as one page of HTML: every tab in order, images from the project. */
 function docHtml(d: DocJson, only?: string): string {
   const s = useStore.getState();
@@ -207,9 +204,17 @@ img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;paddin
 </style></head><body>${parts.join('\n')}</body></html>`;
 }
 
+/** Shows one tab, by its id or its title (headless.ts). */
+function pickTab(d: DocJson, what: string): boolean {
+  const want = what.trim().toLowerCase();
+  const tab = tabOrder(d).find((x) => x.id === what) ?? tabOrder(d).find((x) => x.title.trim().toLowerCase() === want);
+  if (!tab) return false;
+  openTab(tab.id);
+  return true;
+}
+
 /** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
 function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
-  const s = useStore.getState();
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
   return [
     {
@@ -220,27 +225,20 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => savePdf(`${name}.pdf`, { html: docHtml(d), paper: 'a4', print: () => void printWindow(docHtml(d), true) }),
     },
     {
-      id: 'md',
-      label: tNow('common.transfer.label.markdown'),
-      hint: tNow('common.transfer.hint.docTab'),
-      icon: <FileText />,
-      disabled: !tab,
-      rule: true,
-      run: () => download(`${name}.md`, display(s, tabFile(tab!)) ?? '', 'text/markdown'),
-    },
-    {
       id: 'mdAll',
       label: tNow('common.transfer.label.markdown'),
-      hint: tNow('common.transfer.hint.docWhole'),
+      hint: tNow('common.transfer.hint.docMdWhole'),
       icon: <FileText />,
-      run: () =>
-        download(
-          `${name}.md`,
-          tabOrder(d)
-            .map((x) => display(s, tabFile(x.id)) ?? '')
-            .join('\n\n---\n\n'),
-          'text/markdown',
-        ),
+      rule: true,
+      run: () => saveDocMarkdown(name),
+    },
+    {
+      id: 'md',
+      label: tNow('common.transfer.label.markdownTab'),
+      hint: tNow('common.transfer.hint.docMdTab'),
+      icon: <FileText />,
+      disabled: !tab,
+      run: () => saveDocMarkdown(name, tab!),
     },
     { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
     {
@@ -292,31 +290,7 @@ function Settings({ onClose }: { onClose: () => void }) {
 function Title() {
   const { t } = useTranslation();
   const d = useDocIndex();
-  const [renaming, setRenaming] = useState(false);
-  if (renaming)
-    return (
-      <input
-        className="dashtitle"
-        autoFocus
-        defaultValue={d.title}
-        aria-label={t('docs.title.label')}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setRenaming(false);
-        }}
-        onBlur={(e) => {
-          setRenaming(false);
-          const v = e.currentTarget.value.trim();
-          if (v && v !== d.title) editDoc((x) => (x.title = v), 'doc renamed');
-        }}
-      />
-    );
-  return (
-    <h1 className="dashtitle" title={t('docs.title.renameHint')} onDoubleClick={() => setRenaming(true)}>
-      {d.title}
-    </h1>
-  );
+  return <ProjectTitle value={d.title} label={t('docs.title.label')} hint={t('docs.title.renameHint')} onRename={(v) => editDoc((x) => (x.title = v), 'doc renamed')} />;
 }
 
 export function DocsApp() {
@@ -345,39 +319,30 @@ export function DocsApp() {
   const order = tabOrder(d);
   return (
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
-      <header className="dashbar">
-        <ProjectMenu />
-        <Title />
-        <span className={`dot ${connected ? 'on' : 'off'}`} title={connected ? (saving ? t('docs.app.saving') : t('docs.app.saved')) : t('docs.app.offline')} />
-        <span className="hint">{saving ? t('docs.app.saving') : t('docs.app.saved')}</span>
-        <div className="grow" />
+      <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
         <div className="popwrap">
-          <button className={`btn ghost${pop === 'settings' ? ' on' : ''}`} onClick={() => setPop(pop === 'settings' ? null : 'settings')}>
-            {t('docs.app.layout')}
-          </button>
+          <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
         </div>
-        <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} button="text" />
-        <button className={`btn ghost${rail ? ' on' : ''}`} aria-pressed={rail} onClick={() => useDocs.setState({ rail: !rail })}>
-          {t('docs.app.comments')}{open ? <span className="badge blue">{open}</span> : null}
-        </button>
-        <button className="btn ghost" onClick={() => useStore.setState((s) => ({ journalOpen: !s.journalOpen }))}>
-          {t('docs.app.journal')}
-        </button>
-      </header>
-      <aside className="doctabs" aria-label={t('docs.app.tabs')}>
-        <h3>{t('docs.app.tabs')}</h3>
-        <ul>
-          {order.map((x) => (
-            <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
-          ))}
-        </ul>
-        <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
-          {t('docs.app.addTab')}
-        </button>
-        {tab && <Outline tab={tab} />}
-      </aside>
+        <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
+        <BarButton icon={<Message />} label={t('docs.app.comments')} on={rail} badge={open ? <span className="badge blue">{open}</span> : null} onClick={() => useDocs.setState({ rail: !rail })} />
+      </TopBar>
+      <ListColumn label={t('docs.app.tabs')} className="docs">
+        <aside className="doctabs" aria-label={t('docs.app.tabs')}>
+          <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
+          <h3>{t('docs.app.tabs')}</h3>
+          <ul>
+            {order.map((x) => (
+              <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
+            ))}
+          </ul>
+          <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
+            {t('docs.app.addTab')}
+          </button>
+          {tab && <Outline tab={tab} />}
+        </aside>
+      </ListColumn>
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">
@@ -399,7 +364,7 @@ export function DocsApp() {
         />
       </main>
       {rail && <CommentsRail />}
-      {journalOpen && <JournalPopover />}
+      <JournalPopover />
     </div>
   );
 }

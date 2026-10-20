@@ -13,7 +13,7 @@ A doc is a folder under `projects/<name>/`. The original Docs type keeps a doc i
 | `tabs/<id>.md` | one tab's contents. `<id>` is `[A-Za-z0-9_-]`, 1–64 characters. |
 | `comments.json` | `{"threads": [{"id", "tab", "quote", "prefix"?, "suffix"?, "resolved"?, "comments": [{"id", "author", "text", "at"}]}]}` |
 | `assets/` | uploaded images, linked from a tab as `../assets/<file>`. |
-| `uploads/` | files people attached to requests (images, PDFs, text); an image here is linked as `../uploads/<file>`. |
+| `uploads/` | files people attached to requests (images, PDFs, text); an image here is linked as `../uploads/<file>`. A picture the request needs and does not exist yet can be made with the MCP tool `image` or `tingly-design image <folder> "<a full description>"` when image generation is set up in the AI settings; it lands here and prints its path (without an address it fails with a message: say so, don't draw a stand-in). |
 
 Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/design-guide` (the Tingly Design handbook) is a full example: a subtab, tables, a task list, a quote, a code block and comment threads, one of them resolved.
 
@@ -48,3 +48,11 @@ A thread is pinned to the words it quotes (`quote`, with a little of the text be
 
 - One `#` title per tab; sections as `##`. Short paragraphs; lists for steps and options; a table when items share attributes.
 - Write in the doc's language (`settings.lang`). Keep facts checkable: name files, commands and numbers exactly.
+
+## Punctuation
+
+Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches. In a tab, this is the prose: code spans and code blocks stay exactly as written.
+
+## Look at what you made
+
+`tingly-design check <name> --snapshots` checks the files and draws every tab as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken, and so is a script that "threw while the editor showed it"; "lists …, which is missing" names a file you referenced that is not there, and "did not load" a picture, font, style or script that never arrived. Warnings about the layout (text "cut off by its box", text that "runs past the edge", text "hard to read on its background", "nothing is drawn") are worth fixing unless the design means it. `tingly-design export <name> --as png --tab <id or title>` draws one tab; `--as pdf`, `html` and `md` are the doc's other exports. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), `pnpm tingly-design …` in this repository, otherwise the installed `tingly-design …`; not `npx`, which may fetch another version. With Tingly Design's MCP server connected (`tingly-design mcp`, or the editor's `/mcp`), its `check`, `look` and `export` tools do the same (`look` hands the pictures back, one thing at a time with `pick`).

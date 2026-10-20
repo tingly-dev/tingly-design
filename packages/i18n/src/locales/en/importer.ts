@@ -15,6 +15,8 @@ export default {
   skippedMore_one: '{{count}} file type can\'t be kept in the project and wasn\'t saved: {{files}} and more',
   skippedMore_other: '{{count}} file types can\'t be kept in the project and weren\'t saved: {{files}} and more',
   listSeparator: ', ',
+  // the short names a menu item is built from: "Import HTML, SVG, image…"
+  materialShort: { page: 'HTML', drawing: 'SVG', image: 'image', markdown: 'Markdown', data: 'CSV / JSON', font: 'font' },
   material: {
     page: 'Web pages (.html, with their folder)',
     drawing: 'SVG',
@@ -29,12 +31,19 @@ export default {
     accepts: 'What you can import here: {{list}}.',
     into: 'Import into this {{label}}',
     button: 'Import',
-    chooseFiles: 'Choose files…',
-    chooseFolder: 'Choose a folder…',
+    importFiles: 'Import {{list}}…',
+    importFolder: 'Import a folder…',
+    fromProject: 'Import from a project…',
     drag: 'You can also drag files in.',
     dragOrPaste: 'You can also drag files in, or paste them.',
     dropInto: 'Drop to import into this {{label}}',
     busy: 'Importing {{name}}…',
+  },
+  board: {
+    title: 'Import an artboard from a canvas',
+    none: 'No canvas has an artboard yet. Make one in a canvas (an effect is an artboard that moves with time), then import it here.',
+    pick: 'Import {{title}}',
+    moving: 'Moves',
   },
   dialog: {
     step: {

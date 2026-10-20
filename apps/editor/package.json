@@ -12,6 +12,7 @@
   "dependencies": {
     "@dc/core": "workspace:*",
     "@dc/export": "workspace:*",
+    "@dc/i18n": "workspace:*",
     "@dc/import": "workspace:*",
     "@floating-ui/dom": "1.8.0",
     "@tabler/icons-react": "3.49.0",
@@ -26,13 +27,13 @@
     "@tiptap/react": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "dompurify": "3.2.4",
+    "fflate": "^0.8.3",
     "i18next": "^26.4.4",
     "marked": "14.1.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-i18next": "^17.0.16",
-    "zustand": "^5.0.15",
-    "@dc/i18n": "workspace:*"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

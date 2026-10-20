@@ -1,8 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import { TINGLY_BOX_URL, fastReady, resolveAi, sanitizeSaved, type AiEnv, type AiResolved, type AiSaved } from '@dc/core';
-import { PROJECTS_DIR } from './layout';
+import { CONFIG_FILE } from './layout';
 
 /**
  * The server's side of the AI settings (.design/ai-settings.md): reads the environment and the saved
@@ -10,8 +10,7 @@ import { PROJECTS_DIR } from './layout';
  * The logic of which value wins is in packages/core/src/aiConfig.ts.
  */
 
-/** DC_CONFIG: the file the settings are saved in; by default next to the projects folder, which a host owns. */
-const FILE = process.env.DC_CONFIG?.trim() || join(PROJECTS_DIR, '..', '.tingly-design', 'ai.json');
+const FILE = CONFIG_FILE;
 
 const env = (): AiEnv => ({
   baseUrl: process.env.ANTHROPIC_BASE_URL,

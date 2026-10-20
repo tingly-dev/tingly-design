@@ -35,7 +35,7 @@ tingly-design 的 issue 一部分来自团队，一部分来自外部用户。�
 
 ### 表单与标签
 
-issue 通过 `.github/ISSUE_TEMPLATE` 的四种表单提交：Feature / Bug / Feedback / Other，第一项都是"领域"（canvas、slides、design system、dashboard、docs、motion、editor、server，或不确定）。表单只能给固定标签和固定标题前缀，不能随下拉框变，所以 `.github/workflows/issue-area.yml` 在 issue 创建时读出所选领域，加上 `area/<领域>` 标签，并把标题从 `feat: …` 改成 `feat(motion): …`；类型标签是 `enhancement` / `bug` / `feedback` / `other`。
+issue 通过 `.github/ISSUE_TEMPLATE` 的四种表单提交：Feature / Bug / Feedback / Other，第一项都是"领域"（canvas、slides、design system、dashboard、docs、motion、editor、server，加上两个跨项目类型的类目 UI/UX 和 Import/Export，或不确定）。表单只能给固定标签和固定标题前缀，不能随下拉框变，所以 `.github/workflows/issue-area.yml` 在 issue 创建时读出所选领域，加上 `area/<领域>` 标签，并把标题从 `feat: …` 改成 `feat(motion): …`；UI/UX 和 Import/Export 不属于某一种项目，而是体验和导入导出这两条横切的线，所以单独成类，而不是塞进 editor；skill 遇到这两类要按 `project-kinds.md` 逐个类型检查。类型标签是 `enhancement` / `bug` / `feedback` / `other`。
 
 skill 只读这些标签：类型决定走哪条路径，领域决定先读哪一类的代码和笔记，不用再靠标题猜。Feedback 是专给体验和打磨类意见的一类，和 Feature、Bug 可能重叠，这是有意的：已有的很多反馈 issue 就是这样写的。工作流在 issue 里改标签和标题，是对所有人一视同仁的表单整理，不属于 skill"外部 issue 不改标签"的范围。
 

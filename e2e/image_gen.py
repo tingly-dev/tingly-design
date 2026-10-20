@@ -1,7 +1,7 @@
 """Image generation: the dialog's Image generation section (follows Tingly Box, off with Anthropic, an OpenAI-style address with its
 own key), then the server's /images route through the mock (python3 e2e/mock_images.py): a picture made and kept in uploads/, one
 edited, the gateway's refusal passed on, a path outside uploads/ refused, the key never read back.
-Run with `pnpm dev` up and NO ANTHROPIC_* / DC_IMAGE_* in its environment, DC_CONFIG=<a temp file>, the mock on 8791 (log path as its first argument):
+`pnpm e2e image_gen` starts what it needs; by hand: `pnpm dev` with NO ANTHROPIC_* / DC_IMAGE_* in its environment, DC_CONFIG=<a temp file>, python3 e2e/mock_anthropic.py and python3 e2e/mock_images.py <log> (8790 and 8791):
 python3 e2e/image_gen.py  (DC_CHROME=/path/to/chrome; SHOTS=<dir> to keep screenshots; DC_MOCK_LOG=<log> to check what the mock received)"""
 import os, asyncio, json, urllib.request, urllib.error, shutil
 from playwright.async_api import async_playwright, expect
@@ -10,6 +10,9 @@ API = os.environ.get('DC_API', 'http://localhost:8787')
 SHOTS = os.environ.get('SHOTS')
 CHROME = os.environ.get('DC_CHROME')
 MOCK_LOG = os.environ.get('DC_MOCK_LOG')
+OFFSET = int(os.environ.get('DC_E2E_OFFSET', 0))
+MOCK_URL = os.environ.get('DC_MOCK_URL', f'http://127.0.0.1:{8790 + OFFSET}')
+IMAGES_URL = os.environ.get('DC_MOCK_IMAGES_URL', f'http://127.0.0.1:{8791 + OFFSET}')
 PROJECT = os.environ.get('DC_PROJECT', 'box-console')
 ok = True
 def check(cond, what):
@@ -56,10 +59,10 @@ async def main():
         await shot(pg, '2-tingly-box-follows.png')
         # another address: an OpenAI-style one, with its own key and model
         await dlg.locator('[data-preset=custom]').click()
-        await dlg.locator('input[placeholder="https://"]').fill('http://127.0.0.1:8790')
+        await dlg.locator('input[placeholder="https://"]').fill(MOCK_URL)
         await dlg.get_by_label('Image generation Address').fill('ftp://nope')
         await expect(dlg.locator('.status.bad')).to_contain_text('http://')
-        await dlg.get_by_label('Image generation Address').fill('http://127.0.0.1:8791/v1')
+        await dlg.get_by_label('Image generation Address').fill(IMAGES_URL + '/v1')
         await dlg.get_by_label('Image generation Key').fill('sk-image')
         await expect(dlg.get_by_label('Image generation Model')).to_have_attribute('placeholder', 'gpt-image-1')
         await dlg.get_by_label('Image generation Model').fill('gpt-image-test')
@@ -67,7 +70,7 @@ async def main():
         await dlg.get_by_role('button', name='Save').click()
         await expect(dlg).to_have_count(0)
         cfg = call('/api/ai-config')[1]
-        check(cfg['image']['baseUrl'] == {'value': 'http://127.0.0.1:8791/v1', 'source': 'saved'} and cfg['image']['ready'], 'saved and ready')
+        check(cfg['image']['baseUrl'] == {'value': IMAGES_URL + '/v1', 'source': 'saved'} and cfg['image']['ready'], 'saved and ready')
         check('sk-image' not in json.dumps(cfg), 'no image key in the response')
         check(call('/api/health')[1]['imageGen'] is True, 'health: image generation is on')
 

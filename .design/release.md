@@ -10,7 +10,7 @@
 
 一份与平台无关的 bundle，就是 `pnpm bundle` 产出的文件夹，两个渠道发同一个文件：
 
-- **npm**：同时发 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字，内容相同，只有 `package.json` 的 `name` 不同。作用域名和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起，是宿主钉版本用的正式名字；不带作用域的名字好记好搜，也防止被别人抢注，将来加了 `bin` 就是 `npx tingly-design`。和 TB 一样（`tingly-box` 加 `@tingly-dev/…`）。两个名字每次一起发，不留一个永远停在占位版本的空包。仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
+- **npm**：同时发 `@tingly-dev/tingly-design` 和 `tingly-design` 两个名字，内容相同，只有 `package.json` 的 `name` 不同。作用域名和 TB 的平台包（`@tingly-dev/tingly-box-<os>-<cpu>`）放在一起，是宿主钉版本用的正式名字；不带作用域的名字好记好搜，也防止被别人抢注，用户用的就是它：`npx tingly-design` 或 `npm i -g tingly-design`（见 [cli.md](./cli.md)）。`bin` 有两个名字、指向同一个 `cli.mjs`：`tingly-design` 和简写 `td`。`td` 不和常见系统命令冲突（macOS/Linux 默认都没有；npm 上同名的 `td` 包是另一个无关的工具，只有同时全局装了它才会互相覆盖）；`npx tingly-design` 不受影响，npx 在多个 `bin` 里选和包名一致的那个。两个包名发同一份 `package.json`，所以 `@tingly-dev/tingly-design` 也带 `td`。和 TB 一样（`tingly-box` 加 `@tingly-dev/…`）。两个名字每次一起发，不留一个永远停在占位版本的空包。仓库里各包的 `@dc/*` 名字只在工作区内部用，不发。
 - **GitHub release**：`tingly-design-<ver>.tgz` 和 `tingly-design-<ver>.tgz.sha256`。这个 tgz 就是 `npm pack` 的产物改了名，和 npm 上 `@tingly-dev/tingly-design` 的内容相同；TB 钉的 sha256 以 release 上的文件为准。解开后顶层是 `package/`（npm 的打包格式），宿主解压时去掉这一层。
 
 包里不放源码、`.design/`、`docs/`、`e2e/`，只有 bundle 本来就有的东西，加上 `README.md`、`LICENSE`、`NOTICE` 和 `THIRD_PARTY_LICENSES.txt`。最后这个是必须的：`server.mjs`、`editor/`、`sandbox/` 把依赖打进了同一个文件，构建时又去掉了许可证注释（`legalComments: 'none'`），MIT/ISC/BSD 要求随副本附上版权声明，所以 `scripts/bundle.mjs` 从 `pnpm licenses list --prod` 收集每个生产依赖的许可证全文。
@@ -20,13 +20,15 @@
 ### 考虑过的
 
 - **每个工作区包分别发**（`@dc/core` 之类）：没有外部使用者，包名作用域也不是我们的；宿主只要能跑的成品。
-- **给包加 `bin`，让人 `npx` 直接跑**：服务端默认把项目放在 bundle 目录下的 `projects/`，`npx` 的缓存目录会被清掉，项目跟着丢。等默认项目目录改到用户数据目录再加。
+- **把数据留在包目录里**：最早服务端默认把项目和 AI 设置放在 bundle 目录下，`npx` 的缓存会被清掉，`npm i` 升级会整个替换包目录，项目跟着丢。所以直接运行时数据放在 `~/.tingly-design/`，宿主仍用 `DC_PROJECTS` 自己决定（[project-folders.md](./project-folders.md)）；`bin` 是在这之后才加的。
 - **release 和 npm 各打一次包**：两次构建的产物可能不同，宿主钉的 sha256 只能对一边，放弃；现在只构建一次，npm 发布用的是同一个 tgz 解开后的内容。
 - **只占作用域名，或者只发不带作用域的名字**：前者把好记的名字留给别人，后者没法和 TB 的平台包归在一个组织下。
 
 ## 怎么触发
 
-推一个 `vX.Y.Z` tag，版本必须和根 `package.json` 的 `version` 一致，不一致直接失败（先改版本、合进 main、再打 tag）。`vX.Y.Z-rc.N` 这类预发布版发到 npm 的 `next` dist-tag，GitHub release 标成 prerelease；正式版走 `latest`。
+推一个 `vX.Y.Z` tag 就发这个版本。tag 就是版本号：build 先把它写进根 `package.json`，再打 bundle，所以发版前不用在 main 上改版本（和 Tingly Box 的 `npm.yml` 一样）。仓库里的 `version` 只是本地开发时显示的值。tag 带后缀（`-rc.1`、`-beta` 等）就发到 npm 的 `rc` dist-tag，GitHub release 标成 prerelease；不带后缀走 `latest`。格式不对（不是 `vX.Y.Z` 或 `vX.Y.Z-<后缀>`）直接失败。
+
+考虑过让 tag 必须和 `package.json` 一致、先提 PR 改版本：多一个只改一行的 PR，还多一种失败（忘了改）。版本既然只在发版时有意义，就由 tag 说了算。dist-tag 用 `rc` 而不是 npm 常见的 `next`，跟 Tingly Box 统一，宿主和用户只记一套。
 
 三个 job 依次跑：
 
@@ -63,8 +65,16 @@ Apache-2.0（`LICENSE`、`NOTICE`）。目标是让编辑器传得快、谁都�
 
 release 的 build 一步在根 `package.json` 没有 `license` 时直接失败，保证不会发出没有许可证的包。
 
+## 主页：GitHub Pages，视频由 CI 渲染
+
+主页是 `site/` 里的一页静态 HTML（中英双语，随浏览器语言切换），`.github/workflows/pages.yml` 在 main 上构建并部署；PR 上只构建不部署，渲染坏了在合并前就能看到。
+
+主页上的宣传视频是 `projects/design-motion` 这个示例本身，由 `scripts/build-site.sh` 调用 `tingly-design export`（[cli.md](./cli.md)）在 CI 里渲染出 16:9 和 9:16 两版加封面，不提交进仓库。没选直接拷贝一份 mp4，因为那份会和示例项目脱节：示例改了，主页还是旧片子；仓库里也会多出几 MB 的二进制，每次重渲染都是一次新的 blob。代价是 CI 要装 Chromium 和 ffmpeg，渲染约一两分钟；只在 `site/`、该示例、sandbox 运行时、`render.ts` 或命令行变化时才触发。
+
+六种类型的截图和分享封面用 README 的素材 `docs/images/readme/`（中英文各一套，页面按语言切换），同样构建时拷入。部署用官方的 `upload-pages-artifact` + `deploy-pages`，不用 gh-pages 分支，所以仓库里没有构建产物分支。第一次部署前要有人在仓库设置里把 Pages 的来源选成 GitHub Actions（见 Settings → Pages）。
+
 ## 还开着的
 
 - TB 那边的下载、校验和缓存（tingly-box-integration.md §4.4）还没做。
 - 变更说明现在用 GitHub 自动生成的 release notes，没有手写的 changelog。
-- 默认项目目录改到用户数据目录之后，可以给包加 `bin`，支持 `npx tingly-design`。
+- 发版冒烟还没检查"升级一个版本后 `~/.tingly-design/` 里的项目还在"。

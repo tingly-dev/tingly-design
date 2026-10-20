@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Cdp, findChrome } from './render';
+import { Cdp, chromeArgs, findChrome } from './render';
 
 export type Paper = 'page' | 'a4';
 
@@ -25,9 +25,7 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
   const file = join(tmp, 'page.html');
   const base = `<base href="${o.origin.replace(/"/g, '')}/">`;
   writeFileSync(file, /<head[^>]*>/i.test(o.html) ? o.html.replace(/<head[^>]*>/i, (m) => m + base) : base + o.html);
-  const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${join(tmp, 'profile')}`, 'about:blank'];
-  if (process.getuid?.() === 0) args.unshift('--no-sandbox');
-  const browser = spawn(chrome, args, { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
+  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
   const stop = () => browser.kill('SIGKILL');
   o.signal?.addEventListener('abort', stop);
   const timer = setTimeout(stop, 90_000);
@@ -54,7 +52,7 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
   } finally {
     clearTimeout(timer);
     o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null ? ok(null) : browser.once('close', ok)));
+    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
     stop();
     await exited;
     await new Promise((r) => setTimeout(r, 300));

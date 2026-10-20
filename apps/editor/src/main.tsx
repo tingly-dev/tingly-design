@@ -4,11 +4,14 @@ import { AiSettingsHost } from './components/AiSettings';
 import { useStore } from './store';
 import { initLanguage } from './i18n';
 import { initTheme } from './theme';
+import { applySideWidths } from './sideWidth';
 import { listenToHost } from './host';
+import './headless';
 import './styles.css';
 
 initLanguage();
 initTheme();
+applySideWidths();
 listenToHost();
 
 // handy in devtools and for the end-to-end tests

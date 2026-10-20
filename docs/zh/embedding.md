@@ -22,10 +22,11 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 
 | 路径 | 是什么 |
 |---|---|
-| `server.mjs` | 打进了全部依赖的服务端，只需要 Node（版本见清单里的 `node`）。 |
+| `cli.mjs` | 打进了全部依赖的 `tingly-design` 命令（npm 包的 `bin`，见[命令行](./cli.md)），只需要 Node（版本见清单里的 `node`）。 |
+| `server.mjs` | 就是 `tingly-design serve`：只起服务端，给宿主用。 |
 | `tingly-design.json` | `{ name, version, protocol, entry, node }`：启动前先核对 `protocol`。 |
 | `editor/`、`sandbox/` | 构建好的编辑器和画板运行时。 |
-| `samples/` | 示例项目，会复制进一个还不存在的项目文件夹。 |
+| `samples/` | 示例项目，会复制进一个还不存在的项目文件夹，并放进启动页的 `tingly-design` 分组。只带项目自己的文件；这台机器放在旁边的东西（改动记录、运行记录、Claude Code 会话、对话记录）不带。 |
 | `scripts/`、`.claude/skills/` | 交给 Claude Code 时它要读的格式说明和要跑的脚本。 |
 
 这个文件夹可以拷到任何地方，不需要本仓库，也不需要 `node_modules`。
@@ -41,12 +42,13 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 | `PORT` | `0` 让服务端自己挑空闲端口（从就绪行读出来），或固定端口。 |
 | `DC_HOST` | 不用设：服务端只监听 `127.0.0.1`，对外的是宿主。 |
 | `DC_BASE_PATH` | 挂载的前缀，如 `/design`。所有路由、编辑器和它的资源都挪到它下面；只访问前缀本身会跳到 `前缀/`。转发时路径原样保留。 |
-| `DC_PROJECTS` | 宿主数据目录里的一个文件夹，如 `~/.tingly-box/design/projects`。不存在时会先放入示例项目（`DC_SAMPLES=0` 则从空开始）。 |
+| `DC_PROJECTS` | 宿主数据目录里的一个文件夹，如 `~/.tingly-box/design/projects`。不存在时会先放入示例项目（`DC_SAMPLES=0` 则从空开始）。不设时，包把项目放在 `~/.tingly-design/projects`，不放在包自己的文件夹里（升级会替换它）。运行期间服务端会在那里放一个 `.server.json`，同一个文件夹上的 `tingly-design open` 和 `new` 会交给它（见[命令行](./cli.md#编辑器已经打开时)）。 |
+| `DC_LINKS` | 设为 `0` 时所有项目都只在 `DC_PROJECTS` 里。否则可以在启动页打开这台机器上任意位置的项目文件夹，或在那里新建；这些文件夹记在 `DC_PROJECTS/.links.json`，留在原处。 |
 | `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` | 宿主的模型网关和它的令牌。快速 AI 直接调它；「交给 Claude Code」用同样的环境运行 `claude`，所以两者都经过宿主。 |
 | `DC_FAST_MODEL`、`DC_DELEGATE_MODEL` | 网关认识的模型名。 |
 | `DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY` | 可选：OpenAI 风格的图片网关（`<base>/images/generations`、`<base>/images/edits`）、它的模型名和密钥。Tingly Box 的是 `http://localhost:12580/tingly/imagegen/v1`。不设时，连接是 Tingly Box 就跟着它走；密钥默认用 `ANTHROPIC_AUTH_TOKEN`。 |
 | `DC_LOG_LEVEL`、`DC_LOG_FORMAT` | 服务端日志：`error`、`warn`、`info`（默认）、`debug` 或 `silent`；`json` 表示 stderr 每行一个对象。见[开发](./development.md#服务端日志)。 |
-| `DC_CONFIG` | 编辑器“AI 模型设置”保存到哪个文件（默认是 `DC_PROJECTS` 旁边的 `.tingly-design/ai.json`）。宿主在上面设的值优先于它，设置对话框里那一项显示为“由宿主设定”，不可改。 |
+| `DC_CONFIG` | 编辑器“AI 模型设置”保存到哪个文件（默认是 `DC_PROJECTS` 旁边的 `.tingly-design/ai.json`；没设 `DC_PROJECTS` 时是 `~/.tingly-design/ai.json`）。宿主在上面设的值优先于它，设置对话框里那一项显示为“由宿主设定”，不可改。 |
 | `DC_THEME` | 用户还没挑主题时的默认外观（预设名或 JSON，见[主题](theming.md)）。 |
 | `DC_LANG` | 链接和用户都没定语言时的界面语言（`en` 或 `zh`，也认 `zh-CN` 这类写法）。不设时跟随浏览器，再退回英文。 |
 | `DC_EXIT_WITH_STDIN` | 设为 `1`，并把 stdin 接成宿主一直开着的管道：管道一关服务端就退出，宿主崩溃也不会留下孤儿进程。 |
@@ -59,7 +61,7 @@ TINGLY_DESIGN_READY {"port":41873,"basePath":"/design","version":"0.1.0","protoc
 
 `GET <前缀>/api/health` 返回同样的 `version`、`protocol`、`basePath`，以及快速 AI 和 `claude` 命令是否可用。`SIGTERM`（或关闭 stdin）会停掉它和它启动的 Claude Code。
 
-Claude Code 在包的文件夹里运行，从那里找到格式说明；项目文件夹在包外时会加上 `--add-dir`。项目文件夹在 git 仓库里时可以提交，不在时会说明原因。
+Claude Code 在包的文件夹里运行，从那里找到格式说明；项目文件夹在包外时会加上 `--add-dir`，从别处打开的项目也会。项目文件夹在 git 仓库里时可以提交，不在时会说明原因。
 
 ## 3. 转发请求
 

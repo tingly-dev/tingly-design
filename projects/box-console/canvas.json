@@ -38,13 +38,21 @@
       "w": 1040,
       "h": 520,
       "title": "Request flow"
+    },
+    "Glow.dc.html": {
+      "x": 0,
+      "y": 1560,
+      "w": 1920,
+      "h": 1080,
+      "title": "Glow backdrop (effect)"
     }
   },
   "order": [
     "Main.dc.html",
     "Usage.dc.html",
     "Agents.dc.html",
-    "Flow.dc.html"
+    "Flow.dc.html",
+    "Glow.dc.html"
   ],
   "notes": {
     "t1": {

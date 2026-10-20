@@ -67,8 +67,13 @@ async def main():
     port = ready['port']
     root = f'http://127.0.0.1:{port}'
     check('PORT=0 picks a port and the ready line names it', port > 0 and ready['basePath'] == PREFIX and ready['protocol'] == 1, str(ready))
-    check('a fresh projects folder starts with the six samples', sorted(os.listdir(projects)) == ['box-console', 'box-usage', 'design-guide', 'design-motion', 'tingly-ds', 'tingly-intro'], str(os.listdir(projects)))
-    check('…without anyone\'s journal or run reports', not any(f.startswith('.') for d in os.listdir(projects) for f in os.listdir(os.path.join(projects, d))))
+    # the samples are the repository's projects/ folders; the running server's own .server.json sits beside them
+    samples = sorted({f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2})
+    seeded = sorted(d for d in os.listdir(projects) if os.path.isdir(os.path.join(projects, d)))
+    check('a fresh projects folder starts with the samples', seeded == samples, f'{seeded} != {samples}')
+    check('…without anyone\'s journal or run reports', not any(f.startswith('.') for d in seeded for f in os.listdir(os.path.join(projects, d))))
+    groups = json.load(open(os.path.join(projects, '.groups.json'), encoding='utf-8'))
+    check('…filed together in the tingly-design group, and nothing else is grouped', groups == {n: 'tingly-design' for n in samples}, str(groups))
     status, body, _ = get(root + PREFIX + '/api/health')
     health = json.loads(body)
     check('health answers under the base path', status == 200 and health['basePath'] == PREFIX and health['protocol'] == 1 and health['version'] == manifest['version'], str(health))
@@ -109,7 +114,8 @@ async def main():
         # --- standalone under the prefix --------------------------------------------------------
         await pg.goto(root + PREFIX + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
-        check('the launcher lists every project', await pg.locator('.lcard[data-project]').count() == 6)
+        n = await pg.locator('.lcard[data-project]').count()
+        check('the launcher lists every project', n == len(samples), f'{n} cards, {len(samples)} samples')
         cover = pg.frame_locator('.lcard[data-project="tingly-intro"] .lframe iframe')
         await expect(cover.locator('section#cover h1')).to_contain_text('Meet Tingly')
         check('live previews run the sandbox from prefix/sandbox/', True)
@@ -126,9 +132,9 @@ async def main():
         t = time.time()
         while time.time() - t < 6 and '- [x] Run `pnpm install`' not in open(overview).read(): await asyncio.sleep(0.1)
         check('an edit is written to the host\'s projects folder', '- [x] Run `pnpm install`' in open(overview).read())
-        await pg.locator('a.back').click()
+        await pg.locator('.pmenu a.tb').click()
         await pg.wait_for_url(root + PREFIX + '/')
-        check('"all projects" goes back to the launcher under the prefix', True)
+        check('the home link goes back to the launcher under the prefix', True)
 
         # --- inside a host page -----------------------------------------------------------------
         await pg.goto(host)

@@ -1,0 +1,201 @@
+{
+  "v": 3,
+  "title": "Tingly Design UI",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 2960,
+      "w": 1200,
+      "h": 420,
+      "title": "Top bar anatomy"
+    },
+    "Kinds.dc.html": {
+      "x": 1280,
+      "y": 2960,
+      "w": 1164,
+      "h": 760,
+      "title": "Top bar in six kinds"
+    },
+    "Map.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1600,
+      "h": 760,
+      "title": "How the editor fits together"
+    },
+    "Tokens.dc.html": {
+      "x": 1680,
+      "y": 0,
+      "w": 1720,
+      "h": 560,
+      "title": "Theme tokens"
+    },
+    "Shell.dc.html": {
+      "x": 0,
+      "y": 1400,
+      "w": 1720,
+      "h": 1180,
+      "title": "Editor shell"
+    },
+    "Launcher.dc.html": {
+      "x": 1800,
+      "y": 1400,
+      "w": 1720,
+      "h": 940,
+      "title": "Launcher"
+    },
+    "Menus.dc.html": {
+      "x": 2524,
+      "y": 2960,
+      "w": 1720,
+      "h": 720,
+      "title": "Menus and dialogs"
+    },
+    "Canvas.dc.html": {
+      "x": 0,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas"
+    },
+    "Slides.dc.html": {
+      "x": 1800,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Slides"
+    },
+    "DesignSystem.dc.html": {
+      "x": 3600,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Design system"
+    },
+    "Dashboard.dc.html": {
+      "x": 0,
+      "y": 5200,
+      "w": 1720,
+      "h": 940,
+      "title": "Dashboard"
+    },
+    "Doc.dc.html": {
+      "x": 1800,
+      "y": 5200,
+      "w": 1720,
+      "h": 940,
+      "title": "Doc"
+    },
+    "Motion.dc.html": {
+      "x": 3600,
+      "y": 5200,
+      "w": 1720,
+      "h": 940,
+      "title": "Motion"
+    },
+    "AgentBar.dc.html": {
+      "x": 0,
+      "y": 6500,
+      "w": 2200,
+      "h": 2000,
+      "title": "Agent bar"
+    },
+    "TemplateValues.dc.html": {
+      "x": 5400,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas template values"
+    },
+    "NewDialog.dc.html": {
+      "x": 4324,
+      "y": 2960,
+      "w": 1320,
+      "h": 1100,
+      "title": "New project dialog"
+    },
+    "TemplateText.dc.html": {
+      "x": 7200,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas template text and colours"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Kinds.dc.html",
+    "Map.dc.html",
+    "Tokens.dc.html",
+    "Shell.dc.html",
+    "Launcher.dc.html",
+    "Menus.dc.html",
+    "NewDialog.dc.html",
+    "Canvas.dc.html",
+    "TemplateValues.dc.html",
+    "TemplateText.dc.html",
+    "Slides.dc.html",
+    "DesignSystem.dc.html",
+    "Dashboard.dc.html",
+    "Doc.dc.html",
+    "Motion.dc.html",
+    "AgentBar.dc.html"
+  ],
+  "notes": {
+    "t0": {
+      "kind": "title1",
+      "x": 0,
+      "y": -260,
+      "text": "Tingly Design, drawn in Tingly Design",
+      "maxW": 3400
+    },
+    "t1": {
+      "kind": "title1",
+      "x": 0,
+      "y": 1140,
+      "text": "The frame every kind shares",
+      "maxW": 3520
+    },
+    "t2": {
+      "kind": "title1",
+      "x": 0,
+      "y": 2700,
+      "text": "Top bar and menus",
+      "maxW": 4244
+    },
+    "t3": {
+      "kind": "title1",
+      "x": 0,
+      "y": 3880,
+      "text": "Six kinds",
+      "maxW": 5320
+    },
+    "t4": {
+      "kind": "title1",
+      "x": 0,
+      "y": 6240,
+      "text": "Agent bar",
+      "maxW": 1720
+    },
+    "s1": {
+      "x": 3480,
+      "y": 0,
+      "w": 520,
+      "fill": "green",
+      "size": 20,
+      "text": "How to use this canvas\n\n1. Before changing what a person sees, find its board here and draw the change first.\n2. Orange numbers on a board match the list beside it; yellow boxes are open questions.\n3. When the code moves on, redraw the board in the same PR, so this canvas stays the current picture."
+    },
+    "s2": {
+      "x": 3600,
+      "y": 1400,
+      "w": 520,
+      "fill": "blue",
+      "size": 18,
+      "text": "Boards are drawn with the editor's light theme tokens (see Theme tokens). Text is placeholder where it is data: [name], [time]."
+    }
+  }
+}
