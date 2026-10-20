@@ -49,6 +49,7 @@ import {
   cleanGroup,
   retitle,
   isTurn,
+  lookOf,
 } from '@dc/core';
 import {
   ASSET_TYPES,
@@ -145,6 +146,8 @@ app.post('/api/projects', async (c) => {
   const { title, kind, size } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
   if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  if (body.look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
+  if (body.look !== undefined && !lookOf(String(body.look))) throw new HttpError(400, 'badLook', { look: String(body.look) });
   const name = body.path !== undefined ? await linkFolder(String(body.path), true) : body.name!;
   await createProject(
     name,
@@ -153,7 +156,7 @@ app.post('/api/projects', async (c) => {
     langOf(c),
     {
       ...((kind === 'motion' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {}),
-      ...(kind === 'design-system' && body.look ? { look: body.look } : {}),
+      ...(body.look ? { look: String(body.look) } : {}),
     },
   ).catch(async (e) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});

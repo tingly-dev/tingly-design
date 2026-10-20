@@ -100,6 +100,8 @@ export default {
     dsNone: 'None',
     look: 'Start from a look',
     lookBlank: 'Blank',
+    lookPicked: 'Starts from {{look}} ({{group}})',
+    lookNone: 'Pick a look, or Blank for the neutral starter',
     lookBlankNote: 'A small neutral starter',
     boardSize: 'Board size',
     boardCustomFor: 'Any size from 1 to 7680 px.',

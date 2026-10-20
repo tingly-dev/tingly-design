@@ -94,6 +94,8 @@ export default {
     dsNone: '不用',
     look: '从一个风格开始',
     lookBlank: '空白',
+    lookPicked: '从「{{look}}」开始（{{group}}）',
+    lookNone: '选一个风格，或者选“空白”用中性起点',
     lookBlankNote: '一个小的中性起点',
     boardSize: '画板尺寸',
     boardCustomFor: '宽高各在 1 到 7680 像素之间。',

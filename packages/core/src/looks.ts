@@ -16,8 +16,8 @@ export interface LookData {
   dark: boolean;
   colors: Record<string, string>;
   families: { sans: string; display: string };
-  /** Families to load from Google Fonts. */
-  hosted: string[];
+  /** Families to load from Google Fonts, each with the link (and weights) html-ppt loads it by. */
+  hosted: { family: string; href: string }[];
   /** Small, medium, large; a theme that gives no length leaves its slot out. */
   radius: (string | null)[];
   /** Raised cards, overlays. */
@@ -64,7 +64,7 @@ export function lookTokens(look: LookData, name: string): string {
         },
         type: {
           fonts: [],
-          hosted: look.hosted.map((family) => ({ family, href: `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, '+')}:wght@400;600;800&display=swap` })),
+          hosted: look.hosted,
           families: look.families,
           groups: [
             {

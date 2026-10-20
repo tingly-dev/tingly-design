@@ -274,6 +274,15 @@ async def main():
         made = os.path.join(REPO, 'projects/zz-cli-look/tokens.json')
         check('new design-system --look makes a system from that look', r.returncode == 0 and os.path.exists(made) and bool(open(made, encoding='utf-8').read().strip()), r.stdout + r.stderr)
         r = cli('new', 'design-system', 'zz-cli-badlook', '--global', '--look', 'nonsense')
+        import urllib.request, urllib.error
+        def post(body):
+            req = urllib.request.Request(BASE + '/api/projects', data=json.dumps(body).encode(), headers={'content-type': 'application/json'}, method='POST')
+            try: return urllib.request.urlopen(req).status
+            except urllib.error.HTTPError as e: return e.code
+        st = post({'name': 'zz-cli-badlook', 'kind': 'design-system', 'look': 'nope'})
+        check('the API refuses an unknown look without leaving a folder', st == 400 and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-badlook')), str(st))
+        st = post({'name': 'zz-cli-badlook', 'kind': 'slides', 'look': 'nord'})
+        check('the API refuses a look for any kind but a design system', st == 400 and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-badlook')), str(st))
         check('an unknown look is refused and names the choices', r.returncode != 0 and 'nord' in (r.stdout + r.stderr) and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-badlook')), r.stdout + r.stderr)
         csv = os.path.join(REPO, 'projects/.zz-sales.csv')
         open(csv, 'w').write('month,revenue\n2026-01,120\n2026-02,150\n')

@@ -543,13 +543,14 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   const t: TFunction = translator(lang);
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
+  // a look is checked before anything is written, so a bad one leaves no folder behind
+  const look = opts.look ? lookOf(opts.look) : undefined;
+  if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
   await mkdir(dir, { recursive: true });
   if (kind === 'design-system') {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
-    const look = opts.look ? lookOf(opts.look) : undefined;
-    if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
     await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
-    await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }) }) : t('starter.dsReadme', { title }));
+    await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id }) : t('starter.dsReadme', { title }));
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
     return;

@@ -51,6 +51,11 @@ export function LookPicker({ value, onChange }: { value: string; onChange: (look
           </div>
         )}
       </div>
+      {picked !== 'blank' && (
+        <p className="szfor" data-picked={value || undefined}>
+          {lookOf(value) ? t('launcher.new.lookPicked', { look: t(`ds.look.${value}`, { defaultValue: value }), group: t(`ds.lookGroup.${lookOf(value)!.group}`) }) : t('launcher.new.lookNone')}
+        </p>
+      )}
     </div>
   );
 }

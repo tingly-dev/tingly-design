@@ -30,6 +30,20 @@ describe('LOOKS', () => {
     }
   });
 
+  it('writes no empty shadow, loads only fonts html-ppt loads, and keeps text on the accent readable', () => {
+    const lum = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    for (const l of LOOKS) {
+      const t = JSON.parse(lookTokens(l, 'X'));
+      for (const s of t.shadow.tokens) expect(s.value, l.id).not.toBe('none');
+      for (const h of t.type.hosted) expect(h.href, l.id).toMatch(/^https:\/\/fonts\.googleapis\.com\/css2\?family=/);
+      const [a, b] = [lum(l.colors.accent), lum(l.colors['on-accent'])].sort((x, y) => y - x);
+      expect((a + 0.05) / (b + 0.05), `${l.id} on-accent`).toBeGreaterThan(3);
+    }
+  });
+
   it('finds a look by id', () => {
     expect(lookOf('nord')?.group).toBe('palette');
     expect(lookOf('nope')).toBeUndefined();

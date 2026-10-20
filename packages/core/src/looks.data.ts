@@ -29,7 +29,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "8px",
@@ -68,7 +75,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "4px",
@@ -100,14 +114,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#0f8a2f",
       "warn": "#d38a00",
       "bad": "#d6001c",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Inter','Helvetica Neue',Helvetica,'Noto Sans SC',sans-serif",
       "display": "'Inter','Helvetica Neue',Helvetica,sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       null,
@@ -115,8 +136,8 @@ export const LOOK_DATA: LookData[] = [
       null
     ],
     "shadow": [
-      "none",
-      "none"
+      null,
+      null
     ]
   },
   {
@@ -139,14 +160,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#1aaf84",
       "warn": "#d19030",
       "bad": "#c5485a",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Inter','Noto Sans SC',sans-serif",
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "10px",
@@ -185,7 +213,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "16px",
@@ -223,7 +258,24 @@ export const LOOK_DATA: LookData[] = [
       "sans": "'Noto Sans SC','Inter',sans-serif",
       "display": "'Noto Serif SC','Playfair Display',serif"
     },
-    "hosted": [],
+    "hosted": [
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      },
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      }
+    ],
     "radius": [
       "14px",
       "20px",
@@ -254,14 +306,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#0cce6b",
       "warn": "#f5a524",
       "bad": "#ee0000",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Inter','Noto Sans SC',sans-serif",
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "8px",
@@ -293,14 +352,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#3f7d4f",
       "warn": "#b07a1f",
       "bad": "#8a2a1c",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Playfair Display','Noto Serif SC',serif",
       "display": "'Playfair Display','Noto Serif SC',serif"
     },
     "hosted": [
-      "Playfair Display"
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      }
     ],
     "radius": [
       "2px",
@@ -339,8 +405,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Playfair Display','Noto Serif SC',Georgia,serif"
     },
     "hosted": [
-      "Inter",
-      "Playfair Display"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      }
     ],
     "radius": [
       "0px",
@@ -348,7 +428,7 @@ export const LOOK_DATA: LookData[] = [
       "2px"
     ],
     "shadow": [
-      "none",
+      null,
       "6px 6px 0 var(--accent)"
     ]
   },
@@ -372,14 +452,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#1a5a2a",
       "warn": "#8a6a1a",
       "bad": "#8a1a1a",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Latin Modern Roman','Playfair Display','Noto Serif SC',Georgia,serif",
       "display": "'Latin Modern Roman','Playfair Display','Noto Serif SC',Georgia,serif"
     },
     "hosted": [
-      "Latin Modern Roman"
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      }
     ],
     "radius": [
       "0px",
@@ -387,7 +474,7 @@ export const LOOK_DATA: LookData[] = [
       "0px"
     ],
     "shadow": [
-      "none",
+      null,
       "0 1px 2px rgba(0,0,0,.1)"
     ]
   },
@@ -411,14 +498,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#0e7c3a",
       "warn": "#ffd100",
       "bad": "#e11d2d",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Oswald','Inter','Noto Sans SC',sans-serif",
       "display": "'Oswald','Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Oswald"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "0px",
@@ -426,7 +520,7 @@ export const LOOK_DATA: LookData[] = [
       "2px"
     ],
     "shadow": [
-      "none",
+      null,
       "0 4px 0 var(--accent)"
     ]
   },
@@ -450,14 +544,29 @@ export const LOOK_DATA: LookData[] = [
       "good": "#4a6b3e",
       "warn": "#c9a961",
       "bad": "#d93a2a",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Inter','Noto Sans SC',sans-serif",
       "display": "'Noto Serif SC','Playfair Display',serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      },
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      }
     ],
     "radius": [
       "0px",
@@ -465,7 +574,7 @@ export const LOOK_DATA: LookData[] = [
       "2px"
     ],
     "shadow": [
-      "none",
+      null,
       "0 1px 0 rgba(40,30,20,.12)"
     ]
   },
@@ -496,8 +605,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Playfair Display','Noto Serif SC',serif"
     },
     "hosted": [
-      "Inter",
-      "Playfair Display"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      }
     ],
     "radius": [
       "0px",
@@ -536,8 +659,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Archivo Black',sans-serif"
     },
     "hosted": [
-      "Space Grotesk",
-      "Archivo Black"
+      {
+        "family": "Space Grotesk",
+        "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Archivo Black",
+        "href": "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap"
+      }
     ],
     "radius": [
       null,
@@ -576,8 +713,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Archivo Black',sans-serif"
     },
     "hosted": [
-      "Space Grotesk",
-      "Archivo Black"
+      {
+        "family": "Space Grotesk",
+        "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Archivo Black",
+        "href": "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap"
+      }
     ],
     "radius": [
       "6px",
@@ -616,8 +767,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Archivo Black','Space Grotesk',sans-serif"
     },
     "hosted": [
-      "Space Grotesk",
-      "Archivo Black"
+      {
+        "family": "Space Grotesk",
+        "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Archivo Black",
+        "href": "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap"
+      }
     ],
     "radius": [
       "4px",
@@ -656,7 +821,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "10px",
@@ -695,7 +867,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "12px",
@@ -731,7 +910,18 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Space Grotesk','Inter',sans-serif"
     },
     "hosted": [
-      "Space Grotesk"
+      {
+        "family": "Space Grotesk",
+        "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "16px",
@@ -767,7 +957,18 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Space Grotesk','Inter',sans-serif"
     },
     "hosted": [
-      "Space Grotesk"
+      {
+        "family": "Space Grotesk",
+        "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "10px",
@@ -806,7 +1007,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'JetBrains Mono',monospace"
     },
     "hosted": [
-      "JetBrains Mono"
+      {
+        "family": "JetBrains Mono",
+        "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      },
+      {
+        "family": "IBM Plex Mono",
+        "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&display=swap"
+      }
     ],
     "radius": [
       "2px",
@@ -814,7 +1022,7 @@ export const LOOK_DATA: LookData[] = [
       "4px"
     ],
     "shadow": [
-      "none",
+      null,
       "0 16px 40px rgba(0,0,0,.3)"
     ]
   },
@@ -845,8 +1053,18 @@ export const LOOK_DATA: LookData[] = [
       "display": "'JetBrains Mono','Inter',monospace"
     },
     "hosted": [
-      "Inter",
-      "JetBrains Mono"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "JetBrains Mono",
+        "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      }
     ],
     "radius": [
       "0px",
@@ -854,7 +1072,7 @@ export const LOOK_DATA: LookData[] = [
       "0px"
     ],
     "shadow": [
-      "none",
+      null,
       "0 0 0 1px var(--line-strong)"
     ]
   },
@@ -885,8 +1103,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'JetBrains Mono','IBM Plex Mono',monospace"
     },
     "hosted": [
-      "Inter",
-      "JetBrains Mono"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "JetBrains Mono",
+        "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      },
+      {
+        "family": "IBM Plex Mono",
+        "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&display=swap"
+      }
     ],
     "radius": [
       "3px",
@@ -925,7 +1157,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'JetBrains Mono',monospace"
     },
     "hosted": [
-      "JetBrains Mono"
+      {
+        "family": "JetBrains Mono",
+        "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+      },
+      {
+        "family": "IBM Plex Mono",
+        "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&display=swap"
+      }
     ],
     "radius": [
       "2px",
@@ -964,8 +1203,22 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Playfair Display','Noto Serif SC',serif"
     },
     "hosted": [
-      "Inter",
-      "Playfair Display"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      },
+      {
+        "family": "Playfair Display",
+        "href": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&display=swap"
+      },
+      {
+        "family": "Noto Serif SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&display=swap"
+      }
     ],
     "radius": [
       "6px",
@@ -1004,7 +1257,18 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Archivo Black',sans-serif"
     },
     "hosted": [
-      "Archivo Black"
+      {
+        "family": "Archivo Black",
+        "href": "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap"
+      },
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       null,
@@ -1043,7 +1307,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "14px",
@@ -1082,7 +1353,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "14px",
@@ -1114,14 +1392,21 @@ export const LOOK_DATA: LookData[] = [
       "good": "#40a02b",
       "warn": "#df8e1d",
       "bad": "#d20f39",
-      "on-accent": "#111111"
+      "on-accent": "#ffffff"
     },
     "families": {
       "sans": "'Inter','Noto Sans SC',sans-serif",
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "10px",
@@ -1160,7 +1445,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "10px",
@@ -1199,7 +1491,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "8px",
@@ -1238,7 +1537,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "4px",
@@ -1277,7 +1583,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "8px",
@@ -1316,7 +1629,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "10px",
@@ -1355,7 +1675,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "6px",
@@ -1394,7 +1721,14 @@ export const LOOK_DATA: LookData[] = [
       "display": "'Inter','Noto Sans SC',sans-serif"
     },
     "hosted": [
-      "Inter"
+      {
+        "family": "Inter",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap"
+      },
+      {
+        "family": "Noto Sans SC",
+        "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600;700;900&display=swap"
+      }
     ],
     "radius": [
       "8px",
