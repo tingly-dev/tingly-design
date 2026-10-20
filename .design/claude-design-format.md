@@ -31,7 +31,7 @@
 | 文档 | Docs | 原版没有文件 | 原版的"导出为 Markdown"导入成一份新文档（一个标签页，标题取第一个 `#`）；导出走 Markdown 本身 |
 | 动效 | 无 | — | — |
 
-- **认类型**：看有没有 `project/` 下的 `deck.json`、`canvas.json`、`design-system.json`，有 `dash/meta` 就是看板；包可以被一层文件夹包着（Claude Code 存下来的目录）。有 `tingly-design.json` 的是自己的 .zip，先按它走，所以两种 .zip 共用同一个"导入项目"，不冲突。
+- **认类型**：看有没有 `project/` 下的 `deck.json`、`canvas.json`、`design-system.json`，有 `dash/meta` 就是看板；没有 `dash/meta` 时，同一层里有 `datasets/` 和页面（`index.html` 或 `files/index.html`）也算看板，但那一层有 `dash.json` 的是自己的看板文件夹（手工压的 zip、按文件夹导入），不认作原版；包可以被一层文件夹包着（Claude Code 存下来的目录）。有 `tingly-design.json` 的是自己的 .zip，先按它走，所以两种 .zip 共用同一个"导入项目"，不冲突。
 - **图片**：原版把图片放进素材库，引用写 `/_blob/<id>`，Claude Code 读素材时存成 `<id>.<扩展名>`。导入时在包里找这些文件，放进 `uploads/`（人带进来的东西放 `uploads/`，[import-into-project.md](./import-into-project.md)）并改写引用；找不到的不改，数一数告诉人。
 - **看板的数据**：原版的文件数据集指向 `/_blob/<id>`，按同样的办法在包里找；找不到的数据集原样保留，由检查器在"问题"里列出，接上文件即可。导出时数据放 `blobs/`，数据集的 `url` 指向它，`README.md` 里写"上传后把 url 换成返回的"。
 - **导出不带**：改动记录、`.git`、`renders/`、本机的运行记录（和 [project-archive.md](./project-archive.md) 一致）；也不带本地的 SQLite 数据库：原版 Dashboard 读不了。

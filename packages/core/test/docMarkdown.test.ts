@@ -57,6 +57,21 @@ describe('docToMarkdown', () => {
     expect(markdown).toBe('# Notes\n\n## A\n\ntext\n');
   });
 
+  it('sees a fence that opens a list item or sits in a quote', () => {
+    const { markdown, images } = docToMarkdown(index('D', [{ id: 'a', title: 'A' }]), files({ a: '- ```bash\n  # install\n  ```\n\n## Next\n\n==hi== ![](../assets/z.png)\n\n> ```\n> ==x==\n> ```\n' }));
+    expect(markdown).toContain('  # install\n');
+    expect(markdown).toContain('\n### Next\n');
+    expect(markdown).toContain('<mark>hi</mark> ![](assets/z.png)');
+    expect(markdown).toContain('> ==x==');
+    expect(images).toEqual(['assets/z.png']);
+  });
+
+  it('keeps a # that ends a title, and a stray % in a picture path', () => {
+    const { markdown, images } = docToMarkdown(index('C#', [{ id: 'a', title: 'x' }]), files({ a: '# C#\n\n![](../assets/50%off.png)\n' }));
+    expect(markdown).toBe('# C#\n\n![](assets/50%off.png)\n');
+    expect(images).toEqual(['assets/50%off.png']);
+  });
+
   it('keeps remote pictures and handles an empty doc', () => {
     expect(docToMarkdown(index('D', [{ id: 'm', title: 'M' }]), files({ m: '![](https://x.dev/a.png)' })).images).toEqual([]);
     expect(docToMarkdown(index('Empty', []), files({})).markdown).toBe('# Empty\n');

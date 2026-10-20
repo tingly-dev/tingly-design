@@ -215,10 +215,13 @@ export async function importFiles(files: Record<string, Uint8Array>, fileName: s
 export async function packClaudeDesign(name: string, dir = projectDir(name)): Promise<{ bytes: Uint8Array; file: string; files: number; notes: ClaudeDesignNote[] }> {
   const kind = await kindOf(dir);
   if (!kind) throw new HttpError(404, 'noProject', { name });
-  if (!hasClaudeDesign(kind)) throw new HttpError(400, 'noClaudeDesign', { kind });
+  if (!hasClaudeDesign(kind)) throw new HttpError(400, 'noClaudeDesign');
   const project: Record<string, Uint8Array> = {};
   for (const rel of await walkAll(dir)) if (archiveKeeps(rel, { journal: false })) project[rel] = new Uint8Array(await readFile(join(dir, rel)));
-  const title = JSON.parse((await readFile(join(dir, INDEX_FILE[kind]), 'utf8').catch(() => '{}')) || '{}').title;
+  let title: unknown;
+  try {
+    title = JSON.parse((await readFile(join(dir, INDEX_FILE[kind]), 'utf8').catch(() => '{}')) || '{}').title;
+  } catch {}
   const pkg = toClaudeDesign(kind, project, typeof title === 'string' && title ? title : name);
   const zip: Zippable = {};
   for (const [p, d] of Object.entries(pkg.files)) zip[p] = [d, { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|zip)$/i.test(p) ? 0 : 6 }];

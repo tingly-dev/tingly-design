@@ -32,7 +32,7 @@ export default {
   emptyFile: '文件是空的',
   archiveUnreadable: '这个文件不是能读取的 .zip',
   archiveNoProject: '这个 .zip 里没有 Tingly Design 项目或 Claude Design 包',
-  noClaudeDesign: '{{kind}}没有 Claude Design 格式：文档走 Markdown，动效在原版里没有对应类型。',
+  noClaudeDesign: '这种项目没有 Claude Design 格式：文档走 Markdown，动效在原版里没有对应类型。',
   archiveTooBig: '这个 .zip 解开后超过 1 GB 或 20000 个文件',
   fileTooLarge: '文件超过 {{size}}',
   cannotKeep: '不能保存这个文件：{{path}}',

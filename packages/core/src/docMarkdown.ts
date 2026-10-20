@@ -26,7 +26,8 @@ export interface DocMarkdown {
 }
 
 const LOCAL = /^(?:\.\.\/)?((?:assets|uploads)\/[^)\s"'>]+)/;
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+/** A fence, also one opening a list item or inside a quote (`- ```bash`, `> ````); any indent closes it. */
+const FENCE = /^(?:[ \t>]*(?:[-*+]|\d{1,9}[.)])[ \t]+)*[ \t>]*(`{3,}|~{3,})/;
 
 /** Runs `fn` over the lines outside fenced code blocks, handing it each line's text. */
 function mapOutsideCode(source: string, fn: (line: string) => string): string {
@@ -76,7 +77,13 @@ function tidy(source: string, images: Set<string>): string {
   const take = (src: string) => {
     const m = LOCAL.exec(src);
     if (!m) return src;
-    images.add(decodeURI(m[1].replace(/[?#].*$/, '')));
+    const path = m[1].replace(/[?#].*$/, '');
+    // a stray % (`50%off.png`) is the path as written
+    let decoded = path;
+    try {
+      decoded = decodeURI(path);
+    } catch {}
+    images.add(decoded);
     return src.replace(LOCAL, '$1');
   };
   return mapOutsideCode(source, (line) =>
@@ -91,7 +98,8 @@ function tidy(source: string, images: Set<string>): string {
 
 /** The first line of a tab if it is its `# Title` (after blank lines): the heading text and what follows it. */
 function leadTitle(source: string): { title: string; rest: string } | null {
-  const m = /^\s*#[ \t]+(.+?)[ \t]*#*[ \t]*(?:\n|$)/.exec(source);
+  // a closing run of # only after a space: `# C#` is titled C#
+  const m = /^\s*#[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*(?:\n|$)/.exec(source);
   return m ? { title: m[1], rest: source.slice(m[0].length) } : null;
 }
 

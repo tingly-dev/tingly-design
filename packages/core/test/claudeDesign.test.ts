@@ -18,6 +18,11 @@ describe('detectClaudeDesign', () => {
     expect(detectClaudeDesign(['canvas.json', 'Main.dc.html'])).toBeNull();
     expect(detectClaudeDesign(['my/canvas.json'])).toBeNull();
     expect(detectClaudeDesign(['notes.md'])).toBeNull();
+    // a Tingly dashboard folder (zipped by hand or imported as a folder) stays one of ours
+    expect(detectClaudeDesign(['dash.json', 'datasets/a.json', 'files/index.html'])).toBeNull();
+    expect(detectClaudeDesign(['box/dash.json', 'box/datasets/a.json', 'box/files/index.html'])).toBeNull();
+    // a page and datasets in different folders are not one dashboard
+    expect(detectClaudeDesign(['a/index.html', 'b/datasets/x.json'])).toBeNull();
   });
 });
 
@@ -37,6 +42,19 @@ describe('fromClaudeDesign', () => {
     expect(Object.keys(r.files).sort()).toEqual(['deck.json', 'slides/a.html', `uploads/${id}.png`]);
     expect(t(r.files['slides/a.html'])).toContain(`src="uploads/${id}.png"`);
     expect(r.notes).toEqual([]);
+  });
+
+  it('points a design system page at its picture from its own folder, and leaves URLs elsewhere alone', () => {
+    const id = 'c'.repeat(32);
+    const far = `https://claude.ai/api/x/_blob/${id}`;
+    const all: Files = {
+      'project/design-system.json': b('{}'),
+      'project/components/button/preview.html': b(`<img src="/_blob/${id}"><img src="${far}">`),
+      [`${id}.png`]: b('PNG'),
+    };
+    const r = fromClaudeDesign(all, detectClaudeDesign(Object.keys(all))!);
+    expect(t(r.files['components/button/preview.html'])).toBe(`<img src="../../uploads/${id}.png"><img src="${far}">`);
+    expect(r.files[`uploads/${id}.png`]).toBeDefined();
   });
 
   it('says how many pictures the package did not carry', () => {
@@ -61,6 +79,18 @@ describe('fromClaudeDesign', () => {
     expect(JSON.parse(t(r.files['datasets/rows.json'])).source.url).toBe('data/rows.csv');
     expect(t(r.files['data/rows.csv'])).toContain('1,2');
     expect(r.notes).toEqual([{ key: 'connector', params: { names: 'BigQuery' } }]);
+  });
+
+  it('brings in a file dataset whose blob has no name', () => {
+    const id = 'd'.repeat(32);
+    const all: Files = {
+      'dash/meta': b('{"title":"S"}'),
+      'datasets/rows': b(JSON.stringify({ title: 'Rows', source: { kind: 'file', url: `/_blob/${id}`, format: 'csv' } })),
+      [`${id}.csv`]: b('a\n1\n'),
+    };
+    const r = fromClaudeDesign(all, detectClaudeDesign(Object.keys(all))!);
+    expect(JSON.parse(t(r.files['datasets/rows.json'])).source.url).toBe('data/rows.csv');
+    expect(r.notes).toEqual([]);
   });
 
   it('reads a dashboard saved as a page and datasets only', () => {

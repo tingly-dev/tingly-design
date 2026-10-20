@@ -75,7 +75,7 @@ const TOOLS = [
   },
   {
     name: 'export',
-    description: `Save what the editor's Export menu saves, into the project's renders/ folder, and return the file paths. Formats: any kind zip; ${Object.entries(FORMATS)
+    description: `Save what the editor's Export menu saves, into the project's renders/ folder, and return the file paths. Formats: any kind zip; canvas, slides, design system and dashboard claude-design (the original Claude Design layout); ${Object.entries(FORMATS)
       .map(([k, f]) => `${k} ${f.join(', ')}`)
       .join('; ')}. Needs Chrome for pictures, PDF and HTML, and Chrome and ffmpeg for mp4 and gif.`,
     inputSchema: {
