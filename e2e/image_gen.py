@@ -147,6 +147,10 @@ async def main():
         await expect(d2.locator('[data-image-section]')).to_contain_text('图片生成')
         await d2.locator('[data-image-section]').scroll_into_view_if_needed()
         await shot(pg2, '4-zh-dark.png')
+        await pg2.goto(f'{BASE}/?p={PROJECT}')
+        await pg2.locator('button[aria-label="切换项目"]').click()
+        await expect(pg2.get_by_role('menuitemcheckbox', name='本项目生成图片')).to_have_attribute('aria-checked', 'true')
+        await shot(pg2, '8-zh-dark-project-menu.png')
         check(not errs, 'no page errors')
         await b.close()
     # leave the project as it was
