@@ -16,6 +16,7 @@ import {
   type DocComments,
   type DocJson,
   type DocThread,
+  markdownToTab,
 } from '@dc/core';
 import { deleteFile, display, edit, enqueueResult, toast, useStore } from '../../store';
 import { replaceUrl } from '../../host';
@@ -246,7 +247,7 @@ export const docsImport: ImportTarget = {
     for (const f of docs) {
       const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '';
       const text = new TextDecoder().decode(f.bytes).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-      const md = text.replace(MD_REF, (m, a1, p1, z1, a2, p2, z2) => {
+      const md = markdownToTab(text).replace(MD_REF, (m, a1, p1, z1, a2, p2, z2) => {
         const ref = p1 ?? p2;
         if (/^([a-z]+:|\/|#)/i.test(ref)) return m;
         let path = ref.split(/[?#]/)[0];
