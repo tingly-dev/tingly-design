@@ -351,7 +351,7 @@ export function Launcher() {
               onSelect={() => (setNewMenu(null), setImporting({}))} />
           </div>
           <div data-new="archive" className="mwrap">
-            <MenuItem label={t('launcher.archive.import')} icon={
+            <MenuItem label={t('launcher.archive.import')} hint={t('launcher.archive.importHint')} icon={
                 <span className="kic t-blue">
                   <FileZip />
                 </span>

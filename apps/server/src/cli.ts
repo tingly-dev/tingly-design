@@ -307,10 +307,11 @@ async function exportProject(arg: string | undefined): Promise<number> {
       onOpening: opening,
     })
     .finally(clearLine);
-  if (opts.json) print(r.zip ? { file: r.files[0], ...r.zip } : r.formats ? r.formats : { files: r.files, failed: r.failed });
+  if (opts.json) print(r.zip ? { file: r.files[0], ...r.zip, ...(r.notes ? { notes: r.notes } : {}) } : r.formats ? r.formats : { files: r.files, failed: r.failed });
   else {
     for (const f of r.files) console.log(t('cli.wrote', { file: show(f) }));
     for (const f of r.failed) console.error(t('cli.exportFailed', f));
+    for (const n of r.notes ?? []) console.log(`  ${t(`claudeDesign.note.${n.key}`, n.params)}`);
   }
   return r.failed.length ? 1 : 0;
 }
@@ -397,19 +398,22 @@ async function mcp(): Promise<void> {
 
 // ---------------------------------------------------------------- import
 
-/** A project from a .zip, the same as the launcher's Import a project. */
+/** A project from a .zip, a Claude Design package (a .zip or the folder Claude Code saved), or a Claude Docs Markdown export, the same as the launcher's Import a project. */
 async function importProject(arg: string | undefined): Promise<void> {
   if (!arg) throw new CliError(t('cli.needZip'));
-  const { readFile } = await import('node:fs/promises');
+  const { readFile, stat } = await import('node:fs/promises');
   const path = resolve(expandHome(arg));
-  const bytes = await readFile(path).catch(() => {
+  const info = await stat(path).catch(() => {
     throw new CliError(t('cli.noFileAt', { path: show(path) }), 1);
   });
-  const { unpackProject } = await import('./archive');
+  const { unpackProject, importFiles, readTree } = await import('./archive');
   const { projectDir } = await import('./store');
-  const done = await unpackProject(new Uint8Array(bytes), basename(path));
+  const done = info.isDirectory() ? await importFiles(await readTree(path), basename(path)) : await unpackProject(new Uint8Array(await readFile(path)), basename(path));
   if (opts.json) print({ ...done, dir: projectDir(done.name) });
-  else console.log(t('cli.imported', { name: done.name, path: show(projectDir(done.name)) }) + (done.systems.length ? ` ${t('cli.importedSystems', { systems: done.systems.join(', ') })}` : ''));
+  else {
+    console.log(t(done.claudeDesign ? 'cli.importedClaudeDesign' : 'cli.imported', { name: done.name, path: show(projectDir(done.name)), kind: done.claudeDesign ? t(`cli.kind.${done.claudeDesign}`) : '' }) + (done.systems.length ? ` ${t('cli.importedSystems', { systems: done.systems.join(', ') })}` : ''));
+    for (const n of done.notes) console.log(`  ${t(`claudeDesign.note.${n.key}`, n.params)}`);
+  }
 }
 
 // ---------------------------------------------------------------- main

@@ -9,13 +9,20 @@ import {
   INDEX_FILE,
   archiveKeeps,
   archivePath,
+  detectClaudeDesign,
+  docFromMarkdown,
   freeName,
+  fromClaudeDesign,
+  hasClaudeDesign,
+  toClaudeDesign,
   installedSystems,
   planArchive,
   projectNameFrom,
   renameSystems,
   type ArchiveManifest,
   type ArchiveOptions,
+  type ClaudeDesignNote,
+  type ClaudeDesignKind,
 } from '@dc/core';
 import { HttpError, PROJECTS_DIR, isProjectName, kindOf, linkedProjects, projectDir } from './store';
 import { VERSION } from './layout';
@@ -100,8 +107,30 @@ async function writeProject(files: Record<string, Uint8Array>, prefix: string, n
   }
 }
 
-/** A project from a .zip: it joins the projects folder under a free name, its design systems beside it. */
-export async function unpackProject(bytes: Uint8Array, fileName: string): Promise<{ name: string; systems: string[] }> {
+export interface Unpacked {
+  name: string;
+  systems: string[];
+  /** set when the file was Claude's own format: the kind it was read as */
+  claudeDesign?: ClaudeDesignKind | 'docs';
+  notes: ClaudeDesignNote[];
+}
+
+/** Every file of a folder as an archive path, for importing a folder the way a .zip is (the command line). */
+export async function readTree(dir: string): Promise<Record<string, Uint8Array>> {
+  const out: Record<string, Uint8Array> = {};
+  let count = 0;
+  let total = 0;
+  for (const rel of await walkAll(dir)) {
+    const p = archivePath(rel);
+    if (!p || p.startsWith('__MACOSX/')) continue;
+    const data = new Uint8Array(await readFile(join(dir, rel)));
+    if (++count > MAX_FILES || (total += data.length) > MAX_BYTES) throw new HttpError(413, 'archiveTooBig');
+    out[p] = data;
+  }
+  return out;
+}
+
+function unzip(bytes: Uint8Array): Record<string, Uint8Array> {
   let count = 0;
   let total = 0;
   let raw: Record<string, Uint8Array>;
@@ -125,6 +154,23 @@ export async function unpackProject(bytes: Uint8Array, fileName: string): Promis
     // macOS adds a __MACOSX folder of resource forks to zips it makes
     if (p && !p.startsWith('__MACOSX/')) files[p] = data;
   }
+  return files;
+}
+
+/** A project from a .zip, a Claude Design package or a Claude Docs Markdown export: it joins the projects folder under a free name. */
+export async function unpackProject(bytes: Uint8Array, fileName: string): Promise<Unpacked> {
+  if (/\.(md|markdown)$/i.test(fileName)) {
+    const taken = await takenNames();
+    const base = projectNameFrom(fileName.replace(/\.(md|markdown)$/i, ''));
+    const name = freeName(base, taken);
+    await writeProject(docFromMarkdown(strFromU8(bytes), base.replace(/[-_]+/g, ' ')), '', name);
+    return { name, systems: [], claudeDesign: 'docs', notes: [] };
+  }
+  return importFiles(unzip(bytes), fileName);
+}
+
+/** The project a set of files holds (an archive's, or a folder's), whichever of our archive and Claude's package it is. */
+export async function importFiles(files: Record<string, Uint8Array>, fileName: string): Promise<Unpacked> {
   let manifest: ArchiveManifest | null = null;
   if (files[ARCHIVE_MANIFEST]) {
     try {
@@ -133,9 +179,20 @@ export async function unpackProject(bytes: Uint8Array, fileName: string): Promis
       manifest = null;
     }
   }
+  const taken = await takenNames();
+  if (!manifest) {
+    const match = detectClaudeDesign(Object.keys(files));
+    if (match) {
+      const got = fromClaudeDesign(files, match);
+      // named after its title; a title with no letters or digits (Chinese) falls back to the file or folder name
+      const fromTitle = got.title ? projectNameFrom(got.title) : 'project';
+      const name = freeName(fromTitle !== 'project' ? fromTitle : projectNameFrom(fileName.replace(/\.zip$/i, '').replace(/[-_]claude[-_]design$/i, '')), taken);
+      await writeProject(got.files, '', name);
+      return { name, systems: [], claudeDesign: got.kind, notes: got.notes };
+    }
+  }
   const plan = planArchive(Object.keys(files), manifest, projectNameFrom(fileName));
   if (!plan) throw new HttpError(400, 'archiveNoProject');
-  const taken = await takenNames();
   const renamed: Record<string, string> = {};
   const systems: string[] = [];
   for (const s of plan.systems) {
@@ -151,5 +208,19 @@ export async function unpackProject(bytes: Uint8Array, fileName: string): Promis
   const name = freeName(plan.project.name, taken);
   const index = INDEX_FILE[plan.project.kind];
   await writeProject(files, plan.project.prefix, name, (rel, b) => (rel === index && Object.keys(renamed).length ? strToU8(renameSystems(strFromU8(b), renamed)) : b));
-  return { name, systems };
+  return { name, systems, notes: [] };
+}
+
+/** The project as Claude's own format: the original type's layout as one .zip (.design/claude-design-format.md). */
+export async function packClaudeDesign(name: string, dir = projectDir(name)): Promise<{ bytes: Uint8Array; file: string; files: number; notes: ClaudeDesignNote[] }> {
+  const kind = await kindOf(dir);
+  if (!kind) throw new HttpError(404, 'noProject', { name });
+  if (!hasClaudeDesign(kind)) throw new HttpError(400, 'noClaudeDesign', { kind });
+  const project: Record<string, Uint8Array> = {};
+  for (const rel of await walkAll(dir)) if (archiveKeeps(rel, { journal: false })) project[rel] = new Uint8Array(await readFile(join(dir, rel)));
+  const title = JSON.parse((await readFile(join(dir, INDEX_FILE[kind]), 'utf8').catch(() => '{}')) || '{}').title;
+  const pkg = toClaudeDesign(kind, project, typeof title === 'string' && title ? title : name);
+  const zip: Zippable = {};
+  for (const [p, d] of Object.entries(pkg.files)) zip[p] = [d, { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|zip)$/i.test(p) ? 0 : 6 }];
+  return { bytes: zipSync(zip), file: `${name}-claude-design.zip`, files: Object.keys(pkg.files).length, notes: pkg.notes };
 }

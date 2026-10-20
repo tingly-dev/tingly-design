@@ -14,9 +14,11 @@ export default {
   list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
+                                   claude-design：原版 Claude 类型的文件（画布、幻灯片、设计系统、看板）；
                                    画布 png；幻灯片 pdf、png、html、notes；文档 pdf、html、md、png；
                                    设计系统和看板 png；动效 mp4、gif、png（封面）、html（播放器）
-  import <文件.zip>                从 export --as zip 导出的 .zip（或压缩的项目文件夹）导入项目
+  import <文件.zip或文件夹>        从 export --as zip 导出的 .zip（或压缩的项目文件夹）、Claude Design 包（.zip，或
+                                   Claude Code 存下来的文件夹）、Claude Docs 导出的 .md 导入项目
   prompt <项目> <请求>             把请求交给 Claude Code，和请求栏一样：它改文件，打开着的编辑器
                                    实时显示；最后列出改了什么
                                    （--fast：由快速 AI 在 Chrome 里改一个画板、幻灯片或场景）
@@ -198,7 +200,9 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     kept: '保留了 {{file}}，它和这个版本的不一样',
   },
   skillsKept: '加上 --force 替换不一样的副本。',
-  needZip: '请给出要导入的 .zip：tingly-design import <文件.zip>',
+  needZip: '请给出要导入的 .zip：tingly-design import <文件.zip或文件夹>',
+  noClaudeDesign: '{{kind}}没有 Claude Design 格式。文档请用 --as md；动效在原版里没有对应类型。',
+  importedClaudeDesign: '已导入 {{name}}（来自 Claude Design 的{{kind}}），位于 {{path}}',
   noFileAt: '{{path}} 没有这个文件',
   imported: '已导入 {{name}}，位于 {{path}}',
   importedSystems: '同时导入了设计系统 {{systems}}。',

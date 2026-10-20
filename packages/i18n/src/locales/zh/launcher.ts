@@ -78,6 +78,8 @@ export default {
   },
   archive: {
     import: '导入项目（.zip）…',
+    importHint: 'Tingly Design 项目、Claude Design 包，或 Claude Docs 导出的 .md',
+    importedClaude: '已从 Claude Design 导入“{{name}}”（{{kind}}）',
     export: '导出（.zip）',
     imported: '已导入“{{name}}”',
     importedWith: '已导入“{{name}}”，以及设计系统 {{systems}}',

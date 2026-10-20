@@ -81,7 +81,7 @@ import {
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
-import { packProject, unpackProject } from './archive';
+import { packClaudeDesign, packProject, unpackProject } from './archive';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { readTranscript, recordTurn } from './transcript';
 import { claudeAvailable, forgetConversation, isDelegateRunning, readConversation, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
@@ -194,13 +194,21 @@ app.get('/api/projects/:p/archive', async (c) => {
   return c.body(bytes as Uint8Array<ArrayBuffer>, 200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
 });
 
-/** A project from a .zip made by the route above (or a project folder zipped by hand); its name comes back. */
+/** The project in Claude's own format (.design/claude-design-format.md): the original type's layout as one .zip. */
+app.get('/api/projects/:p/claude-design', async (c) => {
+  const p = c.req.param('p');
+  const { bytes, file, files, notes } = await packClaudeDesign(p);
+  logInfo('claudeDesign.export', { project: p, files, notes: notes.map((n) => n.key), bytes: bytes.length });
+  return c.body(bytes as Uint8Array<ArrayBuffer>, 200, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${file}"`, 'x-dc-notes': encodeURIComponent(JSON.stringify(notes)), 'access-control-expose-headers': 'x-dc-notes', 'cache-control': 'no-store' });
+});
+
+/** A project from a .zip made by the route above (or a project folder zipped by hand), a Claude Design package or a Claude Docs Markdown export; its name comes back. */
 app.post('/api/archive', async (c) => {
   const bytes = new Uint8Array(await c.req.arrayBuffer());
   if (!bytes.length) throw new HttpError(400, 'emptyFile');
   const from = c.req.query('file') ?? 'project';
   const done = await unpackProject(bytes, from);
-  logInfo('archive.import', { file: from, project: done.name, systems: done.systems, bytes: bytes.length });
+  logInfo('archive.import', { file: from, project: done.name, systems: done.systems, claudeDesign: done.claudeDesign, notes: done.notes.map((n) => n.key), bytes: bytes.length });
   return c.json(done);
 });
 

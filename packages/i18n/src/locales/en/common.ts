@@ -57,6 +57,7 @@ export default {
     label: {
       project: 'Whole project (.zip)',
       projectFiles: 'Project files only (.zip)',
+      claudeDesign: 'Claude Design package (.zip)',
       png: 'PNG image',
       pngs: 'PNG images',
       pngRetina: 'PNG image @2x',
@@ -73,6 +74,7 @@ export default {
     hint: {
       project: 'Every file, with the change log and design systems · import it again from the home page',
       projectFiles: 'Without the change log or design systems',
+      claudeDesign: 'The original Claude type’s files, for Claude Code to publish · import it again from the home page',
       boardOne: 'The selected artboard',
       boardEvery: 'Every artboard on this page, one file each',
       boardSource: 'The artboard’s .dc.html file',
