@@ -69,17 +69,20 @@ export function detectClaudeDesign(paths: string[]): PackageMatch | null {
     if (d) offer({ kind: 'dashboard', root: d[1] ?? '' });
   }
   if (best) return best;
-  // a dashboard saved without its meta document: datasets and a page are enough
-  const hasPage = paths.some((p) => /(^|\/)(files\/)?index\.html$/.test(p));
-  const ds = paths.find((p) => /^(.*\/)?datasets\/[^/]+(\.json)?$/.test(p));
-  if (hasPage && ds) return { kind: 'dashboard', root: /^(.*\/)?datasets\//.exec(ds)![1] ?? '' };
+  // a dashboard saved without its meta document: datasets and a page beside them are enough,
+  // unless a dash.json says it is one of ours (a Tingly dashboard folder, zipped by hand or imported as a folder)
+  const roots = new Set(paths.map((p) => /^(.*\/)?datasets\/[^/]+(\.json)?$/.exec(p)).filter((m) => m).map((m) => m![1] ?? ''));
+  for (const root of [...roots].sort((a, b) => a.split('/').length - b.split('/').length)) {
+    const hasPage = paths.includes(`${root}index.html`) || paths.includes(`${root}files/index.html`);
+    if (hasPage && !paths.includes(`${root}${DASH_INDEX}`)) return { kind: 'dashboard', root };
+  }
   return null;
 }
 
 // ------------------------------------------------------------------ pictures
 
 /** `/_blob/<id>`: how the original refers to a picture or file in its asset store. */
-const BLOB_RE = /\/?_blob\/([0-9a-f]{32})\b/g;
+const BLOB_RE = /(?<![\w.~%/-])(?:\.{1,2})?\/?_blob\/([0-9a-f]{32})\b/g;
 const TEXT_FILE_RE = /\.(html?|css|js|json|md|svg|txt)$/i;
 
 /** Files in the package that look like stored assets: named `<id>.<ext>` or just `<id>`, which is how Claude Code saves an asset it reads. */
@@ -94,7 +97,7 @@ function assetsIn(files: Files, skip: (p: string) => boolean): Map<string, { pat
 }
 
 /** Every `/_blob/<id>` in the project's text files, pointed at `uploads/<id>.<ext>` where the package carries it. */
-function bringPictures(project: Files, assets: Map<string, { path: string; ext: string }>, all: Files, notes: ClaudeDesignNote[]): void {
+function bringPictures(project: Files, assets: Map<string, { path: string; ext: string }>, all: Files, notes: ClaudeDesignNote[], fromFile: boolean): void {
   const missing = new Set<string>();
   for (const [rel, data] of Object.entries(project)) {
     if (!TEXT_FILE_RE.test(rel)) continue;
@@ -108,7 +111,9 @@ function bringPictures(project: Files, assets: Map<string, { path: string; ext: 
       }
       const to = `uploads/${id}${a.ext}`;
       if (!project[to]) project[to] = all[a.path];
-      return to;
+      // a design system's component files are drawn in a frame based at components/<name>/ (bundle.css and
+      // bundle.js inlined into it too); everything else, and canvases and slides, resolve from the project's folder
+      return fromFile && rel.startsWith('components/') && !/\.(json|md)$/i.test(rel) ? `../../${to}` : to;
     });
     if (next !== src) project[rel] = bytes(next);
   }
@@ -145,7 +150,7 @@ export function fromClaudeDesign(all: Files, match: PackageMatch): ClaudeDesignI
     if (r && archiveKeeps(r, { journal: false })) project[r] = d;
   }
   const assets = assetsIn(here, (p) => p.startsWith(PROJECT_DIR) || OUTSIDE.test(p));
-  bringPictures(project, assets, here, notes);
+  bringPictures(project, assets, here, notes, match.kind === 'design-system');
   const index = project[match.kind === 'design' ? CANVAS_FILE : match.kind === 'slides' ? DECK_FILE : DS_INDEX];
   return { kind: match.kind, files: project, title: titleOf(index), notes };
 }
@@ -206,9 +211,13 @@ function dashboardFrom(here: Files, notes: ClaudeDesignNote[]): ClaudeDesignImpo
     if (src?.kind === 'file') {
       const id = /_blob\/([0-9a-f]{32})/.exec(src.url ?? '')?.[1];
       const from = (id && blobs.get(id)?.path) || (src.url && byName(src.url.replace(/^\/+/, '').split('/').pop()!)) || (src.name && byName(src.name)) || undefined;
-      const ext = (src.name ?? src.url ?? '').split('.').pop()?.toLowerCase() ?? '';
+      // a blob's name may be missing: then its saved file's extension, then the dataset's format
+      const named = /\.([A-Za-z0-9]+)$/.exec(src.name ?? '')?.[1] || (id ? blobs.get(id)?.ext.slice(1) : '') || /\.([A-Za-z0-9]+)$/.exec(src.url ?? '')?.[1] || (src as { format?: string }).format || '';
+      const ext = named.toLowerCase();
       if (from && DASH_DATA_TYPES[ext]) {
-        let n = safeDataName(src.name ?? from.split('/').pop()!);
+        let n = safeDataName(src.name ?? (id && from === blobs.get(id)?.path ? `${m[1]}.${ext}` : from.split('/').pop()!));
+        // the dashboard reads a data file by its extension
+        if (!n.toLowerCase().endsWith(`.${ext}`)) n = `${n}.${ext}`;
         while (taken.has(n)) n = `${m[1]}-${n}`;
         taken.add(n);
         files[`data/${n}`] = here[from];
@@ -267,10 +276,18 @@ function dashboardTo(project: Files, out: Files, notes: ClaudeDesignNote[]): voi
   for (const [rel, d] of Object.entries(project)) {
     const ds = /^datasets\/([A-Za-z0-9_-]{1,64})\.json$/.exec(rel);
     if (ds) {
-      const j = JSON.parse(text(d)) as DatasetJson;
+      let j: DatasetJson;
+      try {
+        j = JSON.parse(text(d)) as DatasetJson;
+      } catch {
+        // a dataset that does not parse goes as written; the original reports it the same way the editor does
+        out[rel] = d;
+        continue;
+      }
       const src = j.source as { kind?: string; url?: string; connector?: string };
       if (src?.kind === 'file' && src.url) src.url = `blobs/${src.url.replace(/^data\//, '')}`;
-      if (src?.kind === 'query' && src.connector) queries.add(src.connector);
+      // a SQLite query gets the sqlite note below, not the connector one
+      if (src?.kind === 'query' && src.connector && src.connector !== 'sqlite') queries.add(src.connector);
       out[rel] = bytes(JSON.stringify(j, null, 2) + '\n');
     } else if (rel.startsWith('files/')) out[rel] = d;
     else if (rel.startsWith('data/')) {
@@ -324,7 +341,8 @@ function readme(kind: ClaudeDesignKind, title: string, files: string[], notes: C
 
 /** A Claude Docs export (Markdown) as a new doc: one tab, titled by its first heading. */
 export function docFromMarkdown(source: string, fallbackTitle: string, lang: string = /[\u3400-\u9fff]/.test(source) ? 'zh-CN' : 'en'): Files {
-  const heading = /^#\s+(.+?)\s*#*\s*$/m.exec(source)?.[1];
+  // a closing run of # only after a space, as the doc export writes it: `# C#` is titled C#
+  const heading = /^#[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/m.exec(source)?.[1];
   const title = heading ?? fallbackTitle;
   const d: DocJson = { title, tabs: [{ id: 'main', title }], settings: { ...DEFAULT_SETTINGS, lang } };
   return { [DOC_INDEX]: bytes(stringifyDoc(d)), [tabFile('main')]: bytes(source.endsWith('\n') ? source : source + '\n') };

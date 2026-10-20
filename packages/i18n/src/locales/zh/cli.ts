@@ -101,7 +101,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     complaint: {
       empty: '请给它一个标题。',
       badName: '文件夹名只能用字母、数字、- 和 _，并以字母或数字开头。',
-      taken: 'projects/{{name}} 已经存在。',
+      taken: '{{where}}/{{name}} 已经存在。',
       badSize: '宽和高都要在 1 到 7680 像素之间，例如 1080x1440。',
       badChoice: '不在可选项里。',
     },

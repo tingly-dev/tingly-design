@@ -6,6 +6,7 @@
  * the server's modules read it, so everything past argument parsing is imported lazily.
  */
 import { spawn } from 'node:child_process';
+import { readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -172,10 +173,13 @@ async function create(kind: string | undefined, target: string | undefined): Pro
   }
   if (!process.stdin.isTTY) throw new CliError(t('cli.needTerminal'));
   const { terminalWizard } = await import('./wizard');
-  const w = terminalWizard(t as (key: string, params?: Record<string, string>) => string, process.stdin, process.stderr);
+  // a bare name lands in the current directory unless --global, so that is where a name has to be free
+  const global = await cmd.bareNamesGlobal(ctx, opts.global);
+  const w = terminalWizard(t as (key: string, params?: Record<string, string>) => string, process.stdin, process.stderr, global ? 'projects' : '.');
   try {
     const given = await cmd.wizardGiven(ctx, { kind, target, title: opts.title, size: opts.size });
-    const answer = await w.run(given, new Set((await cmd.projects()).map((c) => c.name)));
+    const taken = global ? (await cmd.projects()).map((c) => c.name) : await readdir(process.cwd()).catch(() => []);
+    const answer = await w.run(given, new Set(taken));
     const p = await cmd.create(ctx, { kind: answer.kind, target: answer.target, title: answer.title, size: answer.size ? answer.size.join('x') : undefined, look: opts.look, global: opts.global });
     if (opts.json) print({ name: p.name, kind: answer.kind, dir: p.dir });
     else console.log(t('cli.created', { kind: t(`cli.kind.${p.kind}`), name: p.name, path: show(p.dir) }));

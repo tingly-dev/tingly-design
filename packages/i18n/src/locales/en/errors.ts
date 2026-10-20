@@ -32,7 +32,7 @@ export default {
   emptyFile: 'The file is empty',
   archiveUnreadable: 'This file is not a .zip that can be read',
   archiveNoProject: 'There is no Tingly Design project or Claude Design package in this .zip',
-  noClaudeDesign: 'A {{kind}} has no Claude Design format. Docs go through Markdown; motion has no original type.',
+  noClaudeDesign: 'This kind of project has no Claude Design format. Docs go through Markdown; motion has no original type.',
   archiveTooBig: 'This .zip unpacks to more than 1 GB or 20,000 files',
   fileTooLarge: 'The file is larger than {{size}}',
   cannotKeep: 'This file cannot be saved: {{path}}',

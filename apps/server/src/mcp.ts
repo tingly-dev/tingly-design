@@ -11,6 +11,7 @@
  */
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { hasClaudeDesign } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { check, CommandError, create, looksLikePath, exportProject, FORMATS, history, KINDS, outline, pickFor, projects, prompt, resolveProject, skillPages, skills, type Ctx, type Kind, type Project } from './commands';
 import { VERSION } from './layout';
@@ -76,7 +77,7 @@ const TOOLS = [
   },
   {
     name: 'export',
-    description: `Save what the editor's Export menu saves, into the project's renders/ folder, and return the file paths. Formats: any kind zip; ${Object.entries(FORMATS)
+    description: `Save what the editor's Export menu saves, into the project's renders/ folder, and return the file paths. Formats: any kind zip; ${(Object.keys(FORMATS) as Kind[]).filter((k) => hasClaudeDesign(k)).join(', ')} also claude-design (the original Claude Design layout); ${Object.entries(FORMATS)
       .map(([k, f]) => `${k} ${f.join(', ')}`)
       .join('; ')}. Needs Chrome for pictures, PDF and HTML, and Chrome and ffmpeg for mp4 and gif.`,
     inputSchema: {

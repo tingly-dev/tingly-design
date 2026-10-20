@@ -13,7 +13,7 @@ import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
-import { createProject, isProjectName, kindOf, linkFolder, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
+import { createProject, isProjectName, kindOf, linkFolder, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
 export type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed, and the internal names they map to. */
@@ -96,6 +96,16 @@ function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
   throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
 }
 
+/**
+ * Whether a bare name goes to the projects folder: asked for, or the server that will create it keeps
+ * every project there (DC_LINKS=0; the running editor's setting when there is one), so a folder here could not be linked.
+ */
+export async function bareNamesGlobal(ctx: Ctx, global: boolean | undefined): Promise<boolean> {
+  if (global) return true;
+  const running = ctx.inServer ? null : await findEditor();
+  return running ? running.links === false : !LINKS_ON;
+}
+
 export async function create(ctx: Ctx, o: { kind: string | undefined; target: string | undefined; title?: string; size?: string; look?: string; global?: boolean }): Promise<Project> {
   const t = translator(ctx.lang);
   if (!o.kind) throw new CommandError(t('cli.needKind'));
@@ -106,8 +116,9 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   const size = o.size ? sizeFor(ctx, kind, o.size) : undefined;
   // a bare name is a folder of that name here, as `git init`, `cargo new` and `npm create` do; `global` keeps it in the projects folder
   if (o.global && looksLikePath(target)) throw new CommandError(t('cli.globalPath', { target }));
-  if (o.global && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
-  const path = o.global ? undefined : resolve(expandHome(target));
+  const global = looksLikePath(target) ? false : await bareNamesGlobal(ctx, o.global);
+  if (global && isProjectName(target) && (await kindOf(projectDir(target)))) throw new CommandError(t('cli.nameTaken', { name: target }));
+  const path = global ? undefined : resolve(expandHome(target));
   const title = o.title?.trim() || (path ? basename(path) : target);
   if (o.look && kind !== 'design-system') throw new CommandError(t('cli.lookOnlyDs'));
   if (o.look && !lookOf(o.look)) throw new CommandError(t('cli.badLook', { look: o.look, looks: LOOKS.map((l) => l.id).join(', ') }));
