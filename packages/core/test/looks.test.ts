@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { resources } from '../../i18n/src';
-import { LOOKS, LOOK_GROUPS, compileTokensCss, dsGlance, lookOf, lookTokens, resolveTokens } from '../src';
+import { LOOKS, LOOK_GROUPS, LOOK_KIT_WORDS, compileTokensCss, componentNames, dsGlance, lookKit, lookOf, lookTokens, parseBundleHeader, parseCardMarker, resolveTokens } from '../src';
 
-type Bundle = { ds: { look: Record<string, string>; lookGroup: Record<string, string> } };
+type Bundle = { ds: { look: Record<string, string>; lookGroup: Record<string, string> }; starter: { lookKit: Record<string, string> } };
 const en = resources.en.translation as unknown as Bundle;
 const zh = resources.zh.translation as unknown as Bundle;
 
@@ -56,5 +56,48 @@ describe('LOOKS', () => {
     expect(g.line).toBe('#111111');
     expect(g.shadowValue).toBe('4px 4px 0 #111');
     expect(g.radius).toBe('0px');
+  });
+
+  it('words every component text in English and Chinese, and nothing else', () => {
+    for (const lang of [en, zh]) expect(Object.keys(lang.starter.lookKit).sort()).toEqual([...LOOK_KIT_WORDS].sort());
+  });
+
+  it('turns a look into components the design system page reads', () => {
+    const words = Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, `${k} "</script> <b>`])) as Record<(typeof LOOK_KIT_WORDS)[number], string>;
+    for (const l of LOOKS) {
+      const files = lookKit(l, 'Kit', 'Kit <x>', words);
+      const head = parseBundleHeader(files['components/bundle.js']);
+      expect(head.namespace, l.id).toBe('Kit');
+      expect(head.components).toEqual(['Title', 'Kicker', 'Card', 'Pill', 'Divider']);
+      expect(componentNames(Object.keys(files), files['components/bundle.js'])).toEqual(head.components);
+      expect(files['components/bundle.js']).toContain('window.Kit = {');
+      expect(files['components/bundle.css'], l.id).not.toMatch(/\.(slide|deck|notes|progress)\b|<\/style/);
+      for (const [path, text] of Object.entries(files)) {
+        if (!path.endsWith('preview.html')) continue;
+        // a word can neither close the script it sits in nor open markup of its own
+        expect(text.match(/<\/script/g)?.length ?? 0, path).toBe(text.includes('<script>') ? 1 : 0);
+        expect(text, path).not.toContain('<b>');
+        if (path !== 'components/Cover/preview.html') expect(parseCardMarker(text).group, path).toBeTruthy();
+      }
+    }
+  });
+
+  it("carries the theme's own rules over, renamed to the kit's classes", () => {
+    const css = lookKit(lookOf('bauhaus')!, 'Kit', 'Kit', Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, k])) as never)['components/bundle.css'];
+    // its literal #111 is the look's line colour, so it follows that token
+    expect(css).toMatch(/\.lk-card\{[^}]*border:2px solid var\(--line-strong\)/);
+    expect(css).toContain('--grad:');
+    // a theme's slide rules are its page: swiss-grid's grid lines, news-broadcast's side bar
+    const kit = (id: string) => lookKit(lookOf(id)!, 'Kit', 'Kit', Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, k])) as never)['components/bundle.css'];
+    expect(kit('swiss-grid')).toMatch(/\.lk-page\{background-image:linear-gradient/);
+    expect(kit('news-broadcast')).toContain('.lk-page::before{');
+    expect(lookOf('aurora')!.vars.grad).toContain('var(--accent-3)');
+    // a selector list renamed one by one: no :where(…) is split at its own comma
+    for (const l of LOOKS)
+      for (const line of kit(l.id).split('\n')) {
+        const sel = line.split('{')[0];
+        expect(sel.split('(').length, `${l.id}: ${sel}`).toBe(sel.split(')').length);
+      }
+    expect(kit('bauhaus')).toContain(':where(.lk-page,.lk-stage,.lk-card) h4,.lk-h4{');
   });
 });

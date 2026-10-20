@@ -52,6 +52,7 @@ Before you change any file, read .claude/skills/design-system/SKILL.md in the cu
 Edit only files inside the system folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files a moment ago, so read each file right before you edit it.
 Never write tokens.css: the editor rebuilds it from tokens.json whenever tokens.json changes. Keep tokens.json formatted as JSON with two-space indentation.
 Build from real sources (a codebase, files the person names); copy exact values, never invent a brand.
+A system started from a look has lk- classes in components/bundle.css (lk-h1, lk-card, lk-pill…) that carry the look's borders, shadows and gradients; build new components on them so they keep the look.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 const DASH_SYSTEM = `You are editing a dashboard stored as files. A dashboard folder holds dash.json (title, filter defaults), datasets/<id>.json (where each number comes from: an attached file under data/, or a live query on a connector), files/index.html (the page: plain HTML, CSS and scripts using the dash API and d3) and data/ (CSV, TSV, JSON files and SQLite databases).

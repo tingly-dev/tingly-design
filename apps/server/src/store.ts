@@ -40,7 +40,10 @@ import {
   resolveTokens,
   starterTokens,
   lookOf,
+  lookKit,
   lookTokens,
+  LOOK_KIT_WORDS,
+  type LookKitWord,
   stringifyDsIndex,
   isBoardFile,
   isSlideFile,
@@ -551,6 +554,10 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
     await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
     await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id }) : t('starter.dsReadme', { title }));
+    if (look) {
+      const words = Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, t(`starter.lookKit.${k}`, { lib: ns })])) as Record<LookKitWord, string>;
+      await Promise.all(Object.entries(lookKit(look, ns, title, words)).map(([path, text]) => writeAtomic(name, path, text)));
+    }
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
     return;

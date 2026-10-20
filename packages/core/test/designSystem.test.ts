@@ -177,6 +177,7 @@ describe('design system files', () => {
   it('names and folders', () => {
     expect(namespaceOf('Math in motion 2')).toBe('MathInMotion2');
     expect(namespaceOf('数学')).toBe('DS');
+    expect(namespaceOf('math')).toBe('MathDS');
     expect(dsFolderOf('Brand 2.0')).toBe('brand-2-0');
   });
 

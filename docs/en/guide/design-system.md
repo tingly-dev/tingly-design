@@ -43,4 +43,4 @@ A new design system can start blank or from one of 36 looks, in five groups by f
 tingly-design new design-system acme --look swiss-grid
 ```
 
-A look sets the colours (in one theme), font families, corner radii and shadows; text styles and spacing are generic, and the README credits the look's source (the themes of the html-ppt template, MIT). It is a starting point, not a link: the system is yours to edit afterwards.
+A look sets the colours (in one theme), font families, corner radii and shadows; text styles and spacing are generic, and the README credits the look's source (the themes of the html-ppt template, MIT). It also comes with the look's components (Title, Kicker, Card, Pill and Divider, drawn with the theme's own borders, shadows and gradients) and a cover in the look, so the overview shows what the look is at a glance. It is a starting point, not a link: the system is yours to edit afterwards.
