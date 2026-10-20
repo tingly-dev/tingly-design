@@ -36,6 +36,7 @@ async def open_dialog(pg):
     return dlg
 async def main():
     call('/api/ai-config', {'clearKey': True, 'clearImageKey': True}, 'PUT')
+    call(f'/api/projects/{PROJECT}/image-gen', {'enabled': True}, 'PUT')  # a run that stopped early may have left it off
     check(call('/api/health')[1]['imageGen'] is False, 'health: image generation is off before it is set up')
     check(call(f'/api/projects/{PROJECT}/images', {'prompt': 'a fox'})[0] == 501, 'asking for a picture before setup is refused')
     uploads = os.path.join(os.environ.get('DC_PROJECTS', 'projects'), PROJECT, 'uploads')
@@ -99,6 +100,7 @@ async def main():
         st, state = call(f'/api/projects/{PROJECT}/image-gen')
         check(st == 200 and state == {'configured': True, 'global': True, 'project': True, 'on': True}, 'on by default in a project')
         await pg.goto(f'{BASE}/?p={PROJECT}')
+        await pg.get_by_role('button', name='Claude Code', exact=True).click()
         item = pg.get_by_role('button', name='Image generation', exact=True)
         await expect(item).to_have_attribute('aria-pressed', 'true')
         await pg.wait_for_timeout(2000)
@@ -111,6 +113,7 @@ async def main():
         check(st == 403 and 'switched off' in err['error'], 'a project with it off refuses a picture')
         check(os.path.exists(os.path.join(os.environ.get('DC_PROJECTS', 'projects'), PROJECT, '.image.json')), 'the choice is kept in local state')
         await pg.goto(f'{BASE}/?p={PROJECT}')
+        await pg.get_by_role('button', name='Claude Code', exact=True).click()
         await expect(pg.get_by_role('button', name='Image generation', exact=True)).to_have_attribute('aria-pressed', 'false')
         await pg.wait_for_timeout(2000)
         await shot(pg, '6-request-bar-off.png')
@@ -148,6 +151,7 @@ async def main():
         await d2.locator('[data-image-section]').scroll_into_view_if_needed()
         await shot(pg2, '4-zh-dark.png')
         await pg2.goto(f'{BASE}/?p={PROJECT}')
+        await pg2.get_by_role('button', name='Claude Code', exact=True).click()
         await expect(pg2.get_by_role('button', name='图像生成', exact=True)).to_have_attribute('aria-pressed', 'true')
         await pg2.wait_for_timeout(2000)
         await shot(pg2, '8-zh-dark-request-bar.png')
