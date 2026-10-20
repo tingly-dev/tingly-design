@@ -99,6 +99,11 @@ const renameSelector = (sel) =>
   sel
     .replace(/\bh1\.title\b|\.h1\b/g, '.lk-h1')
     .replace(/\bh2\.title\b|\.h2\b/g, '.lk-h2')
+    .replace(/\.h([34])\b/g, '.lk-h$1')
+    // base.css styles bare h3/h4; ours style them only inside a look's page or a preview
+    .replace(/(^|,)\s*h([34])(?![\w-])/g, '$1:where(.lk-page,.lk-stage) h$2')
+    // a theme's slide is our page surface (the cover is one); its rules (grid lines, a side bar, scanlines, padding) come along
+    .replace(/\.slide(?![\w-])/g, '.lk-page')
     .replace(/\bhtml,\s*body\b/g, 'body')
     .replace(new RegExp(`\\.(${CLASSES.join('|')})(?![\\w-])`, 'g'), '.lk-$1');
 // top-level rules, keeping an @keyframes block whole
@@ -115,18 +120,22 @@ const rules = (css) => {
   }
   return out.filter(Boolean);
 };
-// the deck's own chrome (slides, links, headers) is not a component
-const wanted = (rule) => {
+// the deck's own chrome (switching slides, links, headers, notes) is not part of a look; base.css's slide is the
+// deck's positioning, but a theme's slide rule is how its page looks
+const wanted = (rule, theme) => {
   const sel = rule.slice(0, rule.indexOf('{'));
-  return rule.startsWith('@keyframes') || (!/card-hover|\.slide|\.deck|\.overview|\.notes|\.progress|^\s*a\b|:root|^\s*\*/.test(sel) && /body|title|\.h[12]\b|\.(card|pill|eyebrow|kicker|lede|divider|gradient-text|dim2?|mono|serif)\b/.test(sel));
+  if (rule.startsWith('@keyframes')) return true;
+  if (/card-hover|\.slide(-|\.is-)|\.deck|\.overview|\.notes|\.progress|^\s*a\b|:root|^\s*\*/.test(sel)) return false;
+  if (/\.slide\b/.test(sel)) return theme;
+  return /body|title|\.h[1-4]\b|(^|,)\s*h[34]\b|\.(card|pill|eyebrow|kicker|lede|divider|gradient-text|dim2?|mono|serif)\b/.test(sel);
 };
-const cssOf = (css, colours = {}) => rules(css).filter(wanted).map((r) => {
+const cssOf = (css, colours = {}, theme = true) => rules(css).filter((r) => wanted(r, theme)).map((r) => {
   if (r.startsWith('@keyframes')) return renameVars(r);
   const i = r.indexOf('{');
   const sel = [...new Set(renameSelector(r.slice(0, i).trim()).split(/\s*,\s*/))].join(',');
   return `${sel}{${tokenColours(renameVars(r.slice(i + 1, -1).trim().replace(/\s*\n\s*/g, ' ')), colours)}}`;
 }).join('\n');
-const BASE_RULES = cssOf(BASE_CSS.slice(BASE_CSS.indexOf('html,body'), BASE_CSS.indexOf('/* ================= CHROME')));
+const BASE_RULES = cssOf(BASE_CSS.slice(BASE_CSS.indexOf('html,body'), BASE_CSS.indexOf('/* ================= CHROME')), {}, false);
 
 const looks = [];
 for (const [group, ids] of Object.entries(GROUPS)) {
@@ -152,7 +161,7 @@ for (const [group, ids] of Object.entries(GROUPS)) {
       radius: [px(v['radius-sm']), px(v.radius), px(v['radius-lg'])],
       shadow: [v.shadow, v['shadow-lg']].map((s) => (s && s !== 'none' ? shadowOf(s, id) : null)),
       // what tokens cannot say: the theme's gradients and spacing, and its own rules
-      vars: Object.fromEntries(KEPT.filter((k) => v[k]).map((k) => [k, renameVars(v[k]).replace(/\s+/g, ' ')])),
+      vars: Object.fromEntries(KEPT.filter((k) => v[k]).map((k) => [k, tokenColours(`background:${renameVars(v[k]).replace(/\s+/g, ' ')}`, c).slice('background:'.length)])),
       css: cssOf(text.slice(text.indexOf('}', text.indexOf(':root')) + 1), c),
     };
     looks.push(look);

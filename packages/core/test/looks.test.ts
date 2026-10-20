@@ -87,5 +87,10 @@ describe('LOOKS', () => {
     // its literal #111 is the look's line colour, so it follows that token
     expect(css).toMatch(/\.lk-card\{[^}]*border:2px solid var\(--line-strong\)/);
     expect(css).toContain('--grad:');
+    // a theme's slide rules are its page: swiss-grid's grid lines, news-broadcast's side bar
+    const kit = (id: string) => lookKit(lookOf(id)!, 'Kit', 'Kit', Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, k])) as never)['components/bundle.css'];
+    expect(kit('swiss-grid')).toMatch(/\.lk-page\{background-image:linear-gradient/);
+    expect(kit('news-broadcast')).toContain('.lk-page::before{');
+    expect(lookOf('aurora')!.vars.grad).toContain('var(--accent-3)');
   });
 });

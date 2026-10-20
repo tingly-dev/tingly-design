@@ -128,11 +128,13 @@ export function lookKit(look: LookData, namespace: string, title: string, words:
   const css =
     `/* ${look.id}: html-ppt (MIT, (c) 2026 lewis) base.css components and theme rules, on this system's tokens */\n` +
     `:root{${Object.entries(look.vars).map(([k, v]) => `--${k}:${v}`).join(';')}}\n` +
-    `${LOOK_BASE_CSS}\n${look.css}\n` +
+    // html-ppt sizes every box border-box; a look's page is a slide drawn in place, not positioned by a deck;
+    // these come first so the theme's own rules (a page's padding, say) win
+    '[class*="lk-"],[class*="lk-"] *{box-sizing:border-box}\n' +
+    '.lk-page{position:relative;overflow:hidden;padding:72px 96px;display:flex;flex-direction:column;justify-content:center}\n' +
     '.lk-stage{padding:24px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}\n' +
-    '.lk-stage>.lk-card{flex:1 1 160px;min-width:160px;box-sizing:border-box}\n' +
-    '.lk-card h4{margin:0 0 8px;font-size:20px;font-weight:600}\n' +
-    '.lk-card p{margin:0}\n';
+    '.lk-stage>.lk-card{flex:1 1 160px;min-width:160px}\n' +
+    `${LOOK_BASE_CSS}\n${look.css}\n`;
   const bundle = `/* @ds-bundle: ${JSON.stringify({ format: 4, namespace, components: COMPONENTS.map((name) => ({ name })) })} */
 (function () {
   // No React: each component returns an element. Text goes in as text, never as HTML.
@@ -170,20 +172,21 @@ export interface DividerProps { accent?: boolean }
   const swatch = ['accent', 'accent-2', 'accent-3', 'ink', 'surface-raised-2']
     .map((c) => `<i style="display:block;width:44px;height:44px;border-radius:var(--radius-s);border:1px solid var(--line);background:var(--${c})"></i>`)
     .join('');
-  const cover = `<!-- @dsCard height=560 -->
+  const cover = `<!-- @dsCard height=640 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8">
 <style>
-  .cv { min-height: 560px; padding: 56px 64px; display: flex; flex-direction: column; justify-content: center; }
+  body { margin: 0; }
+  .cv { min-height: 640px; }
   .cv .lk-h1 { margin-top: 12px; }
   .cv .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 28px; }
-  .cv .kpi { font-family: var(--font-display); font-size: 56px; font-weight: 800; line-height: 1.1; margin: 4px 0 8px; }
+  .cv .kpi { font-family: var(--font-display); font-size: 44px; font-weight: 800; line-height: 1.1; margin: 4px 0 8px; }
   .cv .pills { display: flex; gap: 8px; margin-top: 20px; }
 </style>
 </head>
 <body>
-<div class="cv">
+<div class="lk-page cv">
   <p class="lk-kicker">${html(w.coverKicker)}</p>
   <h1 class="lk-h1">${html(title)}</h1>
   <p class="lk-lede">${html(w.coverLede)}</p>

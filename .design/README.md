@@ -45,14 +45,14 @@
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |
 | [cli.md](./cli.md) | 命令行 `tingly-design`：命令用编辑器里同一个词（`open`、`new`、`list`、`check`、`export`）；服务端拆成路由和启动；核心给数据、命令行给措辞；`server.mjs` 就是 `serve`；找到正在运行的编辑器（`.server.json`）、`history`；其他类型的导出由本机 Chrome 打开编辑器、跑导出菜单自己的项（`headless.ts`、`pageExport.ts`），`check --snapshots`；命令抽成数据（`commands.ts`），同一份作为 MCP 工具（`/mcp`、`tingly-design mcp`），`skills add`；`prompt` 交给编辑器跑 Claude Code；`new -i` 交互式新建（流程在核心、提问在终端） | 第 1–5 步已实施；§6 是还开着的和暂不做的 |
-| [design-system-looks.md](./design-system-looks.md) | 设计系统的起点：从 36 个风格（html-ppt 的主题，MIT）里选一个，按感觉分五组；新建对话框、`new design-system --look`；颜色字体圆角阴影之外，还带原主题规则画的组件和封面；DESIGN.md 导入是下一步 | 已实施；§5 是没做的 |
+| [design-system-looks.md](./design-system-looks.md) | 设计系统的起点：从 36 个风格（html-ppt 的主题，MIT）里选一个，按感觉分五组；新建对话框、`new design-system --look`；颜色字体圆角阴影之外，还带原主题规则画的组件和封面；DESIGN.md 导入是下一步 | 已实施；§5 是还原度，§6 是没做的 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [chat-panel.md](./chat-panel.md) | 对话面板：请求栏的位置收成底部和左侧（左侧一直打开，取代右侧自动隐藏；已有左列的类型用页签），面板里是一份能回头读的对话记录（每轮的请求、步骤、回答、改动），存在服务端，命令行和 MCP 的请求也在里面；窄窗口放不下时退回底部 | 已实施；§7 是没做的 |
-| [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的 |
-| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
+| [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是还原度，§6 是没做的 |
+| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是还原度，§6 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：快速 AI 和 Claude Code 共用一个连接、各有模型名；环境变量 > 已保存 > 默认；Tingly Box 为推荐；图片生成将来接在同一处 | 已实施；§6 是没做的 |
-| [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
+| [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是还原度，§6 是没做的 |
 | [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |

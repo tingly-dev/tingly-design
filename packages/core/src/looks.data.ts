@@ -2,7 +2,7 @@
 import type { LookData } from './looks';
 
 /** base.css's typography, cards, pills and dividers, renamed to our tokens and `lk-` classes. */
-export const LOOK_BASE_CSS = "body{margin:0;padding:0;background:var(--surface);color:var(--ink); font-family:var(--font-sans);font-weight:400;line-height:1.6; -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale; letter-spacing:var(--letter-normal)}\n.lk-eyebrow{font-size:13px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}\n.lk-kicker{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}\n.lk-h1{font-family:var(--font-display);font-size:72px;line-height:1.05;font-weight:800;letter-spacing:var(--letter-tight);margin:0 0 18px;color:var(--ink)}\n.lk-h2{font-family:var(--font-display);font-size:54px;line-height:1.1;font-weight:700;letter-spacing:var(--letter-tight);margin:0 0 14px}\n.lk-lede{font-size:22px;line-height:1.55;color:var(--ink-muted);font-weight:300;max-width:62ch}\n.lk-dim{color:var(--ink-muted)}\n.lk-dim2{color:var(--ink-faint)}\n.lk-mono{font-family:var(--font-mono)}\n.lk-serif{font-family:var(--font-serif)}\n.lk-gradient-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}\n.lk-card{background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-m); padding:26px 28px;box-shadow:var(--raised);position:relative;overflow:hidden}\n.lk-card-soft{background:var(--surface-raised-2);border:1px solid var(--line)}\n.lk-card-outline{background:transparent;border:1.5px solid var(--line-strong);box-shadow:none}\n.lk-card-accent{background:var(--surface-raised);border-top:3px solid var(--accent)}\n.lk-pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:500; background:var(--surface-raised-2);color:var(--ink-muted);border:1px solid var(--line)}\n.lk-pill-accent{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 28%,transparent)}\n.lk-divider{height:1px;background:var(--line);width:100%}\n.lk-divider-accent{height:3px;width:72px;background:var(--accent);border-radius:2px}";
+export const LOOK_BASE_CSS = "body{margin:0;padding:0;background:var(--surface);color:var(--ink); font-family:var(--font-sans);font-weight:400;line-height:1.6; -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale; letter-spacing:var(--letter-normal)}\n.lk-eyebrow{font-size:13px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}\n.lk-kicker{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}\n.lk-h1{font-family:var(--font-display);font-size:72px;line-height:1.05;font-weight:800;letter-spacing:var(--letter-tight);margin:0 0 18px;color:var(--ink)}\n.lk-h2{font-family:var(--font-display);font-size:54px;line-height:1.1;font-weight:700;letter-spacing:var(--letter-tight);margin:0 0 14px}\n:where(.lk-page,.lk-stage) h3,.lk-h3{font-size:32px;line-height:1.2;font-weight:600;letter-spacing:var(--letter-normal);margin:0 0 10px}\n:where(.lk-page,.lk-stage) h4,.lk-h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}\n.lk-lede{font-size:22px;line-height:1.55;color:var(--ink-muted);font-weight:300;max-width:62ch}\n.lk-dim{color:var(--ink-muted)}\n.lk-dim2{color:var(--ink-faint)}\n.lk-mono{font-family:var(--font-mono)}\n.lk-serif{font-family:var(--font-serif)}\n.lk-gradient-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}\n.lk-card{background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-m); padding:26px 28px;box-shadow:var(--raised);position:relative;overflow:hidden}\n.lk-card-soft{background:var(--surface-raised-2);border:1px solid var(--line)}\n.lk-card-outline{background:transparent;border:1.5px solid var(--line-strong);box-shadow:none}\n.lk-card-accent{background:var(--surface-raised);border-top:3px solid var(--accent)}\n.lk-pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:500; background:var(--surface-raised-2);color:var(--ink-muted);border:1px solid var(--line)}\n.lk-pill-accent{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 28%,transparent)}\n.lk-divider{height:1px;background:var(--line);width:100%}\n.lk-divider-accent{height:3px;width:72px;background:var(--accent);border-radius:2px}";
 
 export const LOOK_DATA: LookData[] = [
   {
@@ -53,8 +53,8 @@ export const LOOK_DATA: LookData[] = [
       "0 20px 60px rgba(17,18,22,.1)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#111216,#3b3f4a)",
-      "grad-soft": "linear-gradient(135deg,#f5f5f6,#ffffff)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised-2),var(--surface-raised))",
       "letter-tight": "-.035em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -109,7 +109,7 @@ export const LOOK_DATA: LookData[] = [
       "0 4px 12px rgba(10,37,64,.1),0 16px 40px rgba(10,37,64,.08)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#0a2540,#1d4ed8)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
       "grad-soft": "linear-gradient(135deg,#f0f4fb,#e4ecf7)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -165,13 +165,13 @@ export const LOOK_DATA: LookData[] = [
       null
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#d6001c,#111)",
-      "grad-soft": "linear-gradient(135deg,#f4f4f4,#fff)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),var(--surface-raised))",
       "letter-tight": "-.04em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
     },
-    "css": ".lk-card{border-top:2px solid var(--line-strong);border-bottom:1px solid var(--line-strong);border-left:none;border-right:none;box-shadow:none;background:var(--surface-raised)}"
+    "css": ".lk-card{border-top:2px solid var(--line-strong);border-bottom:1px solid var(--line-strong);border-left:none;border-right:none;box-shadow:none;background:var(--surface-raised)}\n.lk-page{background-image:linear-gradient(90deg,rgba(0,0,0,.04) 1px,transparent 1px);background-size:calc(100%/12) 100%}"
   },
   {
     "id": "arctic-cool",
@@ -221,8 +221,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 60px rgba(40,70,110,.18)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#1e6fb0,#17b1b1 60%,#5fb9d6)",
-      "grad-soft": "linear-gradient(135deg,#e7eef7,#dff3f3)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 60%,#5fb9d6)",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),#dff3f3)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -277,8 +277,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 70px rgba(181,213,240,.3)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#f49bb8,#b5d5f0 55%,#c4a0e8)",
-      "grad-soft": "linear-gradient(135deg,#fbeef3,#eaf4fc)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 55%,#c4a0e8)",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),#eaf4fc)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -341,8 +341,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 60px rgba(255,39,66,.14)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ff2742,#ff7a90 55%,#ffb38a)",
-      "grad-soft": "linear-gradient(135deg,#fff6f1,#ffeae0)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 55%,var(--accent-3))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),#ffeae0)",
       "letter-tight": "-.02em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -397,13 +397,13 @@ export const LOOK_DATA: LookData[] = [
       "0 8px 24px rgba(20,30,50,.1),0 30px 80px rgba(20,30,50,.1)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#0070f3,#7928ca)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
       "grad-soft": "linear-gradient(135deg,#e8f0ff,#f3e8ff)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
     },
-    "css": ".lk-h1{font-weight:800;letter-spacing:-.035em}\n.lk-h1 .lk-gradient-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}\n.lk-card{border:1px solid var(--line)}\n.lk-divider-accent{background:var(--grad);height:4px;width:64px;border-radius:2px}\n.lk-kicker{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}"
+    "css": ".lk-page{padding:88px 120px}\n.lk-h1{font-weight:800;letter-spacing:-.035em}\n.lk-h1 .lk-gradient-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}\n.lk-card{border:1px solid var(--line)}\n.lk-divider-accent{background:var(--grad);height:4px;width:64px;border-radius:2px}\n.lk-kicker{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}"
   },
   {
     "id": "editorial-serif",
@@ -453,8 +453,8 @@ export const LOOK_DATA: LookData[] = [
       "0 20px 50px rgba(40,28,18,.14)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#8a2a1c,#c97a4a)",
-      "grad-soft": "linear-gradient(135deg,#faf7f2,#f3efe6)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface),var(--surface-soft))",
       "letter-tight": "-.02em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -517,7 +517,7 @@ export const LOOK_DATA: LookData[] = [
       "6px 6px 0 var(--accent)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ea5a1a,#c42a10)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-3))",
       "grad-soft": "linear-gradient(135deg,#fbe4d0,#f5d6c0)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -573,8 +573,8 @@ export const LOOK_DATA: LookData[] = [
       "0 1px 2px rgba(0,0,0,.1)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#1a3a7a,#0a0a0a)",
-      "grad-soft": "linear-gradient(135deg,#e8edf8,#f5f3ea)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,#e8edf8,var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -629,13 +629,13 @@ export const LOOK_DATA: LookData[] = [
       "0 4px 0 var(--accent)"
     ],
     "vars": {
-      "grad": "linear-gradient(90deg,#e11d2d 0%,#e11d2d 100%)",
-      "grad-soft": "linear-gradient(135deg,#fde5e7,#f4f4f4)",
+      "grad": "linear-gradient(90deg,var(--accent) 0%,var(--accent) 100%)",
+      "grad-soft": "linear-gradient(135deg,#fde5e7,var(--surface-soft))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
     },
-    "css": ".lk-h1,.lk-h2{font-weight:700;text-transform:uppercase;letter-spacing:-.01em}\n.lk-card{border:2px solid var(--ink);box-shadow:6px 6px 0 var(--accent)}\n.lk-divider-accent{background:var(--accent);height:6px;width:100%}\n.lk-kicker{background:var(--accent);color:var(--surface);padding:4px 12px;display:inline-block;letter-spacing:.15em}"
+    "css": ".lk-h1,.lk-h2{font-weight:700;text-transform:uppercase;letter-spacing:-.01em}\n.lk-card{border:2px solid var(--ink);box-shadow:6px 6px 0 var(--accent)}\n.lk-divider-accent{background:var(--accent);height:6px;width:100%}\n.lk-kicker{background:var(--accent);color:var(--surface);padding:4px 12px;display:inline-block;letter-spacing:.15em}\n.lk-page::before{content:\"\";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--accent);z-index:3}"
   },
   {
     "id": "japanese-minimal",
@@ -693,13 +693,13 @@ export const LOOK_DATA: LookData[] = [
       "0 1px 0 rgba(40,30,20,.12)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#d93a2a,#1a1a18)",
-      "grad-soft": "linear-gradient(135deg,#faeae6,#f5f3ea)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,#faeae6,var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
     },
-    "css": ".lk-h1,.lk-h2{font-weight:500;letter-spacing:.04em}\n.lk-card{border:1px solid var(--line);box-shadow:none;padding:36px 40px}\n.lk-divider-accent{background:var(--accent);height:2px;width:48px}\n.lk-kicker{color:var(--accent);letter-spacing:.2em}"
+    "css": ".lk-h1,.lk-h2{font-weight:500;letter-spacing:.04em}\n.lk-card{border:1px solid var(--line);box-shadow:none;padding:36px 40px}\n.lk-divider-accent{background:var(--accent);height:2px;width:48px}\n.lk-kicker{color:var(--accent);letter-spacing:.2em}\n.lk-page{padding:96px 128px}"
   },
   {
     "id": "midcentury",
@@ -757,7 +757,7 @@ export const LOOK_DATA: LookData[] = [
       "6px 6px 0 rgba(40,25,10,.2),0 10px 24px rgba(40,25,10,.14)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#d4902a,#c7502a 55%,#2a7a7f)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-3) 55%,var(--accent-2))",
       "grad-soft": "linear-gradient(135deg,#f4e0b6,#eac7a8)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -821,8 +821,8 @@ export const LOOK_DATA: LookData[] = [
       "8px 8px 0 #111"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#e03c27 0 33%,#f4c430 33% 66%,#1d4eaf 66% 100%)",
-      "grad-soft": "linear-gradient(135deg,#f4efe3,#e8e2d1)",
+      "grad": "linear-gradient(135deg,var(--accent) 0 33%,var(--accent-2) 33% 66%,var(--accent-3) 66% 100%)",
+      "grad-soft": "linear-gradient(135deg,var(--surface),var(--surface-soft))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -885,8 +885,8 @@ export const LOOK_DATA: LookData[] = [
       "9px 9px 0 #111"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ff3d8b,#ffcc00 50%,#37c2d7)",
-      "grad-soft": "linear-gradient(135deg,#fdebc7,#fff1d1)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-3) 50%,var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -949,8 +949,8 @@ export const LOOK_DATA: LookData[] = [
       "10px 10px 0 #000"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ffd400,#ff5ca8)",
-      "grad-soft": "linear-gradient(135deg,#fffbd0,#fff)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),var(--surface-raised))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1006,7 +1006,7 @@ export const LOOK_DATA: LookData[] = [
     ],
     "vars": {
       "grad": "linear-gradient(90deg,#ff0080,#ff4d00,#ff9900,#ffe600,#00c853,#0091ea,#6200ea,#ff0080)",
-      "grad-soft": "linear-gradient(135deg,#fff,#f8f8fb)",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-soft))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1061,8 +1061,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 64px rgba(227,106,45,.22)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#d94860,#e36a2d 50%,#f2a341)",
-      "grad-soft": "linear-gradient(135deg,#ffeedc,#ffe0d0)",
+      "grad": "linear-gradient(135deg,var(--accent-3),var(--accent) 50%,var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),#ffe0d0)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1175,7 +1175,7 @@ export const LOOK_DATA: LookData[] = [
       "0 30px 80px rgba(255,110,199,.3),0 0 2px rgba(0,245,255,.8)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ff6ec7 0%,#c94fff 35%,#00f5ff 100%)",
+      "grad": "linear-gradient(135deg,var(--accent) 0%,#c94fff 35%,var(--accent-2) 100%)",
       "grad-soft": "linear-gradient(135deg,rgba(255,110,199,.25),rgba(0,245,255,.25))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -1231,8 +1231,8 @@ export const LOOK_DATA: LookData[] = [
       "0 16px 40px rgba(0,0,0,.3)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ffffff,#aee1ff)",
-      "grad-soft": "linear-gradient(135deg,#0a3260,#0b3a6f)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-soft),var(--surface))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1295,8 +1295,8 @@ export const LOOK_DATA: LookData[] = [
       "0 0 0 1px var(--line-strong)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#0a1e46,#1e5ac4)",
-      "grad-soft": "linear-gradient(135deg,#eaf0fb,#f4f7fb)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,#eaf0fb,var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1359,7 +1359,7 @@ export const LOOK_DATA: LookData[] = [
       "0 0 0 1px rgba(0,240,255,.5),0 0 40px rgba(0,240,255,.45),0 0 80px rgba(255,43,214,.3)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ff2bd6,#7a00ff 50%,#00f0ff)",
+      "grad": "linear-gradient(135deg,var(--accent),#7a00ff 50%,var(--accent-2))",
       "grad-soft": "linear-gradient(135deg,rgba(255,43,214,.18),rgba(0,240,255,.18))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -1415,8 +1415,8 @@ export const LOOK_DATA: LookData[] = [
       "0 0 60px rgba(0,255,136,.28)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#00ff88,#67ffd0)",
-      "grad-soft": "linear-gradient(135deg,#0a1b10,#0d2614)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.01em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1479,13 +1479,13 @@ export const LOOK_DATA: LookData[] = [
       "0 10px 0 rgba(80,40,0,.15),0 24px 50px rgba(80,40,0,.2)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#c73a1f,#e67e14 55%,#f2b544)",
+      "grad": "linear-gradient(135deg,var(--accent-2),var(--accent) 55%,var(--accent-3))",
       "grad-soft": "linear-gradient(135deg,#fde6c4,#fbd9a0)",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
     },
-    "css": "body{background: repeating-linear-gradient(0deg,rgba(80,40,0,.06) 0 2px,transparent 2px 4px), radial-gradient(ellipse at center,#f7ecd0 0%,#e8d9b0 85%,#c9b888 100%)}\n.lk-h1{color:var(--accent-2)}"
+    "css": "body{background: repeating-linear-gradient(0deg,rgba(80,40,0,.06) 0 2px,transparent 2px 4px), radial-gradient(ellipse at center,#f7ecd0 0%,#e8d9b0 85%,#c9b888 100%)}\n.lk-page::before{content:\"\";position:absolute;inset:0;pointer-events:none; background:repeating-linear-gradient(0deg,rgba(0,0,0,.035) 0 2px,transparent 2px 4px);z-index:1}\n.lk-page > *{position:relative;z-index:2}\n.lk-h1{color:var(--accent-2)}"
   },
   {
     "id": "sharp-mono",
@@ -1539,8 +1539,8 @@ export const LOOK_DATA: LookData[] = [
       "8px 8px 0 #000"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#000,#222)",
-      "grad-soft": "linear-gradient(135deg,#fff,#eee)",
+      "grad": "linear-gradient(135deg,var(--surface-raised-2),#222)",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),#eee)",
       "letter-tight": "-.04em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1595,7 +1595,7 @@ export const LOOK_DATA: LookData[] = [
       "0 30px 80px rgba(0,0,0,.5)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#7dd3fc,#c084fc 55%,#f0abfc)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 55%,var(--accent-3))",
       "grad-soft": "linear-gradient(135deg,rgba(125,211,252,.18),rgba(192,132,252,.18))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -1651,7 +1651,7 @@ export const LOOK_DATA: LookData[] = [
       "0 30px 80px rgba(0,0,0,.55)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#5ef2c6,#7aa2ff 50%,#c984ff)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 50%,var(--accent-3))",
       "grad-soft": "linear-gradient(135deg,rgba(94,242,198,.2),rgba(201,132,255,.2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
@@ -1707,8 +1707,8 @@ export const LOOK_DATA: LookData[] = [
       "0 20px 56px rgba(76,79,105,.16)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#8839ef,#1e66f5 50%,#04a5e5)",
-      "grad-soft": "linear-gradient(135deg,#eff1f5,#e6e9ef)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 50%,#04a5e5)",
+      "grad-soft": "linear-gradient(135deg,var(--surface),var(--surface-soft))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1763,8 +1763,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 60px rgba(0,0,0,.5)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#cba6f7,#89b4fa 50%,#94e2d5)",
-      "grad-soft": "linear-gradient(135deg,#313244,#45475a)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 50%,#94e2d5)",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1819,8 +1819,8 @@ export const LOOK_DATA: LookData[] = [
       "0 22px 60px rgba(0,0,0,.55)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#bd93f9,#ff79c6 55%,#8be9fd)",
-      "grad-soft": "linear-gradient(135deg,#343746,#44475a)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 55%,var(--accent-3))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1875,8 +1875,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 60px rgba(0,0,0,.65)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#fe8019,#fabd2f 55%,#b8bb26)",
-      "grad-soft": "linear-gradient(135deg,#3c3836,#504945)",
+      "grad": "linear-gradient(135deg,var(--accent-2),var(--accent) 55%,var(--accent-3))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1931,8 +1931,8 @@ export const LOOK_DATA: LookData[] = [
       "0 22px 60px rgba(0,0,0,.5)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#88c0d0,#81a1c1 50%,#b48ead)",
-      "grad-soft": "linear-gradient(135deg,#3b4252,#434c5e)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 50%,var(--accent-3))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -1987,8 +1987,8 @@ export const LOOK_DATA: LookData[] = [
       "0 22px 58px rgba(0,0,0,.55)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#ebbcba,#c4a7e7 55%,#9ccfd8)",
-      "grad-soft": "linear-gradient(135deg,#26233a,#2a2740)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 55%,var(--accent-3))",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -2043,8 +2043,8 @@ export const LOOK_DATA: LookData[] = [
       "0 18px 50px rgba(88,110,117,.24)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#268bd2,#2aa198 50%,#859900)",
-      "grad-soft": "linear-gradient(135deg,#fdf6e3,#eee8d5)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 50%,#859900)",
+      "grad-soft": "linear-gradient(135deg,var(--surface),var(--surface-soft))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
@@ -2099,8 +2099,8 @@ export const LOOK_DATA: LookData[] = [
       "0 24px 62px rgba(0,0,0,.6)"
     ],
     "vars": {
-      "grad": "linear-gradient(135deg,#7aa2f7,#bb9af7 55%,#f7768e)",
-      "grad-soft": "linear-gradient(135deg,#24283b,#2f334d)",
+      "grad": "linear-gradient(135deg,var(--accent),var(--accent-2) 55%,#f7768e)",
+      "grad-soft": "linear-gradient(135deg,var(--surface-raised),var(--surface-raised-2))",
       "letter-tight": "-.03em",
       "letter-normal": "-.01em",
       "ease": "cubic-bezier(.4,0,.2,1)"
