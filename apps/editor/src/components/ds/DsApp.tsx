@@ -1,7 +1,7 @@
 import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useState } from 'react';
-import { DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
+import { DS_COVER, DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
 import { display, edit, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
@@ -72,7 +72,7 @@ function Overview({ theme }: { theme: string }) {
   const t = useTokens();
   const index = useDsIndex();
   const files = useStore((s) => s.files);
-  const cover = useStore((s) => display(s, 'components/Cover/preview.html'));
+  const cover = useStore((s) => display(s, DS_COVER));
   const sections = useMemo(() => {
     const list = sectionFiles(Object.keys(files));
     return list.includes(DS_README) ? list : [DS_README, ...list];

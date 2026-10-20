@@ -1,0 +1,10 @@
+{
+  "id": "steep-intro",
+  "kind": "motion",
+  "project": "steep-intro",
+  "brief": "Make a motion project named `steep-intro`: a short 16:9 intro video for a fictional tea subscription called \"Steep\", in three scenes (the name over a slowly moving, glowing background of soft light; one line on what it is; a closing line with \"steep.tea\"). Calm and warm, the text readable over the light. Make it good, then verify it with the tools' own checks and by looking at the pictures, fix anything wrong, and export PNG pictures of the frames.",
+  "export": { "as": "png" },
+  "expect": { "scene": 3 },
+  "mustContain": ["Steep", "steep.tea", "data-fx"],
+  "rubric": "Three scenes: the name over a moving light background, one line on what Steep is, a closing line with steep.tea. The background is one of the built-in moving light effects (data-fx), not a flat gradient or a hand-written shader; text stays readable over it; calm, warm and consistent; nothing cut off; timing gives each line time to read."
+}
