@@ -113,19 +113,26 @@
 }
 
 
-.prompt .body .imgtoggle,
-.dsask .imgtoggle {
-  align-self: flex-end;
-  height: 34px;
-  color: var(--faint);
+.opts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+
+.imgtoggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: none;
+}
+
+
+.imgtoggle:not(.continues) {
   text-decoration: line-through;
 }
 
-.prompt .body .imgtoggle.on,
-.dsask .imgtoggle.on {
-  color: var(--accent);
-  text-decoration: none;
-}
 
 .attach-tray {
   list-style: none;

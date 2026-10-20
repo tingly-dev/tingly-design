@@ -1,6 +1,6 @@
 # AI 模型设置：一个连接，三个用途
 
-状态：**已实施**（快速 AI、Claude Code、图片生成）。图片生成这一块见 [image-generation.md](./image-generation.md)。测试是 `packages/core/test/aiConfig.test.ts` 和 `e2e/ai_settings.py`。
+状态：**已实施**（快速 AI、Claude Code、图像生成）。图像生成这一块见 [image-generation.md](./image-generation.md)。测试是 `packages/core/test/aiConfig.test.ts` 和 `e2e/ai_settings.py`。
 
 ## 1. 要解决的问题
 
@@ -8,7 +8,7 @@
 
 ## 2. 配置的逻辑
 
-两个用途用模型（图片生成是第三个，地址跟着连接走，见 [image-generation.md](./image-generation.md)）：
+两个用途用模型（图像生成是第三个，地址跟着连接走，见 [image-generation.md](./image-generation.md)）：
 
 - **快速 AI**：服务端用 Anthropic SDK 直接调，改一段文字或几个元素。
 - **Claude Code**：服务端起 `claude -p`，做整件事。
@@ -55,7 +55,7 @@ Claude Code 另有一个出口：**用它自己的登录**。装了 `claude` 并
 
 ## 6. 没做的
 
-- 图片生成的**测试按钮**：生成每次都花钱，见 [image-generation.md](./image-generation.md) §7。
+- 图像生成的**测试按钮**：生成每次都花钱，见 [image-generation.md](./image-generation.md) §7。
 - 多个具名配置（"工作""个人"）：现在只有一套。
 - 按项目覆盖：模型是人的偏好，不是作品的一部分，所以不进项目文件夹。
 - 对 Claude Code 的"测试"：只检查 `claude` 命令在不在，不真的发一次请求（会开一个子进程、花额度）。

@@ -52,7 +52,7 @@
 | [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的 |
 | [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：快速 AI 和 Claude Code 共用一个连接、各有模型名；环境变量 > 已保存 > 默认；Tingly Box 为推荐 | 已实施；§6 是没做的 |
-| [image-generation.md](./image-generation.md) | 图片生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
+| [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
 | [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |

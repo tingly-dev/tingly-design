@@ -25,6 +25,7 @@ export function RequestBar({
   variant,
   label,
   head,
+  options,
   placeholder,
   disabled,
   busyRun,
@@ -38,6 +39,8 @@ export function RequestBar({
   label: string;
   /** the head row before its tools: what the request is about, where it goes */
   head: ReactNode;
+  /** the row under the box: settings of this request (a conversation to continue, pictures) */
+  options?: ReactNode;
   placeholder: string;
   /** sending is impossible (nothing to point at, no model, no CLI) */
   disabled?: boolean;
@@ -136,7 +139,6 @@ export function RequestBar({
       <AttachTray items={attach.items} onRemove={attach.remove} />
       <div className="body">
         <AttachButton onFiles={(f) => void attach.add(f)} />
-        <ImageToggle />
         <textarea
           ref={box}
           rows={1}
@@ -163,6 +165,7 @@ export function RequestBar({
           </button>
         )}
       </div>
+      {options && <div className="opts">{options}</div>}
       {attach.over && <div className="drop-hint">{t('prompt.attach.dropHint')}</div>}
       {blocked ? (
         <div className="prompt-hint warn" role="status">
