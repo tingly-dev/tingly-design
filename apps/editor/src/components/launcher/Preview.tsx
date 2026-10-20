@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DS_COVER, SLIDE_H, SLIDE_W, parseCardMarker, sandboxDoc, speedOf, type DsTokens, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
+import { DS_COVER, DS_INDEX, DS_TOKENS, SLIDE_H, SLIDE_W, parseCardMarker, parseDsIndex, resolveTokens, sandboxDoc, speedOf, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
 import { api } from '../../api';
 import { SERVER } from '../../base';
 import { MotionFrame } from '../motion/MotionFrame';
 import { htmlLang } from '../../i18n';
 import { Specimen } from '../ds/Specimen';
-import { previewDoc } from '../ds/ds';
+import { framePreview } from '../ds/previewDoc';
 import { useElementSize } from '../../hooks';
 
 /** Calls back once the element has scrolled near the viewport. */
@@ -118,7 +118,7 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
     body = (
       <div className="lp-ds">
         {p.cover ? (
-          <CoverFrame cover={p.cover} project={project} near={near} />
+          <CoverFrame project={project} near={near} />
         ) : (
           <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
         )}
@@ -193,37 +193,64 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
 
 let coverSeq = 0;
 
+/** Everything the overview loads for a preview (tokens, bundle.css, libraries, bundle.js), read when the card comes near. */
+async function coverDoc(project: string, frameId: string): Promise<{ doc: string; height: number } | undefined> {
+  const files = await api.files(project).then((r) => r.files).catch(() => undefined);
+  const text = (f: string) => files?.[f]?.content;
+  const html = text(DS_COVER);
+  if (!html) return undefined;
+  const raw = api.rawBase(project);
+  const [index, tokens, bundleCss, bundleJs] = [DS_INDEX, DS_TOKENS, 'components/bundle.css', 'components/bundle.js'].map(text);
+  const { libraries, title } = parseDsIndex(index);
+  const libFiles: Record<string, string> = {};
+  for (const [f, e] of Object.entries(files ?? {})) if (f.startsWith('components/lib/')) libFiles[f] = e.content;
+  const t = resolveTokens(tokens ?? '');
+  const doc = framePreview({ html, comp: 'Cover', theme: t.themes[0]?.id ?? '', tokens: t, title, bundleCss, bundleJs, libraries, libFiles, frameId, raw, poll: false });
+  return { doc, height: parseCardMarker(html).height ?? 400 };
+}
+
 /**
- * A design system's cover, drawn the way its overview draws it (tokens.css, then components/bundle.css) and
- * scaled to fill the card, so the card shows the system's own look: border weight, gradient text, glow, grid.
- * Scripts in the cover still run, but bundle.js and the libraries are not loaded here, to keep the list light.
+ * A design system's cover, drawn the way its overview draws it (tokens.css, bundle.css, its libraries and
+ * bundle.js) and scaled to fill the card, so the card shows the system's own look: border weight, gradient
+ * text, glow, grid. Its files are read only when the card scrolls near, so the project list stays small.
  */
-function CoverFrame({ cover, project, near }: { cover: { html: string; tokens: DsTokens; css?: string }; project: string; near: boolean }) {
+function CoverFrame({ project, near }: { project: string; near: boolean }) {
   const { t } = useTranslation();
+  const frame = useRef<HTMLIFrameElement>(null);
   const [box, size] = useElementSize<HTMLDivElement>();
   const [id] = useState(() => `lc${++coverSeq}`);
-  const marked = parseCardMarker(cover.html).height ?? 400;
-  const [h, setH] = useState(marked);
-  const theme = cover.tokens.themes[0]?.id ?? '';
-  const doc = useMemo(
-    () => previewDoc({ html: cover.html, comp: 'Cover', theme, tokens: cover.tokens, title: '', bundleCss: cover.css, libraries: [], libFiles: {}, frameId: id, project }),
-    [cover, theme, id, project],
-  );
+  const [doc, setDoc] = useState<string>();
+  const [marked, setMarked] = useState(400);
+  const [h, setH] = useState(400);
+  useEffect(() => {
+    if (!near) return;
+    let live = true;
+    void coverDoc(project, id).then((c) => {
+      if (!live || !c) return;
+      setMarked(c.height);
+      setH(c.height);
+      setDoc(c.doc);
+    });
+    return () => {
+      live = false;
+    };
+  }, [near, project, id]);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
-      if (e.data?.dsPreview === id && typeof e.data.height === 'number') setH(Math.min(4000, Math.max(40, e.data.height)));
+      if (e.source !== frame.current?.contentWindow) return;
+      if (e.data?.dsPreview === id && typeof e.data.height === 'number') setH(Math.min(4000, Math.max(marked, e.data.height)));
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [id]);
+  }, [id, marked]);
   // laid out at a width that keeps the cover's own proportions in the card, then scaled to cover it (no strip of page below)
   const w = size.h ? Math.min(1440, Math.max(720, (h * size.w) / size.h)) : 960;
   const scale = Math.max(size.w / w, size.h / h);
   return (
     <div ref={box} className="lp-cover">
-      {near && size.w > 0 && (
+      {doc && size.w > 0 && (
         <div style={{ width: w, height: Math.max(h, size.h / scale), transform: `scale(${scale})`, transformOrigin: '0 0' }}>
-          <iframe title={t('launcher.preview.frame', { file: DS_COVER })} sandbox="allow-scripts" srcDoc={doc} tabIndex={-1} aria-hidden="true" />
+          <iframe ref={frame} title={t('launcher.preview.frame', { file: DS_COVER })} sandbox="allow-scripts" srcDoc={doc} tabIndex={-1} aria-hidden="true" />
         </div>
       )}
     </div>

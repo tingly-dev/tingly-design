@@ -59,8 +59,9 @@ async def main():
         await expect(board.locator('h1').first).to_have_text('Team settings')
         check('the canvas card renders the board it opens on', True)
         check('the canvas card maps its boards', await pg.locator('.lcard[data-project="box-console"] .lp-mini rect').count() == 5)
-        check('the design system card shows its swatches, its faces and its cover',
-              await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Instrument Serif' in await pg.locator('.lcard[data-project="tingly-ds"] .lp-ds').inner_text() and await pg.locator('.lcard[data-project="tingly-ds"] .lp-cover iframe').count() == 1)
+        check('the design system card shows its swatches and its faces, under its cover',
+              await pg.locator('.lcard[data-project="tingly-ds"] .sw span').count() >= 6 and 'Instrument Serif' in await pg.locator('.lcard[data-project="tingly-ds"] .lp-ds').inner_text())
+        await expect(pg.locator('.lcard[data-project="tingly-ds"] .lp-cover iframe')).to_have_count(1)
         await expect(pg.locator('.lcard[data-project="box-usage"] .lp-dash li').first).to_have_text('September provider budgets')
         await expect(pg.locator('.lcard[data-project="design-guide"] .lp-doc li').nth(2)).to_have_attribute('style', 'padding-left: 10px;')
         check('dashboard and doc cards show datasets and the tab outline', True)

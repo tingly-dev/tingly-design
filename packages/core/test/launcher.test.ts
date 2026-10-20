@@ -51,14 +51,11 @@ describe('projectCard', () => {
     expect(c.preview).toMatchObject({ kind: 'design-system', colors: ['#111111', '#2563eb'], components: ['Button'], fonts: ['Inter'] });
     if (c.preview.kind !== 'design-system') throw new Error('kind');
     expect(c.preview.glance).toMatchObject({ ink: '#111111', accent: '#2563eb', bodyFont: "'Inter', Arial, sans-serif", colors: 2, themes: ['Light'] });
-    // the card draws the cover with the tokens and the components' styles; without a cover it falls back to the sample
-    expect(c.preview.cover).toMatchObject({ html: '<div>', css: undefined });
-    expect(c.preview.cover?.tokens.themes[0]?.id).toBe('light');
-    const styled = await projectCard('brand', 'design-system', Object.keys(files), reader({ ...files, 'components/bundle.css': '.lk-card{border:2px solid}' }));
-    expect(styled.preview.kind === 'design-system' && styled.preview.cover?.css).toBe('.lk-card{border:2px solid}');
+    // the card draws the cover when there is one, else the sample
+    expect(c.preview.cover).toBe(true);
     const { 'components/Cover/preview.html': _, ...bare } = files;
     const plain = await projectCard('brand', 'design-system', Object.keys(bare), reader(bare));
-    expect(plain.preview.kind === 'design-system' && plain.preview.cover).toBeUndefined();
+    expect(plain.preview.kind === 'design-system' && plain.preview.cover).toBe(false);
   });
 
   it('a dashboard lists its datasets by title, falling back to the file name', async () => {

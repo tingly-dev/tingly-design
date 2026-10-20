@@ -1,3 +1,4 @@
+import { DS_COVER } from './designSystem';
 import { LOOK_BASE_CSS, LOOK_DATA } from './looks.data';
 
 /**
@@ -206,7 +207,7 @@ export interface DividerProps { accent?: boolean }
     'components/bundle.css': css,
     'components/bundle.js': bundle,
     'components/index.d.ts': types,
-    'components/Cover/preview.html': cover,
+    [DS_COVER]: cover,
     'components/Title/README.md': `# Title\n\n${w.readmeTitle}\n`,
     'components/Title/preview.html': card(
       `group=${attr(w.groupText)} height=220`,
