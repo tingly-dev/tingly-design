@@ -91,6 +91,7 @@ import { PdfError, printPdf } from './pdf';
 import type { ExportReport } from '@dc/export/timing';
 import { RenderError, renderCapabilities, renderMotion } from './render';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast } from './aiconfig';
+import { generateImage, imageState, setProjectImageOn } from './imagegen';
 import { DC_LANG, langOf, replyLanguage, trOf } from './i18n';
 import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
@@ -126,6 +127,7 @@ app.get('/api/health', async (c) => {
     ok: true,
     fastEdit: fastReady(aiResolved()),
     fastModel: aiResolved().fastModel.value,
+    imageGen: aiResolved().image.active,
     claudeCli: cliChecked,
     projectsDir: fromRoot(PROJECTS_DIR),
     projectsInRepo: !!(await repoOf(PROJECTS_DIR)),
@@ -684,13 +686,13 @@ app.get('/api/ai-config', async (c) => {
 
 const aiDraft = (b: Record<string, unknown>) => {
   const d = sanitizeSaved(b);
-  if (b.baseUrl && !validBaseUrl(d.baseUrl ?? '')) throw new HttpError(400, 'badBaseUrl');
+  if ((b.baseUrl && !validBaseUrl(d.baseUrl ?? '')) || (b.imageBaseUrl && !validBaseUrl(d.imageBaseUrl ?? ''))) throw new HttpError(400, 'badBaseUrl');
   return d;
 };
 
 app.put('/api/ai-config', async (c) => {
   const b = await c.req.json<Record<string, unknown>>();
-  await saveAi(aiDraft(b), { key: b.clearKey !== true && !b.apiKey });
+  await saveAi(aiDraft(b), { key: b.clearKey !== true && !b.apiKey, imageKey: b.clearImageKey !== true && !b.imageKey });
   return c.json({ ok: true });
 });
 
@@ -699,6 +701,34 @@ app.post('/api/ai-config/test', async (c) => {
   const b = await c.req.json<Record<string, unknown>>();
   const res = await testFast(aiDraft(b));
   return c.json(res.error === 'noKey' ? { ...res, error: trOf(c)('errors.noFastModel') } : res);
+});
+
+// ---------------------------------------------------------------- images
+
+/** Make a picture from a prompt, or change one in the project (`edit`), and keep it under uploads/. Claude Code reaches this through scripts/image-gen.mjs. */
+app.post('/api/projects/:p/images', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  const body = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
+  const str = (k: string) => (typeof body[k] === 'string' ? (body[k] as string) : undefined);
+  const out = await generateImage(p, { prompt: str('prompt') ?? '', size: str('size'), quality: str('quality'), edit: str('edit') });
+  publish(p, { type: 'assets', path: out.path });
+  return c.json(out);
+});
+
+/** Whether pictures can be made in this project: configured in the settings, allowed globally, and not switched off for the project. */
+app.get('/api/projects/:p/image-gen', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  return c.json(await imageState(p));
+});
+
+app.put('/api/projects/:p/image-gen', async (c) => {
+  const p = c.req.param('p');
+  projectDir(p);
+  const b = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
+  await setProjectImageOn(p, b.enabled !== false);
+  return c.json(await imageState(p));
 });
 
 // ---------------------------------------------------------------- delegate
@@ -715,7 +745,7 @@ app.post('/api/projects/:p/delegate', async (c) => {
   if (!req.prompt?.trim()) throw new HttpError(400, 'promptMissing');
   const bad = checkUploads(req.attachments);
   if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
-  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c)) });
+  return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c), (await imageState(p)).on) });
 });
 
 /** The Claude Code conversation the project keeps: the next request continues it unless it asks for a new one. */

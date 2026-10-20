@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TINGLY_BOX_ANTHROPIC, resolveAi, sanitizeSaved, validBaseUrl } from '../src/aiConfig';
+import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, resolveAi, sanitizeSaved, validBaseUrl } from '../src/aiConfig';
 
 describe('resolveAi', () => {
   it('defaults to Anthropic with the small model and no key', () => {
@@ -31,9 +31,61 @@ describe('resolveAi', () => {
   });
 });
 
+describe('resolveAi image generation', () => {
+  it('is off with Anthropic: there is no image endpoint to follow', () => {
+    const r = resolveAi({}, { apiKey: 'k' });
+    expect(r.image.baseUrl.value).toBe('');
+    expect(r.image.ready).toBe(false);
+  });
+  it('follows Tingly Box: its gateway, its alias, the connection key', () => {
+    const r = resolveAi({}, { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k' });
+    expect(r.image.baseUrl).toEqual({ value: TINGLY_BOX_IMAGEGEN, source: 'default' });
+    expect(r.image.model.value).toBe('tingly');
+    expect(r.image.key).toEqual({ set: true, source: 'connection' });
+    expect(r.image.ready).toBe(true);
+  });
+  it('needs a key even with Tingly Box', () => {
+    expect(resolveAi({}, { baseUrl: TINGLY_BOX_ANTHROPIC }).image.ready).toBe(false);
+  });
+  it('takes any OpenAI-compatible address, with OpenAI’s model by default and its own key', () => {
+    const r = resolveAi({}, { imageBaseUrl: 'https://api.openai.com/v1/', imageKey: 'sk' });
+    expect(r.image.baseUrl).toEqual({ value: 'https://api.openai.com/v1', source: 'saved' });
+    expect(r.image.model.value).toBe('gpt-image-1');
+    expect(r.image.key).toEqual({ set: true, source: 'saved' });
+    expect(r.image.ready).toBe(true);
+  });
+  it('is on by default; the saved switch or the host can turn it off without losing the settings', () => {
+    const base = { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k' };
+    expect(resolveAi({}, base).image).toMatchObject({ ready: true, active: true, enabled: { value: true, source: 'default' } });
+    const off = resolveAi({}, { ...base, imageEnabled: false }).image;
+    expect(off).toMatchObject({ ready: true, active: false, enabled: { value: false, source: 'saved' } });
+    expect(resolveAi({ imageEnabled: '0' }, base).image.enabled).toEqual({ value: false, source: 'env' });
+    expect(resolveAi({ imageEnabled: '1' }, { ...base, imageEnabled: false }).image.enabled.value).toBe(false);
+    expect(resolveAi({}, { imageEnabled: false }).image.active).toBe(false);
+  });
+  it('keeps only an explicit off when saving', () => {
+    expect(sanitizeSaved({ imageEnabled: false }).imageEnabled).toBe(false);
+    expect('imageEnabled' in sanitizeSaved({ imageEnabled: true })).toBe(false);
+  });
+  it('lends the connection key only to an address that follows the connection', () => {
+    expect(resolveAi({}, { apiKey: 'k', imageBaseUrl: 'https://api.openai.com/v1' }).image).toMatchObject({ ready: false, key: { set: false } });
+    expect(resolveAi({}, { baseUrl: 'https://api.openai.com', apiKey: 'k', imageBaseUrl: 'https://api.openai.com/v1' }).image.ready).toBe(true);
+    expect(resolveAi({}, { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k', imageBaseUrl: 'https://api.openai.com/v1' }).image.model.value).toBe('gpt-image-1');
+  });
+  it('lets DC_IMAGE_* from the host win, field by field', () => {
+    const r = resolveAi({ imageBaseUrl: 'https://img.example/v1', imageModel: 'm' }, { baseUrl: TINGLY_BOX_ANTHROPIC, apiKey: 'k', imageModel: 'x' });
+    expect(r.image.baseUrl.source).toBe('env');
+    expect(r.image.model).toEqual({ value: 'm', source: 'env' });
+    expect(r.image.key.source).toBe('none');
+  });
+});
+
 describe('sanitizeSaved', () => {
   it('drops unknown fields and blanks', () => {
     expect(sanitizeSaved({ baseUrl: ' http://x/ ', apiKey: '', fastModel: ' m ', evil: 1, claudeRoute: 'nope' })).toEqual({ baseUrl: 'http://x', fastModel: 'm' });
+  });
+  it('keeps the image fields, trimmed', () => {
+    expect(sanitizeSaved({ imageBaseUrl: ' https://i/v1/ ', imageKey: ' k ', imageModel: ' m ' })).toEqual({ imageBaseUrl: 'https://i/v1', imageKey: 'k', imageModel: 'm' });
   });
   it('validates base urls', () => {
     expect(validBaseUrl('')).toBe(true);

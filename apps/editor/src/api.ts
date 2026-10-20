@@ -41,6 +41,8 @@ export interface Health {
   ok: boolean;
   fastEdit: boolean;
   fastModel: string;
+  /** image generation is set up (the server's /images route works) */
+  imageGen?: boolean;
   claudeCli: boolean;
   projectsDir: string;
   /** whether the projects folder is inside a git repository */
@@ -67,6 +69,14 @@ export interface AiConfig {
   fastModel: { value: string; source: AiSource };
   claudeModel: { value: string; source: AiSource };
   claudeRoute: { value: 'shared' | 'login'; source: AiSource };
+  image: {
+    baseUrl: { value: string; source: AiSource };
+    model: { value: string; source: AiSource };
+    key: { set: boolean; source: AiSource | 'connection' | 'none' };
+    ready: boolean;
+    enabled: { value: boolean; source: AiSource };
+    active: boolean;
+  };
   claudeCli: boolean;
   box: { reachable: boolean };
 }
@@ -80,6 +90,20 @@ export interface AiDraft {
   claudeModel: string;
   /** left out until the person chooses: the default follows whether there is a key */
   claudeRoute?: 'shared' | 'login';
+  /** an OpenAI-compatible image address; blank follows the connection */
+  imageBaseUrl?: string;
+  imageKey?: string;
+  imageModel?: string;
+  /** false switches image generation off for every project; left out means on */
+  imageEnabled?: boolean;
+}
+
+/** GET /api/projects/:p/image-gen: why Claude Code is, or is not, offered the picture tool here. */
+export interface ImageState {
+  configured: boolean;
+  global: boolean;
+  project: boolean;
+  on: boolean;
 }
 
 export type ServerEvent =
@@ -102,6 +126,9 @@ export const api = {
   aiConfig: () => call(at('api/ai-config')).then((r) => json<AiConfig>(r)),
   saveAiConfig: (d: AiDraft) =>
     call(at('api/ai-config'), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: true }>(r)),
+  imageState: (p: string) => call(at(`api/projects/${enc(p)}/image-gen`)).then((r) => json<ImageState>(r)),
+  setImageState: (p: string, enabled: boolean) =>
+    call(at(`api/projects/${enc(p)}/image-gen`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled }) }).then((r) => json<ImageState>(r)),
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),

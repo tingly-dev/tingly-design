@@ -26,6 +26,7 @@ OUT = os.path.join(HERE, 'out')
 # A parallel lane shifts every port by its offset (DC_E2E_OFFSET, 100 per lane), so lanes on one machine do not meet.
 OFFSET = int(os.environ.get('DC_E2E_OFFSET', 0))
 MOCK_PORT, API_PORT, EDITOR_PORT = 8790 + OFFSET, 8787 + OFFSET, 5173 + OFFSET
+IMAGES_PORT = MOCK_PORT + 1  # the OpenAI-style images mock (image_gen)
 
 # suite -> group. A group is what has to be running before the suite starts.
 SUITES = {
@@ -33,7 +34,7 @@ SUITES = {
     'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
     'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev',
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',
-    'ai_settings': 'dev-bare',
+    'ai_settings': 'dev-bare', 'image_gen': 'dev-bare',
     'conversation': 'fake-claude',
     'attach': 'build', 'run_feed': 'build', 'chat_panel': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',
     'check_snapshots': 'build',
@@ -114,10 +115,13 @@ class Group:
 
     def start(self):
         if self.name in ('dev', 'dev-bare', 'fake-claude'):
-            busy = [p for p in (EDITOR_PORT, API_PORT, MOCK_PORT) if port_busy(p)]
+            busy = [p for p in (EDITOR_PORT, API_PORT, MOCK_PORT, *([IMAGES_PORT] if self.name == 'dev-bare' else [])) if port_busy(p)]
             if busy: raise RuntimeError(f'ports {busy} are in use; stop the running dev server (or mock) first')
             # the fast suites read what the model was sent from the mock's default log, e2e/out/mock.log
             self.procs.append(start([sys.executable, os.path.join(HERE, 'mock_anthropic.py'), os.path.join(OUT, 'mock.log'), str(MOCK_PORT)], self.env, self.log('mock')))
+            if self.name == 'dev-bare':
+                self.procs.append(start([sys.executable, os.path.join(HERE, 'mock_images.py'), os.path.join(OUT, 'mock-images.log'), str(IMAGES_PORT)], self.env, self.log('mock-images')))
+                self.env.update(DC_MOCK_IMAGES_URL=f'http://127.0.0.1:{IMAGES_PORT}', DC_MOCK_URL=f'http://127.0.0.1:{MOCK_PORT}', DC_MOCK_LOG=os.path.join(OUT, 'mock-images.log'))
             if self.name == 'dev':
                 self.env.update(ANTHROPIC_API_KEY='x', ANTHROPIC_BASE_URL=f'http://127.0.0.1:{MOCK_PORT}')
             self.env['DC_CONFIG'] = os.path.join(self.tmp, f'ai-{self.name}.json')

@@ -113,6 +113,20 @@
 }
 
 
+.prompt .body .imgtoggle,
+.dsask .imgtoggle {
+  align-self: flex-end;
+  height: 34px;
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.prompt .body .imgtoggle.on,
+.dsask .imgtoggle.on {
+  color: var(--accent);
+  text-decoration: none;
+}
+
 .attach-tray {
   list-style: none;
   margin: 0;

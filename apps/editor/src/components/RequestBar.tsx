@@ -5,6 +5,7 @@ import type { Attachment } from '@dc/core';
 import { toast, useStore, type LastRun } from '../store';
 import { stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
+import { ImageToggle } from './ImageToggle';
 import { AttachButton, AttachTray } from './Attachments';
 import { RunFeed, useAutoGrow } from './RunFeed';
 import { BarPill, BarTools, HistoryList, useBarKeys } from './AgentBar';
@@ -135,6 +136,7 @@ export function RequestBar({
       <AttachTray items={attach.items} onRemove={attach.remove} />
       <div className="body">
         <AttachButton onFiles={(f) => void attach.add(f)} />
+        <ImageToggle />
         <textarea
           ref={box}
           rows={1}

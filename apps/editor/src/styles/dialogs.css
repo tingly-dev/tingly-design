@@ -295,3 +295,11 @@
   gap: 8px;
 }
 
+
+.aiset .check {
+  font-size: 13px;
+}
+
+.aiset .check.off {
+  opacity: 0.55;
+}

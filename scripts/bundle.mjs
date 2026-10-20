@@ -60,6 +60,7 @@ copy('projects', 'samples', (src) => !/[/\\]\.[^/\\]+$/.test(src) && !/[/\\]rend
 // issue-resolve is a maintainer workflow, not a format reference a host's Claude Code needs
 copy('.claude/skills', '.claude/skills', (src) => !/[/\\]issue-resolve([/\\]|$)/.test(src));
 copy('scripts/dash-query.mjs', 'scripts/dash-query.mjs');
+copy('scripts/image-gen.mjs', 'scripts/image-gen.mjs');
 
 writeFileSync(
   join(out, 'tingly-design.json'),

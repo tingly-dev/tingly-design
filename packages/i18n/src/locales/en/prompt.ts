@@ -155,6 +155,12 @@ export default {
     noScenes: 'No scenes',
     noBoards: 'No artboards',
   },
+  image: {
+    label: 'Pictures',
+    on: 'Claude Code may make pictures in this project. Click to turn off.',
+    off: 'Pictures are off in this project. Click to let Claude Code make them.',
+    globalOff: 'Pictures are switched off for every project in AI settings.',
+  },
   attach: {
     keepFailed: 'Couldn\'t save the attachments to the project: {{error}}',
     dropHint: 'Drop to attach as a reference for this request',
