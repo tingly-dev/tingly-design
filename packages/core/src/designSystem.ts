@@ -460,9 +460,17 @@ export function resolveTokens(input: unknown): DsTokens {
             const v = (tok.value as Record<string, unknown>)[th.id];
             if (typeof v === 'string') per[th.id] = v.trim();
           }
-        const ok = Object.values(per).length > 0 && Object.values(per).every((v) => SHADOW_RE.test(v) && !/var\(|url\(/i.test(v));
+        const ok = Object.values(per).length > 0 && Object.values(per).every((v) => SHADOW_RE.test(v) && !/url\(/i.test(v));
         if (!ok || !per[first]) {
           drop(at, `"${name}": not a box-shadow the page reads.`);
+          continue;
+        }
+        // a colour of the system may be named as var(--colour), so a shadow follows the theme
+        const unknown = Object.values(per)
+          .flatMap((v) => [...v.matchAll(/var\(([^)]*)\)/gi)].map((m) => m[1].trim()))
+          .find((ref) => !/^--[A-Za-z0-9_-]+$/.test(ref) || !colors.some((c) => c.name === ref.slice(2)));
+        if (unknown !== undefined) {
+          drop(at, `"${name}": var(${unknown}) is not one of the system's colours; a shadow may use var(--colour) of a colour token only.`);
           continue;
         }
         taken.add(name);
@@ -615,6 +623,11 @@ export function colorIn(t: DsTokens, name: string, theme?: string): string | und
   const c = t.colors.find((x) => x.name === name);
   if (!c) return undefined;
   return c.values[theme ?? t.themes[0].id] ?? c.values[t.themes[0].id];
+}
+
+/** A shadow with its `var(--colour)` references replaced by that colour's value in `theme`, for drawing outside the system's own tokens.css. */
+export function shadowIn(t: DsTokens, value: string, theme?: string): string {
+  return value.replace(/var\(\s*--([A-Za-z0-9_-]+)\s*\)/g, (m, name: string) => colorIn(t, name, theme) ?? m);
 }
 
 const remPx = (v: string) => {

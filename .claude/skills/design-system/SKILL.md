@@ -56,7 +56,7 @@ What the page reads (anything else drops, and the editor's 问题 view says why)
 - Lengths (`fontSize`, `letterSpacing`, spacing, radius): `px`, `rem`, `em`, `%` or a number (px). `lineHeight`: a length or a unitless number under 10. `fontWeight`: 1–1000, `"300 800"`, `normal`, `bold`.
 - `type.families`: font stacks ≤ 200 characters, no `; { } < > \` or functions. `type.fonts[].file` is a path under `fonts/`.
 - `type.hosted` (this repository's extension; the original page keeps but ignores it): faces loaded from a `https://fonts.googleapis.com/css2?…` link. Installing the system into a deck turns them into the deck's typefaces.
-- `shadow`: a box-shadow per token (or per theme like colours). Any other top-level `{tokens:[…]}` key (`opacity`, `zIndex`…) becomes its own section. There is no motion family.
+- `shadow`: a box-shadow per token (or per theme like colours). A colour of the system may appear as `var(--colour)` (only that exact form, only a colour token), so the shadow follows the theme: `0 0 24px var(--accent)`; any other `var()` or `url()` drops the token. Any other top-level `{tokens:[…]}` key (`opacity`, `zIndex`…) becomes its own section. There is no motion family.
 - Every token gets a `usage` note. A text colour's note names the surfaces it is legible on — "on surface and surface-raised" — and the editor shows the contrast on each.
 
 ## preview.html
