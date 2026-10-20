@@ -37,6 +37,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --host <地址>         serve、open：监听的地址（默认 127.0.0.1）
   --title <文字>        new：启动页上显示的标题
   -i, --interactive     new：没给出的都问一遍，建好后问要不要打开
+  --global              new：名字不建在当前目录，建在项目目录里
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
                         尺寸名（wechat、tall、story、og、a4、wide、mpu……）
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
@@ -64,6 +65,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   badPage: '{{page}} 不是这种类型的参考页。参考页有：{{pages}}',
   badBoardSize: '--size {{size}} 既不是宽x高（如 1080x1440），也不是已命名的尺寸：{{sizes}}。',
   needName: '请给项目起名或指定文件夹：tingly-design new {{kind}} <名字或文件夹>',
+  globalPath: '--global 把项目放在项目目录里，所以只收名字，不收路径：{{target}}',
+  nameTaken: '已经有叫 {{name}} 的项目了。换个名字，或者给一个路径。',
   noProjectAt: '{{path}} 里没有项目',
   created: '已新建{{kind}} {{name}}，位置：{{path}}',
   listEmpty: '{{dir}} 里还没有项目。用 tingly-design new <类型> <名字> 新建一个。',

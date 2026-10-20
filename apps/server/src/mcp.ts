@@ -12,7 +12,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { translator, type Language } from '@dc/i18n';
-import { check, CommandError, create, exportProject, FORMATS, history, KINDS, outline, pickFor, projects, prompt, resolveProject, skillPages, skills, type Ctx, type Kind, type Project } from './commands';
+import { check, CommandError, create, looksLikePath, exportProject, FORMATS, history, KINDS, outline, pickFor, projects, prompt, resolveProject, skillPages, skills, type Ctx, type Kind, type Project } from './commands';
 import { VERSION } from './layout';
 import { log } from './log';
 import { HttpError } from './store';
@@ -134,7 +134,7 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       return json(await projects());
     case 'open': {
       if (str(a.kind)) {
-        const made = await create(ctx, { kind: str(a.kind), target: str(a.project), title: str(a.title), size: str(a.size) });
+        const made = await create(ctx, { kind: str(a.kind), target: str(a.project), title: str(a.title), size: str(a.size), global: !looksLikePath(str(a.project) ?? '') });
         return opened(made);
       }
       return opened(await resolveProject(ctx, str(a.project), 'list'));
