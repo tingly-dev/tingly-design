@@ -106,7 +106,21 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
     const root = roots[slide];
     const start = diagnostics.length;
     const output: PptxSlide = { objects: [] };
-    const push = (object: PptxObject) => { if (++objects > limits.maxObjects) throw new Error('budget'); output.objects.push(object); };
+    let pageW = 0, pageH = 0;
+    const push = (object: PptxObject) => {
+      // Nothing of it on the page: leave it out. Shapes reaching far off the page are cut to it (the
+      // writer keeps geometry within a page of the slide); text and pictures that far out are dropped.
+      if (object.x > pageW || object.y > pageH || object.x + object.width < 0 || object.y + object.height < 0) return;
+      if (object.x < -pageW || object.y < -pageH || object.x + object.width > 2 * pageW || object.y + object.height > 2 * pageH) {
+        if (object.type !== 'shape') { issue(slide, '', 'approximated', 'outside-slide', 'warning'); return; }
+        const x = Math.max(object.x, 0), y = Math.max(object.y, 0);
+        object = { ...object, x, y, width: Math.min(object.x + object.width, pageW) - x, height: Math.min(object.y + object.height, pageH) - y };
+      }
+      if (++objects > limits.maxObjects) throw new Error('budget');
+      output.objects.push(object);
+    };
+    /** Tree order of the slide's elements, for painting positioned boxes. */
+    const order = new Map<Element, number>();
     try {
       check();
       const win = root?.ownerDocument?.defaultView;
@@ -115,6 +129,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
       for (let node: Node | null = root; node; node = nodes.nextNode()) {
         check();
         if (node.nodeType === 1 && ++elements > limits.maxElements) throw new Error('budget');
+        if (node.nodeType === 1) order.set(node as Element, order.size);
         if (node.nodeType === 3) characters += node.textContent?.length ?? 0;
         if (characters > limits.maxTextCharacters) throw new Error('budget');
       }
@@ -128,6 +143,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
       const notes = Array.from(root.querySelectorAll('aside'));
       if (notes.length) output.notes = notes.map(n => n.textContent ?? '').join('\n');
       if (rb.width < 1 || rb.height < 1 || rb.width > 100000 || rb.height > 100000 || rb.height * options.widthIn / rb.width < 1 || rb.height * options.widthIn / rb.width > 56) throw new Error('page-size');
+      pageW = rb.width; pageH = rb.height;
       if (slide === 0) { widthPx = rb.width; heightPx = rb.height; }
       else if (Math.abs(widthPx - rb.width) > 0.1 || Math.abs(heightPx - rb.height) > 0.1) throw new Error('page-size');
       const box = (b: DOMRect) => ({ x: b.left - rb.left, y: b.top - rb.top, width: b.width, height: b.height });
@@ -169,13 +185,23 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
       }
       // CSS decorations propagate to descendants without appearing in their computed
       // textDecorationLine; the run carries them instead (in the run's own colour).
+      // They do not reach boxes taken out of the flow or atomic inlines (inline-block…).
       function decorations(el: Element) {
         const found = { underline: false, strike: false };
-        for (let ancestor = el.parentElement; ancestor && root.contains(ancestor); ancestor = ancestor.parentElement) {
-          const line = css(ancestor).textDecorationLine;
+        for (let x = el; x !== root && x.parentElement; x = x.parentElement) {
+          const xs = css(x);
+          if (['absolute', 'fixed'].includes(xs.position) || xs.float !== 'none' || /^inline-(block|flex|grid|table)$/.test(xs.display)) break;
+          const line = css(x.parentElement).textDecorationLine;
           found.underline ||= line.includes('underline'); found.strike ||= line.includes('line-through');
         }
         return found;
+      }
+      /** The character painted just before this text node, for capitalize. */
+      function before(node: Text): string {
+        const walker = root.ownerDocument.createTreeWalker(root, 4);
+        walker.currentNode = node;
+        for (let prev = walker.previousNode(); prev; prev = walker.previousNode()) if (prev.textContent) return prev.textContent.slice(-1);
+        return '';
       }
       function transformText(value: string, previous: string, mode: string): string {
         if (mode === 'uppercase') return value.toUpperCase();
@@ -208,7 +234,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           range.setStart(node, i); range.setEnd(node, i + n);
           const rects = range.getClientRects();
           const b = rects[0];
-          let char = transformText(value.slice(i, i + n), value.slice(Math.max(0, i - 1), i), st.textTransform); i += n;
+          let char = transformText(value.slice(i, i + n), i ? value.slice(i - 1, i) : st.textTransform === 'capitalize' ? before(node) : '', st.textTransform); i += n;
           if (!b || b.width <= 0) continue;
           if (/^[\t\r\n ]+$/.test(char) && !pre) {
             // collapsed white space: some builds still give the collapsed characters a width
@@ -287,36 +313,67 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         }
         return undefined;
       }
-      /** CSS paint order among siblings: in-flow content, then positioned boxes by z-index, ties in source order. */
-      function stacking(node: ChildNode, parent: CSSStyleDeclaration): number {
-        if (node.nodeType !== 1) return 0;
-        const st = css(node as Element);
-        const stackingItem = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(parent.display) && st.zIndex !== 'auto';
-        if (st.position === 'static' && !stackingItem) return 0;
-        const z = st.zIndex === 'auto' ? 0 : Number(st.zIndex);
-        return z < 0 ? -1 + z / 1e6 : z === 0 ? 1 : 2 + z;
-      }
-      async function walk(el: Element, path: string, alpha: number): Promise<void> {
+      /** A positioned box waiting for its stacking context: CSS paints it after that context's in-flow
+       * content, by z-index then tree order, wherever it sits in the tree below. */
+      interface Layer { el: Element; path: string; alpha: number; z: number; order: number }
+      const positioned = (st: CSSStyleDeclaration, parent: CSSStyleDeclaration) => st.position !== 'static' || (['flex', 'inline-flex', 'grid', 'inline-grid'].includes(parent.display) && st.zIndex !== 'auto');
+      const zOf = (st: CSSStyleDeclaration) => st.zIndex === 'auto' ? 0 : Number(st.zIndex);
+      async function walk(el: Element, path: string, alpha: number, layers: Layer[]): Promise<void> {
         check();
         if (el.tagName === 'ASIDE') return;
         const st = css(el);
         if (st.display === 'none') return;
-        if (st.visibility !== 'visible') {
-          // Its own painting and text are hidden; a descendant may still show itself.
-          for (const [i, child] of Array.from(el.children).entries()) await walk(child, `${path}/${i}`, alpha);
-          return;
-        }
-        const mark = output.objects.length, marked = diagnostics.length;
-        try { await element(el, st, path, alpha); }
-        catch (error) {
+        const parent = el.parentElement && el !== root ? css(el.parentElement) : st;
+        const context = el === root || (positioned(st, parent) && st.zIndex !== 'auto') || Number(st.opacity) < 1;
+        const own: Layer[] = context ? [] : layers;
+        const mark = output.objects.length, marked = diagnostics.length, waiting = layers.length;
+        const assetMark = Object.keys(assets).length, bytesMark = assetBytes;
+        try {
+          // Hidden: its own painting and text are not drawn; a descendant may still show itself.
+          if (st.visibility !== 'visible') await children(el, st, path, alpha, own, false);
+          else await element(el, st, path, alpha, own);
+          if (context) await paintLayers(own);
+        } catch (error) {
           const feature = error instanceof Error ? error.message : 'unknown';
           if (!raster || FATAL.includes(feature) || feature === 'rasterization') throw error;
           objects -= output.objects.length - mark;
           output.objects.length = mark; diagnostics.length = marked;
+          for (const id of Object.keys(assets).slice(assetMark)) delete assets[id];
+          assetBytes = bytesMark;
+          // its positioned descendants are in the picture now
+          for (let i = layers.length - 1; i >= waiting; i--) if (el.contains(layers[i].el)) layers.splice(i, 1);
           await picture(el, path, 'subtree', feature);
         }
       }
-      async function element(el: Element, st: CSSStyleDeclaration, path: string, inheritedAlpha: number): Promise<void> {
+      async function paintLayers(layers: Layer[]) {
+        while (layers.length) {
+          let next = 0;
+          for (let i = 1; i < layers.length; i++) {
+            const a = layers[i], b = layers[next];
+            if (a.z < b.z || (a.z === b.z && a.order < b.order)) next = i;
+          }
+          const [layer] = layers.splice(next, 1);
+          await walk(layer.el, layer.path, layer.alpha, layers);
+        }
+      }
+      /** In-flow children in order (flex `order`, then source); positioned ones go to the stacking context's layers, negative z-index first. */
+      async function children(el: Element, st: CSSStyleDeclaration, path: string, alpha: number, layers: Layer[], showText = true) {
+        const flow: { node: ChildNode; i: number; z: number; order: number }[] = [];
+        for (const [i, node] of Array.from(el.childNodes).entries()) {
+          if (node.nodeType === 3) { if (showText) flow.push({ node, i, z: 0, order: 0 }); continue; }
+          if (node.nodeType !== 1) continue;
+          const cs = css(node as Element);
+          if (!positioned(cs, st)) flow.push({ node, i, z: 0, order: Number(cs.order) || 0 });
+          else if (zOf(cs) < 0) flow.push({ node, i, z: zOf(cs), order: 0 });
+          else layers.push({ el: node as Element, path: `${path}/${i}`, alpha, z: zOf(cs), order: order.get(node as Element) ?? 0 });
+        }
+        flow.sort((a, b) => a.z - b.z || a.order - b.order || a.i - b.i);
+        for (const { node, i } of flow) {
+          if (node.nodeType === 3) text(node as Text, `${path}/${i}`, alpha);
+          else await walk(node as Element, `${path}/${i}`, alpha, layers);
+        }
+      }
+      async function element(el: Element, st: CSSStyleDeclaration, path: string, inheritedAlpha: number, layers: Layer[]): Promise<void> {
         const tag = el.tagName.toUpperCase();
         if (el.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(tag)) { refuse(path, tag.toLowerCase()); return; }
         const feature = subtreeFeature(el, st);
@@ -370,11 +427,11 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           if (!uniform) own ??= 'border-radius';
           else shape = radius >= Math.min(b.width, b.height) / 2 - 0.5 && Math.abs(b.width - b.height) < 0.5 ? 'ellipse' : 'roundRect';
         }
+        // rounded corners bend the border, which separate lines cannot follow
+        if (edges.length && shape !== 'rect') own ??= 'border';
         if (own && tag === 'IMG') { refuse(path, own); return; }
         if (own && !raster) { refuse(path, own); return; }
         if (el === root) output.background = fill?.opacity === 1 ? fill.color : 'FFFFFF';
-        // rounded corners bend the border, which separate lines cannot follow
-        if (edges.length && shape !== 'rect') own ??= 'border';
         if (own) { edges = []; await picture(el, path, 'self', own); }
         else {
           const shown = fill && !(el === root && fill.opacity === 1);
@@ -396,15 +453,9 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           return;
         }
         if (tag === 'LI') listMarker(el as HTMLElement, st, path, alpha);
-        const children = Array.from(el.childNodes).map((node, i) => ({ node, i, z: stacking(node, st), order: node.nodeType === 1 ? Number(css(node as Element).order) || 0 : 0 }));
-        children.sort((a, b) => a.z - b.z || a.order - b.order || a.i - b.i);
-        for (const { node: child, i } of children) {
-          const cp = `${path}/${i}`;
-          if (child.nodeType === 3) text(child as Text, cp, alpha);
-          else if (child.nodeType === 1) await walk(child as Element, cp, alpha);
-        }
+        await children(el, st, path, alpha, layers);
       }
-      await walk(root, 'root', 1);
+      await walk(root, 'root', 1, []);
     } catch (error) {
       const feature = error instanceof Error ? error.message : 'unknown';
       issue(slide, 'root', FATAL.includes(feature) ? feature as 'budget' | 'asset' | 'not-ready' : 'unsupported', feature);

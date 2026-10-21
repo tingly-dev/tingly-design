@@ -2,7 +2,7 @@
 import { slidesDomToPptx, type PptxDomResult, type PptxRaster } from '@dc/export/pptx-dom';
 import type { PptxAsset } from '@dc/export/pptx';
 import { FrameRasterizer } from '@dc/export/frames';
-import { snapFrame } from '@dc/export/snap';
+import { snapFrames } from '@dc/export/snap';
 
 export interface PptxCaptureRequest {
   dcPptx: 'capture'; id: string; source: string; title: string;
@@ -12,6 +12,8 @@ export type PptxCaptureReply = { dcPptx: 'captured'; id: string; result: PptxDom
 
 /** Output pixels per CSS pixel of an element's picture: sharp on a projector, bounded in size. */
 const SCALE = 2;
+/** CSS pixels around an element's boxes where its shadow or pseudo-elements may still paint. */
+const BLEED = 160;
 const ISOLATE = `[data-dc-pptx-iso]{visibility:hidden!important}
 [data-dc-pptx-iso][data-dc-pptx-target],[data-dc-pptx-iso] [data-dc-pptx-target]{visibility:visible!important}
 [data-dc-pptx-target=self]>*{visibility:hidden!important}
@@ -23,15 +25,30 @@ const ISOLATE = `[data-dc-pptx-iso]{visibility:hidden!important}
  * frames hand over pictures of themselves. */
 async function rasterizeElement(section: HTMLElement, el: Element, mode: 'subtree' | 'self', rasterizer: FrameRasterizer, signal: AbortSignal): Promise<PptxRaster | null> {
   const width = section.offsetWidth, height = section.offsetHeight;
-  const frames = new Map<Element, string>();
+  let frames = new Map<Element, string>();
   if (mode === 'subtree') {
-    for (const frame of Array.from(el.querySelectorAll('iframe')).concat(el.tagName === 'IFRAME' ? [el as HTMLIFrameElement] : [])) {
-      // a frame that is still starting has not drawn yet: ask again once
-      const url = (await snapFrame(frame, 4000)) ?? (await new Promise(r => setTimeout(r, 500)), await snapFrame(frame, 4000));
-      if (url) frames.set(frame, url);
+    const all = Array.from(el.querySelectorAll('iframe')).concat(el.tagName === 'IFRAME' ? [el as HTMLIFrameElement] : []);
+    frames = await snapFrames(all, 4000);
+    // a frame that is still starting has not drawn yet: ask those again once
+    const late = all.filter(f => !frames.has(f));
+    if (late.length && !signal.aborted) {
+      await new Promise(r => setTimeout(r, 500));
+      for (const [f, url] of await snapFrames(late, 4000)) frames.set(f, url);
     }
   }
   if (signal.aborted) throw new Error('budget');
+  // Where it can have painted: its boxes and text, plus room for a shadow. Only that much is scanned.
+  const page = section.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const rects = [el.getBoundingClientRect(), range.getBoundingClientRect(), ...Array.from(el.querySelectorAll('*')).map(c => c.getBoundingClientRect())].filter(r => r.width || r.height);
+  range.detach();
+  const clamp = (v: number, max: number) => Math.max(0, Math.min(max, Math.round(v * SCALE)));
+  const area = {
+    left: clamp(Math.min(...rects.map(r => r.left)) - page.left - BLEED, width * SCALE), top: clamp(Math.min(...rects.map(r => r.top)) - page.top - BLEED, height * SCALE),
+    right: clamp(Math.max(...rects.map(r => r.right)) - page.left + BLEED, width * SCALE), bottom: clamp(Math.max(...rects.map(r => r.bottom)) - page.top + BLEED, height * SCALE),
+  };
+  if (!rects.length || area.right <= area.left || area.bottom <= area.top) return null;
   const style = document.createElement('style');
   style.textContent = ISOLATE;
   document.head.appendChild(style);
@@ -50,11 +67,12 @@ async function rasterizeElement(section: HTMLElement, el: Element, mode: 'subtre
     style.remove();
   }
   const g = canvas.getContext('2d', { willReadFrequently: true })!;
-  const { data } = g.getImageData(0, 0, canvas.width, canvas.height);
+  const aw = area.right - area.left, ah = area.bottom - area.top;
+  const { data } = g.getImageData(area.left, area.top, aw, ah);
   let left = canvas.width, top = canvas.height, right = -1, bottom = -1;
-  for (let y = 0; y < canvas.height; y++) {
-    const row = y * canvas.width * 4;
-    for (let x = 0; x < canvas.width; x++) {
+  for (let y = 0; y < ah; y++) {
+    const row = y * aw * 4;
+    for (let x = 0; x < aw; x++) {
       if (data[row + x * 4 + 3] === 0) continue;
       if (x < left) left = x;
       if (x > right) right = x;
@@ -63,6 +81,7 @@ async function rasterizeElement(section: HTMLElement, el: Element, mode: 'subtre
     }
   }
   if (right < 0) return null;
+  left += area.left; right += area.left; top += area.top; bottom += area.top;
   const w = right - left + 1, h = bottom - top + 1;
   const crop = document.createElement('canvas');
   crop.width = w; crop.height = h;

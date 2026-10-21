@@ -124,6 +124,15 @@ async def main():
                 test(words.indexOf('first')<words.indexOf('second'),'flex order is paint order');
                 test(objs.some(o=>o.type==='shape'&&o.shape==='roundRect'&&o.radiusPx===12),'rounded rect x-shape keeps its radius');
                 test(words.includes('bleeding glyphs')&&!words.includes('gone'),'partly outside kept, wholly outside left out');
+                root.innerHTML='<div><span style="position:absolute;left:0;top:0;width:50px;height:50px;background:rgb(0,0,255);display:block"></span></div><div style="width:100px;height:100px;background:rgb(255,0,0)"></div><p style="text-decoration:underline">Link<span style="position:absolute;left:300px;top:300px">badge</span></p>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                objs=r.deck.slides[0].objects;
+                test(objs.findIndex(o=>o.fill==='0000FF')>objs.findIndex(o=>o.fill==='FF0000'),'a positioned box inside a static parent paints above later in-flow siblings');
+                test(!objs.find(o=>o.type==='text'&&o.paragraphs[0].runs[0].text==='badge').style.underline&&objs.find(o=>o.type==='text'&&o.paragraphs[0].runs[0].text==='Link').style.underline,'decorations do not reach out-of-flow descendants');
+                root.innerHTML='<div style="width:4000px;height:50px;background:rgb(0,128,0)"></div>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                test(r.deck.slides[0].objects[0].width===800,'a box far past the page is cut to it');
+                test((await PptxWriter.writePptx(r.deck)).length>1000,'and the writer accepts it');
                 root.innerHTML='<img style="width:40px;height:20px" src="'+image.src+'">';await root.querySelector('img').decode();
                 r=await slidesDomToPptx([root],{...opts,limits:{timeoutMs:20},resolveImage:()=>new Promise(()=>{})});
                 test(!r.ok&&r.diagnostics.some(d=>d.code==='budget'),'hanging resolver bounded by timeout');

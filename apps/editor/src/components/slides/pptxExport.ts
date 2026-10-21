@@ -2,7 +2,8 @@ import { applyHumanOps, parseDc, parseStyle, sandboxDoc, type DcElement, type De
 import type { PptxAsset, PptxDeck } from '@dc/export/pptx';
 import type { PptxDomDiagnostic, PptxDomResult } from '@dc/export/pptx-dom';
 
-export interface DeckSnapshot { title: string; faces: DeckJson['faces']; size: [number, number]; slides: { id: string; source: string }[]; base: string; runtimeOrigin: string }
+/** `boards`: the artboards the slides embed (`<x-embed src="uploads/…">`), by path, as the slide frames get them. */
+export interface DeckSnapshot { title: string; faces: DeckJson['faces']; size: [number, number]; slides: { id: string; source: string }[]; boards?: Record<string, string>; base: string; runtimeOrigin: string }
 export interface DeckPptxProgress { done: number; total: number; slide?: string }
 export class DeckPptxError extends Error {
   constructor(public slide: string, public diagnostics: PptxDomDiagnostic[]) { super(diagnostics.map(d => `${d.code}: ${d.feature ?? ''} (${d.path})`).join('\n')); }
@@ -181,7 +182,7 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
       check(); options.progress?.({ done: index, total: slides.length, slide: slide.id });
       const id = `pptx-${index}`;
       const pending = waitMessage<PptxDomResult>(data => data?.dcPptx === 'captured' && data.id === id ? data.result : undefined, 35000);
-      frame.contentWindow!.postMessage({ dc: 'render', file: `slides/${slide.id}.html`, source: slide.source, files: {}, props: {}, mode: 'edit', selected: null, slide: { head, base: '', still: false, size: [width, height] } }, '*');
+      frame.contentWindow!.postMessage({ dc: 'render', file: `slides/${slide.id}.html`, source: slide.source, files: snapshot.boards ?? {}, props: {}, mode: 'edit', selected: null, slide: { head, base: '', still: false, size: [width, height] } }, '*');
       frame.contentWindow!.postMessage({ dcPptx: 'capture', id, source: slide.source, title: snapshot.title, images: slide.images, timeoutMs: 30000, widthIn }, '*');
       const result = await pending.catch(error => {
         check();
