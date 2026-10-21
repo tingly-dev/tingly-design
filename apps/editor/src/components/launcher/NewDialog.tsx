@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_BOARD_SIZE, type ProjectKind } from '@dc/core';
-import { api, type FolderInfo } from '../../api';
+import { api, type DesignSystemChoice, type FolderInfo } from '../../api';
 import { toast, useStore } from '../../store';
 import { NAME_RE, freeName, slugOf } from '../../projectName';
 import { SizePicker } from '../motion/SizePicker';
 import { readSizes, rememberSize, sameSize, type Size } from '../motion/motionSizes';
 import { BoardSizePicker } from './BoardSizePicker';
 import { LookPicker } from './LookPicker';
+import { DesignSystemPicker } from '../DesignSystemPicker';
 import { applyNewOptions, checkDataFile, type NewOptions } from '../../newProject';
 import { Dialog } from '../Dialog';
 import { KINDS, KindIcon } from './kinds';
@@ -50,7 +51,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   const [size, setSize] = useState<Size | null>(() => readSizes().last ?? [1920, 1080]);
   // the rest is optional: a design system (canvas, slides), a board size (canvas), a table (dashboard)
   const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
-  const [designSystem, setDesignSystem] = useState('');
+  const [designSystem, setDesignSystem] = useState<DesignSystemChoice>('');
   const [board, setBoard] = useState<Size | null>(DEFAULT_BOARD_SIZE);
   const [look, setLook] = useState('');
   const [dataFile, setDataFile] = useState<{ file: File; rows: number } | null>(null);
@@ -135,17 +136,10 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
         <div className="nopts" data-options={kind}>
           <span className="nopt-h">{t('launcher.new.options')}</span>
           {(kind === 'design' || kind === 'slides') && (
-            <label className="nopt">
+            <div className="nopt">
               <span>{t('launcher.new.ds')}</span>
-              <select className="input" value={designSystem} onChange={(e) => setDesignSystem(e.target.value)} aria-label={t('launcher.new.ds')}>
-                <option value="">{t('launcher.new.dsNone')}</option>
-                {systems.map((s) => (
-                  <option key={s.name} value={s.name}>
-                    {s.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <DesignSystemPicker value={designSystem} onChange={setDesignSystem} systems={systems} label={t('launcher.new.ds')} placeholder={t('launcher.new.dsNone')} />
+            </div>
           )}
           {kind === 'dashboard' && (
             <div className="nopt">

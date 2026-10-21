@@ -5,16 +5,17 @@ import { LOOKS, LOOK_GROUPS, lookOf, type LookGroup } from '@dc/core';
 /**
  * Where a new design system starts: Blank, or one of the looks (LOOKS) in groups by feel. The groups run down
  * the left, the picked group's looks on the right, each drawn as a swatch of its own page colour, ink,
- * accent and type. `value` is the look's id, or '' for a blank system.
+ * accent and type. `value` is the look's id, or '' for a blank system. Install pickers hide Blank
+ * with `allowBlank`: clearing their field already removes the selection.
  */
-export function LookPicker({ value, onChange }: { value: string; onChange: (look: string) => void }) {
+export function LookPicker({ value, onChange, allowBlank = true }: { value: string; onChange: (look: string) => void; allowBlank?: boolean }) {
   const { t } = useTranslation();
-  const [picked, setPicked] = useState<LookGroup | 'blank'>(lookOf(value)?.group ?? 'blank');
+  const [picked, setPicked] = useState<LookGroup | 'blank'>(lookOf(value)?.group ?? (allowBlank ? 'blank' : LOOK_GROUPS[0]));
   return (
     <div className="sizes" data-looks="picker">
       <div className="szsplit">
         <div className="szcats" role="tablist" aria-orientation="vertical" aria-label={t('launcher.new.look')}>
-          {(['blank', ...LOOK_GROUPS] as const).map((g) => (
+          {(allowBlank ? ['blank', ...LOOK_GROUPS] as const : LOOK_GROUPS).map((g) => (
             <button
               type="button"
               key={g}
@@ -36,7 +37,7 @@ export function LookPicker({ value, onChange }: { value: string; onChange: (look
         ) : (
           <div className="szrow lookrow" role="radiogroup" aria-label={t(`ds.lookGroup.${picked}`)}>
             {LOOKS.filter((l) => l.group === picked).map((l) => (
-              <button type="button" key={l.id} role="radio" aria-checked={value === l.id} data-look={l.id} className="szopt lookopt" onClick={() => onChange(l.id)}>
+              <button type="button" key={l.id} role="radio" aria-checked={value === l.id} data-look={l.id} title={t(`ds.look.${l.id}`, { defaultValue: l.id })} className="szopt lookopt" onClick={() => onChange(l.id)}>
                 <span
                   className="looksw"
                   aria-hidden
@@ -51,9 +52,9 @@ export function LookPicker({ value, onChange }: { value: string; onChange: (look
           </div>
         )}
       </div>
-      {picked !== 'blank' && (
+      {picked !== 'blank' && (allowBlank || !!value) && (
         <p className="szfor" data-picked={value || undefined}>
-          {lookOf(value) ? t('launcher.new.lookPicked', { look: t(`ds.look.${value}`, { defaultValue: value }), group: t(`ds.lookGroup.${lookOf(value)!.group}`) }) : t('launcher.new.lookNone')}
+          {lookOf(value) ? t('launcher.new.lookPicked', { look: t(`ds.look.${value}`, { defaultValue: value }), group: t(`ds.lookGroup.${lookOf(value)!.group}`) }) : allowBlank ? t('launcher.new.lookNone') : null}
         </p>
       )}
     </div>

@@ -183,6 +183,23 @@ async def main():
         ok = await wait_for(lambda: not deck()['designSystems'] and not os.path.exists(os.path.join(DECK, 'ds/tingly/tokens.json')))
         check('removing a system takes its copy and record out', ok)
 
+        # Built-ins also install through the shared panel picker without a project system.
+        response = await pg.request.get(BASE + '/api/projects')
+        projects = await response.json()
+        await pg.route('**/api/projects', lambda route: route.fulfill(json=[x for x in projects if x['kind'] != 'design-system']))
+        await pg.reload()
+        await pg.keyboard.press('Escape')
+        builtins = pg.locator('.panel .dsbuiltins')
+        await builtins.locator('summary').click()
+        await builtins.locator('[data-group="palette"]').click()
+        await builtins.locator('[data-look="nord"]').click()
+        await pg.locator('.faceadd button', has_text='装入').click()
+        await expect(pg.locator('.dsinst[data-ds="look-nord"]')).to_contain_text('Nord')
+        check('the panel installs a built-in even without project systems', any(r.get('artifact') == 'builtin:nord' for r in deck()['designSystems']))
+        await pg.locator('.dsinst[data-ds="look-nord"] button', has_text='移除').click()
+        ok = await wait_for(lambda: not deck()['designSystems'] and not os.path.exists(os.path.join(DECK, 'ds/look-nord/tokens.json')))
+        check('the panel removes an installed built-in', ok)
+
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
     restore()

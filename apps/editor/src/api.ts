@@ -3,6 +3,9 @@ import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
 
+/** A project folder, or an immutable built-in template; the two cannot collide. */
+export type DesignSystemChoice = string | { look: string };
+
 /** fetch, telling the server the language on screen: it answers errors and writes starter copy in it. */
 function call(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
@@ -204,11 +207,11 @@ export const api = {
   removeAsset: (p: string, path: string) =>
     call(at(`api/projects/${enc(p)}/assets?path=${enc(path)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
 
-  installDs: (p: string, from: string) =>
+  installDs: (p: string, source: DesignSystemChoice) =>
     call(at(`api/projects/${enc(p)}/design-systems`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ from }),
+      body: JSON.stringify(typeof source === 'string' ? { from: source } : source),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
 
   /** Copy a canvas's artboard into this deck or motion piece (uploads/<from>-<board>/…); the caller puts the embed on the page. */
