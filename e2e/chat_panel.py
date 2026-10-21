@@ -123,6 +123,10 @@ async def main():
             await pg.locator('.turn').last.locator('.run-stop').click()
             await expect(pg.locator('.turn').last).to_contain_text('已停止', timeout=10000)
             check('stopping leaves the turn in the record', True)
+            # Start again inside the stopped run's watcher grace period. Its delayed cleanup must
+            # not clear the new run's attribution: an Edit step alone gives a chip, but not undo.
+            before_retry = {f: open(os.path.join(projects, 'box-console', f)).read()
+                            for f in os.listdir(os.path.join(projects, 'box-console')) if f.endswith('.dc.html')}
             await send('把标题再改短')
             await box.press('Enter')
             await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
@@ -130,6 +134,15 @@ async def main():
             check('and a chip for the file it changed', await pg.locator('.turn').last.locator('.file-chip').count() >= 1)
             await expect(pg.locator('.turn').last.get_by_role('button', name='撤销这次改动')).to_have_count(1)  # it appears a moment after the chip
             check('undo is offered on the newest turn only', await pg.get_by_role('button', name='撤销这次改动').count() == 1 and await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').count() == 1)
+            changed_file = await pg.locator('.turn').last.locator('.file-chip').first.inner_text()
+            journal = json.load(urllib.request.urlopen(f'{base}/api/projects/box-console/journal'))
+            check('the run after stopping is credited to Claude, not an outside edit', next(e for e in reversed(journal) if e['file'] == changed_file)['actor'] == 'claude')
+            await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').click()
+            await expect(pg.locator('.turn').last).to_contain_text('已撤销')
+            for _ in range(50):
+                if open(os.path.join(projects, 'box-console', changed_file)).read() == before_retry[changed_file]: break
+                await pg.wait_for_timeout(100)
+            check('undo after stopping restores the next run\'s actual file change', open(os.path.join(projects, 'box-console', changed_file)).read() == before_retry[changed_file])
             check('every turn can be put back in the box', await pg.get_by_role('button', name='放回输入框').count() == 3)
             await pg.locator('.turn').first.get_by_role('button', name='放回输入框').click()
             check('putting a request back fills the box', await box.input_value() == '把标题改短')
