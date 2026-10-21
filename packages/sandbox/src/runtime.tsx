@@ -48,6 +48,7 @@ import { urlsAgainst } from './urls';
 import { animateScene, SEEK_BRIDGE, type SceneAnim } from './sceneAnim';
 import { msg } from './msg';
 import { answerSnaps } from '@dc/export/snap';
+import { answerPptxCapture } from './pptxCapture';
 
 const post = (m: FromRuntime) => window.parent.postMessage(m, '*');
 // an artboard embedded in a slide or scene hands the page a picture of itself when it exports (.design/export.md)
@@ -195,9 +196,14 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
   }
   if (ctx.tagged) p['data-dc-tid'] = el.tid;
   if (ctx.tagged && typeof scope.$index === 'number') p['data-dc-item'] = scope.$index;
+  // Reserved export metadata must never be inherited from authored markup.
+  delete p['data-dc-paint-layer'];
   if (ctx.slide) {
     const z = paintLayer(el);
-    if (z !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), zIndex: z };
+    if (z !== undefined) {
+      p.style = { ...((p.style as Record<string, string>) ?? {}), zIndex: z };
+      p['data-dc-paint-layer'] = String(z);
+    }
     const indent = textBoxIndent(el);
     if (indent !== undefined) p.style = { ...((p.style as Record<string, string>) ?? {}), '--dc-indent': `${indent}px` };
   }
@@ -490,6 +496,7 @@ const root = createRoot(mount);
 let renderKey = 0;
 /** The source whose DOM is actually on screen (React commits asynchronously). */
 let committedSource = '';
+answerPptxCapture(mount, () => committedSource);
 function Committed({ source }: { source: string }) {
   React.useLayoutEffect(() => {
     committedSource = source;

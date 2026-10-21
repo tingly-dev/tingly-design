@@ -5,7 +5,7 @@ import { type ProjectCard, type ProjectKind } from '@dc/core';
 import { api } from '../../api';
 import { toast, useStore } from '../../store';
 import { Chevron, FileZip, FolderOpen, GridLayout, ListLayout, Sliders } from '../icons';
-import { chooseProjectArchive } from '../../projectArchive';
+import { chooseProjectArchive, importProjectFile, isProjectImportFile } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { Appearance, LanguageMenu } from '../Appearance';
 import { ISSUES_URL, REPO_URL } from '../../links';
@@ -197,9 +197,21 @@ export function Launcher() {
         if (!dropping) return;
         e.preventDefault();
         setDropping(false);
-        void droppedFiles(e.dataTransfer)
-          .then(readPicked)
-          .then((picked) => (picked.entry ? setImporting({ picked }) : toast(t('launcher.dropNoEntry'), 'error')));
+        const files = Array.from(e.dataTransfer.files);
+        // Read DataTransfer now (the browser clears it after the event). Project files go
+        // straight through the same shared file import path, not the HTML/SVG dialog.
+        const material = droppedFiles(e.dataTransfer);
+        void (async () => {
+          const dropped = await material;
+          if (files.length === 1 && await isProjectImportFile(files[0])) {
+            const name = await importProjectFile(files[0]);
+            if (name) open(name);
+            return;
+          }
+          const picked = await readPicked(dropped);
+          if (picked.entry) setImporting({ picked });
+          else toast(t('launcher.dropNoEntry'), 'error');
+        })().catch(e => toast((e as Error).message, 'error'));
       }}
     >
       <header className="lhead">
@@ -350,14 +362,16 @@ export function Launcher() {
               }
               onSelect={() => (setNewMenu(null), setImporting({}))} />
           </div>
-          <div data-new="archive" className="mwrap">
-            <MenuItem label={t('launcher.archive.import')} hint={t('launcher.archive.importHint')} icon={
-                <span className="kic t-blue">
-                  <FileZip />
-                </span>
-              }
-              onSelect={() => (setNewMenu(null), void chooseProjectArchive().then((name) => name && open(name)))} />
-          </div>
+          {(['pptx', 'markdown', 'zip'] as const).map((format) => (
+            <div key={format} data-new={format === 'zip' ? 'archive' : format} className="mwrap">
+              <MenuItem label={t(`launcher.archive.${format}`)} hint={t(`launcher.archive.${format}Hint`)} icon={
+                  <span className="kic t-blue">
+                    {format === 'zip' ? <FileZip /> : <IconFileImport size={14} stroke={1.7} aria-hidden="true" />}
+                  </span>
+                }
+                onSelect={() => (setNewMenu(null), void chooseProjectArchive(format).then((name) => name && open(name)))} />
+            </div>
+          ))}
           {linksOn && (
             <div data-new="folder" className="mwrap">
               <MenuItem label={t('launcher.folder.menu')} icon={

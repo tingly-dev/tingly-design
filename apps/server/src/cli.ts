@@ -411,13 +411,18 @@ async function importProject(arg: string | undefined): Promise<void> {
   const info = await stat(path).catch(() => {
     throw new CliError(t('cli.noFileAt', { path: show(path) }), 1);
   });
-  const { unpackProject, importFiles, readTree } = await import('./archive');
+  const { unpackProject, importFiles, readTree, MAX_ARCHIVE_INPUT, describePptx } = await import('./archive');
+  if (!info.isDirectory() && info.size > MAX_ARCHIVE_INPUT) throw new CliError(t('errors.archiveInputTooBig'), 1);
   const { projectDir } = await import('./store');
   const done = info.isDirectory() ? await importFiles(await readTree(path), basename(path)) : await unpackProject(new Uint8Array(await readFile(path)), basename(path));
   if (opts.json) print({ ...done, dir: projectDir(done.name) });
   else {
     console.log(t(done.claudeDesign ? 'cli.importedClaudeDesign' : 'cli.imported', { name: done.name, path: show(projectDir(done.name)), kind: done.claudeDesign ? t(`cli.kind.${done.claudeDesign}`) : '' }) + (done.systems.length ? ` ${t('cli.importedSystems', { systems: done.systems.join(', ') })}` : ''));
     for (const n of done.notes) console.log(`  ${t(`claudeDesign.note.${n.key}`, n.params)}`);
+    if (done.pptx) {
+      console.log(t('cli.pptxKept', { source: resolve(projectDir(done.name), done.pptx.source), report: resolve(projectDir(done.name), done.pptx.report) }));
+      for (const d of done.pptx.diagnostics) console.log(`  ${d.part ?? ''}${d.object ? ` [${d.object}]` : ''}: ${describePptx(d, t)}`);
+    }
   }
 }
 
@@ -473,7 +478,18 @@ try {
   if (code >= 0) process.exitCode = code;
 } catch (e) {
   const { HttpError } = await import('./store');
-  if (e instanceof CliError || e instanceof cmd.CommandError) console.error(e.message), (process.exitCode = e.code);
+  const { PptxImportError, describePptx } = await import('./archive');
+  if (e instanceof PptxImportError) {
+    const error = t(`errors.${e.key}`, e.params);
+    const diagnostics = e.diagnostics.map(d => ({ ...d, message: describePptx(d, t) }));
+    if (opts.json) print({ error, code: e.key, diagnostics });
+    else {
+      console.error(error);
+      for (const d of diagnostics) console.error(`  ${d.part ?? ''}${d.object ? ` [${d.object}]` : ''}: ${d.message}`);
+    }
+    process.exitCode = 1;
+  }
+  else if (e instanceof CliError || e instanceof cmd.CommandError) console.error(e.message), (process.exitCode = e.code);
   else if (e instanceof HttpError) console.error(t(`errors.${e.key}`, e.params)), (process.exitCode = 1);
   else console.error((e as Error).message), (process.exitCode = 1);
 }

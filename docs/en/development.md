@@ -8,6 +8,20 @@ pnpm typecheck
 pnpm tingly-design --help   # the command line from source (docs: cli.md)
 ```
 
+## PPTX module smoke corpus
+
+The standalone converters have a checked-in corpus in [`packages/core/test/fixtures/pptx-smoke/`](../../packages/core/test/fixtures/pptx-smoke/README.md). Its README describes the pages, expected success/refusal, deterministic regeneration and validation limits. Run the module smoke without starting the editor:
+
+```bash
+pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
+```
+
+Optional independent schema validation uses .NET and Open XML SDK; see [`scripts/validate-pptx/README.md`](../../scripts/validate-pptx/README.md). It is developer tooling, not a runtime or CI prerequisite.
+
+This is not a product e2e suite: PPTX menus and CLI integration are not enabled. Package/XML checks and conversion assertions do not replace independent Office rendering. The corpus includes separate supported and unsupported cases because one unsupported object currently rejects the whole import atomically.
+
+## End-to-end suites
+
 The other suites select elements by their Chinese labels, so they run the browser with a `zh-CN` locale; `i18n.py` covers English.
 
 `pnpm e2e` runs every suite below but `delegate` with one command: it starts what each group needs (`pnpm dev` with the mock model, `pnpm dev` with no model for `ai_settings`, `pnpm build` for the suites that start their own server, `pnpm bundle` for `embed`), runs the suites one after another and prints one table (`--jobs 4` runs four slices side by side, each in its own copy of the checkout with its own ports; `--shard 2/4` runs one slice, which is how CI spreads the set over four runners); `e2e/out/report.md` and `report.json` say which checks failed, with each suite's output in `e2e/out/logs/`. `pnpm e2e slides docs` runs only those, `--smoke` the per-PR subset, `--list` shows the groups, `--real` adds `delegate`. The suites edit the sample projects and put them back with `git checkout`, so it refuses to start while `projects/` has uncommitted changes (`--force` runs anyway). The whole set takes about fourteen minutes in one line, a quarter of that in four.
@@ -25,6 +39,7 @@ Each suite can still be run on its own. The end-to-end tests need `pnpm dev` run
 | `python3 e2e/docs.py` | Docs: tabs and outline, reading writes nothing, typing / ticking / editing a cell each change one line, the `/` menu, the format menu, live outside edits that are kept, comments (reply/resolve/new), tab management, layout, AI rewrite (with the mock model), HTML export, a new doc (25 checks) |
 | `python3 e2e/image_gen.py` | Image generation: needs `pnpm dev` started with no `ANTHROPIC_*` or `DC_IMAGE_*` variables and `DC_CONFIG` pointing at a temp file, plus `python3 e2e/mock_anthropic.py` and `python3 e2e/mock_images.py <log>`; the dialog's ImageGen section (Anthropic has none, Tingly Box's address followed, an OpenAI-style address with its own key and model, a bad address refused), a picture made and an edit kept in `uploads/`, the gateway's refusal passed on, paths outside `uploads/` refused, the key never read back |
 | `python3 e2e/export_menu.py` | The one Import / Export menu: every kind has it in its bar and it lists what the kind takes and saves, a PDF made in one click from a deck and a doc (a real PDF with the pages), the print-dialog fallback when the server has no Chrome, the status chip (28 checks) |
+| `python3 e2e/pptx.py` | PowerPoint interchange through the real launcher and slides menu: picker/drop/API imports, preserved source/report/media/notes, editing and reopening, atomic refusals and name collisions, native whole-deck export and unsupported-content diagnostics, with English/Chinese light/dark screenshots; uses only projects created by this suite |
 | `python3 e2e/archive.py` | A whole project as one .zip: the two items at the end of every kind's Import / Export menu, the whole project carrying its change log and its design system beside it with a manifest, files only carrying neither, no local state in either, importing from the launcher's New menu under a free name (an unchanged system not duplicated), the launcher card's Export, a zip with no project refused, in English light and Chinese dark (23 checks) |
 | `python3 e2e/claude_design.py` | Claude Design packages: the Claude Design item before the whole-project items in canvas, slides, design system and dashboard menus and absent in docs and motion, each kind's package layout and README, saving, opening a package made the way Claude Code saves an original canvas (named after its title, its `/_blob` picture brought into `uploads/`), a Claude Docs `.md` opening as a doc, a zip with nothing refused in words, in English light and Chinese dark (23 checks) |
 | `python3 e2e/export_image.py` | Saving a picture (PNG) in every kind: docs (this tab), slides (this slide, every slide), dashboard, design system, motion (the frame at the playhead); each file is a real PNG at least the page's size (9 checks) |

@@ -120,7 +120,7 @@ async def main():
             await pg.wait_for_timeout(500)
             await pg.screenshot(path=OUT + 'launcher-en-light.png')
             async with pg.expect_file_chooser() as fc:
-                await pg.get_by_role('menuitem', name='Import a project (.zip)…').click()
+                await pg.get_by_role('menuitem', name='Import a project package (.zip)…').click()
             await (await fc.value).set_files(hand)
             await pg.wait_for_url(re.compile(r'\?p=Spring-menu-poster'), timeout=10000)
             check('named after its title and opened', 'p=Spring-menu-poster' in pg.url, pg.url)
@@ -137,7 +137,7 @@ async def main():
             await pg.wait_for_timeout(2000)
             await pg.locator('button[data-new-menu]').click()
             async with pg.expect_file_chooser() as fc:
-                await pg.get_by_role('menuitem', name='Import a project (.zip)…').click()
+                await pg.get_by_role('menuitem', name='Import Markdown (.md)…').click()
             await (await fc.value).set_files(md)
             await pg.wait_for_url(re.compile(r'\?p=Quarter-plan'), timeout=10000)
             await pg.wait_for_timeout(2500)
@@ -151,7 +151,7 @@ async def main():
             await pg.wait_for_timeout(2000)
             await pg.locator('button[data-new-menu]').click()
             async with pg.expect_file_chooser() as fc:
-                await pg.get_by_role('menuitem', name='Import a project (.zip)…').click()
+                await pg.get_by_role('menuitem', name='Import a project package (.zip)…').click()
             await (await fc.value).set_files(bad)
             await expect(pg.get_by_text('Claude Design package', exact=False).first).to_be_visible()
             check('a zip with nothing is refused in words', True)

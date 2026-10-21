@@ -17,12 +17,12 @@ Tingly Design 的画布、幻灯片、设计系统和看板，文件格式跟着
 
 1. 让 Claude Code 把作品读进一个文件夹：“读这个作品（链接），把所有文件和素材存到 `~/claude-design/poster`”。Claude Code 会存下 `project/…` 和设计里用到的图片（以 id 命名）。
 2. 导入这个文件夹，或它的 `.zip`：
-   - 首页 **新建项目 → 导入项目（.zip）…**；
+   - 首页 **新建项目 → 导入项目包（.zip）…**；
    - 或在终端里 `tingly-design import ~/claude-design/poster`。
 
 不用选类型：Tingly Design 从文件看出是哪一种，直接打开，名字取作品的标题。以 `/_blob/<id>` 存的图片，如果一起带来了，会放进 `uploads/`；没带来的有几张，会在提示里说。看板的数据文件没带来时，数据集会列在“问题”里，接上文件就能逐个解决。
 
-从 Claude Docs 存下来的 Markdown 文件（**导出 → Markdown**）也这样导入，成为一份新文档。
+从 Claude Docs 存下来的 Markdown 文件（**导出 → Markdown**）从 **新建项目 → 导入 Markdown（.md）…** 导入，成为一份新文档。
 
 ## 把项目交回去
 

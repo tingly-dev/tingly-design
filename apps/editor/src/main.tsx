@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { ProjectImportResultHost } from './components/ProjectImportResult';
 import { AiSettingsHost } from './components/AiSettings';
 import { useStore } from './store';
 import { initLanguage } from './i18n';
@@ -21,5 +22,6 @@ createRoot(document.getElementById('root')!).render(
   <>
     <App />
     <AiSettingsHost />
+    <ProjectImportResultHost />
   </>,
 );

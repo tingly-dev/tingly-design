@@ -1,5 +1,15 @@
 /* Dialogs shared across kinds: AI settings, importing an artboard, exporting video. */
 
+.pptx-import-result { width: min(640px, 100%); }
+.pptx-import-body { min-height: 0; overflow: auto; line-height: 1.5; }
+.pptx-import-body > p { color: var(--muted); }
+.pptx-import-notes { padding: 0; list-style: none; }
+.pptx-import-notes li { padding: 12px 0; border-top: 1px solid var(--line); }
+.pptx-import-notes p { margin: 4px 0; }
+.pptx-import-notes code { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.pptx-import-files { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.pptx-import-result > footer { display: flex; justify-content: flex-end; padding-top: 12px; border-top: 1px solid var(--line); }
+
 /* ------------------------------------------------------------- AI settings */
 
 

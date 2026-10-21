@@ -1,6 +1,6 @@
 # 导出：在浏览器里做，不装东西
 
-状态：**部分已实施**。动效在编辑器里导出视频已实施，浏览器画不了的作品自动改走服务端，本机没有时由嵌入内容自己交出画面（§3、§4）；其余类型的 PNG、PDF、PPTX 和共用的导出菜单是方案（§5）。调研和备选方案的比较见 `.research/export.md`，这里只记定下来的和还开着的。
+状态：**部分已实施**。动效视频及浏览器/服务端取帧路线见 §3、§4；其他类型的 PNG、PDF 和共用菜单已实施，现行入口分别见 [export-image.md](./export-image.md)、[export-menu.md](./export-menu.md)。幻灯片整份可见 deck 原生受限 PPTX 导出已接入菜单/CLI/MCP，契约与验证边界见 [slides-pptx.md](./slides-pptx.md)，不含产品 raster fallback。§5 单列未做项；调研和备选比较见 `.research/export.md`。
 
 ## 1. 问题
 
@@ -23,6 +23,7 @@
 | `planVideo(...)` / `encodeVideo(...)` | 试编码器而不是看 User-Agent：H.264 + AAC 能编就写 MP4，否则写 WebM（VP9、AV1、VP8 + Opus），并带一个 `note` 说清为什么不是 MP4。视频一律带音轨：没有声音的作品写一条等长的静音轨（浏览器路线按秒分块喂给 AudioBufferSource；服务端路线用 ffmpeg 的 `anullsrc`），因为有的平台拒收没有音轨的文件。没做成开关：没有音轨从来不是谁想要的结果，多出来的只是几 KB；AAC 编不了时和有声作品一样退到 WebM + Opus。GIF 不受影响。帧由调用方画，WebCodecs 编码，Mediabunny 封装，全在内存里 |
 | `mixAudio(clips, seconds)` | 把 `motion.json` 的音频按起点和增益混成一轨（OfflineAudioContext） |
 | `encodeGif(...)` | 帧到 GIF（gifenc），编辑器的浏览器路线用它；服务端路线由 ffmpeg 写（见 [export-menu.md](./export-menu.md) §4） |
+| `writePptx(deck)` / `slidesDomToPptx(roots, options)` | 独立原生对象 writer 和真实 DOM 布局适配器，仍不依赖 core/editor/server；产品用 opaque runtime 捕获整份可见 slides，不启用可选 raster 回调。受限集合与 pinned writer normalization 见 [slides-pptx.md](./slides-pptx.md) |
 | `download(name, blob)` | 交给浏览器的保存对话框 |
 
 依赖：Mediabunny（MPL-2.0，按文件的弱 copyleft，不改它就可以打进来，许可证文本随 bundle 的 `THIRD_PARTY_LICENSES.txt` 走）、html-to-image、gifenc（MIT）。包标了 `sideEffects: false`，编辑器只引用 `fontCss` 和 `download`，编码器不会进编辑器的主包。
@@ -96,7 +97,7 @@ foreignObject 画不到：`<x-embed>`（单独的框架，父页面拍不进去�
 
 ## 5. 没做的
 
-- **PPTX**（pptxgenjs，先一页一图）。共用的导出菜单、PNG、一键 PDF 和视频选项见 [export-menu.md](./export-menu.md)。
+- **PPTX 扩展（未来提案）**：向已开 deck 追加、表格/分组等更广映射、可靠图片化与 embed still snapshot 尚未实现；现有新项目导入和整份原生受限导出不因此扩大支持，见 [slides-pptx.md](./slides-pptx.md)。不能将动效的取帧降级能力当作 PPTX 的通用 raster fallback。
 - **封面**：导出的视频始终带封面图（内嵌图片），“封面图片”存封面 PNG，和命令行一致；把封面也放在第一帧是可选的，对话框“更多选项”里的勾选项，默认不勾，起始值取 `coverFirstFrame`（只在 `true` 时开；GIF 循环播放，不放）。封面场景在同一个框架里临时挂在视野外、画到结束再拿掉；封面图也写进文件做封面图片（MP4 和 WebM，两条路都写：服务端用 ffmpeg 的附加图片流，浏览器用封装器的元数据图片），因为只靠第一帧只对取第 0 帧的软件有用，文件管理器和播放器读的是内嵌图片。
 - **命令行和服务端渲染合成一份**：已做。`render.ts` 出 MP4、GIF、封面 PNG（封面作第一帧并附进 MP4），命令行 `tingly-design export`（[cli.md](./cli.md)）和主页、README 的脚本都用它，不再要 Playwright。原来的 `scripts/motion-render.mjs` 已删掉：单文件播放器成了 `export --as html`，`--scale` 成了 `export --scale`，`--verify` 成了 `check --snapshots` 里的 seek 检查（16 帧顺着 seek 再倒着 seek，逐像素比；只差抗锯齿那几个像素算一致）。
 - **服务端渲染的封面**：同样不把封面放在第一帧。

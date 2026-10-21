@@ -2,14 +2,10 @@ import { download } from './local';
 import { api } from './api';
 import { t } from './i18n';
 import { toast } from './store';
-import type { ClaudeDesignNote } from '@dc/core';
+import { showPptxResult } from './components/ProjectImportResult';
+import type { ClaudeDesignNote, PptxDiagnostic } from '@dc/core';
 
-/**
- * Saving a whole project as one .zip, and opening one again, from wherever the editor offers
- * it (every kind's Import / Export menu, the launcher). See .design/project-archive.md.
- */
-
-/** Save the project's .zip; `full` keeps its change log and the design systems it installed. */
+/** Saving and opening whole projects; the launcher's picker and drop share importProjectFile. */
 export async function saveProjectArchive(name: string, full: boolean): Promise<void> {
   const file = full ? `${name}.zip` : `${name}-files.zip`;
   try {
@@ -20,12 +16,10 @@ export async function saveProjectArchive(name: string, full: boolean): Promise<v
   }
 }
 
-/** What to know after a Claude Design package was saved or opened: one toast per note, after the result's own. */
 function toastNotes(notes: ClaudeDesignNote[]): void {
   for (const n of notes) toast(t(`claudeDesign.note.${n.key}`, n.params));
 }
 
-/** Save the project as Claude's own format (the original type's files, for Claude Code to publish), and say what to do before publishing. */
 export async function saveClaudeDesign(name: string): Promise<void> {
   const file = `${name}-claude-design.zip`;
   try {
@@ -38,29 +32,53 @@ export async function saveClaudeDesign(name: string): Promise<void> {
   }
 }
 
-/** Ask for a .zip (ours, Claude Design's) or a Claude Docs .md and make a project of it; resolves to the new project's name, or null. */
-export function chooseProjectArchive(): Promise<string | null> {
-  return new Promise((resolve) => {
+/** Used for choosing the project import path on drop; the server detects PPTX from bytes too. */
+export async function isProjectImportFile(file: File): Promise<boolean> {
+  if (/\.(zip|pptx|md|markdown)$/i.test(file.name)) return true;
+  const magic = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  return magic[0] === 0x50 && magic[1] === 0x4b && magic[2] === 3 && magic[3] === 4;
+}
+
+export async function importProjectFile(file: File): Promise<string | null> {
+  try {
+    const { name, systems, claudeDesign, notes, pptx } = await api.importArchive(file);
+    if (pptx) {
+      await showPptxResult({ name, ...pptx });
+      return name;
+    }
+    const said = claudeDesign
+      ? t('launcher.archive.importedClaude', { name, kind: t(`claudeDesign.kind.${claudeDesign}`) })
+      : systems.length ? t('launcher.archive.importedWith', { name, systems: systems.join(', ') }) : t('launcher.archive.imported', { name });
+    toast(said);
+    toastNotes(notes);
+    return name;
+  } catch (e) {
+    const error = e as Error & { body?: { diagnostics?: PptxDiagnostic[] } };
+    if (error.body?.diagnostics) await showPptxResult({ message: error.message, diagnostics: error.body.diagnostics });
+    else toast(t('launcher.archive.failed', { message: error.message }), 'error');
+    return null;
+  }
+}
+
+export type ProjectImportFormat = 'pptx' | 'markdown' | 'zip';
+
+const importAccept: Record<ProjectImportFormat, string> = {
+  pptx: '.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  markdown: '.md,.markdown,text/markdown',
+  zip: '.zip,application/zip',
+};
+
+/** The chosen action scopes the picker only; file detection and conversion stay shared with drop. */
+export function chooseProjectArchive(format: ProjectImportFormat): Promise<string | null> {
+  return new Promise(resolve => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.zip,application/zip,.md,text/markdown';
-    input.onchange = async () => {
+    input.accept = importAccept[format];
+    input.oncancel = () => resolve(null);
+    input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return resolve(null);
-      try {
-        const { name, systems, claudeDesign, notes } = await api.importArchive(file);
-        const said = claudeDesign
-          ? t('launcher.archive.importedClaude', { name, kind: t(`claudeDesign.kind.${claudeDesign}`) })
-          : systems.length
-            ? t('launcher.archive.importedWith', { name, systems: systems.join(', ') })
-            : t('launcher.archive.imported', { name });
-        toast(said);
-        toastNotes(notes);
-        resolve(name);
-      } catch (e) {
-        toast(t('launcher.archive.failed', { message: (e as Error).message }), 'error');
-        resolve(null);
-      }
+      void importProjectFile(file).then(resolve);
     };
     input.click();
   });

@@ -11,6 +11,7 @@ import { pickSlide, slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
 import { useDirectPdf } from '../../pdfExport';
 import { startPresent } from './Present';
+import { PptxExportDialog } from './PptxExportDialog';
 
 const SHAPES = ['rect', 'rounded', 'ellipse', 'diamond', 'arrow-right', 'arrow-left', 'arrow-up', 'arrow-down', 'line'] as const;
 
@@ -106,6 +107,7 @@ export function SlidesTopBar() {
         </span>
       </button>
       <FileMenu claudeDesign target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} pick={pickSlide} />
+      <PptxExportDialog />
       {menu === 'play' && (
         <Menu {...at(playBtn.current)} onClose={() => setMenu(null)} label={t('slides.toolbar.present')}>
           <MenuItem label={t('slides.toolbar.presentFromStart')} onSelect={() => (setMenu(null), startPresent(0))} />

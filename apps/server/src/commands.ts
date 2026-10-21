@@ -24,7 +24,7 @@ export const SKILLS: Record<Kind, string> = { design: 'dc-canvas', slides: 'slid
 /** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
 export const FORMATS: Record<Kind, string[]> = {
   design: ['png'],
-  slides: ['pdf', 'png', 'html', 'md', 'notes'],
+  slides: ['pdf', 'pptx', 'png', 'html', 'md', 'notes'],
   docs: ['pdf', 'html', 'md', 'png'],
   'design-system': ['png'],
   dashboard: ['png'],
@@ -334,6 +334,7 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   if (as === 'zip') return exportZip(p, o);
   if (as === 'claude-design') return exportClaudeDesign(ctx, p, o);
   if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip', ...(hasClaudeDesign(p.kind) ? ['claude-design'] : [])].join(', ') }));
+  if (p.kind === 'slides' && as === 'pptx' && o.slide?.trim()) throw new CommandError(t('cli.pptxWholeDeck'));
   if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);
