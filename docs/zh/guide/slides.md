@@ -4,12 +4,14 @@
 
 新建项目时类型选“幻灯片”。示例 [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) 是“Meet Tingly”，介绍 Tingly Box 和 Tingly Design；网关一页右侧是一段 `<x-embed>` 实时动画图。
 
+新建时可在标题下面选尺寸：和画布、动效一样的分类、具体宽高与自定义输入。默认 1920×1080，也可选竖版、方形和更多比例，编辑、放映和导出都使用所选尺寸。尺寸存入 `deck.json` 的 `size: [宽, 高]`；旧项目仍用默认尺寸。
+
 ![幻灯片编辑器：左侧缩略图与分节，中间舞台和演讲者备注，右侧图层与属性](../../images/slides.png)
 
 ```
 projects/<name>/
   deck.json            标题、顺序 order、分节 sections、字体 faces
-  slides/<id>.html     每页一个文件：正好一个 <section id="<id>">，1920×1080，封闭的 HTML/CSS 子集
+  slides/<id>.html     每页一个文件：正好一个 <section id="<id>">，所选尺寸（默认 1920×1080），封闭的 HTML/CSS 子集
   assets/              上传的图片和字体
 ```
 

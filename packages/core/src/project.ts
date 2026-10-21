@@ -8,7 +8,7 @@
 import { CANVAS_FILE, isBoardFile, parseCanvas } from './canvas';
 import { checkCanvas } from './canvasCheck';
 import { DASH_INDEX, DASH_PAGE, datasetIdOf, parseDash, parseDataset } from './dash';
-import { DECK_FILE, deckOrder, parseDeck, slideFile, type ProjectKind } from './deck';
+import { DECK_FILE, deckOrder, deckSize, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DS_INDEX, DS_TOKENS, parseDsIndex, resolveTokens } from './designSystem';
 import { DOC_INDEX, parseDoc, tabFile, tabOrder, wordCount } from './docs';
 import { INDEX_FILE } from './launcher';
@@ -84,7 +84,7 @@ export function outlineProject(kind: ProjectKind, files: ProjectFiles): ProjectO
   }
   if (kind === 'slides') {
     const d = parseDeck(index);
-    return { kind, title: d.title, items: deckOrder(d, Object.keys(files)).map((id) => ({ type: 'slide', id, file: slideFile(id), title: firstHeading(files[slideFile(id)]) })) };
+    return { kind, title: d.title, items: deckOrder(d, Object.keys(files)).map((id) => ({ type: 'slide', size: deckSize(d), id, file: slideFile(id), title: firstHeading(files[slideFile(id)]) })) };
   }
   if (kind === 'motion') {
     const m = parseMotion(index);

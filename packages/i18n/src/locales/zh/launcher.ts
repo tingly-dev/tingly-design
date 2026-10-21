@@ -15,7 +15,7 @@ export default {
     slides: {
       name: '幻灯片',
       count_other: '{{count}} 页',
-      blurb: '1920×1080 的一页页幻灯片，可以直接放映。',
+      blurb: '按所选尺寸创建一页页幻灯片，可以直接放映。',
       new: '新建幻灯片',
       create: '创建幻灯片',
       example: '如：新人上手幻灯片',
@@ -123,6 +123,7 @@ export default {
     folder: '文件夹',
     folderLabel: '新项目名称',
     folderEdit: '改文件夹',
+    sizeMineGroup: '你的尺寸',
     size: '尺寸',
     sizeFor: '适合 {{platforms}}',
     sizeCustom: '自定义',

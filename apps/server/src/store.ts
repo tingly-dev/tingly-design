@@ -581,6 +581,7 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   if (kind === 'slides') {
     const deck = parseDeck(JSON.stringify({
       v: 4,
+      ...(opts.size ? { size: opts.size } : {}),
       createdOnFiles: { v: 1, at: new Date().toISOString() },
       lists: 'css',
       title,
@@ -593,7 +594,9 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     await writeAtomic(name, slideFile('cover'), newSlideSource('cover', {
       title,
       body: '',
-    }).replace('font-size:72px', 'font-size:112px'));
+      size: opts.size,
+      titleSize: 112,
+    }));
     await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
     return;
   }

@@ -1,5 +1,6 @@
 import {
   StatementSplitter,
+  deckSize,
   buildFastEditPrompt,
   elementLabel,
   logMessage,
@@ -33,7 +34,7 @@ function deckOutline(file: string): string {
   const s = get();
   const deck = deckOf(s);
   const ids = slideIds(s);
-  const lines = [`"${deck.title}", ${ids.length} slides, 1920×1080 each`];
+  const lines = [`"${deck.title}", ${ids.length} slides, ${deckSize(deck).join('×')} each`];
   let n = 0;
   for (const g of sectionsOf(deck, ids)) {
     if (g.description) lines.push(`section: ${g.description}`);

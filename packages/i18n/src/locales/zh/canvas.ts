@@ -5,6 +5,7 @@ export default {
   /** the named artboard sizes (BOARD_SIZES in @dc/core): a name, and where each is used */
   /** the groups the named sizes are listed under */
   boardGroup: {
+    ratio: '更多比例',
     screen: '屏幕',
     slides: '演示',
     social: '社交与封面',
@@ -12,6 +13,15 @@ export default {
     print: '打印',
   },
   boardSize: {
+    classic: '4:3',
+    landscape32: '3:2',
+    portrait23: '2:3',
+    landscape21: '2:1',
+    portrait12: '1:2',
+    ultrawide: '21:9',
+    cinema: '2.39:1',
+    wide1610: '16:10',
+
     artboard: '画板',
     desktop: '桌面',
     mobile: '手机',
@@ -38,6 +48,15 @@ export default {
     skyscraper: '摩天楼',
   },
   boardFor: {
+    classic: '传统屏幕与演示文稿。',
+    landscape32: '横向摄影与幻灯片。',
+    portrait23: '竖向摄影与海报。',
+    landscape21: '横幅与宽屏视频。',
+    portrait12: '竖幅与竖屏视频。',
+    ultrawide: '超宽屏幕与视频。',
+    cinema: '电影宽银幕。',
+    wide1610: '宽屏显示器与演示文稿。',
+
     artboard: '通用画板，适合界面和流程',
     desktop: '网页和桌面应用',
     mobile: 'iPhone、安卓应用界面',

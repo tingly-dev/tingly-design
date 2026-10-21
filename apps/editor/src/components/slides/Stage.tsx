@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SLIDE_H, SLIDE_W, checkSlide, slideFile } from '@dc/core';
-import { display, parsed, useStore } from '../../store';
+import { deckSize, checkSlide, slideFile } from '@dc/core';
+import { deckOf, display, parsed, useStore } from '../../store';
 import { notesOf, setNotes } from './slides';
 import { NoteBox } from '../NoteBox';
 import { SlideFrame } from './SlideFrame';
@@ -9,8 +9,10 @@ import { useElementSize } from '../../hooks';
 
 export function useFit(ref: React.RefObject<HTMLElement | null>, padX: number, padY: number): number {
   const [, { w, h }] = useElementSize(ref);
+  const W = useStore((s) => deckSize(deckOf(s))[0]);
+  const H = useStore((s) => deckSize(deckOf(s))[1]);
   if (!w || !h) return 0.4;
-  return Math.max(0.1, Math.min((w - padX * 2) / SLIDE_W, (h - padY * 2) / SLIDE_H));
+  return Math.max(0.01, Math.min((w - padX * 2) / W, (h - padY * 2) / H));
 }
 
 function Notes({ id }: { id: string }) {

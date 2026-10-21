@@ -8,7 +8,7 @@ description: Read before creating or editing a slide deck under projects/ (deck.
 A deck is a folder under `projects/<name>/`, laid out as the original Slides type lays out `project/`:
 
 - `deck.json` — the deck's title, slide order, sections and typefaces.
-- `slides/<id>.html` — one file per slide: exactly one `<section id="<id>" …>` on a fixed 1920×1080 canvas.
+- `slides/<id>.html` — one file per slide: exactly one `<section id="<id>" …>` on the canvas given by `deck.json.size` (`[width, height]`), defaulting to 1920×1080 when absent. Read that size before laying out content and preserve it when editing the index.
 - `assets/…` — images and fonts the slides use (uploaded from the editor; served beside the deck).
 - `uploads/…` — files people attached to requests (images, PDFs, text). A slide can show an image from here by its path, `src="uploads/…"`.
 
@@ -126,7 +126,7 @@ You are a presentation designer, not a web designer. Every slide:
 - Hex colors, once per deck: one dark, one light, 1–2 accents; toned whites and blacks, not pure `#fff`/`#000`; two background tones and an accent statement slide; `background` on every section; text holds 4.5:1 contrast on its background (3:1 at 44px+). The person's explicit instructions or an installed design system's colors override these ratios. Colors that must be told apart also differ in lightness, not hue alone; prefer blue/orange to red/green.
 - One type scale of four or five sizes, 1–3 typefaces; emphasize with weight, italic or color, not a new size.
 - One idea per slide: a statement beats bullets; turn lists into tables, card rows, big numbers or quotes. Titles introduce the topic, in one grammar throughout; no "It's not X, it's Y" drama.
-- Vertical space: 824px inside the margins. A heading ≈ size × lines × 1.1; a table row ≈ 2.1 × font-size per text line; a card = lines × size × line-height + padding, never a smaller fixed height (leave height out). Text wraps only at spaces: size boxes to their longest word (about 0.6 × font-size per character). Too much? Split the slide; nothing shrinks.
+- Size all content and margins to the deck’s dimensions. The numeric layout guidance below assumes 1920×1080; adapt it for other sizes. Vertical space at that default size: 824px inside the margins. A heading ≈ size × lines × 1.1; a table row ≈ 2.1 × font-size per text line; a card = lines × size × line-height + padding, never a smaller fixed height (leave height out). Text wraps only at spaces: size boxes to their longest word (about 0.6 × font-size per character). Too much? Split the slide; nothing shrinks.
 - Footer band: page number, source or logo is ONE pinned 24px row at `bottom:64px`; that slide gets `padding:128px 128px 160px`; nothing else past y 920.
 - Rhythm: slides of one kind share markup; repeated elements keep their places, the heading at the top margin (never centered with the body), so it never hops. Fill about 70% of the column, or use `justify-content:space-between` or a `flex:1` spacer. Touching boxes share one stroke (`border-top:none` on each after the first) or keep a gap.
 - Images: only the person's files or a design system's (in the deck folder). Photos `object-fit:cover`; screenshots and diagrams `object-fit:contain` on a contrasting background. "36pt" means 72px.

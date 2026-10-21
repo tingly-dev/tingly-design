@@ -1,6 +1,6 @@
 import { CANVAS_FILE, parseCanvas } from './canvas';
 import { DASH_INDEX, parseDash } from './dash';
-import { DECK_FILE, faceMarkup, parseDeck, slideFile, type ProjectKind } from './deck';
+import { DECK_FILE, deckSize, faceMarkup, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DOC_INDEX, parseDoc, tabFile } from './docs';
 import { DS_COVER, DS_INDEX, DS_TOKENS, componentNames, dsGlance, type DsGlance, parseDsIndex, resolveTokens } from './designSystem';
 import { MOTION_FILE, motionTimeline, parseMotion, primaryFormat, sceneFile, sceneTiming, speedOf, type MotionJson } from './motion';
@@ -56,7 +56,7 @@ export type ProjectPreview =
       /** the board the canvas opens on (or its first), rendered live */
       board?: { file: string; w: number; h: number; source: string };
     }
-  | { kind: 'slides'; cover?: { file: string; source: string; head: string } }
+  | { kind: 'slides'; cover?: { file: string; source: string; head: string; size?: [number, number] } }
   | {
       kind: 'design-system';
       colors: string[];
@@ -107,7 +107,7 @@ export async function projectCard(
       kind,
       updatedAt,
       count: deck.order.length,
-      preview: { kind, cover: id && source !== undefined ? { file: slideFile(id), source, head: faceMarkup(deck) } : undefined },
+      preview: { kind, cover: id && source !== undefined ? { file: slideFile(id), source, head: faceMarkup(deck), size: deckSize(deck) } : undefined },
     };
   }
   if (kind === 'motion') {

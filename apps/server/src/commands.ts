@@ -122,7 +122,7 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   const title = o.title?.trim() || (path ? basename(path) : target);
   if (o.look && kind !== 'design-system') throw new CommandError(t('cli.lookOnlyDs'));
   if (o.look && !lookOf(o.look)) throw new CommandError(t('cli.badLook', { look: o.look, looks: LOOKS.map((l) => l.id).join(', ') }));
-  const sized = { ...(size && (kind === 'design' || kind === 'motion') ? { size } : {}), ...(o.look ? { look: o.look } : {}) };
+  const sized = { ...(size && (kind === 'design' || kind === 'motion' || kind === 'slides') ? { size } : {}), ...(o.look ? { look: o.look } : {}) };
   // with an editor open on this folder, the editor creates it: a linked folder then lives in its list
   // of links too (it keeps them in memory and writes them back), and the launcher shows the card at once
   const running = ctx.inServer ? null : await findEditor();

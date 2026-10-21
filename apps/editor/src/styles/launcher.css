@@ -1565,6 +1565,15 @@
 }
 
 
+.szsplit .szmine .szopt {
+  flex: 1;
+  width: auto;
+}
+
+.szsplit .szmine .szx {
+  height: 28px;
+}
+
 .szmine .szopt {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;

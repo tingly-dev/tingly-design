@@ -2,6 +2,7 @@ export default {
   /** the named artboard sizes (BOARD_SIZES in @dc/core): a name, and where each is used */
   /** the groups the named sizes are listed under */
   boardGroup: {
+    ratio: 'Aspect ratios',
     screen: 'Screen',
     slides: 'Slides',
     social: 'Social and covers',
@@ -9,6 +10,15 @@ export default {
     print: 'Print',
   },
   boardSize: {
+    classic: '4:3',
+    landscape32: '3:2',
+    portrait23: '2:3',
+    landscape21: '2:1',
+    portrait12: '1:2',
+    ultrawide: '21:9',
+    cinema: '2.39:1',
+    wide1610: '16:10',
+
     artboard: 'Artboard',
     desktop: 'Desktop',
     mobile: 'Phone',
@@ -35,6 +45,15 @@ export default {
     skyscraper: 'Skyscraper',
   },
   boardFor: {
+    classic: 'Classic screens and presentations.',
+    landscape32: 'Landscape photography and slides.',
+    portrait23: 'Portrait photography and posters.',
+    landscape21: 'Wide banners and video.',
+    portrait12: 'Vertical banners and video.',
+    ultrawide: 'Ultrawide screens and video.',
+    cinema: 'Cinema widescreen.',
+    wide1610: 'Widescreen displays and presentations.',
+
     artboard: 'A general-purpose board for interfaces and flows',
     desktop: 'Web pages and desktop apps',
     mobile: 'iPhone and Android app screens',

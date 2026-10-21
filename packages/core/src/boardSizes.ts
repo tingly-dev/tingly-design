@@ -7,7 +7,7 @@ import { validSize } from './motion';
  * Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
  * Sizes are CSS pixels, the unit a canvas draws in.
  */
-export const BOARD_GROUPS = ['screen', 'slides', 'social', 'ads', 'print'] as const;
+export const BOARD_GROUPS = ['screen', 'slides', 'social', 'ads', 'print', 'ratio'] as const;
 export type BoardGroup = (typeof BOARD_GROUPS)[number];
 
 export const BOARD_SIZES = [
@@ -35,6 +35,14 @@ export const BOARD_SIZES = [
   { id: 'skyscraper', group: 'ads', size: [160, 600] },
   { id: 'a4', group: 'print', size: [794, 1123] },
   { id: 'letter', group: 'print', size: [816, 1056] },
+  { id: 'classic', group: 'ratio', size: [1440, 1080] },
+  { id: 'landscape32', group: 'ratio', size: [1620, 1080] },
+  { id: 'portrait23', group: 'ratio', size: [1080, 1620] },
+  { id: 'landscape21', group: 'ratio', size: [2160, 1080] },
+  { id: 'portrait12', group: 'ratio', size: [1080, 2160] },
+  { id: 'ultrawide', group: 'ratio', size: [2520, 1080] },
+  { id: 'cinema', group: 'ratio', size: [2580, 1080] },
+  { id: 'wide1610', group: 'ratio', size: [1920, 1200] },
 ] as const satisfies readonly { id: string; group: BoardGroup; size: [number, number] }[];
 
 export type BoardSizeId = (typeof BOARD_SIZES)[number]['id'];

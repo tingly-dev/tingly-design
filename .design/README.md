@@ -40,7 +40,7 @@
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |
 | [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 已实施；同名值联动和脚本里未声明的值未定 |
 | [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome，本机没有时嵌入内容自己交出画面；其余类型的格式和共用菜单；速度怎么量、慢在哪、怎么看见 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
-| [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
+| [launcher.md](./launcher.md) | 画布、幻灯片、动效共用分类尺寸选择与幻灯片尺寸契约； 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |

@@ -2,16 +2,16 @@ import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SLIDE_W, checkSlide, sectionsOf, slideFile } from '@dc/core';
-import { display, parsed, useDeck, useSlideIds, useStore } from '../../store';
+import { deckSize, checkSlide, sectionsOf, slideFile } from '@dc/core';
+import { deckOf, display, parsed, useDeck, useSlideIds, useStore } from '../../store';
 import { addSection, addSlide, deleteSlide, duplicateSlide, goToSlide, isHidden, moveSlide, removeSection, renameSection, slideTitle, toggleHidden } from './slides';
 import { SlideFrame } from './SlideFrame';
 import { Menu, MenuItem } from '../Menu';
 
 const THUMB_W = 176;
-const THUMB_K = THUMB_W / SLIDE_W;
 
 function Thumb({ id, index }: { id: string; index: number }) {
+  const width = useStore((s) => deckSize(deckOf(s))[0]);
   const current = useStore((s) => s.slide === id);
   const source = useStore((s) => display(s, slideFile(id)));
   const hidden = useMemo(() => (source ? isHidden(id) : false), [source, id]);
@@ -56,7 +56,7 @@ function Thumb({ id, index }: { id: string; index: number }) {
     >
       <span className="num">{index + 1}</span>
       <div className="tframe">
-        <SlideFrame id={id} scale={THUMB_K} use="thumb" />
+        <SlideFrame id={id} scale={THUMB_W / width} use="thumb" />
         {hidden && <span className="tag">{t('slides.strip.skipped')}</span>}
         {errors > 0 && (
           <span className="tag err" title={t('slides.strip.errors', { count: errors })}>

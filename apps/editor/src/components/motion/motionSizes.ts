@@ -2,7 +2,7 @@
  * The sizes a person makes motion pieces in, kept in this browser: the one picked last (the next
  * new piece starts there) and the custom ones they have used, newest first. Presets are not stored.
  */
-import { MOTION_SIZES, validSize } from '@dc/core';
+import { BOARD_SIZES, MOTION_SIZES, validSize } from '@dc/core';
 import { readPref, writePref } from '../../local';
 
 const KEY = 'dc.motionSizes';
@@ -15,7 +15,7 @@ export interface MotionSizes {
 }
 
 export const sameSize = (a: Size | null, b: Size | null) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
-export const isPreset = (s: Size) => MOTION_SIZES.some((p) => sameSize(p.size as unknown as Size, s));
+export const isPreset = (s: Size) => [...BOARD_SIZES, ...MOTION_SIZES].some((p) => sameSize(p.size as unknown as Size, s));
 
 export function readSizes(): MotionSizes {
   try {
