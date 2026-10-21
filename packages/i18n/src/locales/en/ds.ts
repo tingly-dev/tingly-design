@@ -1,4 +1,6 @@
 export default {
+  builtIn: 'Built-in',
+  builtInPicked: 'Built-in · {{look}}',
   look: {
     'minimal-white': 'Minimal white',
     'corporate-clean': 'Corporate clean',

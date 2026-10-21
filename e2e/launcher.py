@@ -7,7 +7,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
-MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales', 'zz-cli-wechat', 'zz-cli-wxh', 'zz-cli-bad', 'zz-look', 'zz-cli-look', 'zz-cli-badlook']
+MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales', 'zz-cli-wechat', 'zz-cli-wxh', 'zz-cli-bad', 'zz-look', 'zz-cli-look', 'zz-cli-badlook', 'zz-builtin-canvas', 'zz-builtin-slides']
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
@@ -266,6 +266,7 @@ async def main():
         check('a group lists only its own looks', 'nord' in shown and 'dracula' in shown and 'swiss-grid' not in shown, str(shown))
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Look')
         await dlg.locator('[data-looks] .szcat[data-group="bold"]').click()
+        await expect(dlg.locator('[data-look="bauhaus"]')).to_contain_text('Bauhaus')
         await dlg.locator('[data-look="bauhaus"]').click()
         await dlg.locator('button[type=submit]').click()
         await pg.wait_for_url('**/?p=zz-look')
@@ -302,6 +303,50 @@ async def main():
         st = post({'name': 'zz-cli-badlook', 'kind': 'slides', 'look': 'nord'})
         check('the API refuses a look for any kind but a design system', st == 400 and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-badlook')), str(st))
         check('an unknown look is refused and names the choices', r.returncode != 0 and 'nord' in (r.stdout + r.stderr) and not os.path.exists(os.path.join(REPO, 'projects/zz-cli-badlook')), r.stdout + r.stderr)
+        # Built-ins need no pre-created system and stay folded until the person asks for them.
+        before = {p['name'] for p in await (await pg.request.get(BASE + '/api/projects')).json()}
+        for kind, name, index in [('design', 'zz-builtin-canvas', 'canvas.json'), ('slides', 'zz-builtin-slides', 'deck.json')]:
+            await pg.goto(BASE + '/')
+            await pg.locator('.lnewbtn').click()
+            await pg.locator(f'.menu [data-new="{kind}"] .mi').click()
+            await dlg.locator('input[aria-label="标题"]').fill(name)
+            builtins = dlg.locator('.dsbuiltins')
+            check(f'{kind}: built-ins start collapsed', not await builtins.evaluate('(e) => e.open') and await builtins.locator('[data-look]').count() == 0)
+            await builtins.locator('summary').click()
+            await builtins.locator('[data-group="palette"]').click()
+            shown = await builtins.locator('[data-look]').evaluate_all('els => els.map(e => e.dataset.look)')
+            check(f'{kind}: built-ins show only one group', len(shown) == 8 and 'nord' in shown and 'swiss-grid' not in shown)
+            await expect(builtins.locator('[data-look="nord"]')).to_contain_text('Nord')
+            await builtins.locator('[data-look="nord"]').click()
+            check(f'{kind}: selection closes the group and keeps its English name', not await builtins.evaluate('(e) => e.open') and await dlg.locator('.dspick select').input_value() == 'builtin:nord')
+            # The existing project systems remain selectable, and choosing None clears a built-in.
+            await dlg.locator('.dspick select').select_option('tingly-ds')
+            await dlg.locator('.dspick select').select_option('')
+            await builtins.locator('summary').click()
+            await builtins.locator('[data-group="palette"]').click()
+            await builtins.locator('[data-look="nord"]').click()
+            await dlg.locator('button[type=submit]').click()
+            await pg.wait_for_url(f'**/?p={name}')
+            target = os.path.join(REPO, 'projects', name)
+            data = json.load(open(os.path.join(target, index), encoding='utf-8'))
+            records = data.get('designSystems', [])
+            tokens = json.load(open(os.path.join(target, 'ds/look-nord/tokens.json'), encoding='utf-8'))
+            check(f'{kind}: the built-in is installed directly', len(records) == 1 and records[0]['title'] == 'Nord' and records[0]['artifact'] == 'builtin:nord' and any(c['name'] == 'surface' and c['value'] == '#2e3440' for c in tokens['color']['tokens']))
+            if kind == 'slides':
+                check('a built-in deck gets its hosted fonts', bool(data.get('faces')))
+            # Reinstalling is idempotent, and invalid requests leave the copy untouched.
+            response = await pg.request.post(BASE + f'/api/projects/{name}/design-systems', data={'look': 'nord'})
+            data = json.load(open(os.path.join(target, index), encoding='utf-8'))
+            check(f'{kind}: reinstall replaces its record', response.status == 200 and len(data['designSystems']) == 1)
+            for body in [{'look': 'nope'}, {'look': 'nord', 'from': 'tingly-ds'}]:
+                response = await pg.request.post(BASE + f'/api/projects/{name}/design-systems', data=body)
+                check(f'{kind}: invalid built-in source is refused', response.status == 400)
+            response = await pg.request.delete(BASE + f'/api/projects/{name}/design-systems?namespace=look-nord')
+            data = json.load(open(os.path.join(target, index), encoding='utf-8'))
+            check(f'{kind}: built-in removal clears its record and tokens', response.status == 200 and not data['designSystems'] and not os.path.exists(os.path.join(target, 'ds/look-nord/tokens.json')))
+        after = {p['name'] for p in await (await pg.request.get(BASE + '/api/projects')).json()}
+        check('using built-ins creates only the requested projects', after - before == {'zz-builtin-canvas', 'zz-builtin-slides'})
+
         csv = os.path.join(REPO, 'projects/.zz-sales.csv')
         open(csv, 'w').write('month,revenue\n2026-01,120\n2026-02,150\n')
         await pg.goto(BASE + '/')

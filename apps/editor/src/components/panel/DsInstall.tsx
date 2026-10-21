@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../api';
+import { api, type DesignSystemChoice } from '../../api';
+import { DesignSystemPicker } from '../DesignSystemPicker';
 import { useInstalled } from '../ds/ds';
 import { toast, useStore } from '../../store';
 
 /**
- * Design systems in a canvas or deck: install one of this repository's
- * systems (its tokens are copied into ds/<folder>/, and recorded in the
+ * Design systems in a canvas or deck: install a project system or built-in look
+ * (its tokens are copied into ds/<folder>/, and recorded in the
  * index), or remove one. Once installed, colour fields and the text style
  * menu offer its tokens.
  */
@@ -15,12 +16,12 @@ export function DsInstall() {
   const project = useStore((s) => s.project);
   const installed = useInstalled();
   const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
-  const [pick, setPick] = useState('');
+  const [pick, setPick] = useState<DesignSystemChoice>('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     api.projects().then((l) => setSystems(l.filter((p) => p.kind === 'design-system')), () => setSystems([]));
   }, []);
-  const install = async (from: string) => {
+  const install = async (from: DesignSystemChoice) => {
     if (!project || !from) return;
     setBusy(true);
     try {
@@ -76,25 +77,12 @@ export function DsInstall() {
           </div>
         );
       })}
-      {systems.length ? (
-        <div className="faceadd">
-          <select className="input" value={pick} onChange={(e) => setPick(e.target.value)} aria-label={t('panel.ds.pickLabel')}>
-            <option value="">{t('panel.ds.pickPlaceholder')}</option>
-            {systems.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.title}
-              </option>
-            ))}
-          </select>
-          <button className="btn outline" disabled={!pick || busy} onClick={() => install(pick)}>
-            {t('panel.ds.install')}
-          </button>
-        </div>
-      ) : (
-        <p className="hint" style={{ margin: 0 }}>
-          {t('panel.ds.none')}
-        </p>
-      )}
+      <div className="faceadd">
+        <DesignSystemPicker value={pick} onChange={setPick} systems={systems} label={t('panel.ds.pickLabel')} placeholder={t('panel.ds.pickPlaceholder')} disabled={busy} />
+        <button className="btn outline" disabled={!pick || busy} onClick={() => install(pick)}>
+          {t('panel.ds.install')}
+        </button>
+      </div>
     </>
   );
 }

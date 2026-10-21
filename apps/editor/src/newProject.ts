@@ -1,11 +1,11 @@
 import { DASH_DATA_MAX, datasetFile, parseDataFile, type DatasetJson } from '@dc/core';
-import { api } from './api';
+import { api, type DesignSystemChoice } from './api';
 import { t } from './i18n';
 
 /** What a person can choose while creating a project, all of it skippable. The server writes the starter; this adds what was picked. */
 export interface NewOptions {
-  /** the folder of a design system to install (canvas, slides) */
-  designSystem?: string;
+  /** A design-system project or built-in look to install (canvas, slides). */
+  designSystem?: DesignSystemChoice;
   /** a table to start a dashboard from (CSV, TSV or JSON) */
   dataFile?: File;
 }

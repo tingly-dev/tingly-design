@@ -1785,3 +1785,76 @@
 .szsplit .lookrow {
   max-height: 250px;
 }
+
+/* Built-in systems stay folded, including when no user systems exist yet. */
+.dspick {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dspick > .input {
+  width: 100%;
+}
+
+.dsbuiltins > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 4px 0;
+}
+
+.dsbuiltins > summary:hover {
+  color: var(--ink);
+}
+
+.dsbuiltins > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.dsbuiltins > .sizes {
+  margin-top: 6px;
+}
+
+.dspick .szsplit {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 6px;
+}
+
+.dspick .szcat {
+  white-space: normal;
+  height: auto;
+  min-height: 28px;
+  padding: 5px 6px;
+}
+
+.dspick .lookopt .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dspick .szsplit .lookrow {
+  max-height: 160px;
+}
+
+.ldialog .nopt:has(.dspick) {
+  align-items: start;
+}
+
+.ldialog .nopt:has(.dspick) > span {
+  padding-top: 8px;
+}
+
+.panel .faceadd:has(.dspick) {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.panel .faceadd > .dspick {
+  flex-basis: 100%;
+}
