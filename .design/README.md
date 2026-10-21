@@ -12,6 +12,12 @@
 - 重命名或拆分时同步更新正文、本索引、README 和源码注释里的引用。
 - 各类型都能碰到的功能（提示栏、附件、主题、导出……）以 [project-kinds.md](./project-kinds.md) 的矩阵为准，改了功能就改矩阵。
 
+## 产品原则
+
+| 文档 | 内容 | 状态 / 阅读边界 |
+|---|---|---|
+| [ux-principles.md](./ux-principles.md) | 12 条 UX-First 判断标准与评审清单；做功能前必读，本仓库本地维护 | 现行契约 |
+
 ## 项目类型与跨类型功能
 
 | 文档 | 内容 | 状态 / 阅读边界 |
@@ -31,6 +37,7 @@
 | [top-bar.md](./top-bar.md) | 顶栏：六种类型共用的一条栏——项目名、同步状态、导入 / 导出放哪，反馈、点星、语言、外观为什么在最右；浮栏只留工具 | 已实施 |
 | [dialog.md](./dialog.md) | 对话框：所有模态框共用一个 `Dialog`——遮罩、标题和关闭、焦点进出、Tab 留在框内、Esc 和菜单的先后 | 已实施 |
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
+| [slides-pptx.md](./slides-pptx.md) | 幻灯片 PPTX 双向交换：新项目导入、整份可见 deck 原生受限导出、opaque runtime 捕获、来源/报告与诊断、安全和验证门槛 | 独立模块与 launcher/API/CLI/FileMenu/MCP 接入已实施；聚焦产品 e2e 65/65、摘要检查 4/4 通过，独立 Office 渲染未验收；无追加、无产品 raster fallback；未来提案单列 |
 | [docs-markdown.md](./docs-markdown.md) | 文档导出为 Markdown：文档标题和标签页成章节、标题层级理顺、图片路径跟着走（有图片时出带图片的 .zip）、`==高亮==` 转 `<mark>`、评论不导出 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [claude-design-format.md](./claude-design-format.md) | 和原版 Claude Design 互相搬作品：包就是原版的文件布局（`project/…`，看板是存储文档），导入并进“导入项目”不选类型，导出挨着“整个项目”；图片和数据怎么对应、哪些类型没有 | 已实施（编辑器、启动页、命令行）；Docs 往返、查询数据集的数据是没做的 |
@@ -39,8 +46,8 @@
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |
 | [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 已实施；同名值联动和脚本里未声明的值未定 |
-| [export.md](./export.md) | 导出：在浏览器里做、不装东西；独立的 `@dc/export` 包，动效在编辑器里导出视频，浏览器画不了的自动改走服务端的 Chrome，本机没有时嵌入内容自己交出画面；其余类型的格式和共用菜单；速度怎么量、慢在哪、怎么看见 | 动效视频已实施；其余是方案；调研在 `.research/export.md` |
-| [launcher.md](./launcher.md) | 画布、幻灯片、动效共用分类尺寸选择与幻灯片尺寸契约； 启动页：项目卡片、实时预览、新建、分组与列表视图 | 已实施 |
+| [export.md](./export.md) | 导出：独立的 `@dc/export` 包、动效视频与取帧路线、速度度量；其他格式的现行入口链接到专门契约 | 动效视频已实施；PNG/PDF/共用菜单见对应笔记，受限 PPTX 接入已实施，验证范围见 slides-pptx；未做项单列；调研在 `.research/export.md` |
+| [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |
@@ -56,7 +63,7 @@
 | [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
 | [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |
-| [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPT | HTML、SVG → 画布已实施（§10、§11）；其余是评估 |
+| [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPTX；历史评估与现行路径分开 | HTML、SVG → 画布已实施；新项目 PPTX 导入已实施、聚焦产品 e2e 已通过（当前契约与验证范围见 slides-pptx）；旧 PPT 评估不作支持声明 |
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |
 | [import-from-project.md](./import-from-project.md) | 从项目导入：把画布的画板复制进幻灯片和动效、嵌入、记来源、可更新；会动的画板（`$time`）就是特效 | 第一期已实施（画布 → 幻灯片、动效）；§5 是没做的 |
 | [i18n.md](./i18n.md) | 界面语言：词条放哪、用什么库、语言从哪来，服务端报错、新建文案、模型回复和沙箱各用哪种语言 | 已实施（英文、中文）；§6 是没做的 |
@@ -76,6 +83,6 @@
 | [tingly-box-integration.md](./tingly-box-integration.md) | 将来在 Tingly Box 里接入编辑器 | 方案，未实施；TB 仓库未改 |
 | [release.md](./release.md) | 发版：tag 触发测试、打包，发 GitHub release 和 npm 包 `@tingly-dev/tingly-design` 和 `tingly-design`；同一份 bundle、许可证、npm 鉴权、GitHub Pages 主页（视频由 CI 渲染） | 已实施；还没发过第一个版本 |
 
-Tingly Box 那边相关的说明：[ux-principles.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/ux-principles.md)（UX 判断标准，做功能前必读）、[theme.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/theme.md)（TB 主题调色板的取舍；本仓库的主题由 `scripts/sync-tingly-box-theme.mjs` 从 TB 的 `@tingly/ui` 同步）、[gui-host-bridge.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/gui-host-bridge.md)（宿主桥接）。
+Tingly Box 那边相关的说明：[theme.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/theme.md)（TB 主题调色板的取舍；本仓库的主题由 `scripts/sync-tingly-box-theme.mjs` 从 TB 的 `@tingly/ui` 同步）、[gui-host-bridge.md](https://github.com/tingly-dev/tingly-box/blob/main/.design/gui-host-bridge.md)（宿主桥接）。
 
 `docs/` 里也有设计性质的内容，不在这里重复：[architecture](../docs/zh/architecture.md)（格式、回写引擎、快速 AI、协作、沙箱）、[theming](../docs/zh/theming.md)（主题 token 和预设）、[embedding](../docs/zh/embedding.md)（嵌入约定 protocol 1）。

@@ -17,12 +17,12 @@ Tingly Design's canvas, slides, design system and dashboard follow the files of 
 
 1. Ask Claude Code to read the artifact into a folder: *“Read this artifact (the link) and save every file, and its assets, in `~/claude-design/poster`”*. Claude Code saves `project/…` and any pictures the design uses, named by their id.
 2. Import that folder, or a `.zip` of it:
-   - on the home page, **New project → Import a project (.zip)…**;
+   - on the home page, **New project → Import a project package (.zip)…**;
    - or from a terminal, `tingly-design import ~/claude-design/poster`.
 
 There is nothing to pick: Tingly Design sees from the files which kind it is and opens it, named after its title. Pictures that were stored as `/_blob/<id>` and came along are brought into `uploads/`; a toast says how many did not. A dashboard whose data files did not come along opens with its datasets listed under Problems, and attaching a file fixes each one.
 
-A Markdown file saved from Claude Docs (**Export → Markdown**) imports the same way, as a new doc.
+A Markdown file saved from Claude Docs (**Export → Markdown**) opens through **New project → Import Markdown (.md)…**, as a new doc.
 
 ## Hand a project back
 

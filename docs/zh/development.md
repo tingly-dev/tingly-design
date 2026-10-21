@@ -8,6 +8,20 @@ pnpm typecheck
 pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 ```
 
+## PPTX 模块 smoke 语料
+
+独立转换模块的固定语料位于 [`packages/core/test/fixtures/pptx-smoke/`](../../packages/core/test/fixtures/pptx-smoke/README.md)。目录 README 说明逐页特性、成功/拒绝预期、确定性重建方法及合法性验证边界。不启动编辑器即可运行：
+
+```bash
+pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
+```
+
+可选的独立 schema 校验使用 .NET 和 Open XML SDK，见 [`scripts/validate-pptx/README.md`](../../scripts/validate-pptx/README.md)。这是开发工具，不是产品运行或 CI 的必需依赖。
+
+这不是产品 e2e：PPTX 菜单和 CLI 接入尚未启用。包/XML 检查和转换断言不能代替独立 Office 渲染。支持项与暂不支持项各自成包，因为当前一个不支持对象会使整份导入原子失败。
+
+## 端到端套件
+
 其他套件按中文的标签找元素，所以浏览器用 `zh-CN` 语言运行；英文由 `i18n.py` 覆盖。
 
 `pnpm e2e` 一条命令跑完下表里除 `delegate` 以外的所有套件：按组先起好各自要的东西（带 mock 模型的 `pnpm dev`；给 `ai_settings` 用的不配模型的 `pnpm dev`；自己起服务的套件先 `pnpm build`；`embed` 先 `pnpm bundle`），逐个跑完，最后打印一张表（`--jobs 4` 把整套切成四片同时跑，每片用自己的一份仓库副本和自己的端口；`--shard 2/4` 只跑其中一片，CI 就是这样把整套分到四台机器上）；哪些检查没过写在 `e2e/out/report.md` 和 `report.json`，每个套件的输出在 `e2e/out/logs/`。`pnpm e2e slides docs` 只跑这几个，`--smoke` 跑 PR 用的小集合，`--list` 列出分组，`--real` 加上 `delegate`。套件会改示例项目，再用 `git checkout` 改回去，所以 `projects/` 里有没提交的改动时它不开跑（`--force` 强制跑）。整套串行大约十四分钟，切四片并行大约是它的四分之一。
@@ -25,6 +39,7 @@ pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 | `python3 e2e/docs.py` | 文档：标签页与大纲、浏览不写盘、打字/勾待办/改单元格都只改一行、`/` 菜单、格式菜单、外部改动实时进来且不被覆盖、评论（回复/解决/新建）、标签页增删改、版式、AI 改写（有模拟模型时）、导出 HTML、新建（25 项） |
 | `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的 ImageGen 一块（Anthropic 没有、跟着 Tingly Box 的地址、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
 | `python3 e2e/export_menu.py` | 共用的导入 / 导出菜单：每种类型的栏里都有，列出这种类型收什么、能存什么；幻灯片和文档一键存成 PDF（真的 PDF，页数对）、服务端没有 Chrome 时回到打印窗口、状态条（28 项检查） |
+| `python3 e2e/pptx.py` | 通过真实启动页与幻灯片菜单测试 PowerPoint 交换：picker/drop/API 导入，保留原件/报告/媒体/备注，编辑并重开，失败原子性与重名，整份原生对象导出与不支持内容的诊断；英文/中文、浅色/深色截图；只使用本套件创建的项目 |
 | `python3 e2e/archive.py` | 整个项目导出成 .zip：每种类型导入 / 导出菜单最后的两项；整个项目带改动记录、并排带上设计系统和清单，仅文件两样都不带，都不带本机状态；从启动页“新建”菜单导入、重名换名（没变的设计系统不重复导入）；启动页卡片的导出；没有项目的 zip 会说明原因；英文浅色和中文深色（23 项检查） |
 | `python3 e2e/claude_design.py` | Claude Design 包：画布、幻灯片、设计系统、看板的菜单里“Claude Design 包”排在“整个项目”前面，文档和动效没有；各类型包的布局和 README；保存；打开按 Claude Code 存下原版画布的方式做出的包（按标题起名，`/_blob` 图片进 `uploads/`）；Claude Docs 的 `.md` 变成文档；没有项目的 zip 会说明原因；英文浅色和中文深色（23 项检查） |
 | `python3 e2e/export_image.py` | 每种类型保存图片（PNG）：文档（当前标签页）、幻灯片（当前页、每一页）、看板、设计系统、动效（播放头所在的帧）；每个文件都是真的 PNG，尺寸不小于页面（9 项检查） |

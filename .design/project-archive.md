@@ -24,6 +24,7 @@
 
 ## 4. 导入
 
+- PPTX 在通用 ZIP 解压前单独识别并进入 core `importPptx` 的严格预算/OPC 校验，创建新 slides，不是把 Office ZIP 当普通项目包。启动页 picker/PPTX drop、`POST /api/archive?file=<文件名>` 和 CLI 共用 `unpackProject`；独占保留空闲名字、隐藏 staging 写完再发布，失败清理。源 `source.pptx`、媒体和 `report.json` 留在 `uploads/<id>/`，索引 `pptxImport` 指向报告；这也是项目源文件，整项目 zip 的两种选项都会保留。成功结果提供本地化常驻诊断、来源/报告下载和打开新项目；API 返回 `pptx` 元数据，CLI 显示本地化诊断及原文件/报告路径。失败不创建可见项目。没有追加到已开 deck、旧 `.ppt` 或通用图片降级，详见 [slides-pptx.md](./slides-pptx.md)。
 - 读法：有 `tingly-design.json` 就按它；没有（手工打包的）时，压缩包顶层就是一个项目，或者顶层每个文件夹是一个项目，第一个不是设计系统的那个是主项目。所以直接把项目文件夹压成 zip 也能导入。
 - 名字：导入成项目文件夹里的新项目，名字取原来的文件夹名（或压缩包文件名），重名时加 `-2`、`-3`。标题不变。
 - 设计系统：同名的系统已经在、而且 `tokens.json` 一样时，不再导入一份，项目直接用已有的那个；否则作为新项目导入，名字变了的话，把主项目索引里 `designSystems[].artifact` 改到新名字。
@@ -32,9 +33,9 @@
 ## 5. 放在哪里
 
 - 规则（带什么、怎么读压缩包、取名）在 core 的 `projectArchive.ts`，没有文件系统，单元测试覆盖。
-- 服务端 `archive.ts` 读写文件夹，用 fflate（纯 JS，打包进 bundle，不需要本机工具）。接口：`GET /api/projects/:p/archive`（`?journal=0&systems=0` 是仅文件），`POST /api/archive?file=<文件名>`（请求体是 zip）。
+- 服务端 `archive.ts` 读写文件夹，用 fflate（纯 JS，打包进 bundle，不需要本机工具）。接口：`GET /api/projects/:p/archive`（`?journal=0&systems=0` 是仅文件），`POST /api/archive?file=<文件名>`（请求体为 zip、PPTX 或 Markdown；Claude Design 包也由共享入口按文件识别，PPTX 不走通用 unzip）。
 - 编辑器 `projectArchive.ts`：保存和选择文件，菜单和启动页都调它。
-- 命令行：`tingly-design export <项目> --as zip [--files-only] [--out <文件夹>]` 和 `tingly-design import <file.zip>`（`cli.ts`，见 [cli.md](./cli.md)），直接调同一个 `packProject` / `unpackProject`，不用起服务。项目以路径给出时就地读。
+- 命令行：`tingly-design export <项目> --as zip [--files-only] [--out <文件夹>]` 和 `tingly-design import <file.zip|file.pptx|file.md>`（`cli.ts`，见 [cli.md](./cli.md)），直接调同一个 `packProject` / `unpackProject`，不用起服务。项目以路径给出时就地读。
 
 ## 6. 还没做的
 

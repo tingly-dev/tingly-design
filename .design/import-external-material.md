@@ -1,6 +1,6 @@
 # 导入外部素材（HTML、Markdown、PPT）：调研与评估
 
-状态：**HTML、SVG → 画布已实施**（`packages/import`，见 §10、§11），Figma、HTML 幻灯片、Markdown 和 PPT 仍是评估。本文回答一个问题：用户手里已经有别处做好的素材（一个 HTML 页面、一份 Markdown、一套 PPT），怎样把它变成 tingly-design 里可以双向编辑的项目，值不值得做，先做什么。路径相对本仓库。
+状态：**HTML、SVG → 画布已实施**（`packages/import`，见 §10、§11）；PPTX → 新 slides 已通过共享启动页/API/CLI 导入路径接入，当前受限契约与验证边界见 [slides-pptx.md](./slides-pptx.md)。不支持 PPTX 追加、通用图片降级或旧 `.ppt`。本文 §0–§9 保留早期研究/提案，不代表当前支持集合；Figma、HTML 幻灯片等扩展仍是评估。Markdown 的现行入口另见 [导入当前项目](./import-into-project.md) 与 [项目归档](./project-archive.md)，不以此处早期工作量估计作实施状态。路径相对本仓库。
 
 ## 0. 结论先说
 
@@ -171,6 +171,8 @@
 - 延伸：Marp/Slidev 风格的 Markdown（`---` 分页）可以"导入为幻灯片"，走 AI 生成，归到第三阶段。
 
 ## 6. PPT → 幻灯片
+
+本节是早期评估，不是实施契约；下表的表格/分组/图片降级等仍属未来提案。当前 PPTX → 新 slides 已实施：启动页 Import a project picker/PPTX drop、`POST /api/archive` 和 CLI `import` 共用严格转换器，保留 uploads 下的精确原文件、媒体与报告，成功/失败都有本地化常驻结果，成功可下载来源/报告。没有向已开 deck 追加或通用 raster fallback。受限映射、安全预算与产品验证以 [slides-pptx.md](./slides-pptx.md) 为准。下文 6350 EMU/px 只适用于所举物理页宽，不能用于所有 16:9 文件；图表/SmartArt 转图片需要实际渲染器，不能只靠解包保证。
 
 ### 6.1 映射关系
 
