@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { create } from 'zustand';
-import { PPTX_NOTES, pptxNote, type PptxDiagnostic, type PptxReport } from '@dc/core';
+import { PPTX_NOTES, pptxNote, type PptxDiagnostic, type PptxNote, type PptxReport } from '@dc/core';
 import { Dialog } from './Dialog';
 import { at } from '../base';
 import { download } from '../local';
@@ -33,7 +33,7 @@ export function ProjectImportResultHost() {
     const index = result.slides?.findIndex(s => s.id === d.slide || s.part === d.part) ?? -1;
     return index >= 0 ? index + 1 : Number(d.slide?.match(/-(\d+)$/)?.[1] ?? d.part?.match(/\/slide(\d+)\.xml$/)?.[1]) || undefined;
   };
-  const groups = new Map<string, { error: boolean; pages: Map<number, Set<string>>; parts: Set<string> }>();
+  const groups = new Map<PptxNote, { error: boolean; pages: Map<number, Set<string>>; parts: Set<string> }>();
   for (const d of result.diagnostics) {
     const key = pptxNote(d);
     const g = groups.get(key) ?? { error: false, pages: new Map(), parts: new Set() };
