@@ -62,7 +62,7 @@ async def main():
         await dlg.locator('[data-preset=custom]').click()
         await dlg.locator('input[placeholder="https://"]').fill(MOCK_URL)
         await dlg.get_by_label('ImageGen Address').fill('ftp://nope')
-        await expect(dlg.locator('.status.bad')).to_contain_text('http://')
+        await expect(dlg.locator('[data-image-section] .status.bad')).to_contain_text('http://')
         await dlg.get_by_label('ImageGen Address').fill(IMAGES_URL + '/v1')
         await dlg.get_by_label('ImageGen Key').fill('sk-image')
         await expect(dlg.get_by_label('ImageGen Model')).to_have_attribute('placeholder', 'gpt-image-1')

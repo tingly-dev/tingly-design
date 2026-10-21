@@ -99,8 +99,10 @@ async def main():
         await pg.keyboard.press('Enter')
         await pg.keyboard.type('See ')
         await pg.keyboard.type('Workflow')
-        await pg.keyboard.press('Shift+Home')
-        for _ in range(4): await pg.keyboard.press('Shift+ArrowRight')
+        # Home means document-start on macOS, not line-start. Select only the
+        # word with platform-independent character movement before using the menu.
+        for _ in 'Workflow': await pg.keyboard.press('Shift+ArrowLeft')
+        assert await pg.evaluate('window.getSelection().toString()') == 'Workflow'
         await pg.locator('.bubble button[aria-label="粗体"]').click()
         ok = await wait_for(lambda: 'See **Workflow**' in tab('overview'))
         check('the selection menu makes text bold', ok, [l for l in tab('overview').splitlines() if 'See ' in l])
@@ -127,11 +129,15 @@ async def main():
         await pg.locator('.cthread.on button', has_text='解决').click()
         ok = await wait_for(lambda: threads()[0].get('resolved') is True)
         check('resolving a thread', ok and await body.locator('.cmark').count() == 0)
-        await body.locator('blockquote p').dblclick()
+        # The block's centre can be empty space after a wrapped line; double-click
+        # within the first word so the comment is anchored to visible text.
+        await body.locator('blockquote p').dblclick(position={'x': 20, 'y': 10})
+        quote = await pg.evaluate('window.getSelection().toString()')
+        assert quote.strip(), f'Expected selected comment text, got {quote!r}'
         await pg.locator('.bubble button[aria-label="评论"]').click()
         await pg.locator('.crail textarea').fill('Worth quoting on the first slide of the intro deck.')
         await pg.locator('.crail button', has_text='发送').first.click()
-        ok = await wait_for(lambda: len(threads()) == 3 and threads()[2]['tab'] == 'overview' and threads()[2]['quote'] in tab('overview'))
+        ok = await wait_for(lambda: len(threads()) == 3 and threads()[2]['tab'] == 'overview' and threads()[2]['quote'] == quote and quote in tab('overview'))
         check('a new comment pinned to the selected words', ok, json.dumps(threads()[-1], ensure_ascii=False)[:300])
         await expect(body.locator('.cmark')).to_have_count(1)
 
