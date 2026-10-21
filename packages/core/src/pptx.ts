@@ -134,6 +134,9 @@ const kids = (n: X | undefined, uri: string, name: string) => n?.children.filter
 const child = (n: X | undefined, uri: string, name: string) => kids(n, uri, name)[0];
 const path = (n: X | undefined, ...steps: [string, string][]) => steps.reduce<X | undefined>((p, [uri, name]) => child(p, uri, name), n);
 function walk(n: X | undefined, uri: string, name: string): X[] { return n ? [...(n.uri === uri && n.name === name ? [n] : []), ...n.children.flatMap(c => walk(c, uri, name))] : []; }
+/** The part a picture reference was read from: its id resolves in that part's relationships,
+ * whether the fill sits on the slide, a layout or master, the theme or a SmartArt drawing. */
+const blipPart = new WeakMap<X, string>();
 function xml(bytes: Uint8Array, limits: PptxLimits, part: string, total: { nodes: number }): X {
   budget(bytes.length, limits.xmlBytes, 'xmlBytes', { part });
   let source: string; try { source = utf8.decode(bytes); } catch { fail('invalid_xml', { part }); }
@@ -144,6 +147,7 @@ function xml(bytes: Uint8Array, limits: PptxLimits, part: string, total: { nodes
     budget(++nodes, limits.xmlNodes, 'xmlNodes', { part }); budget(++total.nodes, limits.totalXmlNodes, 'totalXmlNodes', { part }); budget(stack.length + 1, limits.xmlDepth, 'xmlDepth', { part });
     const n: X = { uri: tag.uri, name: tag.local, attrs: {}, children: [], text: '' };
     for (const a of Object.values(tag.attributes)) n.attrs[key(a.uri, a.local)] = a.value;
+    if (n.name === 'blip') blipPart.set(n, part);
     if (stack.length) stack[stack.length - 1].children.push(n); else root = n;
     stack.push(n);
   });
@@ -225,8 +229,8 @@ function warn(c: Pick<Context, 'diagnostics' | 'seen' | 'loc' | 'pkg'>, code: st
   const once = ONCE.has(code);
   const loc: Loc = once ? { part: c.loc.part, slide: c.loc.slide } : c.loc;
   const k = [code, loc.part, loc.slide, loc.object, JSON.stringify(params ?? {})].join('|');
-  // past the budget the report stops growing; the import does not stop
-  if (c.seen.has(k) || c.diagnostics.length >= c.pkg.limits.diagnostics) return;
+  // past the budget the report stops growing and the import goes on; a left-out slide is still said (at most one per slide)
+  if (c.seen.has(k) || c.diagnostics.length >= c.pkg.limits.diagnostics && code !== 'slide_skipped' && code !== 'objects_dropped') return;
   c.seen.add(k); c.diagnostics.push({ level: 'warning', code, ...loc, ...(params ? { params } : {}) });
 }
 function number(value: string | undefined, fallback?: number): number {
@@ -508,6 +512,7 @@ function customPath(geom: X, box: Box, c: Context): { d: string; fill: boolean; 
   if (!out.length) fail('unsupported_geometry', c.loc, { geometry: 'custGeom' });
   return out;
 }
+/** Gradient ids, counted from 1 again by each import so the same file gives the same slides. */
 let gradients = 0;
 function svgShape(box: Box, paths: { d: string; fill: boolean; stroke: boolean }[], viewBox: string, fill: Paint | null, line: Stroke | null, drop: string, evenOdd = false): string {
   let defs = '', fillValue = fill ? fill.css : 'none';
@@ -722,7 +727,7 @@ function imageInfo(bytes: Uint8Array, c: Context): { ext: string; width: number;
 function picture(fill: X, box: Box, c: Context, alt: string, extra = ''): string {
   const blip = child(fill, A, 'blip');
   const id = at(blip, 'embed', R); if (!id) fail('missing_relationship', c.loc);
-  const media = c.pkg.rel(c.loc.part!, id, 'image', c.loc);
+  const media = c.pkg.rel(blipPart.get(blip!) ?? c.loc.part!, id, 'image', c.loc);
   let target = c.media.get(media);
   if (!target) {
     const bytes = c.pkg.files.get(media)!; const info = imageInfo(bytes, c);
@@ -922,6 +927,8 @@ function niceStep(span: number, ticks = 5) {
  * A chart redrawn from the values the file saved with it: bars, columns, lines, areas, pies
  * and doughnuts, with title, axes, gridlines and legend. A drawing, not live data.
  */
+/** Points read from one chart series: more cannot be drawn legibly in a slide-sized chart. */
+const CHART_POINTS = 1000;
 function renderChart(frame: X, box: Box, c: Context): string | undefined {
   const ref = walk(path(frame, [A, 'graphic'], [A, 'graphicData']), C, 'chart')[0];
   const id = at(ref, 'id', R); if (!id) return undefined;
@@ -935,11 +942,13 @@ function renderChart(frame: X, box: Box, c: Context): string | undefined {
   const cache = (n: X | undefined) => {
     const pts = walk(n, C, 'pt');
     const out: string[] = [];
-    for (const p of pts) out[Math.round(number(at(p, 'idx'), 0))] = child(p, C, 'v')?.text ?? '';
+    for (const p of pts) { const i = Math.round(number(at(p, 'idx'), 0)); if (i >= 0 && i < CHART_POINTS) out[i] = child(p, C, 'v')?.text ?? ''; }
     return out;
   };
   const accents = ['accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'];
-  const themeColor = (i: number) => color({ uri: A, name: 'schemeClr', attrs: { [key('', 'val')]: accents[i % 6] }, text: '', children: [] }, c, '#4472c4');
+  // without a theme, Office's own default accents
+  const fallback = ['#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47'];
+  const themeColor = (i: number) => { try { return color({ uri: A, name: 'schemeClr', attrs: { [key('', 'val')]: accents[i % 6] }, text: '', children: [] }, c, fallback[i % 6]); } catch (e) { if (fatal(e)) throw e; return fallback[i % 6]; } };
   const sz = number(at(walk(child(space, C, 'txPr'), A, 'defRPr')[0], 'sz'), 1000) * 127 * c.scale;
   const font = face('+mn-lt', c) ?? 'Arial';
   const W = box.w, H = box.h, pad = sz * 0.6;
@@ -1012,10 +1021,12 @@ function renderChart(frame: X, box: Box, c: Context): string | undefined {
     const levels = data.flatMap(d => Array.from({ length: count }, (_, i) => level(d, i))).flat();
     const lo = Math.min(0, ...levels), hi = Math.max(0, ...levels);
     const valAx = child(plot, C, 'valAx'), scaling = child(valAx, C, 'scaling');
-    const step = niceStep(hi - lo || 1);
-    const min = at(child(scaling, C, 'min'), 'val') !== undefined ? number(val(child(scaling, C, 'min'))) : Math.floor(lo / step) * step;
-    const max = at(child(scaling, C, 'max'), 'val') !== undefined ? number(val(child(scaling, C, 'max'))) : hi > 0 ? (Math.floor(hi / step) + 1) * step : Math.ceil(hi / step) * step || step; // like Office, a step of room above the highest value
-    const ticks: number[] = []; for (let t = min; t <= max + step / 1e6; t += step) ticks.push(Math.round(t / step) * step);
+    let step = niceStep(hi - lo || 1);
+    const min = at(child(scaling, C, 'min'), 'val') !== undefined ? number(at(child(scaling, C, 'min'), 'val')) : Math.floor(lo / step) * step;
+    const max = at(child(scaling, C, 'max'), 'val') !== undefined ? number(at(child(scaling, C, 'max'), 'val')) : hi > 0 ? (Math.floor(hi / step) + 1) * step : Math.ceil(hi / step) * step || step; // like Office, a step of room above the highest value
+    if (!(max > min)) fail('invalid_value', c.loc);
+    step = Math.max(step, niceStep(max - min, 10)); // the file's own bounds can be far from the data
+    const ticks: number[] = []; for (let t = min; t <= max + step / 1e6 && ticks.length <= 40; t += step) ticks.push(Math.round(t / step) * step);
     const label = (t: number) => String(Number(t.toPrecision(6))) + (data.some(d => percent(d.g)) ? '%' : '');
     const valueWidth = Math.max(...ticks.map(t => label(t).length)) * sz * 0.6 + pad;
     const catHeight = sz * 1.6;
@@ -1080,7 +1091,7 @@ function graphicFrame(n: X, c: Context): Obj[] {
   }
   if (uri === OLE_URI) {
     const pic = walk(data, P, 'pic')[0];
-    if (pic) return [{ html: renderShape({ ...pic, children: pic.children.map(k => k.uri === P && k.name === 'spPr' ? { ...k, children: [xf!, ...k.children.filter(x => x.name !== 'xfrm')] } : k) }, [], c), object: c.loc.object }];
+    if (pic) return [{ html: renderShape({ ...pic, children: pic.children.map(k => k.uri === P && k.name === 'spPr' ? { ...k, children: [{ ...xf!, uri: A }, ...k.children.filter(x => x.name !== 'xfrm')] } : k) }, [], c), object: c.loc.object }];
   }
   warn(c, 'object_placeholder', { element: uri === CHART_URI ? 'chart' : uri === DIAGRAM_URI ? 'diagram' : uri === OLE_URI ? 'object' : 'other' });
   return [{ html: `<x-shape kind="rect" style="${css(box)};background:rgba(128,128,128,0.08);border:2px dashed #9ca3af"></x-shape>`, object: c.loc.object }];
@@ -1152,6 +1163,7 @@ export function pptxNote(d: Pick<PptxDiagnostic, 'code' | 'params'>): PptxNote {
 /** Caller id must be a collision-free import namespace (1..40 safe ASCII chars). */
 export function importPptx(bytes: Uint8Array, options: PptxOptions): PptxResult {
   const diagnostics: PptxDiagnostic[] = [], seen = new Set<string>();
+  gradients = 0;
   try {
     if (!options || !/^[A-Za-z0-9_-]{1,40}$/.test(options.id) || typeof options.title !== 'string') fail('invalid_options');
     const limits = { ...PPTX_LIMITS, ...options.limits };

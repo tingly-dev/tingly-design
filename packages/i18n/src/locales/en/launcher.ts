@@ -111,7 +111,6 @@ export default {
     pageObjects: 'Slide {{page}}: object {{objects}}',
     sep: ', ',
     groupSep: ' · ',
-    object: 'Object {{object}}',
     package: 'Presentation package',
     noProject: 'No project was created. Your original file is unchanged.',
     reason: {

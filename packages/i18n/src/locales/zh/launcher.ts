@@ -105,7 +105,6 @@ export default {
     pageObjects: '第 {{page}} 页：对象 {{objects}}',
     sep: '、',
     groupSep: ' · ',
-    object: '对象 {{object}}',
     package: '演示文稿包',
     noProject: '未创建任何项目，原始文件保持不变。',
     reason: {

@@ -1,7 +1,7 @@
 """How close a PowerPoint round trip looks to its source, slide by slide.
 
     python3 scripts/pptx-fidelity/compare.py <project> [--out DIR] [--fonts]
-    python3 scripts/pptx-fidelity/compare.py --import <file.pptx> [--out DIR]
+    python3 scripts/pptx-fidelity/compare.py --import <file.pptx> [--out DIR] [--keep]
 
 Export (the default): the deck is the reference and its .pptx is the candidate.
 Import (`--import`): the .pptx rendered by LibreOffice is the reference, and the project the
@@ -27,6 +27,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -42,6 +43,14 @@ TOLERANCE = 48  # per-pixel max channel difference that still counts as "the sam
 
 def run(cmd, **kw):
     subprocess.run(cmd, check=True, cwd=ROOT, **kw)
+
+
+def project_names() -> set:
+    out = subprocess.run(['pnpm', '-s', 'tingly-design', 'list', '--json'], cwd=ROOT, capture_output=True, text=True)
+    try:
+        return {p.get('name') for p in json.loads(out.stdout)}
+    except ValueError:
+        return set()
 
 
 def project_dir(name: str) -> Path:
@@ -84,6 +93,7 @@ def main() -> int:
     ap.add_argument('--import', dest='source', default=None, help='a .pptx to import and compare with itself')
     ap.add_argument('--out', default=None)
     ap.add_argument('--fonts', action='store_true')
+    ap.add_argument('--keep', action='store_true', help='with --import, keep the imported project')
     a = ap.parse_args()
     if not a.project and not a.source:
         ap.error('name a project, or a .pptx with --import')
@@ -91,9 +101,12 @@ def main() -> int:
         tmp = Path(tmp)
         if a.source:
             source = Path(a.source).resolve()
-            made = subprocess.run(['pnpm', '-s', 'tingly-design', 'import', str(source)], cwd=ROOT, check=True, capture_output=True, text=True).stdout
-            a.project = re.search(r'^Imported (\S+) into', made, re.M).group(1)
-            print(made)
+            before = project_names()
+            print(subprocess.run(['pnpm', '-s', 'tingly-design', 'import', str(source)], cwd=ROOT, check=True, capture_output=True, text=True).stdout)
+            made = project_names() - before
+            if len(made) != 1:
+                sys.exit('could not tell which project the import made')
+            a.project = made.pop()
         out = Path(a.out or ROOT / 'scripts/pptx-fidelity/out' / a.project).resolve()
         out.mkdir(parents=True, exist_ok=True)
         deck = json.loads((project_dir(a.project) / 'deck.json').read_text())
@@ -139,6 +152,8 @@ def main() -> int:
     lines.append(f'\nAverage differing pixels: **{avg:.2f}%**')
     (out / 'report.md').write_text('\n'.join(lines) + '\n')
     print('\n'.join(lines))
+    if a.source and not a.keep:
+        shutil.rmtree(project_dir(a.project), ignore_errors=True)
     return 0
 
 

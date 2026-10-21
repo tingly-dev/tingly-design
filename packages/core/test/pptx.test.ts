@@ -404,6 +404,40 @@ describe('PPTX best effort inside one object or slide', () => {
     expect(first(r).match(/<x-shape/g)!.length).toBeLessThan(210);
     expect(r.diagnostics.find(d => d.code === 'objects_dropped')?.params?.count).toBeGreaterThan(0);
   });
+  it('resolves a master background picture in the master, not the slide', () => {
+    const p = parts();
+    p['ppt/slides/_rels/slide9.xml.rels'] = rels([['l', 'slideLayout', '../slideLayouts/l.xml'], ['im', 'image', '../media/other.png']]);
+    p['ppt/slideLayouts/l.xml'] = `<p:sldLayout xmlns:p="${P}" xmlns:a="${A}"><p:cSld><p:spTree/></p:cSld></p:sldLayout>`;
+    p['ppt/slideLayouts/_rels/l.xml.rels'] = rels([['m', 'slideMaster', '../slideMasters/m.xml']]);
+    p['ppt/slideMasters/m.xml'] = `<p:sldMaster xmlns:p="${P}" xmlns:a="${A}" xmlns:r="${R}"><p:cSld><p:bg><p:bgPr><a:blipFill><a:blip r:embed="im"/><a:stretch><a:fillRect/></a:stretch></a:blipFill></p:bgPr></p:bg><p:spTree/></p:cSld></p:sldMaster>`;
+    p['ppt/slideMasters/_rels/m.xml.rels'] = rels([['im', 'image', '../media/bg.png']]);
+    p['ppt/media/bg.png'] = png();
+    p['ppt/media/other.png'] = Uint8Array.from([...png().slice(0, 33), 0]);
+    const r = success(p);
+    expect(Object.keys(r.files).filter(f => f.includes('/media/'))).toHaveLength(1);
+    expect(first(r)).toContain('<img src="uploads/test-import/media/image-1.png" alt="" style="position:absolute;left:0px;top:0px;width:1920px;height:1080px');
+    expect(r.diagnostics.filter(d => d.slide === r.report.slides[0].id).map(d => d.code)).not.toContain('background_defaulted');
+  });
+  it('shows an embedded object by its own picture, in the frame of the object', () => {
+    const pic = `<p:pic><p:nvPicPr><p:cNvPr id="5" name="Poster"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="im"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr>${xfrm(0, 0, 1, 1)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+    const p = parts(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="4" name="Object"/></p:nvGraphicFramePr><p:xfrm><a:off x="914400" y="0"/><a:ext cx="914400" cy="914400"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/presentationml/2006/ole"><p:oleObj r:id="ole"><p:embed/>${pic}</p:oleObj></a:graphicData></a:graphic></p:graphicFrame>`);
+    p['ppt/slides/_rels/slide9.xml.rels'] = rels([['im', 'image', '../media/poster.png']]);
+    p['ppt/media/poster.png'] = png();
+    const r = success(p);
+    expect(first(r)).toContain('left:192px;top:0px;width:192px;height:192px');
+    expect(codes(r)).not.toContain('object_skipped');
+    expect(codes(r)).not.toContain('object_placeholder');
+  });
+  it('redraws a chart with bounded points and ticks whatever the file says', () => {
+    const CH = 'http://schemas.openxmlformats.org/drawingml/2006/chart';
+    const p = parts(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="4" name="Chart"/></p:nvGraphicFramePr><p:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="2743200"/></p:xfrm><a:graphic><a:graphicData uri="${CH}"><c:chart xmlns:c="${CH}" r:id="ch"/></a:graphicData></a:graphic></p:graphicFrame>`);
+    p['ppt/slides/_rels/slide9.xml.rels'] = rels([['ch', 'chart', '../charts/chart1.xml']]);
+    const pts = (vals: string[], far = false) => vals.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('') + (far ? '<c:pt idx="999999999"><c:v>1</c:v></c:pt>' : '');
+    p['ppt/charts/chart1.xml'] = `<c:chartSpace xmlns:c="${CH}" xmlns:a="${A}"><c:chart><c:plotArea><c:barChart><c:barDir val="col"/><c:ser><c:idx val="0"/><c:cat><c:strRef><c:strCache>${pts(['A', 'B'])}</c:strCache></c:strRef></c:cat><c:val><c:numRef><c:numCache>${pts(['0.2', '0.8'], true)}</c:numCache></c:numRef></c:val></c:ser></c:barChart><c:valAx><c:scaling><c:max val="1000000000"/></c:scaling><c:majorGridlines/></c:valAx></c:plotArea></c:chart></c:chartSpace>`;
+    const r = success(p);
+    expect(codes(r), JSON.stringify(r.diagnostics)).toContain('chart_redrawn');
+    expect((first(r).match(/<line /g) ?? []).length).toBeLessThan(50);
+  });
   it('reads embedded workbooks and OLE objects as nothing but keeps the file', () => {
     const p = parts(); p['ppt/embeddings/Book1.xlsx'] = new Uint8Array([80, 75, 3, 4]);
     expect(success(p).files['uploads/test-import/source.pptx']).toBeDefined();
@@ -462,6 +496,11 @@ describe('PPTX hostile input and resource budgets', () => {
   });
   it('stops the report, not the import, at the diagnostics budget', () => {
     expect(success(parts(), { diagnostics: 1 }).diagnostics).toHaveLength(1);
+  });
+  it('still says which slides were left out once the diagnostics budget is spent', () => {
+    const p = parts(); p['ppt/slides/slide1.xml'] = slide(shape()).replace(P, 'urn:fake');
+    const r = success(p, { diagnostics: 1 });
+    expect(codes(r)).toContain('slide_skipped');
   });
   it('bounds actual expansion independently of forged ZIP uncompressed size', () => {
     const bytes = pack({ ...parts(), 'bomb.txt': 'A'.repeat(100000) });

@@ -190,7 +190,7 @@ export class PptxImportError extends HttpError {
     const error = diagnostics.find(d => d.level === 'error');
     const code = error?.code ?? '';
     super(code === 'limit_exceeded' ? 413 : 400,
-      code === 'limit_exceeded' ? 'pptxLimit' : code.startsWith('unsupported_') || code === 'notes_too_long' ? 'pptxUnsupported' : /forbidden|unsafe|external|duplicate/.test(code) ? 'pptxUnsafe' : 'pptxInvalid');
+      code === 'limit_exceeded' ? 'pptxLimit' : code.startsWith('unsupported_') ? 'pptxUnsupported' : /forbidden|unsafe|external|duplicate/.test(code) ? 'pptxUnsafe' : 'pptxInvalid');
   }
 }
 

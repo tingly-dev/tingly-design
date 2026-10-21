@@ -29,33 +29,33 @@ export function ProjectImportResultHost() {
     }
   };
   // One line per kind of note, naming the slides (and objects) it applies to, errors first.
-  const pageOf = (d: PptxDiagnostic) => {
-    const index = result.slides?.findIndex(s => s.id === d.slide || s.part === d.part) ?? -1;
-    return index >= 0 ? index + 1 : Number(d.slide?.match(/-(\d+)$/)?.[1] ?? d.part?.match(/\/slide(\d+)\.xml$/)?.[1]) || undefined;
-  };
-  const groups = new Map<PptxNote, { error: boolean; pages: Map<number, Set<string>>; parts: Set<string> }>();
+  // Slides are numbered as in the PowerPoint file (the id keeps that number), so a left-out slide does not shift the rest.
+  const number = (id?: string) => Number(id?.match(/-(\d+)$/)?.[1]) || undefined;
+  const pageOf = (d: PptxDiagnostic) => number(d.slide ?? result.slides?.find(s => s.part === d.part)?.id);
+  type Page = { whole: boolean; objects: Set<string> };
+  const groups = new Map<PptxNote, { error: boolean; pages: Map<number, Page>; parts: Set<string> }>();
   for (const d of result.diagnostics) {
     const key = pptxNote(d);
     const g = groups.get(key) ?? { error: false, pages: new Map(), parts: new Set() };
     g.error ||= d.level === 'error';
     const page = pageOf(d);
-    if (page) { const objects = g.pages.get(page) ?? new Set(); if (d.object) objects.add(d.object); g.pages.set(page, objects); }
+    if (page) { const p = g.pages.get(page) ?? { whole: false, objects: new Set() }; if (d.object) p.objects.add(d.object); else p.whole = true; g.pages.set(page, p); }
     else if (d.part) g.parts.add(d.part);
     groups.set(key, g);
   }
   const order = [...groups].sort(([a, x], [b, y]) => Number(y.error) - Number(x.error) || PPTX_NOTES.indexOf(a as never) - PPTX_NOTES.indexOf(b as never));
   // "Slides 1–3, 5", "Every slide", or "Slide 4: object 3"
-  const total = result.slides?.length ?? 0;
-  const where = (g: { pages: Map<number, Set<string>> }) => {
-    const plain = [...g.pages].filter(([, o]) => !o.size).map(([p]) => p).sort((a, b) => a - b);
+  const kept = (result.slides ?? []).map(s => number(s.id));
+  const where = (g: { pages: Map<number, Page> }) => {
+    const plain = [...g.pages].filter(([, p]) => p.whole).map(([p]) => p).sort((a, b) => a - b);
     const ranges: string[] = [];
     for (let i = 0; i < plain.length;) {
       let j = i; while (j + 1 < plain.length && plain[j + 1] === plain[j] + 1) j++;
       ranges.push(j > i ? `${plain[i]}–${plain[j]}` : String(plain[i])); i = j + 1;
     }
-    const parts = total > 1 && plain.length === total ? [t('launcher.pptx.everySlide')]
+    const parts = kept.length > 1 && kept.every(n => n && plain.includes(n)) ? [t('launcher.pptx.everySlide')]
       : plain.length ? [plain.length === 1 ? t('launcher.pptx.page', { page: plain[0] }) : t('launcher.pptx.pages', { pages: ranges.join(t('launcher.pptx.sep')) })] : [];
-    for (const [page, objects] of [...g.pages].filter(([, o]) => o.size).sort(([a], [b]) => a - b)) parts.push(t('launcher.pptx.pageObjects', { page, objects: [...objects].join(t('launcher.pptx.sep')) }));
+    for (const [page, { objects }] of [...g.pages].filter(([, p]) => p.objects.size).sort(([a], [b]) => a - b)) parts.push(t('launcher.pptx.pageObjects', { page, objects: [...objects].join(t('launcher.pptx.sep')) }));
     return parts.join(t('launcher.pptx.groupSep'));
   };
   return <Dialog label={t(result.name ? 'launcher.pptx.ready' : 'launcher.pptx.failed')} className="pptx-import-result" onClose={() => result.finish(!!result.name)}>
