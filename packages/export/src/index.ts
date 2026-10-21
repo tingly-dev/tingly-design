@@ -7,3 +7,5 @@ export { rasterize, canvasPng, fontCss, type RasterOptions } from './rasterize';
 export { mixAudio, type AudioClip } from './audio';
 export { download } from './download';
 export { Clock, type ExportReport, type StageTime } from './timing';
+export { slidesDomToPptx, type PptxDomOptions, type PptxDomResult, type PptxDomDiagnostic, type PptxDomLimits } from './pptxDom';
+export { writePptx, type PptxDeck, type PptxSlide, type PptxAsset, type PptxObject, type PptxBox, type PptxText, type PptxShape, type PptxImage, type PptxTextStyle, type PptxParagraph, type PptxRun } from './pptx';

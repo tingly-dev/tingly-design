@@ -13,8 +13,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "marked": "14.1.4",
-    "parse5": "^8.0.1"
+    "parse5": "^8.0.1",
+    "saxes": "^6.0.0"
   },
   "devDependencies": {
     "happy-dom": "^20.9.0",

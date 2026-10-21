@@ -10,16 +10,20 @@
   "exports": {
     ".": "./src/index.ts",
     "./timing": "./src/timing.ts",
-    "./snap": "./src/frameSnap.ts"
+    "./snap": "./src/frameSnap.ts",
+    "./pptx": "./src/pptx.ts",
+    "./pptx-dom": "./src/pptxDom.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "fflate": "0.8.3",
     "gifenc": "^1.0.3",
     "html-to-image": "^1.11.13",
-    "mediabunny": "^1.61.4"
+    "mediabunny": "^1.61.4",
+    "pptxgenjs": "4.0.1"
   },
   "devDependencies": {
     "vitest": "^5.0.3"
