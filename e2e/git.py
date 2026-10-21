@@ -8,7 +8,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 SHOTS = os.environ.get('DC_SHOTS')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
-TMP = '/tmp/dc-git-e2e'
+TMP = os.path.realpath('/tmp/dc-git-e2e')
 SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
 
 results = []
@@ -85,7 +85,7 @@ async def main():
             if lang == 'zh-CN':
                 # --- no repository: the first commit creates one, in one confirmation ------------
                 dlg = await open_commit(pg, loose)
-                await expect(dlg.locator('.commit-where')).to_contain_text('/tmp/dc-git-e2e/notes')
+                await expect(dlg.locator('.commit-where')).to_contain_text(os.path.join(TMP, 'notes'))
                 check('the commit dialog says a repository will be created in the project folder', await dlg.locator('.commit-where[data-state="new"]').count() == 1)
                 await shot(pg, f'commit-new-{tag}')
                 await dlg.locator('button[type=submit]').click()

@@ -228,9 +228,10 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     if (finished) return;
     finished = true;
     clearTimeout(timer);
-    const n = (activeDelegates.get(project) ?? 1) - 1;
-    // let the watcher credit the last writes before we stop attributing them
+    // Keep this run counted until the watcher has credited its last writes. A new run may
+    // start during the grace period, so decrement the current count, not a captured one.
     setTimeout(() => {
+      const n = (activeDelegates.get(project) ?? 1) - 1;
       if (n <= 0) activeDelegates.delete(project);
       else activeDelegates.set(project, n);
     }, 1500);

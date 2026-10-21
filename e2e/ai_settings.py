@@ -23,6 +23,16 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         pg = await b.new_page(locale='en-US', viewport={'width': 1280, 'height': 860})
+        # This case exercises the unavailable message, not a person's live Box on port 12580.
+        async def box_unavailable(route):
+            if route.request.method != 'GET':
+                await route.continue_()
+                return
+            response = await route.fetch()
+            cfg = await response.json()
+            cfg['box']['reachable'] = False
+            await route.fulfill(response=response, json=cfg)
+        await pg.route('**/api/ai-config', box_unavailable)
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         # nothing saved, no key: the prompt bar says so and opens the dialog
