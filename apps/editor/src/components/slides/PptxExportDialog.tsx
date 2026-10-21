@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { slideFile } from '@dc/core';
+import { boardFilesFor, deckSize, slideFile } from '@dc/core';
 import { api } from '../../api';
 import { SERVER } from '../../base';
 import { download } from '../../local';
@@ -17,12 +17,35 @@ let controller: AbortController | undefined;
 const listeners = new Set<() => void>();
 const update = (next: State) => { state = next; for (const listener of listeners) listener(); };
 const diagnosticMessage = (d: PptxDomDiagnostic) => {
-  if (d.feature === 'paint-effect') return t('slides.pptx.paint');
-  if (d.feature === 'transform' || d.feature === 'transformed-root') return t('slides.pptx.transform');
-  if (d.feature === 'x-embed') return t('slides.pptx.embed');
-  if (['table', 'ul', 'ol', 'li'].includes(d.feature ?? '')) return t('slides.pptx.table');
+  if (d.feature === 'transformed-root' || d.feature === 'ancestor-effect' || d.feature === 'page-size') return t('slides.pptx.transform');
+  if (d.feature === 'rasterization') return t('slides.pptx.rasterization');
   return t(d.code === 'asset' ? 'slides.pptx.asset' : d.code === 'budget' ? 'slides.pptx.budget' : d.code === 'not-ready' ? 'slides.pptx.notReady' : 'slides.pptx.unsupported');
 };
+/** What an element drawn as a picture was, in the person's words. */
+const pictureKind = (feature = ''): 'embed' | 'graphic' | 'image' | 'text' | 'other' | 'effect' =>
+  /^(x-embed|iframe|video|audio|object|embed)$/.test(feature) ? 'embed'
+    : /^(svg|canvas|x-icon|x-connector|math|shape:)/.test(feature) ? 'graphic'
+      : /^image-/.test(feature) ? 'image'
+        : /^text-/.test(feature) ? 'text'
+          : /^(input|textarea|select|button|meter|progress|picture)$/.test(feature) ? 'other' : 'effect';
+/** The text effects left out to keep text editable, by the feature the capture names. */
+const LEFT: Record<string, 'textShadow' | 'smallCaps' | 'wordSpacing' | 'decorationStyle' | 'outside'> = { 'text-shadow': 'textShadow', 'small-caps': 'smallCaps', 'word-spacing': 'wordSpacing', 'decoration-style': 'decorationStyle', 'outside-slide': 'outside' };
+/** What a successful export changed, one line per slide in deck order: how many elements of each kind became pictures, and which text effects were left out. */
+function notes(warnings: { slide: string; diagnostic: PptxDomDiagnostic }[] = [], ids: string[]): { slide: string; n: number; parts: string[] }[] {
+  const bySlide = new Map<string, { kinds: Map<ReturnType<typeof pictureKind>, number>; left: Set<string>; rounded: boolean }>();
+  for (const { slide, diagnostic: d } of warnings) {
+    if (!['rasterized', 'approximated', 'shape-approximation'].includes(d.code)) continue;
+    const entry = bySlide.get(slide) ?? { kinds: new Map(), left: new Set(), rounded: false };
+    bySlide.set(slide, entry);
+    if (d.code === 'rasterized') entry.kinds.set(pictureKind(d.feature), (entry.kinds.get(pictureKind(d.feature)) ?? 0) + 1);
+    else if (d.code === 'approximated') entry.left.add(d.feature ?? '');
+    else entry.rounded = true;
+  }
+  return [...bySlide].map(([slide, e]) => ({
+    slide, n: ids.indexOf(slide) + 1,
+    parts: [...[...e.kinds].map(([kind, count]) => t(`slides.pptx.as.${kind}`, { count })), ...(e.left.size ? [t('slides.pptx.approximated', { feature: [...e.left].map(f => t(`slides.pptx.left.${LEFT[f] ?? 'other'}`)).join(t('slides.pptx.list')) })] : []), ...(e.rounded ? [t('slides.pptx.shapeWarning')] : [])],
+  })).sort((a, b) => a.n - b.n);
+}
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 
 /** Also used by headless FileMenu jobs: resolving means the actual download finished. */
@@ -32,8 +55,9 @@ export async function exportDeckPptx(): Promise<void> {
   const deck = deckOf(s);
   const ids = slideIds(s);
   const snapshot = {
-    title: deck.title, faces: structuredClone(deck.faces),
+    title: deck.title, faces: structuredClone(deck.faces), size: deckSize(deck),
     slides: ids.filter(id => !isHidden(id)).map(id => ({ id, source: display(s, slideFile(id)) ?? '' })),
+    boards: boardFilesFor(ids.map(id => display(s, slideFile(id))), p => display(s, p)),
     base: s.project ? api.rawBase(s.project) : '', runtimeOrigin: SERVER,
   };
   const mine = new AbortController(); controller = mine;
@@ -60,11 +84,18 @@ export function PptxExportDialog() {
   if (!value) return null;
   const close = () => { controller?.abort(); update(null); };
   const location = value.error?.slide;
+  const pictures = value.warnings?.filter(w => w.diagnostic.code === 'rasterized').length ?? 0;
+  const changed = notes(value.warnings, value.ids);
   return <Dialog label={t('slides.pptx.title')} className="pptx-export" onClose={close}>
     <div className="dialog-body" data-testid="pptx-export">
       {value.status === 'running' ? <p role="status">{value.progress ? t('slides.pptx.progress', { done: value.progress.done, total: value.progress.total, slide: value.progress.slide ?? '' }) : t('slides.pptx.preparing')}</p> : null}
-      {value.status === 'done' ? <><p>{t('slides.pptx.done')}</p><p>{t('slides.pptx.metrics')}</p>
-        {!!value.warnings?.length && <details><summary>{t('slides.pptx.warnings')}</summary><ul>{value.warnings.slice(0, 200).map(({ slide, diagnostic: d }, i) => <li key={i}>{t('slides.pptx.warning', { id: slide, message: t(d.code === 'shape-approximation' ? 'slides.pptx.shapeWarning' : 'slides.pptx.metrics') })}</li>)}</ul></details>}
+      {value.status === 'done' ? <><p>{t('slides.pptx.done')}</p>
+        {pictures ? <p>{t('slides.pptx.pictures', { count: pictures })}</p> : null}
+        <p>{t('slides.pptx.metrics')}</p>
+        {!!changed.length && <details><summary>{t('slides.pptx.warnings')}</summary><ul className="pptx-notes">{changed.map(({ slide, n, parts }) => <li key={slide}>
+          <button className="btn ghost sm" title={t('slides.pptx.go')} onClick={() => { goToSlide(slide); close(); }}>{t('slides.pptx.location', { n, id: slide })}</button>
+          <span>{parts.join(t('slides.pptx.and'))}</span>
+        </li>)}</ul></details>}
       </> : null}
       {value.status === 'cancelled' ? <p>{t('slides.pptx.cancelled')}</p> : null}
       {value.status === 'failed' ? <div role="alert">

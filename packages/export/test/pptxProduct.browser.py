@@ -49,7 +49,7 @@ async def main():
                     const realFetch=window.fetch;let fetches=[];let decodeCalls=0;const decode=window.createImageBitmap;
                     window.createImageBitmap=(...args)=>{decodeCalls++;return decode(...args)};
                     window.fetch=async(url,opts)=>{fetches.push(String(url));if(String(url).endsWith('/large.png'))return new Response(large,{headers:{'content-type':'image/png'}});if(String(url).endsWith('/forged.png'))return new Response(forged,{headers:{'content-type':'image/png'}});if(String(url).endsWith('/tiny.png'))return new Response(tiny,{headers:{'content-type':'image/png'}});return realFetch(url,opts)};
-                    const snapshot=slides=>({title:'Resource tests',faces:{},base:origin+'/raw/',runtimeOrigin:origin,slides});
+                    const snapshot=slides=>({title:'Resource tests',faces:{},size:[1920,1080],base:origin+'/raw/',runtimeOrigin:origin,slides});
                     const slide=(id,img)=>({id,source:`<section id="${id}" style="background:white;color:black;font-family:Arial"><img src="${img}" style="width:100px;height:100px"></section>`});
                     let failed;
                     try{await PptxProduct.deckSnapshotToPptx(snapshot([slide('forged','forged.png')]))}catch(e){failed=e}

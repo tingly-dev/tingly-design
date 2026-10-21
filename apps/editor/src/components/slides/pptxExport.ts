@@ -1,13 +1,18 @@
-import { applyHumanOps, parseDc, parseStyle, sandboxDoc, SLIDE_H, SLIDE_W, type DcElement, type DeckJson, type HumanOp } from '@dc/core';
+import { applyHumanOps, parseDc, parseStyle, sandboxDoc, type DcElement, type DeckJson, type HumanOp } from '@dc/core';
 import type { PptxAsset, PptxDeck } from '@dc/export/pptx';
 import type { PptxDomDiagnostic, PptxDomResult } from '@dc/export/pptx-dom';
 
-export interface DeckSnapshot { title: string; faces: DeckJson['faces']; slides: { id: string; source: string }[]; base: string; runtimeOrigin: string }
+/** `boards`: the artboards the slides embed (`<x-embed src="uploads/…">`), by path, as the slide frames get them. */
+export interface DeckSnapshot { title: string; faces: DeckJson['faces']; size: [number, number]; slides: { id: string; source: string }[]; boards?: Record<string, string>; base: string; runtimeOrigin: string }
 export interface DeckPptxProgress { done: number; total: number; slide?: string }
 export class DeckPptxError extends Error {
   constructor(public slide: string, public diagnostics: PptxDomDiagnostic[]) { super(diagnostics.map(d => `${d.code}: ${d.feature ?? ''} (${d.path})`).join('\n')); }
 }
 const MAX_BYTES = 100 * 1024 * 1024;
+/** 1920 CSS pixels make PowerPoint's 13.333in widescreen page; other deck sizes keep that density. */
+const PX_PER_IN = 144;
+/** Pictures the capture draws (and so turns into PNG) because PowerPoint cannot hold them as they are. */
+const DRAWN: Record<string, string> = { svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
 const localPath = (s: string) => /^[A-Za-z0-9_./-]+$/.test(s) && !s.startsWith('/') && !s.split('/').includes('..');
 const hidden = (el: DcElement): boolean => {
   for (let node: DcElement | null = el; node; node = node.parent) {
@@ -29,7 +34,10 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
   const abort = () => controller.abort();
   options.signal?.addEventListener('abort', abort, { once: true });
   if (options.signal?.aborted) abort();
-  const timer = setTimeout(abort, 60000);
+  // every slide may draw a few of its elements as pictures: the deadline grows with the deck
+  const timer = setTimeout(abort, Math.min(600000, 60000 + 15000 * snapshot.slides.length));
+  const [width, height] = snapshot.size;
+  const widthIn = width / PX_PER_IN;
   const signal = controller.signal;
   let frame: HTMLIFrameElement | undefined;
   let bytesRead = 0;
@@ -67,7 +75,7 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
   };
   const fail = (slide: string, feature: string): never => { throw new DeckPptxError(slide, [{ code: 'asset', path: 'root', slide: 0, feature, severity: 'error' }]); };
   try {
-    if (!snapshot.slides.length || snapshot.slides.length > 200 || snapshot.slides.reduce((n, s) => n + s.source.length, 0) > 2000000) fail('', 'deck-budget');
+    if (!snapshot.slides.length || snapshot.slides.length > 200 || !(widthIn >= 1 && widthIn <= 56 && height / PX_PER_IN >= 1 && height / PX_PER_IN <= 56) || snapshot.slides.reduce((n, s) => n + s.source.length, 0) > 2000000) fail('', 'deck-budget');
     // Fonts are frozen too. Unlike image-export's best-effort helper, no failed
     // stylesheet or font download is silently replaced by a fallback.
     let head = '';
@@ -106,7 +114,15 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
           const file = await get(snapshot.base + src).catch(() => { check(); return fail(slide.id, `image:${src}`); });
           const png = file.bytes[0] === 137 && file.bytes[1] === 80;
           const jpeg = file.bytes[0] === 255 && file.bytes[1] === 216;
-          if (!png && !jpeg) fail(slide.id, `image-type:${src}`);
+          if (!png && !jpeg) {
+            // handed to the capture as it is, without an asset: it draws the picture instead
+            const drawn = DRAWN[src.split('.').pop()?.toLowerCase() ?? ''];
+            if (!drawn) fail(slide.id, `image-type:${src}`);
+            url = dataUrl(file.bytes, drawn);
+            loaded.set(src, url);
+            ops.push({ kind: 'attr', tid: el.tid, name: 'src', value: url });
+            continue;
+          }
           const mime = png ? 'image/png' : 'image/jpeg';
           // Enforce declared dimensions before asking a decoder to allocate pixels.
           const view = new DataView(file.bytes.buffer, file.bytes.byteOffset, file.bytes.byteLength);
@@ -134,7 +150,7 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
           } finally { bitmap.close(); }
           loaded.set(src, url);
         }
-        pageImages[url] = images[url];
+        if (images[url]) pageImages[url] = images[url];
         ops.push({ kind: 'attr', tid: el.tid, name: 'src', value: url });
       }
       slides.push({ id: slide.id, images: pageImages, source: ops.length ? applyHumanOps(slide.source, ops, document.implementation.createHTMLDocument('')).source : slide.source });
@@ -144,7 +160,9 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
     frame.setAttribute('sandbox', 'allow-scripts');
     frame.dataset.pptxCapture = '';
     frame.setAttribute('aria-hidden', 'true'); frame.tabIndex = -1;
-    frame.style.cssText = `position:fixed;left:-30000px;top:0;width:${SLIDE_W}px;height:${SLIDE_H}px;border:0;pointer-events:none`;
+    // In the viewport (tiny and transparent), not off screen: Chrome stops animation frames in
+    // frames out of view, and an embed that never draws hands over a blank picture.
+    frame.style.cssText = `position:fixed;left:0;top:0;width:${width}px;height:${height}px;border:0;pointer-events:none;opacity:0;transform:scale(.01);transform-origin:0 0;z-index:-1`;
     const waitMessage = <T>(accept: (data: any) => T | undefined, timeoutMs = 30000): Promise<T> => new Promise((resolve, reject) => {
       check();
       const timeout = setTimeout(() => finish(new Error('capture-deadline')), timeoutMs);
@@ -158,21 +176,21 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
     frame.srcdoc = sandboxDoc(snapshot.runtimeOrigin, 'runtime');
     document.body.appendChild(frame);
     await ready;
-    const deck: PptxDeck = { title: snapshot.title, widthPx: SLIDE_W, heightPx: SLIDE_H, widthIn: 13.333333, slides: [], assets: {} };
+    const deck: PptxDeck = { title: snapshot.title, widthPx: width, heightPx: height, widthIn, slides: [], assets: {} };
     const diagnostics: { slide: string; diagnostic: PptxDomDiagnostic }[] = [];
     for (const [index, slide] of slides.entries()) {
       check(); options.progress?.({ done: index, total: slides.length, slide: slide.id });
       const id = `pptx-${index}`;
-      const pending = waitMessage<PptxDomResult>(data => data?.dcPptx === 'captured' && data.id === id ? data.result : undefined);
-      frame.contentWindow!.postMessage({ dc: 'render', file: `slides/${slide.id}.html`, source: slide.source, files: {}, props: {}, mode: 'edit', selected: null, slide: { head, base: '', still: true } }, '*');
-      frame.contentWindow!.postMessage({ dcPptx: 'capture', id, source: slide.source, title: snapshot.title, images: slide.images, timeoutMs: 25000 }, '*');
+      const pending = waitMessage<PptxDomResult>(data => data?.dcPptx === 'captured' && data.id === id ? data.result : undefined, 35000);
+      frame.contentWindow!.postMessage({ dc: 'render', file: `slides/${slide.id}.html`, source: slide.source, files: snapshot.boards ?? {}, props: {}, mode: 'edit', selected: null, slide: { head, base: '', still: false, size: [width, height] } }, '*');
+      frame.contentWindow!.postMessage({ dcPptx: 'capture', id, source: slide.source, title: snapshot.title, images: slide.images, timeoutMs: 30000, widthIn }, '*');
       const result = await pending.catch(error => {
         check();
         throw new DeckPptxError(slide.id, [{ code: 'budget', slide: index, path: 'root', feature: error instanceof Error ? error.message : 'capture-deadline', severity: 'error' }]);
       });
       if (!result || !Array.isArray(result.diagnostics) || result.diagnostics.length > 10000) fail(slide.id, 'capture-protocol');
       if (!result.ok) throw new DeckPptxError(slide.id, result.diagnostics);
-      if (result.deck.widthPx !== SLIDE_W || result.deck.heightPx !== SLIDE_H || result.deck.slides.length !== 1) fail(slide.id, 'capture-page');
+      if (result.deck.widthPx !== width || result.deck.heightPx !== height || result.deck.slides.length !== 1) fail(slide.id, 'capture-page');
       const page = result.deck.slides[0];
       const names = new Map<string, string>();
       for (const [key, asset] of Object.entries(result.deck.assets ?? {})) {

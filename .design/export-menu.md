@@ -23,7 +23,7 @@
 | 类型 | 导出项 | 说明 |
 |---|---|---|
 | 画布 | PNG、PNG @2x（选中的画板，没选中而这一页只有一个时就是它）；PNG 多张（这一页的每个画板）；源文件（`.dc.html`） | 画板在各自的框架里，PDF 要把框架合成一页，不做；见 [project-kinds.md](./project-kinds.md) |
-| 幻灯片 | PDF；PowerPoint（.pptx）；PNG（这一页）；PNG 多张（每一页）；HTML；Markdown；演讲者备注 | PPTX 为整份可见 deck 原生受限导出，无 raster fallback，见 §3.2；Markdown 见 §3.1 |
+| 幻灯片 | PDF；PowerPoint（.pptx）；PNG（这一页）；PNG 多张（每一页）；HTML；Markdown；演讲者备注 | PPTX 为整份可见 deck，能原生则原生，其余逐元素图片化，见 §3.2；Markdown 见 §3.1 |
 | 设计系统 | PNG（屏幕上的这个视图） | 没有适合分页的内容，不做 PDF |
 | 看板 | PNG（页面现在的样子） | 页面在沙箱框架里，PDF 没做（页面是动态的，分页没有意义） |
 | 文档 | PDF；Markdown（当前标签页、整篇）；HTML；PNG（当前标签页） | PDF 按 A4 排版；整篇和当前标签页各一项，名称分开写（“Markdown”“Markdown（当前标签页）”），不靠悬停说明区分；Markdown 见 [docs-markdown.md](./docs-markdown.md)（有图片时是带图片的 .zip） |
@@ -50,11 +50,11 @@
 
 **复制为 PNG（画布右键菜单）。** 导出菜单管“存成文件”，贴进别的应用（聊天、文档、设计稿）要的是剪贴板上的图，下载再拖进去多两步。所以画布的右键菜单在“复制”下面有“复制为 PNG”，对选中的元素和整块画板都能用（便签没有，它不在画板的框架里）。图和 PNG @2x 一样是 2 倍，画法也一样：沙箱收到带 `tid` 的 `export` 消息就画那一个元素（没带就画画板根）。写剪贴板时把画图的 promise 直接交给 `ClipboardItem`，这样写入在点击的手势里开始，Safari 才不会拒绝；浏览器不能往剪贴板放图（或权限被拒）时改为下载同一张 PNG，提示里说明改成了下载，而不是安静地什么都没发生。原来的“复制”仍只复制元素的 HTML 源码，用于在画布间粘贴。幻灯片、看板已有自己的 PNG 路径，复制为 PNG 暂时只做画布，等别的类型也要时再把“画好的图 → 剪贴板”抽成共用函数。
 
-### 3.2 幻灯片的 PowerPoint：整份可见 deck，原生受限
+### 3.2 幻灯片的 PowerPoint：整份可见 deck，原生优先、逐元素图片化
 
-菜单“PowerPoint（.pptx）”直接开始，不先选图片/可编辑模式。冻结可见页顺序、当前源和资源，在专用 opaque-origin sandbox 的真实 runtime 内测量布局，写出原生文字、基础形状、PNG/JPEG 与 speaker notes；隐藏页/元素不出现在结果中。产品不传 raster 回调，不把复杂内容静默变图；不支持的页给出带页/对象路径的诊断且不下载部分成品。常驻对话框显示进度、近似提醒、失败定位与跳到问题页，运行中可取消；结束清理离屏框架。
+菜单“PowerPoint（.pptx）”直接开始，不先选图片/可编辑模式。冻结可见页顺序、当前源和资源，在专用 opaque-origin sandbox 的真实 runtime 内测量布局，写出原生文字、形状、线条、列表符号、PNG/JPEG 与 speaker notes；PowerPoint 没有对应对象的元素只把它自己画成图片（渐变/阴影只画盒子，文字仍原生）；隐藏页/元素不出现在结果中。只有资源无法读取或超时才失败，不下载部分成品。常驻对话框显示进度、成功时列出变成图片的元素与近似提醒、失败定位与跳到问题页，运行中可取消；结束清理捕获框架。
 
-FileMenu、CLI `export --as pptx` 与 MCP export 使用同一项和 `local.download`；只导出整份可见 deck，`--slide` 明确拒绝。其他类型没有此项，因为 PPTX 是演示文稿格式。受限支持、安全预算、pinned writer schema normalization 见 [slides-pptx.md](./slides-pptx.md)。入口已实施，`pptx` 聚焦产品 e2e 已通过 65/65；这不替代独立 Office 打开/渲染验收，也不表示整个仓库套件通过。向已开 deck 追加 PPTX 和可靠图片化是未来提案，不是此菜单的能力。
+FileMenu、CLI `export --as pptx` 与 MCP export 使用同一项和 `local.download`；只导出整份可见 deck，`--slide` 明确拒绝。其他类型没有此项，因为 PPTX 是演示文稿格式。受限支持、安全预算、pinned writer schema normalization 见 [slides-pptx.md](./slides-pptx.md)。入口已实施，`pptx` 聚焦产品 e2e 已通过 90/90；这不替代独立 Office 打开/渲染验收，也不表示整个仓库套件通过。向已开 deck 追加 PPTX 是未来提案，不是此菜单的能力。
 
 ## 4. 视频：默认一键，选项折起来
 
@@ -97,6 +97,6 @@ FileMenu、CLI `export --as pptx` 与 MCP export 使用同一项和 `local.downl
 ## 7. 还没做的
 
 - 只导出一个场景时带声音（混音截取）、封面帧作为第一帧或单独的封面 PNG。
-- 看板和画布的 PDF；PPTX 的追加、单页范围与可靠图片化（未来提案见 [slides-pptx.md](./slides-pptx.md)）。
+- 看板和画布的 PDF；PPTX 的追加与单页范围（未来提案见 [slides-pptx.md](./slides-pptx.md)）。
 - 记住上次的视频选项（现在每次从默认开始）。
 - 服务端 PDF 在没有网络的机器上拿不到网页字体。

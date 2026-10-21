@@ -46,10 +46,11 @@ async def main():
                 test(packageBytes instanceof Uint8Array&&packageBytes.length>1000&&packageBytes[0]===0x50&&packageBytes[1]===0x4b,'real browser DOM drawing data writes PPTX package');
                 root.innerHTML='<div style="position:absolute;left:0;top:0;width:300px;height:80px;background:red"></div>Covered text';
                 r=await slidesDomToPptx([root],opts);
-                test(!r.ok&&r.diagnostics.some(d=>d.feature==='mixed-position-paint-order'),'direct rendered text mixed with positioned cover rejects unsafe paint order');
+                check(r.ok,JSON.stringify(r));
+                test(r.deck.slides[0].objects[0].type==='text'&&r.deck.slides[0].objects[1].type==='shape','direct text paints in flow, under the positioned cover that follows CSS order');
                 root.innerHTML='<p><u><b>Nested underline bold</b></u></p>';
                 r=await slidesDomToPptx([root],opts);
-                test((r.ok&&r.deck.slides[0].objects.some(o=>o.type==='text'&&o.style.bold&&o.style.underline))||(!r.ok&&r.diagnostics.some(d=>d.feature==='propagated-text-decoration')),'propagated nested underline retained or explicitly rejected');
+                test(r.ok&&r.deck.slides[0].objects.some(o=>o.type==='text'&&o.style.bold&&o.style.underline),'propagated nested underline carried by the run');
                 root.innerHTML='<p style="width:85px">Wrap words across multiple lines</p><p style="display:none">hidden</p>';
                 r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
                 const lines=r.deck.slides[0].objects.filter(o=>o.type==='text');
@@ -59,11 +60,9 @@ async def main():
                     '<div style="width:100px;height:100px;background:linear-gradient(red,blue)">visible</div>',
                     '<svg width="20" height="20"><rect width="20" height="20"/></svg>',
                     '<x-embed style="display:block;width:100px;height:100px"></x-embed>',
-                    '<p style="opacity:.5">alpha</p>',
                     '<p style="transform:rotate(10deg)">rotated</p>',
-                    '<ul><li>list marker</li></ul>',
                     '<div style="width:100px;height:20px;overflow:hidden"><p>clipped</p></div>',
-                    '<p style="z-index:2;position:relative">stack</p>'
+                    '<div style="width:100px;height:40px;background:red;box-shadow:0 2px 8px black">shadow</div>'
                 ]) {
                     root.innerHTML=html;r=await slidesDomToPptx([root],opts);
                     test(!r.ok && !r.deck && r.diagnostics.some(d=>d.severity==='error'&&d.path),'unsupported content fails atomically');
@@ -78,22 +77,62 @@ async def main():
                 root.innerHTML='<p style="position:relative;z-index:2" data-dc-paint-layer="2">front</p><div style="position:absolute;z-index:1;left:0;top:0;width:100px;height:50px;background:red" data-dc-paint-layer="1"></div>';
                 r=await slidesDomToPptx([root],{...opts,paintOrder:'tingly-slide-v1'});check(r.ok,JSON.stringify(r));
                 test(r.deck.slides[0].objects[0].type==='shape'&&r.deck.slides[0].objects[1].type==='text','known runtime layers sorted rather than discarded');
-                root.querySelector('p').dataset.dcPaintLayer='1';
-                r=await slidesDomToPptx([root],{...opts,paintOrder:'tingly-slide-v1'});
-                test(!r.ok,'mismatched runtime layer rejected');
-                root.querySelector('p').dataset.dcPaintLayer='2';
-                r=await slidesDomToPptx([root],opts);test(!r.ok,'runtime markers do not enable stacking without opt in');
+                delete root.querySelector('p').dataset.dcPaintLayer;delete root.querySelector('div').dataset.dcPaintLayer;
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                test(r.deck.slides[0].objects[0].type==='shape'&&r.deck.slides[0].objects[1].type==='text','computed z-index orders siblings without runtime markers');
+                root.innerHTML='<p style="opacity:.5;color:rgb(0,0,0)">alpha</p><div style="width:100px;height:30px;background:rgba(255,0,0,.25);border-radius:8px"></div><div style="width:100px;height:30px;border-bottom:2px solid rgb(0,0,255)"></div><p style="letter-spacing:4px;text-transform:uppercase;text-decoration:line-through">spaced</p>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                let objs=r.deck.slides[0].objects;
+                test(objs.some(o=>o.type==='text'&&o.style.opacity===0.5),'element opacity becomes native text transparency');
+                test(objs.some(o=>o.type==='shape'&&o.shape==='roundRect'&&o.radiusPx===8&&o.fill==='FF0000'&&o.fillOpacity===0.25),'translucent rounded box stays a native rounded rectangle');
+                test(objs.some(o=>o.type==='shape'&&o.shape==='line'&&o.height===0&&o.stroke.color==='0000FF'&&o.stroke.widthPx===2),'one-sided border becomes a native line');
+                test(objs.some(o=>o.type==='text'&&o.paragraphs[0].runs[0].text==='SPACED'&&o.style.charSpacingPx===4&&o.style.strike&&o.wrap===false),'letter spacing, text-transform and line-through stay native');
+                test((await PptxWriter.writePptx(r.deck)).length>1000,'writer accepts opacity, radius, spacing and strike');
+                root.innerHTML='<ol style="padding-left:40px"><li>First</li><li>Second</li></ol><ul style="padding-left:40px"><li>Dot</li></ul>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                objs=r.deck.slides[0].objects.filter(o=>o.type==='text');
+                const label=t=>objs.find(o=>o.paragraphs[0].runs[0].text===t);
+                test(label('1.')&&label('2.')&&label('•'),'list markers become native text: '+JSON.stringify(objs.map(o=>o.paragraphs[0].runs[0].text)));
+                test(label('1.').x+label('1.').width<=label('First').x+0.5&&Math.abs(label('1.').y-label('First').y)<1,'marker sits left of its first line');
+                const rcalls=[];
+                const raster={asset,x:5,y:6,width:7,height:8};
+                const drawing={...opts,rasterizeElement:async (el,ctx)=>{rcalls.push([el.tagName.toLowerCase(),ctx.mode,ctx.feature]);return raster}};
+                root.innerHTML='<div style="width:300px;height:100px;background:linear-gradient(red,blue);padding:10px"><p>On gradient</p></div><svg width="20" height="20"><rect width="20" height="20"/></svg>';
+                r=await slidesDomToPptx([root],drawing);check(r.ok,JSON.stringify(r));
+                objs=r.deck.slides[0].objects;
+                test(rcalls.length===2&&rcalls[0][0]==='div'&&rcalls[0][1]==='self'&&rcalls[0][2]==='gradient'&&rcalls[1][0]==='svg'&&rcalls[1][1]==='subtree','gradient drawn as its own box only, SVG with its contents: '+JSON.stringify(rcalls));
+                test(objs[0].type==='image'&&objs[1].type==='text'&&objs[1].paragraphs[0].runs[0].text==='On gradient'&&objs[2].type==='image','text over a drawn box stays native, in paint order');
+                test(r.diagnostics.filter(d=>d.code==='rasterized'&&d.severity==='warning').length===2,'each picture is reported');
+                rcalls.length=0;
+                root.innerHTML='<div style="transform:rotate(5deg)"><p>Turned</p></div><p>Kept</p>';
+                r=await slidesDomToPptx([root],drawing);check(r.ok,JSON.stringify(r));
+                test(rcalls.length===1&&rcalls[0][1]==='subtree'&&r.deck.slides[0].objects.length===2&&r.deck.slides[0].objects[1].paragraphs[0].runs[0].text==='Kept','a transformed element is one picture, without its native children duplicated');
+                r=await slidesDomToPptx([root],{...opts,rasterizeElement:async()=>{throw new Error('nope')}});
+                test(!r.ok&&r.diagnostics.some(d=>d.feature==='rasterization'),'a failing rasterizer fails the slide, never silently drops the element');
+                r=await slidesDomToPptx([root],{...opts,rasterizeElement:async()=>null});check(r.ok,JSON.stringify(r));
+                test(r.deck.slides[0].objects.length===1,'an element that painted nothing adds nothing');
                 root.innerHTML='<p>must not duplicate</p><svg width="20" height="20"></svg><aside>Fallback notes</aside>';
                 r=await slidesDomToPptx([root],{...opts,rasterizeSlide:async (el,ctx)=>{test(el===root&&ctx.diagnostics.length>0,'explicit capture context');return asset}});
                 check(r.ok,JSON.stringify(r));
                 test(r.deck.slides[0].objects.length===1&&r.deck.slides[0].objects[0].type==='image','whole-slide raster replaces all native objects');
                 test(r.diagnostics.some(d=>d.code==='rasterized'),'fallback diagnosed');
                 test(r.deck.slides[0].notes==='Fallback notes','fallback retains notes');
-                for (const html of [
-                    '<p style="position:absolute;top:440px;font-size:30px">overflowing glyphs</p>',
-                    '<div style="display:flex"><p style="order:1">reordered</p></div>',
-                    '<x-shape kind="rect" style="width:30px;height:30px;background:red;border-radius:12px"></x-shape>'
-                ]) {root.innerHTML=html;r=await slidesDomToPptx([root],opts);test(!r.ok,'unsupported layout cannot silently lose paint');}
+                root.innerHTML='<div style="display:flex"><p style="order:1">second</p><p>first</p></div><x-shape kind="rect" style="width:30px;height:30px;background:red;border-radius:12px"></x-shape><p style="position:absolute;top:440px;font-size:30px">bleeding glyphs</p><p style="position:absolute;left:900px">gone</p>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                objs=r.deck.slides[0].objects;
+                const words=objs.filter(o=>o.type==='text').map(o=>o.paragraphs[0].runs[0].text);
+                test(words.indexOf('first')<words.indexOf('second'),'flex order is paint order');
+                test(objs.some(o=>o.type==='shape'&&o.shape==='roundRect'&&o.radiusPx===12),'rounded rect x-shape keeps its radius');
+                test(words.includes('bleeding glyphs')&&!words.includes('gone'),'partly outside kept, wholly outside left out');
+                root.innerHTML='<div><span style="position:absolute;left:0;top:0;width:50px;height:50px;background:rgb(0,0,255);display:block"></span></div><div style="width:100px;height:100px;background:rgb(255,0,0)"></div><p style="text-decoration:underline">Link<span style="position:absolute;left:300px;top:300px">badge</span></p>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                objs=r.deck.slides[0].objects;
+                test(objs.findIndex(o=>o.fill==='0000FF')>objs.findIndex(o=>o.fill==='FF0000'),'a positioned box inside a static parent paints above later in-flow siblings');
+                test(!objs.find(o=>o.type==='text'&&o.paragraphs[0].runs[0].text==='badge').style.underline&&objs.find(o=>o.type==='text'&&o.paragraphs[0].runs[0].text==='Link').style.underline,'decorations do not reach out-of-flow descendants');
+                root.innerHTML='<div style="width:4000px;height:50px;background:rgb(0,128,0)"></div>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                test(r.deck.slides[0].objects[0].width===800,'a box far past the page is cut to it');
+                test((await PptxWriter.writePptx(r.deck)).length>1000,'and the writer accepts it');
                 root.innerHTML='<img style="width:40px;height:20px" src="'+image.src+'">';await root.querySelector('img').decode();
                 r=await slidesDomToPptx([root],{...opts,limits:{timeoutMs:20},resolveImage:()=>new Promise(()=>{})});
                 test(!r.ok&&r.diagnostics.some(d=>d.code==='budget'),'hanging resolver bounded by timeout');

@@ -9,7 +9,7 @@
 | 检查 | 已执行结果 |
 |---|---|
 | `pnpm --filter @dc/core exec vitest run test/pptx.test.ts test/pptxSmoke.test.ts test/pptxBridge.test.ts test/serverPptxImport.test.ts` | 4 files /94 tests 通过；包含行距、原图裁剪、显式未合并表格、空装饰文本框、包安全、API/CLI、原子失败与并发重名 |
-| `pnpm --filter @dc/export test` | 46 tests 通过；原生对象、单位、文字、图片、备注、输入边界与 writer normalization |
+| `pnpm --filter @dc/export test` | 48 tests 通过；原生对象、单位、文字、图片、备注、输入边界与 writer normalization，及半透明、圆角半径、字距、删除线、不换行 |
 | `pnpm --filter @dc/import --filter @dc/i18n test` | 分别 22 /7 tests 通过 |
 | `node --test evals/test/evals.test.mjs` | 4 tests 通过 |
 | `pnpm typecheck` | 全仓通过 |
@@ -19,9 +19,9 @@
 
 ## 浏览器与产品路径
 
-- `python3 -I packages/export/test/pptxDom.browser.py`：实际 Chrome，42 assertions 通过，覆盖布局、文字行框、媒体、隐藏内容、取消/预算和 unsupported 诊断。
+- `python3 -I packages/export/test/pptxDom.browser.py`：实际 Chrome（headless shell），52 assertions 通过，覆盖布局、文字行框、折叠空白、媒体、隐藏内容、CSS 叠放顺序、透明度/圆角/单边框/字距/列表符号的原生输出、`self`/`subtree` 逐元素图片化与回滚、取消/预算和无回调时的 unsupported 诊断。
 - `python3 -I packages/export/test/pptxProduct.browser.py`：实际 opaque runtime，11 assertions 通过，覆盖解码前图片尺寸限制、图片内联、逐页资源、隐藏资源、字体失败与取消清理。
-- `e2e/pptx.py`：第一期 65/65 checks 通过；拆分格式入口后在隔离工作区运行 89/89 checks 通过，包含三种 picker 的 accept 过滤、PPTX picker/drop/API、ZIP/Markdown/Claude package 回归、编辑保存重开、菜单/CLI/MCP 导出、失败/取消和非 slides 无 PPTX 项。
+- `e2e/pptx.py`：逐元素图片化后 90/90 checks 通过（渐变背景页导出为一张图片 + 原生标题文字，不可读图片失败且不下载）；第一期 65/65 checks 通过；拆分格式入口后在隔离工作区运行 89/89 checks 通过，包含三种 picker 的 accept 过滤、PPTX picker/drop/API、ZIP/Markdown/Claude package 回归、编辑保存重开、菜单/CLI/MCP 导出、失败/取消和非 slides 无 PPTX 项。
 - 导入摘要初始焦点另有 EN/ZH × light/dark 四组合检查通过。菜单与结果截图保留为本地测试产物；没有发布截图或创建远程 PR。
 - 旧 archive / claude_design 完整 UI 套件未在包含个人项目的工作区运行：其目录差集清理策略不适合该环境。对应 picker 关键路径已由隔离 PPTX suite 覆盖，不宣称旧套件整体通过。
 
@@ -37,6 +37,17 @@
 - validator 自测：坏 ZIP、非法 XML/schema、坏嵌入 XLSX、缺失输入、目录/符号链接边界、诊断截断和源文件不变。
 
 独立检查曾发现 writer 的 notes master 顺序、重复段落属性及不存在的 master content-type 声明。当前 pinned PptxGenJS 4.0.1 输出的有限 normalization 修复这些问题；未知结构失败，不是通用 OOXML 修复器。
+
+## 图像差分（LibreOffice 渲染 vs 编辑器 PDF）
+
+`python3 scripts/pptx-fidelity/compare.py <project> --fonts`，960 px 宽，单通道差 > 48/255 计为不同像素。2026-10-21：
+
+| deck | 页数 | 平均差异像素 | 最高一页 | 说明 |
+|---|---|---|---|---|
+| 自带示例 `tingly-intro` | 8 | 2.48% | 4.08%（box） | 改进前第 1 页即整份失败；box 页的差异来自参考 PDF 里嵌入块没画出来，PPTX 反而有 |
+| 压力 deck（渐变封面、阴影卡片、渐变文字、列表、SVG/JPEG 图片、旋转标签、SVG 图标、文字阴影、径向渐变） | 4 | 1.45% | 2.31%（封面） | 剩余差异多为抗锯齿与亚像素字形偏移 |
+
+看图发现并修复的问题：每行文本框按测量宽度会在 LibreOffice 里折行（改为 `wrap="none"`）；只有一边的表格分隔线以 2px 图片放大后发黑（改为原生线条）；离屏捕获框架里嵌入块不画（Chrome 停掉视口外框架的动画帧，改为视口内 1% 透明）；`FrameRasterizer` 的空白基线宿主用了 `visibility:hidden`，使根节点的隐藏不被写出（改为 opacity）。LibreOffice 自身偏差：带 alpha 的文字加字距会被截短（去掉 alpha 即正常），PowerPoint 未复核。
 
 ## 全仓测试的环境边界
 

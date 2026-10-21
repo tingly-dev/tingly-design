@@ -13,6 +13,9 @@ import { type LayoutFinding, layoutProbe } from './layoutProbe';
 import { log } from './log';
 import { Cdp, chromeArgs, findChrome } from './render';
 
+/** A PowerPoint export keeps its own deadline in the page (it grows with the deck, up to ten minutes); this only catches a page that stopped answering. */
+const PPTX_DEADLINE = 660_000;
+
 export interface PageJob {
   /** a board, slide, tab or view to show first */
   pick?: string;
@@ -91,7 +94,7 @@ export async function exportFromPage(o: PageOptions & { jobs: PageJob[]; layout?
         continue;
       }
       await quiet();
-      const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, 120_000);
+      const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, job.item === 'pptx' ? PPTX_DEADLINE : 120_000);
       out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
       // each job shows its own board, slide or view: look at what is on screen now, each finding once
       if (o.layout) for (const f of await layout(o.layout.fixed, o.layout.page)) looked.set(JSON.stringify(f), f);

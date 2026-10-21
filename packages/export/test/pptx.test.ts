@@ -129,6 +129,27 @@ describe('writePptx native drawing contract', () => {
     expect(Object.values(f).map(v => strFromU8(v)).join('')).not.toContain('TargetMode="External"');
   });
 
+  it('writes translucent fills and text, rounded radii, letter spacing, strike and unwrapped lines', async () => {
+    const f = await unpack(deck([
+      { type: 'shape', ...box, shape: 'roundRect', fill: 'FF0000', fillOpacity: 0.25, radiusPx: 50 },
+      { type: 'text', ...box, wrap: false, style: { fontFace: 'Aptos', fontSizePx: 20, opacity: 0.5, charSpacingPx: 10, strike: true }, paragraphs: [{ runs: [{ text: 'Spaced' }] }] },
+    ]));
+    const s = xml(f, 'ppt/slides/slide1.xml');
+    expect(s).toContain('<a:gd name="adj" fmla="val 25000"/>'); // 50px of the 200px short side
+    expect(s).toMatch(/<a:srgbClr val="FF0000"><a:alpha val="25000"\/>/);
+    expect(s).toContain('<a:alpha val="50000"/>');
+    expect(s).toContain('spc="720"'); // 10px * 0.01in/px * 72pt/in
+    expect(s).toContain('strike="sngStrike"');
+    expect(s).toContain('wrap="none"');
+  });
+
+  it('rejects radius on shapes other than roundRect, opacity without a fill and values out of range', async () => {
+    await expect(writePptx(deck([{ type: 'shape', ...box, shape: 'rect', fill: 'FF0000', radiusPx: 4 }]))).rejects.toThrow();
+    await expect(writePptx(deck([{ type: 'shape', ...box, shape: 'rect', fillOpacity: 0.5 }]))).rejects.toThrow();
+    await expect(writePptx(deck([{ ...text(), style: { fontFace: 'Aptos', fontSizePx: 20, opacity: 2 } } as PptxObject]))).rejects.toThrow();
+    await expect(writePptx(deck([{ ...text(), wrap: 'no' } as unknown as PptxObject]))).rejects.toThrow();
+  });
+
   it('escapes font attributes, preserves emoji, and snapshots before the async write', async () => {
     const d = deck([{ ...text('😀 & <'), type: 'text', ...box, style: { fontFace: 'A&B "quoted" <font>', fontSizePx: 20 }, paragraphs: [{ runs: [{ text: '😀 & <' }] }] }]);
     const pending = writePptx(d); d.slides[0].objects = [text('MUTATED')];
@@ -155,7 +176,7 @@ describe('writePptx native drawing contract', () => {
   it('bounds aggregate counts/text/assets and scaled line widths', async () => {
     const invalid: unknown[] = [
       { ...deck(), assets: null },
-      { ...deck(), assets: Object.fromEntries(Array.from({ length: 257 }, (_, i) => [i, { bytes: png, mime: 'image/png', widthPx: 2, heightPx: 1 }])) },
+      { ...deck(), assets: Object.fromEntries(Array.from({ length: 2049 }, (_, i) => [i, { bytes: png, mime: 'image/png', widthPx: 2, heightPx: 1 }])) },
       deck([text('a'.repeat(700000)), text('b'.repeat(700000)), text('c'.repeat(700000))]),
       deck([{ ...text(), paragraphs: [{ runs: Array.from({ length: 50000 }, () => ({ text: '' })) }] } as PptxObject]),
       { ...deck([{ type: 'shape', shape: 'line', ...box, stroke: { color: '000000', widthPx: 1000 } }]), widthIn: 56 },

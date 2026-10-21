@@ -214,7 +214,8 @@ export class FrameRasterizer {
     if (!this.host) {
       // a shadow tree sees none of the page's stylesheets and starts from initial values, which is what a bare tag looks like in the copy (an iframe would do too, but a sandboxed page cannot reach into one)
       const h = document.createElement('div');
-      h.style.cssText = 'all:initial;display:block;position:fixed;left:-10000px;top:0;width:1000px;height:800px;visibility:hidden';
+      // out of sight by position and opacity, not visibility: that is inherited and would read as every bare tag's own
+      h.style.cssText = 'all:initial;display:block;position:fixed;left:-10000px;top:0;width:1000px;height:800px;opacity:0';
       this.shadow = h.attachShadow({ mode: 'open' });
       (document.body ?? document.documentElement).appendChild(h);
       this.host = h;

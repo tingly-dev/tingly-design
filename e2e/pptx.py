@@ -321,7 +321,7 @@ async def main():
         body = json.loads(error.read())
         check('API: unsupported import returns actionable diagnostics',
               error.code == 400 and bool(body.get('error')) and bool(body.get('diagnostics'))
-              and any(d.get('code') == 'unsupported_element' and d.get('part') for d in body['diagnostics']), body)
+              and any(d.get('level') == 'error' and d.get('code', '').startswith('unsupported') and d.get('part') for d in body['diagnostics']), body)
     check('API: unsupported import leaves no visible project', owned_names() == prior)
     check('API: unsupported import leaves no target folder', not (PROJECTS / (PREFIX + '-unsupported')).exists())
     name, original, image = await native_deck()
@@ -417,8 +417,27 @@ async def main():
         await expect(pg.locator('iframe[data-pptx-capture]')).to_have_count(0)
         await pg.wait_for_timeout(500)
         check('menu: cancel stops artifact delivery and releases capture resources', not cancelled_downloads)
-        # Failure must be visible and must never yield an incomplete success artifact.
+        # What PowerPoint has no object for becomes a picture of that element only; the rest stays native.
         put(name, 'slides/cover.html', original.replace('background:#f8fafc', 'background:linear-gradient(90deg,#336699,#669933)', 1))
+        await ready(pg, name)
+        await menu(pg)
+        async with pg.expect_download(timeout=90000) as download_event:
+            await pg.get_by_role('menuitem', name='PowerPoint (.pptx)', exact=True).click()
+        download = await download_event.value
+        drawn = OUT / (PREFIX + '-picture-fallback.pptx')
+        await download.save_as(drawn)
+        result = pg.get_by_test_id('pptx-export')
+        await expect(result.get_by_text(re.compile('placed as pictures'))).to_be_visible(timeout=30000)
+        await pg.screenshot(path=str(OUT / 'export-pictures-en-light.png'))
+        with zipfile.ZipFile(drawn) as z:
+            first = ET.fromstring(z.read('ppt/slides/slide1.xml'))
+            text = ''.join(first.itertext())
+            pics = first.findall('.//p:pic', NS)
+        check('menu: a gradient background becomes one picture while the title stays native text',
+              len(pics) == 2 and 'Native product title' in text and first.find('.//a:prstGeom[@prst="rect"]', NS) is not None, (len(pics), text))
+        await pg.get_by_role('dialog').locator('footer').get_by_role('button', name='Close', exact=True).click()
+        # A visible picture that cannot be read is a real failure: visible, located, and no partial file.
+        put(name, 'slides/cover.html', original.replace('</section>', '<img src="uploads/visible-missing.png" style="width:100px;height:100px"></section>', 1))
         await ready(pg, name)
         downloads = []
         pg.on('download', lambda download: downloads.append(download))
@@ -426,11 +445,11 @@ async def main():
         await pg.get_by_role('menuitem', name='PowerPoint (.pptx)', exact=True).click()
         failure = pg.get_by_test_id('pptx-export').get_by_role('alert')
         await expect(failure).to_be_visible(timeout=60000)
-        check('menu: unsupported visible content explains the failing slide',
-              'cover' in await failure.inner_text(), await failure.inner_text())
+        check('menu: an unreadable picture explains the failure',
+              'resource' in (await failure.inner_text()).lower() or 'picture' in (await failure.inner_text()).lower(), await failure.inner_text())
         await pg.screenshot(path=str(OUT / 'export-refused-en-light.png'))
         await pg.wait_for_timeout(500)
-        check('menu: unsupported deck produces no partial download', not downloads)
+        check('menu: failed deck produces no partial download', not downloads)
         await expect(pg.locator('iframe[data-pptx-capture]')).to_have_count(0)
         check('menu: failed export releases its capture iframe', True)
         put(name, 'slides/cover.html', original)

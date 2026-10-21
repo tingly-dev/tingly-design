@@ -45,7 +45,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 
 ## 3. 跨类型功能矩阵
 
-✓ 支持，✗ 不支持（附原因），— 不适用。✓ 表示已实施接线，不等于任意格式保真承诺；PPTX 聚焦产品 e2e 65/65 已通过，独立 Office 渲染仍未验收。"共用部件"一列说明它在哪里实现，新类型接上它就有。
+✓ 支持，✗ 不支持（附原因），— 不适用。✓ 表示已实施接线，不等于任意格式保真承诺；PPTX 聚焦产品 e2e 90/90 已通过，真实 PowerPoint 渲染仍未验收。"共用部件"一列说明它在哪里实现，新类型接上它就有。
 
 | 功能 | 共用部件 | 画布 | 幻灯片 | 设计系统 | 看板 | 文档 | 动效 | 备注 |
 |---|---|---|---|---|---|---|---|--- |
@@ -84,7 +84,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 和原版 Claude Design 互相搬作品（[claude-design-format.md](./claude-design-format.md)） | `FileMenu` 的 `claudeDesign` 参数（“Claude Design 包（.zip）”，排在“整个项目”前面）；启动页“导入项目”认包和 `.md`；核心 `claudeDesign.ts`，服务端 `archive.ts`；命令行 `export --as claude-design` / `import` | ✓ Design：`project/canvas.json` + 画板 | ✓ Slides：`project/deck.json` + `slides/`；图片要先上传成素材 | ✓ Design System：`project/` | ✓ Dashboard：存储文档一份一个文件，数据放 `blobs/` | ✗ 原版的 Docs 在服务里没有文件：导出走 Markdown，Claude Docs 导出的 `.md` 可在“导入项目”里变成新文档 | ✗ 原版没有对应类型 | 不选类型，从文件认；包里的 `README.md` 交代怎么由 Claude Code 发布 |
 | 批注 / 备注（[motion-editing.md](./motion-editing.md) §3.8.1） | 画布的便签项；幻灯片和动效场景的 `<aside>`（共用 `NoteBox` 输入框、`notesOf` / `setNotesIn`）；动效另有作品级的 `motion.json` 的 `note` | ✓ 便签（画布上的项，不是文字批注） | ✓ 演讲者备注，放映时给演讲者看 | ✗ 没有这个粒度：令牌和组件自己有说明 | ✗ 页面是一份代码，说明写在代码注释里 | ✗ 用评论（钉在文字上，见文档指南） | ✓ 作品一层、场景一层，不画进画面、不渲染；给 Claude Code 读 | 动效的批注是写给人和 AI 看的背景，不是指令；渲染和导出的播放器会去掉 |
 | 元素缩放手柄 | `runtime.tsx` 的 `resize` 消息 | ✓ | ✓ | — | 待定：元素尺寸多由网格决定 | 待定：只有图片宽度值得做 | ✓ 非主尺寸里写进覆盖 | 八个手柄、吸附、W×H；看板和文档见 [motion-editing.md](./motion-editing.md) §3.7 |
-| 新建时导入（[import](./import-external-material.md)） | `packages/import`、`ImportDialog`；PPTX 经共享 `projectArchive.ts` / `archive.ts` / core `importPptx` | ✓ HTML、SVG | ✓ PPTX → 新 slides，启动页 picker/drop、API、CLI；保留来源/报告与本地化结果（`pptx` suite，65/65 聚焦产品断言通过） | — | ✗ 还不能从 CSV 新建 | ✗ 还不能从 Markdown 新建 | — | HTML/SVG 结果是新画布；PPTX 结果只为新 slides，不追加已开 deck；非 slides 不适用 PPTX 转换，因为目标是演示文稿 |
+| 新建时导入（[import](./import-external-material.md)） | `packages/import`、`ImportDialog`；PPTX 经共享 `projectArchive.ts` / `archive.ts` / core `importPptx` | ✓ HTML、SVG | ✓ PPTX → 新 slides，启动页 picker/drop、API、CLI；保留来源/报告与本地化结果（`pptx` suite，90/90 聚焦产品断言通过） | — | ✗ 还不能从 CSV 新建 | ✗ 还不能从 Markdown 新建 | — | HTML/SVG 结果是新画布；PPTX 结果只为新 slides，不追加已开 deck；非 slides 不适用 PPTX 转换，因为目标是演示文稿 |
 | 往打开的项目里导入（[import-into-project](./import-into-project.md)） | `ImportHere`（按钮、拖放、粘贴）+ 各类型的 `ImportTarget` | ✓ 网页、SVG → 新画板；图片 → 画布上的图片 | ✓ 图片、SVG → 当前幻灯片；网页不收 | ✓ 字体 → 字体，图片、SVG → 素材 | ✓ CSV/TSV/JSON → 数据集 | ✓ Markdown（或文档导出的 .zip）→ 新标签页 | ✓ 图片、SVG → 播放头所在场景，从播放头入场 | 原文件放 `uploads/`；看板数据在 `data/`、设计系统的字体和素材在它自己的目录 |
 | 从项目导入（[import-from-project](./import-from-project.md)） | `ImportHere` 菜单的"从项目导入…"、`BoardPicker`、`POST …/import-board`、`<x-embed src>`（`XBoard`、播放器的 `mountBoard`）、`BoardEmbedProps` | 来源：画板（会动的带 `$time`）；Tweaks 有时间滑块。不收：画布之间直接复制画板就行，用不着嵌入 | ✓ 当前这一页；放映时循环；HTML 导出带运行时 | ✗ 第一期没做：组件可以是来源，但装入设计系统已经覆盖"用别人的组件" | ✗ 看板页面是一份代码，没有可嵌入的位置 | ✗ 文档正文是 Markdown，没有嵌入块 | ✓ 播放头所在场景，`data-seek` 逐帧；播放器、命令行渲染都画 | 副本在 `uploads/<来源>-<画板>/`，来源记在索引的 `imports`；启动页预览、PNG 导出不画嵌入的画板 |
 | 画布的模板值（[canvas-template-values](./canvas-template-values.md)） | `TemplateValues`（`RightPanel` 什么都没选时）、核心 `canvasTemplateValues`，字段和写回用 Tweaks 的 `TweakField` / `setPropDefault` | ✓ 按画板分组，可折叠，30 个以上有过滤 | — 幻灯片没有模板值；嵌入画板的值在元素的属性里（`BoardEmbedProps`） | — 没有模板值 | — 没有模板值 | — 没有模板值 | — 嵌入画板的值在元素的属性里；场景没有模板值 | 有意只做画布：模板值是画布里画板的 `data-props`，别的类型没有"整份稿子的值"这个问题 |
@@ -107,5 +107,5 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。
-- 导出菜单共用了；只导出一个场景时没有声音；画布和看板的 PDF 没有（[export-menu.md](./export-menu.md) §7）。PPTX 仅有新项目导入和整份可见 slides 原生受限导出，不支持追加、单页范围或产品 raster fallback；独立 Office 渲染验收仍待完成（[slides-pptx.md](./slides-pptx.md)）。
+- 导出菜单共用了；只导出一个场景时没有声音；画布和看板的 PDF 没有（[export-menu.md](./export-menu.md) §7）。PPTX 仅有新项目导入和整份可见 slides 导出（原生优先、逐元素图片化），不支持追加或单页范围；独立 Office 渲染验收仍待完成（[slides-pptx.md](./slides-pptx.md)）。
 - 右键菜单的“复制为 PNG”只有画布有；幻灯片、看板、文档、动效各有自己的 PNG 导出，还没有“图到剪贴板”（[export-menu.md](./export-menu.md) §3）。
