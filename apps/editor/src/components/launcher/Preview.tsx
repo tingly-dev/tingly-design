@@ -25,7 +25,7 @@ function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
 }
 
 /** A board or slide rendered by the sandbox runtime, read only, scaled to the card. */
-function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string }; base?: string }) {
+function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string; size?: [number, number] }; base?: string }) {
   const { t: tr } = useTranslation();
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
@@ -110,7 +110,7 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
   } else if (p.kind === 'slides') {
     body =
       near && p.cover && width > 0 ? (
-        <LiveFrame file={p.cover.file} source={p.cover.source} w={SLIDE_W} h={SLIDE_H} width={width} slide={{ head: p.cover.head, base: api.rawBase(project) }} />
+        <LiveFrame file={p.cover.file} source={p.cover.source} w={p.cover.size?.[0] ?? SLIDE_W} h={p.cover.size?.[1] ?? SLIDE_H} width={width} slide={{ head: p.cover.head, size: p.cover.size, base: api.rawBase(project) }} />
       ) : (
         <div className="lp-empty">{p.cover ? '' : t('launcher.preview.noSlides')}</div>
       );

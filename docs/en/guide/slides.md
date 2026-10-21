@@ -4,12 +4,14 @@
 
 Choose "幻灯片" (slides) when creating a project. The sample [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) is "Meet Tingly", an introduction to Tingly Box and Tingly Design; the gateway slide carries a live `<x-embed>` diagram.
 
+Choose a size below the title when creating a deck: the same categories, concrete dimensions and Custom fields as Canvas and Motion. The default is 1920×1080; portrait, square and other ratios work through editing, presentation and export. The size is saved as `size: [width, height]` in `deck.json`; existing decks keep the default.
+
 ![Slide editor: thumbnails and sections on the left, the stage and speaker notes in the middle, layers and properties on the right](../../images/slides.png)
 
 ```
 projects/<name>/
   deck.json            title, slide order, sections, typefaces
-  slides/<id>.html     one file per slide: exactly one <section id="<id>">, 1920×1080, a closed HTML/CSS subset
+  slides/<id>.html     one file per slide: exactly one <section id="<id>">, deck size (default 1920×1080), a closed HTML/CSS subset
   assets/              uploaded images and fonts
 ```
 

@@ -26,7 +26,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | `packages/core/src/deck.ts` `ProjectKind`、`projectKind(files)` | 类型名；按文件判断类型 | 类型检查不过，或前端认不出 |
 | `apps/server/src/store.ts` `kindOf` | 按索引文件判断目录是什么类型（**有先后**：`deck.json` 先于 `canvas.json`） | 启动页不列、接口按画布处理 |
 | `apps/server/src/store.ts` `createProject` | 新建时写出最小的索引和第一个内容单元 | 新建出空目录 |
-| `apps/server/src/app.ts` `POST /api/projects` | 允许的 `kind` 白名单；动效和画布还收一个可选的 `size`（宽高，核心的 `validSize` 校验；画布是第一块画板的大小；命名的画布尺寸是 core 的 `BOARD_SIZES`，对话框和命令行 `new canvas --size` 都读它） | 新建对话框建出来的是画布；动效总是 16:9，画布总是 1200×760 |
+| `apps/server/src/app.ts` `POST /api/projects` | 允许的 `kind` 白名单；动效、画布、幻灯片还收一个可选的 `size`（宽高，核心的 `validSize` 校验；画布是第一块画板的大小；命名的画布尺寸是 core 的 `BOARD_SIZES`，对话框和命令行 `new canvas --size` 都读它） | 新建对话框建出来的是画布；动效总是 16:9，画布总是 1200×760 |
 | `apps/server/src/app.ts` `/fast-edit` | 选快速 AI 的系统提示（`FAST_EDIT_*`） | 快速 AI 按画布规则改 |
 | `apps/server/src/delegate.ts` `startDelegate` | 交给 Claude Code 时的开场说明、附件路径写法、系统提示、允许的工具 | Claude Code 按画布规则改文件 |
 | `packages/core/src/prompt.ts` | 快速 AI 的系统提示正文（`FAST_EDIT_SYSTEM`、`FAST_EDIT_SLIDES`、`FAST_EDIT_DOCS`）；Claude Code 的在 `delegate.ts`（`SLIDES_SYSTEM` 等） | 同上 |
@@ -68,7 +68,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 宿主消息（[embedding](../docs/zh/embedding.md)） | `host.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | `location` 只带 `?p=`，不分类型 |
 | 顶栏：项目名、同步状态和改动记录、导入 / 导出、"更多"（反馈、点星、语言、外观）（[top-bar.md](./top-bar.md)） | `TopBar`、`ProjectTitle`、`SyncStatus`（历史图标加状态点，常态下不多一个字） | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 六种是同一条栏，同样的位置和顺序；类型自己的动作放在 `TopBar` 的子节点里；画布和幻灯片的浮栏只剩工具；放映 / 播放时幻灯片不画顶栏 |
 | 离开项目：回首页、切换、新建（[launcher.md](./launcher.md) §5） | `ProjectMenu`（`TopBar` 最左，自带） | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 新类型用 `TopBar` 就有；反馈和点星在顶栏最右的"更多"菜单里，不在项目菜单里 |
-| 新建时选尺寸（[motion-editing.md](./motion-editing.md) §3.7） | `SizePicker`（新建对话框里选了动效才出现）、`motionSizes.ts`（浏览器里记上次和自己的尺寸）、核心 `MOTION_SIZES` / `newMotion` | — | — | — | — | — | ✓ 预设、自定义、上次用的 | 动效和画布在新建时选尺寸（动效是按平台命名的格式，画布是 `BoardSizePicker` 里 `BOARD_SIZES` 的命名尺寸和自定义，见 [launcher.md](./launcher.md)）；幻灯片固定 1920×1080，其余随窗口 |
+| 新建时选尺寸（[launcher.md](./launcher.md)） | 共用 `BoardSizePicker`、核心 `BOARD_SIZES`；动效的 `SizePicker` 只接上记忆；`deckSize` 读取幻灯片尺寸 | ✓ 分类预设和自定义 | ✓ 分类预设和自定义，存入 `deck.json.size`，旧文件默认 1920×1080 | — | — | — | ✓ 同一套分类预设、自定义、上次用的和自己的尺寸 | 设计系统选风格，看板、文档随窗口；`launcher` 覆盖三种菜单和竖版幻灯片，`motion` 覆盖创建与记忆 |
 | AI 模型设置（[ai-settings.md](./ai-settings.md)） | `AiSettings.tsx`（启动页按钮、`ProjectMenu`、请求栏“去设置”都打开同一个）、`apps/server/src/aiconfig.ts`、`packages/core/src/aiConfig.ts` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 全局设置，不属于某个项目，所以各类型一样；快速 AI 用不上的类型（看板）仍用 Claude Code 那一项 |
 | 新建时选起点（[design-system-looks.md](./design-system-looks.md)） | `LookPicker`（新建对话框里选了设计系统才出现）、核心 `LOOKS` / `lookTokens` / `lookKit`、`new design-system --look` | — | — | ✓ 36 个风格，五组，带组件和封面 | — | — | — | 只有设计系统有“风格”这个概念（颜色、字体、圆角、阴影）；其余类型的起点是尺寸（动效、画布）或设计系统（画布、幻灯片），不在这里 |
 | 启动页卡片和预览（[launcher.md](./launcher.md)） | `launcher.ts`、`launcher/Preview.tsx` | ✓ 实时画板 | ✓ 实时封面 | ✓ 色板/字体/组件 | ✓ 数据集 | ✓ 大纲/摘要 | ✓ 封面静帧 | |

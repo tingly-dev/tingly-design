@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { SLIDE_H, SLIDE_W, elementSource, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
+import { deckSize, elementSource, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
 import { api } from '../../api';
 import { deckOf, display, editElement, parsed, useStore } from '../../store';
 import { frames, post } from '../canvas/Board';
@@ -25,7 +25,7 @@ export interface SceneStage {
 }
 
 /**
- * One slide in a sandboxed frame, laid out at 1920×1080 and scaled to fit.
+ * One slide in a sandboxed frame, laid out at the deck’s size and scaled to fit.
  * The stage frame is the editable one: it talks to the same runtime as an
  * artboard, so selection, text editing, dragging and the panel all work.
  * With `scene` it is a motion scene instead, in its format, stopped at a time.
@@ -56,7 +56,9 @@ export const SlideFrame = memo(function SlideFrame({
   const deckHead = useStore((s) => (scene ? '' : faceMarkup(deckOf(s))));
   const faces = scene?.faces;
   const head = useMemo(() => (faces ? faceMarkup({ faces } as DeckJson) : deckHead), [faces, deckHead]);
-  const [W, H] = scene?.info.size ?? [SLIDE_W, SLIDE_H];
+  const deckW = useStore((s) => deckSize(deckOf(s))[0]);
+  const deckH = useStore((s) => deckSize(deckOf(s))[1]);
+  const [W, H] = scene?.info.size ?? [deckW, deckH];
   const drawn = scene ? JSON.stringify([scene.info.format, scene.info.formats, scene.info.size]) : '';
   const t = scene?.info.t ?? 0;
   const landed = !!scene?.info.landed;
@@ -66,7 +68,7 @@ export const SlideFrame = memo(function SlideFrame({
   const hover = useStore((s) => (use === 'stage' && s.layerHover?.file === file ? s.layerHover.tid : null));
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   const mode = use === 'present' ? 'play' : 'edit';
-  const slide = useMemo(() => ({ head, base: project ? api.frameBase(project, assetRev) : '', still: use === 'thumb' }), [head, project, use, assetRev]);
+  const slide = useMemo(() => ({ head, base: project ? api.frameBase(project, assetRev) : '', still: use === 'thumb', size: [W, H] as [number, number] }), [head, project, use, assetRev, W, H]);
   const stepsCb = useRef(onSteps);
   stepsCb.current = onSteps;
 

@@ -446,7 +446,7 @@ interface State {
   hover: number | null;
   editing: HTMLElement | null;
   pending: Extract<ToRuntime, { dc: 'render' }> | null;
-  slide: { head: string; base: string; still?: boolean } | null;
+  slide: { head: string; base: string; still?: boolean; size?: [number, number] } | null;
   base: string;
   /** present mode: how far a slide's builds have played */
   step: number;
@@ -514,9 +514,9 @@ function slideHead() {
     slideStyles = document.createElement('style');
     document.head.appendChild(slideStyles);
   }
-  const size = current.motion?.size;
+  const size = current.motion?.size ?? current.slide?.size;
   const css =
-    (size ? sceneBaseCss(size[0], size[1], SLIDE_BASE_CSS) + MOTION_CSS : SLIDE_BASE_CSS + BUILD_CSS) + 'html,body{background:transparent;overflow:hidden}';
+    (size ? sceneBaseCss(size[0], size[1], SLIDE_BASE_CSS) : SLIDE_BASE_CSS) + (current.motion ? MOTION_CSS : BUILD_CSS) + 'html,body{background:transparent;overflow:hidden}';
   if (slideStyles.textContent !== css) slideStyles.textContent = css;
   const html = current.slide?.head ?? '';
   if (html !== facesHtml) {

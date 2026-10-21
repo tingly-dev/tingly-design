@@ -49,10 +49,11 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   const [busy, setBusy] = useState(false);
   // a motion piece starts in the size last used (16:9 the first time)
   const [size, setSize] = useState<Size | null>(() => readSizes().last ?? [1920, 1080]);
-  // the rest is optional: a design system (canvas, slides), a board size (canvas), a table (dashboard)
+  // Each visual kind keeps its own size when switching; the design system and data table are optional.
   const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
   const [designSystem, setDesignSystem] = useState<DesignSystemChoice>('');
   const [board, setBoard] = useState<Size | null>(DEFAULT_BOARD_SIZE);
+  const [slideSize, setSlideSize] = useState<Size | null>([1920, 1080]);
   const [look, setLook] = useState('');
   const [dataFile, setDataFile] = useState<{ file: File; rows: number } | null>(null);
   const [dataError, setDataError] = useState('');
@@ -69,7 +70,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // a full path puts the project there instead of in the projects folder
   const path = linksOn && isFolderPath(name) ? name : null;
   const info = useFolderInfo(path);
-  const sizeBad = (kind === 'motion' && !size) || (kind === 'design' && !board);
+  const sizeBad = (kind === 'motion' && !size) || (kind === 'design' && !board) || (kind === 'slides' && !slideSize);
   const problem = !name
     ? ''
     : path
@@ -101,7 +102,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
         path ? { path } : name,
         title.trim() || (path ? path.split(/[\\/]/).filter(Boolean).pop() || kind : name),
         kind,
-        kind === 'motion' && size ? size : kind === 'design' && board && !sameSize(board, DEFAULT_BOARD_SIZE) ? board : undefined,
+        kind === 'motion' && size ? size : kind === 'slides' && slideSize ? slideSize : kind === 'design' && board && !sameSize(board, DEFAULT_BOARD_SIZE) ? board : undefined,
         { git: offerGit && git, look: kind === 'design-system' && look ? look : undefined },
       );
       if (gitError) toast(t('launcher.new.gitFailed', { error: gitError }), 'error');
@@ -130,7 +131,8 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
       <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
       <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
       {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
-      {kind === 'design' && <BoardSizePicker value={board} onChange={setBoard} />}
+      {kind === 'design' && <BoardSizePicker key={kind} value={board} onChange={setBoard} />}
+      {kind === 'slides' && <BoardSizePicker key={kind} kind="slides" value={slideSize} onChange={setSlideSize} />}
       {kind === 'design-system' && <LookPicker value={look} onChange={setLook} />}
       {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
         <div className="nopts" data-options={kind}>

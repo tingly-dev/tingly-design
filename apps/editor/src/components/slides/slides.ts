@@ -1,5 +1,6 @@
 import {
   attr,
+  deckSize,
   newSlideSource,
   parseDc,
   rootElement,
@@ -54,7 +55,7 @@ export function addSlide(after: string | null = get().slide): string {
   const s = get();
   const ids = slideIds(s);
   const id = uniqueSlideId(ids, 'slide-' + (ids.length + 1));
-  edit(slideFile(id), () => newSlideSource(id, { like: sectionStyle(after ?? ids.at(-1) ?? null), title: t('starter.slideTitle'), body: t('starter.slideHint') }), {
+  edit(slideFile(id), () => newSlideSource(id, { size: deckSize(deckOf(s)), like: sectionStyle(after ?? ids.at(-1) ?? null), title: t('starter.slideTitle'), body: t('starter.slideHint') }), {
     actor: 'human',
     summary: t('slides.journal.slideCreated'),
     undoable: false,
@@ -231,21 +232,32 @@ const escText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 /** Markup the insert buttons put on a slide; its words are in the language the editor shows. */
 export const INSERTS = {
   get text() {
-    return `<p style="position:absolute;left:128px;top:840px;width:960px;font-size:40px;line-height:1.3">${escText(t('slides.insert.text'))}</p>`;
+    const [w, h] = deckSize(deckOf(get()));
+    const k = Math.min(w / 1920, h / 1080);
+    return `<p style="position:absolute;left:${Math.round(128 * k)}px;top:${Math.round(840 * k)}px;width:${Math.round(960 * k)}px;font-size:${Math.round(40 * k)}px;line-height:1.3">${escText(t('slides.insert.text'))}</p>`;
   },
   get table() {
-    return `<table style="font-size:28px;width:1200px">
+    const [w] = deckSize(deckOf(get()));
+    return `<table style="font-size:28px;width:${Math.min(1200, Math.round(w * 0.625))}px">
 <tr><th style="width:40%">${escText(t('slides.insert.tableItem'))}</th><th style="width:30%">${escText(t('slides.insert.tableValue'))}</th><th style="width:30%">${escText(t('slides.insert.tableNote'))}</th></tr>
 <tr><td>${escText(t('slides.insert.tableRow1'))}</td><td>—</td><td>—</td></tr>
 <tr><td>${escText(t('slides.insert.tableRow2'))}</td><td>—</td><td>—</td></tr>
 </table>`;
   },
-  shape: (kind: string) =>
-    kind === 'line'
-      ? '<x-shape kind="line" style="position:absolute;left:760px;top:540px;width:400px;border:4px solid #2f6fed"></x-shape>'
-      : `<x-shape kind="${kind}" style="position:absolute;left:810px;top:390px;width:${kind.startsWith('arrow-') ? (kind === 'arrow-up' || kind === 'arrow-down' ? 150 : 300) : 300}px;height:${kind === 'arrow-up' || kind === 'arrow-down' ? 300 : kind.startsWith('arrow-') ? 150 : 300}px;background:#2f6fed"></x-shape>`,
-  connector: '<x-connector x1="640" y1="540" x2="1280" y2="540" head="end" style="color:#1d1d1b;border-width:4px"></x-connector>',
-  icon: (name: string) => `<x-icon name="${name}" style="position:absolute;left:896px;top:476px;width:128px;height:128px;color:#2f6fed"></x-icon>`,
+  shape: (kind: string) => {
+    const [w, h] = deckSize(deckOf(get()));
+    return kind === 'line'
+      ? `<x-shape kind="line" style="position:absolute;left:${w / 2 - 200}px;top:${h / 2}px;width:400px;border:4px solid #2f6fed"></x-shape>`
+      : `<x-shape kind="${kind}" style="position:absolute;left:${w / 2 - 150}px;top:${h / 2 - 150}px;width:${kind.startsWith('arrow-') ? (kind === 'arrow-up' || kind === 'arrow-down' ? 150 : 300) : 300}px;height:${kind === 'arrow-up' || kind === 'arrow-down' ? 300 : kind.startsWith('arrow-') ? 150 : 300}px;background:#2f6fed"></x-shape>`;
+  },
+  get connector() {
+    const [w, h] = deckSize(deckOf(get()));
+    return `<x-connector x1="${w / 3}" y1="${h / 2}" x2="${w * 2 / 3}" y2="${h / 2}" head="end" style="color:#1d1d1b;border-width:4px"></x-connector>`;
+  },
+  icon: (name: string) => {
+    const [w, h] = deckSize(deckOf(get()));
+    return `<x-icon name="${name}" style="position:absolute;left:${w / 2 - 64}px;top:${h / 2 - 64}px;width:128px;height:128px;color:#2f6fed"></x-icon>`;
+  },
 };
 
 export async function uploadImage(file: File): Promise<void> {
@@ -267,12 +279,13 @@ async function placeImage(file: File, nth = 0): Promise<void> {
     img.onerror = () => resolve({ w: 800, h: 600 });
     img.src = URL.createObjectURL(file);
   });
-  const k = Math.min(1, 960 / dims.w, 720 / dims.h);
+  const [W, H] = deckSize(deckOf(get()));
+  const k = Math.min(1, W / 2 / dims.w, H * 2 / 3 / dims.h);
   const w = Math.round(dims.w * k);
   const h = Math.round(dims.h * k);
   const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
   insertOnSlide(
-    `<img src="${r.path}" alt="${alt}" style="position:absolute;left:${Math.round((1920 - w) / 2) + nth * 40}px;top:${Math.round((1080 - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
+    `<img src="${r.path}" alt="${alt}" style="position:absolute;left:${Math.round((W - w) / 2) + nth * 40}px;top:${Math.round((H - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
     true,
   );
 }
@@ -297,7 +310,7 @@ export const slidesImport: ImportTarget = {
       return t('slides.import.boardWhat');
     },
     place: (path, { size, moving, title }) => {
-      const { html, back } = boardEmbed(path, [1920, 1080], size, moving);
+      const { html, back } = boardEmbed(path, deckSize(deckOf(get())), size, moving);
       const tid = back ? insertBehind(html) : insertOnSlide(html, true);
       return tid === null ? t('slides.import.noSlide') : t('slides.import.boardPlaced', { title });
     },

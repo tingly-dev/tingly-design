@@ -1,10 +1,11 @@
 /**
  * A slide deck: `deck.json` plus one `slides/<id>.html` per slide, the file
  * layout of the original Slides type (there under `project/`). Each slide file
- * is exactly one `<section id="<id>" …>` on a fixed 1920×1080 canvas, written in
+ * is exactly one `<section id="<id>" …>` on the deck’s canvas (1920×1080 by default), written in
  * a closed subset of HTML and inline CSS (see `slides.ts`).
  */
 
+import { validSize } from './motion';
 import { HIDE_CSS } from './layers';
 
 export const DECK_FILE = 'deck.json';
@@ -25,6 +26,8 @@ export interface DeckFace {
 export interface DeckJson {
   v: number;
   title: string;
+  /** Omitted in older decks, which use 1920×1080. */
+  size?: [number, number];
   order: string[];
   sections: Record<string, DeckSection>;
   cover?: string;
@@ -92,6 +95,7 @@ export function parseDeck(text: string | undefined): DeckJson {
   }
   return {
     ...raw,
+    size: validSize(raw.size) ?? undefined,
     v: raw.v ?? 4,
     title: typeof raw.title === 'string' ? raw.title : 'Untitled deck',
     order: [...new Set(order)],
@@ -99,6 +103,11 @@ export function parseDeck(text: string | undefined): DeckJson {
     faces,
     designSystems: Array.isArray(raw.designSystems) ? raw.designSystems : [],
   };
+}
+
+/** Every slide in a deck uses this size; existing decks retain their original dimensions. */
+export function deckSize(deck: Pick<DeckJson, 'size'>): [number, number] {
+  return validSize(deck.size) ?? [SLIDE_W, SLIDE_H];
 }
 
 export function stringifyDeck(d: DeckJson): string {
@@ -147,8 +156,10 @@ const DEFAULT_SECTION_STYLE =
   "background:#fbfbf8;color:#1d1d1b;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px";
 
 /** A new slide. `like` is a neighbour's section style, so a new slide keeps the deck's look. */
-export function newSlideSource(id: string, opts: { like?: string; title?: string; body?: string } = {}): string {
-  const style = (opts.like ?? DEFAULT_SECTION_STYLE)
+export function newSlideSource(id: string, opts: { like?: string; title?: string; body?: string; size?: [number, number]; titleSize?: number } = {}): string {
+  const [w, h] = deckSize({ size: opts.size });
+  const k = Math.min(w / SLIDE_W, h / SLIDE_H);
+  const style = (opts.like ?? DEFAULT_SECTION_STYLE.replace('padding:128px', `padding:${Math.round(128 * k)}px`).replace('gap:48px', `gap:${Math.round(48 * k)}px`))
     .split(';')
     .map((d) => d.trim())
     .filter((d) => d && /^(background|color|font-family|padding|display|flex-direction|gap)\s*:/.test(d))
@@ -156,8 +167,8 @@ export function newSlideSource(id: string, opts: { like?: string; title?: string
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const body = opts.body ?? 'Double-click to edit text, or ask AI below to change this slide.';
   return `<section id="${id}" style="${style.replace(/"/g, "'") || DEFAULT_SECTION_STYLE}">
-<h2 style="font-size:72px;font-weight:600;line-height:1.1">${esc(opts.title ?? 'Title')}</h2>
-${body === '' ? '' : `<p style="font-size:32px;line-height:1.4;width:960px">${esc(body)}</p>\n`}</section>
+<h2 style="font-size:${Math.round((opts.titleSize ?? 72) * k)}px;font-weight:600;line-height:1.1">${esc(opts.title ?? 'Title')}</h2>
+${body === '' ? '' : `<p style="font-size:${Math.round(32 * k)}px;line-height:1.4;width:${Math.round(960 * k)}px">${esc(body)}</p>\n`}</section>
 `;
 }
 

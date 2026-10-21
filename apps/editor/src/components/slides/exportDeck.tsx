@@ -1,4 +1,4 @@
-import { deckToMarkdown, SLIDE_BASE_CSS, SLIDE_H, SLIDE_W, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, fxMarkup, FX_STILL_MS, type HumanOp } from '@dc/core';
+import { deckToMarkdown, SLIDE_BASE_CSS, deckSize, sceneBaseCss, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, fxMarkup, FX_STILL_MS, type HumanOp } from '@dc/core';
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
@@ -68,11 +68,11 @@ async function standalone(source: string, base: string, live = false): Promise<s
   return drawSlideArt(out);
 }
 
-const PLAYER = `
+const player = (W: number, H: number) => `
 (function(){
   var slides=[].slice.call(document.querySelectorAll('.deck>.dc-slide-host'));
   var i=Math.max(0,Math.min(slides.length-1,(parseInt(location.hash.slice(1),10)||1)-1));
-  function fit(){var k=Math.min(innerWidth/${SLIDE_W},innerHeight/${SLIDE_H});document.documentElement.style.setProperty('--k',k)}
+  function fit(){var k=Math.min(innerWidth/${W},innerHeight/${H});document.documentElement.style.setProperty('--k',k)}
   function show(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach(function(s,j){s.style.display=j===i?'':'none'});history.replaceState(null,'','#'+(i+1))}
   addEventListener('resize',fit);fit();show(i);
   addEventListener('keydown',function(e){if(/^(ArrowRight|ArrowDown|PageDown| )$/.test(e.key)){e.preventDefault();show(i+1)}else if(/^(ArrowLeft|ArrowUp|PageUp)$/.test(e.key)){e.preventDefault();show(i-1)}else if(e.key==='Home')show(0);else if(e.key==='End')show(slides.length-1);else if(e.key==='f')document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()});
@@ -132,6 +132,7 @@ async function buildHtml(mode: 'player' | 'print' | 'pdf'): Promise<string> {
   const print = mode !== 'player';
   const s = useStore.getState();
   const deck = deckOf(s);
+  const [W, H] = deckSize(deck);
   const base = s.project ? api.rawBase(s.project) : '';
   const ids = slideIds(s).filter((id) => !isHidden(id));
   const parts: string[] = [];
@@ -145,8 +146,8 @@ async function buildHtml(mode: 'player' | 'print' | 'pdf'): Promise<string> {
   }
   const boards = await boardData(sources);
   const page = print
-    ? `@page{size:${SLIDE_W}px ${SLIDE_H}px;margin:0}html,body{margin:0;background:#fff}.deck>.dc-slide-host{break-after:page}`
-    : `html,body{margin:0;height:100%;background:#111;overflow:hidden}.deck{position:absolute;left:50%;top:50%;width:${SLIDE_W}px;height:${SLIDE_H}px;transform:translate(-50%,-50%) scale(var(--k,1))}`;
+    ? `@page{size:${W}px ${H}px;margin:0}html,body{margin:0;background:#fff}.deck>.dc-slide-host{break-after:page}`
+    : `html,body{margin:0;height:100%;background:#111;overflow:hidden}.deck{position:absolute;left:50%;top:50%;width:${W}px;height:${H}px;transform:translate(-50%,-50%) scale(var(--k,1))}`;
   return `<!doctype html>
 <html${print ? ' data-print' : ''}>
 <head>
@@ -154,14 +155,14 @@ async function buildHtml(mode: 'player' | 'print' | 'pdf'): Promise<string> {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(deck.title)}</title>
 ${faceMarkup(deck)}
-<style>${SLIDE_BASE_CSS}${page}</style>
+<style>${sceneBaseCss(W, H, SLIDE_BASE_CSS)}${page}</style>
 </head>
 <body>
 <div class="deck">
 ${parts.join('\n')}
 </div>
 ${boards ? `${boards}\n<script>${BOARDS}</script>` : ''}
-${mode === 'print' ? '<script>addEventListener("load",function(){setTimeout(function(){print()},800)})</script>' : mode === 'player' ? `<script>${PLAYER}</script>` : ''}
+${mode === 'print' ? '<script>addEventListener("load",function(){setTimeout(function(){print()},800)})</script>' : mode === 'player' ? `<script>${player(W, H)}</script>` : ''}
 </body>
 </html>
 `;
@@ -206,11 +207,12 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'md' | 'notes'): Promise
 async function slidePng(id: string, scale: number): Promise<Blob> {
   const s = useStore.getState();
   const deck = deckOf(s);
+  const [W, H] = deckSize(deck);
   const src = display(s, slideFile(id));
   if (!src) throw new Error(id);
   const base = s.project ? api.rawBase(s.project) : '';
-  const html = `<!doctype html><html><head><meta charset="utf-8">${faceMarkup(deck)}<style>${SLIDE_BASE_CSS}html,body{margin:0;background:#fff}</style></head><body><div class="dc-slide-host">${await standalone(src, base)}</div></body></html>`;
-  return htmlToPng(html, { width: SLIDE_W, height: SLIDE_H, scale });
+  const html = `<!doctype html><html><head><meta charset="utf-8">${faceMarkup(deck)}<style>${sceneBaseCss(W, H, SLIDE_BASE_CSS)}html,body{margin:0;background:#fff}</style></head><body><div class="dc-slide-host">${await standalone(src, base)}</div></body></html>`;
+  return htmlToPng(html, { width: W, height: H, scale });
 }
 
 /** The slide at `id` (null: the first; true: every shown slide) as PNG files. */
