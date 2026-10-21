@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "provenance": {
+    "author": "Tingly Design contributors",
+    "license": "Apache-2.0 (repository license)",
+    "generator": "PptxGenJS 4.0.1 native APIs; generate.mjs never calls our writer",
+    "assets": "Original generated 48x32 RGBA PNG quadrants; no third-party decks, fonts or images",
+    "normalization": "Sorted ZIP entries/fixed timestamps and core dates including embedded XLSX; asserted generator-specific notesMaster ordering, phantom master override and identical duplicate paragraph-property repairs (see README)",
+    "verification": "Open XML SDK 3.3.0 Office2019 validation: 11 PPTX and embedded XLSX, zero reported errors; independent OPC/XML smoke checks; Office open/render unverified"
+  },
+  "comprehensivePages": [
+    { "page": 1, "source": "supported.pptx#1", "features": ["rich-text", "cjk-escaping", "paragraphs", "rotation", "layering", "line", "local-png", "flip", "notes"] },
+    { "page": 2, "source": "supported.pptx#2", "features": ["round-rect", "solid-background", "local-png", "notes"] },
+    { "page": 3, "source": "cases/table.pptx#1", "features": ["table"] },
+    { "page": 4, "source": "cases/chart.pptx#1", "features": ["chart", "embedded-workbook"] },
+    { "page": 5, "source": "cases/bullets.pptx#1", "features": ["bullets"] },
+    { "page": 6, "source": "cases/crop.pptx#1", "features": ["crop"] },
+    { "page": 7, "source": "cases/mixed-font-size.pptx#1", "features": ["mixed-font-size"] },
+    { "page": 8, "source": "cases/complex-geometry.pptx#1", "features": ["complex-geometry"] },
+    { "page": 9, "source": "cases/shadow.pptx#1", "features": ["shadow"] }
+  ],
+  "fixtures": [
+    { "file": "supported.pptx", "pages": 2, "size": [12, 6.75], "ok": true, "diagnostics": ["text_layout_approximate", "geometry_approximate"], "texts": [["Native ", "中文 & <copy>", "Uniform font and size", "Second paragraph"], ["Second native slide"]], "notes": ["Original speaker notes 中文 page one.", "Original speaker notes page two."], "geometry": ["left:80px;top:480px;width:320px;height:160px;transform:rotate(15deg)", "left:800px;top:480px;width:480px;height:320px;transform:rotate(10deg) scaleX(-1)"], "features": ["rich-text", "cjk-escaping", "paragraphs", "rotation", "layering", "line", "local-png", "flip", "notes", "round-rect", "solid-background"] },
+    { "file": "comprehensive.pptx", "pages": 9, "size": [12, 6.75], "ok": false, "diagnostics": ["forbidden_package"], "diagnosticPart": "ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx", "features": ["supported-pages", "table", "chart", "bullets", "crop", "mixed-font-size", "complex-geometry", "shadow"] },
+    { "file": "cases/table.pptx", "pages": 1, "size": [12, 6.75], "ok": false, "diagnostics": ["unsupported_style"], "texts": [["Native table case", "Item", "Count", "Original", "42"]], "features": ["table"] },
+    { "file": "cases/chart.pptx", "pages": 1, "size": [12, 6.75], "ok": false, "diagnostics": ["forbidden_package"], "diagnosticPart": "ppt/embeddings/Microsoft_Excel_Worksheet2.xlsx", "texts": [["Native chart case"]], "features": ["chart", "embedded-workbook"] },
+    { "file": "cases/bullets.pptx", "pages": 1, "size": [12, 6.75], "ok": false, "diagnostics": ["unsupported_text_style"], "texts": [["Native bullets case", "Native bullet", "Another bullet"]], "features": ["bullets"] },
+    { "file": "cases/crop.pptx", "pages": 1, "size": [12, 6.75], "ok": true, "diagnostics": ["text_layout_approximate"], "geometry": ["overflow:hidden", "object-fit:fill"], "texts": [["Native crop case"]], "features": ["crop"] },
+    { "file": "cases/mixed-font-size.pptx", "pages": 1, "size": [12, 6.75], "ok": false, "diagnostics": ["unsupported_text_style"], "texts": [["Native mixed-font-size case", "Small", "Large"]], "features": ["mixed-font-size"] },
+    { "file": "cases/complex-geometry.pptx", "pages": 1, "size": [12, 6.75], "ok": false, "diagnostics": ["unsupported_geometry"], "texts": [["Native complex-geometry case"]], "features": ["complex-geometry"] },
+    { "file": "cases/shadow.pptx", "pages": 1, "size": [12, 6.75], "ok": false, "diagnostics": ["unsupported_style"], "texts": [["Native shadow case"]], "features": ["shadow"] },
+    { "file": "four-three.pptx", "pages": 1, "size": [10, 7.5], "ok": true, "diagnostics": ["page_contained"], "texts": [["Native four-three slide"]], "notes": ["Original four-three notes."], "geometry": ["left:384px;top:288px;width:288px;height:144px"], "features": ["four-three", "uniform-contain", "notes"] },
+    { "file": "portrait.pptx", "pages": 1, "size": [7.5, 10], "ok": true, "diagnostics": ["page_contained"], "texts": [["Native portrait slide"]], "notes": ["Original portrait notes."], "geometry": ["left:663px;top:216px;width:216px;height:108px"], "features": ["portrait", "uniform-contain", "notes"] }
+  ]
+}
