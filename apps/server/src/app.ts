@@ -84,7 +84,7 @@ import {
 } from './store';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
-import { packClaudeDesign, packProject, unpackProject } from './archive';
+import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
 import { CONNECTORS, ConnectorError, callTool } from './connectors';
 import { readTranscript, recordTurn } from './transcript';
 import { claudeAvailable, forgetConversation, isDelegateRunning, readConversation, startDelegate, stopDelegate, type DelegateRequest } from './delegate';
@@ -117,6 +117,7 @@ const DC_THEME: unknown = await (async () => {
 export const app = new Hono();
 
 app.onError((err, c) => {
+  if (err instanceof PptxImportError) return c.json({ error: trOf(c)(`errors.${err.key}`, err.params), code: err.key, diagnostics: err.diagnostics.map(d => ({ ...d, message: describePptx(d, trOf(c)) })) }, err.status as 400);
   if (err instanceof HttpError) return c.json({ error: trOf(c)(`errors.${err.key}`, err.params), code: err.key }, err.status as 400);
   logError('request.failed', { method: c.req.method, path: c.req.path, error: err.message });
   return c.json({ error: err.message }, 500);
@@ -214,7 +215,27 @@ app.get('/api/projects/:p/claude-design', async (c) => {
 
 /** A project from a .zip made by the route above (or a project folder zipped by hand), a Claude Design package or a Claude Docs Markdown export; its name comes back. */
 app.post('/api/archive', async (c) => {
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  // Bound ingress before materializing the body, including chunked uploads. Existing project
+  // archives retain their 1 GB allowance; the converter enforces PPTX's tighter own budget.
+  const declared = Number(c.req.header('content-length'));
+  if (declared > MAX_ARCHIVE_INPUT) throw new HttpError(413, 'archiveInputTooBig');
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  const reader = c.req.raw.body?.getReader();
+  if (reader) {
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        length += value.length;
+        if (length > MAX_ARCHIVE_INPUT) { await reader.cancel(); throw new HttpError(413, 'archiveInputTooBig'); }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   if (!bytes.length) throw new HttpError(400, 'emptyFile');
   const from = c.req.query('file') ?? 'project';
   const done = await unpackProject(bytes, from);

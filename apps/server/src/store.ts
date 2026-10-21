@@ -280,6 +280,7 @@ function uploadType(ext: string): string {
   if (ext !== 'svg' && ASSET_TYPES[ext]) return ASSET_TYPES[ext];
   if (ext === 'ico') return 'image/x-icon';
   if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'pptx') return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
   if (ext === 'svg') return 'image/svg+xml';
   return 'text/plain; charset=utf-8';
 }
@@ -289,7 +290,7 @@ export function assetRel(rel: string): string {
   // a dashboard's data files: csv, tsv, json, SQLite
   if (isDataPath(r)) return r;
   // what people brought in: files attached to requests, folders they imported
-  if (isUploadPath(r) || isKeptPath(r)) return r;
+  if (isUploadPath(r) || isKeptPath(r) || /^uploads\/pptx-[a-f0-9]{32}\/source\.pptx$/.test(r)) return r;
   const m = /^(assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_. -]{0,120})\.([a-z0-9]+)$/i.exec(r);
   if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, 'notAssetPath', { path: rel });
   return r;

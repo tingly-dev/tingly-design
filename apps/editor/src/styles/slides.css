@@ -1,5 +1,16 @@
 /* Slides: the strip, the stage, presenting. */
 
+.pptx-export .dialog-body {
+  overflow: auto;
+  max-height: 60vh;
+  overflow-wrap: anywhere;
+}
+.pptx-export .dialog-body p { margin: 0 0 12px; }
+.pptx-export .dialog-body li { margin-bottom: 12px; }
+.pptx-export .dialog-body small { color: var(--muted); }
+.pptx-export summary { cursor: pointer; }
+
+
 /* ------------------------------------------------------------- slides */
 
 

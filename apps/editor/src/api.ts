@@ -1,4 +1,4 @@
-import type { Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -165,7 +165,7 @@ export const api = {
   },
   /** a project from a .zip, a Claude Design package or a Claude Docs .md; the name it was given (and the design systems or notes that came with it) come back */
   importArchive: (file: File) =>
-    call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[]; claudeDesign?: ClaudeDesignKind | 'docs'; notes: ClaudeDesignNote[] }>(r)),
+    call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[]; claudeDesign?: ClaudeDesignKind | 'docs'; notes: ClaudeDesignNote[]; pptx?: { report: string; source: string; diagnostics: PptxDiagnostic[]; slides: PptxReport['slides'] } }>(r)),
   /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
   patchProject: (p: string, patch: { title?: string; group?: string }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),

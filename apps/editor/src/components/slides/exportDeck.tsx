@@ -10,6 +10,7 @@ import { pdfHint, printWindow, savePdf } from '../../pdfExport';
 import type { ExportItem } from '../FileMenu';
 import { FileText, FilePdf, Picture } from '../icons';
 import { download } from '../../local';
+import { exportDeckPptx } from './PptxExportDialog';
 
 /**
  * Downloads: one self-contained HTML file that plays the deck (images inlined,
@@ -240,6 +241,7 @@ export function pickSlide(what: string): boolean {
 export function slidesExportItems(direct: boolean | null): ExportItem[] {
   return [
     { id: 'pdf', label: t('common.transfer.label.pdf'), hint: pdfHint(t('common.transfer.hint.slidesPdf'), direct), icon: <FilePdf />, run: () => exportDeck('pdf') },
+    { id: 'pptx', label: t('slides.pptx.label'), hint: t('slides.pptx.hint'), icon: <FileText />, run: exportDeckPptx },
     { id: 'png', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.slideOne'), icon: <Picture />, run: () => exportSlideImages(useStore.getState().slide) },
     { id: 'pngs', label: t('common.transfer.label.pngs'), hint: t('common.transfer.hint.slidesEvery'), icon: <Picture />, run: () => exportSlideImages(true) },
     { id: 'html', label: t('common.transfer.label.html'), hint: t('common.transfer.hint.slidesHtml'), icon: <FileText />, rule: true, run: () => exportDeck('html') },

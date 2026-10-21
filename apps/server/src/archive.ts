@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import {
@@ -19,13 +19,26 @@ import {
   planArchive,
   projectNameFrom,
   renameSystems,
+  importPptx,
+  PPTX_LIMITS,
+  type PptxDiagnostic,
+  type PptxReport,
   type ArchiveManifest,
   type ArchiveOptions,
   type ClaudeDesignNote,
   type ClaudeDesignKind,
 } from '@dc/core';
 import { HttpError, PROJECTS_DIR, isProjectName, kindOf, linkedProjects, projectDir } from './store';
+import type { TFunction } from '@dc/i18n';
 import { VERSION } from './layout';
+
+/** Wording lives in the same bilingual bundle as the import result dialog. */
+export function describePptx(diagnostic: PptxDiagnostic, t: TFunction): string {
+  const code = diagnostic.code;
+  const exact = ['limit_exceeded', 'unsupported_element', 'unsupported_text_style', 'unsupported_geometry', 'unsupported_image_style', 'unsupported_style', 'unsupported_color', 'unsupported_hidden_object', 'notes_too_long', 'page_contained', 'text_layout_approximate', 'kerning_approximate', 'geometry_approximate', 'background_defaulted'] as const;
+  const key = exact.find(k => k === code) ?? (/forbidden|unsafe|external|duplicate/.test(code) ? 'unsafe' : code.startsWith('unsupported_') ? 'unsupported' : 'invalid');
+  return t(`launcher.pptx.reason.${key}`);
+}
 
 /**
  * A whole project as one .zip and back (.design/project-archive.md). The rules on what goes in
@@ -113,6 +126,7 @@ export interface Unpacked {
   /** set when the file was Claude's own format: the kind it was read as */
   claudeDesign?: ClaudeDesignKind | 'docs';
   notes: ClaudeDesignNote[];
+  pptx?: { report: string; source: string; diagnostics: PptxDiagnostic[]; slides: PptxReport['slides'] };
 }
 
 /** Every file of a folder as an archive path, for importing a folder the way a .zip is (the command line). */
@@ -157,8 +171,60 @@ function unzip(bytes: Uint8Array): Record<string, Uint8Array> {
   return files;
 }
 
-/** A project from a .zip, a Claude Design package or a Claude Docs Markdown export: it joins the projects folder under a free name. */
+export const MAX_ARCHIVE_INPUT = MAX_BYTES;
+
+/** Metadata-only sniff: never inflate an OOXML candidate with the generic archive reader. */
+function isOfficePackage(bytes: Uint8Array): boolean {
+  let contentTypes = false, relationships = false, presentation = false;
+  try {
+    unzipSync(bytes, { filter: f => {
+      contentTypes ||= f.name === '[Content_Types].xml';
+      relationships ||= f.name === '_rels/.rels';
+      presentation ||= f.name.startsWith('ppt/');
+      return false;
+    } });
+  } catch { /* An explicitly named PPTX still goes through the strict converter. */ }
+  return presentation || (contentTypes && relationships);
+}
+
+export class PptxImportError extends HttpError {
+  constructor(public diagnostics: PptxDiagnostic[]) {
+    const error = diagnostics.find(d => d.level === 'error');
+    const code = error?.code ?? '';
+    super(code === 'limit_exceeded' ? 413 : 400,
+      code === 'limit_exceeded' ? 'pptxLimit' : code.startsWith('unsupported_') || code === 'notes_too_long' ? 'pptxUnsupported' : /forbidden|unsafe|external|duplicate/.test(code) ? 'pptxUnsafe' : 'pptxInvalid');
+  }
+}
+
+/** Reserve the destination exclusively, so concurrent imports cannot replace one another. */
+async function writePptx(files: Record<string, Uint8Array>, base: string): Promise<string> {
+  const taken = await takenNames();
+  for (;;) {
+    const name = freeName(base, taken);
+    const destination = projectDir(name);
+    try { await mkdir(destination); }
+    catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+      taken.add(name);
+      continue;
+    }
+    try { await writeProject(files, '', name); return name; }
+    catch (e) { await rmdir(destination).catch(() => {}); throw e; }
+  }
+}
+
+/** A project from an archive, Markdown or PPTX; the original PPTX is checked before generic unzip. */
 export async function unpackProject(bytes: Uint8Array, fileName: string): Promise<Unpacked> {
+  if (bytes.length > MAX_ARCHIVE_INPUT) throw new HttpError(413, 'archiveInputTooBig');
+  const office = /\.pptx$/i.test(fileName) || isOfficePackage(bytes);
+  if (office && bytes.length > PPTX_LIMITS.compressedBytes) throw new PptxImportError([{ level: 'error', code: 'limit_exceeded', params: { budget: 'compressedBytes', max: PPTX_LIMITS.compressedBytes } }]);
+  if (office) {
+    const title = fileName.replace(/\.[^.]+$/, '') || 'presentation';
+    const result = importPptx(bytes, { id: `pptx-${randomUUID().replace(/-/g, '')}`, title });
+    if (!result.ok) throw new PptxImportError(result.diagnostics);
+    const name = await writePptx(result.files, projectNameFrom(title));
+    return { name, systems: [], notes: [], pptx: { report: result.report.path, source: result.report.source, diagnostics: result.diagnostics, slides: result.report.slides } };
+  }
   if (/\.(md|markdown)$/i.test(fileName)) {
     const taken = await takenNames();
     const base = projectNameFrom(fileName.replace(/\.(md|markdown)$/i, ''));

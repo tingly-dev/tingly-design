@@ -88,7 +88,7 @@ async def main():
         await pg.goto(f'{BASE}/')
         await pg.wait_for_timeout(2000)
         await pg.locator('button[data-new-menu]').click()
-        item = pg.get_by_role('menuitem', name='Import a project (.zip)…')
+        item = pg.get_by_role('menuitem', name='Import a project package (.zip)…')
         await expect(item).to_be_visible()
         await pg.screenshot(path=OUT + 'launcher-en-light.png')
         async with pg.expect_file_chooser() as fc:
@@ -122,7 +122,7 @@ async def main():
             z.writestr('notes.txt', 'hello')
         await pg.locator('button[data-new-menu]').click()
         async with pg.expect_file_chooser() as fc:
-            await pg.get_by_role('menuitem', name='Import a project (.zip)…').click()
+            await pg.get_by_role('menuitem', name='Import a project package (.zip)…').click()
         await (await fc.value).set_files(bad)
         await expect(pg.get_by_text('There is no Tingly Design project or Claude Design package in this .zip', exact=False)).to_be_visible()
         check('import: a zip with no project is refused in words', True)
@@ -140,7 +140,7 @@ async def main():
         await zp.goto(f'{BASE}/')
         await zp.wait_for_timeout(2000)
         await zp.locator('button[data-new-menu]').click()
-        await expect(zp.get_by_role('menuitem', name='导入项目（.zip）…')).to_be_visible()
+        await expect(zp.get_by_role('menuitem', name='导入项目包（.zip）…')).to_be_visible()
         await zp.screenshot(path=OUT + 'launcher-zh-dark.png')
 
         check('no page errors', not errs, errs)
