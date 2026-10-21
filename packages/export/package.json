@@ -11,6 +11,7 @@
     ".": "./src/index.ts",
     "./timing": "./src/timing.ts",
     "./snap": "./src/frameSnap.ts",
+    "./frames": "./src/frames.ts",
     "./pptx": "./src/pptx.ts",
     "./pptx-dom": "./src/pptxDom.ts"
   },

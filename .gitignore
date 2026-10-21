@@ -16,3 +16,4 @@ projects/.links.json
 projects/.server.json
 __pycache__/
 evals/out/
+scripts/pptx-fidelity/out/

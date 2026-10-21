@@ -9,6 +9,9 @@
 .pptx-export .dialog-body li { margin-bottom: 12px; }
 .pptx-export .dialog-body small { color: var(--muted); }
 .pptx-export summary { cursor: pointer; }
+.pptx-export .pptx-notes { list-style: none; padding: 0; }
+.pptx-export .pptx-notes li { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.pptx-export .pptx-notes li > button { flex: none; }
 
 
 /* ------------------------------------------------------------- slides */

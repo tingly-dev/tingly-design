@@ -16,19 +16,22 @@ export interface PptxDeck {
 export interface PptxSlide { background?: string; notes?: string; objects: PptxObject[] }
 /** PNG/JPEG header dimensions must match the supplied dimensions; no image decoding occurs here. */
 export interface PptxAsset { bytes: Uint8Array; mime: 'image/png' | 'image/jpeg'; widthPx: number; heightPx: number }
-export interface PptxTextStyle { fontFace: string; fontSizePx: number; color?: string; bold?: boolean; italic?: boolean; underline?: boolean }
+/** `opacity` 0..1 (1 when absent); `charSpacingPx` is extra space after each character, like CSS letter-spacing. */
+export interface PptxTextStyle { fontFace: string; fontSizePx: number; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; charSpacingPx?: number; opacity?: number }
 export interface PptxRun { text: string; style?: Partial<PptxTextStyle> }
 export interface PptxParagraph { runs: PptxRun[]; align?: 'left' | 'center' | 'right' | 'justify' }
 export interface PptxBox { x: number; y: number; width: number; height: number; rotation?: number }
-export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagraph[]; style: PptxTextStyle; verticalAlign?: 'top' | 'middle' | 'bottom'; paddingPx?: number }
-export interface PptxShape extends PptxBox { type: 'shape'; shape: 'rect' | 'roundRect' | 'ellipse' | 'line'; fill?: string; stroke?: { color: string; widthPx: number } }
+/** `wrap: false` keeps each paragraph on one line however the reader's fonts measure it (a line already broken by the browser). */
+export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagraph[]; style: PptxTextStyle; verticalAlign?: 'top' | 'middle' | 'bottom'; paddingPx?: number; wrap?: boolean }
+/** `radiusPx` is a roundRect's corner radius (PowerPoint's default when absent); `fillOpacity` 0..1. */
+export interface PptxShape extends PptxBox { type: 'shape'; shape: 'rect' | 'roundRect' | 'ellipse' | 'line'; fill?: string; fillOpacity?: number; radiusPx?: number; stroke?: { color: string; widthPx: number } }
 /** cover crops centrally, contain centers within the box, stretch fills the box. */
 export interface PptxImage extends PptxBox { type: 'image'; asset: string; fit?: 'contain' | 'cover' | 'stretch' }
 export type PptxObject = PptxText | PptxShape | PptxImage;
 
 /** Conservative per-call allocation limits, not a promise of Office layout fidelity.
  * At most 500 slides, 10k objects, 50k paragraphs/runs, 2M UTF-16 text units total,
- * 1M per string, 256 assets, 32MiB per asset/128MiB total, 40M pixels per image.
+ * 1M per string, 2048 assets, 32MiB per asset/128MiB total, 40M pixels per image.
  * Page edges: 1..56 inches; pixel edges <=100k. Geometry may extend one page
  * outside the slide (for intentional bleed); widths/heights <=2 page extents.
  * Fonts must scale to 1..4000pt; strokes must scale to 1..20116800 EMU.
@@ -69,10 +72,11 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
             } });
           }
         }
-        slide.addText(runs, { ...pos, margin: (obj.paddingPx ?? 0) * pt, valign: obj.verticalAlign ?? 'top', fit: 'none', paraSpaceAfter: 0, paraSpaceBefore: 0 });
+        slide.addText(runs, { ...pos, margin: (obj.paddingPx ?? 0) * pt, valign: obj.verticalAlign ?? 'top', fit: 'none', wrap: obj.wrap ?? true, paraSpaceAfter: 0, paraSpaceBefore: 0 });
       } else if (obj.type === 'shape') {
         slide.addShape(pptx.ShapeType[obj.shape], { ...pos,
-          fill: obj.fill ? { color: obj.fill } : { color: 'FFFFFF', transparency: 100 },
+          fill: obj.fill ? { color: obj.fill, transparency: transparency(obj.fillOpacity) } : { color: 'FFFFFF', transparency: 100 },
+          ...(obj.shape === 'roundRect' && obj.radiusPx !== undefined ? { rectRadius: Math.min(obj.radiusPx, obj.width / 2, obj.height / 2) * inch } : {}),
           line: obj.stroke ? { color: obj.stroke.color, width: obj.stroke.widthPx * pt } : { color: 'FFFFFF', transparency: 100 },
         });
       } else {
@@ -100,7 +104,13 @@ function textStyle(s: PptxTextStyle, pt: number): PptxGenJS.TextPropsOptions {
   // 4.0.1 inserts fontFace directly into XML attributes (unlike ordinary text).
   // Keep formatting on every run, not the textbox: its inheritance treats false
   // as absent, otherwise a run cannot turn bold/underline off.
-  return { fontFace: s.fontFace.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;'), fontSize: s.fontSizePx * pt, color: s.color ?? '000000', bold: s.bold ?? false, italic: s.italic ?? false, underline: s.underline ? { style: 'sng' } : undefined };
+  return { fontFace: s.fontFace.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;'), fontSize: s.fontSizePx * pt, color: s.color ?? '000000', bold: s.bold ?? false, italic: s.italic ?? false, underline: s.underline ? { style: 'sng' } : undefined,
+    strike: s.strike ? 'sngStrike' : undefined, charSpacing: s.charSpacingPx ? s.charSpacingPx * pt : undefined, transparency: transparency(s.opacity) };
+}
+/** PptxGenJS transparency is a whole percentage; fully opaque writes none. */
+function transparency(opacity: number | undefined): number | undefined {
+  const t = Math.round((1 - (opacity ?? 1)) * 100);
+  return t > 0 ? t : undefined;
 }
 function base64(bytes: Uint8Array): string {
   // Browser/Node, no Buffer or DOM dependency; chunk to avoid argument-stack limits.
@@ -117,7 +127,7 @@ function number(v: unknown, path: string, min: number, max: number): asserts v i
 function choice(v: unknown, path: string, values: readonly unknown[]) { if (!values.includes(v)) fail(path); }
 function colour(v: unknown, path: string) { if (typeof v !== 'string' || !/^[\da-f]{6}$/i.test(v)) fail(path); }
 function list(v: unknown, path: string, min: number, max: number): asserts v is unknown[] { if (!Array.isArray(v) || v.length < min || v.length > max) fail(path); }
-const styleKeys = ['fontFace', 'fontSizePx', 'color', 'bold', 'italic', 'underline'];
+const styleKeys = ['fontFace', 'fontSizePx', 'color', 'bold', 'italic', 'underline', 'strike', 'charSpacingPx', 'opacity'];
 function validate(d: unknown): asserts d is PptxDeck {
   let textUnits = 0, nodes = 0, objects = 0, byteTotal = 0;
   const text = (v: unknown, p: string, max = 1_000_000) => {
@@ -132,14 +142,16 @@ function validate(d: unknown): asserts d is PptxDeck {
       number(v.fontSizePx * (d as PptxDeck).widthIn / (d as PptxDeck).widthPx * 72, `${p}.fontSizePt`, 1, 4000);
     }
     if (v.color !== undefined) colour(v.color, `${p}.color`);
-    for (const k of ['bold', 'italic', 'underline']) if (v[k] !== undefined && typeof v[k] !== 'boolean') fail(`${p}.${k}`);
+    for (const k of ['bold', 'italic', 'underline', 'strike']) if (v[k] !== undefined && typeof v[k] !== 'boolean') fail(`${p}.${k}`);
+    if (v.charSpacingPx !== undefined) number(v.charSpacingPx, `${p}.charSpacingPx`, -1000, 1000);
+    if (v.opacity !== undefined) number(v.opacity, `${p}.opacity`, 0, 1);
   };
   record(d, 'deck', ['title', 'widthPx', 'heightPx', 'widthIn', 'slides', 'assets']);
   text(d.title, 'title', 4096);
   number(d.widthPx, 'widthPx', 1, 100_000); number(d.heightPx, 'heightPx', 1, 100_000); number(d.widthIn, 'widthIn', 1, 56);
   number(d.heightPx * d.widthIn / d.widthPx, 'heightIn', 1, 56);
   const assets = d.assets === undefined ? {} : d.assets;
-  record(assets, 'assets'); if (Object.keys(assets).length > 256) fail('asset count');
+  record(assets, 'assets'); if (Object.keys(assets).length > 2048) fail('asset count');
   for (const [id, a] of Object.entries(assets)) {
     text(id, 'asset id', 256); record(a, `asset ${id}`, ['bytes', 'mime', 'widthPx', 'heightPx']);
     if (!(a.bytes instanceof Uint8Array) || a.bytes.length === 0 || a.bytes.length > 32 * 1024 * 1024) fail(`asset ${id}.bytes`);
@@ -160,7 +172,7 @@ function validate(d: unknown): asserts d is PptxDeck {
       const q = `${p}.objects[${j}]`; record(o, q);
       const common = ['type', 'x', 'y', 'width', 'height', 'rotation'];
       choice(o.type, `${q}.type`, ['text', 'shape', 'image']);
-      record(o, q, [...common, ...(o.type === 'text' ? ['paragraphs', 'style', 'verticalAlign', 'paddingPx'] : o.type === 'shape' ? ['shape', 'fill', 'stroke'] : ['asset', 'fit'])]);
+      record(o, q, [...common, ...(o.type === 'text' ? ['paragraphs', 'style', 'verticalAlign', 'paddingPx', 'wrap'] : o.type === 'shape' ? ['shape', 'fill', 'fillOpacity', 'radiusPx', 'stroke'] : ['asset', 'fit'])]);
       number(o.x, `${q}.x`, -d.widthPx, 2 * d.widthPx); number(o.y, `${q}.y`, -d.heightPx, 2 * d.heightPx);
       const line = o.type === 'shape' && o.shape === 'line';
       number(o.width, `${q}.width`, line ? 0 : 0.01, 2 * d.widthPx); number(o.height, `${q}.height`, line ? 0 : 0.01, 2 * d.heightPx);
@@ -170,6 +182,7 @@ function validate(d: unknown): asserts d is PptxDeck {
         style(o.style, `${q}.style`);
         if (o.verticalAlign !== undefined) choice(o.verticalAlign, q, ['top', 'middle', 'bottom']);
         if (o.paddingPx !== undefined) number(o.paddingPx, q, 0, Math.min(o.width, o.height) / 2);
+        if (o.wrap !== undefined && typeof o.wrap !== 'boolean') fail(`${q}.wrap`);
         list(o.paragraphs, `${q}.paragraphs`, 1, 50_000);
         for (const para of o.paragraphs) {
           if (++nodes > 50_000) fail('text node budget'); record(para, q, ['runs', 'align']);
@@ -180,6 +193,8 @@ function validate(d: unknown): asserts d is PptxDeck {
       } else if (o.type === 'shape') {
         choice(o.shape, q, ['rect', 'roundRect', 'ellipse', 'line']);
         if (o.fill !== undefined) { if (line) fail(`${q}.fill`); colour(o.fill, q); }
+        if (o.fillOpacity !== undefined) { if (o.fill === undefined) fail(`${q}.fillOpacity`); number(o.fillOpacity, `${q}.fillOpacity`, 0, 1); }
+        if (o.radiusPx !== undefined) { if (o.shape !== 'roundRect') fail(`${q}.radiusPx`); number(o.radiusPx, `${q}.radiusPx`, 0, 2 * d.widthPx); }
         if (o.stroke !== undefined) { record(o.stroke, q, ['color', 'widthPx']); colour(o.stroke.color, q); number(o.stroke.widthPx, q, 0.01, 1000); number(o.stroke.widthPx * d.widthIn / d.widthPx * 914400, `${q}.stroke.emu`, 1, 20116800); }
         if (line && o.stroke === undefined) fail(`${q}.stroke`);
       } else {

@@ -1,9 +1,13 @@
-/** Browser-only, read-only layout snapshot. No source parsing, network or editor imports.
+/** Browser-only layout snapshot. No source parsing, network or editor imports.
  * Supply connected, unscaled rendered slide roots with fonts/images already loaded.
- * Native support is intentionally bounded: opaque solid boxes, rect/rounded/ellipse/line
- * x-shape, PNG/JPEG images and horizontal text measured with DOM Range (one native
- * text object per rendered text-node line). Unsupported content fails atomically unless
- * the caller supplies a real full-slide rasterizer. That fallback replaces ALL objects.
+ * Native objects are preferred: solid or translucent boxes (square or uniformly rounded),
+ * rect/rounded/ellipse/line x-shape, PNG/JPEG images, list markers and horizontal text
+ * measured with DOM Range (one native text object per rendered text-node line). Children
+ * paint in CSS stacking order (in-flow, then positioned by z-index, ties in source order).
+ * What has no native equivalent (gradients, shadows, SVG, embeds, transforms, clipping…)
+ * fails unless the caller supplies `rasterizeElement`: then only that element becomes a
+ * picture, either with its children (`subtree`) or just its own painting (`self`, its
+ * children stay native). `rasterizeSlide` remains the coarser whole-slide alternative.
  * Browser and PowerPoint glyph metrics can differ; fonts are not embedded.
  * This produces drawing data, not validated package bytes: writePptx still validates
  * asset headers/dimensions, text controls and font/physical-unit bounds before writing.
@@ -11,7 +15,7 @@
 import type { PptxAsset, PptxDeck, PptxObject, PptxSlide, PptxTextStyle } from './pptx';
 
 export interface PptxDomDiagnostic {
-  code: 'invalid-input' | 'unsupported' | 'not-ready' | 'budget' | 'asset' | 'rasterized' | 'text-metrics' | 'shape-approximation';
+  code: 'invalid-input' | 'unsupported' | 'not-ready' | 'budget' | 'asset' | 'rasterized' | 'text-metrics' | 'shape-approximation' | 'approximated';
   slide: number;
   /** Stable child-index path, independent of optional source IDs. */
   path: string;
@@ -22,32 +26,46 @@ export interface PptxDomLimits {
   maxSlides: number; maxElements: number; maxTextCharacters: number; maxObjects: number;
   maxAssetBytes: number; maxImagePixels: number; timeoutMs: number;
 }
+/** A caller-made picture of one element, placed at `x/y/width/height` CSS pixels relative to the slide root. */
+export interface PptxRaster { asset: PptxAsset; x: number; y: number; width: number; height: number }
 export interface PptxDomOptions {
   title: string;
   widthIn: number;
   /** No implicit fetch, even for data/blob URLs. Return validated local PNG/JPEG bytes. */
   resolveImage?: (image: HTMLImageElement, context: { slide: number; signal?: AbortSignal }) => Promise<PptxAsset>;
+  /** A picture of `element` as painted in place. `subtree` includes its descendants; `self`
+   * only its own box (background, border, shadow, pseudo-elements), with its text and child
+   * elements left out because they are exported natively. Null when nothing was painted. */
+  rasterizeElement?: (element: Element, context: { slide: number; mode: 'subtree' | 'self'; feature: string; signal?: AbortSignal }) => Promise<PptxRaster | null>;
   /** Real caller-owned capture; entire slide replaces native objects to preserve layering. */
   rasterizeSlide?: (root: HTMLElement, context: { slide: number; diagnostics: readonly PptxDomDiagnostic[]; signal?: AbortSignal }) => Promise<PptxAsset>;
   signal?: AbortSignal;
-  /** Opt-in to the runtime's closed paintLayer contract, never arbitrary CSS z-index.
-   * Every non-auto layer must carry the matching runtime-authored positive integer.
-   * Siblings paint by that layer, ties in source order; direct text cannot mix with layers. */
+  /** Accepted for compatibility: stacking order is now always derived from computed z-index. */
   paintOrder?: 'tingly-slide-v1';
   /** Budgets may only tighten the defaults. Writer validation remains authoritative. */
   limits?: Partial<PptxDomLimits>;
 }
 export type PptxDomResult = { ok: true; deck: PptxDeck; diagnostics: PptxDomDiagnostic[] } | { ok: false; diagnostics: PptxDomDiagnostic[] };
 const defaults: PptxDomLimits = { maxSlides: 200, maxElements: 10000, maxTextCharacters: 200000, maxObjects: 10000, maxAssetBytes: 100 * 1024 * 1024, maxImagePixels: 40000000, timeoutMs: 30000 };
+/** Errors that say the capture itself cannot go on, never "draw this element another way". */
+const FATAL = ['budget', 'asset', 'not-ready'];
+/** Elements drawn by something other than CSS boxes and text. */
+const REPLACED = new Set(['SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'OBJECT', 'EMBED', 'PICTURE', 'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'METER', 'PROGRESS', 'MATH', 'X-EMBED', 'X-ICON', 'X-CONNECTOR']);
 
 /** Computed sRGB only. Undefined is fully transparent; partial alpha is unsupported. */
 export function pptxDomColor(value: string): string | undefined {
+  const paint = pptxDomPaint(value);
+  if (paint && paint.opacity !== 1) throw new Error('unsupported-alpha');
+  return paint?.color;
+}
+/** Computed sRGB with its alpha. Undefined is fully transparent. */
+export function pptxDomPaint(value: string): { color: string; opacity: number } | undefined {
   const m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/.exec(value);
   if (!m || m.slice(1, 4).some(v => Number(v) > 255)) throw new Error('unsupported-color');
-  const alpha = m[4] === undefined ? 1 : Number(m[4]);
-  if (alpha === 0) return undefined;
-  if (alpha !== 1) throw new Error('unsupported-alpha');
-  return m.slice(1, 4).map(v => Number(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+  const opacity = m[4] === undefined ? 1 : Number(m[4]);
+  if (opacity === 0) return undefined;
+  if (!(opacity > 0 && opacity <= 1)) throw new Error('unsupported-color');
+  return { color: m.slice(1, 4).map(v => Number(v).toString(16).padStart(2, '0')).join('').toUpperCase(), opacity };
 }
 
 export async function slidesDomToPptx(roots: readonly HTMLElement[], options: PptxDomOptions): Promise<PptxDomResult> {
@@ -113,34 +131,74 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
       if (slide === 0) { widthPx = rb.width; heightPx = rb.height; }
       else if (Math.abs(widthPx - rb.width) > 0.1 || Math.abs(heightPx - rb.height) > 0.1) throw new Error('page-size');
       const box = (b: DOMRect) => ({ x: b.left - rb.left, y: b.top - rb.top, width: b.width, height: b.height });
-      const opaque = (v: string) => pptxDomColor(v);
-      const color = (v: string) => { const c = opaque(v); if (!c) throw new Error('transparent-text'); return c; };
-      function styleText(st: CSSStyleDeclaration): PptxTextStyle {
-        if (st.direction !== 'ltr' || st.writingMode !== 'horizontal-tb' || st.textTransform !== 'none' || !['normal', '0px'].includes(st.letterSpacing) || st.textShadow !== 'none' || st.getPropertyValue('-webkit-text-stroke-width') !== '0px' || !['normal', 'none'].includes(st.fontVariantNumeric) || st.textDecorationLine.includes('line-through')) throw new Error('text-style');
-        if (st.fontVariantCaps !== 'normal' || !['normal', '0px'].includes(st.wordSpacing) || st.textDecorationStyle !== 'solid' || st.hyphens === 'auto') throw new Error('text-style');
-        if (st.getPropertyValue('-webkit-text-fill-color') && st.getPropertyValue('-webkit-text-fill-color') !== st.color) throw new Error('text-fill');
-        return { fontFace: st.fontFamily.split(',')[0].trim().replace(/^['"]|['"]$/g, ''), fontSizePx: parseFloat(st.fontSize), color: color(st.color), bold: Number(st.fontWeight) >= 600 || st.fontWeight === 'bold', italic: st.fontStyle === 'italic', underline: st.textDecorationLine.includes('underline') };
+      // Painted wholly off the page: nothing to see, and the writer keeps geometry near the page.
+      const offPage = (b: { x: number; y: number; width: number; height: number }) => b.x >= rb.width || b.y >= rb.height || b.x + b.width <= 0 || b.y + b.height <= 0;
+      const css = (el: Element, pseudo?: string) => win!.getComputedStyle(el, pseudo);
+      const raster = options.rasterizeElement;
+      /** Without a rasterizer, an element with no native form is reported and left out (the slide fails); with one, the caller draws it. */
+      const refuse = (path: string, feature: string) => { if (raster) throw new Error(feature); issue(slide, path, 'unsupported', feature); };
+      const approximated = (path: string, feature: string) => { if (!diagnostics.slice(start).some(d => d.code === 'approximated' && d.feature === feature)) issue(slide, path, 'approximated', feature, 'warning'); };
+      async function picture(el: Element, path: string, mode: 'subtree' | 'self', feature: string) {
+        let drawn: PptxRaster | null;
+        try { drawn = await bounded(raster!(el, { slide, mode, feature, signal: options.signal })); }
+        catch (error) { throw new Error(error instanceof Error && error.message === 'budget' ? 'budget' : 'rasterization'); }
+        issue(slide, path, 'rasterized', feature, 'warning');
+        if (!drawn || offPage(drawn)) return;
+        if (![drawn.x, drawn.y, drawn.width, drawn.height].every(Number.isFinite) || drawn.width <= 0 || drawn.height <= 0) throw new Error('rasterization');
+        push({ type: 'image', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height, asset: asset(drawn.asset), fit: 'stretch' });
       }
-      function text(node: Text, path: string) {
-        const parent = node.parentElement!;
-        const st = win!.getComputedStyle(parent);
-        const value = node.data;
-        if (!value.trim() && !['pre', 'pre-wrap', 'break-spaces'].includes(st.whiteSpace)) return;
-        const ts = styleText(st);
-        // CSS decorations propagate through descendants without appearing in their
-        // computed textDecorationLine. The DTO cannot express the ancestor's separate
-        // decoration colour/metrics, so reject rather than silently removing it.
-        for (let ancestor = parent.parentElement; ancestor && root.contains(ancestor); ancestor = ancestor.parentElement) {
-          if (win!.getComputedStyle(ancestor).textDecorationLine !== 'none') throw new Error('propagated-text-decoration');
+      function styleText(st: CSSStyleDeclaration, path: string, alpha: number, inherited: { underline: boolean; strike: boolean }): PptxTextStyle {
+        if (st.direction !== 'ltr' || st.writingMode !== 'horizontal-tb' || st.getPropertyValue('-webkit-text-stroke-width') !== '0px') throw new Error('text-direction');
+        if (st.getPropertyValue('-webkit-text-fill-color') && st.getPropertyValue('-webkit-text-fill-color') !== st.color) throw new Error('text-fill');
+        if (st.getPropertyValue('background-clip') === 'text' || st.getPropertyValue('-webkit-background-clip') === 'text') throw new Error('text-fill');
+        // Close enough to keep the text editable: positions come from the measured lines anyway.
+        if (st.textShadow !== 'none') approximated(path, 'text-shadow');
+        if (st.fontVariantCaps !== 'normal') approximated(path, 'small-caps');
+        if (!['normal', '0px'].includes(st.wordSpacing)) approximated(path, 'word-spacing');
+        if (st.textDecorationLine !== 'none' && st.textDecorationStyle !== 'solid') approximated(path, 'decoration-style');
+        const paint = pptxDomPaint(st.color);
+        if (!paint) throw new Error('transparent-text');
+        const spacing = parseFloat(st.letterSpacing);
+        const opacity = paint.opacity * alpha;
+        return {
+          fontFace: st.fontFamily.split(',')[0].trim().replace(/^['"]|['"]$/g, ''), fontSizePx: parseFloat(st.fontSize), color: paint.color,
+          bold: Number(st.fontWeight) >= 600 || st.fontWeight === 'bold', italic: st.fontStyle === 'italic',
+          underline: inherited.underline || st.textDecorationLine.includes('underline'), strike: inherited.strike || st.textDecorationLine.includes('line-through'),
+          ...(spacing ? { charSpacingPx: spacing } : {}), ...(opacity < 1 ? { opacity } : {}),
+        };
+      }
+      // CSS decorations propagate to descendants without appearing in their computed
+      // textDecorationLine; the run carries them instead (in the run's own colour).
+      function decorations(el: Element) {
+        const found = { underline: false, strike: false };
+        for (let ancestor = el.parentElement; ancestor && root.contains(ancestor); ancestor = ancestor.parentElement) {
+          const line = css(ancestor).textDecorationLine;
+          found.underline ||= line.includes('underline'); found.strike ||= line.includes('line-through');
         }
+        return found;
+      }
+      function transformText(value: string, previous: string, mode: string): string {
+        if (mode === 'uppercase') return value.toUpperCase();
+        if (mode === 'lowercase') return value.toLowerCase();
+        if (mode === 'capitalize' && (!previous || /\s/.test(previous))) return value.toUpperCase();
+        return value;
+      }
+      function text(node: Text, path: string, alpha: number) {
+        const parent = node.parentElement!;
+        const st = css(parent);
+        if (st.visibility !== 'visible') return;
+        const value = node.data;
+        const pre = ['pre', 'pre-wrap', 'break-spaces'].includes(st.whiteSpace);
+        if (!value.trim() && !pre) return;
+        const ts = styleText(st, path, alpha, decorations(parent));
         const range = root.ownerDocument.createRange();
         let chunk = '', previous: DOMRect | undefined, first: DOMRect | undefined;
         const flush = () => {
+          if (!pre) chunk = chunk.trimEnd();
           if (chunk && first && previous) {
             const b = box(first);
             b.width = previous.right - first.left;
-          if (b.x < -0.5 || b.y < -0.5 || b.x + b.width > rb.width + 0.5 || b.y + b.height > rb.height + 0.5) throw new Error('text-outside-slide');
-            if (b.width > 0) push({ type: 'text', ...b, style: ts, paddingPx: 0, verticalAlign: 'top', paragraphs: [{ runs: [{ text: chunk }] }] });
+            if (b.width > 0 && !offPage(b)) push({ type: 'text', ...b, style: ts, paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: chunk }] }] });
           }
           chunk = ''; first = undefined; previous = undefined;
         };
@@ -150,116 +208,206 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           range.setStart(node, i); range.setEnd(node, i + n);
           const rects = range.getClientRects();
           const b = rects[0];
-          let char = value.slice(i, i + n); i += n;
+          let char = transformText(value.slice(i, i + n), value.slice(Math.max(0, i - 1), i), st.textTransform); i += n;
           if (!b || b.width <= 0) continue;
-          if (/^[\t\r\n ]+$/.test(char) && !['pre', 'pre-wrap', 'break-spaces'].includes(st.whiteSpace)) char = ' ';
+          if (/^[\t\r\n ]+$/.test(char) && !pre) {
+            // collapsed white space: some builds still give the collapsed characters a width
+            if (!chunk || chunk.endsWith(' ')) continue;
+            char = ' ';
+          }
           if (previous && (Math.abs(previous.top - b.top) > 0.5 || b.left < previous.left - 0.5)) flush();
           first ??= b; previous = b; chunk += char;
         }
         flush(); range.detach();
         if (!diagnostics.slice(start).some(d => d.code === 'text-metrics')) issue(slide, path, 'text-metrics', 'font-not-embedded', 'warning');
       }
-      function layer(el: HTMLElement): number | undefined {
-        if (options.paintOrder !== 'tingly-slide-v1') return undefined;
-        const marker = el.getAttribute('data-dc-paint-layer');
-        if (!marker || !/^[1-9]\d{0,4}$/.test(marker)) return undefined;
-        const st = win!.getComputedStyle(el);
-        if (st.zIndex !== marker) return undefined;
-        const parent = el.parentElement && win!.getComputedStyle(el.parentElement);
-        // z-index affects positioned boxes and flex/grid items only.
-        if (st.position === 'static' && !['flex', 'inline-flex', 'grid', 'inline-grid'].includes(parent?.display ?? '')) return undefined;
-        return Number(marker);
+      /** The text a list item's marker shows, or undefined for a style with no native stand-in. */
+      function marker(el: HTMLElement, st: CSSStyleDeclaration): string | undefined {
+        const type = st.listStyleType;
+        const list = el.parentElement;
+        let n = Number(el.getAttribute('value')) || 0;
+        if (!n) {
+          n = list?.tagName === 'OL' ? Number(list.getAttribute('start')) || 1 : 1;
+          for (let sibling = el.previousElementSibling; sibling; sibling = sibling.previousElementSibling) if (sibling.tagName === 'LI') n++;
+        }
+        const alpha = (k: number) => { let s = ''; for (; k > 0; k = Math.floor((k - 1) / 26)) s = String.fromCharCode(97 + ((k - 1) % 26)) + s; return s; };
+        const roman = (k: number) => [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']].reduce((s, [v, r]) => { while (k >= (v as number)) { s += r; k -= v as number; } return s; }, '');
+        if (/^["']/.test(type)) return type.slice(1, -1);
+        return ({ disc: '•', circle: '◦', square: '▪', decimal: `${n}.`, 'decimal-leading-zero': `${String(n).padStart(2, '0')}.`, 'lower-alpha': `${alpha(n)}.`, 'lower-latin': `${alpha(n)}.`, 'upper-alpha': `${alpha(n).toUpperCase()}.`, 'upper-latin': `${alpha(n).toUpperCase()}.`, 'lower-roman': `${roman(n)}.`, 'upper-roman': `${roman(n).toUpperCase()}.` } as Record<string, string>)[type];
       }
-      function unsupported(el: HTMLElement, st: CSSStyleDeclaration): string | undefined {
+      function listMarker(el: HTMLElement, st: CSSStyleDeclaration, path: string, alpha: number) {
+        if (st.display !== 'list-item' || st.listStyleType === 'none') return;
+        if (st.listStyleImage !== 'none') throw new Error('list-image');
+        const label = marker(el, st);
+        if (label === undefined) throw new Error('list-style');
+        const ms = css(el, '::marker');
+        const range = root.ownerDocument.createRange();
+        range.selectNodeContents(el);
+        const line = Array.from(range.getClientRects()).find(r => r.width > 0 && r.height > 0);
+        range.detach();
+        if (!line) return;
+        const ctx = root.ownerDocument.createElement('canvas').getContext('2d');
+        if (!ctx) throw new Error('list-style');
+        ctx.font = `${ms.fontStyle} ${ms.fontWeight} ${ms.fontSize} ${ms.fontFamily}`;
+        // Chrome draws the marker followed by a space, ending where the content starts.
+        const width = ctx.measureText(`${label} `).width;
+        const b = el.getBoundingClientRect();
+        const contentLeft = b.left + parseFloat(st.borderLeftWidth) + parseFloat(st.paddingLeft);
+        const left = (st.listStylePosition === 'inside' ? line.left : contentLeft) - width;
+        const at = box(new DOMRect(left, line.top, width, line.height));
+        if (!offPage(at)) push({ type: 'text', ...at, style: styleText(ms, path, alpha, { underline: false, strike: false }), paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: label }] }] });
+      }
+      /** Whether clipping at this element's padding box cuts anything it contains. */
+      function clips(el: Element): boolean {
+        const b = el.getBoundingClientRect();
+        const inside = (r: DOMRect) => r.width <= 0 || r.height <= 0 || (r.left >= b.left - 0.5 && r.top >= b.top - 0.5 && r.right <= b.right + 0.5 && r.bottom <= b.bottom + 0.5);
+        const range = root.ownerDocument.createRange();
+        range.selectNodeContents(el);
+        const cut = Array.from(range.getClientRects()).some(r => !inside(r)) || Array.from(el.querySelectorAll('*')).some(c => !inside(c.getBoundingClientRect()));
+        range.detach();
+        return cut;
+      }
+      /** What stops this element's subtree from being drawn natively. */
+      function subtreeFeature(el: Element, st: CSSStyleDeclaration): string | undefined {
         if (st.transform !== 'none' || st.getPropertyValue('rotate') !== 'none' || st.getPropertyValue('scale') !== 'none' || st.getPropertyValue('translate') !== 'none') return 'transform';
-        if (st.opacity !== '1' || st.filter !== 'none' || st.backdropFilter !== 'none' || st.mixBlendMode !== 'normal' || st.isolation === 'isolate') return 'compositing';
-        if (st.backgroundImage !== 'none' || st.boxShadow !== 'none' || st.clipPath !== 'none' || st.getPropertyValue('mask-image') !== 'none') return 'paint-effect';
-        if ((st.zIndex !== 'auto' && layer(el) === undefined) || st.order !== '0') return 'stacking-order';
+        if (st.filter !== 'none' || st.backdropFilter !== 'none' || st.mixBlendMode !== 'normal') return 'compositing';
+        if (st.clipPath !== 'none' || st.getPropertyValue('mask-image') !== 'none') return 'clipping';
         if (st.position === 'fixed' || st.position === 'sticky') return 'position';
         if (st.animationName !== 'none') return 'animation';
-        for (const pseudo of ['::before', '::after']) {
-          const ps = win!.getComputedStyle(el, pseudo);
-          if (!['none', 'normal', ''].includes(ps.content) && ps.display !== 'none') return 'pseudo-content';
-        }
-        if (el !== root && el.tagName !== 'IMG' && [st.overflowX, st.overflowY].some(v => v !== 'visible')) return 'clipping';
+        if (el !== root && el.tagName !== 'IMG' && [st.overflowX, st.overflowY].some(v => v !== 'visible') && clips(el)) return 'clipping';
         return undefined;
       }
-      const supportedTags = new Set(['SECTION', 'DIV', 'P', 'H1', 'H2', 'H3', 'SPAN', 'B', 'I', 'U', 'BR', 'IMG', 'X-SHAPE']);
-      async function walk(el: HTMLElement, path: string): Promise<void> {
+      /** What of this element's own painting has no native form (its children are unaffected). */
+      function selfFeature(el: Element, st: CSSStyleDeclaration): string | undefined {
+        if (st.backgroundImage !== 'none') return 'gradient';
+        if (st.boxShadow !== 'none') return 'shadow';
+        for (const pseudo of ['::before', '::after']) {
+          const ps = css(el, pseudo);
+          if (!['none', 'normal', ''].includes(ps.content) && ps.display !== 'none') return 'pseudo-content';
+        }
+        return undefined;
+      }
+      /** CSS paint order among siblings: in-flow content, then positioned boxes by z-index, ties in source order. */
+      function stacking(node: ChildNode, parent: CSSStyleDeclaration): number {
+        if (node.nodeType !== 1) return 0;
+        const st = css(node as Element);
+        const stackingItem = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(parent.display) && st.zIndex !== 'auto';
+        if (st.position === 'static' && !stackingItem) return 0;
+        const z = st.zIndex === 'auto' ? 0 : Number(st.zIndex);
+        return z < 0 ? -1 + z / 1e6 : z === 0 ? 1 : 2 + z;
+      }
+      async function walk(el: Element, path: string, alpha: number): Promise<void> {
         check();
         if (el.tagName === 'ASIDE') return;
-        const st = win!.getComputedStyle(el);
+        const st = css(el);
         if (st.display === 'none') return;
         if (st.visibility !== 'visible') {
-          if (Array.from(el.querySelectorAll('*')).some(c => win!.getComputedStyle(c).visibility === 'visible')) issue(slide, path, 'unsupported', 'visibility-override');
+          // Its own painting and text are hidden; a descendant may still show itself.
+          for (const [i, child] of Array.from(el.children).entries()) await walk(child, `${path}/${i}`, alpha);
           return;
         }
-        const feature = unsupported(el, st);
-        if (feature) { issue(slide, path, 'unsupported', feature); return; }
-        if (!supportedTags.has(el.tagName)) { issue(slide, path, 'unsupported', el.tagName.toLowerCase()); return; }
+        const mark = output.objects.length, marked = diagnostics.length;
+        try { await element(el, st, path, alpha); }
+        catch (error) {
+          const feature = error instanceof Error ? error.message : 'unknown';
+          if (!raster || FATAL.includes(feature) || feature === 'rasterization') throw error;
+          objects -= output.objects.length - mark;
+          output.objects.length = mark; diagnostics.length = marked;
+          await picture(el, path, 'subtree', feature);
+        }
+      }
+      async function element(el: Element, st: CSSStyleDeclaration, path: string, inheritedAlpha: number): Promise<void> {
+        const tag = el.tagName.toUpperCase();
+        if (el.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(tag)) { refuse(path, tag.toLowerCase()); return; }
+        const feature = subtreeFeature(el, st);
+        if (feature) { refuse(path, feature); return; }
         const b = box(el.getBoundingClientRect());
-        if (b.x < -0.5 || b.y < -0.5 || b.x + b.width > rb.width + 0.5 || b.y + b.height > rb.height + 0.5) { issue(slide, path, 'unsupported', 'outside-slide'); return; }
-        let fill = opaque(st.backgroundColor);
+        const alpha = inheritedAlpha * Number(st.opacity);
+        if (alpha <= 0) return;
+        if (el !== root && offPage(b) && st.position !== 'static') return;
+        let own = selfFeature(el, st);
+        let fill: { color: string; opacity: number } | undefined;
+        try { fill = pptxDomPaint(st.backgroundColor); } catch { own ??= 'background'; }
         let stroke: { color: string; widthPx: number } | undefined;
+        /** Borders on some sides only (a rule under a heading, a table row): one native line per side. */
+        let edges: PptxObject[] = [];
         const sides = ['Top', 'Right', 'Bottom', 'Left'] as const;
         const borders = sides.map(s => ({ width: parseFloat(st[`border${s}Width`]), style: st[`border${s}Style`], color: st[`border${s}Color`] }));
         const active = borders.filter(v => v.width > 0 && v.style !== 'none');
         const kind = el.getAttribute('kind') ?? 'rect';
-        const line = el.tagName === 'X-SHAPE' && kind === 'line';
+        const line = tag === 'X-SHAPE' && kind === 'line';
         if (active.length) {
           const bs = active[0];
-          if (bs.style !== 'solid' || (!line && (active.length !== 4 || active.some(v => v.width !== bs.width || v.style !== bs.style || v.color !== bs.color)))) throw new Error('border');
-          stroke = { color: color(bs.color), widthPx: bs.width };
+          let paint: { color: string; opacity: number } | undefined;
+          try { paint = pptxDomPaint(bs.color); } catch { /* reported below */ }
+          const uniformBorder = active.length === 4 && active.every(v => v.width === bs.width && v.style === bs.style && v.color === bs.color);
+          if (bs.style !== 'solid' || !paint || paint.opacity * alpha < 1) own ??= 'border';
+          else if (line || uniformBorder) stroke = { color: paint.color, widthPx: bs.width };
+          else {
+            for (const [i, side] of borders.entries()) {
+              if (!(side.width > 0 && side.style !== 'none')) continue;
+              let sp: { color: string; opacity: number } | undefined;
+              try { sp = pptxDomPaint(side.color); } catch { /* reported below */ }
+              if (side.style !== 'solid' || !sp || sp.opacity * alpha < 1) { own ??= 'border'; break; }
+              const half = side.width / 2;
+              const at = i === 0 ? { x: b.x, y: b.y + half, width: b.width, height: 0 } : i === 2 ? { x: b.x, y: b.y + b.height - half, width: b.width, height: 0 }
+                : i === 3 ? { x: b.x + half, y: b.y, width: 0, height: b.height } : { x: b.x + b.width - half, y: b.y, width: 0, height: b.height };
+              edges.push({ type: 'shape', shape: 'line', ...at, stroke: { color: sp.color, widthPx: side.width } });
+            }
+          }
         }
+        const radii = [st.borderTopLeftRadius, st.borderTopRightRadius, st.borderBottomLeftRadius, st.borderBottomRightRadius];
+        const radius = parseFloat(radii[0]) || 0;
+        // One circular radius on all four corners is a native rounded rectangle; anything else is drawn.
+        const uniform = radii.every(r => r === radii[0] && !/\s/.test(r.trim()) && !r.includes('%'));
         let shape: 'rect' | 'roundRect' | 'ellipse' | 'line' = 'rect';
-        if (el.tagName === 'X-SHAPE') {
-          if (!['rect', 'rounded', 'ellipse', 'line'].includes(kind) || el.children.length) throw new Error('shape');
+        if (tag === 'X-SHAPE') {
+          if (!['rect', 'rounded', 'ellipse', 'line'].includes(kind) || el.children.length) { refuse(path, `shape:${kind}`); return; }
           shape = kind === 'rounded' ? 'roundRect' : kind as 'rect' | 'ellipse' | 'line';
-          if (shape === 'roundRect') issue(slide, path, 'shape-approximation', 'roundRect-radius', 'warning');
-          if (shape === 'rect' && [st.borderTopLeftRadius, st.borderTopRightRadius, st.borderBottomLeftRadius, st.borderBottomRightRadius].some(v => parseFloat(v))) throw new Error('shape-radius');
-        } else if (parseFloat(st.borderTopLeftRadius) || parseFloat(st.borderTopRightRadius) || parseFloat(st.borderBottomLeftRadius) || parseFloat(st.borderBottomRightRadius)) throw new Error('border-radius');
-        if (el === root) output.background = fill ?? 'FFFFFF';
-        if ((fill || stroke || el.tagName === 'X-SHAPE') && (el !== root || stroke)) push({ type: 'shape', ...b, shape, fill, stroke });
-        if (el.tagName === 'IMG') {
+          if (shape === 'roundRect' && !radius) issue(slide, path, 'shape-approximation', 'roundRect-radius', 'warning');
+          if (shape === 'rect' && radius) { if (uniform) shape = 'roundRect'; else own ??= 'border-radius'; }
+        } else if (radius || radii.some(r => parseFloat(r))) {
+          if (!uniform) own ??= 'border-radius';
+          else shape = radius >= Math.min(b.width, b.height) / 2 - 0.5 && Math.abs(b.width - b.height) < 0.5 ? 'ellipse' : 'roundRect';
+        }
+        if (own && tag === 'IMG') { refuse(path, own); return; }
+        if (own && !raster) { refuse(path, own); return; }
+        if (el === root) output.background = fill?.opacity === 1 ? fill.color : 'FFFFFF';
+        // rounded corners bend the border, which separate lines cannot follow
+        if (edges.length && shape !== 'rect') own ??= 'border';
+        if (own) { edges = []; await picture(el, path, 'self', own); }
+        else {
+          const shown = fill && !(el === root && fill.opacity === 1);
+          if ((shown || stroke || tag === 'X-SHAPE') && (el !== root || shown || stroke)) {
+            if (stroke && alpha < 1) { refuse(path, 'compositing'); return; }
+            const opacity = (fill?.opacity ?? 1) * alpha;
+            push({ type: 'shape', ...b, shape, fill: fill?.color, ...(fill && opacity < 1 ? { fillOpacity: opacity } : {}), ...(shape === 'roundRect' && radius ? { radiusPx: radius } : {}), stroke });
+          }
+          for (const edge of edges) push(edge);
+        }
+        if (tag === 'IMG') {
           const image = el as HTMLImageElement;
           if (!image.complete || !image.naturalWidth) throw new Error('not-ready');
+          if (st.objectPosition !== '50% 50%' || !['fill', 'contain', 'cover'].includes(st.objectFit) || fill || stroke || edges.length || alpha < 1 || shape !== 'rect' || parseFloat(st.paddingTop) || parseFloat(st.paddingLeft) || parseFloat(st.paddingRight) || parseFloat(st.paddingBottom)) { refuse(path, 'image-style'); return; }
           if (!options.resolveImage) throw new Error('asset');
-          if (st.objectPosition !== '50% 50%' || !['fill', 'contain', 'cover'].includes(st.objectFit) || fill || stroke || parseFloat(st.paddingTop) || parseFloat(st.paddingLeft) || parseFloat(st.paddingRight) || parseFloat(st.paddingBottom)) throw new Error('image-style');
           const resolved = await bounded(options.resolveImage(image, { slide, signal: options.signal }));
           const id = asset(resolved);
           push({ type: 'image', ...b, asset: id, fit: st.objectFit === 'fill' ? 'stretch' : st.objectFit as 'contain' | 'cover' });
           return;
         }
-        const positioned = Array.from(el.children).filter(c => c.tagName !== 'ASIDE' && win!.getComputedStyle(c).display !== 'none').map(c => win!.getComputedStyle(c).position !== 'static');
-        // Direct text also participates in the in-flow paint phase, before positioned
-        // descendants, even when its source node follows them.
-        const directText = Array.from(el.childNodes).some(node => {
-          if (node.nodeType !== 3) return false;
-          const range = root.ownerDocument.createRange();
-          range.selectNodeContents(node);
-          const painted = Array.from(range.getClientRects()).some(rect => rect.width > 0 && rect.height > 0);
-          range.detach();
-          return painted;
-        });
-        const children = Array.from(el.childNodes).map((node, i) => ({ node, i }));
-        const visibleChildren = children.filter(({ node }) => node.nodeType === 1 && (node as Element).tagName !== 'ASIDE' && win!.getComputedStyle(node as Element).display !== 'none');
-        const layered = visibleChildren.some(({ node }) => layer(node as HTMLElement) !== undefined);
-        if (layered) {
-          if (directText || visibleChildren.some(({ node }) => layer(node as HTMLElement) === undefined)) { issue(slide, path, 'unsupported', 'mixed-layer-paint-order'); return; }
-          // The runtime groups flow siblings on the same layer. Their source order
-          // is retained; pinned siblings use their own positive layer.
-          children.sort((a, b) => (a.node.nodeType === 1 ? layer(a.node as HTMLElement) ?? 0 : 0) - (b.node.nodeType === 1 ? layer(b.node as HTMLElement) ?? 0 : 0) || a.i - b.i);
-        } else if (positioned.some(Boolean) && (positioned.some(v => !v) || directText)) { issue(slide, path, 'unsupported', 'mixed-position-paint-order'); return; }
+        if (tag === 'LI') listMarker(el as HTMLElement, st, path, alpha);
+        const children = Array.from(el.childNodes).map((node, i) => ({ node, i, z: stacking(node, st), order: node.nodeType === 1 ? Number(css(node as Element).order) || 0 : 0 }));
+        children.sort((a, b) => a.z - b.z || a.order - b.order || a.i - b.i);
         for (const { node: child, i } of children) {
           const cp = `${path}/${i}`;
-          if (child.nodeType === 3) text(child as Text, cp);
-          else if (child.nodeType === 1) await walk(child as HTMLElement, cp);
+          if (child.nodeType === 3) text(child as Text, cp, alpha);
+          else if (child.nodeType === 1) await walk(child as Element, cp, alpha);
         }
       }
-      await walk(root, 'root');
+      await walk(root, 'root', 1);
     } catch (error) {
       const feature = error instanceof Error ? error.message : 'unknown';
-      issue(slide, 'root', ['budget', 'asset', 'not-ready'].includes(feature) ? feature as 'budget' | 'asset' | 'not-ready' : 'unsupported', feature);
+      issue(slide, 'root', FATAL.includes(feature) ? feature as 'budget' | 'asset' | 'not-ready' : 'unsupported', feature);
     }
     const failures = diagnostics.slice(start).filter(d => d.severity === 'error');
     if (failures.length && options.rasterizeSlide && !failures.some(d => ['budget', 'invalid-input', 'not-ready'].includes(d.code) || ['page-size', 'transformed-root'].includes(d.feature ?? ''))) {

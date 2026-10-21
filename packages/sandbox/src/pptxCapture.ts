@@ -1,12 +1,77 @@
 /** Private serializable capture bridge. DOM never leaves the opaque-origin runtime. */
-import { slidesDomToPptx, type PptxDomResult } from '@dc/export/pptx-dom';
+import { slidesDomToPptx, type PptxDomResult, type PptxRaster } from '@dc/export/pptx-dom';
 import type { PptxAsset } from '@dc/export/pptx';
+import { FrameRasterizer } from '@dc/export/frames';
+import { snapFrame } from '@dc/export/snap';
 
 export interface PptxCaptureRequest {
   dcPptx: 'capture'; id: string; source: string; title: string;
-  images: Record<string, PptxAsset>; timeoutMs: number;
+  images: Record<string, PptxAsset>; timeoutMs: number; widthIn: number;
 }
 export type PptxCaptureReply = { dcPptx: 'captured'; id: string; result: PptxDomResult };
+
+/** Output pixels per CSS pixel of an element's picture: sharp on a projector, bounded in size. */
+const SCALE = 2;
+const ISOLATE = `[data-dc-pptx-iso]{visibility:hidden!important}
+[data-dc-pptx-iso][data-dc-pptx-target],[data-dc-pptx-iso] [data-dc-pptx-target]{visibility:visible!important}
+[data-dc-pptx-target=self]>*{visibility:hidden!important}
+[data-dc-pptx-target=self]{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;text-decoration-color:transparent!important}`;
+
+/** A picture of one element as painted in place: everything else on the slide is hidden
+ * (visibility keeps the layout), the slide is drawn the way image export draws it, and the
+ * picture is cropped to what the element actually painted, shadows included. Embedded
+ * frames hand over pictures of themselves. */
+async function rasterizeElement(section: HTMLElement, el: Element, mode: 'subtree' | 'self', rasterizer: FrameRasterizer, signal: AbortSignal): Promise<PptxRaster | null> {
+  const width = section.offsetWidth, height = section.offsetHeight;
+  const frames = new Map<Element, string>();
+  if (mode === 'subtree') {
+    for (const frame of Array.from(el.querySelectorAll('iframe')).concat(el.tagName === 'IFRAME' ? [el as HTMLIFrameElement] : [])) {
+      // a frame that is still starting has not drawn yet: ask again once
+      const url = (await snapFrame(frame, 4000)) ?? (await new Promise(r => setTimeout(r, 500)), await snapFrame(frame, 4000));
+      if (url) frames.set(frame, url);
+    }
+  }
+  if (signal.aborted) throw new Error('budget');
+  const style = document.createElement('style');
+  style.textContent = ISOLATE;
+  document.head.appendChild(style);
+  section.setAttribute('data-dc-pptx-iso', '');
+  el.setAttribute('data-dc-pptx-target', mode);
+  let canvas: HTMLCanvasElement;
+  try {
+    const frame = await rasterizer.begin(section, frames);
+    await frame.ready;
+    canvas = document.createElement('canvas');
+    canvas.width = width * SCALE; canvas.height = height * SCALE;
+    frame.draw(canvas);
+  } finally {
+    el.removeAttribute('data-dc-pptx-target');
+    section.removeAttribute('data-dc-pptx-iso');
+    style.remove();
+  }
+  const g = canvas.getContext('2d', { willReadFrequently: true })!;
+  const { data } = g.getImageData(0, 0, canvas.width, canvas.height);
+  let left = canvas.width, top = canvas.height, right = -1, bottom = -1;
+  for (let y = 0; y < canvas.height; y++) {
+    const row = y * canvas.width * 4;
+    for (let x = 0; x < canvas.width; x++) {
+      if (data[row + x * 4 + 3] === 0) continue;
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      bottom = y;
+    }
+  }
+  if (right < 0) return null;
+  const w = right - left + 1, h = bottom - top + 1;
+  const crop = document.createElement('canvas');
+  crop.width = w; crop.height = h;
+  crop.getContext('2d')!.drawImage(canvas, left, top, w, h, 0, 0, w, h);
+  const blob = await new Promise<Blob | null>(resolve => crop.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('rasterization');
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  return { asset: { bytes, mime: 'image/png', widthPx: w, heightPx: h }, x: left / SCALE, y: top / SCALE, width: w / SCALE, height: h / SCALE };
+}
 
 /** Installed by the ordinary slide renderer, using its committed source as a fence. */
 export function answerPptxCapture(mount: HTMLElement, committed: () => string): void {
@@ -16,20 +81,21 @@ export function answerPptxCapture(mount: HTMLElement, committed: () => string): 
     if (event.data.dcPptx === 'cancel') { active?.abort(); return; }
     if (event.data.dcPptx !== 'capture') return;
     const m = event.data as PptxCaptureRequest;
-    if (typeof m.id !== 'string' || m.id.length > 100 || typeof m.source !== 'string' || m.source.length > 150 * 1024 * 1024 || typeof m.title !== 'string' || !Number.isSafeInteger(m.timeoutMs) || m.timeoutMs < 1 || m.timeoutMs > 30000) return;
+    if (typeof m.id !== 'string' || m.id.length > 100 || typeof m.source !== 'string' || m.source.length > 150 * 1024 * 1024 || typeof m.title !== 'string' || !Number.isSafeInteger(m.timeoutMs) || m.timeoutMs < 1 || m.timeoutMs > 30000 || !(m.widthIn >= 1 && m.widthIn <= 56)) return;
     active?.abort();
     const controller = new AbortController();
     active = controller;
     const timer = setTimeout(() => controller.abort(), m.timeoutMs);
     const signal = controller.signal;
-    const pause = () => new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(done, 10);
+    const pause = (ms = 10) => new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(done, ms);
       function done() { signal.removeEventListener('abort', aborted); resolve(); }
       function aborted() { clearTimeout(timer); reject(new Error('deadline')); }
       signal.addEventListener('abort', aborted, { once: true });
       if (signal.aborted) aborted();
     });
     let result: PptxDomResult;
+    let rasterizer: FrameRasterizer | undefined;
     try {
       while (committed() !== m.source) await pause();
       const section = mount.querySelector<HTMLElement>('.dc-slide-host > section');
@@ -41,19 +107,26 @@ export function answerPptxCapture(mount: HTMLElement, committed: () => string): 
       const images = Array.from(section.querySelectorAll('img')).filter(image => image.getClientRects().length && getComputedStyle(image).visibility === 'visible');
       while (images.some(image => !image.complete)) await pause();
       if (images.some(image => !image.naturalWidth)) throw new Error('image');
+      // embeds run their own pages: give them a moment to draw before a picture is asked of them
+      if (section.querySelector('iframe')) await pause(600);
       if (signal.aborted) throw new Error('deadline');
+      const fonts = Array.from(document.querySelectorAll('style')).map(s => s.textContent ?? '').filter(css => css.includes('@font-face')).join('\n');
+      rasterizer = new FrameRasterizer({ width: section.offsetWidth, height: section.offsetHeight, fontEmbedCSS: fonts });
+      const drawer = rasterizer;
       result = await slidesDomToPptx([section], {
-        title: m.title, widthIn: 13.333333, signal, paintOrder: 'tingly-slide-v1',
+        title: m.title, widthIn: m.widthIn, signal,
         limits: { timeoutMs: m.timeoutMs },
         resolveImage: async image => {
           const asset = m.images?.[image.getAttribute('src') ?? ''];
-          if (!asset) throw new Error('asset');
+          // a picture PowerPoint cannot hold as it is (SVG, WebP, GIF) is drawn instead
+          if (!asset) throw new Error('image-format');
           return asset;
         },
+        rasterizeElement: (el, context) => rasterizeElement(section, el, context.mode, drawer, signal),
       });
     } catch (error) {
       result = { ok: false, diagnostics: [{ code: signal.aborted ? 'budget' : 'not-ready', slide: 0, path: 'root', feature: error instanceof Error ? error.message : 'capture', severity: 'error' }] };
-    } finally { clearTimeout(timer); if (active === controller) active = undefined; }
+    } finally { clearTimeout(timer); rasterizer?.dispose(); if (active === controller) active = undefined; }
     window.parent.postMessage({ dcPptx: 'captured', id: m.id, result } satisfies PptxCaptureReply, '*');
   });
 }
