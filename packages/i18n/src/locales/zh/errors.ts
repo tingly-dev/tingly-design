@@ -39,7 +39,7 @@ export default {
   archiveInputTooBig: '导入文件超过 1 GB。请拆成更小的项目后重试。',
   pptxLimit: '演示文稿超出了安全导入限制。请减少幻灯片数量或图片尺寸后重试。未创建任何项目。',
   pptxUnsupported: '演示文稿包含暂时无法导入为可编辑幻灯片的内容。请在 PowerPoint 中简化所列内容后重试。未创建任何项目。',
-  pptxUnsafe: '演示文稿包含不安全或外部内容。请移除链接文件、宏和嵌入对象后另存为新的 .pptx。未创建任何项目。',
+  pptxUnsafe: '演示文稿包含宏、控件或不安全的文件包结构。请在 PowerPoint 中另存为不含宏的普通 .pptx 后重试。未创建任何项目。',
   pptxInvalid: '无法读取这个演示文稿。请在 PowerPoint 中打开并另存为新的 .pptx 后重试。未创建任何项目。',
   fileTooLarge: '文件超过 {{size}}',
   cannotKeep: '不能保存这个文件：{{path}}',

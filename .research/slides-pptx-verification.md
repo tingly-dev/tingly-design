@@ -8,7 +8,7 @@
 
 | 检查 | 已执行结果 |
 |---|---|
-| `pnpm --filter @dc/core exec vitest run test/pptx.test.ts test/pptxSmoke.test.ts test/pptxBridge.test.ts test/serverPptxImport.test.ts` | 4 files /94 tests 通过；包含行距、原图裁剪、显式未合并表格、空装饰文本框、包安全、API/CLI、原子失败与并发重名 |
+| `pnpm --filter @dc/core exec vitest run test/pptx.test.ts test/pptxSmoke.test.ts test/pptxBridge.test.ts test/serverPptxImport.test.ts` | 4 files /88 tests 通过；尽力而为后：包安全与预算仍整份拒绝，对象/页级问题局部化；列表、分组、主题表格与合并、图表重绘、渐变、阴影、页形、API/CLI 与并发重名 |
 | `pnpm --filter @dc/export test` | 48 tests 通过；原生对象、单位、文字、图片、备注、输入边界与 writer normalization，及半透明、圆角半径、字距、删除线、不换行 |
 | `pnpm --filter @dc/import --filter @dc/i18n test` | 分别 22 /7 tests 通过 |
 | `node --test evals/test/evals.test.mjs` | 4 tests 通过 |
@@ -48,6 +48,17 @@
 | 压力 deck（渐变封面、阴影卡片、渐变文字、列表、SVG/JPEG 图片、旋转标签、SVG 图标、文字阴影、径向渐变） | 4 | 1.45% | 2.31%（封面） | 剩余差异多为抗锯齿与亚像素字形偏移 |
 
 看图发现并修复的问题：每行文本框按测量宽度会在 LibreOffice 里折行（改为 `wrap="none"`）；只有一边的表格分隔线以 2px 图片放大后发黑（改为原生线条）；离屏捕获框架里嵌入块不画（Chrome 停掉视口外框架的动画帧，改为视口内 1% 透明）；`FrameRasterizer` 的空白基线宿主用了 `visibility:hidden`，使根节点的隐藏不被写出（改为 opacity）。LibreOffice 自身偏差：带 alpha 的文字加字距会被截短（去掉 alpha 即正常），PowerPoint 未复核。
+
+## 导入方向的图像差分（LibreOffice 渲染原文件 vs 导入后的编辑器 PDF）
+
+`python3 scripts/pptx-fidelity/compare.py --import <file.pptx> --fonts`：经 CLI 导入，参考图是 LibreOffice 渲染的原始 PPTX，候选是编辑器导出的 PDF，同样 960 px、阈值 48。2026-10-21：
+
+| deck | 页数 | 平均差异像素 | 最高一页 | 说明 |
+|---|---|---|---|---|
+| python-pptx Office 模板（标题、两级列表、主题表格、柱状图、分组与预设形状） | 5 | 2.30% | 5.15%（列表页） | 改进前整份拒绝（列表、主题表格、图表、分组各自都会） |
+| 同一份经 LibreOffice 另存 | 5 | 1.90% | — | 另存后的 XML 更显式，继承链更短 |
+
+看图发现并修复的问题：空 `<a:ln>` 让文本框多出黑边（无宽度、无填充、无主题线时不画描边）；tint 公式方向错（改为线性光里计算，与 LibreOffice/PowerPoint 的表格色一致）；合并单元格被重复画出；值轴上限低于 Office（按 Office 多留一档）。剩余差异：项目符号字形 `–` 画成圆点、小幅文字偏移、LibreOffice 自身的表头加粗差异。
 
 ## 全仓测试的环境边界
 

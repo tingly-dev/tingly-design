@@ -1,6 +1,11 @@
-"""How close a deck's PowerPoint export looks to the deck itself, slide by slide.
+"""How close a PowerPoint round trip looks to its source, slide by slide.
 
     python3 scripts/pptx-fidelity/compare.py <project> [--out DIR] [--fonts]
+    python3 scripts/pptx-fidelity/compare.py --import <file.pptx> [--out DIR]
+
+Export (the default): the deck is the reference and its .pptx is the candidate.
+Import (`--import`): the .pptx rendered by LibreOffice is the reference, and the project the
+command line's `import` makes of it, exported as PDF by the editor, is the candidate.
 
 Exports the project twice through the real command line (`export --as pdf`, the editor's
 own rendering in Chrome, and `export --as pptx`), renders the .pptx with LibreOffice (an
@@ -75,26 +80,37 @@ def pages(pdf: Path, prefix: Path) -> list[Image.Image]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument('project')
+    ap.add_argument('project', nargs='?')
+    ap.add_argument('--import', dest='source', default=None, help='a .pptx to import and compare with itself')
     ap.add_argument('--out', default=None)
     ap.add_argument('--fonts', action='store_true')
     a = ap.parse_args()
-    out = Path(a.out or ROOT / 'scripts/pptx-fidelity/out' / a.project).resolve()
-    out.mkdir(parents=True, exist_ok=True)
-    deck = json.loads((project_dir(a.project) / 'deck.json').read_text())
-    if a.fonts:
-        install_fonts(deck)
+    if not a.project and not a.source:
+        ap.error('name a project, or a .pptx with --import')
     with tempfile.TemporaryDirectory(prefix='pptx-fidelity-') as tmp:
         tmp = Path(tmp)
+        if a.source:
+            source = Path(a.source).resolve()
+            made = subprocess.run(['pnpm', '-s', 'tingly-design', 'import', str(source)], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+            a.project = re.search(r'^Imported (\S+) into', made, re.M).group(1)
+            print(made)
+        out = Path(a.out or ROOT / 'scripts/pptx-fidelity/out' / a.project).resolve()
+        out.mkdir(parents=True, exist_ok=True)
+        deck = json.loads((project_dir(a.project) / 'deck.json').read_text())
+        if a.fonts:
+            install_fonts(deck)
         run(['pnpm', '-s', 'tingly-design', 'export', a.project, '--as', 'pdf', '--out', str(tmp / 'pdf')])
-        run(['pnpm', '-s', 'tingly-design', 'export', a.project, '--as', 'pptx', '--out', str(tmp / 'pptx')])
         pdf = next((tmp / 'pdf').glob('*.pdf'))
-        pptx = next((tmp / 'pptx').glob('*.pptx'))
-        (out / 'export.pptx').write_bytes(pptx.read_bytes())
+        if a.source:
+            pptx = source
+        else:
+            run(['pnpm', '-s', 'tingly-design', 'export', a.project, '--as', 'pptx', '--out', str(tmp / 'pptx')])
+            pptx = next((tmp / 'pptx').glob('*.pptx'))
+            (out / 'export.pptx').write_bytes(pptx.read_bytes())
         run(['soffice', '--headless', '--convert-to', 'pdf', '--outdir', str(tmp / 'lo'), str(pptx)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         lo = next((tmp / 'lo').glob('*.pdf'))
-        ref = pages(pdf, tmp / 'ref')
-        got = pages(lo, tmp / 'got')
+        # the reference is what the user already trusts: the deck on export, the PowerPoint file on import
+        ref, got = (pages(lo, tmp / 'ref'), pages(pdf, tmp / 'got')) if a.source else (pages(pdf, tmp / 'ref'), pages(lo, tmp / 'got'))
     rows = []
     for i, (r, g) in enumerate(zip(ref, got), 1):
         if g.size != r.size:
@@ -102,8 +118,8 @@ def main() -> int:
         diff = np.asarray(ImageChops.difference(r, g), dtype=np.int16)
         off = (diff.max(axis=2) > TOLERANCE).mean() * 100
         mean = diff.mean()
-        r.save(out / f'{i:02d}-deck.png')
-        g.save(out / f'{i:02d}-pptx.png')
+        r.save(out / f'{i:02d}-{"pptx" if a.source else "deck"}.png')
+        g.save(out / f'{i:02d}-{"deck" if a.source else "pptx"}.png')
         # differing pixels in red over a faded reference
         mask = Image.fromarray(((diff.max(axis=2) > TOLERANCE) * 255).astype('uint8'))
         faded = Image.blend(r, Image.new('RGB', r.size, 'white'), 0.75)
@@ -111,12 +127,14 @@ def main() -> int:
         faded.save(out / f'{i:02d}-diff.png')
         rows.append((i, off, mean))
     order = deck.get('order') or []
-    lines = [f'# PPTX fidelity · {a.project}', '', f'Reference: the deck exported as PDF by the editor. Candidate: the .pptx rendered by LibreOffice. Tolerance {TOLERANCE}/255 per channel; {WIDTH}px wide.', '',
+    what = ('Reference: the .pptx rendered by LibreOffice. Candidate: the imported deck exported as PDF by the editor.' if a.source
+            else 'Reference: the deck exported as PDF by the editor. Candidate: the .pptx rendered by LibreOffice.')
+    lines = [f'# PPTX fidelity · {a.project}', '', f'{what} Tolerance {TOLERANCE}/255 per channel; {WIDTH}px wide.', '',
              '| # | slide | differing pixels | mean difference |', '|---|---|---|---|']
     for i, off, mean in rows:
         lines.append(f'| {i} | {order[i - 1] if i - 1 < len(order) else ""} | {off:.2f}% | {mean:.2f} |')
     if len(ref) != len(got):
-        lines.append(f'\nPage counts differ: deck {len(ref)}, pptx {len(got)}.')
+        lines.append(f'\nPage counts differ: reference {len(ref)}, candidate {len(got)}.')
     avg = sum(r[1] for r in rows) / max(1, len(rows))
     lines.append(f'\nAverage differing pixels: **{avg:.2f}%**')
     (out / 'report.md').write_text('\n'.join(lines) + '\n')

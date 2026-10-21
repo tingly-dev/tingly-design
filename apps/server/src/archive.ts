@@ -20,6 +20,7 @@ import {
   projectNameFrom,
   renameSystems,
   importPptx,
+  pptxNote,
   PPTX_LIMITS,
   type PptxDiagnostic,
   type PptxReport,
@@ -34,10 +35,7 @@ import { VERSION } from './layout';
 
 /** Wording lives in the same bilingual bundle as the import result dialog. */
 export function describePptx(diagnostic: PptxDiagnostic, t: TFunction): string {
-  const code = diagnostic.code;
-  const exact = ['limit_exceeded', 'unsupported_element', 'unsupported_text_style', 'unsupported_geometry', 'unsupported_image_style', 'unsupported_style', 'unsupported_color', 'unsupported_hidden_object', 'notes_too_long', 'page_contained', 'text_layout_approximate', 'kerning_approximate', 'geometry_approximate', 'background_defaulted'] as const;
-  const key = exact.find(k => k === code) ?? (/forbidden|unsafe|external|duplicate/.test(code) ? 'unsafe' : code.startsWith('unsupported_') ? 'unsupported' : 'invalid');
-  return t(`launcher.pptx.reason.${key}`);
+  return t(`launcher.pptx.reason.${pptxNote(diagnostic)}`);
 }
 
 /**

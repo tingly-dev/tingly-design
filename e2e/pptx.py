@@ -28,6 +28,19 @@ CHROME = os.environ.get('DC_CHROME')
 PROJECTS = Path(os.environ.get('DC_PROJECTS', str(REPO / 'projects'))).resolve()
 OUT = REPO / 'e2e' / 'out' / 'pptx'
 FIXTURES = REPO / 'packages/core/test/fixtures/pptx-smoke'
+
+
+def _macro():
+    """A macro-enabled package: one of the few things that still refuse the whole file."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(FIXTURES / 'cases/table.pptx') as src, zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as dst:
+        for item in src.infolist():
+            dst.writestr(item, src.read(item))
+        dst.writestr('ppt/vbaProject.bin', b'\x01')
+    return out.getvalue()
+
+
+MACRO = _macro()
 PREFIX = 'e2e-pptx-' + uuid.uuid4().hex[:10]
 OWNED = set()
 ZIP_STEMS = {}
@@ -315,15 +328,19 @@ async def main():
           twins[0]['name'] != twins[1]['name'] and all(len(json.loads(files(t['name'])['deck.json']['content'])['order']) == 2 for t in twins))
     prior = owned_names()
     try:
-        import_api((FIXTURES / 'cases/table.pptx').read_bytes(), PREFIX + '-unsupported')
-        check('API: unsupported table import fails', False)
+        import_api(MACRO, PREFIX + '-unsafe')
+        check('API: macro package import fails', False)
     except urllib.error.HTTPError as error:
         body = json.loads(error.read())
-        check('API: unsupported import returns actionable diagnostics',
+        check('API: refused import returns actionable diagnostics',
               error.code == 400 and bool(body.get('error')) and bool(body.get('diagnostics'))
-              and any(d.get('level') == 'error' and d.get('code', '').startswith('unsupported') and d.get('part') for d in body['diagnostics']), body)
-    check('API: unsupported import leaves no visible project', owned_names() == prior)
-    check('API: unsupported import leaves no target folder', not (PROJECTS / (PREFIX + '-unsupported')).exists())
+              and any(d.get('level') == 'error' and d.get('code') == 'forbidden_package' and d.get('part') for d in body['diagnostics']), body)
+    check('API: refused import leaves no visible project', owned_names() == prior)
+    check('API: refused import leaves no target folder', not (PROJECTS / (PREFIX + '-unsafe')).exists())
+    best = import_api((FIXTURES / 'comprehensive.pptx').read_bytes(), PREFIX + '-best-effort')
+    check('API: tables, lists, charts and effects import instead of refusing the file',
+          len(json.loads(files(best['name'])['deck.json']['content'])['order']) == 9
+          and any(d.get('code') == 'chart_redrawn' for d in best['pptx']['diagnostics']), best['pptx']['diagnostics'])
     name, original, image = await native_deck()
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
@@ -341,13 +358,24 @@ async def main():
         dropped = await finish_import(pg)
         preserved(dropped, source)
         check('launcher: picker and drop both create ordinary editable decks', True)
+        notes_file = OUT / (PREFIX + '-notes.pptx')
+        notes_file.write_bytes((FIXTURES / 'comprehensive.pptx').read_bytes())
+        await picker(pg, notes_file)
+        notes = await report_open(pg)
+        chart_note = notes.locator('.pptx-import-notes li').filter(has_text='A chart was redrawn')
+        await expect(chart_note).to_have_count(1)
+        await expect(chart_note.locator('strong')).to_have_text('Slide 4: object 3')
+        check('import report: one line per kind of note, naming its slides', await notes.locator('.pptx-import-notes li').filter(has_text='Text wrapping').count() == 1)
+        await notes.locator('footer').get_by_role('button', name='Open project', exact=True).click()
+        await pg.wait_for_url(re.compile(r'\?p=' + re.escape(PREFIX)), timeout=30000)
+        own(urllib.parse.parse_qs(urllib.parse.urlparse(pg.url).query)['p'][0])
         bad_file = OUT / (PREFIX + '-bad-picker.pptx')
-        bad_file.write_bytes((FIXTURES / 'cases/table.pptx').read_bytes())
+        bad_file.write_bytes(MACRO)
         before_bad = owned_names()
         await picker(pg, bad_file)
         refusal = await report_open(pg)
         await expect(refusal.get_by_text('PowerPoint could not be imported', exact=True)).to_be_visible()
-        check('launcher: unsupported PPTX stays on launcher with visible failure and no new project',
+        check('launcher: refused PPTX stays on launcher with visible failure and no new project',
               'p=' not in pg.url and owned_names() == before_bad)
         await refusal.locator('footer').get_by_role('button', name='Close', exact=True).click()
         # Each direct import action still uses shared detection, without a mode choice.
