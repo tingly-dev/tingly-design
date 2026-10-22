@@ -35,7 +35,8 @@ export type Role =
  * Hide and lock, as the layers tree writes them: boolean attributes on the
  * element itself, so a hand edit, Claude Code and the editor all see the same
  * state. Hidden is not drawn anywhere (stage, play, export); locked can't be
- * picked, dragged, resized or retyped on the stage (the panel still edits it).
+ * picked, dragged, resized or retyped on the stage, and the panel shows its
+ * properties read-only.
  * Both apply to everything inside the element.
  */
 export const HIDE_ATTR = 'data-hide';

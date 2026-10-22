@@ -27,7 +27,7 @@ import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, ty
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
-import { htmlToPng, saveImage } from '../../imageExport';
+import { copyImage, htmlToPng, saveImage } from '../../imageExport';
 import type { Editor } from '@tiptap/core';
 import { Versions } from './Versions';
 import { AskClaude } from '../AskClaude';
@@ -35,7 +35,7 @@ import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
 import { FileMenu, type ExportItem } from '../FileMenu';
-import { FilePdf, FileText, Picture } from '../icons';
+import { CopyPicture, FilePdf, FileText, Picture } from '../icons';
 import { t as tNow } from '../../i18n';
 import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
@@ -272,6 +272,14 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       disabled: !tab,
       rule: true,
       run: async () => void (await saveImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }))),
+    },
+    {
+      id: 'copy-png',
+      label: tNow('common.transfer.label.copyPng'),
+      hint: tNow('common.transfer.hint.docTab'),
+      icon: <CopyPicture />,
+      disabled: !tab,
+      run: async () => void (await copyImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }))),
     },
   ];
 }

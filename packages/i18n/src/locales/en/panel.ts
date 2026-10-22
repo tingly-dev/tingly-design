@@ -29,6 +29,10 @@ export default {
     shortcuts: 'Shortcuts',
     shortcutList: 'V select · H hand · T text · A artboard · N note · P pen · R rectangle · O oval · L line · ⇧1 fit all · ⇧2 zoom to selection · Esc deselect · ⇧↵ select parent · ↵ select child',
   },
+  lock: {
+    own: 'This layer is locked, so its properties are read-only.',
+    outer: 'Locked by the {{layer}} around it, so its properties are read-only.',
+  },
   layers: {
     hide: 'Hide',
     show: 'Show',
@@ -37,6 +41,11 @@ export default {
     unlock: 'Unlock',
     lockInherited: 'Locked by a layer around it',
     label: 'Layers',
+    soloHint: 'Alt-click: keep only this one',
+    marked_one: '{{count}} layer selected',
+    marked_other: '{{count}} layers selected',
+    clearMarks: 'Clear selection',
+    markHint: 'Shift-click selects a range, ⌘/Ctrl-click adds one. Hide and lock then apply to all of them.',
     collapse: 'Collapse',
     expand: 'Expand',
     count_one: '{{count}} item',

@@ -57,6 +57,7 @@ import {
   IconPaperclip,
   IconPencil,
   IconPhoto,
+  IconCopy,
   IconPlayerPauseFilled,
   IconPlayerPlay,
   IconPlayerPlayFilled,
@@ -191,6 +192,7 @@ export const TextRight = tabler(IconAlignRight, 14);
 export const TextJustify = tabler(IconAlignJustified, 14);
 export const NoneI = tabler(IconBan, 14);
 export const Picture = tabler(IconPhoto);
+export const CopyPicture = tabler(IconCopy);
 export const Clip = tabler(IconPaperclip);
 export const FileText = tabler(IconFileText, 14);
 export const ImportI = tabler(IconFileImport);

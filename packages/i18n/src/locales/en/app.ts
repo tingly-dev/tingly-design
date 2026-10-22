@@ -30,6 +30,9 @@ export default {
     keptChanging: '{{file}} keeps being changed by someone else, so this edit wasn\'t saved.',
     deleteConflict: '{{file}} was just changed by someone else, so it wasn\'t deleted.',
   },
+  lock: {
+    blocked: 'This layer is locked. Unlock it in Layers to change it.',
+  },
   clipboard: {
     empty: 'The clipboard is empty.',
     selectFirst: 'Select an element or artboard first, then paste.',

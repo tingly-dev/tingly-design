@@ -108,8 +108,6 @@ export default {
     source: '源文件 (.dc.html)',
     timeout: '导出超时',
     failed: '导出失败',
-    copied: '已复制为 PNG',
-    copyFallback: '浏览器不支持复制图片，已改为下载 PNG',
   },
   note: {
     titleLabel: '标题',

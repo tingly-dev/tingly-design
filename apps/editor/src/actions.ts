@@ -20,6 +20,7 @@ import { getClip, setClip } from './clipboard';
 import { deleteSlide, duplicateSlide, moveSlide } from './components/slides/slides';
 import { slideIdOf } from '@dc/core';
 import { currentLanguage, t } from './i18n';
+import { locked, lockOf } from './layerFlags';
 
 /**
  * Commands on the current selection, shared by the context menu, the
@@ -90,6 +91,7 @@ export function copySelection(): void {
 }
 
 export function cutSelection(): void {
+  if (locked()) return;
   copySelection();
   deleteSelection(false);
 }
@@ -100,6 +102,8 @@ export function paste(): void {
   const sel = s.selection;
   if (!clip) return toast(t('app.clipboard.empty'));
   if (clip.kind === 'el') {
+    // pasting after a locked element only touches its parent; into an artboard or inside a locked layer it changes locked content
+    if ((sel?.kind === 'board' || (sel?.kind === 'el' && !lockOf(s)?.own)) && locked()) return;
     if (sel?.kind === 'el') {
       const tid = insertHtml(sel.file, sel.tid, 'after', clip.html);
       if (tid !== null) set({ selection: { kind: 'el', file: sel.file, tid } });
@@ -130,7 +134,11 @@ export function paste(): void {
 export function duplicateSelection(): void {
   const s = get();
   const sel = s.selection;
-  if (sel?.kind === 'el') return void elementOp((tid) => ({ kind: 'duplicate', tid }));
+  if (sel?.kind === 'el') {
+    // the copy lands next to the original: fine for a locked element, not inside a locked layer around it
+    if (lockOf(s) && !lockOf(s)?.own && locked()) return;
+    return void elementOp((tid) => ({ kind: 'duplicate', tid }));
+  }
   if (sel?.kind === 'note') {
     copySelection();
     return paste();
@@ -146,6 +154,7 @@ export function duplicateSelection(): void {
 export function deleteSelection(confirmBoards = true): void {
   const s = get();
   const sel = s.selection;
+  if (locked()) return;
   if (sel?.kind === 'el') {
     const src = display(s, sel.file);
     const el = src ? parsed(src).elements[sel.tid] : undefined;
@@ -167,6 +176,7 @@ export function deleteSelection(confirmBoards = true): void {
 export function orderSelection(to: 'first' | 'last'): void {
   const s = get();
   const sel = s.selection;
+  if (locked()) return;
   if (sel?.kind === 'el') return void elementOp((tid) => ({ kind: 'order', tid, to }));
   if (sel?.kind === 'note') {
     // canvas items paint in key order: re-insert the key at the start or end
@@ -198,7 +208,7 @@ export const WRAP_STYLES = {
 
 export function wrapSelection(kind: keyof typeof WRAP_STYLES): void {
   const s = selectedElement();
-  if (!s) return;
+  if (!s || locked()) return;
   if (!s.el.parent) return toast(t('app.board.rootWrap'));
   if (!editElement(s.file, [{ kind: 'wrap', tid: s.tid, style: WRAP_STYLES[kind] }])) return;
   // the new wrapper takes the element's old place, and so its tid
@@ -207,7 +217,7 @@ export function wrapSelection(kind: keyof typeof WRAP_STYLES): void {
 
 export function ungroupSelection(): void {
   const s = selectedElement();
-  if (!s) return;
+  if (!s || locked()) return;
   if (!s.el.parent) return toast(t('app.board.rootUnwrap'));
   if (!s.el.children.some((c) => c.kind === 'el')) return toast(t('app.board.noChildren'));
   if (editElement(s.file, [{ kind: 'unwrap', tid: s.tid }])) set({ selection: { kind: 'el', file: s.file, tid: s.tid } });
@@ -216,6 +226,7 @@ export function ungroupSelection(): void {
 export function flipSelection(axis: 'x' | 'y'): void {
   const s = get();
   const sel = s.selection;
+  if (locked()) return;
   if (sel?.kind === 'note') {
     const key = axis === 'x' ? 'flipX' : 'flipY';
     editCanvas((c) => {

@@ -1,5 +1,6 @@
-"""End-to-end checks for Copy as PNG in the canvas context menu: an element and a whole artboard land on the
-clipboard as PNGs, and a browser without an image clipboard gets the download instead.
+"""End-to-end checks for Copy as PNG: in the canvas context menu an element and a whole artboard land on the
+clipboard as PNGs, every kind's Import / Export menu has the item and puts its picture there too, and a browser
+without an image clipboard gets the download instead.
 Run with `pnpm dev` up: python3 e2e/copy_png.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
 import os, asyncio
 from playwright.async_api import async_playwright, expect
@@ -60,6 +61,25 @@ async def run(p, locale, theme):
     check(f'{tag}: the whole artboard is bigger than the element', el and bd and bd[0] > el[0] and bd[1] > el[1], (el, bd))
     await b.close()
 
+# kind → project: each one's Import / Export menu copies what its PNG item saves
+KINDS = {'canvas': 'box-console', 'slides': 'tingly-intro', 'design system': 'tingly-ds', 'dashboard': 'box-usage', 'docs': 'design-guide', 'motion': 'design-motion'}
+
+async def menus(p):
+    b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
+    ctx = await b.new_context(locale='en-US', viewport={'width': 1440, 'height': 900}, permissions=['clipboard-read', 'clipboard-write'])
+    pg = await ctx.new_page()
+    for kind, project in KINDS.items():
+        await pg.goto(f'{BASE}/?p={project}')
+        await pg.wait_for_timeout(3500)
+        if kind == 'canvas':
+            await pg.mouse.click(400, 300)  # an artboard element, so the selected-artboard items show
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        await pg.get_by_role('menuitem', name='Copy as PNG').click()
+        await expect(pg.locator('.toast', has_text='Copied as PNG')).to_be_visible(timeout=30000)
+        size = await pg.evaluate(CLIP)
+        check(f'{kind}: the Import / Export menu copies its picture as a PNG', size and size[0] > 50 and size[1] > 50, size)
+    await b.close()
+
 async def fallback(p):
     b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
     ctx = await b.new_context(locale='en-US', viewport={'width': 1440, 'height': 900}, accept_downloads=True)
@@ -85,6 +105,7 @@ async def main():
     async with async_playwright() as p:
         for locale, theme in [('en-US', 'light'), ('zh-CN', 'light'), ('en-US', 'dark'), ('zh-CN', 'dark')]:
             await run(p, locale, theme)
+        await menus(p)
         await fallback(p)
     bad = [n for n, ok in results if not ok]
     print(f'{len(results) - len(bad)}/{len(results)} checks passed')

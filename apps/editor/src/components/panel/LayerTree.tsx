@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type React from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { HIDE_ATTR, LOCK_ATTR, layerTree, pathTo, slideFile, type Layer, type NoteEntry } from '@dc/core';
 import { display, editElement, parsed, useCanvas, useStore } from '../../store';
 import { focusBoard, onPage } from '../canvas/view';
 import { updateBoard, updateNote } from '../../actions';
-import { Chevron, Eye, EyeOff, Lock, RoleIcon, Unlock } from '../icons';
+import { allFlagged, keyOf, selectionOf, setFlags, soloPlan } from '../../layerFlags';
+import { Chevron, Close, Eye, EyeOff, Lock, RoleIcon, Unlock } from '../icons';
 
 /** A layer's role (core's names) → its key under `panel.role`. */
 const ROLE_KEY = {
@@ -33,7 +35,7 @@ const ROLE_KEY = {
   Scene: 'scene',
 } as const;
 
-function roleName(t: TFunction, role: string): string {
+export function roleName(t: TFunction, role: string): string {
   const key = ROLE_KEY[role as keyof typeof ROLE_KEY];
   return key ? t(`panel.role.${key}`) : role;
 }
@@ -91,25 +93,38 @@ interface Flag {
   on: boolean;
   inherited: boolean;
   set: (on: boolean) => void;
+  /** hide only: Alt-click keeps just this one of its siblings shown */
+  solo?: () => void;
 }
 interface Switches {
   hide: Flag;
   lock: Flag;
 }
 
-function Switch({ kind, flag }: { kind: 'hide' | 'lock'; flag: Flag }) {
+/** The rows ticked together (Shift or ⌘/Ctrl-click): a switch on one of them flips all of them. */
+const Marks = createContext<Set<string>>(new Set());
+
+function Switch({ kind, flag, rowKey }: { kind: 'hide' | 'lock'; flag: Flag; rowKey: string }) {
   const { t } = useTranslation();
+  const marked = useContext(Marks);
   const on = flag.on || flag.inherited;
   const label = flag.inherited && !flag.on ? t(`panel.layers.${kind}Inherited`) : on ? t(`panel.layers.${kind === 'hide' ? 'show' : 'unlock'}`) : t(`panel.layers.${kind}`);
   const Icon = kind === 'hide' ? (on ? EyeOff : Eye) : on ? Lock : Unlock;
+  const title = kind === 'hide' && flag.solo && !on ? `${label} · ${t('panel.layers.soloHint')}` : label;
+  const click = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (marked.size > 1 && marked.has(rowKey)) return setFlags([...marked].map((k) => [k, !flag.on]), kind);
+    if (e.altKey && kind === 'hide' && flag.solo) return flag.solo();
+    flag.set(!flag.on);
+  };
   return (
     <button
       className={`sw${flag.inherited && !flag.on ? ' inh' : ''}`}
       aria-label={label}
-      title={label}
+      title={title}
       aria-pressed={on}
       disabled={flag.inherited && !flag.on}
-      onClick={(e) => (e.stopPropagation(), flag.set(!flag.on))}
+      onClick={click}
     >
       <Icon />
     </button>
@@ -141,15 +156,20 @@ interface RowProps {
 function LayerRow(p: RowProps) {
   const { t } = useTranslation();
   const off = !!(p.switches?.hide.on || p.switches?.hide.inherited);
+  const tree = useContext(TreeActions);
+  const marked = useContext(Marks).has(p.dataKey);
   return (
     <div
-      className={['lr', p.className, off ? 'off' : ''].filter(Boolean).join(' ')}
+      className={['lr', p.className, off ? 'off' : '', marked ? 'marked' : ''].filter(Boolean).join(' ')}
       role="treeitem"
-      aria-selected={p.selected}
+      aria-selected={p.selected || marked}
       aria-expanded={p.open}
       data-key={p.dataKey}
       style={{ paddingLeft: 6 + p.depth * 14 }}
-      onClick={p.onSelect}
+      onClick={(e) => {
+        if (tree.mark(p.dataKey, e)) return;
+        p.onSelect();
+      }}
       onDoubleClick={p.onOpen}
       onMouseEnter={p.onHover && (() => p.onHover!(true))}
       onMouseLeave={p.onHover && (() => p.onHover!(false))}
@@ -171,8 +191,8 @@ function LayerRow(p: RowProps) {
       {p.tail && <span className={p.tailClass ?? 'rt'}>{p.tail}</span>}
       {p.switches && (
         <span className="sws">
-          <Switch kind="hide" flag={p.switches.hide} />
-          <Switch kind="lock" flag={p.switches.lock} />
+          <Switch kind="hide" flag={p.switches.hide} rowKey={p.dataKey} />
+          <Switch kind="lock" flag={p.switches.lock} rowKey={p.dataKey} />
         </span>
       )}
     </div>
@@ -183,7 +203,36 @@ function LayerRow(p: RowProps) {
 function useTreeState() {
   const sel = useStore((s) => s.selection);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const [marked, setMarked] = useState<Set<string>>(() => new Set());
+  const anchor = useRef<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
+  const keep = (m: Set<string>) => setMarked(m.size > 1 ? m : new Set());
+  /** Shift-click ticks the rows from the last one clicked to this one; ⌘/Ctrl-click adds or drops one. True when the click was one of those. */
+  const mark = (key: string, e: React.MouseEvent): boolean => {
+    const cur = keyOf(useStore.getState().selection);
+    if (e.shiftKey) {
+      const keys = [...(box.current?.querySelectorAll<HTMLElement>('.lr[data-key]') ?? [])].map((r) => r.dataset.key!);
+      const a = keys.indexOf(anchor.current ?? cur ?? key);
+      const b = keys.indexOf(key);
+      if (a < 0 || b < 0) return false;
+      keep(new Set(keys.slice(Math.min(a, b), Math.max(a, b) + 1)));
+      useStore.setState({ selection: selectionOf(key), editingNote: null });
+      return true;
+    }
+    if (e.metaKey || e.ctrlKey) {
+      const m = new Set(marked.size ? marked : cur ? [cur] : []);
+      if (m.has(key)) m.delete(key);
+      else m.add(key);
+      anchor.current = key;
+      keep(m);
+      const last = m.has(key) ? key : [...m].at(-1);
+      if (last) useStore.setState({ selection: selectionOf(last), editingNote: null });
+      return true;
+    }
+    anchor.current = key;
+    setMarked(new Set());
+    return false;
+  };
   const toggle = (k: string) =>
     setOpen((o) => {
       const n = new Set(o);
@@ -192,6 +241,8 @@ function useTreeState() {
       return n;
     });
   useEffect(() => {
+    const here = keyOf(sel);
+    setMarked((m) => (m.size && (!here || !m.has(here)) ? new Set() : m));
     if (!sel) return;
     const keys: string[] = [];
     if (sel.kind === 'el') {
@@ -208,8 +259,10 @@ function useTreeState() {
       box.current?.querySelector(`[data-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'nearest' });
     });
   }, [sel]);
-  return { box, open, toggle };
+  return { box, open, toggle, marked, setMarked, mark };
 }
+
+const TreeActions = createContext<{ mark: (key: string, e: React.MouseEvent) => boolean }>({ mark: () => false });
 
 /** What an outer layer already decided for everything inside it. */
 interface Above {
@@ -241,6 +294,7 @@ function ElementRows({
   const motion = useStore((s) => s.kind === 'motion');
   const sel = useStore((s) => (s.selection?.kind === 'el' && s.selection.file === file ? s.selection.tid : null));
   const counts = useStore((s) => s.counts[file]) ?? {};
+  const siblings = layers.filter((l) => !(l.role === 'Slide' && depth === 0)).map((l) => ({ key: `${file}#${l.tid}`, hidden: l.hidden }));
   return (
     <>
       {layers.map((l) => {
@@ -273,7 +327,7 @@ function ElementRows({
                 top
                   ? undefined
                   : {
-                      hide: { on: l.hidden, inherited: above.hidden, set: (on) => setAttrSwitch(file, l.tid, HIDE_ATTR, on) },
+                      hide: { on: l.hidden, inherited: above.hidden, set: (on) => setAttrSwitch(file, l.tid, HIDE_ATTR, on), solo: () => setFlags(soloPlan(siblings, key), 'hide') },
                       lock: { on: l.locked, inherited: above.locked, set: (on) => setAttrSwitch(file, l.tid, LOCK_ATTR, on) },
                     }
               }
@@ -288,7 +342,7 @@ function ElementRows({
   );
 }
 
-function BoardRow({ file, title, open, toggle }: { file: string; title: string; open: Set<string>; toggle: (k: string) => void }) {
+function BoardRow({ file, title, open, toggle, solo }: { file: string; title: string; open: Set<string>; toggle: (k: string) => void; solo: () => void }) {
   const source = useStore((s) => display(s, file));
   const entry = useCanvas().boards[file];
   const sel = useStore((s) => s.selection?.kind === 'board' && s.selection.file === file);
@@ -312,12 +366,46 @@ function BoardRow({ file, title, open, toggle }: { file: string; title: string; 
         onSelect={() => useStore.setState({ selection: { kind: 'board', file }, editingNote: null })}
         onOpen={() => focusBoard(file)}
         switches={{
-          hide: { on: hidden, inherited: false, set: (on) => updateBoard(file, { hidden: on }, on ? 'hidden' : 'shown') },
+          hide: { on: hidden, inherited: false, set: (on) => updateBoard(file, { hidden: on }, on ? 'hidden' : 'shown'), solo },
           lock: { on: locked, inherited: false, set: (on) => updateBoard(file, { locked: on }, on ? 'locked' : 'unlocked') },
         }}
       />
       {isOpen && <ElementRows file={file} layers={kids} depth={1} open={open} toggle={toggle} above={{ hidden, locked }} />}
     </div>
+  );
+}
+
+/** The tree's scroll box, with what several ticked rows offer under it. */
+function LayersBox({ tree, children }: { tree: ReturnType<typeof useTreeState>; children: React.ReactNode }) {
+  const { t } = useTranslation();
+  const keys = [...tree.marked];
+  const allHidden = useStore((s) => allFlagged(s, keys, 'hide'));
+  const allLocked = useStore((s) => allFlagged(s, keys, 'lock'));
+  const actions = useMemo(() => ({ mark: tree.mark }), [tree.mark]);
+  return (
+    <Marks.Provider value={tree.marked}>
+      <TreeActions.Provider value={actions}>
+        <div className="layers" ref={tree.box} role="tree" aria-multiselectable="true" aria-label={t('panel.layers.label')}>
+          {children}
+        </div>
+        {keys.length > 1 && (
+          <div className="marks" title={t('panel.layers.markHint')}>
+            <span>{t('panel.layers.marked', { count: keys.length })}</span>
+            <button className="btn sm ghost" onClick={() => setFlags(keys.map((k) => [k, !allHidden]), 'hide')}>
+              {allHidden ? <Eye /> : <EyeOff />}
+              {allHidden ? t('panel.layers.show') : t('panel.layers.hide')}
+            </button>
+            <button className="btn sm ghost" onClick={() => setFlags(keys.map((k) => [k, !allLocked]), 'lock')}>
+              {allLocked ? <Unlock /> : <Lock />}
+              {allLocked ? t('panel.layers.unlock') : t('panel.layers.lock')}
+            </button>
+            <button className="ib sm" aria-label={t('panel.layers.clearMarks')} title={t('panel.layers.clearMarks')} onClick={() => tree.setMarked(new Set())}>
+              <Close />
+            </button>
+          </div>
+        )}
+      </TreeActions.Provider>
+    </Marks.Provider>
   );
 }
 
@@ -327,11 +415,14 @@ function CanvasLayers() {
   const canvas = useCanvas();
   const page = useStore((s) => s.page);
   const sel = useStore((s) => s.selection);
-  const { box, open, toggle } = useTreeState();
+  const tree = useTreeState();
+  const { open, toggle } = tree;
   const notes = Object.entries(canvas.notes).filter(([, n]) => typeof n.x === 'number' && onPage(canvas, n.page, page));
   const boards = canvas.order.filter((f) => canvas.boards[f] && onPage(canvas, canvas.boards[f].page, page));
+  // items and artboards share the tree's top level: Alt on an eye keeps one of them
+  const siblings = [...notes.map(([id, n]) => ({ key: `note:${id}`, hidden: !!n.hidden })), ...boards.map((f) => ({ key: f, hidden: !!canvas.boards[f].hidden }))];
   return (
-    <div className="layers" ref={box} role="tree" aria-label={t('panel.layers.label')}>
+    <LayersBox tree={tree}>
       {notes.map(([id, n]) => (
         <LayerRow
           key={id}
@@ -343,16 +434,16 @@ function CanvasLayers() {
           selected={sel?.kind === 'note' && sel.id === id}
           onSelect={() => useStore.setState({ selection: { kind: 'note', id } })}
           switches={{
-            hide: { on: !!n.hidden, inherited: false, set: (on) => updateNote(id, { hidden: on || undefined }, on ? 'hidden' : 'shown') },
+            hide: { on: !!n.hidden, inherited: false, set: (on) => updateNote(id, { hidden: on || undefined }, on ? 'hidden' : 'shown'), solo: () => setFlags(soloPlan(siblings, `note:${id}`), 'hide') },
             lock: { on: !!n.locked, inherited: false, set: (on) => updateNote(id, { locked: on || undefined }, on ? 'locked' : 'unlocked') },
           }}
         />
       ))}
       {boards.map((f) => (
-        <BoardRow key={f} file={f} title={canvas.boards[f].title || f} open={open} toggle={toggle} />
+        <BoardRow key={f} file={f} title={canvas.boards[f].title || f} open={open} toggle={toggle} solo={() => setFlags(soloPlan(siblings, f), 'hide')} />
       ))}
       {!notes.length && !boards.length && <div className="empty">{t('panel.layers.empty')}</div>}
-    </div>
+    </LayersBox>
   );
 }
 
@@ -361,12 +452,12 @@ export function ElementLayers({ file, away }: { file: string; away?: Map<number,
   const { t } = useTranslation();
   const source = useStore((s) => (file ? display(s, file) : undefined));
   const layers = useMemo(() => (source ? layerTree(parsed(source)) : []), [source]);
-  const { box, open, toggle } = useTreeState();
+  const tree = useTreeState();
   // the root is always open; the rest follows the selection
   return (
-    <div className="layers" ref={box} role="tree" aria-label={t('panel.layers.label')}>
-      <ElementRows file={file} layers={layers} depth={0} open={open} toggle={toggle} above={{ hidden: false, locked: false }} away={away} />
-    </div>
+    <LayersBox tree={tree}>
+      <ElementRows file={file} layers={layers} depth={0} open={tree.open} toggle={tree.toggle} above={{ hidden: false, locked: false }} away={away} />
+    </LayersBox>
   );
 }
 

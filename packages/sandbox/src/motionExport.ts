@@ -77,7 +77,7 @@ export async function exportVideo(stage: MotionStage, root: HTMLElement, req: Ex
   const to = Math.min(stage.duration, req.to ?? stage.duration);
   const whole = from === 0 && to >= stage.duration;
   const fps = Math.max(1, Math.min(120, req.fps ?? stage.fps));
-  const audio = req.format !== 'gif' && whole && req.audio?.length ? await clock.time('audio', () => mixAudio(req.audio!, stage.duration / 1000)) : null;
+  const audio = req.format !== 'gif' && req.audio?.length ? await clock.time('audio', () => mixAudio(req.audio!, (to - from) / 1000, 48000, from / 1000)) : null;
   stage.pause();
   // the picture is vector: it is drawn at the file's size, so a small file is not a big one scaled down and a big one is not blown up
   let now = 0;
