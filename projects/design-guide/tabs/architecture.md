@@ -30,6 +30,8 @@ A file is parsed with source positions into a DOM copy. After an edit the copy i
 - Claude Code works for minutes and edits files directly. It works in every kind, keeps one conversation per project, and shows its steps and the files it changed in the run card, with undo for the whole run.
 
 ```mermaid
+
+/formula
 flowchart LR
   Ask[A request] --> Size{How big?}
   Size -->|one passage or board| Fast[Fast AI: seconds]
@@ -51,3 +53,7 @@ PNG, PDF and video export; PowerPoint in and out for slides; a whole project as 
 ## Keeping the kinds in step
 
 A feature that every kind can reach is built once as a shared part and listed in the matrix in `.design/project-kinds.md`. Each supported cell names the e2e suite that checks it, and `pnpm test` fails when the matrix and `e2e/coverage.json` disagree.
+
+```latex
+E = mc^2
+```
