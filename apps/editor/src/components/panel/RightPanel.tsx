@@ -8,6 +8,8 @@ import { CodeTab } from './CodeTab';
 import { ElementProps } from './ElementProps';
 import { BoardEmbedProps, isBoardEmbedEl } from './BoardEmbedProps';
 import { LayerTree } from './LayerTree';
+import { LockNotice } from './LockNotice';
+import { lockOf } from '../../layerFlags';
 import { BoardProps, ItemProps, Tweaks } from './OtherProps';
 import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
@@ -33,6 +35,7 @@ export function RightPanel() {
   const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : !sel && tab === 'code' ? onStage : null;
   const source = useStore((s) => (file ? display(s, file) : undefined));
   const inspect = useStore((s) => s.inspect);
+  const locked = useStore((s) => !!lockOf(s));
   const doc = source ? parsed(source) : null;
   const el = sel?.kind === 'el' && doc ? doc.elements[sel.tid] : undefined;
   const info = el && inspect?.tid === el.tid ? inspect : null;
@@ -162,7 +165,12 @@ export function RightPanel() {
         </button>
       </div>
       {motion ? <MotionLayers /> : <LayerTree />}
-      <div className="pbody">{body}</div>
+      <div className="pbody">
+        <LockNotice />
+        <fieldset className="pset" disabled={locked}>
+          {body}
+        </fieldset>
+      </div>
     </aside>
   );
 }
