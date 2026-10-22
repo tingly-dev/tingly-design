@@ -23,6 +23,7 @@ projects/<name>/
 - **Data mode**: click any number, chart or table cell on the page to open its source with that cell highlighted.
 - **Code**: the page and the dataset descriptions are editable in the editor too (the original lets only Claude write them); the page reloads on save.
 - **AI**: hand it to Claude Code. It can query the databases read-only with `node scripts/dash-query.mjs`, and reads `.runs.json` first. It keeps query results as live queries rather than copying them into files, titles any made-up rows "Sample…", rereads the page's report after its edits (when the dashboard is open) and ends by saying where the numbers come from.
+- **Starting from a table**: on the home page, drop a CSV or TSV onto the launcher, or choose New project → “Import a table (.csv)…”. It becomes a new dashboard named after the file, the table kept in `data/` with a dataset over it. A project package (.zip) can be dropped there too.
 - **Importing data**: Import in the top bar, or drop CSV, TSV or JSON tables. Each file becomes a dataset, its file stored in `data/` and opened in Sources; a file that is not a table is refused with the reason.
 
 Format reference: [`.claude/skills/dashboard/SKILL.md`](../../../.claude/skills/dashboard/SKILL.md)

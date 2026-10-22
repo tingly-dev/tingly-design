@@ -2,6 +2,8 @@ import { download } from './local';
 import { api } from './api';
 import { t } from './i18n';
 import { toast } from './store';
+import { checkDataFile, applyNewOptions } from './newProject';
+import { freeName, slugOf } from './projectName';
 import { showPptxResult } from './components/ProjectImportResult';
 import type { ClaudeDesignNote, PptxDiagnostic } from '@dc/core';
 
@@ -34,12 +36,36 @@ export async function saveClaudeDesign(name: string): Promise<void> {
 
 /** Used for choosing the project import path on drop; the server detects PPTX from bytes too. */
 export async function isProjectImportFile(file: File): Promise<boolean> {
-  if (/\.(zip|pptx|md|markdown)$/i.test(file.name)) return true;
+  if (/\.(zip|pptx|md|markdown|csv|tsv)$/i.test(file.name)) return true;
   const magic = new Uint8Array(await file.slice(0, 4).arrayBuffer());
   return magic[0] === 0x50 && magic[1] === 0x4b && magic[2] === 3 && magic[3] === 4;
 }
 
+/** A table becomes a new dashboard: the file goes to data/ and its dataset is made, as in the New dialog's data file option. */
+async function importTableFile(file: File): Promise<string | null> {
+  const r = await checkDataFile(file);
+  if ('error' in r) {
+    toast(r.error, 'error');
+    return null;
+  }
+  const stem = file.name.replace(/\.[^.]+$/, '');
+  try {
+    const taken = new Set((await api.projects()).map(p => p.name));
+    const { name } = await api.createProject(freeName(slugOf(stem) || 'dashboard', taken), stem, 'dashboard');
+    const failed = await applyNewOptions(name, { dataFile: file });
+    for (const m of failed) toast(m, 'error');
+    if (!failed.length) toast(t('launcher.archive.importedTable', { name }));
+    return name;
+  } catch (e) {
+    toast(t('launcher.archive.failed', { message: (e as Error).message }), 'error');
+    return null;
+  }
+}
+
+const isTable = (name: string) => /\.(csv|tsv)$/i.test(name);
+
 export async function importProjectFile(file: File): Promise<string | null> {
+  if (isTable(file.name)) return importTableFile(file);
   try {
     const { name, systems, claudeDesign, notes, pptx } = await api.importArchive(file);
     if (pptx) {
@@ -60,12 +86,13 @@ export async function importProjectFile(file: File): Promise<string | null> {
   }
 }
 
-export type ProjectImportFormat = 'pptx' | 'markdown' | 'zip';
+export type ProjectImportFormat = 'pptx' | 'markdown' | 'zip' | 'table';
 
 const importAccept: Record<ProjectImportFormat, string> = {
   pptx: '.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation',
   markdown: '.md,.markdown,text/markdown',
   zip: '.zip,application/zip',
+  table: '.csv,.tsv,text/csv',
 };
 
 /** The chosen action scopes the picker only; file detection and conversion stay shared with drop. */

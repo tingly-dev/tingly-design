@@ -362,7 +362,7 @@ export function Launcher() {
               }
               onSelect={() => (setNewMenu(null), setImporting({}))} />
           </div>
-          {(['pptx', 'markdown', 'zip'] as const).map((format) => (
+          {(['pptx', 'markdown', 'table', 'zip'] as const).map((format) => (
             <div key={format} data-new={format === 'zip' ? 'archive' : format} className="mwrap">
               <MenuItem label={t(`launcher.archive.${format}`)} hint={t(`launcher.archive.${format}Hint`)} icon={
                   <span className="kic t-blue">

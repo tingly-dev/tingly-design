@@ -21,7 +21,7 @@ export async function checkDataFile(file: File): Promise<{ rows: number } | { er
   if (!format || file.size > DASH_DATA_MAX) return bad;
   try {
     const { table } = parseDataFile(await file.text(), format);
-    return table ? { rows: table.rows.length } : bad;
+    return table && table.columns.length ? { rows: table.rows.length } : bad;
   } catch {
     return bad;
   }

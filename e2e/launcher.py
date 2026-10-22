@@ -42,7 +42,7 @@ async def main():
         check('every sample project is listed with its kind', all(listed.get(n) == k for n, k in SAMPLES.items()), json.dumps(listed))
         await pg.locator('.lnewbtn').click()
         news = await pg.locator('.menu [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
-        check('the New project menu lists each kind, HTML/SVG, PowerPoint, Markdown, project package and folder', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import', 'pptx', 'markdown', 'archive', 'folder'], str(news))
+        check('the New project menu lists each kind, HTML/SVG, PowerPoint, Markdown, table, project package and folder', news == ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'import', 'pptx', 'markdown', 'table', 'archive', 'folder'], str(news))
         check('the strip of new-project tiles is gone', await pg.locator('.lstrip').count() == 0)
         await pg.keyboard.press('Escape')
         bar = await pg.locator('.lbar .lsearch').count() == 1 and await pg.locator('.lbar [data-view]').count() == 2 and await pg.locator('.lbar .lsort').count() == 1
