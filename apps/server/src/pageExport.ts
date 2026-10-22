@@ -5,13 +5,12 @@
  * headless.ts), so the file is the one the button saves. Used by `tingly-design export` and
  * `check --snapshots`; see .design/cli.md §4.
  */
-import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type LayoutFinding, layoutProbe } from './layoutProbe';
 import { log } from './log';
-import { Cdp, chromeArgs, findChrome } from './render';
+import { findChrome, launchBrowser } from './chrome';
 
 /** A PowerPoint export keeps its own deadline in the page (it grows with the deck, up to ten minutes); this only catches a page that stopped answering. */
 const PPTX_DEADLINE = 660_000;
@@ -111,14 +110,10 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
   const chrome = findChrome();
   if (!chrome) throw new PageExportError('no-chrome');
   const tmp = mkdtempSync(join(tmpdir(), 'dc-page-'));
-  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
-  const stop = () => browser.kill('SIGKILL');
-  o.signal?.addEventListener('abort', stop);
+  const run = launchBrowser({ chrome, prefix: 'dc-page', tmp, signal: o.signal });
   try {
-    const cdp = new Cdp(browser);
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-    const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
+    const { cdp } = run;
+    const { sessionId, send: s } = await run.page();
     await s('Page.enable');
     // boards, slides and previews are sandboxed frames, which Chrome may run as frames of their own: attach to them too
     const sessions = new Set([sessionId]);
@@ -244,16 +239,7 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
     if (o.signal?.aborted) throw new PageExportError('failed', 'aborted');
     throw e instanceof PageExportError ? e : new PageExportError('failed', (e as Error).message);
   } finally {
-    o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
-    stop();
-    await exited;
-    await new Promise((r) => setTimeout(r, 300));
-    try {
-      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {
-      /* the system clears its temp folder */
-    }
+    await run.close();
   }
 }
 

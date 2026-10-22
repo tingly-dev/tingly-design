@@ -265,7 +265,8 @@ async function check(arg: string | undefined): Promise<number> {
 
 /** What this machine can do: the diagnostics the editor shows across its dialogs, in one place. */
 async function machine(): Promise<number> {
-  const { findChrome, renderCapabilities } = await import('./render');
+  const { renderCapabilities } = await import('./render');
+  const { findChrome } = await import('./chrome');
   const { claudeAvailable } = await import('./delegate');
   const { aiResolved } = await import('./aiconfig');
   const { fastReady } = await import('@dc/core');

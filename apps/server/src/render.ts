@@ -6,39 +6,17 @@
  * driven over its own debugging pipe. See .design/export.md.
  */
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { boardFilesFor, parseMotion, sceneFile } from '@dc/core';
 import { Clock, type ExportReport } from '@dc/export/timing';
+import { findChrome, launchBrowser } from './chrome';
 import { logInfo } from './log';
 
 export interface RenderCapabilities {
   chrome: boolean;
   ffmpeg: boolean;
-}
-
-/** The first Chrome-family browser we can run: DC_CHROME, then the usual places on each system, then Playwright's own. */
-export function findChrome(): string | null {
-  const fromEnv = process.env.DC_CHROME;
-  if (fromEnv) return existsSync(fromEnv) ? fromEnv : null;
-  const home = process.env.HOME ?? '';
-  const pf = [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean) as string[];
-  const candidates =
-    process.platform === 'darwin'
-      ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', '/Applications/Chromium.app/Contents/MacOS/Chromium', join(home, 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome')]
-      : process.platform === 'win32'
-        ? pf.flatMap((d) => [join(d, 'Google/Chrome/Application/chrome.exe'), join(d, 'Microsoft/Edge/Application/msedge.exe'), join(d, 'Chromium/Application/chrome.exe')])
-        : ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge', '/snap/bin/chromium', '/opt/google/chrome/chrome'];
-  for (const c of candidates) if (existsSync(c)) return c;
-  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  if (existsSync(root)) {
-    for (const d of readdirSync(root).filter((d) => /^chromium-\d+$/.test(d)).sort().reverse()) {
-      const p = join(root, d, 'chrome-linux', 'chrome');
-      if (existsSync(p)) return p;
-    }
-  }
-  return null;
 }
 
 let ffmpegChecked: Promise<boolean> | null = null;
@@ -53,70 +31,6 @@ function hasFfmpeg(): Promise<boolean> {
 
 export async function renderCapabilities(): Promise<RenderCapabilities> {
   return { chrome: findChrome() !== null, ffmpeg: await hasFfmpeg() };
-}
-
-/**
- * How we start Chrome: headless, driven over its debugging pipe. Its sandbox needs
- * user namespaces, which root and some CI runners (Ubuntu 24.04's AppArmor rule) do
- * not allow; `DC_CHROME_SANDBOX=0` turns it off there.
- */
-export function chromeArgs(profile: string): string[] {
-  // WebGL (a shader effect) draws on SwiftShader, the CPU: the same picture on every machine, GPU or not.
-  // Chrome stopped falling back to it on its own (137+), so without the last flag every effect came out blank
-  const args = ['--headless=new', '--remote-debugging-pipe', '--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars', '--mute-audio', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`, 'about:blank'];
-  if (process.getuid?.() === 0 || process.env.DC_CHROME_SANDBOX === '0') args.unshift('--no-sandbox');
-  return args;
-}
-
-/** Chrome's debugging protocol over the pipe it is started with: JSON messages ending in a NUL byte. */
-export class Cdp {
-  private id = 0;
-  private waiting = new Map<number, { ok: (v: any) => void; fail: (e: Error) => void }>();
-  private buf = '';
-  private handlers: ((m: any) => void)[] = [];
-  /** Set once Chrome has gone: a later request fails at once instead of waiting forever. */
-  private closed: Error | null = null;
-  constructor(private child: ChildProcess) {
-    const input = child.stdio[4] as NodeJS.ReadableStream;
-    // what Chrome said last, to say why it stopped; reading it also keeps the pipe from filling
-    let said = '';
-    child.stdio[2]?.on('data', (d: Buffer) => (said = (said + d.toString()).slice(-600)));
-    // a Chrome that dies at once resets the pipes: that is a failed render, not a crash
-    (child.stdio[3] as NodeJS.WritableStream | null)?.on('error', () => {});
-    input.on('error', () => {});
-    input.setEncoding('utf8');
-    input.on('data', (d: string) => {
-      this.buf += d;
-      let i: number;
-      while ((i = this.buf.indexOf('\0')) >= 0) {
-        const msg = JSON.parse(this.buf.slice(0, i));
-        this.buf = this.buf.slice(i + 1);
-        if (msg.id !== undefined) {
-          const w = this.waiting.get(msg.id);
-          this.waiting.delete(msg.id);
-          if (w) msg.error ? w.fail(new Error(msg.error.message)) : w.ok(msg.result);
-        } else for (const h of this.handlers) h(msg);
-      }
-    });
-    child.on('error', (e) => (said += `\n${e.message}`));
-    child.on('close', () => {
-      const why = said.trim().split('\n').slice(-3).join(' ');
-      this.closed = new Error(why ? `Chrome closed: ${why}` : 'Chrome closed');
-      for (const w of this.waiting.values()) w.fail(this.closed);
-      this.waiting.clear();
-    });
-  }
-  on(h: (m: any) => void) {
-    this.handlers.push(h);
-  }
-  send<T = any>(method: string, params: object = {}, sessionId?: string): Promise<T> {
-    const id = ++this.id;
-    return new Promise((ok, fail) => {
-      if (this.closed) return fail(this.closed);
-      this.waiting.set(id, { ok, fail });
-      (this.child.stdio[3] as NodeJS.WritableStream).write(JSON.stringify({ id, method, params, sessionId }) + '\0');
-    });
-  }
 }
 
 const MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
@@ -287,21 +201,13 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const partial = file.replace(new RegExp(`\\.${ext}$`), `.part.${ext}`);
   const artFile = join(out, `${stem}.art.mp4`);
 
-  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
   let ffmpeg: ChildProcess | null = null;
-  const stop = () => {
-    browser.kill('SIGKILL');
-    ffmpeg?.kill('SIGKILL');
-  };
-  o.signal?.addEventListener('abort', stop);
+  const run = launchBrowser({ chrome, prefix: 'dc-render', tmp, signal: o.signal, onStop: () => ffmpeg?.kill('SIGKILL') });
   let ffmpegErr = '';
   try {
     if (o.signal?.aborted) throw new RenderError('aborted');
     const launched = performance.now();
-    const cdp = new Cdp(browser);
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-    const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
+    const { send: s } = await run.page();
     await s('Page.enable');
     await s('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: scale, mobile: false });
     await s('Page.navigate', { url: `file://${page}` });
@@ -389,19 +295,9 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     if (o.signal?.aborted) throw new RenderError('aborted');
     throw e instanceof RenderError ? e : new RenderError('failed', (e as Error).message);
   } finally {
-    o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
-    stop();
-    await exited;
-    await new Promise((r) => setTimeout(r, 300));
-    // Chrome may still be flushing its profile for a moment; leftovers in the temp folder are not worth failing a render for
+    await run.close();
     rmSync(partial, { force: true });
     if (ext === 'mp4') rmSync(artFile, { force: true });
-    try {
-      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {
-      /* the system clears its temp folder */
-    }
   }
 }
 
@@ -430,14 +326,9 @@ export async function checkSeek(o: { dir: string; runtime: string; format: strin
   const tmp = mkdtempSync(join(tmpdir(), 'dc-seek-'));
   const page = join(tmp, 'page.html');
   writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><script>${runtime}</script></body></html>`);
-  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
-  const stop = () => browser.kill('SIGKILL');
-  o.signal?.addEventListener('abort', stop);
+  const run = launchBrowser({ chrome, prefix: 'dc-seek', tmp, signal: o.signal });
   try {
-    const cdp = new Cdp(browser);
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-    const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
+    const { send: s } = await run.page();
     await s('Page.enable');
     await s('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
     await s('Page.navigate', { url: `file://${page}` });
@@ -479,16 +370,7 @@ export async function checkSeek(o: { dir: string; runtime: string; format: strin
     if (o.signal?.aborted) throw new RenderError('aborted');
     throw e instanceof RenderError ? e : new RenderError('failed', (e as Error).message);
   } finally {
-    o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
-    stop();
-    await exited;
-    await new Promise((r) => setTimeout(r, 300));
-    try {
-      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {
-      /* the system clears its temp folder */
-    }
+    await run.close();
   }
 }
 
@@ -501,21 +383,18 @@ export async function shrinkPictures(pngs: Buffer[], max: number): Promise<Buffe
   const chrome = findChrome();
   if (!chrome || !pngs.length) return pngs;
   const tmp = mkdtempSync(join(tmpdir(), 'dc-shrink-'));
-  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
+  const run = launchBrowser({ chrome, prefix: 'dc-shrink', tmp });
   try {
-    const cdp = new Cdp(browser);
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+    const { send } = await run.page();
     const out: Buffer[] = [];
     for (const png of pngs) {
-      const r = await cdp.send<{ result: { value?: string | null } }>(
+      const r = await send<{ result: { value?: string | null } }>(
         'Runtime.evaluate',
         {
           expression: `(async()=>{const b=await createImageBitmap(await (await fetch('data:image/png;base64,${png.toString('base64')}')).blob());const k=${max}/Math.max(b.width,b.height);if(k>=1)return null;const c=new OffscreenCanvas(Math.max(1,Math.round(b.width*k)),Math.max(1,Math.round(b.height*k)));const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(b,0,0,c.width,c.height);const u=new Uint8Array(await (await c.convertToBlob({type:'image/png'})).arrayBuffer());let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode(...u.subarray(i,i+0x8000));return btoa(s)})()`,
           awaitPromise: true,
           returnByValue: true,
         },
-        sessionId,
       ).catch(() => ({ result: { value: null } }));
       out.push(r.result.value ? Buffer.from(r.result.value, 'base64') : png);
     }
@@ -523,15 +402,7 @@ export async function shrinkPictures(pngs: Buffer[], max: number): Promise<Buffe
   } catch {
     return pngs;
   } finally {
-    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
-    browser.kill('SIGKILL');
-    await exited;
-    await new Promise((r) => setTimeout(r, 300));
-    try {
-      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {
-      /* the system clears its temp folder */
-    }
+    await run.close();
   }
 }
 
