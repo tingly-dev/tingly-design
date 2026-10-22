@@ -1,6 +1,6 @@
 # 项目类型的登记：从散落的分支到按层的表
 
-状态：**方案**（待定方案，未实施）。现行的登记清单仍以 [project-kinds.md](./project-kinds.md) §2 为准；这份只讨论怎么让"加一种类型"不再靠记忆。
+状态：**部分实施**。方案 B 已定，core、server 和 editor 的主要分派点已转成表；`commands.ts` 与 `NewDialog` 的选项还没转（见 §5）。现行的登记清单以 [project-kinds.md](./project-kinds.md) §2 为准；这份讲怎么让"加一种类型"不再靠记忆。
 
 ## 1. 问题
 
@@ -41,9 +41,9 @@
 
 **C. 每种类型一个跨层的"插件"清单。** 一份文件同时声明 core、server、editor 三层的内容。最接近"一处总表"，但要么破坏包边界，要么用字符串路径去懒加载，两者都比今天更难读，也让 knip 的死代码检查失效。不建议。
 
-## 4. 建议的做法
+## 4. 做法
 
-走 B，分三步，每步一个小 PR，行为不变：
+走 B（已定），分三步，每步一个小 PR，行为不变：
 
 1. **core**：把 `project.ts` 的 `outlineProject`、`checkProject`、`launcher.ts` 的 `projectCard` 改成穷尽表。这是最纯的一层，单测就能验证。
 2. **server**：把 `store.ts` 的 `createProject`、`delegate.ts` 和 `routes/ai.ts` 的提示词、`commands.ts` 的格式表改成 `KindServer`。用现有 e2e（每种类型一个）验证。
@@ -51,7 +51,13 @@
 
 每步之后更新 [project-kinds.md](./project-kinds.md) §2：登记位置合并成"每层一张表"，行数会明显减少。
 
-## 5. 没有决定的
+## 5. 还没做的
+
+已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`；editor 的 `KIND_APP`、`PREVIEW`。
+
+还没转：server `commands.ts` 里按类型的尺寸、导出格式和 `check` 输出（和命令行自己的措辞混在一起，且 `FORMATS`、`pageJobs` 的登记也在那里），以及 editor `NewDialog.tsx` 的选项块（§6 第一条）。两处仍在 [project-kinds.md](./project-kinds.md) §2 的清单里，靠人记。
+
+## 6. 没有决定的
 
 - `NewDialog.tsx` 的选项（尺寸、风格、数据文件、设计系统）现在是几个条件块。是做成每种类型自带的小组件（`KindUi.newOptions`），还是保持条件块、只把"该不该显示"写进表里？前者更彻底，后者改动小。倾向前者，但要先看一遍它们共用的状态（`size`、`board`、`git`）能不能拆开。
 - `claudeDesign.ts` 的互转规则是否进表：原版只有四种类型，另两种是有意不支持，写成表里的 `null` 比现在的缺省分支更清楚。
