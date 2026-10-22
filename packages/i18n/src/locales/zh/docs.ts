@@ -47,6 +47,7 @@ export default {
     blockStyle: '段落样式',
     rowBelow: '在下方加一行',
     colRight: '在右侧加一列',
+    tableCsv: '把这个表格下载为 CSV',
     deleteRow: '删除这一行',
     deleteCol: '删除这一列',
   },
