@@ -64,6 +64,63 @@
 }
 
 
+
+.popmenu.versions {
+  width: 280px;
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+
+.popmenu.versions label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.popmenu.versions .empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+
+.popmenu.versions .vlist {
+  display: flex;
+  flex-direction: column;
+  max-height: 180px;
+  overflow: auto;
+}
+
+
+.popmenu.versions .vlist button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+
+.popmenu.versions .vlist button:hover,
+.popmenu.versions .vlist button[aria-pressed='true'] {
+  background: var(--hover);
+}
+
+
+.popmenu.versions .vtext {
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 12px;
+  background: var(--hover);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+
 .popmenu.settings label {
   font-size: 12px;
   color: var(--muted);

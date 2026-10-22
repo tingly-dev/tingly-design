@@ -39,6 +39,7 @@
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
 | [slides-pptx.md](./slides-pptx.md) | 幻灯片 PPTX 双向交换：新项目导入（包级严格、对象级尽力而为，74 种内置表格样式、经典与 Office 2016 图表重绘）、整份可见 deck 导出（原生优先、原生表格、逐元素图片化）、opaque runtime 捕获、来源/报告与诊断、安全和验证门槛 | 独立模块与 launcher/API/CLI/FileMenu/MCP 接入已实施；聚焦产品 e2e 90/90 通过，导入与导出都以 LibreOffice 图像差分作保真度量，真实 PowerPoint 渲染未验收；无追加；未来提案单列 |
 | [docs-markdown.md](./docs-markdown.md) | 文档导出为 Markdown：文档标题和标签页成章节、标题层级理顺、图片路径跟着走（有图片时出带图片的 .zip）、`==高亮==` 转 `<mark>`、评论不导出 | 已实施 |
+| [docs-history.md](./docs-history.md) | 文档的历史版本：写盘前存下被覆盖的标签页文本（本机、不进 zip 和提交），列表、预览、恢复走普通编辑 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [claude-design-format.md](./claude-design-format.md) | 和原版 Claude Design 互相搬作品：包就是原版的文件布局（`project/…`，看板是存储文档），导入并进“导入项目”不选类型，导出挨着“整个项目”；图片和数据怎么对应、哪些类型没有 | 已实施（编辑器、启动页、命令行）；Docs 往返、查询数据集的数据是没做的 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |

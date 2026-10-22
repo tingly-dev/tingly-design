@@ -27,6 +27,7 @@ import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { htmlToPng, saveImage } from '../../imageExport';
+import { Versions } from './Versions';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
@@ -37,7 +38,7 @@ import { t as tNow } from '../../i18n';
 import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { LayoutCols, Message } from '../icons';
+import { History, LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
@@ -303,7 +304,7 @@ export function DocsApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useDocs((s) => s.rail);
   const comments = useComments();
-  const [pop, setPop] = useState<'settings' | null>(null);
+  const [pop, setPop] = useState<'settings' | 'versions' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
   const open = comments.threads.filter((x) => x.tab === tab && !x.resolved).length;
@@ -325,6 +326,12 @@ export function DocsApp() {
           <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
         </div>
+        {tab && (
+          <div className="popwrap">
+            <BarButton icon={<History />} label={t('docs.versions.button')} on={pop === 'versions'} data-versions="" onClick={() => setPop(pop === 'versions' ? null : 'versions')} />
+            {pop === 'versions' && <Versions tab={tab} onClose={() => setPop(null)} />}
+          </div>
+        )}
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
         <BarButton icon={<Message />} label={t('docs.app.comments')} on={rail} badge={open ? <span className="badge blue">{open}</span> : null} onClick={() => useDocs.setState({ rail: !rail })} />
       </TopBar>
