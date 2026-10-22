@@ -14,6 +14,15 @@ export default {
     addTab: '+ Tab',
     askPlaceholder: 'Hand to Claude Code: write a section, apply the comments, add a table, tidy the whole doc…',
   },
+  versions: {
+    button: 'Earlier versions',
+    title: 'Earlier versions of this tab',
+    empty: 'This tab has no earlier versions yet. The text an edit replaces is kept, at most one a minute.',
+    restore: 'Restore this version',
+    journal: 'Restored an earlier version',
+    restored: 'Restored',
+    failed: 'Cannot read that version',
+  },
   tab: {
     nameLabel: 'Tab name',
     actions: 'Actions for {{title}}',

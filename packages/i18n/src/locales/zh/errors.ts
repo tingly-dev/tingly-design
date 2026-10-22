@@ -20,6 +20,7 @@ export default {
   badIndex: '{{file}} 不是合法的 JSON，没法在这里改名',
   projectExists: '已经有叫 {{name}} 的项目了',
   contentMissing: '请求里没有内容',
+  versionMissing: '这个版本已经不再保留',
   invalidJson: '{{path}} 不是有效的 JSON',
   badDesignSystemName: '不是有效的设计系统名',
   installOnlyInto: '只能把设计系统装进画布或幻灯片',

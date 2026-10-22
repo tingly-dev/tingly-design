@@ -16,6 +16,15 @@ export default {
     addTab: '＋ 标签页',
     askPlaceholder: '交给 Claude Code：写一节、按评论改、加一张表、整理全文…',
   },
+  versions: {
+    button: '历史版本',
+    title: '这个标签页的历史版本',
+    empty: '这个标签页还没有历史版本。每次编辑覆盖的旧文本会留下，一分钟最多一份。',
+    restore: '恢复这个版本',
+    journal: '恢复了一个历史版本',
+    restored: '已恢复',
+    failed: '读不到这个版本',
+  },
   tab: {
     nameLabel: '标签页名称',
     actions: '{{title}} 的操作',

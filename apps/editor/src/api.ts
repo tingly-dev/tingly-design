@@ -170,6 +170,10 @@ export const api = {
   patchProject: (p: string, patch: { title?: string; group?: string }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
+  /** the earlier versions kept of a doc tab (newest first), and the text of one */
+  history: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history?path=${enc(path)}`)).then((r) => json<{ id: string; at: string }[]>(r)),
+  keepVersion: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history?path=${enc(path)}`), { method: 'POST' }).then((r) => json<{ ok: true }>(r)),
+  historyItem: (p: string, path: string, id: string) => call(at(`api/projects/${enc(p)}/history/item?path=${enc(path)}&id=${enc(id)}`)).then((r) => json<{ content: string }>(r)),
   journal: (p: string) => call(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 
   /** Resolves with the new version, or with `{ conflict }` carrying the file as it is now. */

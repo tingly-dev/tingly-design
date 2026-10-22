@@ -18,6 +18,7 @@ export default {
   badIndex: '{{file}} is not valid JSON, so it cannot be renamed here',
   projectExists: 'A project named {{name}} already exists',
   contentMissing: 'The request has no content',
+  versionMissing: 'That version is no longer kept',
   invalidJson: '{{path}} is not valid JSON',
   badDesignSystemName: 'Not a design system name',
   installOnlyInto: 'A design system can only be installed into a canvas or a slide deck',
