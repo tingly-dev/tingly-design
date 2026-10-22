@@ -6,21 +6,7 @@ One page on how the pieces fit. The long form is in `docs/en/architecture.md`, a
 
 Every project is plain files under `projects/<name>/`. Anyone can change them: you on screen, the fast model, Claude Code, a script, git. The editor never keeps a second copy of the truth; it shows the files and writes back to them.
 
-```
- you          fast AI         Claude Code     terminal, CLI,
- (seconds)    (seconds)       (minutes)       MCP, git
-    |            |                |               |
-    v            v                |               |
- write-back engine                |               |
- (core/copy.ts): minimal patch    |               |
-    |                             |               |
-    +--------> project files <----+---------------+
-               (versioned)
-                    |
-      journal + file watcher + SSE
-                    |
-      every open editor refreshes
-```
+![Every editor writes to the same project files](../uploads/architecture.svg)
 
 ## Write-back
 
