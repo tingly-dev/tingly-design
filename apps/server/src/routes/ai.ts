@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { claudeCliReady } from './shared';
 import { stream } from 'hono/streaming';
-import { FAST_EDIT_SYSTEM, FAST_EDIT_SLIDES, FAST_EDIT_MOTION, FAST_EDIT_DOCS, sanitizeSaved, validBaseUrl, checkMessages, type ModelMessage } from '@dc/core';
+import { type ProjectKind, FAST_EDIT_SYSTEM, FAST_EDIT_SLIDES, FAST_EDIT_MOTION, FAST_EDIT_DOCS, sanitizeSaved, validBaseUrl, checkMessages, type ModelMessage } from '@dc/core';
 import { HttpError, projectDir } from '../store';
 import { publish } from '../hub';
 import { logError, logInfo, logWarn } from '../log';
@@ -16,6 +16,16 @@ const aiDraft = (b: Record<string, unknown>) => {
   return d;
 };
 
+/** The fast model's system prompt per kind; a dashboard has none (its page goes to Claude Code). A design system reads as a canvas, as it always has. */
+const FAST_PROMPT: Record<ProjectKind, string | null> = {
+  design: FAST_EDIT_SYSTEM,
+  slides: FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES,
+  'design-system': FAST_EDIT_SYSTEM,
+  dashboard: null,
+  docs: FAST_EDIT_DOCS,
+  motion: FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES + '\n\n' + FAST_EDIT_MOTION,
+};
+
 /** Fast edit, AI settings and images. */
 export function registerAi(app: Hono): void {
   app.post('/api/projects/:p/fast-edit', async (c) => {
@@ -28,15 +38,9 @@ export function registerAi(app: Hono): void {
     const body = await c.req.json<{ messages: ModelMessage[]; kind?: string }>();
     const bad = checkMessages(body.messages);
     if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
-    if (body.kind === 'dashboard') throw new HttpError(400, 'dashboardIsClaudeCode');
-    const system =
-      body.kind === 'docs'
-        ? FAST_EDIT_DOCS
-        : body.kind === 'slides'
-          ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES
-          : body.kind === 'motion'
-            ? FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES + '\n\n' + FAST_EDIT_MOTION
-            : FAST_EDIT_SYSTEM;
+    const kind: ProjectKind = body.kind && Object.hasOwn(FAST_PROMPT, body.kind) ? (body.kind as ProjectKind) : 'design';
+    const system = FAST_PROMPT[kind];
+    if (system === null) throw new HttpError(400, 'dashboardIsClaudeCode');
     const lang = replyLanguage(langOf(c));
     const project = c.req.param('p');
     const started = Date.now();

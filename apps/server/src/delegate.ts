@@ -155,19 +155,25 @@ export function forgetConversation(project: string): void {
   }
 }
 
+/** What differs per kind in a Claude Code request: how the folder and the open file are named, the system prompt, and the tools beyond reading and editing. */
+const DELEGATE: Record<ProjectKind, { folder: string; viewing: string; system: string; tools: string[]; images: boolean }> = {
+  design: { folder: 'Canvas', viewing: 'artboard', system: SYSTEM, tools: [], images: true },
+  slides: { folder: 'Deck', viewing: 'slide', system: SLIDES_SYSTEM, tools: [], images: true },
+  'design-system': { folder: 'Design system', viewing: 'artboard', system: DS_SYSTEM, tools: [], images: false },
+  dashboard: { folder: 'Dashboard', viewing: 'page file', system: DASH_SYSTEM, tools: ['Bash(node scripts/dash-query.mjs:*)'], images: false },
+  docs: { folder: 'Doc', viewing: 'tab', system: DOCS_SYSTEM, tools: [], images: true },
+  motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM, tools: [], images: true },
+};
+
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en', imageOn = false): string {
   const id = randomUUID().slice(0, 8);
   const dir = fromRoot(projectDir(project));
-  const slides = kind === 'slides';
-  const ds = kind === 'design-system';
-  const dash = kind === 'dashboard';
-  const docs = kind === 'docs';
-  const motion = kind === 'motion';
+  const profile = DELEGATE[kind];
   // a dashboard reads files only from data/ and a design system keeps its pictures in its own assets/: neither gets the tool
-  const images = imageOn && !dash && !ds;
+  const images = imageOn && profile.images;
   const lines = [
-    `${slides ? 'Deck' : ds ? 'Design system' : dash ? 'Dashboard' : docs ? 'Doc' : motion ? 'Motion' : 'Canvas'} folder: ${dir}/`,
-    req.file ? `The person is looking at the ${slides ? 'slide' : dash ? 'page file' : docs ? 'tab' : motion ? 'scene' : 'artboard'} ${dir}/${req.file}.` : '',
+    `${profile.folder} folder: ${dir}/`,
+    req.file ? `The person is looking at the ${profile.viewing} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`
       : '',
@@ -189,9 +195,9 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--permission-mode',
     'acceptEdits',
     '--allowedTools',
-    ['Read,Edit,Write,Glob,Grep', dash ? 'Bash(node scripts/dash-query.mjs:*)' : '', images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
+    ['Read,Edit,Write,Glob,Grep', ...profile.tools, images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
     '--append-system-prompt',
-    `${(slides ? SLIDES_SYSTEM : ds ? DS_SYSTEM : dash ? DASH_SYSTEM : docs ? DOCS_SYSTEM : motion ? MOTION_SYSTEM : SYSTEM)}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}`,
+    `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}`,
   ];
   const launch = claudeLaunch();
   if (launch.model) args.push('--model', launch.model);

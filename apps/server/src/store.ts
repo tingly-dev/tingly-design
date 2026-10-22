@@ -544,16 +544,19 @@ export async function removeFile(name: string, rel: string): Promise<void> {
   await rm(join(projectDir(name), safeRel(rel)), { force: true });
 }
 
-/** A new project, its starter copy in `lang`: the language of whoever created it. */
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
-  const t: TFunction = translator(lang);
-  const dir = projectDir(name);
-  if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
-  // a look is checked before anything is written, so a bad one leaves no folder behind
-  const look = opts.look ? lookOf(opts.look) : undefined;
-  if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
-  await mkdir(dir, { recursive: true });
-  if (kind === 'design-system') {
+interface Starter {
+  name: string;
+  title: string;
+  lang: Language;
+  t: TFunction;
+  opts: { size?: [number, number]; look?: string };
+  /** A design system's chosen look, checked before anything is written. */
+  look?: ReturnType<typeof lookOf>;
+}
+
+/** The first files of a new project, per kind: one entry per kind, so a kind added later fails to compile until it can be created. */
+const STARTER: Record<ProjectKind, (c: Starter) => Promise<void>> = {
+  async 'design-system'({ name, title, t, look }) {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
     await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
     await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id }) : t('starter.dsReadme', { title }));
@@ -563,25 +566,21 @@ export async function createProject(name: string, title: string, kind: ProjectKi
     }
     await regenTokensCss(name);
     await writeAtomic(name, DS_INDEX, stringifyDsIndex(newDsIndex(title, ns)));
-    return;
-  }
-  if (kind === 'docs') {
+  },
+  async docs({ name, title, t }) {
     await writeAtomic(name, tabFile('main'), newDocTab(title));
     await writeAtomic(name, DOC_INDEX, stringifyDoc(parseDoc(JSON.stringify({ title, tabs: [{ id: 'main', title: t('starter.docTab') }] }))));
-    return;
-  }
-  if (kind === 'motion') {
+  },
+  async motion({ name, title, opts }) {
     const { motion, scenes } = newMotion(title, '', opts);
     for (const [id, source] of Object.entries(scenes)) await writeAtomic(name, sceneFile(id), source);
     await writeAtomic(name, MOTION_FILE, JSON.stringify(motion, null, 2) + '\n');
-    return;
-  }
-  if (kind === 'dashboard') {
+  },
+  async dashboard({ name, title, t }) {
     await writeAtomic(name, DASH_PAGE, DASH_STARTER_PAGE.replace('TITLE', title.replace(/[<&>]/g, '')).replace('HINT', t('starter.dashEmpty')));
     await writeAtomic(name, DASH_INDEX, stringifyDash(newDash(title)));
-    return;
-  }
-  if (kind === 'slides') {
+  },
+  async slides({ name, title, opts }) {
     const deck = parseDeck(JSON.stringify({
       v: 4,
       ...(opts.size ? { size: opts.size } : {}),
@@ -601,16 +600,29 @@ export async function createProject(name: string, title: string, kind: ProjectKi
       titleSize: 112,
     }));
     await writeAtomic(name, DECK_FILE, stringifyDeck(deck));
-    return;
-  }
-  const [boardW, boardH] = opts.size ?? [1200, 760];
-  const canvas = parseCanvas(JSON.stringify({
-    v: 3,
-    title,
-    createdOnFiles: { v: 1, at: new Date().toISOString() },
-    boards: { 'Main.dc.html': { x: 0, y: 0, w: boardW, h: boardH, title } },
-    order: ['Main.dc.html'],
-  }));
-  await writeAtomic(name, CANVAS_FILE, stringifyCanvas(canvas));
-  await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: boardW, h: boardH, lang, hint: t('starter.canvasHint') }));
+  },
+  async design({ name, title, lang, t, opts }) {
+    const [boardW, boardH] = opts.size ?? [1200, 760];
+    const canvas = parseCanvas(JSON.stringify({
+      v: 3,
+      title,
+      createdOnFiles: { v: 1, at: new Date().toISOString() },
+      boards: { 'Main.dc.html': { x: 0, y: 0, w: boardW, h: boardH, title } },
+      order: ['Main.dc.html'],
+    }));
+    await writeAtomic(name, CANVAS_FILE, stringifyCanvas(canvas));
+    await writeAtomic(name, 'Main.dc.html', newBoardSource({ title, w: boardW, h: boardH, lang, hint: t('starter.canvasHint') }));
+  },
+};
+
+/** A new project, its starter copy in `lang`: the language of whoever created it. */
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
+  const t: TFunction = translator(lang);
+  const dir = projectDir(name);
+  if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
+  // a look is checked before anything is written, so a bad one leaves no folder behind
+  const look = opts.look ? lookOf(opts.look) : undefined;
+  if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
+  await mkdir(dir, { recursive: true });
+  await STARTER[kind]({ name, title, lang, t, opts, look });
 }
