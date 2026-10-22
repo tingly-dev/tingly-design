@@ -41,6 +41,13 @@ export default {
     deleteRow: '删除这一行',
     deleteCol: '删除这一列',
   },
+  code: {
+    empty: '还没有内容可画。',
+    noRows: '没有可显示的行。',
+    moreRows: '文件里还有 {{n}} 行',
+    error: '画不出这个{{kind}}：{{message}}',
+    kind: { math: '公式', table: '表格', diagram: '图示' },
+  },
   block: {
     p: '正文',
     h1: '标题 1',
@@ -51,6 +58,8 @@ export default {
     todo: '待办清单',
     quote: '引用',
     code: '代码块',
+    diagram: '图示',
+    formula: '公式',
     table: '表格',
     hr: '分割线',
     date: '今天的日期',

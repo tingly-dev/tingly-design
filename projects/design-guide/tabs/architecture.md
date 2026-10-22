@@ -29,6 +29,15 @@ A file is parsed with source positions into a DOM copy. After an edit the copy i
 - Fast AI answers in seconds with jQuery statements that run on a sandbox copy. If a line fails, the whole answer is undone and retried. It works on canvas, slides, a docs passage and a motion scene.
 - Claude Code works for minutes and edits files directly. It works in every kind, keeps one conversation per project, and shows its steps and the files it changed in the run card, with undo for the whole run.
 
+```mermaid
+flowchart LR
+  Ask[A request] --> Size{How big?}
+  Size -->|one passage or board| Fast[Fast AI: seconds]
+  Size -->|several files| Code[Claude Code: minutes]
+  Fast --> Files[(Project files)]
+  Code --> Files
+```
+
 Both share one connection in the AI settings dialog (Tingly Box suggested), each with its own model name.
 
 ## Command line and MCP
