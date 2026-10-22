@@ -12,10 +12,14 @@ import { SEEK_BRIDGE } from './sceneAnim';
 import { msg } from './msg';
 import { post } from './post';
 
+function unset(): never {
+  throw new Error('template: the runtime has not said what it draws with (host.mode, host.ctx)');
+}
+
 /** What the template asks of the runtime that draws it. */
 export const host: { mode: () => Mode; ctx: () => Ctx } = {
-  mode: () => 'edit',
-  ctx: () => ({ tagged: true, files: {}, file: '', mode: 'edit' }),
+  mode: unset,
+  ctx: unset,
 };
 
 // ------------------------------------------------------------------ holes

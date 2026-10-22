@@ -9,7 +9,25 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { DEFAULT_SCENE_MS, HIDE_CSS, LOCK_ATTR, SLIDE_BASE_CSS, boardTime, parseTime, timeSpec, sceneBaseCss, retypeKind, planRetype, RetypeError, type DcElement, type FromRuntime, type Inspect, type Mode, type MotionStageInfo, type ToRuntime } from '@dc/core';
+import {
+  DEFAULT_SCENE_MS,
+  HIDE_CSS,
+  LOCK_ATTR,
+  SLIDE_BASE_CSS,
+  boardTime,
+  parseTime,
+  timeSpec,
+  sceneBaseCss,
+  retypeKind,
+  planRetype,
+  RetypeError,
+  type DcElement,
+  type FromRuntime,
+  type Inspect,
+  type Mode,
+  type MotionStageInfo,
+  type ToRuntime,
+} from '@dc/core';
 import { BUILD_CSS, showSteps } from './slide';
 import { animateScene, type SceneAnim } from './sceneAnim';
 import { answerSnaps } from '@dc/export/snap';
