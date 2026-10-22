@@ -33,7 +33,10 @@ export function Canvas() {
 
   useEffect(() => {
     const el = ref.current!;
-    const ro = new ResizeObserver(() => useStore.setState({ viewport: { w: el.clientWidth, h: el.clientHeight } }));
+    const measure = () => useStore.setState({ viewport: { w: el.clientWidth, h: el.clientHeight } });
+    // measured now as well: the canvas mounts once the project has loaded, and its first fit follows at once
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
