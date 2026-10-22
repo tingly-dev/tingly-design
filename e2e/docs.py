@@ -154,7 +154,7 @@ async def main():
         pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('.tabrow.on .more').click()
         await pg.locator('.tabmenu button', has_text='删除').click()
-        ok = await wait_for(lambda: len(index()['tabs']) == 4 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
+        ok = await wait_for(lambda: len(index()['tabs']) == 5 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
         check('deleting a tab removes its file', ok)
         await pg.locator('.dashbar button[aria-label="版式"]').click()
         await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
