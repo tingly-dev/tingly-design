@@ -225,6 +225,21 @@ async def main():
         csv = read(await (await dl.value).path())
         check('a table downloads as CSV with its header row', csv.lstrip('\ufeff').startswith('Kind,') and csv.count('\n') == 7, csv[:120])
 
+        # --- what Claude Code is told about the view ------------------------------------------------
+        sent = []
+        async def grab(route):
+            sent.append(json.loads(route.request.post_data or '{}'))
+            await route.fulfill(status=200, content_type='application/json', body='{"id":"e2e-ctx"}')
+        await pg.route('**/api/projects/*/delegate', grab)
+        await pg.locator('.tabname', has_text='Workflow').click()
+        await body.locator('p').first.click()
+        await pg.locator('.dsask textarea').fill('what is here?')
+        await pg.locator('.dsask button[aria-label="发送"]').click()
+        await wait_for(lambda: sent)
+        ctx = (sent[0].get('context') or '') if sent else ''
+        check('Claude Code is told the open tab and the block the cursor is in', 'tabs/workflow.md' in ctx and 'The cursor is in this block' in ctx, ctx[:300])
+        await pg.unroute('**/api/projects/*/delegate')
+
         # --- export -------------------------------------------------------------------------------
         await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:

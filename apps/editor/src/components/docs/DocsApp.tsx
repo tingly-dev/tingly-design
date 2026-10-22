@@ -386,9 +386,24 @@ export function DocsApp() {
           placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;
-            if (!e || e.state.selection.empty) return '';
-            const text = e.state.doc.textBetween(e.state.selection.from, e.state.selection.to, '\n').slice(0, 1500);
-            return `The person selected these words in the tab:\n"""\n${text}\n"""`;
+            const lines: string[] = [];
+            if (tab) lines.push(`The person has the tab "${order.find((x) => x.id === tab)?.title ?? tab}" open (${tabFile(tab)}).`);
+            if (e) {
+              const { from, to, empty, $from } = e.state.selection;
+              let heading = '';
+              e.state.doc.descendants((n, pos) => {
+                if (pos >= from) return false;
+                if (n.type.name === 'heading') heading = n.textContent;
+                return true;
+              });
+              if (heading) lines.push(`The cursor is in the section "${heading}".`);
+              if (!empty) lines.push(`The person selected these words in the tab:\n"""\n${e.state.doc.textBetween(from, to, '\n').slice(0, 1500)}\n"""`);
+              else if ($from.depth >= 1) lines.push(`The cursor is in this block:\n"""\n${$from.node(1).textContent.slice(0, 500)}\n"""`);
+            }
+            const thread = useDocs.getState().thread;
+            const quote = thread ? comments.threads.find((x) => x.id === thread)?.quote : '';
+            if (quote) lines.push(`The comment thread on the right is open, pinned to: "${quote}".`);
+            return lines.join('\n');
           }}
         />
       </main>

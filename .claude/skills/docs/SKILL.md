@@ -34,7 +34,7 @@ People may be typing in the doc while you work, and their edits save within a se
 - Read a tab right before you edit it, and make targeted edits (your Edit tool on the passage), never a rewrite of the whole file to change part of it.
 - Don't reformat what you were not asked to change: no re-wrapping, re-padding tables or switching bullet characters.
 - A new tab: write `tabs/<id>.md` (with its `# Title`) and add `{"id", "title"}` to `tabs` in `doc.json`, after the tab it follows (a subtab right after its parent's other subtabs). To remove a tab, take it out of `tabs` and ask the person to delete the file in the editor (you cannot delete files).
-- The editor's selection, if any, comes with the request as the words they selected: find them in the tab file.
+- What the person is looking at comes with the request: the open tab's file, the section and block the cursor is in, the words they selected, and the comment thread they have open. "This" and "here" mean that place; find the words in the tab file.
 
 ## Comments
 
