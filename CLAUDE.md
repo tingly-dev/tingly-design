@@ -115,6 +115,7 @@ pnpm eval           # agent evaluation: the same design task by skill + command 
 pnpm e2e            # every e2e suite with what each needs started, one table and e2e/out/report.md (--smoke, --list, names, --shard I/N, --jobs N)
 pnpm typecheck
 pnpm knip           # dead code: unused files, exports and dependencies (knip.json; CI fails on new ones)
+pnpm depcheck       # which package may import which (.dependency-cruiser.cjs; the same table as docs/en/architecture.md)
 pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm package)
 pnpm tingly-design  # the command line from source; the bundle's cli.mjs is the npm `bin`, server.mjs is `serve`

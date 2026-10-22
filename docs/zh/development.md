@@ -5,6 +5,8 @@
 ```bash
 pnpm test           # 单元测试：core（解析、回写、jQuery 会话、语句切分、撤销重定位、幻灯片、设计系统、看板、文档）、导入器、导出器（浏览器能写什么、字体内联）、界面文字（两种语言的键一致、占位符一致、代码里的键都存在、代码里没有写死的中文），以及跨类型矩阵（`.design/project-kinds.md` §3）的每个 ✓ 在 `e2e/coverage.json` 里写了测它的 e2e 套件，或者为什么还没有
 pnpm typecheck
+pnpm knip           # 死代码：没用到的文件、导出和依赖
+pnpm depcheck       # 哪个包可以引用哪个包
 pnpm tingly-design --help   # 从源码运行命令行（文档：cli.md）
 ```
 

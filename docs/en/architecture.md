@@ -79,6 +79,8 @@ docs/               guides and how-it-works pages: docs/en/ in English, docs/zh/
 e2e/                Playwright end-to-end tests and a mock Messages API
 ```
 
+Packages depend on each other in one direction only: `core`, `export` and `i18n` import no other package; `import` uses `core` and `i18n`; `sandbox` uses `core` and `export`; the server uses `core`, `export` and `i18n`; the editor uses those and `import`. `pnpm depcheck` (`.dependency-cruiser.cjs`) fails CI on any other arrow in source code (tests are not checked, and `sandbox` is consumed only as its built IIFEs, never imported). In the server, `app.ts` holds the core routes and mounts one file per area under `routes/`, and `chrome.ts` is the one place that starts the machine's Chrome (render, PDF, page exports).
+
 ---
 
 Back to the [README](../../README.md)

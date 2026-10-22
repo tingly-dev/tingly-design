@@ -23,6 +23,7 @@
     "test": "pnpm --filter @dc/core --filter @dc/import --filter @dc/i18n --filter @dc/export test && node --test evals/test/evals.test.mjs && node scripts/check-coverage.mjs",
     "typecheck": "pnpm -r typecheck",
     "knip": "knip --no-progress",
+    "depcheck": "depcruise apps packages --config .dependency-cruiser.cjs",
     "bundle": "node scripts/bundle.mjs",
     "dc-import": "node packages/import/bin/dc-import.mjs",
     "tingly-design": "tsx apps/server/src/cli.ts",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "dependency-cruiser": "^16.10.4",
     "esbuild": "^0.28.2",
     "knip": "^5.0.0",
     "tsx": "^4.23.15",

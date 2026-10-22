@@ -35,6 +35,9 @@ jobs:
       - name: Dead code
         run: pnpm knip
 
+      - name: Package boundaries
+        run: pnpm depcheck
+
       - name: Bundle
         run: pnpm bundle
 
