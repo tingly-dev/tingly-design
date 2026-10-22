@@ -185,6 +185,7 @@ async def main():
         await pg.keyboard.press('Control+End')
         await pg.keyboard.press('Enter')
         await pg.keyboard.type('/formula')
+        await pg.wait_for_timeout(400)
         await pg.keyboard.press('Enter')
         await expect(body.locator('.richcode[data-kind=math] .katex')).to_have_count(1, timeout=30000)
         check('/formula inserts a latex block that draws a formula', True)
