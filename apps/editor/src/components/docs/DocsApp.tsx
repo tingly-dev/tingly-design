@@ -23,7 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -386,24 +386,22 @@ export function DocsApp() {
           placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;
-            const lines: string[] = [];
-            if (tab) lines.push(`The person has the tab "${order.find((x) => x.id === tab)?.title ?? tab}" open (${tabFile(tab)}).`);
+            const { from, to, $from } = e?.state.selection ?? { from: 0, to: 0, $from: null };
+            let heading = '';
             if (e) {
-              const { from, to, empty, $from } = e.state.selection;
-              let heading = '';
-              e.state.doc.descendants((n, pos) => {
-                if (pos >= from) return false;
-                if (n.type.name === 'heading') heading = n.textContent;
-                return true;
+              e.state.doc.forEach((n, pos) => {
+                if (pos < from && n.type.name === 'heading') heading = n.textContent;
               });
-              if (heading) lines.push(`The cursor is in the section "${heading}".`);
-              if (!empty) lines.push(`The person selected these words in the tab:\n"""\n${e.state.doc.textBetween(from, to, '\n').slice(0, 1500)}\n"""`);
-              else if ($from.depth >= 1) lines.push(`The cursor is in this block:\n"""\n${$from.node(1).textContent.slice(0, 500)}\n"""`);
             }
-            const thread = useDocs.getState().thread;
-            const quote = thread ? comments.threads.find((x) => x.id === thread)?.quote : '';
-            if (quote) lines.push(`The comment thread on the right is open, pinned to: "${quote}".`);
-            return lines.join('\n');
+            const lit = rail ? comments.threads.find((x) => x.id === useDocs.getState().thread && !x.resolved) : undefined;
+            return docsViewContext({
+              title: order.find((x) => x.id === tab)?.title,
+              file: tab ? tabFile(tab) : undefined,
+              heading,
+              selection: e && from !== to ? e.state.doc.textBetween(from, to, '\n') : '',
+              block: $from?.parent.textContent,
+              thread: lit?.quote,
+            });
           }}
         />
       </main>

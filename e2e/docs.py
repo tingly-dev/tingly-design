@@ -237,7 +237,7 @@ async def main():
         await pg.locator('.dsask button[aria-label="发送"]').click()
         await wait_for(lambda: sent)
         ctx = (sent[0].get('context') or '') if sent else ''
-        check('Claude Code is told the open tab and the block the cursor is in', 'tabs/workflow.md' in ctx and 'The cursor is in this block' in ctx, ctx[:300])
+        check('Claude Code is told the open tab and the block the cursor is in', 'tabs/workflow.md' in ctx and 'The cursor is in this paragraph' in ctx, ctx[:300])
         await pg.unroute('**/api/projects/*/delegate')
 
         # --- export -------------------------------------------------------------------------------
