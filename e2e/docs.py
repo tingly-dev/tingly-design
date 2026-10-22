@@ -182,12 +182,18 @@ async def main():
         await rc.locator('.rc-view svg').click()
         await expect(rc.locator('pre')).to_be_visible()
         check('a click on the diagram brings the source back', 'flowchart' in await rc.locator('pre').inner_text())
+        await body.locator('h2').last.click()
         await pg.keyboard.press('Control+End')
         await pg.keyboard.press('Enter')
         await pg.keyboard.type('/formula')
         await pg.wait_for_timeout(400)
         await pg.keyboard.press('Enter')
-        await expect(body.locator('.richcode[data-kind=math] .katex')).to_have_count(1, timeout=30000)
+        try:
+            await expect(body.locator('.richcode[data-kind=math] .katex')).to_have_count(1, timeout=30000)
+        except Exception:
+            await pg.screenshot(path=OUT + 'docs-formula-fail.png')
+            open(OUT + 'docs-formula-fail.html', 'w').write(await body.inner_html())
+            raise
         check('/formula inserts a latex block that draws a formula', True)
         await pg.keyboard.press('Control+End')
         await pg.keyboard.type(' \\frac{')
