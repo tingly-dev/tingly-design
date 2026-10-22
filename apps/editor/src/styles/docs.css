@@ -533,7 +533,7 @@
 
 .docbody .rc-error .rc-msg {
   margin: 0 0 6px;
-  color: var(--danger, #c0392b);
+  color: var(--danger);
   font-size: 12.5px;
 }
 

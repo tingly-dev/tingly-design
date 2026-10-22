@@ -50,6 +50,8 @@ const SLASH: SlashItem[] = [
 /** A code block with a language and a starting text, selected so typing replaces it. */
 function fence(e: Editor, language: string, text: string): void {
   e.chain().focus().insertContent({ type: 'codeBlock', attrs: { language }, content: [{ type: 'text', text }] }).run();
+  const end = e.state.selection.to;
+  e.commands.setTextSelection({ from: end - text.length, to: end });
 }
 
 export function pickImage(e: Editor): void {

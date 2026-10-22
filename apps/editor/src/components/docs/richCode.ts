@@ -65,7 +65,14 @@ async function drawDiagram(into: HTMLElement, source: string): Promise<void> {
       theme: document.documentElement.dataset.scheme === 'dark' ? 'dark' : 'default',
       flowchart: { htmlLabels: false },
     });
-    return (await mermaid.render(`rc-${++counter}`, source)).svg;
+    const id = `rc-${++counter}`;
+    try {
+      return (await mermaid.render(id, source)).svg;
+    } finally {
+      // a failed render leaves its error drawing in the page
+      document.getElementById(id)?.remove();
+      document.getElementById(`d${id}`)?.remove();
+    }
   });
   into.innerHTML = svg;
 }
@@ -83,6 +90,7 @@ export const RichCodeBlock = CodeBlock.extend({
       view.contentEditable = 'false';
       // a click on the result puts the cursor in the block, which brings its source back
       view.addEventListener('click', () => {
+        if (!window.getSelection()?.isCollapsed) return;
         const pos = getPos();
         if (typeof pos === 'number') editor.chain().focus().setTextSelection(pos + 1).run();
       });
@@ -96,11 +104,11 @@ export const RichCodeBlock = CodeBlock.extend({
         const kind = kindOfFence(language());
         dom.dataset.kind = kind ?? '';
         dom.classList.remove('rc-error');
+        const mine = ++run;
         if (!kind) {
           view.replaceChildren();
           return;
         }
-        const mine = ++run;
         const source = node.textContent;
         const into = document.createElement('div');
         try {
