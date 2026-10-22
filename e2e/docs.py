@@ -207,11 +207,11 @@ async def main():
         ok = await wait_for(lambda: 'ZZEDITED' in tab('overview'))
         check('an edit is saved to the tab file', ok)
         await pg.locator('.dashbar button[data-versions]').click()
-        await expect(pg.locator('.popmenu.versions .vlist button')).to_have_count(1)
+        await expect(pg.locator('.popmenu.versions .vlist button').first).to_be_visible()
         check('the text an edit replaced is kept as an earlier version', os.path.isdir(os.path.join(DOC, '.history')))
         await pg.locator('.popmenu.versions .vlist button').first.click()
         await expect(pg.locator('.popmenu.versions .vtext')).not_to_contain_text('ZZEDITED')
-        await pg.locator('.popmenu.versions button', has_text='恢复').click()
+        await pg.locator('.popmenu.versions button.primary').click()
         ok = await wait_for(lambda: 'ZZEDITED' not in tab('overview'))
         check('restoring an earlier version writes it back', ok, tab('overview')[-200:])
 

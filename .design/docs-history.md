@@ -10,7 +10,7 @@
 
 - 在写盘的唯一入口（`writeAtomic`）里，覆盖 `tabs/<id>.md` 之前把被覆盖的旧文本存到 `.history/<文件>/<时间>.md`：同一文件一分钟内最多一份，最多留 40 份，内容与上一份相同就不存。
 - `.history/` 是本机状态，和 `.journal.jsonl` 一样不进 zip（点开头的目录本来就不进）、不进提交（`git.ts` 的 LOCAL，仓库 `.gitignore`）。
-- 读取接口：`GET /api/projects/:p/history?path=` 列表，`…/history/item?path=&id=` 取文本。恢复不是新接口：编辑器把取到的文本交给 `saveTab`，和人手改一样走块级合并、日志和撤销。
+- 读取接口：`GET /api/projects/:p/history?path=` 列表，`…/history/item?path=&id=` 取文本。恢复只多一个“先存当前文本”的 `POST …/history`：编辑器把取到的文本交给 `saveTab`，和人手改一样走块级合并和日志；恢复前先无条件存一份当前文本（不受一分钟限制），所以恢复本身也能被恢复回来。恢复不进编辑器的撤销栈。
 - 顶栏一个“历史版本”按钮，弹层是时间列表、所选版本的文本和“恢复这个版本”。
 
 ## 3. 为什么不用 git

@@ -17,10 +17,10 @@ export default {
   versions: {
     button: 'Earlier versions',
     title: 'Earlier versions of this tab',
-    empty: 'This tab has no earlier versions yet. One is kept each time you stop typing for a minute.',
+    empty: 'This tab has no earlier versions yet. The text an edit replaces is kept, at most one a minute.',
     restore: 'Restore this version',
+    journal: 'Restored an earlier version',
     restored: 'Restored',
-    current: 'Current',
     failed: 'Cannot read that version',
   },
   tab: {

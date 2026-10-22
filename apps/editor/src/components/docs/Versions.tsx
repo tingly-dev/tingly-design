@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tabFile } from '@dc/core';
 import { api } from '../../api';
@@ -23,18 +23,23 @@ export function Versions({ tab, onClose }: { tab: string; onClose: () => void })
     };
   }, [project, file]);
 
+  const latest = useRef('');
   const pick = async (id: string) => {
     if (!project) return;
+    latest.current = id;
     setPicked(id);
+    setText('');
     try {
-      setText((await api.historyItem(project, file, id)).content);
+      const { content } = await api.historyItem(project, file, id);
+      if (latest.current === id) setText(content);
     } catch (err) {
-      setText('');
-      toast((err as Error).message || t('docs.versions.failed'), 'error');
+      if (latest.current === id) toast((err as Error).message || t('docs.versions.failed'), 'error');
     }
   };
-  const restore = () => {
-    saveTab(tab, text, 'human', `${file} restored`);
+  const restore = async () => {
+    if (!project) return;
+    await api.keepVersion(project, file).catch(() => undefined);
+    saveTab(tab, text, 'human', t('docs.versions.journal'));
     toast(t('docs.versions.restored'));
     onClose();
   };
@@ -52,8 +57,8 @@ export function Versions({ tab, onClose }: { tab: string; onClose: () => void })
       </div>
       {picked && (
         <>
-          <pre className="vtext">{text.slice(0, 4000)}</pre>
-          <button className="btn primary sm" disabled={!text} onClick={restore}>
+          <pre className="vtext">{text}</pre>
+          <button className="btn primary sm" disabled={!text} onClick={() => void restore()}>
             {t('docs.versions.restore')}
           </button>
         </>

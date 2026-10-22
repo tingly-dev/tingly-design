@@ -172,6 +172,7 @@ export const api = {
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
   /** the earlier versions kept of a doc tab (newest first), and the text of one */
   history: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history?path=${enc(path)}`)).then((r) => json<{ id: string; at: string }[]>(r)),
+  keepVersion: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history?path=${enc(path)}`), { method: 'POST' }).then((r) => json<{ ok: true }>(r)),
   historyItem: (p: string, path: string, id: string) => call(at(`api/projects/${enc(p)}/history/item?path=${enc(path)}&id=${enc(id)}`)).then((r) => json<{ content: string }>(r)),
   journal: (p: string) => call(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 

@@ -19,10 +19,10 @@ export default {
   versions: {
     button: '历史版本',
     title: '这个标签页的历史版本',
-    empty: '这个标签页还没有历史版本。停下手一分钟后，会留下一份。',
+    empty: '这个标签页还没有历史版本。每次编辑覆盖的旧文本会留下，一分钟最多一份。',
     restore: '恢复这个版本',
+    journal: '恢复了一个历史版本',
     restored: '已恢复',
-    current: '当前',
     failed: '读不到这个版本',
   },
   tab: {

@@ -329,7 +329,7 @@ export function DocsApp() {
         {tab && (
           <div className="popwrap">
             <BarButton icon={<History />} label={t('docs.versions.button')} on={pop === 'versions'} data-versions="" onClick={() => setPop(pop === 'versions' ? null : 'versions')} />
-            {pop === 'versions' && <Versions tab={tab} onClose={() => setPop(null)} />}
+            {pop === 'versions' && <Versions key={tab} tab={tab} onClose={() => setPop(null)} />}
           </div>
         )}
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
