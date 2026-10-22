@@ -61,6 +61,10 @@ writer 对刚由 PptxGenJS 4.0.1 生成的包执行有限结构修正：notesMas
 - **图像差分**：导入方向是 `compare.py --import <file.pptx> --fonts`（经 CLI 导入，参考图为 LibreOffice 渲染的原文件，对比编辑器 PDF）；导出方向是 `scripts/pptx-fidelity/compare.py <project> --fonts` 用真实命令行导出 PDF（编辑器自己的渲染）和 PPTX，用 LibreOffice 渲染 PPTX，两边按同宽栅格化逐像素比较，输出每页参考图、渲染图、差异图和差异像素比例。LibreOffice 是独立读者但不是 PowerPoint；它的已知偏差（例如带 alpha 的文字加字距会被截短）不等于导出错误，需看图判断。示例 deck 与压力 deck 的结果见 [验证记录](../.research/slides-pptx-verification.md)。
 - Schema 合法不等于 Office 打开后的视觉保真或逐对象可编辑验收。现有用户提供语料的打开确认不能扩大为所有 writer 成品的 Office 互操作证明；真实 Office 字体、换行、对象编辑与视觉比较仍是单独门槛。详细既有证据及其适用范围见 [验证记录](../.research/slides-pptx-verification.md)。
 
+### 浏览器回归脚本
+
+`python3 packages/export/test/pptxDom.browser.py` 在真实 Chrome 里检查 DOM 测量与布局；`python3 packages/export/test/pptxProduct.browser.py` 是聚焦的不透明运行时与资源边界回归（沙盒侧入口是 `pptxCapture.ts`，编辑器侧是 `pptxExport.ts`），都需要 Python Playwright 和本机 Chrome，不是完整产品 e2e。`pnpm e2e pptx` 走启动器、API、菜单、CLI、MCP 的产品路径。
+
 ### Smoke 语料契约
 
 `packages/core/test/fixtures/pptx-smoke/` 按“综合展示 + 支持集 + 单特性用例”组织；目录 README 维护重建方法、逐页覆盖、预期和验证边界。一个大文件不可替代单特性包：综合文件里的近似提醒会混在一起，单特性包才能断言每项映射本身。
