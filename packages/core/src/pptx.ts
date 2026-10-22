@@ -3,6 +3,9 @@ import { SaxesParser } from 'saxes';
 import { parseDc } from './parse';
 import { checkSlide } from './slides';
 import { stringifyDeck } from './deck';
+import { TABLE_STYLES, TABLE_STYLE_BODIES } from './pptxTableStyles.data';
+import { type X, at, child, key, kids, path, walk } from './pptxXml';
+import { type ChartEnv, drawChart, drawChartEx } from './pptxChart';
 
 /**
  * Standalone PPTX -> editable slides conversion. No I/O or renderer. Transitional OOXML only.
@@ -127,13 +130,6 @@ function unzip(bytes: Uint8Array, limits: PptxLimits): Map<string, Uint8Array> {
   if (seen.size !== metadata.size) fail('invalid_zip');
   return output;
 }
-interface X { uri: string; name: string; attrs: Record<string, string>; children: X[]; text: string }
-const key = (uri: string, name: string) => `{${uri}}${name}`;
-const at = (n: X | undefined, name: string, uri = '') => n?.attrs[key(uri, name)];
-const kids = (n: X | undefined, uri: string, name: string) => n?.children.filter(x => x.uri === uri && x.name === name) ?? [];
-const child = (n: X | undefined, uri: string, name: string) => kids(n, uri, name)[0];
-const path = (n: X | undefined, ...steps: [string, string][]) => steps.reduce<X | undefined>((p, [uri, name]) => child(p, uri, name), n);
-function walk(n: X | undefined, uri: string, name: string): X[] { return n ? [...(n.uri === uri && n.name === name ? [n] : []), ...n.children.flatMap(c => walk(c, uri, name))] : []; }
 /** The part a picture reference was read from: its id resolves in that part's relationships,
  * whether the fill sits on the slide, a layout or master, the theme or a SmartArt drawing. */
 const blipPart = new WeakMap<X, string>();
@@ -803,6 +799,10 @@ function renderShape(shape: X, ancestors: X[], c: Context): string {
   const text = textBody(shape, ancestors, c);
   return art + (text ? placeText(text, child(shape, P, 'txXfrm') ? boxOf(child(shape, P, 'txXfrm'), c) : box) : '');
 }
+/** Style parts back to front, as the schema lists them: a later part that applies to a cell wins. */
+const TABLE_PARTS = ['wholeTbl', 'band1H', 'band2H', 'band1V', 'band2V', 'lastCol', 'firstCol', 'lastRow', 'seCell', 'swCell', 'firstRow', 'neCell', 'nwCell'];
+const ROW_PARTS = ['firstRow', 'lastRow', 'band1H', 'band2H'], COL_PARTS = ['firstCol', 'lastCol', 'band1V', 'band2V'];
+const el = (name: string, attrs: Record<string, string> = {}, children: X[] = []): X => ({ uri: A, name, attrs: Object.fromEntries(Object.entries(attrs).map(([k, v]) => [key('', k), v])), text: '', children });
 function renderTable(frame: X, box: Box, c: Context): string {
   const table = path(frame, [A, 'graphic'], [A, 'graphicData'], [A, 'tbl']);
   if (!table) fail('unsupported_element', c.loc, { element: 'graphicFrame' });
@@ -811,259 +811,170 @@ function renderTable(frame: X, box: Box, c: Context): string {
   const styleId = child(props, A, 'tableStyleId')?.text.trim();
   const tstyle = styleId ? kids(c.tableStyles, A, 'tblStyle').find(s => at(s, 'styleId') === styleId) ?? builtinTableStyle(styleId) : undefined;
   if (styleId && !tstyle) warn(c, 'style_approximate', { table: styleId });
-  const columns = kids(child(table, A, 'tblGrid'), A, 'gridCol').map(n => number(at(n, 'w')) * box.w / Math.max(1, number(at(path(frame, [P, 'xfrm'], [A, 'ext']), 'cx'), 1)));
+  const ext = at(path(frame, [P, 'xfrm'], [A, 'ext']), 'cx'), extY = at(path(frame, [P, 'xfrm'], [A, 'ext']), 'cy');
+  const columns = kids(child(table, A, 'tblGrid'), A, 'gridCol').map(n => number(at(n, 'w')) * box.w / Math.max(1, number(ext, 1)));
   const rows = kids(table, A, 'tr');
   if (!columns.length || !rows.length || columns.some(w => w <= 0)) fail('invalid_value', c.loc);
-  const yScale = box.h / Math.max(1, number(at(path(frame, [P, 'xfrm'], [A, 'ext']), 'cy'), 1));
+  const yScale = box.h / Math.max(1, number(extY, 1));
   const heights = rows.map(r => number(at(r, 'h')) * yScale);
   const nr = rows.length, nc = columns.length;
-  const partsFor = (r: number, col: number) => {
-    const out = ['wholeTbl'], dataRow = r - (flag('firstRow') ? 1 : 0), dataCol = col - (flag('firstCol') ? 1 : 0);
-    if (flag('bandRow') && !(flag('firstRow') && r === 0) && !(flag('lastRow') && r === nr - 1)) out.push(dataRow % 2 ? 'band2H' : 'band1H');
-    if (flag('bandCol') && !(flag('firstCol') && col === 0) && !(flag('lastCol') && col === nc - 1)) out.push(dataCol % 2 ? 'band2V' : 'band1V');
-    if (flag('lastCol') && col === nc - 1) out.push('lastCol');
-    if (flag('firstCol') && col === 0) out.push('firstCol');
-    if (flag('lastRow') && r === nr - 1) out.push('lastRow');
-    if (flag('firstRow') && r === 0) out.push('firstRow');
-    return out.map(name => ({ name, node: child(tstyle, A, name) })).filter(x => x.node);
+  // right to left, the first column is the one on the right
+  const rtl = flag('rtl');
+  const partsFor = (r: number, col: number, lastR: number, lastC: number) => {
+    const first = flag('firstRow') && r === 0, last = flag('lastRow') && lastR === nr - 1 && !(first && nr === 1);
+    const firstC = flag('firstCol') && col === 0, lastCol = flag('lastCol') && lastC === nc - 1 && !(firstC && nc === 1);
+    const dataRow = r - (flag('firstRow') ? 1 : 0), dataCol = col - (flag('firstCol') ? 1 : 0);
+    const on: Record<string, boolean> = {
+      wholeTbl: true,
+      band1H: flag('bandRow') && !first && !last && dataRow % 2 === 0, band2H: flag('bandRow') && !first && !last && dataRow % 2 === 1,
+      band1V: flag('bandCol') && !firstC && !lastCol && dataCol % 2 === 0, band2V: flag('bandCol') && !firstC && !lastCol && dataCol % 2 === 1,
+      lastCol, firstCol: firstC, lastRow: last, firstRow: first,
+      seCell: last && lastCol, swCell: last && firstC, neCell: first && lastCol, nwCell: first && firstC,
+    };
+    return TABLE_PARTS.filter(name => on[name]).map(name => ({ name, node: child(tstyle, A, name) })).filter(x => x.node);
   };
-  const edgeOf = (part: string, side: string, r: number, col: number, lastRow: number, lastCol: number) => {
-    const rowPart = ['firstRow', 'lastRow', 'band1H', 'band2H'].includes(part), colPart = ['firstCol', 'lastCol', 'band1V', 'band2V'].includes(part);
+  // the side of a part a cell's edge lies on: a row part's top and bottom are its own, its inner columns share insideV
+  const edgeOf = (part: string, side: string, r: number, col: number, lastR: number, lastC: number) => {
+    const rowPart = ROW_PARTS.includes(part) || part.endsWith('Cell'), colPart = COL_PARTS.includes(part) || part.endsWith('Cell');
     if (side === 'left') return colPart || col === 0 ? 'left' : 'insideV';
-    if (side === 'right') return colPart || lastCol === nc - 1 ? 'right' : 'insideV';
+    if (side === 'right') return colPart || lastC === nc - 1 ? 'right' : 'insideV';
     if (side === 'top') return rowPart || r === 0 ? 'top' : 'insideH';
-    return rowPart || lastRow === nr - 1 ? 'bottom' : 'insideH';
+    return rowPart || lastR === nr - 1 ? 'bottom' : 'insideH';
   };
-  const lineCss = (n: X | undefined, ctx: Context) => {
+  /** A border as CSS: its own line or the theme line it names; `none` when it is set to nothing. */
+  const lineCss = (n: X | undefined) => {
     if (!n) return undefined;
-    let ln: X | undefined = n.name === 'ln' || /^ln[LRTB]$/.test(n.name) ? n : child(n, A, 'ln');
-    let lc = ctx;
-    if (!ln && child(n, A, 'lnRef')) { const ref = themeStyle(child(n, A, 'lnRef'), 'lnStyleLst', ctx); ln = ref.node; lc = ref.c; }
+    let ln: X | undefined = n.name === 'ln' || /^ln[LRTB]$|^ln(TlToBr|BlToTr)$/.test(n.name) ? n : child(n, A, 'ln');
+    let lc = c;
+    if (!ln && child(n, A, 'lnRef')) { const ref = themeStyle(child(n, A, 'lnRef'), 'lnStyleLst', c); ln = ref.node && merge([ref.node]); lc = ref.c; }
     if (!ln) return undefined;
     const s = stroke(ln, undefined, lc, false);
-    return s ? `${num(s.width)}px ${s.dash} ${s.color}` : 'none';
+    if (!s) return 'none';
+    const double = at(ln, 'cmpd') === 'dbl' || at(ln, 'cmpd') === 'thickThin' || at(ln, 'cmpd') === 'thinThick';
+    if (at(ln, 'cmpd') === 'tri') warn(c, 'style_approximate', { line: 'tri' });
+    return `${num(Math.max(double ? 3 : 0, s.width))}px ${double ? 'double' : s.dash} ${s.color}`;
   };
-  const fillCss = (n: X | undefined, ctx: Context) => {
+  const fillCss = (n: X | undefined) => {
     const f = fillIn(n);
-    if (f) { const p = paint(f, ctx); return p && !p.image ? p.css : 'transparent'; }
+    if (f) { const p = paint(f, c); if (p?.image) warn(c, 'style_approximate', { table: 'picture' }); return p && !p.image ? p.css : 'transparent'; }
     const ref = child(n, A, 'fillRef');
-    if (ref) { const t = themeStyle(ref, 'fillStyleLst', ctx); const p = t.node ? paint(t.node, t.c) : null; return p && !p.image ? p.css : 'transparent'; }
+    if (ref) { const t = themeStyle(ref, 'fillStyleLst', c); const p = t.node ? paint(t.node, t.c) : null; return p && !p.image ? p.css : 'transparent'; }
     return undefined;
   };
-  let y = 0, html = '';
+  // one style per cell, in grid positions: a merged cell is its top-left cell
+  interface Cell { r: number; col: number; span: number; down: number; x: number; w: number; h: number; source: X; background?: string; edges: Record<string, string | undefined>; own: Set<string>; runs: X[] }
+  const grid: (Cell | undefined)[][] = Array.from({ length: nr }, () => Array<Cell | undefined>(nc));
+  const cells: Cell[] = [];
   for (let r = 0; r < nr; r++) {
-    const cells = kids(rows[r], A, 'tc');
-    let x = 0, content = '';
+    const own = kids(rows[r], A, 'tc');
+    let x = 0;
     for (let col = 0; col < nc; col++) {
-      const cell = cells[col], width = columns[col];
+      const cell = own[col], width = columns[col];
       if (!cell || truthy(at(cell, 'hMerge')) || truthy(at(cell, 'vMerge'))) { x += width; continue; }
-      const span = Math.max(1, Math.round(number(at(cell, 'gridSpan'), 1))), down = Math.max(1, Math.round(number(at(cell, 'rowSpan'), 1)));
+      const span = clamp(Math.round(number(at(cell, 'gridSpan'), 1)), 1, nc - col), down = clamp(Math.round(number(at(cell, 'rowSpan'), 1)), 1, nr - r);
+      const lastR = r + down - 1, lastC = col + span - 1;
       const w = columns.slice(col, col + span).reduce((a, b) => a + b, 0), h = heights.slice(r, r + down).reduce((a, b) => a + b, 0);
       const pr = child(cell, A, 'tcPr');
-      let background: string | undefined; const edges: Record<string, string | undefined> = {};
-      const runs: X[] = [];
-      for (const part of partsFor(r, col)) {
-        const tc = child(part.node, A, 'tcStyle');
-        background = fillCss(child(tc, A, 'fill') ?? tc, c) ?? background;
-        for (const side of ['left', 'right', 'top', 'bottom']) edges[side] = lineCss(child(child(tc, A, 'tcBdr'), A, edgeOf(part.name, side, r, col, r + down - 1, col + span - 1)), c) ?? edges[side];
+      const item: Cell = { r, col, span, down, x, w, h, source: cell, edges: {}, own: new Set(), runs: [] };
+      for (const part of partsFor(r, col, lastR, lastC)) {
+        const tc = child(part.node, A, 'tcStyle'), bdr = child(tc, A, 'tcBdr');
+        item.background = fillCss(child(tc, A, 'fill') ?? tc) ?? item.background;
+        for (const side of ['left', 'right', 'top', 'bottom']) item.edges[side] = lineCss(child(bdr, A, edgeOf(part.name, side, r, col, lastR, lastC))) ?? item.edges[side];
+        for (const [name, side] of [['tl2br', 'down'], ['tr2bl', 'up']]) item.edges[side] = lineCss(child(bdr, A, name)) ?? item.edges[side];
         const tx = child(part.node, A, 'tcTxStyle');
         if (tx) {
-          const fontRef = child(tx, A, 'fontRef'), col0 = rgba(tx, c) ?? rgba(fontRef, c);
-          runs.push({ uri: A, name: 'defRPr', text: '', attrs: { ...(at(tx, 'b') ? { [key('', 'b')]: truthy(at(tx, 'b')) ? '1' : '0' } : {}), ...(at(tx, 'i') ? { [key('', 'i')]: truthy(at(tx, 'i')) ? '1' : '0' } : {}) },
-            children: [...(col0 ? [{ uri: A, name: 'solidFill', attrs: {}, text: '', children: [{ uri: A, name: 'srgbClr', attrs: { [key('', 'val')]: cssColor([...col0.slice(0, 3), 1]).slice(1) }, text: '', children: [] }] }] : []),
-              ...(at(fontRef, 'idx') ? [{ uri: A, name: 'latin', attrs: { [key('', 'typeface')]: at(fontRef, 'idx') === 'major' ? '+mj-lt' : '+mn-lt' }, text: '', children: [] }] : [])] });
+          const fontRef = child(tx, A, 'fontRef'), font = child(tx, A, 'font'), col0 = rgba(tx, c) ?? rgba(fontRef, c);
+          const faces = font ? ['latin', 'ea', 'cs'].map(k => child(font, A, k)).filter((n): n is X => !!n) : at(fontRef, 'idx') ? [el('latin', { typeface: at(fontRef, 'idx') === 'major' ? '+mj-lt' : '+mn-lt' }), el('ea', { typeface: at(fontRef, 'idx') === 'major' ? '+mj-ea' : '+mn-ea' })] : [];
+          item.runs.push(el('defRPr', { ...(at(tx, 'b') && at(tx, 'b') !== 'def' ? { b: at(tx, 'b') === 'on' ? '1' : '0' } : {}), ...(at(tx, 'i') && at(tx, 'i') !== 'def' ? { i: at(tx, 'i') === 'on' ? '1' : '0' } : {}) },
+            [...(col0 ? [el('solidFill', {}, [el('srgbClr', { val: cssColor([...col0.slice(0, 3), 1]).slice(1) }, col0[3] < 1 ? [el('alpha', { val: String(Math.round(col0[3] * 100000)) })] : [])])] : []), ...faces]));
         }
       }
-      background = fillCss(pr, c) ?? background;
-      for (const [name, side] of [['lnL', 'left'], ['lnR', 'right'], ['lnT', 'top'], ['lnB', 'bottom']]) edges[side] = lineCss(child(pr, A, name), c) ?? edges[side];
-      // Neighbours share an edge: each cell draws its right and bottom, the first column and row also their left and top.
-      if (col > 0) edges.left = undefined;
-      if (r > 0) edges.top = undefined;
-      const borders = ['left', 'right', 'top', 'bottom'].map(side => `border-${side}:${edges[side] ?? 'none'}`).join(';');
-      const source = child(cell, A, 'txBody'), bodyPr = child(source, A, 'bodyPr');
-      const attrs = { ...bodyPr?.attrs };
-      for (const [from, to, fallback] of [['marL', 'lIns', 91440], ['marR', 'rIns', 91440], ['marT', 'tIns', 45720], ['marB', 'bIns', 45720]] as const) attrs[key('', to)] = at(pr, from) ?? String(fallback);
-      attrs[key('', 'anchor')] = at(pr, 'anchor') ?? 't';
-      const body: X = { uri: P, name: 'txBody', attrs: {}, text: '', children: [{ uri: A, name: 'bodyPr', attrs, text: '', children: bodyPr?.children ?? [] }, ...(source?.children.filter(n => n !== bodyPr) ?? [])] };
-      const text = textBody({ uri: P, name: 'sp', attrs: {}, text: '', children: [body] }, [], c, runs);
-      content += `<td style="position:absolute;left:${num(x)}px;top:0px;width:${num(w)}px;height:${num(h)}px;padding:0px;background:${background ?? 'transparent'};${borders}">${text ? `<div style="position:absolute;left:0px;top:0px;width:100%;height:100%;${text.box}">${text.inner}</div>` : ''}</td>`;
+      item.background = fillCss(pr) ?? item.background;
+      for (const [name, side] of [['lnL', 'left'], ['lnR', 'right'], ['lnT', 'top'], ['lnB', 'bottom'], ['lnTlToBr', 'down'], ['lnBlToTr', 'up']]) {
+        const v = lineCss(child(pr, A, name));
+        if (v) { item.edges[side] = v; item.own.add(side); }
+      }
+      cells.push(item);
+      for (let i = r; i <= lastR; i++) for (let j = col; j <= lastC; j++) grid[i][j] = item;
       x += w; col += span - 1;
     }
-    html += `<tr style="position:absolute;left:0px;top:${num(y)}px;width:${num(box.w)}px;height:${num(heights[r])}px">${content}</tr>`;
-    y += heights[r];
   }
-  return `<table style="${css({ ...box, rot: 0, fh: false, fv: false })}">${html}</table>`;
-}
-/**
- * PowerPoint names its built-in table styles by id without writing them into the file. The
- * default family (Medium Style 2, one per accent) is written out here; other ids are noted
- * and drawn plain.
- */
-const BUILTIN_TABLE_STYLES: Record<string, string> = {
-  '{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}': 'accent1', '{21E4AEA4-8DFA-4A89-87EB-49C32662AFE8}': 'accent2', '{F5AB1C69-6EDB-4FF4-983F-18BD219EF322}': 'accent3',
-  '{00A15C55-8517-42AA-B614-E9B94910E393}': 'accent4', '{7DF18680-E054-41AD-8BC1-D1AEF772440D}': 'accent5', '{93296810-A885-4BE3-A3E7-6D5BEEA58F35}': 'accent6',
-  '{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}': 'dk1',
-};
-function builtinTableStyle(id: string): X | undefined {
-  const accent = BUILTIN_TABLE_STYLES[id];
-  if (!accent) return undefined;
-  const ln = (w: number) => `<a:ln w="${w}"><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:ln>`;
-  const fill = (tint?: number) => `<a:fill><a:solidFill><a:schemeClr val="${accent}">${tint ? `<a:tint val="${tint}"/>` : ''}</a:schemeClr></a:solidFill></a:fill>`;
-  const strong = (border: string) => `<a:tcTxStyle b="on"><a:fontRef idx="minor"/><a:schemeClr val="lt1"/></a:tcTxStyle><a:tcStyle><a:tcBdr>${border}</a:tcBdr>${fill()}</a:tcStyle>`;
-  const all = ['left', 'right', 'top', 'bottom', 'insideH', 'insideV'].map(e => `<a:${e}>${ln(12700)}</a:${e}>`).join('');
-  const source = `<a:tblStyle xmlns:a="${A}" styleId="${id}"><a:wholeTbl><a:tcTxStyle><a:fontRef idx="minor"/><a:schemeClr val="dk1"/></a:tcTxStyle><a:tcStyle><a:tcBdr>${all}</a:tcBdr>${fill(20000)}</a:tcStyle></a:wholeTbl>`
-    + `<a:band1H><a:tcStyle>${fill(40000)}</a:tcStyle></a:band1H><a:band1V><a:tcStyle>${fill(40000)}</a:tcStyle></a:band1V>`
-    + `<a:lastCol>${strong('')}</a:lastCol><a:firstCol>${strong('')}</a:firstCol><a:lastRow>${strong(`<a:top>${ln(38100)}</a:top>`)}</a:lastRow><a:firstRow>${strong(`<a:bottom>${ln(38100)}</a:bottom>`)}</a:firstRow></a:tblStyle>`;
-  return xml(encode(source), PPTX_LIMITS, 'builtin', { nodes: 0 });
-}
-const C = 'http://schemas.openxmlformats.org/drawingml/2006/chart';
-const svgText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-/** A round step for a value axis: 1, 2 or 5 times a power of ten. */
-function niceStep(span: number, ticks = 5) {
-  const raw = span / ticks || 1, p = 10 ** Math.floor(Math.log10(raw)), m = raw / p;
-  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
-}
-/**
- * A chart redrawn from the values the file saved with it: bars, columns, lines, areas, pies
- * and doughnuts, with title, axes, gridlines and legend. A drawing, not live data.
- */
-/** Points read from one chart series: more cannot be drawn legibly in a slide-sized chart. */
-const CHART_POINTS = 1000;
-function renderChart(frame: X, box: Box, c: Context): string | undefined {
-  const ref = walk(path(frame, [A, 'graphic'], [A, 'graphicData']), C, 'chart')[0];
-  const id = at(ref, 'id', R); if (!id) return undefined;
-  const space = c.pkg.parsed.get(c.pkg.rel(c.loc.part!, id, 'chart', c.loc));
-  const chart = child(space, C, 'chart'), plot = child(chart, C, 'plotArea');
-  const kinds = ['barChart', 'bar3DChart', 'lineChart', 'line3DChart', 'areaChart', 'pieChart', 'pie3DChart', 'doughnutChart'];
-  const groups = plot?.children.filter(n => n.uri === C && kinds.includes(n.name)) ?? [];
-  if (!groups.length) return undefined;
-  if (plot!.children.some(n => n.uri === C && /Chart$/.test(n.name) && !kinds.includes(n.name))) warn(c, 'style_approximate', { chart: 'type' });
-  const val = (n: X | undefined) => at(child(n, C, 'val'), 'val');
-  const cache = (n: X | undefined) => {
-    const pts = walk(n, C, 'pt');
-    const out: string[] = [];
-    for (const p of pts) { const i = Math.round(number(at(p, 'idx'), 0)); if (i >= 0 && i < CHART_POINTS) out[i] = child(p, C, 'v')?.text ?? ''; }
-    return out;
+  // Neighbours share an edge: each cell draws its right and bottom, the first column and row their
+  // left and top too. A border set on a cell wins over the style's; then a line wins over none.
+  const pick = (a: Cell, as: string, b: Cell | undefined, bs: string) => {
+    const x = a.edges[as], y = b?.edges[bs];
+    if (a.own.has(as) !== !!b?.own.has(bs)) return a.own.has(as) ? x : y;
+    return x && x !== 'none' ? x : y && y !== 'none' ? y : x ?? y;
   };
-  const accents = ['accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'];
-  // without a theme, Office's own default accents
-  const fallback = ['#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47'];
-  const themeColor = (i: number) => { try { return color({ uri: A, name: 'schemeClr', attrs: { [key('', 'val')]: accents[i % 6] }, text: '', children: [] }, c, fallback[i % 6]); } catch (e) { if (fatal(e)) throw e; return fallback[i % 6]; } };
-  const sz = number(at(walk(child(space, C, 'txPr'), A, 'defRPr')[0], 'sz'), 1000) * 127 * c.scale;
-  const font = face('+mn-lt', c) ?? 'Arial';
-  const W = box.w, H = box.h, pad = sz * 0.6;
-  let series = groups.flatMap(g => kids(g, C, 'ser').map(ser => ({ g, ser })));
-  const pie = ['pieChart', 'pie3DChart', 'doughnutChart'].includes(groups[0].name);
-  if (pie) series = series.slice(0, 1);
-  const data = series.map(({ g, ser }, i) => {
-    const sp = child(ser, C, 'spPr'), f = fillIn(sp), lnFill = fillIn(child(sp, A, 'ln'));
-    const p = f ? paint(f, c) : null;
-    const fill = p?.stops ? p.stops[0][1] : p && !p.image ? p.css : themeColor(Math.round(number(val(ser.children.find(x => x.name === 'idx')), i)));
-    const stroke = lnFill && lnFill.name !== 'noFill' ? color(lnFill, c, fill) : fill;
-    return { g, name: cache(child(ser, C, 'tx'))[0] ?? `Series ${i + 1}`, cats: cache(child(ser, C, 'cat')), vals: cache(child(ser, C, 'val')).map(v => Number(v)), fill, stroke, ser };
-  });
-  const cats = data.reduce<string[]>((best, d) => d.cats.length > best.length ? d.cats : best, []);
-  const count = Math.max(cats.length, ...data.map(d => d.vals.length));
-  const out: string[] = [];
-  const text = (x: number, y: number, t: string, anchor = 'middle', size = sz, weight = 400) => `<text x="${num(x)}" y="${num(y)}" font-size="${num(size)}" font-family="${esc(font)}" fill="#595959" text-anchor="${anchor}"${weight !== 400 ? ` font-weight="${weight}"` : ''}>${svgText(t)}</text>`;
-  let top = pad, bottom = H - pad, left = pad, right = W - pad;
-  const titleNode = child(chart, C, 'title');
-  const title = titleNode ? walk(titleNode, A, 't').map(t => t.text).join('') || (data.length === 1 ? data[0].name : '') : val(child(chart, C, 'autoTitleDeleted')) !== '1' && data.length === 1 ? data[0].name : '';
-  if (title) { out.push(text(W / 2, top + sz * 1.3, title, 'middle', sz * 1.4, 700)); top += sz * 2.2; }
-  const legend = child(chart, C, 'legend');
-  const entries = pie ? cats.map((t, i) => ({ t, fill: themeColorFor(i) })) : data.map(d => ({ t: d.name, fill: d.fill }));
-  function themeColorFor(i: number) {
-    const dPt = kids(data[0]?.ser, C, 'dPt').find(p => number(val(child(p, C, 'idx')), -1) === i);
-    const f = fillIn(child(dPt, C, 'spPr'));
-    const p = f ? paint(f, c) : null;
-    return p && !p.image && !p.stops ? p.css : themeColor(i);
+  const rowsHtml = heights.map(() => '');
+  for (const cell of cells) {
+    const right = cell.col + cell.span < nc ? grid[cell.r][cell.col + cell.span] : undefined, below = cell.r + cell.down < nr ? grid[cell.r + cell.down][cell.col] : undefined;
+    const start = cell.col === 0 ? cell.edges.left : undefined, end = pick(cell, 'right', right, 'left');
+    // right to left, the first column is drawn on the right
+    const sides = { left: rtl ? end : start, right: rtl ? start : end, top: cell.r === 0 ? cell.edges.top : undefined, bottom: pick(cell, 'bottom', below, 'top') };
+    const borders = (['left', 'right', 'top', 'bottom'] as const).map(side => `border-${side}:${sides[side] ?? 'none'}`).join(';');
+    const pr = child(cell.source, A, 'tcPr'), source = child(cell.source, A, 'txBody'), bodyPr = child(source, A, 'bodyPr');
+    const attrs = { ...bodyPr?.attrs };
+    for (const [from, to, fallback] of [['marL', 'lIns', 91440], ['marR', 'rIns', 91440], ['marT', 'tIns', 45720], ['marB', 'bIns', 45720]] as const) attrs[key('', to)] = at(pr, from) ?? String(fallback);
+    attrs[key('', 'anchor')] = at(pr, 'anchor') ?? 't';
+    if (at(pr, 'vert')) attrs[key('', 'vert')] = at(pr, 'vert')!;
+    const body: X = { uri: P, name: 'txBody', attrs: {}, text: '', children: [{ uri: A, name: 'bodyPr', attrs, text: '', children: bodyPr?.children ?? [] }, ...(source?.children.filter(n => n !== bodyPr) ?? [])] };
+    const text = textBody({ uri: P, name: 'sp', attrs: {}, text: '', children: [body] }, [], c, cell.runs);
+    const x = rtl ? box.w - cell.x - cell.w : cell.x;
+    // diagonal borders, drawn across the cell; mirrored with the table when it runs right to left
+    const lines = ([['down', rtl ? 'M1 0L0 1' : 'M0 0L1 1'], ['up', rtl ? 'M0 0L1 1' : 'M0 1L1 0']] as const).map(([side, d]) => {
+      const v = cell.edges[side]; if (!v || v === 'none') return '';
+      const [w, , col] = v.split(' ');
+      return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w.replace('px', '')}" vector-effect="non-scaling-stroke"/>`;
+    }).join('');
+    const diagonal = lines ? `<svg viewBox="0 0 1 1" preserveAspectRatio="none" style="position:absolute;left:0px;top:0px;width:100%;height:100%;overflow:visible">${lines}</svg>` : '';
+    const inner = text ? text.vert
+      ? `<div style="position:absolute;left:${num((cell.w - cell.h) / 2)}px;top:${num((cell.h - cell.w) / 2)}px;width:${num(cell.h)}px;height:${num(cell.w)}px;transform:rotate(${text.vert}deg);${text.box}">${text.inner}</div>`
+      : `<div style="position:absolute;left:0px;top:0px;width:100%;height:100%;${text.box}">${text.inner}</div>` : '';
+    rowsHtml[cell.r] += `<td${cell.span > 1 ? ` colspan="${cell.span}"` : ''}${cell.down > 1 ? ` rowspan="${cell.down}"` : ''} style="position:absolute;left:${num(x)}px;top:0px;width:${num(cell.w)}px;height:${num(cell.h)}px;box-sizing:border-box;padding:0px;background:${cell.background ?? 'transparent'};${borders}">${diagonal}${inner}</td>`;
   }
-  if (legend && entries.length) {
-    const pos = val(child(legend, C, 'legendPos')) ?? 'r';
-    const item = (e: { t: string; fill: string }, x: number, y: number) => `<rect x="${num(x)}" y="${num(y - sz * 0.75)}" width="${num(sz * 0.8)}" height="${num(sz * 0.8)}" fill="${e.fill}"/>${text(x + sz * 1.2, y, e.t, 'start')}`;
-    if (pos === 'r' || pos === 'l') {
-      const width = Math.max(...entries.map(e => e.t.length)) * sz * 0.6 + sz * 2;
-      const x = pos === 'r' ? right - width : left, y0 = (top + bottom) / 2 - entries.length * sz * 0.75;
-      entries.forEach((e, i) => out.push(item(e, x, y0 + i * sz * 1.5 + sz)));
-      if (pos === 'r') right -= width + pad; else left += width + pad;
-    } else {
-      const widths = entries.map(e => e.t.length * sz * 0.6 + sz * 2.4), total = widths.reduce((a, b) => a + b, 0);
-      let x = W / 2 - total / 2; const y = pos === 't' ? top + sz : bottom - sz * 0.3;
-      entries.forEach((e, i) => { out.push(item(e, x, y)); x += widths[i]; });
-      if (pos === 't') top += sz * 2; else bottom -= sz * 2;
-    }
+  let y = 0, html = '';
+  for (let r = 0; r < nr; r++) { html += `<tr style="position:absolute;left:0px;top:${num(y)}px;width:${num(box.w)}px;height:${num(heights[r])}px">${rowsHtml[r]}</tr>`; y += heights[r]; }
+  // the table's own background and shadow, under every cell
+  const bg = child(tstyle, A, 'tblBg');
+  const background = fillCss(props) ?? fillCss(child(bg, A, 'fill') ?? bg);
+  const shade = shadow(props, bg, c, 'box');
+  return `<table style="${css({ ...box, rot: 0, fh: false, fv: false })}${background && background !== 'transparent' ? `;background:${background}` : ''}${shade ? `;box-shadow:${shade}` : ''}">${html}</table>`;
+}
+/**
+ * PowerPoint names its 74 built-in table styles by id and writes them into the file only when it
+ * saved the deck itself; the definitions it writes are carried here (`pptxTableStyles.data.ts`).
+ */
+const builtinStyles = new Map<string, X>();
+function builtinTableStyle(id: string): X | undefined {
+  const row = TABLE_STYLES.find(s => s[0] === id.toUpperCase());
+  if (!row) return undefined;
+  if (!builtinStyles.has(row[0])) {
+    const [styleId, styleName, index, ...slots] = row;
+    const body = TABLE_STYLE_BODIES[index].replace(/\$(\d)/g, (_, i: string) => slots[Number(i)] ?? 'dk1');
+    builtinStyles.set(styleId, xml(encode(`<a:tblStyle xmlns:a="${A}" styleId="${styleId}" styleName="${esc(styleName)}">${body}</a:tblStyle>`), PPTX_LIMITS, 'builtin', { nodes: 0 }));
   }
-  if (pie) {
-    const vals = data[0]?.vals.map(v => Number.isFinite(v) && v > 0 ? v : 0) ?? [], sum = vals.reduce((a, b) => a + b, 0) || 1;
-    const r = Math.max(1, Math.min(right - left, bottom - top) / 2), cx = (left + right) / 2, cy = (top + bottom) / 2;
-    const hole = groups[0].name === 'doughnutChart' ? r * number(val(child(groups[0], C, 'holeSize')), 50) / 100 : 0;
-    let a = (number(val(child(groups[0], C, 'firstSliceAng')), 0) - 90) * Math.PI / 180;
-    vals.forEach((v, i) => {
-      const b = a + v / sum * Math.PI * 2, large = b - a > Math.PI ? 1 : 0;
-      const pt = (ang: number, rad: number) => `${num(cx + rad * Math.cos(ang))} ${num(cy + rad * Math.sin(ang))}`;
-      const d = v >= sum ? `M${pt(a, r)}A${num(r)} ${num(r)} 0 1 1 ${pt(a + Math.PI, r)}A${num(r)} ${num(r)} 0 1 1 ${pt(a, r)}Z` + (hole ? `M${pt(a, hole)}A${num(hole)} ${num(hole)} 0 1 0 ${pt(a + Math.PI, hole)}A${num(hole)} ${num(hole)} 0 1 0 ${pt(a, hole)}Z` : '')
-        : hole ? `M${pt(a, r)}A${num(r)} ${num(r)} 0 ${large} 1 ${pt(b, r)}L${pt(b, hole)}A${num(hole)} ${num(hole)} 0 ${large} 0 ${pt(a, hole)}Z` : `M${num(cx)} ${num(cy)}L${pt(a, r)}A${num(r)} ${num(r)} 0 ${large} 1 ${pt(b, r)}Z`;
-      if (v > 0) out.push(`<path d="${d}" fill="${themeColorFor(i)}" fill-rule="evenodd" stroke="#ffffff" stroke-width="${num(Math.max(1, sz / 12))}"/>`);
-      a = b;
-    });
-  } else {
-    const horizontal = groups.some(g => val(child(g, C, 'barDir')) === 'bar');
-    const grouping = (g: X) => val(child(g, C, 'grouping')) ?? 'clustered';
-    const stacked = (g: X) => /stacked/i.test(grouping(g));
-    const percent = (g: X) => grouping(g) === 'percentStacked';
-    const valuesAt = (d: typeof data[number], i: number) => Number.isFinite(d.vals[i]) ? d.vals[i] : 0;
-    const level = (d: typeof data[number], i: number) => {
-      if (!stacked(d.g)) return [0, valuesAt(d, i)];
-      const same = data.filter(x => x.g === d.g), k = same.indexOf(d), total = percent(d.g) ? same.reduce((s, x) => s + Math.abs(valuesAt(x, i)), 0) || 1 : 1;
-      const below = same.slice(0, k).reduce((s, x) => s + valuesAt(x, i), 0);
-      return [below / total * (percent(d.g) ? 100 : 1), (below + valuesAt(d, i)) / total * (percent(d.g) ? 100 : 1)];
-    };
-    const levels = data.flatMap(d => Array.from({ length: count }, (_, i) => level(d, i))).flat();
-    const lo = Math.min(0, ...levels), hi = Math.max(0, ...levels);
-    const valAx = child(plot, C, 'valAx'), scaling = child(valAx, C, 'scaling');
-    let step = niceStep(hi - lo || 1);
-    const min = at(child(scaling, C, 'min'), 'val') !== undefined ? number(at(child(scaling, C, 'min'), 'val')) : Math.floor(lo / step) * step;
-    const max = at(child(scaling, C, 'max'), 'val') !== undefined ? number(at(child(scaling, C, 'max'), 'val')) : hi > 0 ? (Math.floor(hi / step) + 1) * step : Math.ceil(hi / step) * step || step; // like Office, a step of room above the highest value
-    if (!(max > min)) fail('invalid_value', c.loc);
-    step = Math.max(step, niceStep(max - min, 10)); // the file's own bounds can be far from the data
-    const ticks: number[] = []; for (let t = min; t <= max + step / 1e6 && ticks.length <= 40; t += step) ticks.push(Math.round(t / step) * step);
-    const label = (t: number) => String(Number(t.toPrecision(6))) + (data.some(d => percent(d.g)) ? '%' : '');
-    const valueWidth = Math.max(...ticks.map(t => label(t).length)) * sz * 0.6 + pad;
-    const catHeight = sz * 1.6;
-    if (horizontal) { left += Math.max(...cats.map(t => t.length), 1) * sz * 0.6 + pad; bottom -= catHeight; }
-    else { left += valueWidth; bottom -= catHeight; }
-    const pw = Math.max(1, right - left), ph = Math.max(1, bottom - top);
-    const vpos = (v: number) => horizontal ? left + (v - min) / (max - min || 1) * pw : bottom - (v - min) / (max - min || 1) * ph;
-    if (valAx && child(valAx, C, 'majorGridlines')) for (const t of ticks) out.push(horizontal ? `<line x1="${num(vpos(t))}" y1="${num(top)}" x2="${num(vpos(t))}" y2="${num(bottom)}" stroke="#d9d9d9" stroke-width="1"/>` : `<line x1="${num(left)}" y1="${num(vpos(t))}" x2="${num(right)}" y2="${num(vpos(t))}" stroke="#d9d9d9" stroke-width="1"/>`);
-    if (val(child(valAx, C, 'delete')) !== '1') for (const t of ticks) out.push(horizontal ? text(vpos(t), bottom + sz * 1.2, label(t)) : text(left - pad / 2, vpos(t) + sz * 0.35, label(t), 'end'));
-    const band = (horizontal ? ph : pw) / Math.max(1, count);
-    const catAx = child(plot, C, 'catAx') ?? child(plot, C, 'dateAx');
-    if (val(child(catAx, C, 'delete')) !== '1') cats.forEach((t, i) => out.push(horizontal ? text(left - pad / 2, top + (count - i - 0.5) * band + sz * 0.35, t, 'end') : text(left + (i + 0.5) * band, bottom + sz * 1.2, t)));
-    const zero = vpos(Math.max(min, Math.min(max, 0)));
-    out.push(horizontal ? `<line x1="${num(zero)}" y1="${num(top)}" x2="${num(zero)}" y2="${num(bottom)}" stroke="#bfbfbf" stroke-width="1"/>` : `<line x1="${num(left)}" y1="${num(zero)}" x2="${num(right)}" y2="${num(zero)}" stroke="#bfbfbf" stroke-width="1"/>`);
-    const bars = data.filter(d => ['barChart', 'bar3DChart'].includes(d.g.name));
-    const clusters = [...new Set(bars.map(d => stacked(d.g) ? d.g : d))];
-    const gap = number(val(child(bars[0]?.g, C, 'gapWidth')), 150) / 100, slot = band / (clusters.length + gap);
-    for (const d of data) {
-      if (['barChart', 'bar3DChart'].includes(d.g.name)) {
-        const k = clusters.indexOf(stacked(d.g) ? d.g : d);
-        for (let i = 0; i < count; i++) {
-          const [a, b] = level(d, i), from = vpos(Math.max(min, Math.min(max, a))), to = vpos(Math.max(min, Math.min(max, b)));
-          const offset = (horizontal ? top + (count - i - 1) * band : left + i * band) + slot * (gap / 2 + k);
-          out.push(horizontal ? `<rect x="${num(Math.min(from, to))}" y="${num(offset)}" width="${num(Math.abs(to - from))}" height="${num(slot)}" fill="${d.fill}"/>` : `<rect x="${num(offset)}" y="${num(Math.min(from, to))}" width="${num(slot)}" height="${num(Math.abs(to - from))}" fill="${d.fill}"/>`);
-        }
-      } else {
-        const pts = Array.from({ length: count }, (_, i) => [left + (i + 0.5) * band, vpos(level(d, i)[1])]);
-        const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${num(x)} ${num(y)}`).join('');
-        if (d.g.name === 'areaChart') {
-          const base = Array.from({ length: count }, (_, i) => [left + (i + 0.5) * band, vpos(level(d, i)[0])]).reverse();
-          out.push(`<path d="${line}${base.map(([x, y]) => `L${num(x)} ${num(y)}`).join('')}Z" fill="${d.fill}" fill-opacity="0.85"/>`);
-        } else out.push(`<path d="${line}" fill="none" stroke="${d.stroke}" stroke-width="${num(Math.max(1.5, sz / 6))}" stroke-linejoin="round" stroke-linecap="round"/>`);
-      }
-    }
-  }
-  warn(c, 'chart_redrawn');
-  return `<svg aria-label="${esc(title || 'Chart')}" viewBox="0 0 ${num(W)} ${num(H)}" style="${css({ ...box, rot: 0, fh: false, fv: false })};overflow:visible">${out.join('')}</svg>`;
+  return builtinStyles.get(row[0]);
+}
+const CHARTEX_URI = 'http://schemas.microsoft.com/office/drawing/2014/chartex';
+/** A chart's frame redrawn from the chart part's own data, or undefined when this chart cannot be drawn. */
+function renderChart(frame: X, box: Box, c: Context): string | undefined {
+  const data = path(frame, [A, 'graphic'], [A, 'graphicData']), ex = at(data, 'uri') === CHARTEX_URI;
+  const ref = data?.children.find(n => n.name === 'chart');
+  const id = at(ref, 'id', R); if (!id) return undefined;
+  const part = c.pkg.rel(c.loc.part!, id, ex ? 'http://schemas.microsoft.com/office/2014/relationships/chartEx' : 'chart', c.loc);
+  const space = c.pkg.parsed.get(part);
+  if (!space) return undefined;
+  const colors = [...(c.pkg.relations.get(part)?.values() ?? [])].find(r => !r.external && r.type === 'http://schemas.microsoft.com/office/2011/relationships/chartColorStyle');
+  const env: ChartEnv = {
+    color: n => { try { const v = rgba(n, c); return v ? cssColor(v) : undefined; } catch (e) { if (fatal(e)) throw e; return undefined; } },
+    paint: f => { try { return paint(f, c); } catch (e) { if (fatal(e)) throw e; return null; } },
+    face: v => face(v, c), scale: c.scale, id: `chart${c.page}-${(c.loc.object ?? '0').replace(/[^\w-]/g, '')}`,
+    warn: (code, params) => warn(c, code, params),
+  };
+  const place = css({ ...box, rot: 0, fh: false, fv: false });
+  const drawn = ex ? drawChartEx(space, box.w, box.h, place, env) : drawChart(space, box.w, box.h, place, env, colors ? c.pkg.parsed.get(colors.target) : undefined);
+  return drawn?.svg;
 }
 /** A copy of a SmartArt drawing's tree in the slide's own namespace, so shapes read the same way. */
 function asSlideTree(n: X): X { return { ...n, uri: n.uri === DSP ? P : n.uri, children: n.children.map(asSlideTree) }; }
@@ -1086,15 +997,22 @@ function graphicFrame(n: X, c: Context): Obj[] {
       return shapes(asSlideTree(tree).children, { ...c, place: groupPlace(frameXf, c) }, false);
     }
   }
-  if (uri === CHART_URI) {
+  if (uri === CHART_URI || uri === CHARTEX_URI) {
     try { const drawn = renderChart(n, box, c); if (drawn) return [{ html: drawn, object: c.loc.object }]; } catch (e) { if (fatal(e)) throw e; }
   }
   if (uri === OLE_URI) {
     const pic = walk(data, P, 'pic')[0];
     if (pic) return [{ html: renderShape({ ...pic, children: pic.children.map(k => k.uri === P && k.name === 'spPr' ? { ...k, children: [{ ...xf!, uri: A }, ...k.children.filter(x => x.name !== 'xfrm')] } : k) }, [], c), object: c.loc.object }];
   }
-  warn(c, 'object_placeholder', { element: uri === CHART_URI ? 'chart' : uri === DIAGRAM_URI ? 'diagram' : uri === OLE_URI ? 'object' : 'other' });
+  warn(c, 'object_placeholder', { element: uri === CHART_URI || uri === CHARTEX_URI ? 'chart' : uri === DIAGRAM_URI ? 'diagram' : uri === OLE_URI ? 'object' : 'other' });
   return [{ html: `<x-shape kind="rect" style="${css(box)};background:rgba(128,128,128,0.08);border:2px dashed #9ca3af"></x-shape>`, object: c.loc.object }];
+}
+/** An Office 2016 chart drawn from its frame; null when it is hidden (nothing to draw, fallback included), undefined when it cannot be drawn. */
+function chartExFrame(n: X, c: Context): Obj | null | undefined {
+  const cNvPr = path(n, [P, 'nvGraphicFramePr'], [P, 'cNvPr']);
+  c = withObject(c, cNvPr);
+  if (truthy(at(cNvPr, 'hidden'))) { warn(c, 'hidden_skipped'); return null; }
+  try { const html = renderChart(n, boxOf(child(n, P, 'xfrm'), c), c); return html ? { html, object: c.loc.object } : undefined; } catch (e) { if (fatal(e)) throw e; return undefined; }
 }
 function group(n: X, c: Context, inherited: boolean): Obj[] {
   const cNvPr = path(n, [P, 'nvGrpSpPr'], [P, 'cNvPr']);
@@ -1109,7 +1027,14 @@ function shapes(nodes: X[], c: Context, inherited: boolean, layout?: X, master?:
     if (n.uri === P && ['nvGrpSpPr', 'grpSpPr', 'extLst'].includes(n.name)) continue;
     if (inherited && phOf(n)) continue;
     try {
-      if (n.uri === MC && n.name === 'AlternateContent') { out.push(...shapes((child(n, MC, 'Fallback') ?? child(n, MC, 'Choice'))?.children ?? [], c, inherited, layout, master)); continue; }
+      if (n.uri === MC && n.name === 'AlternateContent') {
+        // an Office 2016 chart is drawn from its own part; its fallback is only a picture or a note
+        const ex = child(n, MC, 'Choice')?.children.find(k => k.uri === P && k.name === 'graphicFrame' && at(path(k, [A, 'graphic'], [A, 'graphicData']), 'uri') === CHARTEX_URI);
+        const drawn = ex ? chartExFrame(ex, c) : undefined;
+        if (drawn === null) continue;
+        if (drawn) { out.push(drawn); continue; }
+        out.push(...shapes((child(n, MC, 'Fallback') ?? child(n, MC, 'Choice'))?.children ?? [], c, inherited, layout, master)); continue;
+      }
       if (n.uri !== P) fail('unsupported_element', c.loc, { element: n.name });
       if (n.name === 'grpSp') { out.push(...group(n, c, inherited)); continue; }
       if (n.name === 'graphicFrame') { out.push(...graphicFrame(n, c)); continue; }

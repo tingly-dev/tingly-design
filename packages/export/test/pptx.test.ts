@@ -193,6 +193,37 @@ describe('writePptx native drawing contract', () => {
     expect(off).not.toContain('b="1"'); expect(off).not.toContain('u="sng"');
   });
 
+  it('writes a native table with merges, per-side borders, fills, insets and paragraph spacing', async () => {
+    const cell = (t: string, more: Record<string, unknown> = {}) => ({ paragraphs: [{ runs: t ? [{ text: t }] : [] }], style: { fontFace: 'Aptos', fontSizePx: 20 }, ...more });
+    const table: PptxObject = { type: 'table', ...box, columnsPx: [100, 300], rowsPx: [100, 50, 50], rows: [
+      [cell('Head', { colspan: 2, fill: '4472C4', borders: [null, null, { color: 'FFFFFF', widthPx: 2 }, null], verticalAlign: 'middle', paddingPx: [10, 5, 10, 5] })],
+      [cell('Tall', { rowspan: 2, fillOpacity: 0.5, fill: 'DDDDDD' }), { ...cell(''), paragraphs: [{ runs: [{ text: 'A', style: { bold: true } }], align: 'right', spaceBeforePx: 4, lineHeightPx: 30 }, { runs: [] }] }],
+      [cell('B')],
+    ] };
+    const s = xml(await unpack(deck([table])), 'ppt/slides/slide1.xml');
+    expect(s).toContain('<a:tbl>');
+    expect(s).toContain('<a:gridCol w="914400"/><a:gridCol w="2743200"/>');
+    expect(s).toContain('gridSpan="2"');
+    expect(s).toContain('rowSpan="2"');
+    expect(s).toContain('vMerge="1"');
+    expect(s).toContain('anchor="ctr"');
+    expect(s).toMatch(/<a:lnB w="\d+"[^>]*><a:solidFill><a:srgbClr val="FFFFFF"/);
+    expect(s).toContain('<a:srgbClr val="4472C4"');
+    expect(s).toMatch(/<a:srgbClr val="DDDDDD"><a:alpha val="50000"\/>/);
+    expect(s).toContain('marT="91440"'); // 10px of a 1000px, 10in page
+    expect(s).toContain('<a:t>Tall</a:t>');
+    expect(s).toMatch(/<a:pPr[^>]*algn="r"[^>]*>(<a:lnSpc><a:spcPts val="2160"\/><\/a:lnSpc>)?<a:spcBef><a:spcPts val="288"\/>/);
+    // no table style is named, so nothing but the cells' own formatting shows
+    expect(s).toContain('<a:tblPr/>');
+  });
+  it('rejects a table whose cells do not cover its grid exactly once, or that is rotated', async () => {
+    const cell = { paragraphs: [{ runs: [{ text: 'x' }] }], style: { fontFace: 'Aptos', fontSizePx: 20 } };
+    const base = { type: 'table' as const, ...box, columnsPx: [100, 100], rowsPx: [50] };
+    await expect(writePptx(deck([{ ...base, rows: [[cell]] }]))).rejects.toThrow(/invalid/);
+    await expect(writePptx(deck([{ ...base, rows: [[{ ...cell, colspan: 3 }]] }]))).rejects.toThrow(/invalid/);
+    await expect(writePptx(deck([{ ...base, rotation: 90, rows: [[cell, cell]] }]))).rejects.toThrow(/invalid/);
+    await expect(writePptx(deck([{ ...base, rows: [[cell, cell]] }]))).resolves.toBeInstanceOf(Uint8Array);
+  });
   it('does not mutate the supplied drawing or typed byte arrays', async () => {
     const d = deck(); const before = structuredClone(d); Object.freeze(d.slides[0].objects[0]);
     await writePptx(d); expect(d).toEqual(before);

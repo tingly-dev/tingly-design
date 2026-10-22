@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 import { importPptx } from '../src/pptx';
+import { autoScale, formatValue } from '../src/pptxChart';
 import { checkSlide } from '../src/slides';
 import { parseDc } from '../src/parse';
 
@@ -437,6 +438,94 @@ describe('PPTX best effort inside one object or slide', () => {
     const r = success(p);
     expect(codes(r), JSON.stringify(r.diagnostics)).toContain('chart_redrawn');
     expect((first(r).match(/<line /g) ?? []).length).toBeLessThan(50);
+  });
+  it('draws a built-in table style named only by its id, with its corner and total cells', () => {
+    const cell = (t: string) => `<a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:t>${t}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
+    const row = (...t: string[]) => `<a:tr h="457200">${t.map(cell).join('')}</a:tr>`;
+    // Medium Style 2 - Accent 1, PowerPoint's default, with no tableStyles.xml in the package
+    const html = first(success(themed(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="9" name="T"/></p:nvGraphicFramePr><p:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="1371600"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr firstRow="1" bandRow="1" lastRow="1"><a:tableStyleId>{5c22544a-7ee6-4342-b048-85bdc9fd1c3a}</a:tableStyleId></a:tblPr><a:tblGrid><a:gridCol w="914400"/><a:gridCol w="914400"/></a:tblGrid>${row('Head', 'H2')}${row('Odd', '1')}${row('Total', '2')}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>`)));
+    const cells = html.match(/<td [^]*?<\/td>/g)!;
+    expect(cells[0]).toContain('background:#4472c4');
+    expect(cells[0]).toContain('color:#ffffff');
+    expect(cells[0]).toContain('<b>Head</b>');
+    // the first band is a tint of the accent, with white rules between cells
+    expect(cells[4]).toContain('<b>Total</b>');
+    expect(cells[2]).toContain('background:#cfd5ea');
+    expect(cells[2]).toContain('border-bottom:2.667px solid #ffffff');
+  });
+  it('keeps a cell\'s own borders over the style, with double and diagonal rules and vertical text', () => {
+    const own = '<a:lnR w="38100"><a:solidFill><a:srgbClr val="C00000"/></a:solidFill></a:lnR><a:lnB w="57150" cmpd="dbl"><a:solidFill><a:srgbClr val="1F4E79"/></a:solidFill></a:lnB><a:lnTlToBr w="12700"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:lnTlToBr>';
+    const cell = (t: string, pr = '', attrs = '') => `<a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:t>${t}</a:t></a:r></a:p></a:txBody><a:tcPr${attrs}>${pr}</a:tcPr></a:tc>`;
+    const html = first(success(themed(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="9" name="T"/></p:nvGraphicFramePr><p:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="914400"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr><a:tableStyleId>{5940675A-B579-460E-94D1-54222C63F5DA}</a:tableStyleId></a:tblPr><a:tblGrid><a:gridCol w="914400"/><a:gridCol w="914400"/></a:tblGrid><a:tr h="457200">${cell('Own', own)}${cell('Up', '', ' vert="vert270"')}</a:tr><a:tr h="457200">${cell('A')}${cell('B')}</a:tr></a:tbl></a:graphicData></a:graphic></p:graphicFrame>`)));
+    const cells = html.match(/<td [^]*?<\/td>/g)!;
+    expect(cells[0]).toContain('border-right:8px solid #c00000');
+    expect(cells[0]).toMatch(/border-bottom:[\d.]+px double #1f4e79/);
+    expect(cells[0]).toContain('<svg');
+    expect(cells[1]).toContain('rotate(270deg)');
+  });
+  it('formats chart numbers and dates as Excel does, and scales axes as Office does', () => {
+    expect(formatValue(1234.5, '#,##0')).toBe('1,235');
+    expect(formatValue(0.256, '0.0%')).toBe('25.6%');
+    expect(formatValue(1234.5, '"$"#,##0.00')).toBe('$1,234.50');
+    expect(formatValue(12345, '0.00E+00')).toBe('1.23E+04');
+    expect(formatValue(45292, 'mmm yy')).toBe('Jan 24');
+    expect(formatValue(45292.5, 'yyyy-mm-dd hh:mm')).toBe('2024-01-01 12:00');
+    expect(formatValue(12000, '#,##0,"k"')).toBe('12k');
+    expect(formatValue(-5, '0;(0)')).toBe('(5)');
+    expect(autoScale(0, 20)).toEqual({ min: 0, max: 25, step: 5 });
+    expect(autoScale(0, 18)).toEqual({ min: 0, max: 20, step: 2 });
+    expect(autoScale(-10, 20)).toEqual({ min: -15, max: 25, step: 5 });
+  });
+  const chartPackage = (xml: string, ex = false) => {
+    const CH = 'http://schemas.openxmlformats.org/drawingml/2006/chart';
+    const p = themed(`<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="4" name="Chart"/></p:nvGraphicFramePr><p:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="2743200"/></p:xfrm><a:graphic><a:graphicData uri="${ex ? 'http://schemas.microsoft.com/office/drawing/2014/chartex' : CH}"><c:chart xmlns:c="${ex ? 'http://schemas.microsoft.com/office/drawing/2014/chartex' : CH}" r:id="ch"/></a:graphicData></a:graphic></p:graphicFrame>`);
+    p['ppt/slides/_rels/slide9.xml.rels'] = ex ? `<Relationships xmlns="${REL}"><Relationship Id="ch" Type="http://schemas.microsoft.com/office/2014/relationships/chartEx" Target="../charts/chartEx1.xml"/></Relationships>` : rels([['ch', 'chart', '../charts/chart1.xml']]);
+    p[ex ? 'ppt/charts/chartEx1.xml' : 'ppt/charts/chart1.xml'] = xml;
+    return p;
+  };
+  const pts = (vals: (string | number)[]) => vals.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('');
+  const ser = (i: number, name: string, vals: number[], extra = '') => `<c:ser><c:idx val="${i}"/><c:order val="${i}"/><c:tx><c:strRef><c:strCache>${pts([name])}</c:strCache></c:strRef></c:tx>${extra}<c:cat><c:strRef><c:strCache>${pts(vals.map((_, k) => `C${k}`))}</c:strCache></c:strRef></c:cat><c:val><c:numRef><c:numCache>${pts(vals)}</c:numCache></c:numRef></c:val></c:ser>`;
+  const space = (plot: string, more = '') => `<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="${A}"><c:chart>${more}<c:plotArea>${plot}</c:plotArea><c:legend><c:legendPos val="r"/></c:legend></c:chart></c:chartSpace>`;
+  it('colours every slice of a pie and puts a doughnut\'s first series innermost', () => {
+    const pie = first(success(chartPackage(space(`<c:pieChart><c:varyColors val="1"/>${ser(0, 'Share', [3, 2, 1])}</c:pieChart>`))));
+    expect(new Set(pie.match(/<path d="M[^"]*A[^"]*" fill="(#[0-9a-f]{6})"/g)?.map(m => m.slice(-8, -1))).size).toBe(3);
+    // a single series names the chart
+    expect(pie).toContain('>Share</text>');
+    const ring = first(success(chartPackage(space(`<c:doughnutChart><c:varyColors val="1"/>${ser(0, 'Inner', [1, 1])}${ser(1, 'Outer', [1, 1])}<c:holeSize val="50"/></c:doughnutChart>`, '<c:autoTitleDeleted val="1"/>'))));
+    // the legend lists categories, not series
+    expect(ring).toContain('>C0</text>');
+    expect(ring).not.toContain('>Inner</text>');
+  });
+  it('draws stacked percentages, secondary axes, trendlines, stock and surface charts', () => {
+    const axes = '<c:catAx><c:axId val="1"/><c:axPos val="b"/><c:crossAx val="2"/></c:catAx><c:valAx><c:axId val="2"/><c:axPos val="l"/><c:majorGridlines/><c:crossAx val="1"/></c:valAx>';
+    const pct = first(success(chartPackage(space(`<c:barChart><c:barDir val="col"/><c:grouping val="percentStacked"/><c:overlap val="100"/>${ser(0, 'A', [1, 3])}${ser(1, 'B', [1, 1])}<c:axId val="1"/><c:axId val="2"/></c:barChart>${axes}`))));
+    expect(pct).toContain('>100%</text>');
+    expect(pct).not.toContain('>10000%</text>');
+    const trend = first(success(chartPackage(space(`<c:lineChart><c:grouping val="standard"/>${ser(0, 'Sales', [1, 2, 3, 5], '<c:trendline><c:trendlineType val="linear"/><c:dispEq val="1"/></c:trendline>')}<c:axId val="1"/><c:axId val="2"/></c:lineChart>${axes}`))));
+    expect(trend).toContain('Linear (Sales)');
+    expect(trend).toMatch(/y = [\d.]+x/);
+    const surface = first(success(chartPackage(space(`<c:surfaceChart>${ser(0, 'R1', [1, 9, 1])}${ser(1, 'R2', [9, 1, 9])}<c:axId val="1"/><c:axId val="2"/><c:axId val="3"/></c:surfaceChart>${axes}<c:serAx><c:axId val="3"/><c:axPos val="b"/><c:crossAx val="2"/></c:serAx>`))));
+    // a legend of value bands, the series named along the side
+    expect(surface).toContain('>0-1</text>');
+    expect(surface).toContain('>9-10</text>');
+    expect(surface).toContain('>R2</text>');
+  });
+  it('redraws Office 2016 waterfall, histogram and treemap charts from their chartex part', () => {
+    const CX = 'http://schemas.microsoft.com/office/drawing/2014/chartex';
+    const dim = (type: string, vals: (string | number)[], num = true) => `<cx:${num ? 'numDim' : 'strDim'} type="${type}"><cx:lvl ptCount="${vals.length}">${vals.map((v, i) => `<cx:pt idx="${i}">${v}</cx:pt>`).join('')}</cx:lvl></cx:${num ? 'numDim' : 'strDim'}>`;
+    const ex = (layout: string, data: string, pr = '') => `<cx:chartSpace xmlns:cx="${CX}" xmlns:a="${A}"><cx:chartData><cx:data id="0">${data}</cx:data></cx:chartData><cx:chart><cx:plotArea><cx:plotAreaRegion><cx:series layoutId="${layout}"><cx:dataLabels pos="outEnd"><cx:visibility seriesName="0" categoryName="0" value="1"/></cx:dataLabels><cx:dataId val="0"/>${pr}</cx:series></cx:plotAreaRegion><cx:axis id="0"><cx:catScaling/></cx:axis><cx:axis id="1"><cx:valScaling/></cx:axis></cx:plotArea><cx:legend pos="b"/></cx:chart></cx:chartSpace>`;
+    const fall = success(chartPackage(ex('waterfall', dim('cat', ['Start', 'Up', 'Down', 'End'], false) + dim('val', [100, 40, -20, 120]), '<cx:layoutPr><cx:subtotals><cx:idx val="0"/><cx:idx val="3"/></cx:subtotals></cx:layoutPr>'), true));
+    expect(codes(fall)).toContain('chart_redrawn');
+    const html = first(fall);
+    expect(html).toContain('>Increase</text>');
+    expect(html).toContain('>120</text>');
+    // the totals stand on the axis: four bars, none of them empty
+    expect((html.match(/<rect [^>]*height="(?!0\.5")[\d.]+"[^>]*fill="#/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    const hist = first(success(chartPackage(ex('clusteredColumn', dim('val', [1, 2, 2, 3, 3, 3, 4, 9]), '<cx:layoutPr><cx:binning intervalClosed="r"><cx:binCount val="4"/></cx:binning></cx:layoutPr>'), true)));
+    expect((hist.match(/>[[(][\d.]+, [\d.]+\]<\/text>/g) ?? []).length).toBe(4);
+    const tree = first(success(chartPackage(ex('treemap', `<cx:strDim type="cat"><cx:lvl ptCount="3"><cx:pt idx="0">A1</cx:pt><cx:pt idx="1">A2</cx:pt><cx:pt idx="2">B1</cx:pt></cx:lvl><cx:lvl ptCount="3"><cx:pt idx="0">A</cx:pt><cx:pt idx="1">A</cx:pt><cx:pt idx="2">B</cx:pt></cx:lvl></cx:strDim>${dim('size', [5, 3, 2])}`), true)));
+    expect(tree).toContain('>A</text>');
+    expect(tree).toContain('>B</text>');
   });
   it('reads embedded workbooks and OLE objects as nothing but keeps the file', () => {
     const p = parts(); p['ppt/embeddings/Book1.xlsx'] = new Uint8Array([80, 75, 3, 4]);

@@ -19,7 +19,7 @@
 
 ## 浏览器与产品路径
 
-- `python3 -I packages/export/test/pptxDom.browser.py`：实际 Chrome（headless shell），52 assertions 通过，覆盖布局、文字行框、折叠空白、媒体、隐藏内容、CSS 叠放顺序、透明度/圆角/单边框/字距/列表符号的原生输出、`self`/`subtree` 逐元素图片化与回滚、取消/预算和无回调时的 unsupported 诊断。
+- `python3 -I packages/export/test/pptxDom.browser.py`：实际 Chrome（headless shell），62 assertions 通过，覆盖原生表格（CSS 表格与绝对定位表格的网格、合并、填充、边框、内边距、垂直对齐；格间距和含 SVG 的单元格退回逐元素）、布局、文字行框、折叠空白、媒体、隐藏内容、CSS 叠放顺序、透明度/圆角/单边框/字距/列表符号的原生输出、`self`/`subtree` 逐元素图片化与回滚、取消/预算和无回调时的 unsupported 诊断。
 - `python3 -I packages/export/test/pptxProduct.browser.py`：实际 opaque runtime，11 assertions 通过，覆盖解码前图片尺寸限制、图片内联、逐页资源、隐藏资源、字体失败与取消清理。
 - `e2e/pptx.py`：逐元素图片化后 90/90 checks 通过（渐变背景页导出为一张图片 + 原生标题文字，不可读图片失败且不下载）；第一期 65/65 checks 通过；拆分格式入口后在隔离工作区运行 89/89 checks 通过，包含三种 picker 的 accept 过滤、PPTX picker/drop/API、ZIP/Markdown/Claude package 回归、编辑保存重开、菜单/CLI/MCP 导出、失败/取消和非 slides 无 PPTX 项。
 - 导入摘要初始焦点另有 EN/ZH × light/dark 四组合检查通过。菜单与结果截图保留为本地测试产物；没有发布截图或创建远程 PR。
@@ -59,6 +59,18 @@
 | 同一份经 LibreOffice 另存 | 5 | 1.90% | — | 另存后的 XML 更显式，继承链更短 |
 
 看图发现并修复的问题：空 `<a:ln>` 让文本框多出黑边（无宽度、无填充、无主题线时不画描边）；tint 公式方向错（改为线性光里计算，与 LibreOffice/PowerPoint 的表格色一致）；合并单元格被重复画出；值轴上限低于 Office（按 Office 多留一档）。剩余差异：项目符号字形 `–` 画成圆点、小幅文字偏移、LibreOffice 自身的表头加粗差异。
+
+### 表格样式与图表覆盖语料（2026-10-22）
+
+`python3 scripts/pptx-fidelity/corpus.py <dir>` 生成 `tables.pptx`（38 页：74 种内置样式各一张“首行 + 横条带”表和一张“首末行列 + 纵条带”表，最后一页是自有边框、双线、对角线、合并、竖排）与 `charts.pptx`（26 页）。
+
+| 语料 | 方向 | 页数 | 平均差异像素 | 说明 |
+|---|---|---|---|---|
+| `tables.pptx` | 导入 | 38 | 8.95% | 差异大多来自 LibreOffice 自己的样式近似（它不用 PowerPoint 的定义）；逐页看图确认按 PowerPoint 的定义画出，如 Dark Style 1、Themed 的渐变与阴影 |
+| `charts.pptx` | 导入 | 26 | 16.41% | 第 15–16 页（复合饼）与 21–26 页（chartex）LibreOffice 只画替代文字，分数无意义，需看图；其余页的差异主要是刻度步长、字号与 LibreOffice 把所有折线画平滑 |
+| 导入后的 `tables` 项目 | 导出 | 38 | 3.06% | 74 张表全部写成原生表格（python-pptx 读回 74 个表格对象）；带对角线和竖排的那页按逐元素路径导出 |
+
+看图修过的问题：内置样式 Medium Style 2 - Accent 2 的 GUID 末位写错（`AFE8` → `AFE0`）；单元格自有边框被相邻格的样式线盖住；瀑布图的总计柱高度为零；直方图读 `binCount` 的 `val` 属性时被空文本挡住；100% 堆积轴标签乘了两次 100；带系列名的单系列图表、未写 `c:smooth` 的折线、`solidFill` 无颜色等默认值改按 PowerPoint。Open XML SDK 校验没有在本环境运行（无法安装 .NET），原生表格导出的 schema 合法性尚未独立验证。
 
 ## 全仓测试的环境边界
 
