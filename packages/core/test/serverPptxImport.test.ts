@@ -1,16 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, readdir, rm, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { strToU8, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync } from 'fflate';
 
 let root: string;
 let archive: typeof import('../../../apps/server/src/archive');
 let store: typeof import('../../../apps/server/src/store');
 const fixture = (name: string) => readFile(new URL(`./fixtures/pptx-smoke/${name}.pptx`, import.meta.url)).then(b => new Uint8Array(b));
+/** A macro-enabled package: one of the few things that still refuse the whole file. */
+const withMacros = async () => zipSync({ ...unzipSync(await fixture('cases/table')), 'ppt/vbaProject.bin': new Uint8Array([1]) });
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'dc-pptx-import-'));
   process.env.DC_PROJECTS = root;
@@ -37,10 +39,14 @@ describe('PPTX as a new project through the shared archive import', () => {
     expect(store.assetType(got.pptx!.source)).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation');
   });
 
-  it('refuses unsupported artwork with structured diagnostics and creates no folder', async () => {
+  it('refuses a macro package with structured diagnostics and creates no folder', async () => {
     const before = await readdir(root);
-    await expect(archive.unpackProject(await fixture('cases/table'), 'chart.pptx')).rejects.toMatchObject({ key: 'pptxUnsupported', diagnostics: expect.arrayContaining([expect.objectContaining({ level: 'error', code: 'unsupported_style', part: expect.any(String) })]) });
+    await expect(archive.unpackProject(await withMacros(), 'macro.pptx')).rejects.toMatchObject({ key: 'pptxUnsafe', diagnostics: expect.arrayContaining([expect.objectContaining({ level: 'error', code: 'forbidden_package', part: 'ppt/vbaProject.bin' })]) });
     expect(await readdir(root)).toEqual(before);
+  });
+  it('imports what it can and lists what it left out', async () => {
+    const got = await archive.unpackProject(await fixture('comprehensive'), 'comprehensive.pptx');
+    expect(got.pptx!.diagnostics.map(d => d.code)).toContain('chart_redrawn');
   });
 
   it('uses the strict converter even for a renamed hostile OOXML package', async () => {
@@ -70,10 +76,10 @@ describe('PPTX as a new project through the shared archive import', () => {
 
   it('returns localized actionable API diagnostics and serves the original with PPTX MIME', async () => {
     const { app } = await import('../../../apps/server/src/app');
-    const failure = await app.request('/api/archive?file=bad.pptx', { method: 'POST', headers: { 'x-dc-lang': 'zh' }, body: await fixture('cases/table') });
+    const failure = await app.request('/api/archive?file=bad.pptx', { method: 'POST', headers: { 'x-dc-lang': 'zh' }, body: await withMacros() });
     expect(failure.status).toBe(400);
     const refused = await failure.json();
-    expect(refused.code).toBe('pptxUnsupported');
+    expect(refused.code).toBe('pptxUnsafe');
     expect(refused.error).toContain('PowerPoint');
     expect(refused.diagnostics[0].message).toBeTruthy();
     expect(refused.diagnostics[0].message).not.toBe(refused.diagnostics[0].code);
@@ -99,8 +105,10 @@ describe('PPTX as a new project through the shared archive import', () => {
     const got = JSON.parse(stdout);
     expect(got.pptx.report).toMatch(/^uploads\//);
     expect(got.dir).toBe(join(root, got.name));
-    const unsupported = fileURLToPath(new URL('./fixtures/pptx-smoke/cases/table.pptx', import.meta.url));
-    await expect(exec(process.execPath, ['--import', 'tsx', cli, 'import', unsupported, '--json'], { cwd, env })).rejects.toMatchObject({ code: 1, stdout: expect.stringContaining('pptxUnsupported') });
+    const unsafe = join(root, '..', `${got.name}-macro.pptx`);
+    await writeFile(unsafe, await withMacros());
+    await expect(exec(process.execPath, ['--import', 'tsx', cli, 'import', unsafe, '--json'], { cwd, env })).rejects.toMatchObject({ code: 1, stdout: expect.stringContaining('pptxUnsafe') });
+    await rm(unsafe);
   });
 
   it('returns a PPTX-specific repair action for an invalid .pptx', async () => {

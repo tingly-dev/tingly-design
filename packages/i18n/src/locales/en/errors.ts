@@ -37,7 +37,7 @@ export default {
   archiveInputTooBig: 'This import is larger than 1 GB. Split it into smaller projects and try again.',
   pptxLimit: 'This presentation exceeds the safe import limits. Reduce its slide count or image sizes, then try again. No project was created.',
   pptxUnsupported: 'This presentation uses content that cannot yet be imported as editable slides. Simplify the listed content in PowerPoint and try again. No project was created.',
-  pptxUnsafe: 'This presentation contains unsafe or external content. Remove linked files, macros and embedded objects, then save a fresh .pptx. No project was created.',
+  pptxUnsafe: 'This presentation contains macros, controls or an unsafe package structure. Save it from PowerPoint as a plain .pptx without macros, then try again. No project was created.',
   pptxInvalid: 'This presentation could not be read. Open it in PowerPoint and save a fresh .pptx, then try again. No project was created.',
   fileTooLarge: 'The file is larger than {{size}}',
   cannotKeep: 'This file cannot be saved: {{path}}',

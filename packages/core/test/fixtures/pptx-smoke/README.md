@@ -6,25 +6,25 @@
 
 所有页面文字、几何、备注与 48×32 RGBA 四象限 PNG 均由本目录 `generate.mjs` 原创生成，随仓库 Apache-2.0 许可；没有下载的演示文稿、图片、字体或保密素材。生成器直接使用 MIT `pptxgenjs@4.0.1` 原生 `addText/addShape/addImage/addTable/addChart/addNotes`，**不调用本项目 writer**。生成器和 writer 使用同一个上游库，所以这不是第二种 Office 实现的输出对比。
 
-`manifest.json` 是人工定义的预期，不从 importer 结果更新。它列出文件、页数、物理尺寸、成功/原子失败、具体诊断和内容/几何；`comprehensivePages` 将综合文件的每页映射回独立文件与 feature ID。
+`manifest.json` 是人工定义的预期，不从 importer 结果更新。它列出文件、页数、物理尺寸、成功/失败、具体诊断和内容/几何；`comprehensivePages` 将综合文件的每页映射回独立文件与 feature ID。
 
 ## 内容与预期
 
 | 文件 | 页数 | 覆盖 / 预期 |
 |---|---:|---|
 | `supported.pptx` | 2 | 同字号/字体 rich text，粗斜体/下划线/颜色、CJK 与转义、多段落、旋转/翻转、叠放、矩形/椭圆/圆角/斜线、本地 PNG、背景、普通备注；成功且可经现有 write-back 改字 |
-| `comprehensive.pptx` | 9 | supported 两页 + 下列七页；整包原子失败，不交部分文件 |
-| `cases/table.pptx` | 1 | 原生表格的主题/效果样式仍拒绝 → `unsupported_style`；显式未合并表格另由合成单元用例覆盖 |
-| `cases/chart.pptx` | 1 | 原生饼图 + 完整嵌入 XLSX → `forbidden_package`（当前 importer 拒绝全部 embeddings 路径） |
-| `cases/bullets.pptx` | 1 | 原生列表 → `unsupported_text_style` |
+| `comprehensive.pptx` | 9 | supported 两页 + 下列七页；全部成功，图表页带 `chart_redrawn` |
+| `cases/table.pptx` | 1 | 原生表格及其主题样式 → 成功，`<table>` 带样式边框 |
+| `cases/chart.pptx` | 1 | 原生饼图 + 完整嵌入 XLSX → 成功，按图表 part 自己的数据重绘为 SVG（`chart_redrawn`）；嵌入工作簿不解析 |
+| `cases/bullets.pptx` | 1 | 原生列表 → 成功，`<ul>` 带缩进 |
 | `cases/crop.pptx` | 1 | 原生非零 srcRect 裁剪 → 成功，保留原图、可编辑裁剪容器 |
-| `cases/mixed-font-size.pptx` | 1 | 同段不同字号 → `unsupported_text_style` |
-| `cases/complex-geometry.pptx` | 1 | 原生 chevron → `unsupported_geometry` |
-| `cases/shadow.pptx` | 1 | 原生外阴影 → `unsupported_style` / effectLst |
-| `four-three.pptx` | 1 | 10×7.5 in，uniform contain 的居中位置/尺寸及 `page_contained` |
-| `portrait.pptx` | 1 | 7.5×10 in，同上 |
+| `cases/mixed-font-size.pptx` | 1 | 同段不同字号 → 成功，逐 run `<span>` 字号 |
+| `cases/complex-geometry.pptx` | 1 | 原生 chevron → 成功，预设几何画成 SVG path |
+| `cases/shadow.pptx` | 1 | 原生外阴影 → 成功，`box-shadow` |
+| `four-three.pptx` | 1 | 10×7.5 in → 1440×1080 的 deck（保留页形，不再加黑边居中） |
+| `portrait.pptx` | 1 | 7.5×10 in → 1080×1440 的竖版 deck |
 
-chart 和 comprehensive 的诊断来自包级 embeddings 策略，**不是说该嵌入工作簿恶意**，也不是证明已走到图表绘制诊断。独立 case 避免综合文件的首个失败掩盖其它对象。没有声称覆盖 groups、gradients、theme/placeholder 继承、JPEG 或真实 Office 导出语料；这些保留给后续语料扩展。
+导入是尽力而为：只有包级问题（ZIP/XML/关系不安全、宏/ActiveX、预算）整份拒绝，一个对象读不了只略过该对象并给出定位诊断。独立 case 仍有价值：每个特性的映射结果可以单独断言，不被综合文件里别的对象掩盖。没有声称覆盖 groups、gradients、theme/placeholder 继承、JPEG 或真实 Office 导出语料；这些由 `pptx.test.ts` 的合成 OOXML 单元用例覆盖，或留给后续语料扩展。
 
 ## 运行与确定性
 
