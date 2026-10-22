@@ -32,6 +32,10 @@ export default {
     shortcuts: '快捷键',
     shortcutList: 'V 选择 · H 抓手 · T 文字 · A 画板 · N 便签 · P 画笔 · R 矩形 · O 椭圆 · L 直线 · ⇧1 适应全部 · ⇧2 缩放到选中 · Esc 取消选中 · ⇧↵ 选中上一级 · ↵ 选中下一级',
   },
+  lock: {
+    own: '这个图层已锁定，属性只能看不能改。',
+    outer: '外层的{{layer}}已锁定，属性只能看不能改。',
+  },
   layers: {
     hide: '隐藏',
     show: '显示',
@@ -40,6 +44,10 @@ export default {
     unlock: '解锁',
     lockInherited: '外层图层已锁定',
     label: '图层',
+    soloHint: '按住 Alt 点击：只留这一项',
+    marked_other: '已选 {{count}} 个图层',
+    clearMarks: '取消选择',
+    markHint: 'Shift 点击选一段，⌘/Ctrl 点击逐个加选；之后隐藏和锁定对它们一起生效。',
     collapse: '收起',
     expand: '展开',
     count_other: '{{count}} 项',

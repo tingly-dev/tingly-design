@@ -915,3 +915,79 @@ body.resizing-side {
 body.resizing-side iframe {
   pointer-events: none;
 }
+
+
+/* A locked selection: the fields are off, and the notice says why and offers the unlock */
+.pset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+
+.pset:disabled {
+  opacity: 0.55;
+}
+
+
+.locknote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--hover);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+
+.locknote svg {
+  flex: none;
+}
+
+
+.locknote span {
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* Several layers ticked in the tree: what hide and lock do to all of them */
+.lr.marked {
+  background: var(--accent-soft);
+}
+
+
+.marks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+  flex: none;
+}
+
+
+.marks span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.marks .btn {
+  gap: 4px;
+}
+
+
+.locknote {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

@@ -30,6 +30,9 @@ export default {
     keptChanging: '{{file}} 一直在被其他人修改，这次编辑没有保存。',
     deleteConflict: '{{file}} 刚被别人改过，没有删除。',
   },
+  lock: {
+    blocked: '这个图层已锁定。在图层里解锁后才能改动。',
+  },
   clipboard: {
     empty: '剪贴板是空的。',
     selectFirst: '先选中一个元素或画板，再粘贴。',

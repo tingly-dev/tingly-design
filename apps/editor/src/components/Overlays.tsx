@@ -18,6 +18,7 @@ import {
 import { api, type GitState } from '../api';
 import { canvasOf, display, toast, useCanvas, useStore } from '../store';
 import { getClip } from '../clipboard';
+import { lockOf } from '../layerFlags';
 import { TEXT_COLORS, sizeOf } from './canvas/Item';
 import { copyPng } from './canvas/Board';
 import { Menu, MenuItem } from './Menu';
@@ -34,6 +35,7 @@ export function ContextMenu() {
   const { t } = useTranslation();
   const menu = useStore((s) => s.menu);
   const sel = useStore((s) => s.selection);
+  const lk = useStore((s) => !!lockOf(s));
   if (!menu || !sel) return null;
   const close = () => useStore.setState({ menu: null });
   const run = (fn: () => void) => () => {
@@ -46,35 +48,35 @@ export function ContextMenu() {
   const clip = getClip();
   return (
     <Menu x={menu.x} y={menu.y} onClose={close} label={t('common.edit')}>
-      <MenuItem label={t('canvas.menu.cut')} keys={`${mod}X`} disabled={isRoot || sel.kind === 'board'} onSelect={run(cutSelection)} />
+      <MenuItem label={t('canvas.menu.cut')} keys={`${mod}X`} disabled={isRoot || lk || sel.kind === 'board'} onSelect={run(cutSelection)} />
       <MenuItem label={t('common.copy')} keys={`${mod}C`} disabled={sel.kind === 'board'} onSelect={run(copySelection)} />
       <MenuItem label={t('canvas.menu.copyPng')} disabled={sel.kind === 'note'} onSelect={run(() => sel.kind !== 'note' && void copyPng(sel.file, sel.kind === 'el' ? sel.tid : undefined))} />
-      <MenuItem label={t('canvas.menu.paste')} keys={`${mod}V`} disabled={!clip} onSelect={run(paste)} />
+      <MenuItem label={t('canvas.menu.paste')} keys={`${mod}V`} disabled={!clip || (lk && clip.kind === 'el')} onSelect={run(paste)} />
       <MenuItem label={t('canvas.menu.duplicate')} keys={`${mod}D`} disabled={isRoot} onSelect={run(duplicateSelection)} />
       <hr />
-      <MenuItem label={t('canvas.menu.toLast')} keys="]" disabled={isRoot} onSelect={run(() => orderSelection('last'))} />
-      <MenuItem label={t('canvas.menu.toFirst')} keys="[" disabled={isRoot} onSelect={run(() => orderSelection('first'))} />
+      <MenuItem label={t('canvas.menu.toLast')} keys="]" disabled={isRoot || lk} onSelect={run(() => orderSelection('last'))} />
+      <MenuItem label={t('canvas.menu.toFirst')} keys="[" disabled={isRoot || lk} onSelect={run(() => orderSelection('first'))} />
       {sel.kind === 'el' && (
         <>
           <hr />
-          <MenuItem label={t('canvas.menu.group')} keys={`${mod}G`} disabled={isRoot} onSelect={run(() => wrapSelection('group'))} />
-          <MenuItem label={t('canvas.menu.ungroup')} keys={`⇧${mod}G`} disabled={isRoot || !hasKids} onSelect={run(ungroupSelection)} />
-          <MenuItem label={t('canvas.menu.flipH')} keys="⇧H" onSelect={run(() => flipSelection('x'))} />
-          <MenuItem label={t('canvas.menu.flipV')} keys="⇧V" onSelect={run(() => flipSelection('y'))} />
+          <MenuItem label={t('canvas.menu.group')} keys={`${mod}G`} disabled={isRoot || lk} onSelect={run(() => wrapSelection('group'))} />
+          <MenuItem label={t('canvas.menu.ungroup')} keys={`⇧${mod}G`} disabled={isRoot || lk || !hasKids} onSelect={run(ungroupSelection)} />
+          <MenuItem label={t('canvas.menu.flipH')} keys="⇧H" disabled={lk} onSelect={run(() => flipSelection('x'))} />
+          <MenuItem label={t('canvas.menu.flipV')} keys="⇧V" disabled={lk} onSelect={run(() => flipSelection('y'))} />
           <hr />
-          <MenuItem label={t('canvas.menu.wrapFlex')} keys="⇧A" disabled={isRoot} onSelect={run(() => wrapSelection('flex'))} />
-          <MenuItem label={t('canvas.menu.wrapGrid')} disabled={isRoot} onSelect={run(() => wrapSelection('grid'))} />
+          <MenuItem label={t('canvas.menu.wrapFlex')} keys="⇧A" disabled={isRoot || lk} onSelect={run(() => wrapSelection('flex'))} />
+          <MenuItem label={t('canvas.menu.wrapGrid')} disabled={isRoot || lk} onSelect={run(() => wrapSelection('grid'))} />
         </>
       )}
       {sel.kind === 'note' && (
         <>
           <hr />
-          <MenuItem label={t('canvas.menu.flipH')} keys="⇧H" onSelect={run(() => flipSelection('x'))} />
-          <MenuItem label={t('canvas.menu.flipV')} keys="⇧V" onSelect={run(() => flipSelection('y'))} />
+          <MenuItem label={t('canvas.menu.flipH')} keys="⇧H" disabled={lk} onSelect={run(() => flipSelection('x'))} />
+          <MenuItem label={t('canvas.menu.flipV')} keys="⇧V" disabled={lk} onSelect={run(() => flipSelection('y'))} />
         </>
       )}
       <hr />
-      <MenuItem label={sel.kind === 'board' ? t('canvas.menu.deleteBoard') : t('common.delete')} keys="⌫" danger disabled={isRoot} onSelect={run(() => deleteSelection())} />
+      <MenuItem label={sel.kind === 'board' ? t('canvas.menu.deleteBoard') : t('common.delete')} keys="⌫" danger disabled={isRoot || lk} onSelect={run(() => deleteSelection())} />
     </Menu>
   );
 }
@@ -90,7 +92,7 @@ export function NoteFormatBar() {
   const stage = document.querySelector('.stage')?.getBoundingClientRect();
   if (sel?.kind !== 'note' || !stage) return null;
   const n = canvas.notes[sel.id];
-  if (!n || isShape(n)) return null;
+  if (!n || n.locked || isShape(n)) return null;
   const left = stage.left + view.x + n.x * view.zoom;
   const top = stage.top + view.y + n.y * view.zoom - 46;
   const size = sizeOf(n);
