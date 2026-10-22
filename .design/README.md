@@ -23,6 +23,7 @@
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
 | [project-kinds.md](./project-kinds.md) | 一种项目类型要在哪些地方登记；跨类型功能矩阵和已知缺口 | 现行契约 |
+| [kind-registry.md](./kind-registry.md) | 把散落在各处的 `kind === …` 分支改成按层的穷尽表：问题、三种方案、建议的三步 | 方案 |
 | [five-kinds.md](./five-kinds.md) | 从 Design 扩展到幻灯片、设计系统、看板、文档（文件名沿用“五种”；第六种动效见 [motion.md](./motion.md)） | 前半是当初的方案，"进度"一节是实施结论 |
 | [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；已登记为类型，编辑舞台和播放器已实施 |
 | [motion-editing.md](./motion-editing.md) | 动效的细粒度编辑：为什么场景原来点不动，舞台点选、尺寸覆盖、时间轴、关键帧的交互和实现（图：[motion-editing.pencil.md](./motion-editing.pencil.md)） | 第一期已实施（点选、改字、缩放、尺寸、快速 AI）；时间轴、关键帧是方案 |
