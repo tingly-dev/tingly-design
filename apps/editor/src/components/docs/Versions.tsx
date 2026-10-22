@@ -5,7 +5,7 @@ import { api } from '../../api';
 import { toast, useStore } from '../../store';
 import { saveTab } from './docs';
 
-/** The kept earlier versions of the open tab: pick one to read it, restore it as a normal edit (so undo still works). */
+/** The kept earlier versions of the open tab: pick one to read it, restore it as a normal edit (what it replaces is kept first, so a restore can be restored in turn). */
 export function Versions({ tab, onClose }: { tab: string; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const project = useStore((s) => s.project);

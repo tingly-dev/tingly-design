@@ -130,7 +130,10 @@ export const RichCodeBlock = CodeBlock.extend({
         clearTimeout(timer);
         timer = window.setTimeout(render, 250);
       };
-      views.add(later);
+      // only a diagram changes with the theme
+      views.add(() => {
+        if (dom.dataset.kind === 'diagram') later();
+      });
       void render();
 
       return {
