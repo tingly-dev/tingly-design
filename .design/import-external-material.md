@@ -28,7 +28,7 @@
 几个容易忽略的细节，都会直接影响导入：
 
 - **属性面板读写的是内联 `style`。** 元素没写内联样式时，面板把计算值显示成占位（`apps/editor/src/components/panel/fields.tsx`），一改就写成内联覆盖。所以 class 写的样式"能改"，但源码里会出现内联与 class 两套并存。
-- **模板里的 `{{…}}` 一律当作插值。** 外部页面里正文出现 `{{name}}`（Vue/Handlebars 模板、代码示例）会被渲染成空。字符串字面量是支持的（`packages/sandbox/src/runtime.tsx` 的 `lookup`），所以导入时可以把字面的 `{{` 写成 `{{ '{{' }}` 规避，不必改运行时。
+- **模板里的 `{{…}}` 一律当作插值。** 外部页面里正文出现 `{{name}}`（Vue/Handlebars 模板、代码示例）会被渲染成空。字符串字面量是支持的（`packages/sandbox/src/template.tsx` 的 `lookup`），所以导入时可以把字面的 `{{` 写成 `{{ '{{' }}` 规避，不必改运行时。
 - **脚本和字符串事件不会执行。** 模板里的 `<script>` 渲染为空，`onclick="alert(1)"` 这种字符串处理器被丢弃，事件只认绑定到 `DCLogic` 函数的 `onClick="{{fn}}"`。
 - **画板沙箱禁网络。** 画板 CSP 只放行 Google Fonts 的样式和字体、任意图片（`packages/core/src/protocol.ts` 的 `cspFor`）。外链 CSS、外链脚本、自托管字体都加载不了，必须在导入时内联或存到 `assets/`。
 - **画板是固定尺寸。** 根元素就是 `w`×`h`，没有响应式视口，媒体查询只会按一个宽度生效。
