@@ -2,3 +2,13 @@ Tingly Design
 Copyright 2026 Tingly Inc.
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes data derived from third-party software:
+
+- pptx-ts (https://github.com/shbernal/pptx-ts), MIT License,
+  Copyright (c) 2015-2022 Brent Ely, Copyright (c) 2026 shbernal.
+  PowerPoint's built-in table style definitions in
+  packages/core/src/pptxTableStyles.data.ts.
+- html-ppt (part of https://github.com/nexu-io/open-design), MIT License,
+  Copyright (c) 2026 lewis. The design-system looks in
+  packages/core/src/looks.data.ts.

@@ -19,7 +19,8 @@ export interface PptxAsset { bytes: Uint8Array; mime: 'image/png' | 'image/jpeg'
 /** `opacity` 0..1 (1 when absent); `charSpacingPx` is extra space after each character, like CSS letter-spacing. */
 export interface PptxTextStyle { fontFace: string; fontSizePx: number; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; charSpacingPx?: number; opacity?: number }
 export interface PptxRun { text: string; style?: Partial<PptxTextStyle> }
-export interface PptxParagraph { runs: PptxRun[]; align?: 'left' | 'center' | 'right' | 'justify' }
+/** Spacing in pixels: before and after the paragraph, and its line height (single spacing when absent). */
+export interface PptxParagraph { runs: PptxRun[]; align?: 'left' | 'center' | 'right' | 'justify'; spaceBeforePx?: number; spaceAfterPx?: number; lineHeightPx?: number }
 export interface PptxBox { x: number; y: number; width: number; height: number; rotation?: number }
 /** `wrap: false` keeps each paragraph on one line however the reader's fonts measure it (a line already broken by the browser). */
 export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagraph[]; style: PptxTextStyle; verticalAlign?: 'top' | 'middle' | 'bottom'; paddingPx?: number; wrap?: boolean }
@@ -27,7 +28,17 @@ export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagr
 export interface PptxShape extends PptxBox { type: 'shape'; shape: 'rect' | 'roundRect' | 'ellipse' | 'line'; fill?: string; fillOpacity?: number; radiusPx?: number; stroke?: { color: string; widthPx: number } }
 /** cover crops centrally, contain centers within the box, stretch fills the box. */
 export interface PptxImage extends PptxBox { type: 'image'; asset: string; fit?: 'contain' | 'cover' | 'stretch' }
-export type PptxObject = PptxText | PptxShape | PptxImage;
+/** One side of a cell's border; null for none. */
+export interface PptxCellBorder { color: string; widthPx: number }
+/** `borders` are top, right, bottom, left; `paddingPx` the same order. A cell spanning columns or rows
+ * is listed once, in the row and column it starts at; the cells it covers are left out. */
+export interface PptxTableCell {
+  paragraphs: PptxParagraph[]; style: PptxTextStyle; colspan?: number; rowspan?: number;
+  fill?: string; fillOpacity?: number; borders?: (PptxCellBorder | null)[]; paddingPx?: number[]; verticalAlign?: 'top' | 'middle' | 'bottom';
+}
+/** A native PowerPoint table: column widths and row heights in pixels, each row's cells in column order. Never rotated. */
+export interface PptxTable extends PptxBox { type: 'table'; columnsPx: number[]; rowsPx: number[]; rows: PptxTableCell[][] }
+export type PptxObject = PptxText | PptxShape | PptxImage | PptxTable;
 
 /** Conservative per-call allocation limits, not a promise of Office layout fidelity.
  * At most 500 slides, 10k objects, 50k paragraphs/runs, 2M UTF-16 text units total,
@@ -63,16 +74,21 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
     for (const obj of page.objects) {
       const pos = { x: obj.x * inch, y: obj.y * inch, w: obj.width * inch, h: obj.height * inch, rotate: obj.rotation ?? 0 };
       if (obj.type === 'text') {
-        const runs: PptxGenJS.TextProps[] = [];
-        for (const [i, paragraph] of obj.paragraphs.entries()) {
-          for (const [j, run] of paragraph.runs.entries()) {
-            runs.push({ text: run.text, options: {
-              ...textStyle({ ...obj.style, ...Object.fromEntries(Object.entries(run.style ?? {}).filter(([, v]) => v !== undefined)) }, pt), align: paragraph.align ?? 'left',
-              breakLine: i < obj.paragraphs.length - 1 && j === paragraph.runs.length - 1,
-            } });
-          }
-        }
-        slide.addText(runs, { ...pos, margin: (obj.paddingPx ?? 0) * pt, valign: obj.verticalAlign ?? 'top', fit: 'none', wrap: obj.wrap ?? true, paraSpaceAfter: 0, paraSpaceBefore: 0 });
+        slide.addText(textRuns(obj.paragraphs, obj.style, pt), { ...pos, margin: (obj.paddingPx ?? 0) * pt, valign: obj.verticalAlign ?? 'top', fit: 'none', wrap: obj.wrap ?? true, paraSpaceAfter: 0, paraSpaceBefore: 0 });
+      } else if (obj.type === 'table') {
+        const side = (b: PptxCellBorder | null | undefined): PptxGenJS.BorderProps => b ? { type: 'solid', color: b.color, pt: b.widthPx * pt } : { type: 'none' };
+        const rows: PptxGenJS.TableRow[] = obj.rows.map(row => row.map(cell => {
+          const pad = (cell.paddingPx ?? [0, 0, 0, 0]).map(v => v * pt);
+          return { text: textRuns(cell.paragraphs, cell.style, pt), options: {
+            ...(cell.colspan && cell.colspan > 1 ? { colspan: cell.colspan } : {}), ...(cell.rowspan && cell.rowspan > 1 ? { rowspan: cell.rowspan } : {}),
+            valign: cell.verticalAlign ?? 'top',
+            // 4.0.1 reads a margin list as points when its first value is 1 or more, otherwise as inches
+            margin: (pad[0] >= 1 ? pad : pad.map(v => v / 72)) as [number, number, number, number],
+            border: [0, 1, 2, 3].map(k => side(cell.borders?.[k])) as [PptxGenJS.BorderProps, PptxGenJS.BorderProps, PptxGenJS.BorderProps, PptxGenJS.BorderProps],
+            ...(cell.fill ? { fill: { color: cell.fill, transparency: transparency(cell.fillOpacity) } } : {}),
+          } };
+        }));
+        slide.addTable(rows, { x: pos.x, y: pos.y, w: pos.w, h: pos.h, colW: obj.columnsPx.map(v => v * inch), rowH: obj.rowsPx.map(v => v * inch), autoPage: false });
       } else if (obj.type === 'shape') {
         slide.addShape(pptx.ShapeType[obj.shape], { ...pos,
           fill: obj.fill ? { color: obj.fill, transparency: transparency(obj.fillOpacity) } : { color: 'FFFFFF', transparency: 100 },
@@ -100,6 +116,22 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
   return normalizePptx401(result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer), drawing.slides.length);
 }
 
+/** Paragraphs as PptxGenJS runs: each run carries its paragraph's properties (4.0.1 takes them per run). */
+function textRuns(paragraphs: PptxParagraph[], style: PptxTextStyle, pt: number): PptxGenJS.TextProps[] {
+  const runs: PptxGenJS.TextProps[] = [];
+  for (const [i, paragraph] of paragraphs.entries()) {
+    // an empty paragraph (a blank line, an empty cell) keeps its place with an empty run
+    for (const [j, run] of (paragraph.runs.length ? paragraph.runs : [{ text: '' }]).entries()) {
+      runs.push({ text: run.text, options: {
+        ...textStyle({ ...style, ...Object.fromEntries(Object.entries(run.style ?? {}).filter(([, v]) => v !== undefined)) }, pt), align: paragraph.align ?? 'left',
+        ...(paragraph.spaceBeforePx ? { paraSpaceBefore: paragraph.spaceBeforePx * pt } : {}), ...(paragraph.spaceAfterPx ? { paraSpaceAfter: paragraph.spaceAfterPx * pt } : {}),
+        ...(paragraph.lineHeightPx ? { lineSpacing: paragraph.lineHeightPx * pt } : {}),
+        breakLine: i < paragraphs.length - 1 && j === Math.max(1, paragraph.runs.length) - 1,
+      } });
+    }
+  }
+  return runs;
+}
 function textStyle(s: PptxTextStyle, pt: number): PptxGenJS.TextPropsOptions {
   // 4.0.1 inserts fontFace directly into XML attributes (unlike ordinary text).
   // Keep formatting on every run, not the textbox: its inheritance treats false
@@ -146,6 +178,17 @@ function validate(d: unknown): asserts d is PptxDeck {
     if (v.charSpacingPx !== undefined) number(v.charSpacingPx, `${p}.charSpacingPx`, -1000, 1000);
     if (v.opacity !== undefined) number(v.opacity, `${p}.opacity`, 0, 1);
   };
+  const paragraphs = (v: unknown, q: string, empty = false) => {
+    list(v, `${q}.paragraphs`, 1, 50_000);
+    for (const para of v) {
+      if (++nodes > 50_000) fail('text node budget'); record(para, q, ['runs', 'align', 'spaceBeforePx', 'spaceAfterPx', 'lineHeightPx']);
+      if (para.align !== undefined) choice(para.align, q, ['left', 'center', 'right', 'justify']);
+      for (const k of ['spaceBeforePx', 'spaceAfterPx']) if (para[k] !== undefined) number(para[k], `${q}.${k}`, 0, 10_000);
+      if (para.lineHeightPx !== undefined) number(para.lineHeightPx, `${q}.lineHeightPx`, 0.01, 10_000);
+      list(para.runs, `${q}.runs`, empty ? 0 : 1, 50_000);
+      for (const run of para.runs) { if (++nodes > 50_000) fail('text node budget'); record(run, q, ['text', 'style']); text(run.text, `${q}.text`); if (run.style !== undefined) style(run.style, `${q}.run.style`, true); }
+    }
+  };
   record(d, 'deck', ['title', 'widthPx', 'heightPx', 'widthIn', 'slides', 'assets']);
   text(d.title, 'title', 4096);
   number(d.widthPx, 'widthPx', 1, 100_000); number(d.heightPx, 'heightPx', 1, 100_000); number(d.widthIn, 'widthIn', 1, 56);
@@ -171,8 +214,8 @@ function validate(d: unknown): asserts d is PptxDeck {
     for (const [j, o] of s.objects.entries()) {
       const q = `${p}.objects[${j}]`; record(o, q);
       const common = ['type', 'x', 'y', 'width', 'height', 'rotation'];
-      choice(o.type, `${q}.type`, ['text', 'shape', 'image']);
-      record(o, q, [...common, ...(o.type === 'text' ? ['paragraphs', 'style', 'verticalAlign', 'paddingPx', 'wrap'] : o.type === 'shape' ? ['shape', 'fill', 'fillOpacity', 'radiusPx', 'stroke'] : ['asset', 'fit'])]);
+      choice(o.type, `${q}.type`, ['text', 'shape', 'image', 'table']);
+      record(o, q, [...common, ...(o.type === 'text' ? ['paragraphs', 'style', 'verticalAlign', 'paddingPx', 'wrap'] : o.type === 'shape' ? ['shape', 'fill', 'fillOpacity', 'radiusPx', 'stroke'] : o.type === 'table' ? ['columnsPx', 'rowsPx', 'rows'] : ['asset', 'fit'])]);
       number(o.x, `${q}.x`, -d.widthPx, 2 * d.widthPx); number(o.y, `${q}.y`, -d.heightPx, 2 * d.heightPx);
       const line = o.type === 'shape' && o.shape === 'line';
       number(o.width, `${q}.width`, line ? 0 : 0.01, 2 * d.widthPx); number(o.height, `${q}.height`, line ? 0 : 0.01, 2 * d.heightPx);
@@ -183,13 +226,41 @@ function validate(d: unknown): asserts d is PptxDeck {
         if (o.verticalAlign !== undefined) choice(o.verticalAlign, q, ['top', 'middle', 'bottom']);
         if (o.paddingPx !== undefined) number(o.paddingPx, q, 0, Math.min(o.width, o.height) / 2);
         if (o.wrap !== undefined && typeof o.wrap !== 'boolean') fail(`${q}.wrap`);
-        list(o.paragraphs, `${q}.paragraphs`, 1, 50_000);
-        for (const para of o.paragraphs) {
-          if (++nodes > 50_000) fail('text node budget'); record(para, q, ['runs', 'align']);
-          if (para.align !== undefined) choice(para.align, q, ['left', 'center', 'right', 'justify']);
-          list(para.runs, `${q}.runs`, 1, 50_000);
-          for (const run of para.runs) { if (++nodes > 50_000) fail('text node budget'); record(run, q, ['text', 'style']); text(run.text, `${q}.text`); if (run.style !== undefined) style(run.style, `${q}.run.style`, true); }
+        paragraphs(o.paragraphs, q);
+      } else if (o.type === 'table') {
+        if (o.rotation) fail(`${q}.rotation`);
+        list(o.columnsPx, `${q}.columnsPx`, 1, 1000); list(o.rowsPx, `${q}.rowsPx`, 1, 1000);
+        for (const w of o.columnsPx) number(w, `${q}.columnsPx`, 0.5, 2 * d.widthPx);
+        for (const h of o.rowsPx) number(h, `${q}.rowsPx`, 0.5, 2 * d.heightPx);
+        list(o.rows, `${q}.rows`, o.rowsPx.length, o.rowsPx.length);
+        // every grid position covered by exactly one cell
+        const nc = o.columnsPx.length, covered = o.rowsPx.map(() => new Array<boolean>(nc).fill(false));
+        for (const [r, row] of o.rows.entries()) {
+          list(row, `${q}.rows[${r}]`, 0, nc);
+          let col = 0;
+          for (const cell of row) {
+            const c = `${q}.rows[${r}]`;
+            if (++nodes > 50_000) fail('text node budget');
+            record(cell, c, ['paragraphs', 'style', 'colspan', 'rowspan', 'fill', 'fillOpacity', 'borders', 'paddingPx', 'verticalAlign']);
+            const span = (cell.colspan ?? 1) as number, down = (cell.rowspan ?? 1) as number;
+            if (!Number.isInteger(span) || !Number.isInteger(down) || span < 1 || down < 1) fail(`${c}.span`);
+            while (col < nc && covered[r][col]) col++;
+            if (col + span > nc || r + down > o.rowsPx.length) fail(`${c}.span`);
+            for (let y = r; y < r + down; y++) for (let x = col; x < col + span; x++) { if (covered[y][x]) fail(`${c}.span`); covered[y][x] = true; }
+            col += span;
+            style(cell.style, `${c}.style`);
+            paragraphs(cell.paragraphs, c, true);
+            if (cell.fill !== undefined) colour(cell.fill, `${c}.fill`);
+            if (cell.fillOpacity !== undefined) { if (cell.fill === undefined) fail(`${c}.fillOpacity`); number(cell.fillOpacity, `${c}.fillOpacity`, 0, 1); }
+            if (cell.verticalAlign !== undefined) choice(cell.verticalAlign, c, ['top', 'middle', 'bottom']);
+            if (cell.paddingPx !== undefined) { list(cell.paddingPx, `${c}.paddingPx`, 4, 4); for (const v of cell.paddingPx) number(v, `${c}.paddingPx`, 0, 2 * d.widthPx); }
+            if (cell.borders !== undefined) {
+              list(cell.borders, `${c}.borders`, 4, 4);
+              for (const b of cell.borders) if (b !== null) { record(b, c, ['color', 'widthPx']); colour(b.color, c); number(b.widthPx, c, 0.01, 1000); number(b.widthPx * d.widthIn / d.widthPx * 914400, `${c}.border.emu`, 1, 20116800); }
+            }
+          }
         }
+        if (covered.some(row => row.some(v => !v))) fail(`${q}.rows`);
       } else if (o.type === 'shape') {
         choice(o.shape, q, ['rect', 'roundRect', 'ellipse', 'line']);
         if (o.fill !== undefined) { if (line) fail(`${q}.fill`); colour(o.fill, q); }

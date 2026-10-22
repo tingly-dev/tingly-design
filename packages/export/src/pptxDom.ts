@@ -313,6 +313,129 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         }
         return undefined;
       }
+      /** Whether this element paints nothing of its own (no background, border or effect). */
+      const bare = (el: Element, st: CSSStyleDeclaration) => !(Number(st.opacity) < 1) && !subtreeFeature(el, st) && !selfFeature(el, st) && !pptxDomPaint(st.backgroundColor)
+        && (['Top', 'Right', 'Bottom', 'Left'] as const).every(s => !(parseFloat(st[`border${s}Width`]) > 0 && st[`border${s}Style`] !== 'none'));
+      /** A table whose cells hold only text, drawn as a native PowerPoint table: its grid comes from where
+       * the cells are drawn, so tables laid out by CSS and by absolute positions both qualify. False leaves
+       * the table to the ordinary walk (shapes and text per element), as for anything it cannot say. */
+      function nativeTable(table: Element, path: string, alpha: number): boolean {
+        try { return drawTable(table, path, alpha); }
+        catch (error) { if (error instanceof Error && FATAL.includes(error.message)) throw error; return false; }
+      }
+      function drawTable(table: Element, path: string, alpha: number): boolean {
+        if (alpha < 1) return false;
+        const cells = Array.from(table.querySelectorAll('td, th')).filter(c => c.closest('table') === table && css(c).display !== 'none');
+        if (!cells.length || cells.length > 5000) return false;
+        // rows, sections and captions add nothing a native table could not show
+        for (const x of Array.from(table.querySelectorAll('tr, thead, tbody, tfoot, caption, colgroup, col'))) if (x.closest('table') === table && (x.tagName === 'CAPTION' || !bare(x, css(x)))) return false;
+        const rects = cells.map(c => c.getBoundingClientRect());
+        const lines = (values: number[]) => { const out: number[] = []; for (const v of [...values].sort((a, b) => a - b)) if (!out.length || v - out[out.length - 1] > 1) out.push(v); return out; };
+        const xs = lines(rects.flatMap(r => [r.left, r.right])), ys = lines(rects.flatMap(r => [r.top, r.bottom]));
+        const nc = xs.length - 1, nr = ys.length - 1;
+        if (nc < 1 || nr < 1 || nc > 1000 || nr > 1000) return false;
+        const at = (list: number[], v: number) => list.findIndex(l => Math.abs(l - v) <= 1);
+        const grid = Array.from({ length: nr }, () => new Array<number>(nc).fill(-1));
+        const placed: { el: Element; c0: number; c1: number; r0: number; r1: number }[] = [];
+        for (const [k, el] of cells.entries()) {
+          const r = rects[k], c0 = at(xs, r.left), c1 = at(xs, r.right), r0 = at(ys, r.top), r1 = at(ys, r.bottom);
+          if (c1 <= c0 || r1 <= r0) return false;
+          for (let y = r0; y < r1; y++) for (let x = c0; x < c1; x++) { if (grid[y][x] !== -1) return false; grid[y][x] = placed.length; }
+          placed.push({ el, c0, c1, r0, r1 });
+        }
+        // spacing between cells (or a gap in the grid) has no native form
+        if (grid.some(row => row.includes(-1))) return false;
+        const contents = placed.map(p => cellContent(p.el, path));
+        if (contents.some(c => !c)) return false;
+        // a shared edge drawn by one cell only belongs to both
+        const borders = contents.map((c, k) => {
+          const p = placed[k];
+          const neighbour = [p.r0 > 0 ? grid[p.r0 - 1][p.c0] : -1, p.c1 < nc ? grid[p.r0][p.c1] : -1, p.r1 < nr ? grid[p.r1][p.c0] : -1, p.c0 > 0 ? grid[p.r0][p.c0 - 1] : -1];
+          return c!.borders.map((b, s) => b ?? (neighbour[s] >= 0 ? contents[neighbour[s]]!.borders[(s + 2) % 4] : null));
+        });
+        const rows = Array.from({ length: nr }, (_, r) => placed.map((p, k) => ({ p, k })).filter(({ p }) => p.r0 === r).sort((a, b) => a.p.c0 - b.p.c0).map(({ p, k }) => {
+          const c = contents[k]!;
+          return {
+            paragraphs: c.paragraphs, style: c.style, ...(p.c1 - p.c0 > 1 ? { colspan: p.c1 - p.c0 } : {}), ...(p.r1 - p.r0 > 1 ? { rowspan: p.r1 - p.r0 } : {}),
+            ...(c.fill ? { fill: c.fill.color, ...(c.fill.opacity < 1 ? { fillOpacity: c.fill.opacity } : {}) } : {}),
+            borders: borders[k], paddingPx: c.padding, verticalAlign: c.valign,
+          };
+        }));
+        const at0 = box(new DOMRect(xs[0], ys[0], xs[nc] - xs[0], ys[nr] - ys[0]));
+        if (offPage(at0)) return true;
+        push({ type: 'table', ...at0, columnsPx: xs.slice(1).map((x, i) => x - xs[i]), rowsPx: ys.slice(1).map((y, i) => y - ys[i]), rows });
+        if (!diagnostics.slice(start).some(d => d.code === 'text-metrics')) issue(slide, path, 'text-metrics', 'font-not-embedded', 'warning');
+        return true;
+      }
+      type Para = { runs: { text: string; style: PptxTextStyle }[]; align?: 'left' | 'center' | 'right' | 'justify'; spaceBeforePx?: number; spaceAfterPx?: number; lineHeightPx?: number };
+      /** A cell's text, fill, borders, insets and vertical alignment, or undefined when it holds anything else. */
+      function cellContent(td: Element, path: string) {
+        const st = css(td);
+        if (Number(st.opacity) < 1 || subtreeFeature(td, st) || selfFeature(td, st) || st.visibility !== 'visible') return undefined;
+        const fill = pptxDomPaint(st.backgroundColor);
+        const borders = (['Top', 'Right', 'Bottom', 'Left'] as const).map(s => {
+          const width = parseFloat(st[`border${s}Width`]), style = st[`border${s}Style`];
+          if (!(width > 0) || style === 'none' || style === 'hidden') return null;
+          const paint = pptxDomPaint(st[`border${s}Color`]);
+          if (!paint) return null;
+          if (paint.opacity < 1 || !['solid', 'double'].includes(style)) throw new Error('border');
+          if (style === 'double') approximated(path, 'double-border');
+          return { color: paint.color, widthPx: width };
+        });
+        // the insets and alignment: through wrappers that only place the text (the importer's flex column)
+        let container = td, valign: 'top' | 'middle' | 'bottom' | undefined, inset: Element = td;
+        if (st.display === 'table-cell') { valign = st.verticalAlign === 'middle' ? 'middle' : st.verticalAlign === 'bottom' ? 'bottom' : 'top'; }
+        for (;;) {
+          const cs = css(container);
+          if (cs.display === 'flex' && cs.flexDirection === 'column' && !valign) { valign = cs.justifyContent === 'center' ? 'middle' : cs.justifyContent === 'flex-end' || cs.justifyContent === 'end' ? 'bottom' : 'top'; inset = container; }
+          const kids = Array.from(container.childNodes).filter(n => n.nodeType === 1 ? css(n as Element).display !== 'none' : n.nodeType === 3 && !!n.textContent?.trim());
+          const only = kids.length === 1 && kids[0].nodeType === 1 ? kids[0] as Element : undefined;
+          if (!only || !bare(only, css(only)) || /^(inline|contents)$/.test(css(only).display)) break;
+          container = only;
+        }
+        const tb = td.getBoundingClientRect(), outer = (el: Element) => { const s = css(el), b = el.getBoundingClientRect(); return { top: b.top + parseFloat(s.borderTopWidth) + parseFloat(s.paddingTop), right: b.right - parseFloat(s.borderRightWidth) - parseFloat(s.paddingRight), bottom: b.bottom - parseFloat(s.borderBottomWidth) - parseFloat(s.paddingBottom), left: b.left + parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft) }; };
+        const v = outer(inset), h = outer(container);
+        const padding = [v.top - tb.top, tb.right - h.right, tb.bottom - v.bottom, h.left - tb.left].map(x => Math.max(0, x));
+        // paragraphs: each block a paragraph, inline text its runs
+        const paragraphs: Para[] = [];
+        const paragraphOf = (el: Element, s: CSSStyleDeclaration): Para => ({
+          runs: [], align: /center/.test(s.textAlign) ? 'center' : /right|end/.test(s.textAlign) ? 'right' : s.textAlign === 'justify' ? 'justify' : 'left',
+          ...(el !== container && parseFloat(s.marginTop) > 0 ? { spaceBeforePx: parseFloat(s.marginTop) } : {}), ...(el !== container && parseFloat(s.marginBottom) > 0 ? { spaceAfterPx: parseFloat(s.marginBottom) } : {}),
+          ...(s.lineHeight !== 'normal' && parseFloat(s.lineHeight) > 0 ? { lineHeightPx: parseFloat(s.lineHeight) } : {}),
+        });
+        let current = paragraphOf(container, css(container));
+        const close = (next: Para, keep = false) => { if (current.runs.length || keep) paragraphs.push(current); current = next; };
+        const collect = (el: Element) => {
+          for (const node of Array.from(el.childNodes)) {
+            if (node.nodeType === 3) {
+              const parent = node.parentElement!, ps = css(parent);
+              const pre = ['pre', 'pre-wrap', 'break-spaces'].includes(ps.whiteSpace);
+              let value = pre ? node.textContent ?? '' : (node.textContent ?? '').replace(/[\t\r\n ]+/g, ' ');
+              if (!value) continue;
+              if (!current.runs.length && !pre) value = value.replace(/^ /, '');
+              if (!value) continue;
+              value = ps.textTransform === 'capitalize' ? value.replace(/(^|\s)(\S)/g, (_, a: string, b: string) => a + b.toUpperCase()) : transformText(value, '', ps.textTransform);
+              current.runs.push({ text: value, style: styleText(ps, path, 1, decorations(parent)) });
+              continue;
+            }
+            if (node.nodeType !== 1) continue;
+            const child = node as Element, cs = css(child);
+            if (cs.display === 'none') continue;
+            if (child.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(child.tagName.toUpperCase()) || child.tagName === 'IMG' || !bare(child, cs) || cs.visibility !== 'visible') throw new Error('cell-content');
+            if (child.tagName === 'BR') { close({ ...current, runs: [] }, true); continue; }
+            if (cs.display === 'list-item' && cs.listStyleType !== 'none' || /table|grid/.test(cs.display)) throw new Error('cell-content');
+            if (/^inline/.test(cs.display) || cs.display === 'contents') { collect(child); continue; }
+            close(paragraphOf(child, cs));
+            collect(child);
+            close(paragraphOf(container, css(container)));
+          }
+        };
+        collect(container);
+        if (current.runs.length || !paragraphs.length) paragraphs.push(current);
+        for (const p of paragraphs) { const last = p.runs[p.runs.length - 1]; if (last && !/pre/.test(css(container).whiteSpace)) last.text = last.text.replace(/ $/, ''); p.runs = p.runs.filter(r => r.text); }
+        const style = styleText(st, path, 1, decorations(td));
+        return { paragraphs: paragraphs.map(p => ({ ...p, runs: p.runs.map(r => ({ text: r.text, style: r.style })) })), style, fill, borders, padding, valign };
+      }
       /** A positioned box waiting for its stacking context: CSS paints it after that context's in-flow
        * content, by z-index then tree order, wherever it sits in the tree below. */
       interface Layer { el: Element; path: string; alpha: number; z: number; order: number }
@@ -452,6 +575,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           push({ type: 'image', ...b, asset: id, fit: st.objectFit === 'fill' ? 'stretch' : st.objectFit as 'contain' | 'cover' });
           return;
         }
+        if (tag === 'TABLE' && nativeTable(el, path, alpha)) return;
         if (tag === 'LI') listMarker(el as HTMLElement, st, path, alpha);
         await children(el, st, path, alpha, layers);
       }
