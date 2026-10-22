@@ -66,7 +66,6 @@ export default {
     coverFirst: '同时把封面放在第一帧（给只显示视频第一帧的软件）',
     formatNote: 'MP4 到处都能播；WebM 是写不了 H.264 的浏览器的备选。',
     gifNote: 'GIF 每帧只有 256 色、没有声音：适合短的循环，尺寸要小。',
-    sceneNoSound: '只导出一个场景时不带声音。',
     frames_one: '要画 {{count}} 帧。',
     frames_other: '要画 {{count}} 帧。',
     viaServerNote: '这些场景里有 embed 或视频，所以由本机的 Chrome 来画：{{scenes}}。可以出 MP4 或 GIF（没有 WebM）。',

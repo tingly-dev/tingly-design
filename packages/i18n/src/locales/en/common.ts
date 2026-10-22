@@ -61,6 +61,7 @@ export default {
       png: 'PNG image',
       pngs: 'PNG images',
       pngRetina: 'PNG image @2x',
+      copyPng: 'Copy as PNG',
       pdf: 'PDF',
       html: 'HTML page',
       markdown: 'Markdown',
@@ -105,6 +106,8 @@ export default {
     saved: 'Saved {{name}}',
     failed: 'The picture could not be made: {{message}}',
     making: 'Making the picture…',
+    copied: 'Copied as PNG',
+    copyFallback: "Your browser can't copy pictures, so the PNG was downloaded instead",
     fileSlide: '{{name}}-slide-{{n}}.png',
   },
 };

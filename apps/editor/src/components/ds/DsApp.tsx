@@ -7,8 +7,8 @@ import { display, edit, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
 import { FileMenu } from '../FileMenu';
 import { TopBar, ProjectTitle } from '../TopBar';
-import { Picture } from '../icons';
-import { fileStem, nodeToPng, saveImage } from '../../imageExport';
+import { CopyPicture, Picture } from '../icons';
+import { copyImage, fileStem, nodeToPng, saveImage } from '../../imageExport';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
 import { JournalPopover } from '../Overlays';
@@ -197,6 +197,17 @@ export function DsApp() {
               const node = document.querySelector<HTMLElement>('.dsmain .dsview');
               const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
               if (node) await saveImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
+            },
+          },
+          {
+            id: 'copy-png',
+            label: tr('common.transfer.label.copyPng'),
+            hint: tr('common.transfer.hint.dsView'),
+            icon: <CopyPicture />,
+            run: async () => {
+              const node = document.querySelector<HTMLElement>('.dsmain .dsview');
+              const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;
+              if (node) await copyImage(`${fileStem(index.title, 'design-system')}-${view}.png`, () => nodeToPng(node, { backgroundColor: bg, width: node.offsetWidth, style: { margin: '0' } }));
             },
           },
         ]}

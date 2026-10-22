@@ -66,7 +66,6 @@ export default {
     coverFirst: 'Also put the cover in the first frame (for apps that only show a video’s first frame)',
     formatNote: 'MP4 plays everywhere; WebM is the fallback for browsers that cannot write H.264.',
     gifNote: 'A GIF has 256 colours a frame and no sound: best for short loops, at a small size.',
-    sceneNoSound: 'A single scene is exported without sound.',
     frames_one: '{{count}} frame to draw.',
     frames_other: '{{count}} frames to draw.',
     viaServerNote: 'These scenes hold an embed or a video, so Chrome on this machine draws the file: {{scenes}}. It makes an MP4 or a GIF (not a WebM).',

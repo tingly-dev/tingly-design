@@ -25,10 +25,10 @@ import {
   dashImport,
 } from './dash';
 import { FileMenu } from '../FileMenu';
-import { Picture } from '../icons';
+import { CopyPicture, Picture } from '../icons';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 import { CodeI, Database, Moon, Refresh, Sun, Target } from '../icons';
-import { fileStem, saveImage } from '../../imageExport';
+import { copyImage, fileStem, saveImage } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
@@ -248,6 +248,13 @@ export function DashApp() {
               hint: t('common.transfer.hint.dashPage'),
               icon: <Picture />,
               run: async () => void (await saveImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())),
+            },
+            {
+              id: 'copy-png',
+              label: t('common.transfer.label.copyPng'),
+              hint: t('common.transfer.hint.dashPage'),
+              icon: <CopyPicture />,
+              run: async () => void (await copyImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())),
             },
           ]}
         />

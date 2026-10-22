@@ -5,7 +5,7 @@ import { download } from '../../local';
 import type { ExportReport } from '@dc/export/timing';
 import { api } from '../../api';
 import { toast } from '../../store';
-import { fileStem, saveImage } from '../../imageExport';
+import { copyImage, fileStem, saveImage } from '../../imageExport';
 import { slowestStage } from '../../exportReport';
 import { frameFonts } from './motionImage';
 import { exactScenes, exportInputs } from './motionExport';
@@ -128,6 +128,13 @@ export function useMotionExport(p: {
     control.current?.seek(at);
   };
 
+  const copyFrame = async () => {
+    const at = p.at.current;
+    p.pause();
+    await copyImage(`${fileStem(motion.title, 'motion')}-${fmt}-${Math.round(at)}ms.png`, async () => control.current!.snapshot({ t: at, scale: 1, fontCss: await frameFonts(motion, playScenes, base) }));
+    control.current?.seek(at);
+  };
+
   /** The cover as a PNG, in the format showing: the picture that stands for the video. */
   const saveCover = async () => {
     const at = p.at.current;
@@ -136,5 +143,5 @@ export function useMotionExport(p: {
     control.current?.seek(at);
   };
 
-  return { exporting, cancel: () => exportCtl.current?.abort(), where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame, saveCover };
+  return { exporting, cancel: () => exportCtl.current?.abort(), where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame, copyFrame, saveCover };
 }

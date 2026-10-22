@@ -2,7 +2,7 @@
 (no server, no ffmpeg), with progress and cancel, and embeds drawn there from the picture each frame
 hands over when the machine has no Chrome. A new piece keeps it short.
 Run with `pnpm dev` up: python3 e2e/export.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
-import os, json, asyncio, subprocess
+import os, re, json, asyncio, subprocess
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -12,6 +12,7 @@ CHROME = os.environ.get('DC_CHROME')
 PIECE = os.path.join(REPO, 'projects/zz-export')
 EMBED = os.path.join(REPO, 'projects/zz-export-embed')
 BOARD = os.path.join(REPO, 'projects/zz-export-board')
+SOUND = os.path.join(REPO, 'projects/zz-export-sound')
 
 results = []
 def check(name, ok, extra=''):
@@ -24,7 +25,7 @@ def probe(path):
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD, SOUND])
     os.makedirs(PIECE + '/scenes')
     os.makedirs(EMBED + '/scenes')
     open(EMBED + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-embed', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
@@ -44,6 +45,13 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and 'fonts.g' not in m.text and 'Failed to load resource' not in m.text and errs.append(m.text))
+
+        # a piece with sound: two 2 s scenes and a 4 s tone that starts at 1 s
+        os.makedirs(SOUND + '/scenes')
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4', SOUND + '/tone.wav'])
+        open(SOUND + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-sound', 'formats': {'wide': {'size': [640, 360]}}, 'fps': 15, 'order': ['a', 'b'], 'audio': [{'src': 'tone.wav', 'start': 1, 'gain': 0}], 'faces': {}}))
+        for sid in 'ab':
+            open(SOUND + f'/scenes/{sid}.html', 'w').write(f'<section id="{sid}" data-duration="2s" style="background:#14161c;color:#f4f1ea;font:48px Arial;padding:48px">{sid}</section>')
 
         await pg.goto(BASE + '/?p=zz-export')
         await expect(pg.locator('.dashtitle')).to_have_text('zz-export')
@@ -111,6 +119,13 @@ async def main():
         v3 = next(s for s in i3['streams'] if s.get('width'))
         check('a smaller size and frame rate are honoured', (v3['width'], v3['height']) == (1280, 720) and v3['r_frame_rate'] == '24/1' and d3.suggested_filename.endswith('-720p.webm'), f'{v3} {d3.suggested_filename}')
         check('the file is smaller at low quality and 720p', os.path.getsize(p3) < os.path.getsize(path), (os.path.getsize(p3), os.path.getsize(path)))
+        # the options of that video come back next time, and a GIF does not change them
+        await menu.click()
+        await pg.get_by_role('menuitem', name='Video…').click()
+        dlgR = pg.get_by_role('dialog', name='Export video')
+        summaryR = await dlgR.locator('[data-summary]').inner_text()
+        check('the last video\'s format, size and frame rate are the next starting point', 'WebM' in summaryR and '1280×720' in summaryR and '24 fps' in summaryR, summaryR)
+        await dlgR.get_by_role('button', name='Cancel').click()
         async with pg.expect_download(timeout=120000) as dl4:
             await start(lambda dlg: pick(dlg, Format='gif'))
         d4 = await dl4.value
@@ -137,12 +152,14 @@ async def main():
         open(PIECE + '/scenes/title.html', 'w').write(open(PIECE + '/scenes/title.html').read().replace('data-duration="2s"', 'data-duration="60s"'))
         await pg.reload()
         await expect(menu).to_be_enabled(timeout=15000)
+        await pg.evaluate("localStorage.removeItem('dc.videoOptions')")
         await start()
         await pg.locator('button', has_text='Cancel').click()
         await expect(pg.locator('.toast', has_text='cancelled')).to_be_visible(timeout=30000)
         await expect(pg.locator('button', has_text='Exporting')).to_have_count(0)
         check('cancel stops the export and says so', True)
 
+        await pg.evaluate("localStorage.removeItem('dc.videoOptions')")
         # --- a piece with an embed goes to the server's Chrome by itself -------------------------------
         await pg.goto(BASE + '/?p=zz-export-embed')
         await expect(pg.locator('.dashtitle')).to_have_text('zz-export-embed')
@@ -194,6 +211,7 @@ async def main():
         px8 = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', OUT + 'export-embed-gif.png', '-vf', 'crop=1:1:100:100,format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
         check('…with the embed on the GIF\'s frame', len(px8) == 3 and px8[0] > 180 and px8[1] < 100, str(list(px8)))
 
+        await pg.evaluate("localStorage.removeItem('dc.videoOptions')")
         # --- without Chrome and ffmpeg, the tab draws embeds from the picture each one hands over -------
         await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))
         async def in_tab(project):
@@ -223,9 +241,49 @@ async def main():
         check('…and an artboard imported from a canvas too', len(g) == 192 and spread > 60, f'spread {spread}')
         await pg.unroute('**/api/render')
 
+        # --- one scene keeps its share of the sound -------------------------------------------------------
+        def level(path, a, b):
+            out = subprocess.run(['ffmpeg', '-hide_banner', '-ss', str(a), '-t', str(b - a), '-i', path, '-vn', '-af', 'volumedetect', '-f', 'null', '-'], capture_output=True, text=True).stderr
+            m = re.search(r'mean_volume: (-?[\d.]+|-inf) dB', out)
+            return -99.0 if not m or m.group(1) == '-inf' else float(m.group(1))
+        await pg.goto(BASE + '/?p=zz-export-sound')
+        await expect(pg.locator('.dashtitle')).to_have_text('zz-export-sound')
+        await expect(menu).to_be_enabled(timeout=15000)
+        await pg.wait_for_timeout(1500)
+        for scene, quiet, loud in (('whole', (0.0, 0.8), (1.2, 3.9)), ('a', (0.0, 0.8), (1.2, 1.9)), ('b', None, (0.1, 1.9))):
+            await pg.locator('.mscene', has_text=scene if scene != 'whole' else 'a').first.click()
+            await menu.click()
+            await pg.get_by_role('menuitem', name='Video…').click()
+            dlg = pg.get_by_role('dialog', name='Export video')
+            await dlg.get_by_role('button', name='More options').click()
+            if scene != 'whole': await dlg.get_by_label('Range').select_option('scene')
+            await dlg.get_by_label('Format').select_option('mp4')
+            check(f'scene {scene}: the dialog no longer says a scene comes out silent', 'without sound' not in await dlg.inner_text())
+            async with pg.expect_download(timeout=120000) as dls:
+                await dlg.get_by_role('button', name='Export', exact=True).click()
+            ds = await dls.value
+            ps = OUT + ds.suggested_filename
+            await ds.save_as(ps)
+            if not any(x.get('codec_type') == 'audio' for x in probe(ps)['streams']):
+                print(f'SKIP scene {scene}: this browser cannot write an audio track (no AudioEncoder), so there is no mix to check')
+                continue
+            if quiet: check(f'scene {scene}: the tone starts when it does on the timeline', level(ps, *quiet) < -50, level(ps, *quiet))
+            check(f'scene {scene}: …and is heard after that', level(ps, *loud) > -30, level(ps, *loud))
+        # the same on the server's Chrome (b: the clip began before the scene and is joined part-way in)
+        import urllib.request
+        for scene, lo, hi in (('a', 0, 2000), ('b', 2000, 4000)):
+            req = urllib.request.Request(f'{BASE}/api/projects/zz-export-sound/render', data=json.dumps({'format': 'wide', 'container': 'mp4', 'from': lo, 'to': hi}).encode(), headers={'content-type': 'application/json'})
+            lines = urllib.request.urlopen(req, timeout=180).read().decode().strip().split('\n')
+            done = [json.loads(l) for l in lines if '"done"' in l]
+            if not done:
+                check(f'server, scene {scene}: made a file', False, lines[-1:])
+                continue
+            fp = os.path.join(SOUND, 'renders', done[0]['done'])
+            check(f'server, scene {scene}: sound is cut to the scene', level(fp, 1.2, 1.9) > -30 and (scene == 'b' or level(fp, 0.0, 0.8) < -50), (level(fp, 1.2, 1.9), level(fp, 0.0, 0.8)))
+
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
-    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD, SOUND])
     failed = [n for n, ok in results if not ok]
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')
     if failed: raise SystemExit(1)
@@ -234,4 +292,4 @@ try:
     asyncio.run(main())
 finally:
     # a crash or a timeout must not leave zz-* projects behind: the next suite (embed) lists the samples
-    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD])
+    subprocess.run(['rm', '-rf', PIECE, EMBED, BOARD, SOUND])

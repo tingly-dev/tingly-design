@@ -171,7 +171,7 @@ export interface RenderOptions {
   fps?: number;
   /** MP4 only: encoder effort, `high` by default. */
   quality?: 'low' | 'medium' | 'high';
-  /** Only this stretch of the piece, in milliseconds on its timeline (after speed); sound is left out of a stretch. */
+  /** Only this stretch of the piece, in milliseconds on its timeline (after speed); the sound is cut to the stretch. */
   from?: number;
   to?: number;
   signal?: AbortSignal;
@@ -201,8 +201,10 @@ interface Encode {
   /** File size when it differs from the page's. */
   size?: [number, number];
   quality: keyof typeof CRF;
-  /** Mix the project's audio in (the whole piece, MP4 only). */
+  /** Mix the project's audio in (MP4 only). */
   sound: boolean;
+  /** Where the stretch starts on the piece's timeline in milliseconds; the sound is cut to match. */
+  from?: number;
 }
 
 /** ffmpeg arguments: PNG frames on stdin, the project's audio mixed in, H.264 or a GIF out. */
@@ -219,8 +221,10 @@ function encodeArgs(motion: ReturnType<typeof parseMotion>, dir: string, e: Enco
   if (!audio.length) a.push('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo');
   const filters = [`[0:v]${scale}format=yuv420p[v]`];
   audio.forEach((x, i) => {
-    const ms = Math.round((x.start ?? 0) * 1000);
-    filters.push(`[${i + 1}:a]adelay=${ms}|${ms},volume=${x.gain ?? 0}dB[a${i}]`);
+    // a clip that began before the stretch is cut at the stretch's start, one that begins inside it is delayed
+    const ms = Math.round((x.start ?? 0) * 1000) - Math.round(e.from ?? 0);
+    const place = ms >= 0 ? `adelay=${ms}|${ms}` : `atrim=start=${(-ms / 1000).toFixed(3)},asetpts=PTS-STARTPTS`;
+    filters.push(`[${i + 1}:a]${place},volume=${x.gain ?? 0}dB[a${i}]`);
   });
   if (audio.length) filters.push(`${audio.map((_, i) => `[a${i}]`).join('')}amix=inputs=${audio.length}:normalize=0[a]`);
   a.push('-filter_complex', filters.join(';'), '-map', '[v]');
@@ -348,7 +352,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
     // one side given: the other keeps the piece's aspect ratio
     const outW = even(o.width ?? (o.height ? (o.height * w) / h : w));
     const outH = even(o.height ?? (o.width ? (o.width * h) / w : h));
-    const encode: Encode = { fps, seconds: length / 1000, container: o.container === 'gif' ? 'gif' : 'mp4', size: outW === w && outH === h && scale === 1 ? undefined : [outW, outH], quality: o.quality ?? 'high', sound: whole };
+    const encode: Encode = { fps, seconds: length / 1000, container: o.container === 'gif' ? 'gif' : 'mp4', size: outW === w && outH === h && scale === 1 ? undefined : [outW, outH], quality: o.quality ?? 'high', sound: true, from };
     ffmpeg = spawn(ffmpegPath(), encodeArgs(motion, o.dir, encode, partial), { stdio: ['pipe', 'ignore', 'pipe'] });
     ffmpeg.stderr!.on('data', (d) => (ffmpegErr = (ffmpegErr + d).slice(-2000)));
     const closed = new Promise<number | null>((ok) => ffmpeg!.on('close', ok));

@@ -20,12 +20,12 @@ def pages(path):
 
 # kind → (project, the exports it offers, by the name a person reads)
 KINDS = {
-    'canvas': ('box-console', ['PNG image', 'PNG image @2x', 'PNG images', 'Source file']),
-    'slides': ('tingly-intro', ['PDF', 'PNG image', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
-    'design system': ('tingly-ds', ['PNG image']),
-    'dashboard': ('box-usage', ['PNG image']),
-    'docs': ('design-guide', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image']),
-    'motion': ('design-motion', ['Video…', 'GIF…', 'PNG image']),
+    'canvas': ('box-console', ['PNG image', 'PNG image @2x', 'Copy as PNG', 'PNG images', 'Source file']),
+    'slides': ('tingly-intro', ['PDF', 'PNG image', 'Copy as PNG', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
+    'design system': ('tingly-ds', ['PNG image', 'Copy as PNG']),
+    'dashboard': ('box-usage', ['PNG image', 'Copy as PNG']),
+    'docs': ('design-guide', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image', 'Copy as PNG']),
+    'motion': ('design-motion', ['Video…', 'GIF…', 'PNG image', 'Copy as PNG']),
 }
 
 async def main():
