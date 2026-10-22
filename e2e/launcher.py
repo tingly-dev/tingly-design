@@ -431,7 +431,8 @@ async def main():
         await expect(alert).to_contain_text('这个项目打不开')
         check('a project that cannot open says why and links to all projects, with no editor drawn',
               await alert.locator('a').get_attribute('href') == '?' and await pg.locator('.panel, .topbar').count() == 0)
-        del errs[before:]  # the missing project's 404 is the point here
+        await pg.wait_for_load_state('networkidle')
+        del errs[before:]  # the missing project's 404s are the point here
         await pg.goto(BASE + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
 

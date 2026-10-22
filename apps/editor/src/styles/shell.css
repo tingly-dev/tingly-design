@@ -323,11 +323,10 @@
 }
 
 
-
 /* a project before its files say what kind it is: no editor yet, or why it could not open */
 .project-loading {
-  height: 100%;
-  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
   display: grid;
   place-items: center;
   padding: 16px;
@@ -336,7 +335,8 @@
 }
 
 
-.project-loading [role='alert'] {
+.project-loading [role='alert'],
+.project-loading .slow {
   display: grid;
   justify-items: center;
   gap: 12px;
@@ -354,4 +354,17 @@
 
 .project-loading a.btn {
   text-decoration: none;
+}
+
+
+/* a quick load shows nothing; only one that takes a while says what it is doing */
+.project-loading .slow {
+  animation: project-loading-in 0.2s ease-out 0.6s both;
+}
+
+
+@keyframes project-loading-in {
+  from {
+    opacity: 0;
+  }
 }

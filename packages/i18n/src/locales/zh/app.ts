@@ -11,6 +11,7 @@ export default {
     undo: '撤销',
   },
   open: {
+    loading: '正在打开 {{name}}…',
     failed: '这个项目打不开：{{error}}',
     home: '全部项目',
   },

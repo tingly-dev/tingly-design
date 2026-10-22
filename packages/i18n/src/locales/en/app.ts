@@ -9,6 +9,7 @@ export default {
     undo: 'Undo',
   },
   open: {
+    loading: 'Opening {{name}}…',
     failed: 'This project couldn\'t be opened: {{error}}',
     home: 'All projects',
   },

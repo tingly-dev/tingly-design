@@ -75,6 +75,7 @@ function Project() {
       },
     );
     if (!project) return;
+    setFailed(null);
     openProject(project)
       .then(() => {
         requestAnimationFrame(() => {
@@ -85,7 +86,8 @@ function Project() {
           else fitAll();
         });
       })
-      .catch((e) => setFailed((e as Error).message));
+      // before the files arrive there is no editor to show a toast over: the page says it instead
+      .catch((e) => (useStore.getState().loaded ? toast((e as Error).message, 'error') : setFailed((e as Error).message)));
     return installShortcuts();
   }, [project]);
 
@@ -102,10 +104,17 @@ function Project() {
     return (
       <>
         <div className="project-loading" aria-busy={!failed}>
-          {failed && (
+          {failed ? (
             <div role="alert">
               <p>{t('app.open.failed', { error: failed })}</p>
               <a className="btn outline" href="?">
+                {t('app.open.home')}
+              </a>
+            </div>
+          ) : (
+            <div className="slow">
+              <p>{t('app.open.loading', { name: project })}</p>
+              <a className="btn ghost" href="?">
                 {t('app.open.home')}
               </a>
             </div>
