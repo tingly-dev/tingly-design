@@ -7,17 +7,19 @@ One page on how the pieces fit. The long form is in `docs/en/architecture.md`, a
 Every project is plain files under `projects/<name>/`. Anyone can change them: you on screen, the fast model, Claude Code, a script, git. The editor never keeps a second copy of the truth; it shows the files and writes back to them.
 
 ```
- you (seconds)      fast AI (seconds)      Claude Code (minutes)     terminal, CLI, MCP, git
- DOM operations     jQuery statements      edits the files           edits the files
-       |                  |                       |                          |
-       v                  v                       |                          |
-   write-back engine (core/copy.ts): minimal text patch                        |
-       |                                          |                          |
-       +------------------> project files (versioned) <----------------------+
-                                     |
-                       journal + file watcher + SSE
-                                     |
-                       every open editor refreshes
+ you          fast AI         Claude Code     terminal, CLI,
+ (seconds)    (seconds)       (minutes)       MCP, git
+    |            |                |               |
+    v            v                |               |
+ write-back engine                |               |
+ (core/copy.ts): minimal patch    |               |
+    |                             |               |
+    +--------> project files <----+---------------+
+               (versioned)
+                    |
+      journal + file watcher + SSE
+                    |
+      every open editor refreshes
 ```
 
 ## Write-back
