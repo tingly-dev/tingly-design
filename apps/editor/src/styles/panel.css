@@ -940,6 +940,9 @@ body.resizing-side iframe {
   background: var(--hover);
   color: var(--ink-2);
   font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 
@@ -983,11 +986,4 @@ body.resizing-side iframe {
 
 .marks .btn {
   gap: 4px;
-}
-
-
-.locknote {
-  position: sticky;
-  top: 0;
-  z-index: 1;
 }

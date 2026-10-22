@@ -138,8 +138,7 @@ async def main():
         check('canvas: and unlocks both again', ok)
         await rows.nth(0).click()
         await expect(pg.locator('.marks')).to_have_count(0)
-        check('canvas: a plain click drops the ticks', True)
-        kids = await rows.count()
+        check('canvas: a plain click drops the ticks', await pg.locator('.layers .lr.marked').count() == 0)
         top = pg.locator('.layers .lr[data-key^="Main.dc.html#"]').first
         await top.hover()
         await top.locator('.sw[aria-label="Hide"]').click(modifiers=['Alt'])

@@ -20,7 +20,7 @@ import { getClip, setClip } from './clipboard';
 import { deleteSlide, duplicateSlide, moveSlide } from './components/slides/slides';
 import { slideIdOf } from '@dc/core';
 import { currentLanguage, t } from './i18n';
-import { locked } from './layerFlags';
+import { locked, lockOf } from './layerFlags';
 
 /**
  * Commands on the current selection, shared by the context menu, the
@@ -102,7 +102,8 @@ export function paste(): void {
   const sel = s.selection;
   if (!clip) return toast(t('app.clipboard.empty'));
   if (clip.kind === 'el') {
-    if ((sel?.kind === 'el' || sel?.kind === 'board') && locked()) return;
+    // pasting after a locked element only touches its parent; into an artboard or inside a locked layer it changes locked content
+    if ((sel?.kind === 'board' || (sel?.kind === 'el' && !lockOf(s)?.own)) && locked()) return;
     if (sel?.kind === 'el') {
       const tid = insertHtml(sel.file, sel.tid, 'after', clip.html);
       if (tid !== null) set({ selection: { kind: 'el', file: sel.file, tid } });
@@ -133,7 +134,11 @@ export function paste(): void {
 export function duplicateSelection(): void {
   const s = get();
   const sel = s.selection;
-  if (sel?.kind === 'el') return void elementOp((tid) => ({ kind: 'duplicate', tid }));
+  if (sel?.kind === 'el') {
+    // the copy lands next to the original: fine for a locked element, not inside a locked layer around it
+    if (lockOf(s) && !lockOf(s)?.own && locked()) return;
+    return void elementOp((tid) => ({ kind: 'duplicate', tid }));
+  }
   if (sel?.kind === 'note') {
     copySelection();
     return paste();

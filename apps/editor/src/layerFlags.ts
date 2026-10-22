@@ -75,7 +75,6 @@ export function setFlags(entries: [key: string, on: boolean][], flag: Flag): voi
   }
   for (const [file, list] of byFile) editElement(file, list.map(([tid, on]) => ({ kind: 'attr', tid, name, value: on ? '' : null })));
   if (!canvas.length) return;
-  const verb = flag === 'hide' ? 'hidden' : 'locked';
   editCanvas((c) => {
     for (const [key, on] of canvas) {
       const sel = selectionOf(key);
@@ -84,7 +83,7 @@ export function setFlags(entries: [key: string, on: boolean][], flag: Flag): voi
       if (on) entry[prop] = true;
       else delete entry[prop];
     }
-  }, `${canvas.length} layers ${verb}`);
+  }, `${canvas.length === 1 ? canvas[0][0] : `${canvas.length} layers`} ${canvas.every(([, on]) => !on) ? (flag === 'hide' ? 'shown' : 'unlocked') : flag === 'hide' ? 'hidden' : 'locked'}`);
 }
 
 /** Take the lock off whatever holds it. */
