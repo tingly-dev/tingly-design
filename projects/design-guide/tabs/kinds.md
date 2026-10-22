@@ -31,10 +31,10 @@ A piece is `motion.json` plus one HTML file per scene, in the same subset as a s
 | Kind | Planned, not built |
 | --- | --- |
 | Canvas | Comments, multi-select, PDF export |
-| Slides | Magic move, PPTX and Google Slides export, image cropping |
+| Slides | Magic move, Google Slides export, appending a PowerPoint to an open deck, image cropping |
 | Design system | Mounting components on a canvas, an in-page model |
-| Dashboard | MCP connectors such as BigQuery, query history, scheduled refresh |
+| Dashboard | MCP connectors such as BigQuery, query history, scheduled refresh, PDF export |
 | Docs | Word and Google Docs export, version compare and restore, live cursors, @mentions |
-| Motion | Editing on the stage, a draggable timeline, magic move, export from the editor |
+| Motion | Adding and ordering scenes, a draggable timeline, keyframes, magic move |
 
 Fast AI edits one artboard or passage at a time; work that spans several files goes to Claude Code, which edits them directly.

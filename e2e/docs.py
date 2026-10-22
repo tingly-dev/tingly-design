@@ -53,12 +53,12 @@ async def main():
         # --- reading ----------------------------------------------------------------
         await pg.goto(BASE + '/?p=design-guide')
         await expect(body.locator('h1')).to_have_text('Tingly Design handbook')
-        await expect(pg.locator('.tabrow')).to_have_count(4)
+        await expect(pg.locator('.tabrow')).to_have_count(5)
         check('tabs, subtabs and the outline', await pg.locator('.tabrow.sub').count() == 1 and await pg.locator('.outline button').count() == 4)
         check('a table, a task list and a quote render', await body.locator('table tr').count() == 7 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
         await expect(body.locator('.cmark')).to_have_count(1)
         check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'the agents working beside them')
-        for t in ['Workflow', 'Write-back and sync', 'Project kinds', 'Overview']:
+        for t in ['Workflow', 'Write-back and sync', 'Project kinds', 'Architecture', 'Overview']:
             await pg.locator('.tabname', has_text=t).click()
             await expect(pg.locator('.tabrow.on .tabname')).to_have_text(t)
         await pg.wait_for_timeout(800)

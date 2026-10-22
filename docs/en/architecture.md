@@ -62,17 +62,17 @@ Artboards and AI code run in `sandbox="allow-scripts"` iframes (a different orig
 ## Repository layout
 
 ```
-packages/core       format parsing, the DOM copy, minimal write-back, human operations, the jQuery session, statement splitting, prompts;
+packages/core       format parsing, the DOM copy, minimal write-back, human operations, the jQuery session, statement splitting, prompts, launcher cards, the 36 design-system looks, project archives and the Claude Design format, PowerPoint import;
                     deck.json, the slide subset check, shapes/icons/connectors; design-system tokens grammar and tokens.css;
                     dashboard datasets, CSV parsing, SQL checks and parameter binding, mark checking; docs block merge and replay, comment anchoring
-packages/export     exporting from the browser with nothing to install: a DOM tree to a picture, MP4 or WebM and GIF from frames, mixed audio, inlined web fonts, and what each browser can write (.design/export.md)
+packages/export     exporting from the browser with nothing to install: a DOM tree to a picture, MP4 or WebM and GIF from frames, mixed audio, inlined web fonts, native-object PowerPoint, and what each browser can write (.design/export.md)
 packages/i18n       the UI strings in English and Chinese (locales/<lang>/<area>.ts), language matching, the translator the server and importer use (.design/i18n.md)
 packages/sandbox    the artboard runtime (template → React, selection, in-place text), the dashboard runtime (dash API + d3) and the AI executor, bundled as IIFEs with esbuild
-apps/server         Hono: file reads and writes with versions, SSE, journal, file watching, fast AI streaming proxy, delegation to the claude CLI, exact motion rendering with the machine's own Chrome and ffmpeg, git commits, dashboard connectors
+apps/server         Hono: file reads and writes with versions, SSE, journal, file watching, fast AI streaming proxy, delegation to the claude CLI (one conversation per project), exact motion rendering with the machine's own Chrome and ffmpeg, one-click PDF, git commits, project .zip in and out, image generation, dashboard connectors; the `tingly-design` command (cli.ts, commands.ts) and the same commands as MCP tools (mcp.ts)
 apps/editor         React + Vite + zustand editors: what every kind shares sits at the root of components/; each kind's app and its state sit in components/<kind>/ (canvas, slides, ds, dash, docs, motion)
-projects/           sample projects: box-console (canvas), tingly-intro (slides), tingly-ds (design system), box-usage (dashboard), design-guide (docs), design-motion (motion)
+projects/           sample projects: box-console (canvas), tingly-intro (slides), tingly-ds (design system), box-usage (dashboard), design-guide (docs, with an Architecture tab), design-motion (motion); tingly-design-ui is the editor's own design canvas
 scripts/            dash-query.mjs: read-only queries against a dashboard's SQLite databases (for Claude Code); bundle.mjs: the folder a host ships (docs/en/embedding.md); sync-tingly-box-theme.mjs: copies Tingly Box's palettes into the editor (docs/en/theming.md)
-.claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs (read before every delegated task)
+.claude/skills/     format references for Claude Code: dc-canvas, slides, design-system, dashboard, docs, motion (read before every delegated task); issue-resolve is the maintainer's issue sweep
 artifact/           reference material for the original five types (Design, Slides, Dashboard, Docs, Design System), private
 docs/               guides and how-it-works pages: docs/en/ in English, docs/zh/ in Chinese; docs/images/ holds the screenshots
 .design/            design notes: why each feature is built the way it is, and what every project kind must support (index in .design/README.md)

@@ -17,6 +17,10 @@
     {
       "id": "kinds",
       "title": "Project kinds"
+    },
+    {
+      "id": "architecture",
+      "title": "Architecture"
     }
   ],
   "settings": {

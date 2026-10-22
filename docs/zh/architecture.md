@@ -64,15 +64,15 @@ $('#dc12').next().children().first().repeat(3)
 ```
 packages/core       格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词；
                     幻灯片的 deck.json、子集检查、形状/图标/连线绘制；设计系统的 tokens 语法与 tokens.css；
-                    看板的数据集、CSV 解析、SQL 检查与参数绑定、标注核对；文档的按块合并与重放、评论定位
-packages/export     在浏览器里导出、不装东西：DOM 画成图、帧编成 MP4 或 WebM 和 GIF、混音、内联网页字体，以及各浏览器能写什么（.design/export.md）
+                    看板的数据集、CSV 解析、SQL 检查与参数绑定、标注核对；文档的按块合并与重放、评论定位；启动页卡片、36 个设计系统风格、项目压缩包与 Claude Design 格式、PowerPoint 导入
+packages/export     在浏览器里导出、不装东西：DOM 画成图、帧编成 MP4 或 WebM 和 GIF、混音、内联网页字体、原生对象的 PowerPoint，以及各浏览器能写什么（.design/export.md）
 packages/i18n       界面文字的英文和中文（locales/<语言>/<区域>.ts）、语言匹配、服务端和导入器用的翻译函数（.design/i18n.md）
 packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
-apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI、用本机的 Chrome 和 ffmpeg 精确渲染动效、git 提交、看板的数据连接器
+apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI（一个项目一份对话）、用本机的 Chrome 和 ffmpeg 精确渲染动效、一键 PDF、git 提交、项目 .zip 导入导出、图像生成、看板的数据连接器；`tingly-design` 命令（cli.ts、commands.ts）和同一份命令作为 MCP 工具（mcp.ts）
 apps/editor         React + Vite + zustand 的编辑器：各类型共用的部件在 components/ 根下；每种类型的编辑器和它的状态在 components/<kind>/（canvas、slides、ds、dash、docs、motion）
-projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档）、design-motion（动效）
+projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档，含一个“架构”页签）、design-motion（动效）；tingly-design-ui 是编辑器自己的设计画布
 scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）；bundle.mjs：宿主随自己发布的文件夹（docs/zh/embedding.md）；sync-tingly-box-theme.mjs：把 Tingly Box 的调色板拷进编辑器（docs/zh/theming.md）
-.claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs（委托时会让它先读）
+.claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs、motion（委托时会让它先读）；issue-resolve 是维护者的 issue 跟进
 artifact/           原版五种类型（Design、Slides、Dashboard、Docs、Design System）的参考材料，私有
 docs/               使用指南与工作原理：docs/en/ 英文，docs/zh/ 中文；docs/images/ 是截图
 .design/            设计说明：每个功能为什么这样做，以及每种项目类型都要支持什么（索引在 .design/README.md）
