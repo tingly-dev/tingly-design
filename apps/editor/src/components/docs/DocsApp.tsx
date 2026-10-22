@@ -23,7 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -386,9 +386,22 @@ export function DocsApp() {
           placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;
-            if (!e || e.state.selection.empty) return '';
-            const text = e.state.doc.textBetween(e.state.selection.from, e.state.selection.to, '\n').slice(0, 1500);
-            return `The person selected these words in the tab:\n"""\n${text}\n"""`;
+            const { from, to, $from } = e?.state.selection ?? { from: 0, to: 0, $from: null };
+            let heading = '';
+            if (e) {
+              e.state.doc.forEach((n, pos) => {
+                if (pos < from && n.type.name === 'heading') heading = n.textContent;
+              });
+            }
+            const lit = rail ? comments.threads.find((x) => x.id === useDocs.getState().thread && !x.resolved) : undefined;
+            return docsViewContext({
+              title: order.find((x) => x.id === tab)?.title,
+              file: tab ? tabFile(tab) : undefined,
+              heading,
+              selection: e && from !== to ? e.state.doc.textBetween(from, to, '\n') : '',
+              block: $from?.parent.textContent,
+              thread: lit?.quote,
+            });
           }}
         />
       </main>

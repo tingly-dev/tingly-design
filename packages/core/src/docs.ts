@@ -496,3 +496,14 @@ export function gridToCsv(grid: string[][], hasHeader: boolean): string {
   const rows = (hasHeader ? grid.slice(1) : grid).map((cells) => Object.fromEntries(names.map((c, n) => [c, cells[n] ?? ''])));
   return tableToCsv({ columns: names, rows });
 }
+
+/** What Claude Code is told about the doc the person is looking at, before their request. */
+export function docsViewContext(v: { title?: string; file?: string; heading?: string; selection?: string; block?: string; thread?: string }): string {
+  const lines: string[] = [];
+  if (v.file) lines.push(`The person has the tab "${v.title || v.file}" open (${v.file}).`);
+  if (v.heading) lines.push(`The cursor is in the section "${v.heading}".`);
+  if (v.selection?.trim()) lines.push(`The person selected these words in the tab:\n"""\n${v.selection.slice(0, 1500)}\n"""`);
+  else if (v.block?.trim()) lines.push(`The cursor is in this paragraph:\n"""\n${v.block.slice(0, 500)}\n"""`);
+  if (v.thread) lines.push(`The comment thread in the right column is open, pinned to: "${v.thread}".`);
+  return lines.join('\n');
+}
