@@ -22,6 +22,7 @@
     "start": "pnpm build && pnpm --filter @dc/server start",
     "test": "pnpm --filter @dc/core --filter @dc/import --filter @dc/i18n --filter @dc/export test && node --test evals/test/evals.test.mjs && node scripts/check-coverage.mjs",
     "typecheck": "pnpm -r typecheck",
+    "knip": "knip --no-progress",
     "bundle": "node scripts/bundle.mjs",
     "dc-import": "node packages/import/bin/dc-import.mjs",
     "tingly-design": "tsx apps/server/src/cli.ts",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.2",
+    "knip": "^5.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }

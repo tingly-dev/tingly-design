@@ -14,7 +14,6 @@
     "@dc/export": "workspace:*",
     "@dc/i18n": "workspace:*",
     "@dc/import": "workspace:*",
-    "@floating-ui/dom": "1.8.0",
     "@tabler/icons-react": "3.49.0",
     "@tiptap/core": "3.31.3",
     "@tiptap/extension-code-block": "3.31.3",

@@ -332,11 +332,6 @@ export function useSlideIds(): string[] {
   return useStore((s) => slideIds(s));
 }
 
-/** The file the stage shows (slides) — what the prompt bar and the panel act on by default. */
-export function currentSlideFile(s: State): string | null {
-  return s.slide ? slideFile(s.slide) : null;
-}
-
 export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoable = true): boolean {
   return edit(
     DECK_FILE,
@@ -351,10 +346,6 @@ export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoabl
 
 export function useCanvas(): CanvasJson {
   return useStore((s) => canvasOf(s));
-}
-
-export function useSource(file: string): string | undefined {
-  return useStore((s) => display(s, file));
 }
 
 // ----------------------------------------------------------------- toasts

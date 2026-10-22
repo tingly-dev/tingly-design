@@ -338,11 +338,6 @@ export function scheduleRuns(): void {
 
 // ------------------------------------------------------------------ helpers
 
-export function stateFor(id: string): DataState {
-  const s = dget();
-  return s.derived[id] ?? s.states[id] ?? { ...EMPTY_STATE, status: 'loading' };
-}
-
 /** How long ago, in the language showing. Components pass their own `t` so it follows a language change. */
 export function ago(at: number | string | undefined, tr: typeof t = t): string {
   if (!at) return '';

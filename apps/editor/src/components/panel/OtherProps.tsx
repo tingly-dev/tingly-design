@@ -361,7 +361,3 @@ export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
     </>
   );
 }
-
-export function useBoardDoc(file: string | null): string | undefined {
-  return useStore((s) => (file ? display(s, file) : undefined));
-}
