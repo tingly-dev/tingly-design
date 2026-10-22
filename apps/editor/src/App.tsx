@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from './api';
 import { canvasOf, openProject, toast, useStore } from './store';
 import { fitAll, focusBoard } from './components/canvas/view';
@@ -59,6 +59,7 @@ function Project() {
   const tool = useStore((s) => s.tool);
   const panelOpen = useStore((s) => s.panelOpen);
   const kind = useStore((s) => s.kind);
+  const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
     api.health().then(
@@ -74,6 +75,7 @@ function Project() {
       },
     );
     if (!project) return;
+    setFailed(null);
     openProject(project)
       .then(() => {
         requestAnimationFrame(() => {
@@ -84,7 +86,8 @@ function Project() {
           else fitAll();
         });
       })
-      .catch((e) => toast(e.message, 'error'));
+      // before the files arrive there is no editor to show a toast over: the page says it instead
+      .catch((e) => (useStore.getState().loaded ? toast((e as Error).message, 'error') : setFailed((e as Error).message)));
     return installShortcuts();
   }, [project]);
 
@@ -92,6 +95,31 @@ function Project() {
     return (
       <>
         <Launcher />
+        <Toasts />
+      </>
+    );
+  // until the files say what kind of project this is, draw no editor: the canvas one would flash
+  // in front of every other kind, and anything clicked in it is gone once the real one mounts
+  if (!loaded)
+    return (
+      <>
+        <div className="project-loading" aria-busy={!failed}>
+          {failed ? (
+            <div role="alert">
+              <p>{t('app.open.failed', { error: failed })}</p>
+              <a className="btn outline" href="?">
+                {t('app.open.home')}
+              </a>
+            </div>
+          ) : (
+            <div className="slow">
+              <p>{t('app.open.loading', { name: project })}</p>
+              <a className="btn ghost" href="?">
+                {t('app.open.home')}
+              </a>
+            </div>
+          )}
+        </div>
         <Toasts />
       </>
     );

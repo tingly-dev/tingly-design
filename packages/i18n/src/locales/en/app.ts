@@ -8,6 +8,11 @@ export default {
     external: 'Outside',
     undo: 'Undo',
   },
+  open: {
+    loading: 'Opening {{name}}…',
+    failed: 'This project couldn\'t be opened: {{error}}',
+    home: 'All projects',
+  },
   delegate: {
     done: 'Claude Code finished: {{text}}',
     failed: 'Claude Code couldn\'t finish: {{text}}',
