@@ -174,6 +174,31 @@ async def main():
         else:
             print('SKIP AI rewrite (no ANTHROPIC_API_KEY on the server)')
 
+        # --- code blocks that draw themselves -----------------------------------------------------
+        await pg.locator('.tabname', has_text='Architecture').click()
+        rc = body.locator('.richcode[data-kind=diagram]')
+        await expect(rc.locator('.rc-view svg')).to_have_count(1, timeout=30000)
+        check('a mermaid fence draws a diagram and hides its source', await rc.locator('pre').is_hidden())
+        await rc.locator('.rc-view svg').click()
+        await expect(rc.locator('pre')).to_be_visible()
+        check('a click on the diagram brings the source back', 'flowchart' in await rc.locator('pre').inner_text())
+        await body.locator('p', has_text='Both share one connection').click(click_count=3)
+        await expect(body.locator('.richcode.rc-active')).to_have_count(0)
+        await pg.keyboard.press('End')
+        await pg.keyboard.press('Enter')
+        await pg.keyboard.type('/formula')
+        await pg.wait_for_timeout(400)
+        await pg.keyboard.press('Enter')
+        await expect(body.locator('.richcode[data-kind=math] .katex')).to_have_count(1, timeout=30000)
+        check('/formula inserts a latex block that draws a formula', True)
+        await pg.keyboard.type(' \\frac{')
+        await expect(body.locator('.richcode.rc-error .rc-msg')).to_be_visible(timeout=10000)
+        check('a broken formula says so and keeps its source', await body.locator('.richcode[data-kind=math] pre').is_visible())
+        await pg.wait_for_timeout(800)
+        md = read(os.path.join(DOC, 'tabs/architecture.md'))
+        check('the file keeps plain fences', '```mermaid' in md and '```latex' in md, md[-300:])
+        await pg.screenshot(path=OUT + 'docs-code-blocks.png')
+
         # --- export -------------------------------------------------------------------------------
         await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:

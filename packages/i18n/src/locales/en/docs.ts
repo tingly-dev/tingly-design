@@ -39,6 +39,13 @@ export default {
     deleteRow: 'Delete this row',
     deleteCol: 'Delete this column',
   },
+  code: {
+    empty: 'Nothing to draw yet.',
+    noRows: 'No rows to show.',
+    moreRows: '{{n}} more rows in the file',
+    error: 'Can’t draw this {{kind}}: {{message}}',
+    kind: { math: 'formula', table: 'table', diagram: 'diagram' },
+  },
   block: {
     p: 'Text',
     h1: 'Heading 1',
@@ -49,6 +56,8 @@ export default {
     todo: 'Checklist',
     quote: 'Quote',
     code: 'Code block',
+    diagram: 'Diagram',
+    formula: 'Formula',
     table: 'Table',
     hr: 'Divider',
     date: 'Today’s date',

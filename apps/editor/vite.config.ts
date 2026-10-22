@@ -8,6 +8,8 @@ export default defineConfig({
   // relative asset URLs: the same build runs at / or under a host's prefix such as /design/ (src/base.ts)
   base: './',
   plugins: [react()],
+  // loaded on first use inside a doc; pre-bundled so the dev server never reloads the page mid-edit when one is first drawn
+  optimizeDeps: { include: ['katex', 'mermaid'] },
   server: {
     port: Number(process.env.PORT ?? 5173),
     proxy: {
