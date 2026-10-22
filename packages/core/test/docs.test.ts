@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockKey,
+  gridToCsv,
   findQuote,
   isDocFile,
   joinBlocks,
@@ -143,5 +144,14 @@ describe('a changed block keeps its unchanged lines', () => {
 
   it('a block that changed type takes the editor text', () => {
     expect(mergeBlocks('A\n\npara\n', 'A\n\n## para\n')).toBe('A\n\n## para\n');
+  });
+});
+
+describe('gridToCsv', () => {
+  it('names columns from the header row, made unique and never empty', () => {
+    expect(gridToCsv([['a', 'a', '', 'a 2'], ['1', '2', '3', '4']], true)).toBe('a,a 2,column 3,a 2 2\n1,2,3,4\n');
+  });
+  it('keeps every row as data when there is no header row', () => {
+    expect(gridToCsv([['x', 'y'], ['1', '2,3']], false)).toBe('column 1,column 2\nx,y\n1,"2,3"\n');
   });
 });

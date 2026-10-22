@@ -45,6 +45,7 @@ export default {
     blockStyle: 'Paragraph style',
     rowBelow: 'Add a row below',
     colRight: 'Add a column to the right',
+    tableCsv: 'Download this table as CSV',
     deleteRow: 'Delete this row',
     deleteCol: 'Delete this column',
   },

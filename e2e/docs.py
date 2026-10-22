@@ -1,7 +1,7 @@
 """End-to-end checks for docs: rich-text editing written back block by block, tabs, comments, AI rewrite, export.
 Run with `pnpm dev` up: python3 e2e/docs.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 The AI rewrite check needs the mock model (see README): it is skipped when the server has no API key."""
-import os, asyncio, subprocess, time, json, urllib.request
+import os, shutil, asyncio, subprocess, time, json, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -200,6 +200,7 @@ async def main():
         await pg.screenshot(path=OUT + 'docs-code-blocks.png')
 
         # --- earlier versions ---------------------------------------------------------------------
+        shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)  # earlier runs leave copies, and one a minute is kept
         await pg.locator('.tabname', has_text='Overview').click()
         await body.locator('p').first.click()
         await pg.keyboard.press('End')
@@ -213,7 +214,16 @@ async def main():
         await expect(pg.locator('.popmenu.versions .vtext')).not_to_contain_text('ZZEDITED')
         await pg.locator('.popmenu.versions button.primary').click()
         ok = await wait_for(lambda: 'ZZEDITED' not in tab('overview'))
-        check('restoring an earlier version writes it back', ok, tab('overview')[-200:])
+        check('restoring an earlier version writes it back', ok, tab('overview')[:300])
+        shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)
+
+        # --- a table as CSV -----------------------------------------------------------------------
+        await pg.locator('.tabname', has_text='Overview').click()
+        await body.locator('table td').first.click()
+        async with pg.expect_download() as dl:
+            await pg.get_by_role('button', name='把这个表格下载为 CSV').click()
+        csv = read(await (await dl.value).path())
+        check('a table downloads as CSV with its header row', csv.lstrip('\ufeff').startswith('Kind,') and csv.count('\n') == 7, csv[:120])
 
         # --- export -------------------------------------------------------------------------------
         await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
