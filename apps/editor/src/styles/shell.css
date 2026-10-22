@@ -322,3 +322,36 @@
   padding: 0 8px;
 }
 
+
+
+/* a project before its files say what kind it is: no editor yet, or why it could not open */
+.project-loading {
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--canvas);
+  color: var(--muted);
+}
+
+
+.project-loading [role='alert'] {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 520px;
+  text-align: center;
+}
+
+
+.project-loading p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+
+.project-loading a.btn {
+  text-decoration: none;
+}

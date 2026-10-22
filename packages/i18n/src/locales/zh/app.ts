@@ -10,6 +10,10 @@ export default {
     external: '外部',
     undo: '撤销',
   },
+  open: {
+    failed: '这个项目打不开：{{error}}',
+    home: '全部项目',
+  },
   delegate: {
     done: 'Claude Code 完成：{{text}}',
     failed: 'Claude Code 没能完成：{{text}}',

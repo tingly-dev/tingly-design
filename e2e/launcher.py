@@ -424,6 +424,14 @@ async def main():
         await expect(dlg).to_have_count(1)
         check('"new project" in the menu opens the same dialog', await dlg.locator('.kinds [role=radio][aria-checked=true]').count() == 1)
         await pg.keyboard.press('Escape')
+        # a project that cannot be opened says so and leads home, instead of an empty canvas editor
+        before = len(errs)
+        await pg.goto(f'{BASE}/?p=zz-not-a-project')
+        alert = pg.locator('.project-loading [role=alert]')
+        await expect(alert).to_contain_text('这个项目打不开')
+        check('a project that cannot open says why and links to all projects, with no editor drawn',
+              await alert.locator('a').get_attribute('href') == '?' and await pg.locator('.panel, .topbar').count() == 0)
+        del errs[before:]  # the missing project's 404 is the point here
         await pg.goto(BASE + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
 
