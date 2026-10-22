@@ -43,7 +43,7 @@
 
 **服务端拆成三份。** 原来 `index.ts` 一个文件，顶层就起 watcher、监听端口、装信号处理，别处没法在进程里复用它的路由。现在：
 
-- `app.ts`：所有路由，导入时除了注册路由没有副作用；
+- `app.ts`：核心路由并挂载 `routes/<区域>.ts`（每个区域一个文件），导入时除了注册路由没有副作用；
 - `serve.ts`：`startServer`（种示例、起 watcher、处理 `DC_BASE_PATH`、监听，端口被占时 reject）和 `runServer`（再加就绪行和信号处理）；
 - `index.ts`：仓库里的 `pnpm dev` 入口，只调 `runServer`；
 - `cli.ts`：命令行。`layout.ts` 等模块在导入时就读 `DC_PROJECTS`，所以 `cli.ts` 先解析参数（`--projects` 写进环境），再懒加载它们。

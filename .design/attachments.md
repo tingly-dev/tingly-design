@@ -28,7 +28,7 @@
 | `apps/editor/src/attachments.ts` | `useAttachments`：读文件、缩图、发送时上传（`keepAttachments`） |
 | `apps/editor/src/components/Attachments.tsx` | 回形针按钮和附件条 |
 | `RequestBar.tsx` | 唯一的接入点：`PromptBar` 和 `AskClaude` 都是它，所以六种类型一次接好 |
-| `apps/server/src/app.ts` `POST /assets?dir=uploads`、`PUT /uploads` | 按哈希存；raw 路由把文本按纯文本返回 |
+| `apps/server/src/routes/assets.ts` `POST /assets?dir=uploads`、`PUT /uploads` | 按哈希存；raw 路由把文本按纯文本返回 |
 | `apps/server/src/delegate.ts` | 告诉 Claude Code 附件路径和各类型怎么引用 |
 
 ## 4. 各类型怎么用存下的附件

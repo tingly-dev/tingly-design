@@ -3,11 +3,10 @@
  * printed by the Chrome or Edge already on the machine, the same one the exact video render
  * uses. Without it the editor falls back to the browser's print dialog. See .design/export-menu.md.
  */
-import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Cdp, chromeArgs, findChrome } from './render';
+import { findChrome, launchBrowser } from './chrome';
 
 export type Paper = 'page' | 'a4';
 
@@ -25,15 +24,10 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
   const file = join(tmp, 'page.html');
   const base = `<base href="${o.origin.replace(/"/g, '')}/">`;
   writeFileSync(file, /<head[^>]*>/i.test(o.html) ? o.html.replace(/<head[^>]*>/i, (m) => m + base) : base + o.html);
-  const browser = spawn(chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
-  const stop = () => browser.kill('SIGKILL');
-  o.signal?.addEventListener('abort', stop);
-  const timer = setTimeout(stop, 90_000);
+  const run = launchBrowser({ chrome, tmp, signal: o.signal, timeoutMs: 90_000 });
   try {
-    const cdp = new Cdp(browser);
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-    const s = <T = any>(method: string, params: object = {}) => cdp.send<T>(method, params, sessionId);
+    const { cdp } = run;
+    const { sessionId, send: s } = await run.page();
     await s('Page.enable');
     const loaded = new Promise<void>((ok) => cdp.on((m) => m.method === 'Page.loadEventFired' && m.sessionId === sessionId && ok()));
     await s('Page.navigate', { url: `file://${file}` });
@@ -50,16 +44,6 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
     if (o.signal?.aborted) throw new PdfError('failed', 'aborted');
     throw e instanceof PdfError ? e : new PdfError('failed', (e as Error).message);
   } finally {
-    clearTimeout(timer);
-    o.signal?.removeEventListener('abort', stop);
-    const exited = new Promise((ok) => (browser.exitCode !== null || browser.signalCode !== null ? ok(null) : browser.once('close', ok)));
-    stop();
-    await exited;
-    await new Promise((r) => setTimeout(r, 300));
-    try {
-      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch {
-      /* the system clears its temp folder */
-    }
+    await run.close();
   }
 }
