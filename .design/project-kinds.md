@@ -58,7 +58,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 边栏宽度可拖（[side-columns.md](./side-columns.md)） | `SideResizer.tsx`、`sideWidth.ts`、`--w-<列>` | ✓ 检查器 | ✓ 缩略图列、检查器 | ✓ 导航 | ✓ 数据来源、代码 | ✓ 标签页、批注 | ✓ 检查器 | 每一列各自记在本机；对话列的宽度也是这样（`e2e/side_resize.py`、`e2e/chat_panel.py`） |
 | 手写 jQuery（“代码”面板，[agent-feedback.md](./agent-feedback.md) §4） | `panel/JQueryBox.tsx`、`runJQuery`，运行卡片的“在 jQuery 里改” | ✓ 元素或画板 | ✓ 没选中时用舞台上那一页 | ✗ 没有 jQuery 执行器 | ✗ 同左 | ✗ 快速 AI 改的是段落文字，不是语句 | ✓ 没选中时用舞台上那个场景 | 高级入口，不在请求栏上 |
 | 图像生成（[image-generation.md](./image-generation.md)） | 设置里的“图像生成”一块、`apps/server/src/imagegen.ts`（`POST /api/projects/:p/images`）、`scripts/image-gen.mjs`；`delegate.ts` 配好时才把它交给 Claude Code | ✓ 放进 `uploads/`，画板写 `src="uploads/…"` | ✓ 同左 | ✗ 素材放自己的 `assets/`，不用 `uploads/`；没有设计系统的工具 | ✗ 看板只读 `data/` | ✓ 标签页用 `../uploads/…` | ✓ 场景写 `src="uploads/…"` | 只有交给 Claude Code 时才有（编辑器里的请求栏、命令行 `prompt`、MCP `prompt` 都是这一路）；快速 AI、命令行和 MCP 没有单独的生图入口。没配好、全局关掉或本项目在请求栏的选项排里关掉（本机状态 `.image.json`）时这个工具不出现 |
-| 附件（[attachments.md](./attachments.md)） | `attachments.ts`、`Attachments.tsx` | ✓ 发给模型；画板可用 `src="uploads/…"` 显示，画布图片项 `src: "uploads/…"` | ✓ 可用 `src="uploads/…"` 显示 | ✓ | ✓ | ✓ Claude Code 栏可附；段落改写不带附件；标签页用 `../uploads/…` | ✓ 发给模型；场景可用 `src="uploads/…"` 显示 | `design-system`、`dashboard` 技能还没写 `uploads/` |
+| 附件（[attachments.md](./attachments.md)） | `attachments.ts`、`Attachments.tsx` | ✓ 发给模型；画板可用 `src="uploads/…"` 显示，画布图片项 `src: "uploads/…"` | ✓ 可用 `src="uploads/…"` 显示 | ✓ | ✓ | ✓ Claude Code 栏可附；段落改写不带附件；标签页用 `../uploads/…` | ✓ 发给模型；场景可用 `src="uploads/…"` 显示 | `design-system`、`dashboard` 技能和系统提示写明：`uploads/` 只当材料读，用到的文件复制进 `assets/`、`fonts/`、`data/` |
 | 版本、409 重放、协作 | `apps/server`、编辑队列 | ✓ | ✓ | ✓ | ✓ | ✓ 按块合并（`docs.ts` `mergeBlocks`） | ✓ | |
 | 外部改动自动刷新（Claude Code、终端、git 改了文件，打开着的编辑器不用重载就显示） | `store.ts` 的 `onEvent`（服务端 SSE 的 `file` 事件） | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 六种类型的示例各改一处文字，在屏幕上等到新文字（`e2e/external_edit.py`） |
 | 日志（journal） | `JournalPopover`、`Journal` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
@@ -103,7 +103,6 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 不是缺陷单，是现在的取舍或欠账，动手前先确认是否仍然成立。
 
 - motion 在编辑器里还不能新建、复制、删除、排序场景，没有时间条和关键帧，也不能装入设计系统；剩下的分期见 [motion-editing.md](./motion-editing.md) §5。
-- `design-system`、`dashboard` 两个技能没有提 `uploads/`。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。
