@@ -110,7 +110,7 @@ export async function withPage<T>(o: PageOptions, fn: (page: Page) => Promise<T>
   const chrome = findChrome();
   if (!chrome) throw new PageExportError('no-chrome');
   const tmp = mkdtempSync(join(tmpdir(), 'dc-page-'));
-  const run = launchBrowser({ chrome, prefix: 'dc-page', tmp, signal: o.signal });
+  const run = launchBrowser({ chrome, tmp, signal: o.signal });
   try {
     const { cdp } = run;
     const { sessionId, send: s } = await run.page();

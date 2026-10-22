@@ -16,15 +16,16 @@ import { aiResolved } from './aiconfig';
 import { DC_LANG, langOf, trOf } from './i18n';
 import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
-import { afterTokens, registerDesignSystems } from './routes/designSystems';
+import { registerDesignSystems } from './routes/designSystems';
 import { registerImportBoard } from './routes/importBoard';
 import { registerAssets } from './routes/assets';
 import { registerDashboards } from './routes/dashboards';
 import { registerAi } from './routes/ai';
 import { registerDelegate } from './routes/delegate';
 import { registerExport } from './routes/export';
+import { registerHistory } from './routes/history';
 import { registerGit } from './routes/git';
-import { claudeCliReady } from './routes/shared';
+import { afterTokens, claudeCliReady } from './routes/shared';
 
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
 /** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, sunlit, system), inline JSON, or a .json file */
@@ -251,6 +252,7 @@ registerDesignSystems(app);
 registerImportBoard(app);
 registerAssets(app);
 registerDashboards(app);
+registerHistory(app);
 registerAi(app);
 registerDelegate(app);
 registerExport(app);

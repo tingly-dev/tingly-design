@@ -8,7 +8,6 @@ const MAX_ASSET = 20 * 1024 * 1024;
 
 /** Project assets: uploaded files and pictures. */
 export function registerAssets(app: Hono): void {
-
   app.get('/api/projects/:p/assets', async (c) => c.json(await listAssets(c.req.param('p'))));
 
   app.delete('/api/projects/:p/assets', async (c) => {

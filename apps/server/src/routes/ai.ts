@@ -76,7 +76,7 @@ export function registerAi(app: Hono): void {
 
   /** What the settings dialog shows. The key never leaves the server: only whether one is set, and where it came from. */
   app.get('/api/ai-config', async (c) => {
-    const [boxUp] = await Promise.all([boxReachable()]);
+    const boxUp = await boxReachable();
     return c.json({ ...aiResolved(), claudeCli: claudeCliReady(), box: { reachable: boxUp } });
   });
 

@@ -4,8 +4,7 @@
  * Rendering, PDF printing and the page exports (`render.ts`, `pdf.ts`, `pageExport.ts`) share it.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** The first Chrome-family browser we can run: DC_CHROME, then the usual places on each system, then Playwright's own. */
@@ -108,17 +107,19 @@ export interface BrowserRun {
 }
 
 /**
- * Starts Chrome for one job in a folder of its own (`tmp`, or a new one named after `prefix`).
+ * Starts Chrome for one job in `tmp`, a folder the job owns: `close()` removes it.
  * `signal` and `timeoutMs` stop it; `onStop` stops what else belongs to the job (an encoder).
  */
-export function launchBrowser(o: { chrome: string; prefix: string; tmp?: string; signal?: AbortSignal; timeoutMs?: number; onStop?: () => void }): BrowserRun {
-  const tmp = o.tmp ?? mkdtempSync(join(tmpdir(), `${o.prefix}-`));
+export function launchBrowser(o: { chrome: string; tmp: string; signal?: AbortSignal; timeoutMs?: number; onStop?: () => void }): BrowserRun {
+  const { tmp } = o;
   const browser = spawn(o.chrome, chromeArgs(join(tmp, 'profile')), { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
   const stop = () => {
     browser.kill('SIGKILL');
     o.onStop?.();
   };
   o.signal?.addEventListener('abort', stop);
+  // an already-aborted signal never fires its event
+  if (o.signal?.aborted) stop();
   const timer = o.timeoutMs ? setTimeout(stop, o.timeoutMs) : null;
   const cdp = new Cdp(browser);
   return {

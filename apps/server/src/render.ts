@@ -202,7 +202,7 @@ export async function renderMotion(o: RenderOptions): Promise<RenderResult> {
   const artFile = join(out, `${stem}.art.mp4`);
 
   let ffmpeg: ChildProcess | null = null;
-  const run = launchBrowser({ chrome, prefix: 'dc-render', tmp, signal: o.signal, onStop: () => ffmpeg?.kill('SIGKILL') });
+  const run = launchBrowser({ chrome, tmp, signal: o.signal, onStop: () => ffmpeg?.kill('SIGKILL') });
   let ffmpegErr = '';
   try {
     if (o.signal?.aborted) throw new RenderError('aborted');
@@ -326,7 +326,7 @@ export async function checkSeek(o: { dir: string; runtime: string; format: strin
   const tmp = mkdtempSync(join(tmpdir(), 'dc-seek-'));
   const page = join(tmp, 'page.html');
   writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}</style></head><body><div id="root"></div><script>${runtime}</script></body></html>`);
-  const run = launchBrowser({ chrome, prefix: 'dc-seek', tmp, signal: o.signal });
+  const run = launchBrowser({ chrome, tmp, signal: o.signal });
   try {
     const { send: s } = await run.page();
     await s('Page.enable');
@@ -383,7 +383,7 @@ export async function shrinkPictures(pngs: Buffer[], max: number): Promise<Buffe
   const chrome = findChrome();
   if (!chrome || !pngs.length) return pngs;
   const tmp = mkdtempSync(join(tmpdir(), 'dc-shrink-'));
-  const run = launchBrowser({ chrome, prefix: 'dc-shrink', tmp });
+  const run = launchBrowser({ chrome, tmp });
   try {
     const { send } = await run.page();
     const out: Buffer[] = [];

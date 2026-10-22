@@ -10,7 +10,7 @@ import { serve } from '@hono/node-server';
 import chokidar from 'chokidar';
 import { DS_TOKENS, type Actor } from '@dc/core';
 import { app } from './app';
-import { afterTokens } from './routes/designSystems';
+import { afterTokens } from './routes/shared';
 import { activeDelegates, stopDelegates } from './delegate';
 import { lineDiffSummary, publish, record } from './hub';
 import { BASE_PATH, BUNDLED, PROJECTS_DIR, PROTOCOL, VERSION } from './layout';

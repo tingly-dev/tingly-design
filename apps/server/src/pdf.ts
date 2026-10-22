@@ -24,7 +24,7 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
   const file = join(tmp, 'page.html');
   const base = `<base href="${o.origin.replace(/"/g, '')}/">`;
   writeFileSync(file, /<head[^>]*>/i.test(o.html) ? o.html.replace(/<head[^>]*>/i, (m) => m + base) : base + o.html);
-  const run = launchBrowser({ chrome, prefix: 'dc-pdf', tmp, signal: o.signal, timeoutMs: 90_000 });
+  const run = launchBrowser({ chrome, tmp, signal: o.signal, timeoutMs: 90_000 });
   try {
     const { cdp } = run;
     const { sessionId, send: s } = await run.page();

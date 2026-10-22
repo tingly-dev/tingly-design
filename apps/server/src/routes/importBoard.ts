@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { editIndex } from './designSystems';
+import { editIndex } from './shared';
 import { CANVAS_FILE, DECK_FILE, boardDeps, importedBoardDir, isBoardFile, parseCanvas, MOTION_FILE, type BoardImport } from '@dc/core';
 import { HttpError, isProjectName, kindOf, projectDir, readAsset, readOne, withLock, writeAsset, writeAtomic } from '../store';
 import { publish, record } from '../hub';

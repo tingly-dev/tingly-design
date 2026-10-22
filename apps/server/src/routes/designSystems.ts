@@ -1,32 +1,9 @@
 import type { Hono } from 'hono';
-import { CANVAS_FILE, DECK_FILE, DS_INDEX, DS_TOKENS, DS_TOKENS_CSS, dsFolderOf, parseDsIndex, resolveTokens, type Actor, type DsRecord, lookOf, lookTokens } from '@dc/core';
-import { HttpError, isProjectName, kindOf, regenTokensCss, projectDir, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf } from '../store';
-import { publish, record } from '../hub';
+import { editIndex } from './shared';
+import { CANVAS_FILE, DECK_FILE, DS_INDEX, DS_TOKENS, dsFolderOf, parseDsIndex, resolveTokens, type DsRecord, lookOf, lookTokens } from '@dc/core';
+import { HttpError, isProjectName, kindOf, projectDir, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf } from '../store';
+import { publish } from '../hub';
 import { trOf } from '../i18n';
-
-/** tokens.json changed in a design system: rebuild tokens.css and tell every editor. */
-export async function afterTokens(p: string, actor: Actor): Promise<void> {
-  if ((await kindOf(projectDir(p))) !== 'design-system') return;
-  const css = await regenTokensCss(p);
-  if (css) publish(p, { type: 'file', path: DS_TOKENS_CSS, content: css.content, version: css.version, actor });
-}
-
-/** Read a JSON index, change it, write it back as one versioned edit everyone sees. */
-export async function editIndex(p: string, rel: string, fn: (json: Record<string, unknown>) => void, summary: string): Promise<void> {
-  const cur = await readOne(p, rel);
-  let json: Record<string, unknown> = {};
-  try {
-    json = cur ? JSON.parse(cur.content) : {};
-  } catch {
-    throw new HttpError(409, 'invalidJson', { path: rel });
-  }
-  fn(json);
-  const content = JSON.stringify(json, null, 2) + '\n';
-  if (cur?.content === content) return;
-  const version = await writeAtomic(p, rel, content);
-  publish(p, { type: 'file', path: rel, content, version, actor: 'human' });
-  await record(p, { actor: 'human', file: rel, summary, version });
-}
 
 /** Design systems: install one into a canvas or deck, tokens, components. */
 export function registerDesignSystems(app: Hono): void {
