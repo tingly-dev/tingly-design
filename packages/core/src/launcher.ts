@@ -85,32 +85,28 @@ export type ProjectPreview =
 /** A source the launcher frame renders; larger ones show the schematic preview only. */
 const MAX_PREVIEW_SOURCE = 200_000;
 
-/** The card for one project, from its tracked files and a reader for them. */
-export async function projectCard(
-  name: string,
-  kind: ProjectKind,
-  files: string[],
-  read: (rel: string) => Promise<string | undefined>,
-  updatedAt: string | null = null,
-): Promise<ProjectCard> {
-  const small = async (rel: string) => {
-    const s = await read(rel);
-    return s !== undefined && s.length <= MAX_PREVIEW_SOURCE ? s : undefined;
-  };
-  if (kind === 'slides') {
+interface CardCtx {
+  files: string[];
+  read: (rel: string) => Promise<string | undefined>;
+  /** `read`, but nothing for a source too large for the launcher frame to render. */
+  small: (rel: string) => Promise<string | undefined>;
+}
+
+type CardBody = Pick<ProjectCard, 'title' | 'count' | 'preview'>;
+
+/** What each kind shows on its card: one entry per kind, so a kind added later fails to compile until it has a preview. */
+const CARD: Record<ProjectKind, (c: CardCtx) => Promise<CardBody>> = {
+  async slides({ read, small }) {
     const deck = parseDeck(await read(DECK_FILE));
     const id: string | undefined = deck.cover && deck.order.includes(deck.cover) ? deck.cover : deck.order[0];
     const source = id ? await small(slideFile(id)) : undefined;
     return {
-      name,
       title: deck.title,
-      kind,
-      updatedAt,
       count: deck.order.length,
-      preview: { kind, cover: id && source !== undefined ? { file: slideFile(id), source, head: faceMarkup(deck), size: deckSize(deck) } : undefined },
+      preview: { kind: 'slides', cover: id && source !== undefined ? { file: slideFile(id), source, head: faceMarkup(deck), size: deckSize(deck) } : undefined },
     };
-  }
-  if (kind === 'motion') {
+  },
+  async motion({ read, small }) {
     const motion = parseMotion(await read(MOTION_FILE));
     const sources: Record<string, string> = {};
     for (const id of motion.order) {
@@ -128,20 +124,17 @@ export async function projectCard(
     const primary = primaryFormat(motion);
     const formats = [primary, ...Object.keys(motion.formats).filter((f) => f !== primary)].map((name) => ({ name, w: motion.formats[name].size[0], h: motion.formats[name].size[1] }));
     return {
-      name,
       title: motion.title,
-      kind,
-      updatedAt,
       count: ids.length,
       preview: {
-        kind,
+        kind: 'motion',
         formats,
         seconds: Math.round(timeline.duration / speedOf(motion.speed) / 100) / 10,
         still: stillId && stillSource !== undefined && stillSource.length <= MAX_PREVIEW_SOURCE ? { motion, id: stillId, source: stillSource, ...(under && stillId === under.id ? { at: coverAt! - under.start } : {}) } : undefined,
       },
     };
-  }
-  if (kind === 'design-system') {
+  },
+  async 'design-system'({ files, read }) {
     const index = parseDsIndex(await read(DS_INDEX));
     const tokens = resolveTokens((await read(DS_TOKENS)) ?? '');
     const theme = tokens.themes[0]?.id;
@@ -153,9 +146,9 @@ export async function projectCard(
     const components = componentNames(files, await read('components/bundle.js'));
     const fonts = [...new Set(Object.values(tokens.families).map((f) => f.split(',')[0].replace(/["']/g, '').trim()))].filter(Boolean);
     const cover = files.includes(DS_COVER);
-    return { name, title: index.title, kind, updatedAt, count: components.length, preview: { kind, colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3), glance, alt: tokens.themes[1] ? { name: tokens.themes[1].name, glance: dsGlance(tokens, tokens.themes[1].id) } : undefined, hosted: tokens.hosted.map((h) => h.href).slice(0, 4), cover } };
-  }
-  if (kind === 'dashboard') {
+    return { title: index.title, count: components.length, preview: { kind: 'design-system', colors: colors.slice(0, 12), components: components.slice(0, 8), fonts: fonts.slice(0, 3), glance, alt: tokens.themes[1] ? { name: tokens.themes[1].name, glance: dsGlance(tokens, tokens.themes[1].id) } : undefined, hosted: tokens.hosted.map((h) => h.href).slice(0, 4), cover } };
+  },
+  async dashboard({ files, read }) {
     const dash = parseDash(await read(DASH_INDEX));
     const sets = files.filter((f) => /^datasets\/[^/]+\.json$/.test(f)).sort();
     const titles: string[] = [];
@@ -169,9 +162,9 @@ export async function projectCard(
       }
       titles.push(t);
     }
-    return { name, title: dash.title, kind, updatedAt, count: sets.length, preview: { kind, datasets: titles } };
-  }
-  if (kind === 'docs') {
+    return { title: dash.title, count: sets.length, preview: { kind: 'dashboard', datasets: titles } };
+  },
+  async docs({ read }) {
     const doc = parseDoc(await read(DOC_INDEX));
     const depth = (parent: string | undefined): number => {
       let n = 0;
@@ -189,29 +182,40 @@ export async function projectCard(
         .replace(/\s+/g, ' ')
         .slice(0, 160) ?? '';
     return {
-      name,
       title: doc.title,
-      kind,
-      updatedAt,
       count: doc.tabs.length,
-      preview: { kind, tabs: doc.tabs.slice(0, 6).map((t) => ({ title: t.title, depth: depth(t.parent) })), excerpt },
+      preview: { kind: 'docs', tabs: doc.tabs.slice(0, 6).map((t) => ({ title: t.title, depth: depth(t.parent) })), excerpt },
     };
-  }
-  const canvas = parseCanvas(await read(CANVAS_FILE));
-  const boards = canvas.order.map((f) => ({ file: f, ...canvas.boards[f] }));
-  const launch = canvas.launch.file && canvas.boards[canvas.launch.file] ? canvas.launch.file : boards[0]?.file;
-  const entry = launch ? canvas.boards[launch] : undefined;
-  const source = launch ? await small(launch) : undefined;
-  return {
-    name,
-    title: canvas.title,
-    kind,
-    updatedAt,
-    count: boards.length,
-    preview: {
-      kind,
-      boards: boards.slice(0, 24).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h, title: b.title ?? b.file })),
-      board: launch && entry && source !== undefined ? { file: launch, w: entry.w, h: entry.h, source } : undefined,
-    },
+  },
+  async design({ read, small }) {
+    const canvas = parseCanvas(await read(CANVAS_FILE));
+    const boards = canvas.order.map((f) => ({ file: f, ...canvas.boards[f] }));
+    const launch = canvas.launch.file && canvas.boards[canvas.launch.file] ? canvas.launch.file : boards[0]?.file;
+    const entry = launch ? canvas.boards[launch] : undefined;
+    const source = launch ? await small(launch) : undefined;
+    return {
+      title: canvas.title,
+      count: boards.length,
+      preview: {
+        kind: 'design',
+        boards: boards.slice(0, 24).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h, title: b.title ?? b.file })),
+        board: launch && entry && source !== undefined ? { file: launch, w: entry.w, h: entry.h, source } : undefined,
+      },
+    };
+  },
+};
+
+/** The card for one project, from its tracked files and a reader for them. */
+export async function projectCard(
+  name: string,
+  kind: ProjectKind,
+  files: string[],
+  read: (rel: string) => Promise<string | undefined>,
+  updatedAt: string | null = null,
+): Promise<ProjectCard> {
+  const small = async (rel: string) => {
+    const s = await read(rel);
+    return s !== undefined && s.length <= MAX_PREVIEW_SOURCE ? s : undefined;
   };
+  return { name, kind, updatedAt, ...(await CARD[kind]({ files, read, small })) };
 }
