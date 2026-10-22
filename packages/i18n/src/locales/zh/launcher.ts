@@ -85,7 +85,7 @@ export default {
     tableHint: '将 CSV 或 TSV 文件创建为新的看板',
     zip: '导入项目包（.zip）…',
     zipHint: '打开 Tingly Design 或 Claude Design 项目包',
-    importedTable: '已用 {{count}} 行的表格创建看板“{{name}}”',
+    importedTable: '已用表格创建看板“{{name}}”',
     importedClaude: '已从 Claude Design 导入“{{name}}”（{{kind}}）',
     export: '导出（.zip）',
     imported: '已导入“{{name}}”',

@@ -2,7 +2,7 @@ import { download } from './local';
 import { api } from './api';
 import { t } from './i18n';
 import { toast } from './store';
-import { checkDataFile, applyNewOptions, dataFormatOf } from './newProject';
+import { checkDataFile, applyNewOptions } from './newProject';
 import { freeName, slugOf } from './projectName';
 import { showPptxResult } from './components/ProjectImportResult';
 import type { ClaudeDesignNote, PptxDiagnostic } from '@dc/core';
@@ -49,15 +49,23 @@ async function importTableFile(file: File): Promise<string | null> {
     return null;
   }
   const stem = file.name.replace(/\.[^.]+$/, '');
-  const taken = new Set((await api.projects()).map(p => p.name));
-  const { name } = await api.createProject(freeName(slugOf(stem) || 'dashboard', taken), stem, 'dashboard');
-  for (const m of await applyNewOptions(name, { dataFile: file })) toast(m, 'error');
-  toast(t('launcher.archive.importedTable', { name, count: r.rows }));
-  return name;
+  try {
+    const taken = new Set((await api.projects()).map(p => p.name));
+    const { name } = await api.createProject(freeName(slugOf(stem) || 'dashboard', taken), stem, 'dashboard');
+    const failed = await applyNewOptions(name, { dataFile: file });
+    for (const m of failed) toast(m, 'error');
+    if (!failed.length) toast(t('launcher.archive.importedTable', { name }));
+    return name;
+  } catch (e) {
+    toast(t('launcher.archive.failed', { message: (e as Error).message }), 'error');
+    return null;
+  }
 }
 
+const isTable = (name: string) => /\.(csv|tsv)$/i.test(name);
+
 export async function importProjectFile(file: File): Promise<string | null> {
-  if (dataFormatOf(file.name)) return importTableFile(file);
+  if (isTable(file.name)) return importTableFile(file);
   try {
     const { name, systems, claudeDesign, notes, pptx } = await api.importArchive(file);
     if (pptx) {

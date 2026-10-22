@@ -56,7 +56,7 @@
 
 - 外观菜单（主题）只放在启动页，见 [theming](../docs/zh/theming.md)。
 - 导入表格（`.csv`、`.tsv`）是第四个直接动作，也认拖放：文件建成一个新看板，原文件放进 `data/` 并建好数据源，与新建对话框里的“数据文件”选项走同一段 `applyNewOptions`；不弹确认，因为一个表只可能是看板的数据，名字取自文件名。`.json` 不认拖放，因为单个 JSON 文件也可能是别的东西，要用 JSON 起步就在新建对话框里选。
-- 导入 PowerPoint、Markdown、项目包是三个直接动作，各自打开只筛选该格式的文件选择器（Markdown 同时接受 `.md` 和 `.markdown`；项目包接受 Tingly Design 和 Claude Design 的 `.zip`）。提示分别说明新建幻灯片、新建文档和打开项目包，不把三种意图藏在“导入项目”下，也不再加格式选择对话框。`chooseProjectArchive(format)` 仅限定 picker 的 accept，仍共用 `importProjectFile` 和服务端内容检测；拖放识别不变。
+- 导入 PowerPoint、Markdown、项目包和表格是四个直接动作，各自打开只筛选该格式的文件选择器（Markdown 同时接受 `.md` 和 `.markdown`；项目包接受 Tingly Design 和 Claude Design 的 `.zip`）。提示分别说明新建幻灯片、新建文档和打开项目包，不把三种意图藏在“导入项目”下，也不再加格式选择对话框。`chooseProjectArchive(format)` 仅限定 picker 的 accept，仍共用 `importProjectFile` 和服务端内容检测；拖放识别不变。
 - 导入 HTML / SVG 的入口在启动页（`ImportDialog`），导入结果是一个新画布，见 [import-external-material.md](./import-external-material.md)。
 - 打开项目文件夹之外的项目、把新项目建到任意位置："新建项目"菜单最后一项"打开文件夹…"，新建对话框的"改文件夹"也收完整路径，见 [project-folders.md](./project-folders.md)。
 - 嵌入时宿主可以用 `tingly-design:open` 直接打开项目，跳过启动页，见 [embedding](../docs/zh/embedding.md)。

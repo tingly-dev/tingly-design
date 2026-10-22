@@ -91,7 +91,7 @@ export default {
     tableHint: 'Create a dashboard from a CSV or TSV file',
     zip: 'Import a project package (.zip)…',
     zipHint: 'Open a Tingly Design or Claude Design package',
-    importedTable: 'Created the dashboard “{{name}}” from a table of {{count}} rows',
+    importedTable: 'Created the dashboard “{{name}}” from a table',
     importedClaude: 'Imported “{{name}}” from Claude Design ({{kind}})',
     export: 'Export (.zip)',
     imported: 'Imported “{{name}}”',
