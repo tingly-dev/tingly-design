@@ -79,7 +79,7 @@ docs/               使用指南与工作原理：docs/en/ 英文，docs/zh/ 中
 e2e/                Playwright 端到端测试和一个模拟的 Messages API
 ```
 
-包之间的依赖只有一个方向：`core`、`export`、`i18n` 不引用其他包；`import` 用 `core` 和 `i18n`；`sandbox` 用 `core` 和 `export`；服务端用 `core`、`export`、`i18n`；编辑器用这些再加 `import`。`pnpm depcheck`（`.dependency-cruiser.cjs`）在 CI 里拦住任何其他方向。服务端里，`app.ts` 放核心路由并挂载 `routes/` 下每个区域一个文件，`chrome.ts` 是启动本机 Chrome（渲染、PDF、页面导出）的唯一地方。
+包之间的依赖只有一个方向：`core`、`export`、`i18n` 不引用其他包；`import` 用 `core` 和 `i18n`；`sandbox` 用 `core` 和 `export`；服务端用 `core`、`export`、`i18n`；编辑器用这些再加 `import`。`pnpm depcheck`（`.dependency-cruiser.cjs`）在 CI 里拦住源码里任何其他方向（测试不检查；`sandbox` 只以构建出的 IIFE 被使用，不被引用）。服务端里，`app.ts` 放核心路由并挂载 `routes/` 下每个区域一个文件，`chrome.ts` 是启动本机 Chrome（渲染、PDF、页面导出）的唯一地方。
 
 ---
 

@@ -6,6 +6,7 @@
  *   sandbox           core, export
  *   server            core, export, i18n
  *   editor            core, export, i18n, import
+ * Nothing imports sandbox: it is used as its built IIFEs. Tests are not checked.
  * `pnpm depcheck` runs it; CI fails on a new arrow.
  */
 const sources = ['apps/editor', 'apps/server', 'packages/core', 'packages/export', 'packages/i18n', 'packages/import', 'packages/sandbox'];
