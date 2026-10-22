@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { DS_COVER, DS_INDEX, DS_TOKENS, SLIDE_H, SLIDE_W, parseCardMarker, parseDsIndex, resolveTokens, sandboxDoc, speedOf, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
 import { api } from '../../api';
 import { SERVER } from '../../base';
@@ -91,72 +92,74 @@ function useHostedFonts(hrefs: string) {
   }, [hrefs]);
 }
 
-export function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
-  const { t } = useTranslation();
-  const hosted = p.kind === 'design-system' ? p.hosted.join('\n') : '';
-  useHostedFonts(hosted);
-  const [ref, near] = useNear<HTMLDivElement>();
-  let body: ReactNode;
-  if (p.kind === 'design') {
-    body =
-      near && p.board && width > 0 ? (
-        <>
-          <Minimap boards={p.boards} />
-          <LiveFrame file={p.board.file} source={p.board.source} w={p.board.w} h={p.board.h} width={width} base={api.rawBase(project)} />
-        </>
-      ) : (
+interface PreviewCtx {
+  project: string;
+  width: number;
+  /** The card has scrolled near the viewport: a live frame may load. */
+  near: boolean;
+  t: TFunction;
+}
+
+type PreviewOf<K extends ProjectPreview['kind']> = Extract<ProjectPreview, { kind: K }>;
+
+/** What each kind draws on its launcher card: one entry per kind, so a kind added later fails to compile until it has a preview. */
+const PREVIEW: { [K in ProjectPreview['kind']]: (p: PreviewOf<K>, c: PreviewCtx) => ReactNode } = {
+  design: (p, { project, width, near }) =>
+    near && p.board && width > 0 ? (
+      <>
         <Minimap boards={p.boards} />
-      );
-  } else if (p.kind === 'slides') {
-    body =
-      near && p.cover && width > 0 ? (
-        <LiveFrame file={p.cover.file} source={p.cover.source} w={p.cover.size?.[0] ?? SLIDE_W} h={p.cover.size?.[1] ?? SLIDE_H} width={width} slide={{ head: p.cover.head, size: p.cover.size, base: api.rawBase(project) }} />
+        <LiveFrame file={p.board.file} source={p.board.source} w={p.board.w} h={p.board.h} width={width} base={api.rawBase(project)} />
+      </>
+    ) : (
+      <Minimap boards={p.boards} />
+    ),
+  slides: (p, { project, width, near, t }) =>
+    near && p.cover && width > 0 ? (
+      <LiveFrame file={p.cover.file} source={p.cover.source} w={p.cover.size?.[0] ?? SLIDE_W} h={p.cover.size?.[1] ?? SLIDE_H} width={width} slide={{ head: p.cover.head, size: p.cover.size, base: api.rawBase(project) }} />
+    ) : (
+      <div className="lp-empty">{p.cover ? '' : t('launcher.preview.noSlides')}</div>
+    ),
+  'design-system': (p, { project, near }) => (
+    <div className="lp-ds">
+      {p.cover ? (
+        <CoverFrame project={project} near={near} />
       ) : (
-        <div className="lp-empty">{p.cover ? '' : t('launcher.preview.noSlides')}</div>
-      );
-  } else if (p.kind === 'design-system') {
-    body = (
-      <div className="lp-ds">
-        {p.cover ? (
-          <CoverFrame project={project} near={near} />
-        ) : (
-          <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
-        )}
-        <div className="foot">
-          <div className="faces">
-            {[p.glance.headingFont, p.glance.bodyFont]
-              .filter((f, i, a) => f && a.indexOf(f) === i)
-              .map((f) => (
-                <span key={f} style={{ fontFamily: f }}>
-                  {f!.split(',')[0].replace(/["']/g, '').trim()}
-                </span>
-              ))}
-          </div>
-          <div className="sw">
-            {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 6).map((c, i) => (
-              <span key={i} style={{ background: c }} />
+        <Specimen glance={p.glance} alt={p.alt} themeName={p.glance.themes[0]} title={p.glance.headingFont?.split(',')[0].replace(/["']/g, '').trim() || 'Aa'} />
+      )}
+      <div className="foot">
+        <div className="faces">
+          {[p.glance.headingFont, p.glance.bodyFont]
+            .filter((f, i, a) => f && a.indexOf(f) === i)
+            .map((f) => (
+              <span key={f} style={{ fontFamily: f }}>
+                {f!.split(',')[0].replace(/["']/g, '').trim()}
+              </span>
             ))}
-          </div>
+        </div>
+        <div className="sw">
+          {(p.colors.length ? p.colors : ['#e4e3df', '#d6d4ce', '#9a9892']).slice(0, 6).map((c, i) => (
+            <span key={i} style={{ background: c }} />
+          ))}
         </div>
       </div>
-    );
-  } else if (p.kind === 'dashboard') {
-    body = (
-      <div className="lp-dash">
-        <svg viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0 30 L12 26 L24 28 L36 20 L48 22 L60 14 L72 17 L84 9 L96 12 L108 5 L120 7" />
-        </svg>
-        <ul>
-          {p.datasets.map((d) => (
-            <li key={d}>{d}</li>
-          ))}
-          {!p.datasets.length && <li className="faint">{t('launcher.preview.noDatasets')}</li>}
-        </ul>
-      </div>
-    );
-  } else if (p.kind === 'motion') {
+    </div>
+  ),
+  dashboard: (p, { t }) => (
+    <div className="lp-dash">
+      <svg viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 30 L12 26 L24 28 L36 20 L48 22 L60 14 L72 17 L84 9 L96 12 L108 5 L120 7" />
+      </svg>
+      <ul>
+        {p.datasets.map((d) => (
+          <li key={d}>{d}</li>
+        ))}
+        {!p.datasets.length && <li className="faint">{t('launcher.preview.noDatasets')}</li>}
+      </ul>
+    </div>
+  ),
+  motion: (p, { project, width, near, t }) => {
     const f = p.formats[0];
-    body = (
+    return (
       <div className="lp-motion">
         {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} base={api.rawBase(project)} />}
         {!p.still && <div className="lp-empty">{t('launcher.preview.noScenes')}</div>}
@@ -168,25 +171,32 @@ export function Preview({ p, project, width }: { p: ProjectPreview; project: str
         </div>
       </div>
     );
-  } else {
-    body = (
-      <div className="lp-doc">
-        <div className="page">
-          <ul>
-            {p.tabs.map((tab, i) => (
-              <li key={i} style={{ paddingLeft: tab.depth * 10 }}>
-                {tab.title}
-              </li>
-            ))}
-          </ul>
-          {p.excerpt && <p>{p.excerpt}</p>}
-        </div>
+  },
+  docs: (p) => (
+    <div className="lp-doc">
+      <div className="page">
+        <ul>
+          {p.tabs.map((tab, i) => (
+            <li key={i} style={{ paddingLeft: tab.depth * 10 }}>
+              {tab.title}
+            </li>
+          ))}
+        </ul>
+        {p.excerpt && <p>{p.excerpt}</p>}
       </div>
-    );
-  }
+    </div>
+  ),
+};
+
+export function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
+  const { t } = useTranslation();
+  const hosted = p.kind === 'design-system' ? p.hosted.join('\n') : '';
+  useHostedFonts(hosted);
+  const [ref, near] = useNear<HTMLDivElement>();
+  const draw = PREVIEW[p.kind] as (p: ProjectPreview, c: PreviewCtx) => ReactNode;
   return (
     <div ref={ref} className={`lpreview k-${p.kind}`}>
-      {body}
+      {draw(p, { project, width, near, t })}
     </div>
   );
 }

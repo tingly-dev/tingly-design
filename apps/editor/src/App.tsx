@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
+import type { ProjectKind } from '@dc/core';
 import { api } from './api';
 import { canvasOf, openProject, toast, useStore } from './store';
 import { fitAll, focusBoard } from './components/canvas/view';
@@ -55,9 +56,6 @@ export function App() {
 function Project() {
   const project = new URLSearchParams(location.search).get('p');
   const loaded = useStore((s) => s.loaded);
-  const mode = useStore((s) => s.mode);
-  const tool = useStore((s) => s.tool);
-  const panelOpen = useStore((s) => s.panelOpen);
   const kind = useStore((s) => s.kind);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -123,58 +121,53 @@ function Project() {
         <Toasts />
       </>
     );
-  if (kind === 'docs')
-    return (
-      <>
-        <DocsApp />
-        <Toasts />
-      </>
-    );
-  if (kind === 'dashboard')
-    return (
-      <>
-        <DashApp />
-        <Toasts />
-      </>
-    );
-  if (kind === 'design-system')
-    return (
-      <>
-        <DsApp />
-        <Toasts />
-      </>
-    );
-  if (kind === 'motion')
-    return (
-      <>
-        <MotionApp />
-        <Toasts />
-      </>
-    );
-  if (kind === 'slides')
-    return (
-      <>
-        <SlidesApp />
-        <Toasts />
-      </>
-    );
+  const KindApp = KIND_APP[kind ?? 'design'];
+  return <KindApp />;
+}
+
+/** The canvas editor: boards on a stage with the bars, the panel and the prompt. */
+function CanvasApp() {
+  const mode = useStore((s) => s.mode);
+  const tool = useStore((s) => s.tool);
+  const panelOpen = useStore((s) => s.panelOpen);
   return (
     <>
-    <CanvasTopBar />
-    <div className={`app ${mode}`} data-tool={tool} data-mode={mode}>
-      <main className="stage">
-        <Canvas />
-        <LeftBar />
-        <RightBar />
-        {loaded && mode === 'edit' && <PromptBar />}
-        <JournalPopover />
-      </main>
-      {panelOpen && mode === 'edit' && <RightPanel />}
-      <ContextMenu />
-      {mode === 'edit' && <NoteFormatBar />}
-      <FocusView />
-      <Toasts />
-    </div>
+      <CanvasTopBar />
+      <div className={`app ${mode}`} data-tool={tool} data-mode={mode}>
+        <main className="stage">
+          <Canvas />
+          <LeftBar />
+          <RightBar />
+          {mode === 'edit' && <PromptBar />}
+          <JournalPopover />
+        </main>
+        {panelOpen && mode === 'edit' && <RightPanel />}
+        <ContextMenu />
+        {mode === 'edit' && <NoteFormatBar />}
+        <FocusView />
+        <Toasts />
+      </div>
     </>
   );
 }
+
+/** Another kind's editor, with the toasts every kind shows. */
+const withToasts = (App: ComponentType) =>
+  function KindShell() {
+    return (
+      <>
+        <App />
+        <Toasts />
+      </>
+    );
+  };
+
+/** The editor each kind opens in: one entry per kind, so a kind added later fails to compile until it has one. */
+const KIND_APP: Record<ProjectKind, ComponentType> = {
+  design: CanvasApp,
+  slides: withToasts(SlidesApp),
+  'design-system': withToasts(DsApp),
+  dashboard: withToasts(DashApp),
+  docs: withToasts(DocsApp),
+  motion: withToasts(MotionApp),
+};

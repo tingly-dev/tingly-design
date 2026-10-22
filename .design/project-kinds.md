@@ -19,21 +19,21 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 
 ## 2. 一种类型要在哪些地方登记
 
-按代码路径排列。漏掉任何一行，现象写在最后一列。
+按代码路径排列。漏掉任何一行，现象写在最后一列。写成按类型的穷尽表（`Record<ProjectKind, …>`）的几行，漏了会编译不过，其余仍靠这份清单；表的设计和还没转的部分见 [kind-registry.md](./kind-registry.md)。
 
 | 位置 | 做什么 | 漏了会怎样 |
 |---|---|--- |
 | `packages/core/src/deck.ts` `ProjectKind`、`projectKind(files)` | 类型名；按文件判断类型 | 类型检查不过，或前端认不出 |
 | `apps/server/src/store.ts` `kindOf` | 按索引文件判断目录是什么类型（**有先后**：`deck.json` 先于 `canvas.json`） | 启动页不列、接口按画布处理 |
-| `apps/server/src/store.ts` `createProject` | 新建时写出最小的索引和第一个内容单元 | 新建出空目录 |
+| `apps/server/src/store.ts` `STARTER` | 新建时写出最小的索引和第一个内容单元（`Record<ProjectKind, …>`，漏了编译不过） | 类型检查不过 |
 | `apps/server/src/app.ts` `POST /api/projects` | 允许的 `kind` 白名单；动效、画布、幻灯片还收一个可选的 `size`（宽高，核心的 `validSize` 校验；画布是第一块画板的大小；命名的画布尺寸是 core 的 `BOARD_SIZES`，对话框和命令行 `new canvas --size` 都读它） | 新建对话框建出来的是画布；动效总是 16:9，画布总是 1200×760 |
-| `apps/server/src/routes/ai.ts` `/fast-edit` | 选快速 AI 的系统提示（`FAST_EDIT_*`） | 快速 AI 按画布规则改 |
-| `apps/server/src/delegate.ts` `startDelegate` | 交给 Claude Code 时的开场说明、附件路径写法、系统提示、允许的工具 | Claude Code 按画布规则改文件 |
+| `apps/server/src/routes/ai.ts` `FAST_PROMPT` | 选快速 AI 的系统提示（`FAST_EDIT_*`）；不支持的类型填 `null` | 类型检查不过 |
+| `apps/server/src/delegate.ts` `DELEGATE` | 交给 Claude Code 时的开场措辞、系统提示、额外允许的工具、是否给生图工具；附件路径写法在 `startDelegate` 的文字里 | 类型检查不过 |
 | `packages/core/src/prompt.ts` | 快速 AI 的系统提示正文（`FAST_EDIT_SYSTEM`、`FAST_EDIT_SLIDES`、`FAST_EDIT_DOCS`）；Claude Code 的在 `delegate.ts`（`SLIDES_SYSTEM` 等） | 同上 |
-| `packages/core/src/launcher.ts` `projectCard`、`ProjectPreview` | 启动页卡片的标题、数量、预览数据 | 卡片没有预览 |
-| `apps/editor/src/components/launcher/`：`kinds.tsx` 的 `KINDS` 和图标、`Preview.tsx` 的 `Preview` | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
+| `packages/core/src/launcher.ts` `CARD`、`INDEX_FILE`、`ProjectPreview`；`project.ts` 的 `OUTLINE`、`CHECK` | 启动页卡片的标题、数量、预览数据；`list` 列什么、`check` 查什么（都是按类型的穷尽表） | 类型检查不过 |
+| `apps/editor/src/components/launcher/`：`kinds.tsx` 的 `KINDS` 和图标、`Preview.tsx` 的 `PREVIEW` | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
 | `packages/i18n/src/locales/{en,zh}/<kind>.ts` | 这种类型编辑器的界面文字，两种语言；`starter` 里加它新建时的占位文案 | 类型检查不过，或界面上出现没翻译的文字 |
-| `apps/editor/src/App.tsx` | 按 `kind` 进入对应的编辑器 | 打开后是画布编辑器 |
+| `apps/editor/src/App.tsx` `KIND_APP` | 按 `kind` 进入对应的编辑器 | 类型检查不过 |
 | `apps/editor/src/components/<kind>/` | 这种类型的编辑器和它自己的状态（如 `slides.ts`、`motion.ts`）；各类型共用的部件留在 `components/` 根下，不放进某个类型的目录 | 看目录分不清哪些是共用部件，改共用功能时漏掉某种类型 |
 | `apps/editor/src/store.ts` | 读项目时记下 `kind` | 共用部件不知道自己在哪种类型里 |
 | `.claude/skills/<kind>/SKILL.md` | 文件格式、能引用什么（`uploads/` 等） | Claude Code 写出编辑器读不了的文件 |
