@@ -23,7 +23,7 @@
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
 | [project-kinds.md](./project-kinds.md) | 一种项目类型要在哪些地方登记；跨类型功能矩阵和已知缺口 | 现行契约 |
-| [five-kinds.md](./five-kinds.md) | 从 Design 扩展到幻灯片、设计系统、看板、文档 | 前半是当初的方案，"进度"一节是实施结论 |
+| [five-kinds.md](./five-kinds.md) | 从 Design 扩展到幻灯片、设计系统、看板、文档（文件名沿用“五种”；第六种动效见 [motion.md](./motion.md)） | 前半是当初的方案，"进度"一节是实施结论 |
 | [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；已登记为类型，编辑舞台和播放器已实施 |
 | [motion-editing.md](./motion-editing.md) | 动效的细粒度编辑：为什么场景原来点不动，舞台点选、尺寸覆盖、时间轴、关键帧的交互和实现（图：[motion-editing.pencil.md](./motion-editing.pencil.md)） | 第一期已实施（点选、改字、缩放、尺寸、快速 AI）；时间轴、关键帧是方案 |
 | [motion-effects.md](./motion-effects.md) | 动效里的着色器特效层：可 seek 的 embed 装一个 GLSL 片元着色器（或用 `data-fx` 指名一个内置预设），WebGL2 在页面里画；输入、单位、确定性、降级，以及什么样的特效好看 | 契约、WebGL2 运行时和 `data-fx` 内置预设（16 个，scale、direction、at、region 等通用参数可改形态，无 WebGL2 时退回 CSS 版本，幻灯片也可用）已实施（示例 `projects/motion-effects/`；agent 从 motion skill 的预设表学会，单元测试让表和代码保持一致）；手写 GLSL 的检查器报错、编辑器里的预设选择是方案；WebGPU / vgpu 的调研在 `.research/motion-effects.md` |
@@ -39,6 +39,7 @@
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
 | [slides-pptx.md](./slides-pptx.md) | 幻灯片 PPTX 双向交换：新项目导入（包级严格、对象级尽力而为，74 种内置表格样式、经典与 Office 2016 图表重绘）、整份可见 deck 导出（原生优先、原生表格、逐元素图片化）、opaque runtime 捕获、来源/报告与诊断、安全和验证门槛 | 独立模块与 launcher/API/CLI/FileMenu/MCP 接入已实施；聚焦产品 e2e 90/90 通过，导入与导出都以 LibreOffice 图像差分作保真度量，真实 PowerPoint 渲染未验收；无追加；未来提案单列 |
 | [docs-markdown.md](./docs-markdown.md) | 文档导出为 Markdown：文档标题和标签页成章节、标题层级理顺、图片路径跟着走（有图片时出带图片的 .zip）、`==高亮==` 转 `<mark>`、评论不导出 | 已实施 |
+| [docs-history.md](./docs-history.md) | 文档的历史版本：写盘前存下被覆盖的标签页文本（本机、不进 zip 和提交），列表、预览、恢复走普通编辑 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [claude-design-format.md](./claude-design-format.md) | 和原版 Claude Design 互相搬作品：包就是原版的文件布局（`project/…`，看板是存储文档），导入并进“导入项目”不选类型，导出挨着“整个项目”；图片和数据怎么对应、哪些类型没有 | 已实施（编辑器、启动页、命令行）；Docs 往返、查询数据集的数据是没做的 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |

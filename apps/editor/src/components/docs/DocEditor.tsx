@@ -16,11 +16,12 @@ import { dateLocale, saveTab, useComments, useDocs, threadsOf } from './docs';
 import { useTranslation } from 'react-i18next';
 import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';
+import { RichCodeBlock } from './richCode';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
 
-type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'table' | 'hr' | 'date' | 'image';
+type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'diagram' | 'formula' | 'table' | 'hr' | 'date' | 'image';
 
 interface SlashItem {
   key: BlockKey;
@@ -38,11 +39,20 @@ const SLASH: SlashItem[] = [
   { key: 'todo', hint: 'task checklist todo', run: (e) => e.chain().focus().toggleTaskList().run() },
   { key: 'quote', hint: 'quote blockquote', run: (e) => e.chain().focus().toggleBlockquote().run() },
   { key: 'code', hint: 'code block', run: (e) => e.chain().focus().toggleCodeBlock().run() },
+  { key: 'diagram', hint: 'diagram mermaid flowchart', run: (e) => fence(e, 'mermaid', 'flowchart LR\n  Idea --> Draft --> Ship') },
+  { key: 'formula', hint: 'formula math latex equation', run: (e) => fence(e, 'latex', 'E = mc^2') },
   { key: 'table', hint: 'table', run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { key: 'hr', hint: 'divider rule hr', run: (e) => e.chain().focus().setHorizontalRule().run() },
   { key: 'date', hint: 'date today', run: (e) => e.chain().focus().insertContent(new Date().toLocaleDateString(dateLocale(), { year: 'numeric', month: 'long', day: 'numeric' })).run() },
   { key: 'image', hint: 'image picture upload', run: (e) => pickImage(e) },
 ];
+
+/** A code block with a language and a starting text, selected so typing replaces it. */
+function fence(e: Editor, language: string, text: string): void {
+  e.chain().focus().insertContent({ type: 'codeBlock', attrs: { language }, content: [{ type: 'text', text }] }).run();
+  const end = e.state.selection.to;
+  e.commands.setTextSelection({ from: end - text.length, to: end });
+}
 
 export function pickImage(e: Editor): void {
   const input = document.createElement('input');
@@ -134,7 +144,8 @@ export function DocEditor({ tab }: { tab: string }) {
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({ link: { openOnClick: false, autolink: true } }),
+        StarterKit.configure({ link: { openOnClick: false, autolink: true }, codeBlock: false }),
+        RichCodeBlock,
         TaskList,
         TaskItem.configure({ nested: true }),
         TableKit.configure({ table: { resizable: false } }),

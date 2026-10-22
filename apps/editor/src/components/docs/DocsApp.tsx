@@ -7,6 +7,7 @@ import {
   IconBold,
   IconColumnInsertRight,
   IconColumnRemove,
+  IconFileTypeCsv,
   IconItalic,
   IconList,
   IconListCheck,
@@ -22,11 +23,13 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { copyImage, htmlToPng, saveImage } from '../../imageExport';
+import type { Editor } from '@tiptap/core';
+import { Versions } from './Versions';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
@@ -37,7 +40,7 @@ import { t as tNow } from '../../i18n';
 import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { LayoutCols, Message } from '../icons';
+import { History, LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
@@ -175,12 +178,32 @@ function Toolbar() {
           {b(i(IconColumnInsertRight), false, () => e.chain().focus().addColumnAfter().run(), t('docs.toolbar.colRight'))}
           {b(i(IconRowRemove), false, () => e.chain().focus().deleteRow().run(), t('docs.toolbar.deleteRow'))}
           {b(i(IconColumnRemove), false, () => e.chain().focus().deleteColumn().run(), t('docs.toolbar.deleteCol'))}
+          {b(i(IconFileTypeCsv), false, () => downloadTableCsv(e), t('docs.toolbar.tableCsv'))}
         </>
       )}
       {b(i(IconPhoto), false, () => pickImage(e), t('docs.block.image'))}
       {b(i(IconSeparatorHorizontal), false, () => e.chain().focus().setHorizontalRule().run(), t('docs.block.hr'))}
     </div>
   );
+}
+
+/** The table the cursor is in, as a .csv file (UTF-8 with a mark so spreadsheets read Chinese right). */
+function downloadTableCsv(e: Editor): void {
+  const { $from } = e.state.selection;
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const table = $from.node(depth);
+    if (table.type.name !== 'table') continue;
+    const grid: string[][] = [];
+    let hasHeader = false;
+    table.forEach((row, _o, r) => {
+      if (r === 0) hasHeader = row.firstChild?.type.name === 'tableHeader';
+      const cells: string[] = [];
+      row.forEach((cell) => cells.push(cell.textBetween(0, cell.content.size, '\n', '\n')));
+      grid.push(cells);
+    });
+    download('table.csv', '\ufeff' + gridToCsv(grid, hasHeader), 'text/csv;charset=utf-8');
+    return;
+  }
 }
 
 /** The doc as one page of HTML: every tab in order, images from the project. */
@@ -311,7 +334,7 @@ export function DocsApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useDocs((s) => s.rail);
   const comments = useComments();
-  const [pop, setPop] = useState<'settings' | null>(null);
+  const [pop, setPop] = useState<'settings' | 'versions' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
   const open = comments.threads.filter((x) => x.tab === tab && !x.resolved).length;
@@ -333,6 +356,12 @@ export function DocsApp() {
           <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
         </div>
+        {tab && (
+          <div className="popwrap">
+            <BarButton icon={<History />} label={t('docs.versions.button')} on={pop === 'versions'} data-versions="" onClick={() => setPop(pop === 'versions' ? null : 'versions')} />
+            {pop === 'versions' && <Versions key={tab} tab={tab} onClose={() => setPop(null)} />}
+          </div>
+        )}
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
         <BarButton icon={<Message />} label={t('docs.app.comments')} on={rail} badge={open ? <span className="badge blue">{open}</span> : null} onClick={() => useDocs.setState({ rail: !rail })} />
       </TopBar>
@@ -365,9 +394,22 @@ export function DocsApp() {
           placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;
-            if (!e || e.state.selection.empty) return '';
-            const text = e.state.doc.textBetween(e.state.selection.from, e.state.selection.to, '\n').slice(0, 1500);
-            return `The person selected these words in the tab:\n"""\n${text}\n"""`;
+            const { from, to, $from } = e?.state.selection ?? { from: 0, to: 0, $from: null };
+            let heading = '';
+            if (e) {
+              e.state.doc.forEach((n, pos) => {
+                if (pos < from && n.type.name === 'heading') heading = n.textContent;
+              });
+            }
+            const lit = rail ? comments.threads.find((x) => x.id === useDocs.getState().thread && !x.resolved) : undefined;
+            return docsViewContext({
+              title: order.find((x) => x.id === tab)?.title,
+              file: tab ? tabFile(tab) : undefined,
+              heading,
+              selection: e && from !== to ? e.state.doc.textBetween(from, to, '\n') : '',
+              block: $from?.parent.textContent,
+              thread: lit?.quote,
+            });
           }}
         />
       </main>

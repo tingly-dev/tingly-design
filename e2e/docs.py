@@ -1,7 +1,7 @@
 """End-to-end checks for docs: rich-text editing written back block by block, tabs, comments, AI rewrite, export.
 Run with `pnpm dev` up: python3 e2e/docs.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 The AI rewrite check needs the mock model (see README): it is skipped when the server has no API key."""
-import os, asyncio, subprocess, time, json, urllib.request
+import os, shutil, asyncio, subprocess, time, json, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -53,12 +53,12 @@ async def main():
         # --- reading ----------------------------------------------------------------
         await pg.goto(BASE + '/?p=design-guide')
         await expect(body.locator('h1')).to_have_text('Tingly Design handbook')
-        await expect(pg.locator('.tabrow')).to_have_count(4)
+        await expect(pg.locator('.tabrow')).to_have_count(5)
         check('tabs, subtabs and the outline', await pg.locator('.tabrow.sub').count() == 1 and await pg.locator('.outline button').count() == 4)
         check('a table, a task list and a quote render', await body.locator('table tr').count() == 7 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
         await expect(body.locator('.cmark')).to_have_count(1)
         check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'the agents working beside them')
-        for t in ['Workflow', 'Write-back and sync', 'Project kinds', 'Overview']:
+        for t in ['Workflow', 'Write-back and sync', 'Project kinds', 'Architecture', 'Overview']:
             await pg.locator('.tabname', has_text=t).click()
             await expect(pg.locator('.tabrow.on .tabname')).to_have_text(t)
         await pg.wait_for_timeout(800)
@@ -154,7 +154,7 @@ async def main():
         pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('.tabrow.on .more').click()
         await pg.locator('.tabmenu button', has_text='删除').click()
-        ok = await wait_for(lambda: len(index()['tabs']) == 4 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
+        ok = await wait_for(lambda: len(index()['tabs']) == 5 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
         check('deleting a tab removes its file', ok)
         await pg.locator('.dashbar button[aria-label="版式"]').click()
         await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
@@ -173,6 +173,75 @@ async def main():
             check('…and only that block changed', len(diff('projects/design-guide/tabs/kinds.md')) == 2, '\n'.join(diff('projects/design-guide/tabs/kinds.md')))
         else:
             print('SKIP AI rewrite (no ANTHROPIC_API_KEY on the server)')
+
+        # --- code blocks that draw themselves -----------------------------------------------------
+        await pg.locator('.tabname', has_text='Architecture').click()
+        rc = body.locator('.richcode[data-kind=diagram]')
+        await expect(rc.locator('.rc-view svg')).to_have_count(1, timeout=30000)
+        check('a mermaid fence draws a diagram and hides its source', await rc.locator('pre').is_hidden())
+        await rc.locator('.rc-view svg').click()
+        await expect(rc.locator('pre')).to_be_visible()
+        check('a click on the diagram brings the source back', 'flowchart' in await rc.locator('pre').inner_text())
+        await body.locator('p', has_text='Both share one connection').click(click_count=3)
+        await expect(body.locator('.richcode.rc-active')).to_have_count(0)
+        await pg.keyboard.press('End')
+        await pg.keyboard.press('Enter')
+        await pg.keyboard.type('/formula')
+        await pg.wait_for_timeout(400)
+        await pg.keyboard.press('Enter')
+        await expect(body.locator('.richcode[data-kind=math] .katex')).to_have_count(1, timeout=30000)
+        check('/formula inserts a latex block that draws a formula', True)
+        await pg.keyboard.type(' \\frac{')
+        await expect(body.locator('.richcode.rc-error .rc-msg')).to_be_visible(timeout=10000)
+        check('a broken formula says so and keeps its source', await body.locator('.richcode[data-kind=math] pre').is_visible())
+        await pg.wait_for_timeout(800)
+        md = read(os.path.join(DOC, 'tabs/architecture.md'))
+        check('the file keeps plain fences', '```mermaid' in md and '```latex' in md, md[-300:])
+        await pg.screenshot(path=OUT + 'docs-code-blocks.png')
+
+        # --- earlier versions ---------------------------------------------------------------------
+        shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)  # earlier runs leave copies, and one a minute is kept
+        await pg.locator('.tabname', has_text='Overview').click()
+        await body.locator('p').first.click()
+        await pg.keyboard.press('End')
+        await pg.keyboard.type(' ZZEDITED')
+        ok = await wait_for(lambda: 'ZZEDITED' in tab('overview'))
+        check('an edit is saved to the tab file', ok)
+        await pg.locator('.dashbar button[data-versions]').click()
+        await expect(pg.locator('.popmenu.versions .vlist button').first).to_be_visible()
+        check('the text an edit replaced is kept as an earlier version', os.path.isdir(os.path.join(DOC, '.history')))
+        await pg.locator('.popmenu.versions .vlist button').first.click()
+        await expect(pg.locator('.popmenu.versions .vtext')).not_to_contain_text('ZZEDITED')
+        await pg.locator('.popmenu.versions button.primary').click()
+        ok = await wait_for(lambda: 'ZZEDITED' not in tab('overview'))
+        check('restoring an earlier version writes it back', ok, tab('overview')[:300])
+        shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)
+
+        # --- a table as CSV -----------------------------------------------------------------------
+        await pg.locator('.tabname', has_text='Overview').click()
+        await body.locator('table td').first.click()
+        async with pg.expect_download() as dl:
+            await pg.get_by_role('button', name='把这个表格下载为 CSV').click()
+        csv = read(await (await dl.value).path())
+        check('a table downloads as CSV with its header row', csv.lstrip('\ufeff').startswith('Kind,') and csv.count('\n') == 7, csv[:120])
+
+        # --- what Claude Code is told about the view ------------------------------------------------
+        if health.get('claudeCli') is False:
+            print('SKIP view context (no Claude Code CLI: the bar is disabled)')
+        else:
+            sent = []
+            async def grab(route):
+                sent.append(json.loads(route.request.post_data or '{}'))
+                await route.fulfill(status=200, content_type='application/json', body='{"id":"e2e-ctx"}')
+            await pg.route('**/api/projects/*/delegate', grab)
+            await pg.locator('.tabname', has_text='Workflow').click()
+            await body.locator('p').first.click()
+            await pg.locator('.dsask textarea').fill('what is here?')
+            await pg.locator('.dsask button[aria-label="发送"]').click()
+            await wait_for(lambda: sent)
+            ctx = (sent[0].get('context') or '') if sent else ''
+            check('Claude Code is told the open tab and the block the cursor is in', 'tabs/workflow.md' in ctx and 'The cursor is in this paragraph' in ctx, ctx[:300])
+            await pg.unroute('**/api/projects/*/delegate')
 
         # --- export -------------------------------------------------------------------------------
         await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()

@@ -1,4 +1,5 @@
 import { marked, type Token } from 'marked';
+import { tableToCsv } from './dash';
 
 /**
  * A doc: the original Docs type keeps a doc's tabs, blocks and comments in
@@ -476,4 +477,33 @@ export function quoteAt(text: string, from: number, to: number): { quote: string
 
 export function newDocTab(title: string): string {
   return `# ${title}\n\n`;
+}
+
+/**
+ * The cells of a doc table as CSV rows: a header row (when the table has one) names the columns, made
+ * unique and never empty; without one the columns are `column 1`, `column 2`… and every row is data.
+ */
+export function gridToCsv(grid: string[][], hasHeader: boolean): string {
+  const width = Math.max(0, ...grid.map((r) => r.length));
+  const used = new Set<string>();
+  const names = Array.from({ length: width }, (_v, n) => {
+    const base = (hasHeader ? (grid[0]?.[n] ?? '').trim() : '') || `column ${n + 1}`;
+    let name = base;
+    for (let k = 2; used.has(name); k++) name = `${base} ${k}`;
+    used.add(name);
+    return name;
+  });
+  const rows = (hasHeader ? grid.slice(1) : grid).map((cells) => Object.fromEntries(names.map((c, n) => [c, cells[n] ?? ''])));
+  return tableToCsv({ columns: names, rows });
+}
+
+/** What Claude Code is told about the doc the person is looking at, before their request. */
+export function docsViewContext(v: { title?: string; file?: string; heading?: string; selection?: string; block?: string; thread?: string }): string {
+  const lines: string[] = [];
+  if (v.file) lines.push(`The person has the tab "${v.title || v.file}" open (${v.file}).`);
+  if (v.heading) lines.push(`The cursor is in the section "${v.heading}".`);
+  if (v.selection?.trim()) lines.push(`The person selected these words in the tab:\n"""\n${v.selection.slice(0, 1500)}\n"""`);
+  else if (v.block?.trim()) lines.push(`The cursor is in this paragraph:\n"""\n${v.block.slice(0, 500)}\n"""`);
+  if (v.thread) lines.push(`The comment thread in the right column is open, pinned to: "${v.thread}".`);
+  return lines.join('\n');
 }

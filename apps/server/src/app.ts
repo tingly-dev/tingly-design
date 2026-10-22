@@ -82,6 +82,7 @@ import {
   writeAtomic,
   versionOf,
 } from './store';
+import { listSnapshots, readSnapshot, snapshotBefore } from './history';
 import { journal, lineDiffSummary, publish, record, subscribe } from './hub';
 import { commitFolder, gitState, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -610,6 +611,21 @@ app.put('/api/projects/:p/runs', async (c) => {
   JSON.parse(text);
   await writeFile(join(projectDir(p), DASH_RUNS), text, 'utf8');
   return c.json({ ok: true });
+});
+
+app.get('/api/projects/:p/history', async (c) => c.json(await listSnapshots(c.req.param('p'), safeRel(c.req.query('path') ?? ''))));
+/** Keep the tab as it is now (a restore is about to replace it). */
+app.post('/api/projects/:p/history', async (c) => {
+  const p = c.req.param('p');
+  const rel = safeRel(c.req.query('path') ?? '');
+  const cur = await readOne(p, rel);
+  if (cur) await snapshotBefore(p, rel, cur.content, true);
+  return c.json({ ok: true });
+});
+app.get('/api/projects/:p/history/item', async (c) => {
+  const text = await readSnapshot(c.req.param('p'), safeRel(c.req.query('path') ?? ''), c.req.query('id') ?? '');
+  if (text === null) throw new HttpError(404, 'versionMissing');
+  return c.json({ content: text });
 });
 
 app.get('/api/projects/:p/journal', async (c) => c.json(await journal(c.req.param('p'))));

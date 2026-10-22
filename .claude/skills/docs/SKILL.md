@@ -22,7 +22,7 @@ Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/design-gui
 GitHub-flavoured Markdown, one tab per file, starting with the tab's own `# Title`. What the editor shows and edits:
 
 - headings `#`–`######`, paragraphs (a line break inside one is two trailing spaces), **bold**, *italic*, ~~strike~~, `code`, `==highlight==` (the editor's highlighter; not standard Markdown, but it is what the editor reads and writes).
-- bullet, numbered and task lists (`- [ ]`, `- [x]`), nested by two spaces; block quotes; fenced code blocks with a language; tables (a header row and a rule row; `:--` / `--:` align); `---` rules; images `![alt](../assets/x.png)`; links.
+- bullet, numbered and task lists (`- [ ]`, `- [x]`), nested by two spaces; block quotes; fenced code blocks with a language (three languages draw themselves when the cursor is elsewhere, the file keeps the plain fence: ` ```mermaid ` a diagram, ` ```latex ` a formula, ` ```csv ` / ` ```tsv ` a table; prefer them to ASCII art); tables (a header row and a rule row; `:--` / `--:` align); `---` rules; images `![alt](../assets/x.png)`; links.
 - Raw HTML is not editable in the editor; avoid it.
 
 The editor writes back **block by block**: a block whose meaning did not change keeps its exact text, and in a changed block the lines (a table's rows, a list's items) that did not change keep theirs. So the way you write a tab is the way it stays: choose a style (bullet `-` or `*`, table padding) and the editor follows it.
@@ -34,7 +34,7 @@ People may be typing in the doc while you work, and their edits save within a se
 - Read a tab right before you edit it, and make targeted edits (your Edit tool on the passage), never a rewrite of the whole file to change part of it.
 - Don't reformat what you were not asked to change: no re-wrapping, re-padding tables or switching bullet characters.
 - A new tab: write `tabs/<id>.md` (with its `# Title`) and add `{"id", "title"}` to `tabs` in `doc.json`, after the tab it follows (a subtab right after its parent's other subtabs). To remove a tab, take it out of `tabs` and ask the person to delete the file in the editor (you cannot delete files).
-- The editor's selection, if any, comes with the request as the words they selected: find them in the tab file.
+- What the person is looking at comes with the request: the open tab's file, the section and block the cursor is in, the words they selected, and the comment thread they have open. "This" and "here" mean that place; find the words in the tab file.
 
 ## Comments
 

@@ -1,3 +1,4 @@
+import { keepReplaced } from './history';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -462,6 +463,7 @@ export const ownWrites = new Map<string, string>();
 
 export async function writeAtomic(name: string, rel: string, content: string): Promise<string> {
   const path = join(projectDir(name), safeRel(rel));
+  await keepReplaced(name, rel, path, content);
   await mkdir(dirname(path), { recursive: true });
   // unique per write: two writes of one file in the same millisecond must not share a temp file
   const tmp = path + `.tmp-${process.pid}-${randomUUID().slice(0, 8)}`;

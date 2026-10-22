@@ -76,7 +76,7 @@ tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifa
 - **Slides：已实现**（见[使用指南：幻灯片](../docs/zh/guide/slides.md)）。按上面的建议，编辑仍走 `copy.ts` 的最小补丁；`packages/core/src/slides.ts` 是子集检查（只用来提示和给快速 AI 反馈，不阻止保存），`slideArt.ts` 画形状/图标/连线（舞台和导出共用），`deck.ts` 是 deck.json 与基础样式。原版 Slides 没有页内快速 AI，这里有。
 - **Design System：已实现**（见[使用指南：设计系统](../docs/zh/guide/design-system.md)）。文件布局、tokens.json 语法和 tokens.css 的编译照原版 `format.md`（`packages/core/src/designSystem.ts`，有单元测试）；页面有概览、颜色、文字、间距、组件、资源；消费侧在 Design 和 Slides 里都能装入、选 token、用文字样式。和原版的差别：没有 db / 单页模式的迁移、没有 api/ 卡片和 manifest.json 的生成、没有从 GitHub 或设计工具同步（交给 Claude Code）；多了 `type.hosted`（Google Fonts）。
 - **Dashboard：已实现**（见[使用指南：看板](../docs/zh/guide/dashboard.md)）。照上面的方案落到文件上：`dash.json`、`datasets/<id>.json`、`files/index.html`、`data/`；页面放进 `allow-scripts` iframe，`dash` API 在 iframe 里实现（`packages/sandbox/src/dash.ts`），数据由编辑器加载后经 postMessage 交给它；查询走服务端可插拔的连接器（先有只读的 SQLite），SQL 检查与参数绑定、CSV 解析、标注核对在 `packages/core/src/dash.ts`（有单元测试）。runs 文档写成不进 git 的 `.runs.json` 给 Claude Code 看。和原版的差别：没有 MCP 连接器和读者各自的权限、没有查询历史和定时刷新；页面可以手改。
-- **Docs：已实现**（见[使用指南：文档](../docs/zh/guide/docs.md)）。原版的内容在独立服务里、按块 id 编辑；这里改成文件：`doc.json`、每个标签页一个 `tabs/<id>.md`、`comments.json`，Claude Code 和 git 都能直接读写。编辑器是 TipTap 富文本，存盘时按块（块内再按行）合回原文件（`packages/core/src/docs.ts` 的 `mergeBlocks`、`rebaseBlocks`，有单元测试），所以手写的格式不会被编辑器重排。评论不用块 id，而是按引用的文字加前后文定位（W3C TextQuote 的做法），文件被谁改了都能找回。和原版的差别：没有版本对比与草稿、没有多人光标、没有图表/图示块和 Word/Google Docs 导出；“@Claude”在这里是底部的 Claude Code 输入框（带上选中的文字）和评论上的“交给 Claude”。
+- **Docs：已实现**（见[使用指南：文档](../docs/zh/guide/docs.md)）。原版的内容在独立服务里、按块 id 编辑；这里改成文件：`doc.json`、每个标签页一个 `tabs/<id>.md`、`comments.json`，Claude Code 和 git 都能直接读写。编辑器是 TipTap 富文本，存盘时按块（块内再按行）合回原文件（`packages/core/src/docs.ts` 的 `mergeBlocks`、`rebaseBlocks`，有单元测试），所以手写的格式不会被编辑器重排。评论不用块 id，而是按引用的文字加前后文定位（W3C TextQuote 的做法），文件被谁改了都能找回。和原版的差别：没有版本对比与草稿（有历史版本和恢复，`.design/docs-history.md`）、没有多人光标、没有图表块（图示、公式、CSV 表格由会自己画的代码块承担，`.design/docs-markdown.md`）和 Word/Google Docs 导出；“@Claude”在这里是底部的 Claude Code 输入框（带上选中的文字）和评论上的“交给 Claude”。
 
 ## 与原版的对齐
 
@@ -95,7 +95,7 @@ tingly-design 目前复刻的是 Claude 的 **Design** 画布。原版的 artifa
 | 幻灯片 | Slides | `1792187623-7bc5` | 无：设计指导直接用原版的参考页（去掉平台专用和不支持的部分，放在 `.claude/skills/slides/reference/`），文本框和排版引号已跟上；原版参考页更新时同步这份 | 离线网页导出的字体许可（同上，不嵌字体文件）；超出时自动缩字和 `data-fit`（我们不缩字）；图片名里的 `@`（我们的设计系统素材不走这条路径）；图库、视频、PPTX 导出相关的指导（我们没有这些） |
 | 看板 | Dashboard | `1792192844-f165` | 无。连接器数据保持在线、示例数据标明、交付前自查 `.runs.json`、交付时说明数字来源已写进 skill 和委托 prompt | 数据集的 `fixed` 字段（我们的文件数据集本来就不会被提议连到实时数据，只有暂停的查询能恢复，多一个开关没有用处）；MCP 连接器和读者各自的权限、"连接在线数据"的平台流程（我们的连接器是服务端模块） |
 | 设计系统 | Design System | `1792195080-6821` | 无（给模型的说明没有变化） | db / 单页模式的迁移请求 |
-| 文档 | Docs | `1792361795-6b7c` | 给请求栏的语音输入（#212，待讨论）；其余无：选区改写已用 Markdown 保留格式，并按段落的语言写 | 一次给 4 个改写备选（我们给一个，可以接受或重来，少一步选择）；内容放在独立服务（我们是文件） |
+| 文档 | Docs | `1792361795-6b7c` | 图表和图示块（原版的 widget：图示是画 SVG 的代码模块，导出的 Markdown 和 HTML 都不带，见 `.research/claude-docs-diagrams.md`、#261）；给请求栏的语音输入（#212，待讨论）；选区改写已用 Markdown 保留格式，并按段落的语言写 | 一次给 4 个改写备选（我们给一个，可以接受或重来，少一步选择）；内容放在独立服务（我们是文件） |
 | 动效 | 无 | — | — | 原版没有对应类型 |
 
 ## 当初建议的第一步（已完成）

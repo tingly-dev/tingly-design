@@ -64,6 +64,63 @@
 }
 
 
+
+.popmenu.versions {
+  width: 280px;
+  padding: 10px 12px;
+  gap: 6px;
+}
+
+
+.popmenu.versions label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.popmenu.versions .empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+
+.popmenu.versions .vlist {
+  display: flex;
+  flex-direction: column;
+  max-height: 180px;
+  overflow: auto;
+}
+
+
+.popmenu.versions .vlist button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+
+.popmenu.versions .vlist button:hover,
+.popmenu.versions .vlist button[aria-pressed='true'] {
+  background: var(--hover);
+}
+
+
+.popmenu.versions .vtext {
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 12px;
+  background: var(--hover);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+
 .popmenu.settings label {
   font-size: 12px;
   color: var(--muted);
@@ -485,6 +542,56 @@
 .docbody pre code {
   background: none;
   padding: 0;
+}
+
+
+/* code blocks that draw themselves: the result shows, the source only while the cursor is in it */
+.docbody .richcode {
+  margin: 0.8em 0;
+}
+
+.docbody .richcode pre {
+  margin: 0;
+}
+
+.docbody .richcode:is([data-kind='math'], [data-kind='table'], [data-kind='diagram']):not(.rc-active, .rc-error) pre {
+  display: none;
+}
+
+.docbody .richcode.rc-active .rc-view {
+  margin-bottom: 8px;
+}
+
+.docbody .rc-view {
+  overflow-x: auto;
+  user-select: none;
+}
+
+.docbody .richcode:not([data-kind='math'], [data-kind='table'], [data-kind='diagram']) .rc-view {
+  display: none;
+}
+
+.docbody .rc-view svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+.docbody .rc-view table {
+  font-size: 0.92em;
+}
+
+.docbody .rc-more {
+  margin: 6px 0 0;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.docbody .rc-error .rc-msg {
+  margin: 0 0 6px;
+  color: var(--danger);
+  font-size: 12.5px;
 }
 
 

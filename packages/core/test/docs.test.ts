@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockKey,
+  docsViewContext,
+  gridToCsv,
   findQuote,
   isDocFile,
   joinBlocks,
@@ -143,5 +145,27 @@ describe('a changed block keeps its unchanged lines', () => {
 
   it('a block that changed type takes the editor text', () => {
     expect(mergeBlocks('A\n\npara\n', 'A\n\n## para\n')).toBe('A\n\n## para\n');
+  });
+});
+
+describe('gridToCsv', () => {
+  it('names columns from the header row, made unique and never empty', () => {
+    expect(gridToCsv([['a', 'a', '', 'a 2'], ['1', '2', '3', '4']], true)).toBe('a,a 2,column 3,a 2 2\n1,2,3,4\n');
+  });
+  it('keeps every row as data when there is no header row', () => {
+    expect(gridToCsv([['x', 'y'], ['1', '2,3']], false)).toBe('column 1,column 2\nx,y\n1,"2,3"\n');
+  });
+});
+
+describe('docsViewContext', () => {
+  it('names the tab and the cursor, preferring a selection to the block', () => {
+    const c = docsViewContext({ title: 'Plan', file: 'tabs/plan.md', heading: 'Risks', selection: 'a b', block: 'ignored' });
+    expect(c).toContain('"Plan" open (tabs/plan.md)');
+    expect(c).toContain('section "Risks"');
+    expect(c).toContain('a b');
+    expect(c).not.toContain('ignored');
+  });
+  it('leaves out an empty block and a missing thread', () => {
+    expect(docsViewContext({ file: 'tabs/a.md', block: '  ' })).toBe('The person has the tab "tabs/a.md" open (tabs/a.md).');
   });
 });
