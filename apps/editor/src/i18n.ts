@@ -52,12 +52,10 @@ let source: LanguageSource = start.source;
 
 void i18next.use(initReactI18next).init({ ...I18N_OPTIONS, lng: start.lang });
 
-export const i18n = i18next;
 /** For code outside components (store actions, toasts, files the editor writes). Components use `useTranslation()`. */
 export const t = i18next.t.bind(i18next);
 
 export const currentLanguage = (): Language => (isLanguage(i18next.language) ? i18next.language : DEFAULT_LANGUAGE);
-export const languageSource = () => source;
 /** The language as an HTML lang tag, for <html lang> and the sandboxed frames. */
 export const htmlLang = (lang: Language = currentLanguage()): string => (lang === 'zh' ? 'zh-CN' : lang);
 

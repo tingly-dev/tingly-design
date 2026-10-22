@@ -76,10 +76,6 @@ export function familyList(json: Record<string, unknown>, key: string): Record<s
   return f.tokens as Record<string, unknown>[];
 }
 
-export function textFile(path: string): string | undefined {
-  return display(get(), path);
-}
-
 // ------------------------------------------------------------------ assets
 
 export interface AssetFile {

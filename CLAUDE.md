@@ -114,6 +114,7 @@ pnpm test           # core, import and i18n unit tests, and the matrix's e2e cov
 pnpm eval           # agent evaluation: the same design task by skill + command line and by MCP, with a comparison table (costs money; not in CI)
 pnpm e2e            # every e2e suite with what each needs started, one table and e2e/out/report.md (--smoke, --list, names, --shard I/N, --jobs N)
 pnpm typecheck
+pnpm knip           # dead code: unused files, exports and dependencies (knip.json; CI fails on new ones)
 pnpm build
 pnpm bundle         # dist/tingly-design/, the folder a host ships (and the npm package)
 pnpm tingly-design  # the command line from source; the bundle's cli.mjs is the npm `bin`, server.mjs is `serve`

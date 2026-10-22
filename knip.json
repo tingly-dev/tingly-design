@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [".research/**", "packages/core/test/fixtures/**", "projects/**", "apps/editor/src/tingly-box/**", "apps/editor/src/components/icons.tsx"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["python3"],
+  "workspaces": {
+    ".": { "entry": ["scripts/*.mjs"] },
+    "apps/editor": { "entry": ["src/headless.ts"] },
+    "apps/server": { "entry": ["src/serve.ts"] },
+    "packages/core": { "entry": ["test/**/*.test.ts"] },
+    "packages/sandbox": {
+      "entry": ["src/runtime.tsx", "src/executor.ts", "src/dash.ts", "src/motion.ts", "src/motionExport.ts", "src/snapEntry.ts"]
+    },
+    "packages/import": { "entry": ["src/browser-entry.ts", "src/cli.ts"] }
+  }
+}

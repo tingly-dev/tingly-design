@@ -150,11 +150,6 @@ export function removeCover(): void {
   editMotion((raw) => void delete raw.cover, t('motion.journal.coverRemoved'));
 }
 
-/** A scene's own length and the file's id, for the stage when the playhead is on it. */
-export function sceneSource(id: string): string | undefined {
-  return display(get(), sceneFile(id));
-}
-
 /**
  * Put a picture on the scene under the playhead: centred in the primary size,
  * entering at the playhead, because people insert at the moment that needs

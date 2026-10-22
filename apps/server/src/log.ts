@@ -20,11 +20,6 @@ function levelFromEnv(): keyof typeof LEVELS {
 let threshold: number = LEVELS[levelFromEnv()];
 const json = process.env.DC_LOG_FORMAT?.trim().toLowerCase() === 'json';
 
-/** For tests and hosts that change the level while running. */
-export function setLogLevel(level: keyof typeof LEVELS): void {
-  threshold = LEVELS[level];
-}
-
 function fmt(v: unknown): string {
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   const s = typeof v === 'string' ? v : JSON.stringify(v);

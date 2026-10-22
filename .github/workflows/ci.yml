@@ -32,6 +32,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Dead code
+        run: pnpm knip
+
       - name: Bundle
         run: pnpm bundle
 
