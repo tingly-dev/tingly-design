@@ -12,7 +12,7 @@ import { ContextMenu, JournalPopover } from '../Overlays';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { useChat } from '../ChatPanel';
-import { Checklist, Film, Gif as GifIcon, Note, Picture } from '../icons';
+import { Checklist, Film, Gif as GifIcon, CopyPicture, Note, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
 import { SlideFrame } from '../slides/SlideFrame';
@@ -228,7 +228,7 @@ export function MotionApp() {
 
   // the file name of a stretch: the scene it starts in
   const sceneName = (from: number) => timeline.scenes.findLast((w) => w.start / rate <= from + 1)?.id ?? 'scene';
-  const { exporting, cancel, where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame, saveCover } = useMotionExport({ motion, fmt, info, playScenes, base, project, control, at: tRef, pause, sceneName, cover: coverSpec });
+  const { exporting, cancel, where, exportDialog, setExportDialog, openExportDialog, exportVideo, saveFrame, copyFrame, saveCover } = useMotionExport({ motion, fmt, info, playScenes, base, project, control, at: tRef, pause, sceneName, cover: coverSpec });
 
   // the scene under the playhead as a range the dialog may offer (not on the cover, which is before the video)
   const scenePick: ScenePick | null = !cover && current ? { name: current.id, from: current.start / rate, to: (current.start + current.duration) / rate } : null;
@@ -299,6 +299,7 @@ export function MotionApp() {
             { id: 'gif', label: t('common.transfer.label.gif'), hint: t('common.transfer.hint.motionGif'), icon: <GifIcon />, disabled: !info || !!exporting, run: () => void openExportDialog('gif') },
             { id: 'cover', label: t('common.transfer.label.cover'), hint: coverSpec ? t('common.transfer.hint.motionCover') : t('common.transfer.hint.motionCoverNone'), icon: <Picture />, disabled: !info, rule: true, run: saveCover },
             { id: 'frame', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.motionFrame'), icon: <Picture />, disabled: !info, run: saveFrame },
+            { id: 'copy-png', label: t('common.transfer.label.copyPng'), hint: t('common.transfer.hint.motionFrame'), icon: <CopyPicture />, disabled: !info, run: copyFrame },
           ]}
         />
       </TopBar>

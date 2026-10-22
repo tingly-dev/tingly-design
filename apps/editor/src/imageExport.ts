@@ -61,3 +61,28 @@ export async function saveImage(name: string, make: () => Promise<Blob>): Promis
     return false;
   }
 }
+
+/**
+ * Make the picture and put it on the clipboard. The clipboard item takes the promise itself so the
+ * write starts inside the click (Safari drops it otherwise). A browser that cannot hold an image there,
+ * or refuses, gets the same picture as a download instead, and the toast says so. Returns whether the
+ * picture was made.
+ */
+export async function copyImage(fallbackName: string, make: () => Promise<Blob>): Promise<boolean> {
+  const blob = make();
+  try {
+    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') throw new Error('no image clipboard');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    toast(t('common.image.copied'));
+    return true;
+  } catch {
+    try {
+      download(fallbackName, await blob);
+    } catch (e) {
+      toast(t('common.image.failed', { message: (e as Error).message }), 'error');
+      return false;
+    }
+    toast(t('common.image.copyFallback'));
+    return true;
+  }
+}

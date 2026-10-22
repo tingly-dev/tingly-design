@@ -7,13 +7,14 @@ import { focusBoard, onPage } from './view';
 import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
 import { handleKey, leaveField } from '../../shortcuts';
-import { Download, Expand, FileText, Picture } from '../icons';
+import { CopyPicture, Download, Expand, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
 import { SERVER } from '../../base';
 import { api } from '../../api';
 import { t as tr, htmlLang } from '../../i18n';
 import { downloadUrl } from '../../local';
+import { copyImage, dataUrlBlob } from '../../imageExport';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
@@ -49,25 +50,7 @@ export function exportPng(file: string, scale = 2, tid?: number): Promise<string
  */
 export async function copyPng(file: string, tid?: number): Promise<void> {
   const stem = file.replace(/\.dc\.html$/, '');
-  let url = '';
-  const blob = exportPng(file, 2, tid).then(async (u) => {
-    url = u;
-    return (await fetch(u)).blob();
-  });
-  try {
-    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') throw new Error('no image clipboard');
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    toast(tr('canvas.export.copied'));
-  } catch (e) {
-    try {
-      await blob;
-    } catch (err) {
-      toast((err as Error).message, 'error');
-      return;
-    }
-    downloadUrl(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, url);
-    toast(tr('canvas.export.copyFallback'));
-  }
+  await copyImage(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, async () => dataUrlBlob(await exportPng(file, 2, tid)));
 }
 
 export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source') {
@@ -101,6 +84,7 @@ export function canvasExportItems(): ExportItem[] {
     items.push(
       { id: 'png', label: tr('common.transfer.label.png'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, run: () => exportBoard(one, 'png1') },
       { id: 'png2', label: tr('common.transfer.label.pngRetina'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, run: () => exportBoard(one, 'png2') },
+      { id: 'copy-png', label: tr('common.transfer.label.copyPng'), hint: tr('common.transfer.hint.boardOne'), icon: <CopyPicture />, run: () => copyPng(one) },
     );
   }
   if (onThisPage.length > 1) {

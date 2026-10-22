@@ -4,11 +4,11 @@ import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
 import { goToSlide, isHidden, notesOf, slideTitle } from './slides';
 import { t } from '../../i18n';
-import { fileStem, htmlToPng, saveImage } from '../../imageExport';
+import { copyImage, fileStem, htmlToPng, saveImage } from '../../imageExport';
 import { SERVER } from '../../base';
 import { pdfHint, printWindow, savePdf } from '../../pdfExport';
 import type { ExportItem } from '../FileMenu';
-import { FileText, FilePdf, Picture } from '../icons';
+import { CopyPicture, FileText, FilePdf, Picture } from '../icons';
 import { download } from '../../local';
 import { exportDeckPptx } from './PptxExportDialog';
 
@@ -228,6 +228,13 @@ export async function exportSlideImages(which: string | null | true): Promise<vo
   if (ids.length > 1) toast(t('slides.export.imagesDone', { total: ids.length }));
 }
 
+/** The slide at `id` (null: the first) on the clipboard. */
+function copySlideImage(which: string | null): Promise<boolean> {
+  const s = useStore.getState();
+  const id = which ?? slideIds(s)[0];
+  return copyImage(t('common.image.fileSlide', { name: fileStem(deckOf(s).title, 'deck'), n: slideIds(s).indexOf(id) + 1 }), () => slidePng(id, 2));
+}
+
 /** Shows one slide, by its id or its number in the deck (headless.ts). */
 export function pickSlide(what: string): boolean {
   const ids = slideIds(useStore.getState());
@@ -243,6 +250,7 @@ export function slidesExportItems(direct: boolean | null): ExportItem[] {
     { id: 'pdf', label: t('common.transfer.label.pdf'), hint: pdfHint(t('common.transfer.hint.slidesPdf'), direct), icon: <FilePdf />, run: () => exportDeck('pdf') },
     { id: 'pptx', label: t('slides.pptx.label'), hint: t('slides.pptx.hint'), icon: <FileText />, run: exportDeckPptx },
     { id: 'png', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.slideOne'), icon: <Picture />, run: () => exportSlideImages(useStore.getState().slide) },
+    { id: 'copy-png', label: t('common.transfer.label.copyPng'), hint: t('common.transfer.hint.slideOne'), icon: <CopyPicture />, run: async () => void (await copySlideImage(useStore.getState().slide)) },
     { id: 'pngs', label: t('common.transfer.label.pngs'), hint: t('common.transfer.hint.slidesEvery'), icon: <Picture />, run: () => exportSlideImages(true) },
     { id: 'html', label: t('common.transfer.label.html'), hint: t('common.transfer.hint.slidesHtml'), icon: <FileText />, rule: true, run: () => exportDeck('html') },
     { id: 'md', label: t('common.transfer.label.markdown'), hint: t('common.transfer.hint.slidesMarkdown'), icon: <FileText />, run: () => exportDeck('md') },

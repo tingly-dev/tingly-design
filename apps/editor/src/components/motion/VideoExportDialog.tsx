@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '../Dialog';
+import { readPref, writePref } from '../../local';
 
 export type VideoFormat = 'auto' | 'mp4' | 'webm' | 'gif';
 export type VideoQuality = 'low' | 'medium' | 'high';
@@ -24,6 +25,18 @@ export interface ScenePick {
   name: string;
   from: number;
   to: number;
+}
+
+const PREF = 'dc.videoOptions';
+type Remembered = Partial<Pick<VideoExportOptions, 'format' | 'height' | 'fps' | 'quality'>>;
+/** The options of the last video made (not a GIF: that is asked for by name), or nothing. */
+function remembered(): Remembered {
+  try {
+    const r = JSON.parse(readPref(PREF) || '{}') as Remembered;
+    return r && typeof r === 'object' ? r : {};
+  } catch {
+    return {};
+  }
 }
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
@@ -73,10 +86,13 @@ export function VideoExportDialog({
   const gifFirst = initialFormat === 'gif';
   const heights = useMemo(() => [...new Set([H, ...HEIGHTS.filter((h) => h < H)])].sort((a, b) => b - a), [H]);
   const [more, setMore] = useState(gifFirst);
-  const [format, setFormat] = useState<VideoFormat>(gifFirst ? 'gif' : viaServer ? 'mp4' : 'auto');
-  const [height, setHeight] = useState(() => (gifFirst && H > 480 ? heights.find((x) => x <= 480) ?? H : H));
-  const [rate, setRate] = useState(gifFirst ? Math.min(fps, 15) : fps);
-  const [quality, setQuality] = useState<VideoQuality>('high');
+  // the last video's options come back as the starting point, as far as this piece and route still offer them
+  const last = useMemo(() => (gifFirst ? {} : remembered()), [gifFirst]);
+  const formats: VideoFormat[] = viaServer ? ['mp4'] : ['auto', 'mp4', 'webm'];
+  const [format, setFormat] = useState<VideoFormat>(gifFirst ? 'gif' : last.format && formats.includes(last.format) ? last.format : viaServer ? 'mp4' : 'auto');
+  const [height, setHeight] = useState(() => (gifFirst && H > 480 ? heights.find((x) => x <= 480) ?? H : last.height && heights.includes(last.height) ? last.height : H));
+  const [rate, setRate] = useState(gifFirst ? Math.min(fps, 15) : last.fps && [24, 30, 60, fps].includes(last.fps) ? last.fps : fps);
+  const [quality, setQuality] = useState<VideoQuality>(last.quality && ['low', 'medium', 'high'].includes(last.quality) ? last.quality : 'high');
   const [range, setRange] = useState<'whole' | 'scene'>('whole');
   const [coverFirst, setCoverFirst] = useState(coverFirstStart);
 
@@ -101,7 +117,11 @@ export function VideoExportDialog({
   const summary = t('motion.export.summary', { format: formatName, size: `${width}×${outH}`, fps: rate, range: span ? t('motion.export.rangeSceneShort', { name: scene!.name }) : t('motion.export.rangeWholeShort'), length: seconds(length) });
 
   const firstFrame = hasCover && format !== 'gif' && !span;
-  const start = () => onStart({ format, width, height: outH, fps: rate, quality, ...(span ?? {}), ...(firstFrame && coverFirst ? { coverFirst: true } : {}) });
+  const start = () => {
+    if (format !== 'gif') writePref(PREF, JSON.stringify({ format, height, fps: rate, quality }));
+    go();
+  };
+  const go = () => onStart({ format, width, height: outH, fps: rate, quality, ...(span ?? {}), ...(firstFrame && coverFirst ? { coverFirst: true } : {}) });
 
   return (
     <Dialog label={t('motion.export.title')} className="vexport" onClose={onClose} onSubmit={() => start()}>
@@ -168,7 +188,7 @@ export function VideoExportDialog({
                 </label>
               )}
               <p className="note">
-                {format === 'gif' ? t('motion.export.gifNote') : span ? t('motion.export.sceneNoSound') : t('motion.export.formatNote')} {t('motion.export.frames', { count: frames })}
+                {format === 'gif' ? t('motion.export.gifNote') : t('motion.export.formatNote')} {t('motion.export.frames', { count: frames })}
               </p>
             </div>
           )}
