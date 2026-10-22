@@ -2,7 +2,7 @@
 menu ends with "Whole project (.zip)" and "Project files only (.zip)"; the whole project of a deck carries its
 change log and the design system it installed, beside it, with a manifest; the files-only one carries neither and
 no local state; the launcher's New menu imports the .zip as a new project under a free name and opens it; the
-launcher card's ⋯ exports too; a .zip with no project is refused in words. English light, then Chinese dark.
+launcher card⋯ exports too; dropping a .zip or a CSV on the launcher (and the New menu's table item) opens a project or a dashboard; a .zip with no project is refused in words. English light, then Chinese dark.
 Run with `pnpm dev` up: python3 e2e/archive.py"""
 import os, re, json, asyncio, shutil, subprocess, zipfile, urllib.request
 from playwright.async_api import async_playwright, expect
@@ -126,6 +126,41 @@ async def main():
         await (await fc.value).set_files(bad)
         await expect(pg.get_by_text('There is no Tingly Design project or Claude Design package in this .zip', exact=False)).to_be_visible()
         check('import: a zip with no project is refused in words', True)
+
+        # --- dropping a package and a table on the launcher ------------------------------------------
+        async def drop_file(name, data, mime):
+            await pg.goto(f'{BASE}/')
+            await pg.locator('button[data-new-menu]').wait_for()
+            transfer = await pg.evaluate_handle("""p => { const t = new DataTransfer(); t.items.add(new File([new Uint8Array(p.bytes)], p.name, {type: p.mime})); return t; }""", {'name': name, 'bytes': list(data), 'mime': mime})
+            surface = pg.locator('.launcher')
+            await surface.dispatch_event('dragover', {'dataTransfer': transfer})
+            await expect(surface).to_have_class(re.compile(r'\bdropping\b'))
+            await surface.dispatch_event('drop', {'dataTransfer': transfer})
+
+        await drop_file('dropped-package.zip', open(saved['Project files only (.zip)'], 'rb').read(), 'application/zip')
+        await pg.wait_for_url(re.compile(r'\?p=tingly-intro-'), timeout=10000)
+        check('drop: a project .zip opens as a new project', 'p=tingly-intro-' in pg.url, pg.url)
+        csv = b'month,calls\nJul,1200\nAug,1350\nSep,990\n'
+        await drop_file('zz-calls.csv', csv, 'text/csv')
+        await pg.wait_for_url(re.compile(r'\?p=zz-calls'), timeout=10000)
+        check('drop: a CSV opens as a new dashboard', 'p=zz-calls' in pg.url, pg.url)
+        files = [f['path'] if isinstance(f, dict) else f for f in api('/api/projects/zz-calls/files')['files']]
+        check('drop: a dataset reads the CSV kept under data/', os.path.exists(os.path.join(PROJECTS, 'zz-calls', 'data', 'zz-calls.csv')) and 'datasets/zz-calls.json' in files, files)
+        await pg.wait_for_timeout(2500)
+        await pg.screenshot(path=OUT + 'csv-dashboard-en-light.png')
+        await pg.goto(f'{BASE}/')
+        await pg.locator('button[data-new-menu]').click()
+        csv_path = os.path.join(os.path.dirname(OUT), 'zz-picked.csv')
+        open(csv_path, 'wb').write(csv)
+        async with pg.expect_file_chooser() as fc:
+            await pg.get_by_role('menuitem', name='Import a table (.csv)…').click()
+        await (await fc.value).set_files(csv_path)
+        await pg.wait_for_url(re.compile(r'\?p=zz-picked'), timeout=10000)
+        check('menu: Import a table (.csv)… makes a dashboard too', 'p=zz-picked' in pg.url, pg.url)
+        await pg.goto(f'{BASE}/')
+        await pg.wait_for_timeout(1500)
+        await pg.locator('button[data-new-menu]').click()
+        await pg.screenshot(path=OUT + 'launcher-menu-en-light.png')
 
         # --- Chinese, dark ---------------------------------------------------------------------------
         zh = await b.new_context(locale='zh-CN', color_scheme='dark', viewport={'width': 1440, 'height': 900})
