@@ -1,5 +1,5 @@
 """End-to-end checks for projects kept outside the projects folder. Run with `pnpm dev` up: python3 e2e/folders.py"""
-import os, asyncio, subprocess, json, shutil, time, urllib.request
+import os, re, asyncio, subprocess, json, shutil, time, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -50,7 +50,7 @@ async def main():
         shutil.copytree(os.path.join(REPO, 'projects', sample), dst, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
         st, r = call('POST', '/api/links', {'path': dst})
         named[kind] = r.get('name')
-        check(f'a {kind} folder elsewhere is linked under a name of its own', st == 200 and r.get('name') == f'my-{sample}', str(r))
+        check(f'a {kind} folder elsewhere is linked under a name made from its path', st == 200 and re.fullmatch(f'my-{sample}-[0-9a-f]{{6}}', r.get('name', '')) is not None and r['name'].startswith('my-'), str(r))
     st, again = call('POST', '/api/links', {'path': os.path.join(TMP, 'work', 'my box-console') + '/'})
     check('linking the same folder again gives the same name', again.get('name') == named['design'], str(again))
     st, cards = call('GET', '/api/projects')
