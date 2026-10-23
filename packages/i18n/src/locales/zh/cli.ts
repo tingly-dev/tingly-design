@@ -28,7 +28,7 @@ export default {
   mcp                              以 stdio 上的 MCP 服务提供这些命令，给 agent 启动用
                                    （正在运行的编辑器也在 <地址>/mcp 提供）
 
-项目可以是启动页里的名字，也可以是它所在文件夹的路径。编辑器已经在这个项目文件夹上打开时，
+项目由它的文件夹决定：给路径（export、prompt、history 不给就是所在的文件夹），或加 -n 按名字找。编辑器已经在这个项目文件夹上打开时，
 open 和 new 交给它来做：不会再起一个服务，启动页上马上能看到。
 除了 zip 和动效，导出由编辑器在 Chrome 里画：用已经打开的编辑器，或者为这次导出起一个、导完就停。
 
@@ -38,6 +38,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   --port <端口>         serve、open：端口（0 表示自动挑一个空闲端口）
   --host <地址>         serve、open：监听的地址（默认 127.0.0.1）
   --title <文字>        new：启动页上显示的标题
+  -n, --name            open、check、export、prompt、history、list：参数按项目名字找，不当路径
   -i, --interactive     new：没给出的都问一遍，建好后问要不要打开
   --global              new：名字不建在当前目录，建在项目目录里
   --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
@@ -62,7 +63,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   -v, --version         版本号
   -h, --help            本帮助`,
   unknownCommand: '没有 {{name}} 这个命令。运行 tingly-design --help 查看全部命令。',
-  needProject: '请指定项目：tingly-design {{command}} <项目>',
+  needProject: '请给出项目所在的文件夹：tingly-design {{command}} <文件夹>，或在项目文件夹里运行',
   needKind: '请指定类型：canvas、slides、design-system、dashboard、doc 或 motion',
   badKind: '{{kind}} 不是项目类型。类型有：canvas、slides、design-system、dashboard、doc、motion',
   badPage: '{{page}} 不是这种类型的参考页。参考页有：{{pages}}',
@@ -73,6 +74,8 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   globalPath: '--global 把项目放在项目目录里，所以只收名字，不收路径：{{target}}',
   nameTaken: '已经有叫 {{name}} 的项目了。换个名字，或者给一个路径。',
   noProjectAt: '{{path}} 里没有项目',
+  useName: '名为 {{name}} 的项目在 {{paths}}。请给它的路径，或加 --name 按名字找。',
+  nameAmbiguous: '有不止一个项目叫 {{name}}，请给出你要的那个的路径：\n{{paths}}',
   created: '已新建{{kind}} {{name}}，位置：{{path}}',
   listEmpty: '{{dir}} 里还没有项目。用 tingly-design new <类型> <名字> 新建一个。',
   badArgs: '{{message}}。运行 tingly-design --help 查看选项。',
@@ -86,7 +89,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   words: '{{n}} 字',
   needTerminal: '交互式创建需要在终端里运行。请直接给出类型和名字：tingly-design new <类型> <名字或文件夹>',
   cancelled: '已取消，没有创建任何东西。',
-  createdNext: '用这个命令打开：tingly-design open {{name}}',
+  createdNext: '用这个命令打开：tingly-design open {{path}}',
   wizard: {
     kind: '要做什么？',
     group: '尺寸分类',

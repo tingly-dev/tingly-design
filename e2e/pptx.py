@@ -525,14 +525,14 @@ async def main():
     imported_cli = own(PREFIX + '-cli')
     check('CLI: source command imports PPTX as a new project', code == 0 and imported_cli in owned_names(), output)
     cli_dir = OUT / (PREFIX + '-cli-export')
-    code, output = await cli('export', name, '--as', 'pptx', '--out', str(cli_dir))
+    code, output = await cli('export', name, '-n', '--as', 'pptx', '--out', str(cli_dir))
     (OUT / 'cli-export.log').write_text(output)
     cli_artifacts = list(cli_dir.glob('*.pptx')) if cli_dir.is_dir() else []
     check('CLI: shared browser export writes PPTX', code == 0 and len(cli_artifacts) == 1, output)
     if cli_artifacts:
         inspect_native(cli_artifacts[0], image)
     cli_error = OUT / (PREFIX + '-single-slide-must-not-exist.pptx')
-    code, output = await cli('export', name, '--as', 'pptx', '--slide', 'cover', '--out', str(cli_error))
+    code, output = await cli('export', name, '-n', '--as', 'pptx', '--slide', 'cover', '--out', str(cli_error))
     check('CLI: whole-deck PPTX rejects a single-slide selector', code != 0 and not cli_error.exists(), output)
     rpc = await asyncio.to_thread(api, '/mcp', {
         'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',

@@ -26,7 +26,7 @@ Usage: tingly-design [command] [options]
   mcp                              these commands as an MCP server on stdio, for an agent to start
                                    (the running editor also serves them at <address>/mcp)
 
-A project is a name from the launcher or a path to its folder. With the editor already open on the
+A project is its folder: give a path (none: the folder you are in, for export, prompt and history), or add -n for a name. With the editor already open on the
 projects folder, open and new go through it: no second server, and the launcher shows the change at once.
 Exports other than zip and motion are drawn by the editor in Chrome: the one already open, or one
 started for the export and stopped after it.
@@ -37,6 +37,7 @@ Options:
   --port <n>            serve, open: the port (0 picks a free one)
   --host <address>      serve, open: the address to listen on (default 127.0.0.1)
   --title <text>        new: the title shown in the launcher
+  -n, --name            open, check, export, prompt, history, list: read the project argument as a name, not a path
   -i, --interactive     new: ask for whatever is not given, then offer to open the project
   --global              new: keep a bare name in the projects folder instead of a folder of that name here
   --size <W>x<H>        new canvas or motion: the first artboard's or format's size; a canvas also takes a
@@ -61,7 +62,7 @@ Options:
   -v, --version         the version
   -h, --help            this help`,
   unknownCommand: 'Unknown command {{name}}. Run tingly-design --help for the list.',
-  needProject: 'Name a project: tingly-design {{command}} <project>',
+  needProject: 'Give the project’s folder: tingly-design {{command}} <folder>, or run it inside the project',
   needKind: 'Name a kind: canvas, slides, design-system, dashboard, doc or motion',
   badKind: '{{kind}} is not a kind. Kinds: canvas, slides, design-system, dashboard, doc, motion',
   badPage: '{{page}} is not a reference page of this kind. Pages: {{pages}}',
@@ -72,6 +73,8 @@ Options:
   globalPath: '--global keeps a project in the projects folder, so it takes a name, not a path: {{target}}',
   nameTaken: 'There is already a project called {{name}}. Pick another name, or give a path.',
   noProjectAt: 'There is no project at {{path}}',
+  useName: 'A project named {{name}} is at {{paths}}. Give its path, or add --name to use the name.',
+  nameAmbiguous: 'More than one project is called {{name}}. Give the path of the one you mean:\n{{paths}}',
   created: 'Created {{kind}} {{name}} in {{path}}',
   listEmpty: 'No projects yet in {{dir}}. Create one with tingly-design new <kind> <name>.',
   badArgs: '{{message}}. Run tingly-design --help for the options.',
@@ -85,7 +88,7 @@ Options:
   words: '{{n}} words',
   needTerminal: 'Interactive creation needs a terminal. Give the kind and name instead: tingly-design new <kind> <name or folder>',
   cancelled: 'Cancelled, nothing was created.',
-  createdNext: 'Open it with: tingly-design open {{name}}',
+  createdNext: 'Open it with: tingly-design open {{path}}',
   wizard: {
     kind: 'What are you making?',
     group: 'Size category',

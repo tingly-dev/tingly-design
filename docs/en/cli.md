@@ -33,7 +33,7 @@ It needs Node 20 or newer. Exporting video needs Chrome or Edge and ffmpeg on th
 | `skills [add [folder]]` | The format references an agent reads before editing a project, one per kind. `add` copies them into the folder's `.claude/skills/` (default: the current folder), with the reference pages a skill points to (`reference/*.md`), so Claude Code working there knows the files; a copy that differs from this version's is kept unless `--force`. |
 | `mcp` | These commands as an MCP server on stdio, for an agent to start (below). |
 
-A project is a name from the launcher or a path to its folder. `list`, `check` and `export` read a path where it is, without adding it to the launcher.
+A project is its folder: the argument is a path (`./pitch`, `~/work/site`), and with none, for `export`, `prompt` and `history`, the folder you are in. Names can repeat, paths cannot, so a name is only used when you say so with `-n` / `--name` (`tingly-design check pitch --name`); a name that fits more than one project lists every path instead of picking one. A plain word that is not a project folder says where a project of that name is. Claude Code sessions the editor starts read the argument as a name, as they run from the editor's folder, not the project's. `list`, `check` and `export` read a path where it is, without adding it to the launcher.
 
 ## With the editor open
 
