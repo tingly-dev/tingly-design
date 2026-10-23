@@ -4,14 +4,11 @@ import { DEFAULT_BOARD_SIZE, type ProjectKind } from '@dc/core';
 import { api, type DesignSystemChoice, type FolderInfo } from '../../api';
 import { toast, useStore } from '../../store';
 import { NAME_RE, freeName, slugOf } from '../../projectName';
-import { SizePicker } from '../motion/SizePicker';
-import { readSizes, rememberSize, sameSize, type Size } from '../motion/motionSizes';
-import { BoardSizePicker } from './BoardSizePicker';
-import { LookPicker } from './LookPicker';
-import { DesignSystemPicker } from '../DesignSystemPicker';
-import { applyNewOptions, checkDataFile, type NewOptions } from '../../newProject';
+import { readSizes, type Size } from '../motion/motionSizes';
+import { applyNewOptions } from '../../newProject';
 import { Dialog } from '../Dialog';
 import { KINDS, KindIcon } from './kinds';
+import { KIND_NEW, type NewState } from './newKinds';
 import { open } from './recent';
 
 /** A folder written as a full path (`~/…`, `/…`, `C:\…`) rather than a name in the projects folder. */
@@ -70,7 +67,9 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // a full path puts the project there instead of in the projects folder
   const path = linksOn && isFolderPath(name) ? name : null;
   const info = useFolderInfo(path);
-  const sizeBad = (kind === 'motion' && !size) || (kind === 'design' && !board) || (kind === 'slides' && !slideSize);
+  const state: NewState = { size, setSize, board, setBoard, slideSize, setSlideSize, look, setLook, designSystem, setDesignSystem, systems, dataFile, setDataFile, dataError, setDataError };
+  const here = KIND_NEW[kind];
+  const sizeBad = here.bad(state);
   const problem = !name
     ? ''
     : path
@@ -102,16 +101,12 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
         path ? { path } : name,
         title.trim() || (path ? path.split(/[\\/]/).filter(Boolean).pop() || kind : name),
         kind,
-        kind === 'motion' && size ? size : kind === 'slides' && slideSize ? slideSize : kind === 'design' && board && !sameSize(board, DEFAULT_BOARD_SIZE) ? board : undefined,
-        { git: offerGit && git, look: kind === 'design-system' && look ? look : undefined },
+        here.size(state),
+        { git: offerGit && git, look: here.look(state) },
       );
       if (gitError) toast(t('launcher.new.gitFailed', { error: gitError }), 'error');
-      if (kind === 'motion' && size) rememberSize(size);
-      const opts: NewOptions = {
-        designSystem: (kind === 'design' || kind === 'slides') && designSystem ? designSystem : undefined,
-        dataFile: kind === 'dashboard' ? dataFile?.file : undefined,
-      };
-      for (const m of await applyNewOptions(made, opts)) toast(m, 'error');
+      here.remember?.(state);
+      for (const m of await applyNewOptions(made, here.after(state))) toast(m, 'error');
       open(made);
     } catch (err) {
       setBusy(false);
@@ -130,52 +125,11 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
       </div>
       <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
       <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
-      {kind === 'motion' && <SizePicker value={size} onChange={setSize} />}
-      {kind === 'design' && <BoardSizePicker key={kind} value={board} onChange={setBoard} />}
-      {kind === 'slides' && <BoardSizePicker key={kind} kind="slides" value={slideSize} onChange={setSlideSize} />}
-      {kind === 'design-system' && <LookPicker value={look} onChange={setLook} />}
-      {(kind === 'design' || kind === 'slides' || kind === 'dashboard' || offerGit) && (
+      {here.Fields && <here.Fields key={kind} s={state} />}
+      {(here.Options || offerGit) && (
         <div className="nopts" data-options={kind}>
           <span className="nopt-h">{t('launcher.new.options')}</span>
-          {(kind === 'design' || kind === 'slides') && (
-            <div className="nopt">
-              <span>{t('launcher.new.ds')}</span>
-              <DesignSystemPicker value={designSystem} onChange={setDesignSystem} systems={systems} label={t('launcher.new.ds')} placeholder={t('launcher.new.dsNone')} />
-            </div>
-          )}
-          {kind === 'dashboard' && (
-            <div className="nopt">
-              <span>{t('launcher.new.dataFile')}</span>
-              <span className="nopt-file">
-                <label className="btn ghost">
-                  {dataFile ? dataFile.file.name : t('launcher.new.dataPick')}
-                  <input
-                    type="file"
-                    hidden
-                    accept=".csv,.tsv,.json"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = '';
-                      if (!f) return;
-                      const r = await checkDataFile(f);
-                      if ('error' in r) return setDataError(r.error), setDataFile(null);
-                      setDataError('');
-                      setDataFile({ file: f, rows: r.rows });
-                    }}
-                  />
-                </label>
-                {dataFile && (
-                  <>
-                    <span className="hint">{t('launcher.new.dataRows', { count: dataFile.rows })}</span>
-                    <button type="button" className="linkish" onClick={() => setDataFile(null)}>
-                      {t('launcher.new.dataClear')}
-                    </button>
-                  </>
-                )}
-              </span>
-              {dataError && <span className="nopt-err">{dataError}</span>}
-            </div>
-          )}
+          {here.Options && <here.Options s={state} />}
           {offerGit && (
             <label className="nopt nopt-check" data-git="">
               <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} />

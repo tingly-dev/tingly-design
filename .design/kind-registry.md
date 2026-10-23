@@ -1,6 +1,6 @@
 # 项目类型的登记：从散落的分支到按层的表
 
-状态：**部分实施**。方案 B 已定，core、server（含 `commands.ts`）和 editor 的主要分派点已转成表；只剩 `NewDialog` 的选项没转（见 §5）。现行的登记清单以 [project-kinds.md](./project-kinds.md) §2 为准；这份讲怎么让"加一种类型"不再靠记忆。
+状态：**已实施**（三层的主要分派点都是表；`claudeDesign.ts` 与 `store.ts` 还开着，见 §6）。方案 B 已定。现行的登记清单以 [project-kinds.md](./project-kinds.md) §2 为准；这份讲怎么让"加一种类型"不再靠记忆。
 
 ## 1. 问题
 
@@ -9,7 +9,7 @@
 | 文件 | 分支数 | 分支在管什么 |
 |---|---|---|
 | `apps/server/src/commands.ts` | 约 15 | `new` 的尺寸、`export` 的格式、`list` 的输出 |
-| `apps/editor/.../launcher/NewDialog.tsx` | 约 14 | 新建时每种类型各自的选项（尺寸、风格、数据文件） |
+| `apps/editor/.../launcher/NewDialog.tsx`（拆前） | 约 14 | 新建时每种类型各自的选项（尺寸、风格、数据文件）；现在在 `newKinds.tsx` 的 `KIND_NEW` |
 | `packages/core/src/project.ts` | 约 11 | `outlineProject`、`checkProject` 各按类型走一条 |
 | `packages/core/src/claudeDesign.ts` | 约 8 | 和原版 Claude Design 互转 |
 | `launcher/Preview.tsx`、`core/launcher.ts` | 各 5–6 | 启动页卡片和预览 |
@@ -47,18 +47,17 @@
 
 1. **core**：把 `project.ts` 的 `outlineProject`、`checkProject`、`launcher.ts` 的 `projectCard` 改成穷尽表。这是最纯的一层，单测就能验证。
 2. **server**：把 `store.ts` 的 `createProject`、`delegate.ts` 和 `routes/ai.ts` 的提示词、`commands.ts` 的格式表改成 `KindServer`。用现有 e2e（每种类型一个）验证。
-3. **editor**：把 `App.tsx` 的类型分派、`NewDialog.tsx` 的选项块、`Preview.tsx` 改成 `KindUi`。
+3. **editor**：把 `App.tsx` 的类型分派（`KIND_APP`）、`Preview.tsx`（`PREVIEW`）和 `NewDialog.tsx` 的选项块（`KIND_NEW`）改成表；没有合成一张 `KindUi`，因为这三处的参数各不相同。
 
 每步之后更新 [project-kinds.md](./project-kinds.md) §2：登记位置合并成"每层一张表"，行数会明显减少。
 
-## 5. 还没做的
+## 5. 实施状态
 
-已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`、`commands.ts` 的 `KIND_CLI`（`new --size` 能带什么、`export --as` 的格式、`--pick` 填哪个选项、`--fast` 可不可用、`check --snapshots` 怎么画和怎么认文件、导出要点哪些菜单项）；editor 的 `KIND_APP`、`PREVIEW`。
+已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`、`commands.ts` 的 `KIND_CLI`（`new --size` 能带什么、`export --as` 的格式、`--pick` 填哪个选项、`--fast` 可不可用、`check --snapshots` 怎么画和怎么认文件、导出要点哪些菜单项）；editor 的 `KIND_APP`、`PREVIEW`，以及新建对话框的 `KIND_NEW`（`launcher/newKinds.tsx`：每种类型的选择器、选项行、起始尺寸、是否还没选好、新建后要做什么；对话框持有六种类型的全部状态，这样切换类型再切回来，选择还在）。
 
-还没转：editor `NewDialog.tsx` 的选项块（§6 第一条），仍在 [project-kinds.md](./project-kinds.md) §2 的清单里，靠人记。`commands.ts` 的 `wizardGiven` 只问画布和动效的尺寸，这是新建向导的取舍，不是类型表的缺口。
+没有转的：`commands.ts` 的 `wizardGiven` 只问画布和动效的尺寸，这是新建向导的取舍，不是类型表的缺口。
 
 ## 6. 没有决定的
 
-- `NewDialog.tsx` 的选项（尺寸、风格、数据文件、设计系统）现在是几个条件块。是做成每种类型自带的小组件（`KindUi.newOptions`），还是保持条件块、只把"该不该显示"写进表里？前者更彻底，后者改动小。倾向前者，但要先看一遍它们共用的状态（`size`、`board`、`git`）能不能拆开。
 - `claudeDesign.ts` 的互转规则是否进表：原版只有四种类型，另两种是有意不支持，写成表里的 `null` 比现在的缺省分支更清楚。
 - `apps/editor/src/store.ts`（六种类型共用的 zustand store）的拆分依赖这件事的结论：先有"每种类型自己的状态切片"的位置，才好拆。这里不一并讨论。

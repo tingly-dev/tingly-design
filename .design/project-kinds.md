@@ -31,7 +31,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | `apps/server/src/delegate.ts` `DELEGATE` | 交给 Claude Code 时的开场措辞、系统提示、额外允许的工具、是否给生图工具；附件路径写法在 `startDelegate` 的文字里 | 类型检查不过 |
 | `packages/core/src/prompt.ts` | 快速 AI 的系统提示正文（`FAST_EDIT_SYSTEM`、`FAST_EDIT_SLIDES`、`FAST_EDIT_DOCS`）；Claude Code 的在 `delegate.ts`（`SLIDES_SYSTEM` 等） | 同上 |
 | `packages/core/src/launcher.ts` `CARD`、`INDEX_FILE`、`ProjectPreview`；`project.ts` 的 `OUTLINE`、`CHECK` | 启动页卡片的标题、数量、预览数据；`list` 列什么、`check` 查什么（都是按类型的穷尽表） | 类型检查不过 |
-| `apps/editor/src/components/launcher/`：`kinds.tsx` 的 `KINDS` 和图标、`Preview.tsx` 的 `PREVIEW` | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
+| `apps/editor/src/components/launcher/`：`kinds.tsx` 的 `KINDS` 和图标、`Preview.tsx` 的 `PREVIEW`、`newKinds.tsx` 的 `KIND_NEW`（新建对话框里这种类型要问什么） | 名称、单位、简介（文字在 `@dc/i18n` 的 `launcher` 区域）、颜色；分类标签；新建入口 | 不能筛选、不能新建 |
 | `packages/i18n/src/locales/{en,zh}/<kind>.ts` | 这种类型编辑器的界面文字，两种语言；`starter` 里加它新建时的占位文案 | 类型检查不过，或界面上出现没翻译的文字 |
 | `apps/editor/src/App.tsx` `KIND_APP` | 按 `kind` 进入对应的编辑器 | 类型检查不过 |
 | `apps/editor/src/components/<kind>/` | 这种类型的编辑器和它自己的状态（如 `slides.ts`、`motion.ts`）；各类型共用的部件留在 `components/` 根下，不放进某个类型的目录 | 看目录分不清哪些是共用部件，改共用功能时漏掉某种类型 |
