@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { editIndex } from './shared';
 import { CANVAS_FILE, DECK_FILE, boardDeps, importedBoardDir, isBoardFile, parseCanvas, MOTION_FILE, type BoardImport } from '@dc/core';
-import { HttpError, isProjectName, kindOf, projectDir, readAsset, readOne, withLock, writeAsset, writeAtomic } from '../store';
+import { HttpError, isProjectName, kindOf, projectDir, resolveKey, readAsset, readOne, withLock, writeAsset, writeAtomic } from '../store';
 import { publish, record } from '../hub';
 
 /** Importing a canvas artboard into a deck or motion piece. */
@@ -16,8 +16,9 @@ export function registerImportBoard(app: Hono): void {
    */
   app.post('/api/projects/:p/import-board', async (c) => {
     const p = c.req.param('p');
-    const { from, board } = await c.req.json<{ from: string; board: string }>();
-    if (!isProjectName(from ?? '')) throw new HttpError(400, 'badProjectName');
+    const { from: named, board } = await c.req.json<{ from: string; board: string }>();
+    if (!isProjectName(named ?? '')) throw new HttpError(400, 'badProjectName');
+    const from = resolveKey(named);
     const kind = await kindOf(projectDir(p));
     if (kind !== 'slides' && kind !== 'motion') throw new HttpError(400, 'importBoardInto');
     if ((await kindOf(projectDir(from))) !== 'design') throw new HttpError(404, 'notCanvas', { name: from });

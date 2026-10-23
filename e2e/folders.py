@@ -1,5 +1,5 @@
 """End-to-end checks for projects kept outside the projects folder. Run with `pnpm dev` up: python3 e2e/folders.py"""
-import os, asyncio, subprocess, json, shutil, time, urllib.request
+import os, re, asyncio, subprocess, json, shutil, time, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -50,9 +50,18 @@ async def main():
         shutil.copytree(os.path.join(REPO, 'projects', sample), dst, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
         st, r = call('POST', '/api/links', {'path': dst})
         named[kind] = r.get('name')
-        check(f'a {kind} folder elsewhere is linked under a name of its own', st == 200 and r.get('name') == f'my-{sample}', str(r))
+        check(f'a {kind} folder elsewhere is linked under a name made from its path', st == 200 and re.fullmatch(f'my-{sample}-[0-9a-f]{{6}}', r.get('name', '')) is not None, str(r))
     st, again = call('POST', '/api/links', {'path': os.path.join(TMP, 'work', 'my box-console') + '/'})
     check('linking the same folder again gives the same name', again.get('name') == named['design'], str(again))
+    # two folders with the same name are two projects, each named from its own path
+    twin = os.path.join(TMP, 'work', 'twin', 'my box-console')
+    shutil.copytree(os.path.join(TMP, 'work', 'my box-console'), twin, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
+    st, other = call('POST', '/api/links', {'path': twin})
+    check('a folder with the same name as a linked one gets a name of its own', st == 200 and other.get('name') not in (None, named['design']) and other['name'].startswith('my-box-console-'), str(other))
+    st, r = call('GET', '/api/resolve/' + named['design'])
+    check('a current name resolves to itself', r.get('name') == named['design'], str(r))
+    st, r = call('GET', '/api/resolve/box-console')
+    check('a name in the projects folder resolves to itself', r.get('name') == 'box-console', str(r))
     st, cards = call('GET', '/api/projects')
     by = {c['name']: c for c in cards}
     check('linked projects are listed with their kind and their folder', all(by.get(n, {}).get('kind') == k and by[n].get('path', '').startswith(TMP) for k, n in named.items()))
@@ -179,6 +188,24 @@ async def main():
             await ctx.close()
         await b.close()
     cleanup()
+
+    # --- names an earlier version gave a folder keep working, and the file moves to the new ones -------
+    mig = os.path.join(TMP, 'migrate')
+    pdir, here = os.path.join(mig, 'projects'), os.path.join(mig, 'site')
+    os.makedirs(pdir)
+    shutil.copytree(os.path.join(REPO, 'projects', 'box-console'), here, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
+    json.dump({'old-site': here}, open(os.path.join(pdir, '.links.json'), 'w'))
+    def cli(*args):
+        return subprocess.run(['pnpm', '-s', 'tingly-design', '--projects', pdir, *args], cwd=REPO, capture_output=True, text=True, env={**os.environ, 'DC_PROJECTS': pdir})
+    r = cli('list', '--json')
+    cards = json.loads(r.stdout or '[]')
+    check('a project linked under an older name is listed under the name made from its path', len(cards) == 1 and re.fullmatch(r'site-[0-9a-f]{6}', cards[0]['name']) is not None, r.stdout + r.stderr)
+    time.sleep(1)
+    rewritten = json.load(open(os.path.join(pdir, '.links.json')))
+    check('the links file holds the new name and keeps the old one', cards and rewritten.get(cards[0]['name']) == here and rewritten.get('old-site') == here, str(rewritten))
+    r = cli('check', 'old-site', '--name')
+    check('the older name still finds the project on the command line', r.returncode == 0, r.stdout + r.stderr)
+
     failed = [n for n, ok in results if not ok]
     print(f"\n{len(results) - len(failed)}/{len(results)} passed")
     if failed: raise SystemExit(1)

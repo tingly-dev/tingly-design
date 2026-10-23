@@ -15,7 +15,7 @@ export function DsInstall() {
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const installed = useInstalled();
-  const [systems, setSystems] = useState<{ name: string; title: string }[]>([]);
+  const [systems, setSystems] = useState<{ name: string; title: string; aliases?: string[] }[]>([]);
   const [pick, setPick] = useState<DesignSystemChoice>('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -53,7 +53,7 @@ export function DsInstall() {
               ))}
             </div>
             <div className="dsi-a">
-              {systems.some((s) => s.name === from) && (
+              {systems.some((s) => s.name === from || s.aliases?.includes(from)) && (
                 <>
                   <a className="btn ghost" href={`?p=${encodeURIComponent(from)}`} target="_blank" rel="noreferrer">
                     {t('common.open')}

@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, createProject, inspectFolder, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { HttpError, LINKS_ON, createProject, inspectFolder, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -69,7 +69,20 @@ app.get('/api/health', async (c) => {
   });
 });
 
+/** A request that names a project by a name an earlier version gave it goes to the project's current name, so the hub, the journal and the runs only ever see one key. */
+app.use('/api/projects/:p/*', async (c, next) => {
+  const p = c.req.param('p');
+  const key = resolveKey(p);
+  if (key === p) return next();
+  const url = new URL(c.req.url);
+  url.pathname = url.pathname.replace(/(\/api\/projects\/)[^/]+/, `$1${key}`);
+  return c.redirect(url.toString(), 308);
+});
+
 app.get('/api/projects', async (c) => c.json(await listProjects()));
+
+/** The name a project answers to now, for an address that carries one an older version gave it. */
+app.get('/api/resolve/:p', (c) => c.json({ name: resolveKey(c.req.param('p')) }));
 
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {

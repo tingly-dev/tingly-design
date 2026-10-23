@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { editIndex } from './shared';
 import { CANVAS_FILE, DECK_FILE, DS_INDEX, DS_TOKENS, dsFolderOf, parseDsIndex, resolveTokens, type DsRecord, lookOf, lookTokens } from '@dc/core';
-import { HttpError, isProjectName, kindOf, projectDir, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf } from '../store';
+import { HttpError, isProjectName, kindOf, projectDir, resolveKey, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf } from '../store';
 import { publish } from '../hub';
 import { trOf } from '../i18n';
 
@@ -15,7 +15,8 @@ export function registerDesignSystems(app: Hono): void {
    */
   app.post('/api/projects/:p/design-systems', async (c) => {
     const p = c.req.param('p');
-    const { from, look: lookId } = await c.req.json<{ from?: string; look?: string }>();
+    const { from: named, look: lookId } = await c.req.json<{ from?: string; look?: string }>();
+    const from = named === undefined ? undefined : resolveKey(named);
     if (lookId !== undefined && from !== undefined) throw new HttpError(400, 'badDesignSystemName');
     const builtin = lookId !== undefined ? lookOf(String(lookId)) : undefined;
     if (lookId !== undefined && !builtin) throw new HttpError(400, 'badLook', { look: String(lookId) });

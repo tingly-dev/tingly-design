@@ -1,6 +1,6 @@
 import { keepReplaced } from './history';
 import { createHash, randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -97,7 +97,49 @@ export function projectDir(name: string): string {
  */
 const LINKS_FILE = '.links.json';
 export const LINKS_ON = process.env.DC_LINKS !== '0';
-const links = new Map<string, string>(LINKS_ON ? readLinks() : []);
+
+/**
+ * A linked project's name is made from its folder, so the same folder always answers to the same
+ * name: the folder's own name and a short stamp of its path, `site-3f9a1c`. Two folders called
+ * `site` are two projects with two names, and what `?p=` says never depends on what was linked first.
+ */
+function idFor(abs: string): string {
+  const slug = basename(abs).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-_]+|-+$/g, '').slice(0, 48).replace(/[-_]+$/, '') || 'project';
+  return `${slug}-${createHash('sha1').update(abs).digest('hex').slice(0, 6)}`;
+}
+
+/** Linked folders by their name (`idFor`), and the other names the file still holds for them (earlier versions named them by hand or in order of arrival). */
+const links = new Map<string, string>();
+const aliases = new Map<string, string>();
+if (LINKS_ON) {
+  const stored = readLinks().map(([key, dir]): [string, string] => [key, resolve(dir)]);
+  for (const [key, dir] of stored) {
+    links.set(idFor(dir), dir);
+    if (key !== idFor(dir)) aliases.set(key, dir);
+  }
+  // the file is rewritten once, when it still lacks a folder's name made from its path
+  const keys = new Set(stored.map(([key]) => key));
+  if ([...links.keys()].some((id) => !keys.has(id))) setTimeout(() => void saveLinks().catch(() => {}), 0);
+}
+
+/** The older names a linked project is still known by. */
+function aliasesOf(dir: string): string[] {
+  return [...aliases].filter(([, d]) => d === dir).map(([k]) => k);
+}
+
+/**
+ * The name a key answers to now: itself, or the name made from the folder an older key was given
+ * to (the names earlier versions wrote into `.links.json`, still found in bookmarks, host
+ * messages and the sources a design system or an imported board remembers). A folder of that name
+ * in the projects folder, or a link under it, comes first. Only the edges call this (the editor
+ * opening an address, a source named in a request, the command line); everything else is keyed
+ * by the name made from the path, so a project has one key in the hub, the journal and the runs.
+ */
+export function resolveKey(key: string): string {
+  const old = aliases.get(key);
+  if (!old || links.has(key) || !isProjectName(key) || existsSync(join(PROJECTS_DIR, key))) return key;
+  return idFor(old);
+}
 
 function readLinks(): [string, string][] {
   try {
@@ -151,26 +193,12 @@ export function nameOfFolder(abs: string): string | undefined {
   return undefined;
 }
 
-async function takenNames(): Promise<Set<string>> {
-  const names = new Set(links.keys());
-  for (const e of await readdir(PROJECTS_DIR).catch(() => [] as string[])) names.add(e);
-  return names;
-}
-
-/** A free project name for a folder, from its own name. */
-async function nameFor(abs: string): Promise<string> {
-  const base = basename(abs).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-{2,}/g, '-').replace(/^[-_]+|-+$/g, '').slice(0, 56) || 'project';
-  const taken = await takenNames();
-  if (!taken.has(base)) return base;
-  for (let i = 2; ; i++) if (!taken.has(`${base}-${i}`)) return `${base}-${i}`;
-}
-
 let linksWrite: Promise<unknown> = Promise.resolve();
 function saveLinks(): Promise<void> {
   const next = linksWrite.then(async () => {
     await mkdir(PROJECTS_DIR, { recursive: true });
     const tmp = join(PROJECTS_DIR, `${LINKS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
-    await writeFile(tmp, JSON.stringify(Object.fromEntries(links), null, 2) + '\n', 'utf8');
+    await writeFile(tmp, JSON.stringify({ ...Object.fromEntries(aliases), ...Object.fromEntries(links) }, null, 2) + '\n', 'utf8');
     await rename(tmp, join(PROJECTS_DIR, LINKS_FILE));
   });
   linksWrite = next.catch(() => {});
@@ -191,7 +219,7 @@ export function onLinksChange(fn: (name: string, dir: string | null) => void): v
 export async function visitFolder(abs: string): Promise<string> {
   const known = nameOfFolder(abs);
   if (known) return known;
-  const name = await nameFor(abs);
+  const name = idFor(abs);
   links.set(name, abs);
   return name;
 }
@@ -214,7 +242,7 @@ export async function linkFolder(input: string, create = false): Promise<string>
     if (create) throw new HttpError(409, 'folderHasProject', { path: at.path });
     return known;
   }
-  const name = await nameFor(abs);
+  const name = idFor(abs);
   links.set(name, abs);
   await saveLinks();
   for (const fn of linkListeners) fn(name, abs);
@@ -222,9 +250,12 @@ export async function linkFolder(input: string, create = false): Promise<string>
 }
 
 /** Takes a linked project off the list. Its folder and files stay where they are. */
-export async function unlinkProject(name: string): Promise<void> {
-  if (!links.has(name)) throw new HttpError(404, 'notLinked', { name });
+export async function unlinkProject(key: string): Promise<void> {
+  const name = resolveKey(key);
+  const dir = links.get(name);
+  if (!dir) throw new HttpError(404, 'notLinked', { name: key });
   links.delete(name);
+  for (const [old, d] of aliases) if (d === dir) aliases.delete(old);
   await saveLinks();
   for (const fn of linkListeners) fn(name, null);
 }
@@ -366,7 +397,7 @@ export async function readGroups(): Promise<Record<string, string>> {
   try {
     const raw = JSON.parse(await readFile(join(PROJECTS_DIR, GROUPS_FILE), 'utf8')) as Record<string, unknown>;
     const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(raw)) if (isProjectName(k) && cleanGroup(v)) out[k] = cleanGroup(v);
+    for (const [k, v] of Object.entries(raw)) if (isProjectName(k) && cleanGroup(v)) out[resolveKey(k)] = cleanGroup(v);
     return out;
   } catch {
     return {};
@@ -378,8 +409,9 @@ let groupsWrite: Promise<unknown> = Promise.resolve();
 export function setGroup(name: string, group: string): Promise<void> {
   const next = groupsWrite.then(async () => {
     const all = await readGroups();
-    if (group) all[name] = group;
-    else delete all[name];
+    const key = resolveKey(name);
+    if (group) all[key] = group;
+    else delete all[key];
     await mkdir(PROJECTS_DIR, { recursive: true });
     const tmp = join(PROJECTS_DIR, `${GROUPS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
     await writeFile(tmp, JSON.stringify(all, null, 2) + '\n', 'utf8');
@@ -414,7 +446,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path } : {}) });
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
     } catch {
       // unreadable index
     }

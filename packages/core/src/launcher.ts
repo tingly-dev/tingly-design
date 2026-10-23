@@ -18,6 +18,8 @@ export interface ProjectCard {
   group?: string;
   /** where its folder is, when it lives outside the projects folder (`~/…` under the home folder) */
   path?: string;
+  /** names earlier versions gave it, which sources recorded in other projects may still carry */
+  aliases?: string[];
   preview: ProjectPreview;
 }
 

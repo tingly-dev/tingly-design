@@ -13,7 +13,7 @@ import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, PROJECTS_DIR, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
-import { createProject, isProjectName, kindOf, linkFolder, linkedProjects, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
+import { createProject, isProjectName, kindOf, linkFolder, linkedProjects, resolveKey, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
 export type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed, and the internal names they map to. */
@@ -184,9 +184,9 @@ export async function resolveProject(ctx: Ctx, arg: string | undefined, command:
 
 /** The project called `name`: the one with that launcher name, else every one whose folder has that name. */
 async function projectsNamed(name: string): Promise<Project[]> {
-  const exact = isProjectName(name) ? projectDir(name) : undefined;
+  const exact = isProjectName(name) ? projectDir(resolveKey(name)) : undefined;
   const kind = exact && (await kindOf(exact));
-  if (exact && kind) return [{ name, dir: exact, kind }];
+  if (exact && kind) return [{ name: resolveKey(name), dir: exact, kind }];
   const out = new Map<string, Project>();
   const names = new Set([...linkedProjects().keys(), ...(await readdir(PROJECTS_DIR).catch(() => [] as string[]))]);
   for (const n of names) {
