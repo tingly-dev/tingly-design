@@ -3,7 +3,7 @@ or export buttons beside it), it lists what the kind takes and what it can save,
 from a deck and a doc (a real PDF with a page per slide), a machine with no Chrome falls back to the print
 window, and the status chip is on the bars that have one. Needs the dev server's machine to have Chrome.
 Run with `pnpm dev` up: python3 e2e/export_menu.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
-import os, re, asyncio
+import os, re, asyncio, zipfile
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -14,6 +14,13 @@ results = []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
+
+def markdown_of(path):
+    # a doc with local pictures saves as a .zip holding the .md and the pictures (.design/docs-markdown.md)
+    if path.endswith('.zip'):
+        with zipfile.ZipFile(path) as z:
+            return z.read(next(n for n in z.namelist() if n.endswith('.md'))).decode('utf-8')
+    return open(path, encoding='utf-8').read()
 
 def pages(path):
     return len(re.findall(rb'/Type\s*/Page[^s]', open(path, 'rb').read()))
@@ -94,8 +101,8 @@ async def main():
         d = await dl.value
         path = OUT + d.suggested_filename
         await d.save_as(path)
-        md = open(path, encoding='utf-8').read()
-        check('docs: the whole doc saves as a .md file', d.suggested_filename.endswith('.md'), d.suggested_filename)
+        md = markdown_of(path)
+        check('docs: the whole doc saves as Markdown (a .zip when it has pictures)', d.suggested_filename.endswith(('.md', '.zip')), d.suggested_filename)
         check('docs: …headed by the doc title, with each tab a section under it', md.startswith('# Tingly Design handbook\n') and md.count('\n## ') >= 3 and '\n---\n' not in md, md[:200])
         outside = re.sub(r'```.*?```', '', md, flags=re.S)
         check('docs: …and no tab keeps a second top-level heading', len(re.findall(r'^# ', outside, flags=re.M)) == 1)
