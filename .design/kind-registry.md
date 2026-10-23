@@ -1,6 +1,6 @@
 # 项目类型的登记：从散落的分支到按层的表
 
-状态：**部分实施**。方案 B 已定，core、server 和 editor 的主要分派点已转成表；`commands.ts` 与 `NewDialog` 的选项还没转（见 §5）。现行的登记清单以 [project-kinds.md](./project-kinds.md) §2 为准；这份讲怎么让"加一种类型"不再靠记忆。
+状态：**部分实施**。方案 B 已定，core、server（含 `commands.ts`）和 editor 的主要分派点已转成表；只剩 `NewDialog` 的选项没转（见 §5）。现行的登记清单以 [project-kinds.md](./project-kinds.md) §2 为准；这份讲怎么让"加一种类型"不再靠记忆。
 
 ## 1. 问题
 
@@ -53,9 +53,9 @@
 
 ## 5. 还没做的
 
-已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`；editor 的 `KIND_APP`、`PREVIEW`。
+已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`、`commands.ts` 的 `KIND_CLI`（`new --size` 能带什么、`export --as` 的格式、`--pick` 填哪个选项、`--fast` 可不可用、`check --snapshots` 怎么画和怎么认文件、导出要点哪些菜单项）；editor 的 `KIND_APP`、`PREVIEW`。
 
-还没转：server `commands.ts` 里按类型的尺寸、导出格式和 `check` 输出（和命令行自己的措辞混在一起，且 `FORMATS`、`pageJobs` 的登记也在那里），以及 editor `NewDialog.tsx` 的选项块（§6 第一条）。两处仍在 [project-kinds.md](./project-kinds.md) §2 的清单里，靠人记。
+还没转：editor `NewDialog.tsx` 的选项块（§6 第一条），仍在 [project-kinds.md](./project-kinds.md) §2 的清单里，靠人记。`commands.ts` 的 `wizardGiven` 只问画布和动效的尺寸，这是新建向导的取舍，不是类型表的缺口。
 
 ## 6. 没有决定的
 

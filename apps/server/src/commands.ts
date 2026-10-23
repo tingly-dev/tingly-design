@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -21,18 +21,108 @@ export const KINDS: Record<string, Kind> = { canvas: 'design', slides: 'slides',
 /** Each kind's format reference under `.claude/skills/`. */
 export const SKILLS: Record<Kind, string> = { design: 'dc-canvas', slides: 'slides', 'design-system': 'design-system', dashboard: 'dashboard', docs: 'docs', motion: 'motion' };
 
-/** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
-export const FORMATS: Record<Kind, string[]> = {
-  design: ['png'],
-  slides: ['pdf', 'pptx', 'png', 'html', 'md', 'notes'],
-  docs: ['pdf', 'html', 'md', 'png'],
-  'design-system': ['png'],
-  dashboard: ['png'],
-  motion: ['mp4', 'gif', 'png', 'html'],
-};
-
 /** The views of a design system that have a picture (`issues` is a list, not a page). */
 const DS_VIEWS = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
+
+const readIn = (p: { dir: string }, f: string) => readFile(resolve(p.dir, f), 'utf8').catch(() => undefined);
+
+interface KindCli {
+  /** What `export --as` takes besides `zip`: the Import / Export menu's formats, by their names. */
+  formats: string[];
+  /** `new --size`: a canvas takes a named size too (`wechat`), motion and slides a width and height, the others none. */
+  size: 'named' | 'plain' | null;
+  /** The request bar has fast AI (`PromptBar`). */
+  fast: boolean;
+  /** The option `--pick` fills: the one board, slide, tab or view to show first; dashboards and motion have none. */
+  pick?: 'board' | 'slide' | 'tab' | 'view';
+  /** `check --snapshots`: frames are their own size (text past the edge is lost), and the first one is a page of boards. */
+  fixed: boolean;
+  page: boolean;
+  /** The file a problem is blamed on when the frame names none. */
+  blame?: string;
+  /** The file behind a frame's title, where the editor titles a frame by something else: a board by its name, a slide by its id. */
+  frameFiles(p: Project): Promise<Map<string, string>>;
+  /** The menu items that make `as`, with the board, slide, tab or view each one needs showing first. `every` is `check --snapshots`: a picture of everything. */
+  jobs(p: Project, as: string, o: Pick<ExportOptions, 'board' | 'slide' | 'tab' | 'view' | 'scale'>, one: (flag: string | undefined) => string | undefined, every: boolean): Promise<PageJob[]>;
+}
+
+const noFrameFiles = async () => new Map<string, string>();
+const pngOnly = async (): Promise<PageJob[]> => [{ item: 'png' }];
+
+/** What the command line and MCP do differently per kind: one entry per kind, so a kind added later fails to compile until it says. */
+const KIND_CLI: Record<Kind, KindCli> = {
+  design: {
+    formats: ['png'],
+    size: 'named',
+    fast: true,
+    pick: 'board',
+    fixed: true,
+    page: true,
+    async frameFiles(p) {
+      const out = new Map<string, string>();
+      const c = parseCanvas(await readIn(p, 'canvas.json'));
+      for (const [file, b] of Object.entries(c.boards)) out.set(b.title ?? file, file);
+      return out;
+    },
+    async jobs(p, _as, o, one, every) {
+      const c = parseCanvas(await readIn(p, 'canvas.json'));
+      const board = one(o.board);
+      const boards = board ? [board] : c.order.filter((f) => c.boards[f] && !c.boards[f].hidden);
+      return boards.map((pick) => ({ pick, item: o.scale === 2 && !every ? 'png2' : 'png' }));
+    },
+  },
+  slides: {
+    formats: ['pdf', 'pptx', 'png', 'html', 'md', 'notes'],
+    size: 'plain',
+    fast: true,
+    pick: 'slide',
+    fixed: true,
+    page: false,
+    async frameFiles(p) {
+      const out = new Map<string, string>();
+      for (const f of await readdir(resolve(p.dir, 'slides')).catch(() => [])) if (f.endsWith('.html')) out.set(f.slice(0, -5), `slides/${f}`);
+      return out;
+    },
+    async jobs(_p, as, o, one) {
+      const slide = one(o.slide);
+      if (as === 'png') return slide ? [{ pick: slide, item: 'png' }] : [{ item: 'pngs' }];
+      return [{ item: as }];
+    },
+  },
+  docs: {
+    formats: ['pdf', 'html', 'md', 'png'],
+    size: null,
+    fast: false,
+    pick: 'tab',
+    fixed: false,
+    page: false,
+    frameFiles: noFrameFiles,
+    async jobs(p, as, o, one) {
+      const tab = one(o.tab);
+      if (as === 'md') return tab ? [{ pick: tab, item: 'md' }] : [{ item: 'mdAll' }];
+      if (as === 'png') return (tab ? [tab] : tabOrder(parseDoc(await readIn(p, 'doc.json'))).map((x) => x.id)).map((pick) => ({ pick, item: 'png' }));
+      return [{ item: as }];
+    },
+  },
+  'design-system': {
+    formats: ['png'],
+    size: null,
+    fast: false,
+    pick: 'view',
+    fixed: false,
+    page: false,
+    frameFiles: noFrameFiles,
+    async jobs(_p, _as, o, one, every) {
+      const view = one(o.view);
+      return (view ? [view] : every ? DS_VIEWS : ['overview']).map((pick) => ({ pick, item: 'png' }));
+    },
+  },
+  dashboard: { formats: ['png'], size: null, fast: false, fixed: false, page: false, blame: DASH_PAGE, frameFiles: noFrameFiles, jobs: pngOnly },
+  motion: { formats: ['mp4', 'gif', 'png', 'html'], size: 'plain', fast: true, fixed: false, page: false, frameFiles: noFrameFiles, jobs: pngOnly },
+};
+
+/** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
+export const FORMATS = Object.fromEntries((Object.keys(KIND_CLI) as Kind[]).map((k) => [k, KIND_CLI[k].formats])) as Record<Kind, string[]>;
 
 export class CommandError extends Error {
   /** `code` is the command line's exit code: 2 when the command was not understood, 1 when it failed. */
@@ -91,9 +181,9 @@ export async function outline(p: Project) {
 /** A size typed for a kind: a canvas takes a named size too (`wechat`), as the New dialog does; anything else is a width and height. */
 function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
   const t = translator(ctx.lang);
-  const size = kind === 'design' ? parseBoardSize(text) : validSize(text.split(/[x×,]/i).map(Number));
+  const size = KIND_CLI[kind].size === 'named' ? parseBoardSize(text) : validSize(text.split(/[x×,]/i).map(Number));
   if (size) return size;
-  throw new CommandError(kind === 'design' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
+  throw new CommandError(KIND_CLI[kind].size === 'named' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
 }
 
 /**
@@ -122,7 +212,7 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   const title = o.title?.trim() || (path ? basename(path) : target);
   if (o.look && kind !== 'design-system') throw new CommandError(t('cli.lookOnlyDs'));
   if (o.look && !lookOf(o.look)) throw new CommandError(t('cli.badLook', { look: o.look, looks: LOOKS.map((l) => l.id).join(', ') }));
-  const sized = { ...(size && (kind === 'design' || kind === 'motion' || kind === 'slides') ? { size } : {}), ...(o.look ? { look: o.look } : {}) };
+  const sized = { ...(size && KIND_CLI[kind].size ? { size } : {}), ...(o.look ? { look: o.look } : {}) };
   // with an editor open on this folder, the editor creates it: a linked folder then lives in its list
   // of links too (it keeps them in memory and writes them back), and the launcher shows the card at once
   const running = ctx.inServer ? null : await findEditor();
@@ -227,13 +317,13 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     return { dir, files };
   }
   // boards and slides are their own size, so text past the edge is lost; a dashboard or a view scrolls
-  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: p.kind === 'design' || p.kind === 'slides', page: p.kind === 'design' });
+  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: KIND_CLI[p.kind].fixed, page: KIND_CLI[p.kind].page });
   for (const f of failed) fail(f.what, f.error);
   // a board that threw or a picture that never came still draws something; the picture alone would not say why
   const where = await frameFiles(p);
   const before = problems.length;
   for (const i of issues) {
-    const file = (i.where && where.get(i.where)) ?? (p.kind === 'dashboard' ? 'files/index.html' : (i.where ?? p.name));
+    const file = (i.where && where.get(i.where)) ?? (KIND_CLI[p.kind].blame ?? i.where ?? p.name);
     if (i.kind === 'error') {
       problems.push({ level: 'error', file, code: 'pageError', message: i.text });
       continue;
@@ -248,7 +338,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   // faint text comes in families (every caption of a board), so it is one line per file: how many, the faintest, one example
   const faint = new Map<string, { count: number; ratio: number; text: string }>();
   for (const l of layout) {
-    const file = (l.where && where.get(l.where)) ?? (p.kind === 'dashboard' ? 'files/index.html' : (l.where ?? p.name));
+    const file = (l.where && where.get(l.where)) ?? (KIND_CLI[p.kind].blame ?? l.where ?? p.name);
     if (l.rule !== 'contrast') {
       problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: l.rule === 'gap' ? { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 } : l.rule === 'squeezed' ? { text: l.text ?? '', lines: l.lines ?? 0 } : { text: l.text ?? '' } });
       continue;
@@ -270,15 +360,8 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
 }
 
 /** The file behind a frame's title, where the editor titles a frame by something else: a board by its name, a slide by its id. */
-async function frameFiles(p: Project): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  if (p.kind === 'design') {
-    const c = parseCanvas(await readFile(resolve(p.dir, 'canvas.json'), 'utf8').catch(() => undefined));
-    for (const [file, b] of Object.entries(c.boards)) out.set(b.title ?? file, file);
-  } else if (p.kind === 'slides') {
-    for (const f of await readdir(resolve(p.dir, 'slides')).catch(() => [])) if (f.endsWith('.html')) out.set(f.slice(0, -5), `slides/${f}`);
-  }
-  return out;
+function frameFiles(p: Project): Promise<Map<string, string>> {
+  return KIND_CLI[p.kind].frameFiles(p);
 }
 
 // ---------------------------------------------------------------- export
@@ -322,7 +405,7 @@ export interface ExportResult {
 
 /** The one board, slide, tab or view a `pick` names, as the option of the kind it belongs to; dashboards and motion have none. */
 export function pickFor(kind: Kind, pick: string | undefined): Pick<ExportOptions, 'board' | 'slide' | 'tab' | 'view'> {
-  const field = ({ design: 'board', slides: 'slide', docs: 'tab', 'design-system': 'view' } as Partial<Record<Kind, 'board' | 'slide' | 'tab' | 'view'>>)[kind];
+  const field = KIND_CLI[kind].pick;
   return field && pick?.trim() ? { [field]: pick.trim() } : {};
 }
 
@@ -413,33 +496,8 @@ async function exportZip(p: Project, o: ExportOptions): Promise<ExportResult> {
 
 /** The menu items that make `as`, with the board, slide, tab or view each one needs showing first. `every` is `check --snapshots`: a picture of everything. */
 async function pageJobs(p: Project, as: string, o: Pick<ExportOptions, 'board' | 'slide' | 'tab' | 'view' | 'scale'>, every = false): Promise<PageJob[]> {
-  const read = (f: string) => readFile(resolve(p.dir, f), 'utf8').catch(() => undefined);
   const one = (flag: string | undefined) => (every ? undefined : flag?.trim() || undefined);
-  switch (p.kind) {
-    case 'design': {
-      const c = parseCanvas(await read('canvas.json'));
-      const board = one(o.board);
-      const boards = board ? [board] : c.order.filter((f) => c.boards[f] && !c.boards[f].hidden);
-      return boards.map((pick) => ({ pick, item: o.scale === 2 && !every ? 'png2' : 'png' }));
-    }
-    case 'slides': {
-      const slide = one(o.slide);
-      if (as === 'png') return slide ? [{ pick: slide, item: 'png' }] : [{ item: 'pngs' }];
-      return [{ item: as }];
-    }
-    case 'docs': {
-      const tab = one(o.tab);
-      if (as === 'md') return tab ? [{ pick: tab, item: 'md' }] : [{ item: 'mdAll' }];
-      if (as === 'png') return (tab ? [tab] : tabOrder(parseDoc(await read('doc.json'))).map((x) => x.id)).map((pick) => ({ pick, item: 'png' }));
-      return [{ item: as }];
-    }
-    case 'design-system': {
-      const view = one(o.view);
-      return (view ? [view] : every ? DS_VIEWS : ['overview']).map((pick) => ({ pick, item: 'png' }));
-    }
-    default:
-      return [{ item: 'png' }];
-  }
+  return KIND_CLI[p.kind].jobs(p, as, o, one, every);
 }
 
 /**
@@ -546,9 +604,6 @@ export interface PromptResult {
   entries: JournalLine[];
 }
 
-/** The kinds whose request bar has fast AI (`PromptBar`). */
-const FAST_KINDS: Kind[] = ['design', 'slides', 'motion'];
-
 interface RunEnd {
   outcome: PromptResult['outcome'];
   text: string;
@@ -636,7 +691,7 @@ export async function prompt(ctx: Ctx, p: Project, o: PromptOptions): Promise<Pr
   const t = translator(ctx.lang);
   const text = o.text?.trim();
   if (!text) throw new CommandError(t('cli.needPrompt', { project: p.name }));
-  if (o.fast && !FAST_KINDS.includes(p.kind)) throw new CommandError(t('cli.noFast', { kind: t(`cli.kind.${p.kind}`) }));
+  if (o.fast && !KIND_CLI[p.kind].fast) throw new CommandError(t('cli.noFast', { kind: t(`cli.kind.${p.kind}`) }));
   const before = (await readJournal(p.dir)).at(-1)?.id;
   const startedAt = Date.now() - 1000;
   const run = await withEditor(ctx, p, !!o.fast, async ({ api, page, name }) => {
