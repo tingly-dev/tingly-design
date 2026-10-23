@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { elementLabel, attr, type Attachment } from '@dc/core';
-import { display, parsed, useCanvas, useStore, type LastRun } from '../store';
+import { display, parsed, useCanvas, useStore } from '../store';
+import type { LastRun } from '../store/agent';
 import { focusBoard } from './canvas/view';
 import { delegateToClaude, runFastEdit } from '../fastedit';
 import { ContextChip } from './AgentBar';
