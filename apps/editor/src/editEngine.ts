@@ -185,6 +185,8 @@ export function retypeText(file: string, tid: number, from: string, to: string, 
       toast(t(`canvas.text.noedit.${e.code}`), 'error');
       return false;
     }
+    toast(errorText(e), 'error');
+    return false;
   }
   return edit(file, apply, { actor: 'human', summary: `text → ${JSON.stringify(to.length > 40 ? to.slice(0, 39) + '…' : to)}` });
 }
@@ -216,10 +218,15 @@ export function redo(): void {
 }
 
 /** Delete a file once its queued edits are saved (a deck's slides, an artboard). */
+/** Wait (up to five seconds) for the queued edits of a file to be saved, so a delete goes against its newest version. */
+async function savedUpTo(file: string): Promise<void> {
+  for (let i = 0; i < 50 && (get().files[file]?.pending.length ?? 0) > 0; i++) await new Promise((r) => setTimeout(r, 100));
+}
+
 export async function deleteFile(file: string): Promise<void> {
   const project = get().project;
   if (!project) return;
-  for (let i = 0; i < 50 && (get().files[file]?.pending.length ?? 0) > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  await savedUpTo(file);
   const v = get().files[file]?.server?.version;
   if (v) {
     const r = await api.remove(project, file, v);
@@ -241,7 +248,10 @@ export async function deleteBoard(file: string): Promise<void> {
   }, `artboard ${file} removed`, false);
   set({ selection: null });
   // wait for any queued edits of the file itself, then delete it
-  for (let i = 0; i < 50 && (get().files[file]?.pending.length ?? 0) > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  await savedUpTo(file);
   const v = get().files[file]?.server?.version;
-  if (v) await api.remove(project, file, v);
+  if (v) {
+    const r = await api.remove(project, file, v);
+    if ('conflict' in r) toast(t('app.save.deleteConflict', { file }), 'error');
+  }
 }
