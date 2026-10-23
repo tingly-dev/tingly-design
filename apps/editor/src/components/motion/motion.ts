@@ -241,7 +241,7 @@ export function setPieceNote(text: string): void {
 }
 
 /** Scene ids in play order: `order` first (those with a file), the cover's scene is never among them. */
-const orderIds = () => motionOf().order.filter((id) => display(get(), sceneFile(id)) !== undefined);
+const orderIds = () => motionOf().order.slice();
 
 /** A new scene after `after` (or at the end), in the look of its neighbour and laid out to the primary size. */
 export function addScene(after: string | null = null): string {
@@ -280,7 +280,10 @@ export function duplicateScene(id: string): string | null {
 export async function deleteScene(id: string): Promise<void> {
   const ids = orderIds();
   if (ids.length <= 1) return void toast(t('motion.toast.lastScene'));
-  editMotion((raw) => void (raw.order = ids.filter((x) => x !== id)), t('motion.journal.sceneRemoved', { id }));
+  editMotion((raw) => {
+    raw.order = ids.filter((x) => x !== id);
+    if (raw.cover === id) delete raw.cover;
+  }, t('motion.journal.sceneRemoved', { id }));
   await deleteFile(sceneFile(id));
 }
 

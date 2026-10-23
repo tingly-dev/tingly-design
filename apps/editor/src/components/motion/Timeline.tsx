@@ -55,11 +55,12 @@ export function Timeline(p: {
   const [pending, setPending] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   useEffect(() => {
-    const w = pending ? timeline.scenes.find((x) => x.id === pending) : undefined;
-    if (!w) return;
+    if (!pending) return;
+    const w = timeline.scenes.find((x) => x.id === pending);
+    if (!w) return void (motion.order.includes(pending) || setPending(null));
     setPending(null);
     seek(w.start / rate);
-  }, [pending, timeline, rate, seek]);
+  }, [pending, timeline, motion.order, rate, seek]);
   const afterAdd = (id: string | null) => {
     if (id) setPending(id);
   };
@@ -299,8 +300,8 @@ export function Timeline(p: {
             <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label={t('motion.stage.sceneMenu')}>
               <MenuItem label={t('motion.stage.sceneAddAfter')} onSelect={() => (setMenu(null), afterAdd(addScene(menu.id)))} />
               <MenuItem label={t('motion.stage.sceneDuplicate')} onSelect={() => (setMenu(null), afterAdd(duplicateScene(menu.id)))} />
-              <MenuItem label={t('motion.stage.sceneEarlier')} onSelect={() => (setMenu(null), moveScene(menu.id, -1))} />
-              <MenuItem label={t('motion.stage.sceneLater')} onSelect={() => (setMenu(null), moveScene(menu.id, 1))} />
+              <MenuItem disabled={motion.order[0] === menu.id} label={t('motion.stage.sceneEarlier')} onSelect={() => (setMenu(null), moveScene(menu.id, -1))} />
+              <MenuItem disabled={motion.order.at(-1) === menu.id} label={t('motion.stage.sceneLater')} onSelect={() => (setMenu(null), moveScene(menu.id, 1))} />
               <hr />
               <MenuItem label={t('motion.stage.sceneDelete')} danger onSelect={() => (setMenu(null), void deleteScene(menu.id))} />
             </Menu>
