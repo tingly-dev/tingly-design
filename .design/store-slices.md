@@ -1,6 +1,6 @@
 # 编辑器的状态：把一个大 store 按"谁用它"分成几片
 
-状态：**实施中**（方案已确认；第 1、3 步已实施，第 2、4 步待做）。图见 [store-slices.pencil.md](./store-slices.pencil.md)；类型登记的做法见 [kind-registry.md](./kind-registry.md)，这份是它留下的最后一块。
+状态：**实施中**（方案已确认；第 1、3 步已实施；第 2、4 步暂不做，见 §5）。图见 [store-slices.pencil.md](./store-slices.pencil.md)；类型登记的做法见 [kind-registry.md](./kind-registry.md)，这份是它留下的最后一块。
 
 ## 1. 问题
 
@@ -77,9 +77,11 @@
 3. **编辑引擎（已实施）**：`apps/editor/src/editEngine.ts` 放 `edit`、`enqueueResult`、保存队列（`pump`）、`editElement`、`retypeText`、`editCanvas`、`undo` / `redo`、`deleteFile`、`deleteBoard`、`inertDocument`、`isSaving`。状态、读取用的选择器（`display`、`canvasOf`、`deckOf`……）和 `toast` 仍在 `store.ts`。
    - `store.ts` 再导出引擎的公开函数，所以约 30 个调用方的 import 不变；代价是 `store.ts ⇄ editEngine.ts` 互相引用。这是安全的，前提是 `editEngine.ts` 在模块加载时不碰 `useStore`（它的 `get` / `set` 是函数，不是 `useStore.getState` 的别名；曾经写成别名，页面直接报 "Cannot access 'useStore' before initialization"）。文件头注释写了这条。
    - 要彻底去掉这个环，得把 `State`、`display`、`toast` 等放进一个不依赖引擎的叶子模块；那时再让调用方直接 import `editEngine`。
-4. **项目加载与事件订阅**：`openProject` 和文件事件处理搬到 `project.ts`。
+4. **项目加载与事件订阅（暂不做）**：`openProject` 和文件事件处理搬到 `project.ts`。
 
-做完后 `store.ts` 只剩"拼装 + 选择器"，预计二三百行。
+做完 1、3 后 `store.ts` 约 390 行（状态、选择器、加载、事件）。第 2 步只有三个字段；第 4 步要再造一个和 `store.ts` 互相引用的文件，而 `openProject` 和事件处理本来就是 store 的入口，收益小于代价，等有新的需求（例如要隔离重渲染）再做。
+
+状态标为"实施中"是因为这两步还留着；若决定不再做，改为"已实施"。
 
 ## 6. 还没有决定的
 
