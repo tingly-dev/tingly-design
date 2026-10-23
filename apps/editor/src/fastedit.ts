@@ -24,7 +24,8 @@ import {
 import { api } from './api';
 import { t } from './i18n';
 import { ExecSession, replay } from './executor';
-import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore, type FastLine, type LastRun } from './store';
+import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore } from './store';
+import type { FastLine, LastRun } from './store/agent';
 import { visibleBoards } from './components/canvas/view';
 import { slideTitle } from './components/slides/slides';
 import { motionOf } from './components/motion/motion';

@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import { elapsed, type AgentStep, type TurnEntry } from '@dc/core';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { undo, undoDelegate, useStore, type DelegateState, type FastState } from '../store';
+import { undo, undoDelegate, useStore } from '../store';
+import type { DelegateState, FastState } from '../store/agent';
 import {
   Chevron,
   Close,

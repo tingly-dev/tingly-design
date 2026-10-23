@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Turn } from '@dc/core';
-import { useStore, type DelegateState, type FastState } from './store';
+import { useStore } from './store';
+import type { DelegateState, FastState } from './store/agent';
 
 /**
  * The conversation as the panel reads it: the turns the server kept, with the runs of this
@@ -62,11 +63,4 @@ export function useTurns(): Turn[] {
   const delegates = useStore((s) => s.delegates);
   const fast = useStore((s) => s.fast);
   return useMemo(() => mergeTurns(stored, delegates, fast), [stored, delegates, fast]);
-}
-
-/** Add a turn to the stored ones, or replace the one with its id. */
-export function upsertTurn(list: Turn[], turn: Turn): Turn[] {
-  const i = list.findIndex((t) => t.id === turn.id);
-  const next = i < 0 ? [...list, turn] : list.map((t, j) => (j === i ? turn : t));
-  return next.slice(-200);
 }

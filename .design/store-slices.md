@@ -1,6 +1,6 @@
 # 编辑器的状态：把一个大 store 按"谁用它"分成几片
 
-状态：**方案**（待 YZ 确认，未实施）。图见 [store-slices.pencil.md](./store-slices.pencil.md)；类型登记的做法见 [kind-registry.md](./kind-registry.md)，这份是它留下的最后一块。
+状态：**实施中**（方案已确认；第 1 步已实施，第 2–4 步待做）。图见 [store-slices.pencil.md](./store-slices.pencil.md)；类型登记的做法见 [kind-registry.md](./kind-registry.md)，这份是它留下的最后一块。
 
 ## 1. 问题
 
@@ -70,7 +70,9 @@
 
 每一步一个小 PR，行为不变，验证是 typecheck、knip、depcheck、单测和相关 e2e：
 
-1. **请求栏与对话**：新建 `apps/editor/src/store/agent.ts`（暂定），搬入 13 个字段、`FastState`、`DelegateState`、`LastRun`、`BarMode`、`setBarMode`、`setBarCollapsed`、`undoDelegate`、对话轮次的合并，以及 `onEvent` 里处理 Claude Code 运行事件的那一半。`store.ts` 里的 `openProject` 重置这些字段时改为调用片自己导出的 `resetAgent()`。
+1. **请求栏与对话（已实施）**：`apps/editor/src/store/agent.ts` 放这 13 个字段的类型（`AgentState`）、`FastState`、`DelegateState`、`LastRun`、`BarMode`、初始值 `agentInitial()`、打开项目时的重置 `agentReset()`，以及两个**纯函数补丁**：Claude Code 运行事件对 `delegates` 的更新（`delegateEventPatch`）和一次运行结束后并入对话轮次（`endTurnPatch`）。`State` 继承 `AgentState`，`useStore` 用 `...agentInitial()` 拼进来。
+   - 切片不 import `useStore`：`setBarMode`、`setBarCollapsed`、`undoDelegate` 要调 `set`/`edit`，仍留在 `store.ts`，切片只给补丁。这样避免 `store.ts ⇄ store/agent.ts` 的循环引用，切片也能脱离 store 单测。
+   - 消费方只改了类型的 import 路径（5 个文件）；字段读写一行没动。
 2. **类型自己的状态**：幻灯片的 `slide`、`present` 放进 `components/slides/`，动效的 `motionView` 放进 `components/motion/`，同样导出字段、初始值和动作，由 `store.ts` 拼进来。
 3. **编辑引擎**：`edit`、`enqueueResult`、`editElement`、`retypeText`、`undo`、`redo`、`deleteFile` 等搬到 `editEngine.ts`，`store.ts` 只留读取用的选择器和状态本身。
 4. **项目加载与事件订阅**：`openProject` 和文件事件处理搬到 `project.ts`。
@@ -79,6 +81,6 @@
 
 ## 6. 还没有决定的
 
-- 切片放哪里：`apps/editor/src/store/` 目录，还是平铺在 `src/` 下？倾向目录，但要先看打包和 knip 对目录入口的处理。
+- `store.ts` 与 `store/` 同名并存：'./store' 现在由解析器优先取文件。TypeScript、Vite、esbuild、knip 都没问题；第 3、4 步完成后可以把 `store.ts` 挪成 `store/index.ts` 消除歧义。
 - 步骤 2 要不要做：只有三个字段，搬进类型目录的收益主要是"类型状态有落脚处"；如果第 1 步之后觉得已经够清楚，可以不做。
 - 将来如果要隔离重渲染，请求栏这一片是第一个候选，因为它更新最频繁（流式输出时每个事件都会写）。
