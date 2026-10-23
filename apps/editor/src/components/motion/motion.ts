@@ -2,12 +2,12 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { DEFAULT_SCENE_MS, MOTION_SIZES, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { attr, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_SIZES, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
 import { boardEmbed } from '../../boards';
-import { display, edit, editElement, parsed, toast, useStore } from '../../store';
+import { deleteFile, display, edit, editElement, parsed, toast, useStore } from '../../store';
 import { t } from '../../i18n';
 
 const get = useStore.getState;
@@ -238,4 +238,61 @@ export function setPieceNote(text: string): void {
     },
     t('motion.journal.pieceNote'),
   );
+}
+
+/** Scene ids in play order: `order` first (those with a file), the cover's scene is never among them. */
+const orderIds = () => motionOf().order.slice();
+
+/** A new scene after `after` (or at the end), in the look of its neighbour and laid out to the primary size. */
+export function addScene(after: string | null = null): string {
+  const m = motionOf();
+  const ids = orderIds();
+  const taken = sceneFiles().map((f) => sceneIdOf(f)!);
+  const id = uniqueSlideId(taken, 'scene-' + (ids.length + 1));
+  const neighbour = after ?? ids.at(-1) ?? null;
+  const root = neighbour ? rootElement(parsed(display(get(), sceneFile(neighbour)) ?? '')) : undefined;
+  const src = newSlideSource(id, { size: m.formats[primaryFormat(m)]?.size, like: root ? attr(root, 'style') : undefined, title: t('starter.sceneTitle'), body: t('starter.sceneHint') });
+  edit(sceneFile(id), () => src.replace('<section ', `<section data-duration="${formatTime(DEFAULT_SCENE_MS)}" `), { actor: 'human', summary: t('motion.journal.sceneCreated'), undoable: false });
+  editMotion((raw) => {
+    const order = ids.slice();
+    const at = after ? order.indexOf(after) + 1 : order.length;
+    order.splice(at > 0 ? at : order.length, 0, id);
+    raw.order = order;
+  }, t('motion.journal.sceneAdded', { id }));
+  return id;
+}
+
+export function duplicateScene(id: string): string | null {
+  const src = display(get(), sceneFile(id));
+  if (src === undefined) return null;
+  const ids = orderIds();
+  const copy = uniqueSlideId(sceneFiles().map((f) => sceneIdOf(f)!), id + '-copy');
+  edit(sceneFile(copy), () => withSlideId(src, copy), { actor: 'human', summary: t('motion.journal.sceneDuplicated', { id }), undoable: false });
+  editMotion((raw) => {
+    const order = ids.slice();
+    order.splice(order.indexOf(id) + 1, 0, copy);
+    raw.order = order;
+  }, t('motion.journal.sceneAdded', { id: copy }));
+  return copy;
+}
+
+/** Take a scene out of the piece and delete its file. The last one stays. */
+export async function deleteScene(id: string): Promise<void> {
+  const ids = orderIds();
+  if (ids.length <= 1) return void toast(t('motion.toast.lastScene'));
+  editMotion((raw) => {
+    raw.order = ids.filter((x) => x !== id);
+    if (raw.cover === id) delete raw.cover;
+  }, t('motion.journal.sceneRemoved', { id }));
+  await deleteFile(sceneFile(id));
+}
+
+/** Move a scene one place earlier (-1) or later (1). */
+export function moveScene(id: string, dir: -1 | 1): void {
+  const order = orderIds();
+  const i = order.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  editMotion((raw) => void (raw.order = order), t('motion.journal.sceneMoved', { id }));
 }

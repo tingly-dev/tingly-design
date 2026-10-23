@@ -1,7 +1,8 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { snapSceneMs, type MotionJson, type motionTimeline } from '@dc/core';
-import { addCover, removeCover, setCoverAt, setSceneDuration } from './motion';
+import { addCover, addScene, deleteScene, duplicateScene, moveScene, removeCover, setCoverAt, setSceneDuration } from './motion';
+import { Menu, MenuItem } from '../Menu';
 import { notesOf } from '../slides/slides';
 import { PauseFilled, Picture, PlayFilled } from '../icons';
 import { useElementSize } from '../../hooks';
@@ -49,6 +50,20 @@ export function Timeline(p: {
   const coverAt = pinMs ?? (p.coverAt !== null ? Math.min(p.coverAt, timeline.duration) : null);
   const frameMs = 1000 / (motion.fps || 30);
   const onCoverFrame = !cover && coverAt !== null && Math.abs(time * rate - coverAt) < frameMs * rate;
+
+  // a scene just made or copied: once it is on the axis, the playhead goes to its start
+  const [pending, setPending] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  useEffect(() => {
+    if (!pending) return;
+    const w = timeline.scenes.find((x) => x.id === pending);
+    if (!w) return void (motion.order.includes(pending) || setPending(null));
+    setPending(null);
+    seek(w.start / rate);
+  }, [pending, timeline, motion.order, rate, seek]);
+  const afterAdd = (id: string | null) => {
+    if (id) setPending(id);
+  };
 
   // ruler: a labelled tick at least ~64 px apart, four minor ticks between labels
   const [lanesRef, lanes] = useElementSize<HTMLDivElement>();
@@ -153,6 +168,9 @@ export function Timeline(p: {
             s
           </label>
         )}
+        <button className="btn ghost sm" onClick={() => afterAdd(addScene(!cover && current ? current.id : null))} title={t('motion.stage.sceneAddHint')}>
+          {t('motion.stage.sceneAdd')}
+        </button>
         {!cover && current && !onCoverFrame && (
           <button className="btn ghost sm mcoverset" onClick={() => (pause(), setCoverAt(time * rate))} title={t('motion.stage.coverFrameHint')}>
             <Picture />
@@ -245,6 +263,10 @@ export function Timeline(p: {
                     className={`mscene${!cover && current?.id === w.id ? ' on' : ''}${w.transition.kind !== 'cut' ? ' blend' : ''}`}
                     style={{ left: `${(w.start / axisMs) * 100}%`, width: `${((end - w.start) / axisMs) * 100}%` }}
                     onClick={() => seek(w.start / rate)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setMenu({ x: e.clientX, y: e.clientY, id: w.id });
+                    }}
                     onDoubleClick={() => seek(Math.max(w.start, end - 1000 / (motion.fps || 30)) / rate)}
                     title={hint}
                   >
@@ -274,6 +296,16 @@ export function Timeline(p: {
               );
             })}
           </div>
+          {menu && (
+            <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label={t('motion.stage.sceneMenu')}>
+              <MenuItem label={t('motion.stage.sceneAddAfter')} onSelect={() => (setMenu(null), afterAdd(addScene(menu.id)))} />
+              <MenuItem label={t('motion.stage.sceneDuplicate')} onSelect={() => (setMenu(null), afterAdd(duplicateScene(menu.id)))} />
+              <MenuItem disabled={motion.order[0] === menu.id} label={t('motion.stage.sceneEarlier')} onSelect={() => (setMenu(null), moveScene(menu.id, -1))} />
+              <MenuItem disabled={motion.order.at(-1) === menu.id} label={t('motion.stage.sceneLater')} onSelect={() => (setMenu(null), moveScene(menu.id, 1))} />
+              <hr />
+              <MenuItem label={t('motion.stage.sceneDelete')} danger onSelect={() => (setMenu(null), void deleteScene(menu.id))} />
+            </Menu>
+          )}
           {!cover && axis > 0 && <div className="mhead" style={{ left: `${(time / axis) * 100}%` }} />}
           {coverAt !== null && axisMs > 0 && (
             <div className={`mcoverpin${pinMs !== null ? ' dragging' : ''}`} style={{ left: `${(coverAt / axisMs) * 100}%` }}>

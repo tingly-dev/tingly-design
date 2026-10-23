@@ -57,6 +57,28 @@ async def main():
         box = await pg.locator('.medit .sframe').bounding_box()
         check('the stage stands up for a vertical piece', box and box['height'] > box['width'], str(box))
 
+        # --- scenes made by hand: add, duplicate, move, delete ------------------------------------------
+        order = lambda: json.load(open(os.path.join(REPO, 'projects/zz-motion/motion.json')))['order']
+        await pg.get_by_role('button', name='+ 场景').click()
+        await expect(pg.locator('.mscene')).to_have_count(2)
+        await expect(pg.locator('.mscene.on .mname')).to_have_text('scene-2')
+        check('+ Scene adds a scene after the current one and goes to it', order() == ['title', 'scene-2'], str(order()))
+        sc = open(os.path.join(REPO, 'projects/zz-motion/scenes/scene-2.html')).read()
+        check('the new scene is a timed page in the piece\'s look', 'data-duration="4s"' in sc and 'id="scene-2"' in sc, sc[:200])
+        await pg.locator('.mscene', has_text='title').click(button='right')
+        await pg.get_by_role('menuitem', name='复制').click()
+        await expect(pg.locator('.mscene')).to_have_count(3)
+        check('Duplicate puts a copy right after', order() == ['title', 'title-copy', 'scene-2'], str(order()))
+        await pg.locator('.mscene', has_text='scene-2').click(button='right')
+        await pg.get_by_role('menuitem', name='前移').click()
+        await expect(pg.locator('.mscene .mname').first).to_have_text('title')
+        check('Move earlier swaps with the one before', order() == ['title', 'scene-2', 'title-copy'], str(order()))
+        await pg.screenshot(path=OUT + 'motion-scenes.png')
+        await pg.locator('.mscene', has_text='title-copy').click(button='right')
+        await pg.get_by_role('menuitem', name='删除').click()
+        await expect(pg.locator('.mscene')).to_have_count(2)
+        check('Delete takes the scene out and removes its file', order() == ['title', 'scene-2'] and not os.path.exists(os.path.join(REPO, 'projects/zz-motion/scenes/title-copy.html')))
+
         # the last size is the next default; a custom one is kept in the person's own
         await pg.goto(BASE + '/')
         await pg.locator('.lnewbtn').click()

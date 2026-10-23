@@ -3,6 +3,8 @@ import type { Locale } from '../../types';
 
 export default {
   canvasHint: '双击改字，或在下方让 AI 修改。',
+  sceneTitle: '场景标题',
+  sceneHint: '双击编辑文字，或让下面的 AI 修改这个场景。',
   slideTitle: '标题',
   slideHint: '双击改字，或在下方让 AI 修改这一页。',
   dashEmpty: '还没有数据。把 CSV / JSON 放进 data/，或者让 Claude Code 连上数据、写这个看板。',
