@@ -29,7 +29,7 @@ import {
   type ClaudeDesignNote,
   type ClaudeDesignKind,
 } from '@dc/core';
-import { HttpError, PROJECTS_DIR, isProjectName, kindOf, linkedProjects, projectDir } from './store';
+import { HttpError, PROJECTS_DIR, isProjectName, kindOf, linkedProjects, projectDir, resolveKey } from './store';
 import type { TFunction } from '@dc/i18n';
 import { VERSION } from './layout';
 
@@ -80,7 +80,7 @@ export async function packProject(name: string, opts: ArchiveOptions, dir = proj
     const index = await readFile(join(dir, INDEX_FILE[kind]), 'utf8').catch(() => undefined);
     for (const sys of installedSystems(index)) {
       if (sys === name || !isProjectName(sys)) continue;
-      const sdir = projectDir(sys);
+      const sdir = projectDir(resolveKey(sys));
       if ((await kindOf(sdir)) !== 'design-system') continue;
       files += await addFolder(zip, sdir, sys, { journal: false });
       systems.push(sys);

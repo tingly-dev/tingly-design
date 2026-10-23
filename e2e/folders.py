@@ -188,6 +188,24 @@ async def main():
             await ctx.close()
         await b.close()
     cleanup()
+
+    # --- names an earlier version gave a folder keep working, and the file moves to the new ones -------
+    mig = os.path.join(TMP, 'migrate')
+    pdir, here = os.path.join(mig, 'projects'), os.path.join(mig, 'site')
+    os.makedirs(pdir)
+    shutil.copytree(os.path.join(REPO, 'projects', 'box-console'), here, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
+    json.dump({'old-site': here}, open(os.path.join(pdir, '.links.json'), 'w'))
+    def cli(*args):
+        return subprocess.run(['pnpm', '-s', 'tingly-design', '--projects', pdir, *args], cwd=REPO, capture_output=True, text=True, env={**os.environ, 'DC_PROJECTS': pdir})
+    r = cli('list', '--json')
+    cards = json.loads(r.stdout or '[]')
+    check('a project linked under an older name is listed under the name made from its path', len(cards) == 1 and re.fullmatch(r'site-[0-9a-f]{6}', cards[0]['name']) is not None, r.stdout + r.stderr)
+    time.sleep(1)
+    rewritten = json.load(open(os.path.join(pdir, '.links.json')))
+    check('the links file holds the new name and keeps the old one', cards and rewritten.get(cards[0]['name']) == here and rewritten.get('old-site') == here, str(rewritten))
+    r = cli('check', 'old-site', '--name')
+    check('the older name still finds the project on the command line', r.returncode == 0, r.stdout + r.stderr)
+
     failed = [n for n, ok in results if not ok]
     print(f"\n{len(results) - len(failed)}/{len(results)} passed")
     if failed: raise SystemExit(1)

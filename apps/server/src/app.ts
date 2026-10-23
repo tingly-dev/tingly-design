@@ -69,6 +69,16 @@ app.get('/api/health', async (c) => {
   });
 });
 
+/** A request that names a project by a name an earlier version gave it goes to the project's current name, so the hub, the journal and the runs only ever see one key. */
+app.use('/api/projects/:p/*', async (c, next) => {
+  const p = c.req.param('p');
+  const key = resolveKey(p);
+  if (key === p) return next();
+  const url = new URL(c.req.url);
+  url.pathname = url.pathname.replace(/(\/api\/projects\/)[^/]+/, `$1${key}`);
+  return c.redirect(url.toString(), 308);
+});
+
 app.get('/api/projects', async (c) => c.json(await listProjects()));
 
 /** The name a project answers to now, for an address that carries one an older version gave it. */

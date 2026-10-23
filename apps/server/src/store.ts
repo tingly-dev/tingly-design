@@ -112,7 +112,7 @@ function idFor(abs: string): string {
 const links = new Map<string, string>();
 const aliases = new Map<string, string>();
 if (LINKS_ON) {
-  const stored = readLinks();
+  const stored = readLinks().map(([key, dir]): [string, string] => [key, resolve(dir)]);
   for (const [key, dir] of stored) {
     links.set(idFor(dir), dir);
     if (key !== idFor(dir)) aliases.set(key, dir);
@@ -120,6 +120,11 @@ if (LINKS_ON) {
   // the file is rewritten once, when it still lacks a folder's name made from its path
   const keys = new Set(stored.map(([key]) => key));
   if ([...links.keys()].some((id) => !keys.has(id))) setTimeout(() => void saveLinks().catch(() => {}), 0);
+}
+
+/** The older names a linked project is still known by. */
+function aliasesOf(dir: string): string[] {
+  return [...aliases].filter(([, d]) => d === dir).map(([k]) => k);
 }
 
 /**
@@ -441,7 +446,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path } : {}) });
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
     } catch {
       // unreadable index
     }

@@ -263,11 +263,16 @@ export function toast(text: string, kind: Toast['kind'] = 'info', action?: Toast
 
 let stopEvents: (() => void) | null = null;
 
-export async function openProject(asked: string): Promise<void> {
+export async function openProject(name: string): Promise<void> {
   stopEvents?.();
-  // an address from an older version names the project as it was named then
-  const name = await api.resolve(asked).then((r) => r.name, () => asked);
-  if (name !== asked) history.replaceState(null, '', `${location.pathname}?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), p: name })}`);
+  // an address from an older version names the project as it was named then: the server answers to
+  // it, and the address is brought up to date once the project is open
+  void api.resolve(name).then((r) => {
+    if (r.name === name || new URLSearchParams(location.search).get('p') !== name) return;
+    const q = new URLSearchParams(location.search);
+    q.set('p', r.name);
+    history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
+  }, () => {});
   set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], ...agentReset(), slide: null, present: null, motionView: null });
   const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
   const entries: Record<string, FileEntry> = {};

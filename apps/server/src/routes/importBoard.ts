@@ -19,7 +19,6 @@ export function registerImportBoard(app: Hono): void {
     const { from: named, board } = await c.req.json<{ from: string; board: string }>();
     if (!isProjectName(named ?? '')) throw new HttpError(400, 'badProjectName');
     const from = resolveKey(named);
-    if (!isProjectName(from)) throw new HttpError(400, 'badProjectName');
     const kind = await kindOf(projectDir(p));
     if (kind !== 'slides' && kind !== 'motion') throw new HttpError(400, 'importBoardInto');
     if ((await kindOf(projectDir(from))) !== 'design') throw new HttpError(404, 'notCanvas', { name: from });
