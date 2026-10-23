@@ -125,6 +125,7 @@ async function json<T>(res: Response): Promise<T> {
 const enc = encodeURIComponent;
 
 export const api = {
+  resolve: (p: string) => call(at(`api/resolve/${enc(p)}`)).then((r) => json<{ name: string }>(r)),
   health: () => call(at('api/health')).then((r) => json<Health>(r)),
   aiConfig: () => call(at('api/ai-config')).then((r) => json<AiConfig>(r)),
   saveAiConfig: (d: AiDraft) =>
