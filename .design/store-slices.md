@@ -1,6 +1,6 @@
 # 编辑器的状态：把一个大 store 按"谁用它"分成几片
 
-状态：**实施中**（方案已确认；第 1 步已实施，第 2–4 步待做）。图见 [store-slices.pencil.md](./store-slices.pencil.md)；类型登记的做法见 [kind-registry.md](./kind-registry.md)，这份是它留下的最后一块。
+状态：**实施中**（方案已确认；第 1、3 步已实施，第 2、4 步待做）。图见 [store-slices.pencil.md](./store-slices.pencil.md)；类型登记的做法见 [kind-registry.md](./kind-registry.md)，这份是它留下的最后一块。
 
 ## 1. 问题
 
@@ -74,7 +74,9 @@
    - 切片不 import `useStore`：`setBarMode`、`setBarCollapsed`、`undoDelegate` 要调 `set`/`edit`，仍留在 `store.ts`，切片只给补丁。这样避免 `store.ts ⇄ store/agent.ts` 的循环引用，切片也能脱离 store 单测。
    - 消费方只改了类型的 import 路径（5 个文件）；字段读写一行没动。
 2. **类型自己的状态**：幻灯片的 `slide`、`present` 放进 `components/slides/`，动效的 `motionView` 放进 `components/motion/`，同样导出字段、初始值和动作，由 `store.ts` 拼进来。
-3. **编辑引擎**：`edit`、`enqueueResult`、`editElement`、`retypeText`、`undo`、`redo`、`deleteFile` 等搬到 `editEngine.ts`，`store.ts` 只留读取用的选择器和状态本身。
+3. **编辑引擎（已实施）**：`apps/editor/src/editEngine.ts` 放 `edit`、`enqueueResult`、保存队列（`pump`）、`editElement`、`retypeText`、`editCanvas`、`undo` / `redo`、`deleteFile`、`deleteBoard`、`inertDocument`、`isSaving`。状态、读取用的选择器（`display`、`canvasOf`、`deckOf`……）和 `toast` 仍在 `store.ts`。
+   - `store.ts` 再导出引擎的公开函数，所以约 30 个调用方的 import 不变；代价是 `store.ts ⇄ editEngine.ts` 互相引用。这是安全的，前提是 `editEngine.ts` 在模块加载时不碰 `useStore`（它的 `get` / `set` 是函数，不是 `useStore.getState` 的别名；曾经写成别名，页面直接报 "Cannot access 'useStore' before initialization"）。文件头注释写了这条。
+   - 要彻底去掉这个环，得把 `State`、`display`、`toast` 等放进一个不依赖引擎的叶子模块；那时再让调用方直接 import `editEngine`。
 4. **项目加载与事件订阅**：`openProject` 和文件事件处理搬到 `project.ts`。
 
 做完后 `store.ts` 只剩"拼装 + 选择器"，预计二三百行。
