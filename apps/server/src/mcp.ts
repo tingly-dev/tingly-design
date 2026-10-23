@@ -139,14 +139,14 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
         const made = await create(ctx, { kind: str(a.kind), target: str(a.project), title: str(a.title), size: str(a.size), look: str(a.look), global: !looksLikePath(str(a.project) ?? '') });
         return opened(made);
       }
-      return opened(await resolveProject(ctx, str(a.project), 'list'));
+      return opened(await resolveProject(ctx, str(a.project), 'list', 'name'));
     }
     case 'check': {
-      const r = await check(ctx, await resolveProject(ctx, str(a.project), 'check'));
+      const r = await check(ctx, await resolveProject(ctx, str(a.project), 'check', 'name'));
       return json(r);
     }
     case 'look': {
-      const p = await resolveProject(ctx, str(a.project), 'check');
+      const p = await resolveProject(ctx, str(a.project), 'check', 'name');
       const one = str(a.pick);
       const r = await check(ctx, p, { snapshots: true, pick: pickFor(p.kind, one), format: p.kind === 'motion' && one ? [one] : undefined });
       const out: Content[] = json({ ...r, snapshots: r.snapshots?.files });
@@ -162,21 +162,21 @@ async function callTool(ctx: Ctx, name: string, a: Args): Promise<Content[]> {
       return out;
     }
     case 'export': {
-      const p = await resolveProject(ctx, str(a.project), 'export');
+      const p = await resolveProject(ctx, str(a.project), 'export', 'name');
       const format = Array.isArray(a.format) ? a.format.map(String) : str(a.format)?.split(',').map((f) => f.trim());
       // files go next to the project, never wherever this process happens to run
       const r = await exportProject(ctx, p, { as: str(a.as), out: resolve(p.dir, 'renders'), ...pickFor(p.kind, str(a.pick)), format, scale: typeof a.scale === 'number' ? a.scale : undefined });
       return json(r);
     }
     case 'prompt': {
-      const p = await resolveProject(ctx, str(a.project), 'prompt');
+      const p = await resolveProject(ctx, str(a.project), 'prompt', 'name');
       const session = str(a.session);
       const r = await prompt(ctx, p, { text: str(a.prompt), file: str(a.file), resume: session === 'new' ? undefined : session, fresh: session === 'new', fast: a.fast === true, source: 'mcp' });
       // a run that failed or was stopped still says so in `outcome`, with what it changed before it ended
       return json(r);
     }
     case 'history': {
-      const p = await resolveProject(ctx, str(a.project), 'history');
+      const p = await resolveProject(ctx, str(a.project), 'history', 'name');
       return json(await history(ctx, p, { since: str(a.since), limit: typeof a.limit === 'number' ? a.limit : undefined }));
     }
     default:
@@ -252,7 +252,7 @@ async function getPrompt(ctx: Ctx, name: string, a: Record<string, unknown>) {
     kind = k;
     lead = `Make a new ${wordOf(k)} project: call \`open\` with project "${str(a.name)}" and kind "${wordOf(k)}", then fill it. ${STEPS}`;
   } else if (name === 'edit') {
-    const p = await resolveProject(ctx, str(a.project), 'list');
+    const p = await resolveProject(ctx, str(a.project), 'list', 'name');
     kind = p.kind;
     lead = `Change the project "${p.name}" (a ${wordOf(p.kind)}, folder ${p.dir}). Call \`open\` first to see what is in it. ${STEPS}`;
   } else {

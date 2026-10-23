@@ -33,7 +33,7 @@ pnpm tingly-design …              # 在本仓库里
 | `skills [add [文件夹]]` | agent 改项目前要读的格式说明，每种类型一份。`add` 把它们复制到文件夹的 `.claude/skills/`（默认：当前文件夹），连同格式说明指向的参考页（`reference/*.md`），在那里工作的 Claude Code 就认得这些文件；和这个版本不一样的副本保留，除非加 `--force`。 |
 | `mcp` | 以 stdio 上的 MCP 服务提供这些命令，给 agent 启动用（见下）。 |
 
-项目可以是启动页上的名字，也可以是文件夹路径。`list`、`check`、`export` 就地读路径，不会把它加到启动页上。
+项目由它的文件夹决定：参数默认是路径（`./pitch`、`~/work/site`），`export`、`prompt`、`history` 不给参数就是当前所在的文件夹。名字可以重复、路径不会，所以只有加 `-n` / `--name` 才按名字找（`tingly-design check pitch --name`）；名字对应多个项目时列出每个路径，不替你挑。只写一个词、又不是项目文件夹时，会告诉你那个名字的项目在哪里。编辑器启动的 Claude Code 会话不在项目文件夹里运行，参数按名字读。`list`、`check`、`export` 就地读路径，不会把它加到启动页上。
 
 ## 编辑器已经打开时
 

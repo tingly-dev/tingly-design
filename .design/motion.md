@@ -299,9 +299,9 @@ The spike is in this branch. It has no editor UI; it proves the format, the runt
 | Sample: "Tingly Design", a 36 s product promo in twelve scenes (authored at reading pace, played at `"speed": 1.5`), 16:9 and 9:16 from the same files | `projects/design-motion/`, listed in the launcher and seeded as a sample |
 
 ```bash
-pnpm tingly-design export design-motion --as mp4
-pnpm tingly-design export design-motion --as html
-pnpm tingly-design check design-motion --snapshots
+pnpm tingly-design export design-motion --as mp4 --name
+pnpm tingly-design export design-motion --as html --name
+pnpm tingly-design check design-motion --snapshots --name
 ```
 
 What the sample shows: the product story, with no code on screen. Its cover is a separate page (`scenes/poster.html`: the mark and the name, large enough to read as a thumbnail; a busier version with the promise, the six kinds and the product on screen was dropped for this), used as the PNG, the MP4's cover art and its first frame. (0) An animated opening: the name, the promise and four things it makes floating around it. (1) An idea typed into the prompt ("A landing page for a coffee subscription") and the AI building the page. (2) A cursor clicking the headline, then a text caret backspacing over it and typing a new one, character by character: editing by hand, in place. (3) A second prompt ("Make it warmer and add a pricing section") and the AI changing the same page. (4) The six kinds of project, one scene each: canvas, slides, design systems, dashboards, docs, and motion itself (marked new). (5) A recap and the brand close ("Coming soon"). It exercises `rise`, `pop`, `fade`, `wipe`, `type`, `count`, `spin`, `slam`; cursor paths with `data-keys` (holds, then eased glides) with a separate path per format (`data-keys-tall`); state changes drawn as overlays that fade or type in over the old state; `data-tall` turning the artboard into a phone layout. Earlier samples (a dark one about Tingly Box, a fast beat-cut one, and one showing the source file and a git diff) were dropped after review: too fast, too technical, or not about the product's features.

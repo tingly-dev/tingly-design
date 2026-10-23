@@ -8,7 +8,7 @@ out=docs/images/readme
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 pnpm --filter @dc/sandbox build
-pnpm -s tingly-design export design-motion --as mp4 --format wide --out "$tmp"
+pnpm -s tingly-design export projects/design-motion --as mp4 --format wide --out "$tmp"
 cp "$tmp/design-motion-wide-cover.png" "$out/cover.png"
 gif() { # start seconds, length, output
   ffmpeg -loglevel error -y -ss "$1" -t "$2" -i "$tmp/design-motion-wide.mp4" \

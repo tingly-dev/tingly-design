@@ -19,6 +19,6 @@ if [[ -z "${DC_CHROME:-}" && -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
   export DC_CHROME
 fi
 
-(cd "$root" && pnpm -s tingly-design export design-motion --as mp4 --format wide,tall --out "$out/media")
+(cd "$root" && pnpm -s tingly-design export projects/design-motion --as mp4 --format wide,tall --out "$out/media")
 
 ls "$out/media"

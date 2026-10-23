@@ -10,10 +10,10 @@ import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
 import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
-import { EDITOR_DIST, ROOT, SANDBOX_DIST } from './layout';
+import { EDITOR_DIST, PROJECTS_DIR, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
 import { call, findEditor, ownEditor } from './running';
-import { createProject, isProjectName, kindOf, linkFolder, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
+import { createProject, isProjectName, kindOf, linkFolder, linkedProjects, LINKS_ON, listProjects, nameOfFolder, projectDir, readFolder, unlinkProject, visitFolder } from './store';
 
 export type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed, and the internal names they map to. */
@@ -152,14 +152,51 @@ export function expandHome(p: string): string {
 
 export const looksLikePath = (arg: string) => /[/\\]/.test(arg) || arg.startsWith('.') || arg.startsWith('~');
 
-/** A project named by its launcher name, or a path to its folder (read where it is, not linked). */
-export async function resolveProject(ctx: Ctx, arg: string | undefined, command: string): Promise<Project> {
+/**
+ * The project a command is about. A folder decides which project it is, so the argument is a path by
+ * default (no argument: the folder you are in); `by: 'name'` reads it as a name instead, which several
+ * projects may share, so a name that fits more than one is listed with every path rather than guessed.
+ */
+export async function resolveProject(ctx: Ctx, arg: string | undefined, command: string, by: 'path' | 'name' = 'path'): Promise<Project> {
   const t = translator(ctx.lang);
-  if (!arg) throw new CommandError(t('cli.needProject', { command }));
-  const dir = looksLikePath(arg) ? resolve(expandHome(arg)) : projectDir(arg);
-  const kind = await kindOf(dir);
-  if (!kind) throw new CommandError(looksLikePath(arg) ? t('cli.noProjectAt', { path: dir }) : t('errors.noProject', { name: arg }), 1);
-  return { name: looksLikePath(arg) ? (nameOfFolder(dir) ?? basename(dir)) : arg, dir, kind };
+  const at = async (dir: string): Promise<Project | null> => {
+    const kind = await kindOf(dir);
+    return kind ? { name: nameOfFolder(dir) ?? basename(dir), dir, kind } : null;
+  };
+  if (!arg) {
+    const here = by === 'path' ? await at(process.cwd()) : null;
+    if (here) return here;
+    throw new CommandError(t('cli.needProject', { command }));
+  }
+  if (by === 'path' || looksLikePath(arg)) {
+    const dir = resolve(expandHome(arg));
+    const found = await at(dir);
+    if (found) return found;
+    // the folder is the identity, so a name is never taken for one; say where the project of that name is
+    const named = by === 'path' && !looksLikePath(arg) ? await projectsNamed(arg) : [];
+    throw new CommandError(t('cli.noProjectAt', { path: dir }) + (named.length ? '\n' + t('cli.useName', { name: arg, paths: named.map((p) => p.dir).join('\n  ') }) : ''), 1);
+  }
+  const named = await projectsNamed(arg);
+  if (named.length > 1) throw new CommandError(t('cli.nameAmbiguous', { name: arg, paths: named.map((p) => `  ${p.dir}`).join('\n') }), 1);
+  if (!named.length) throw new CommandError(t('errors.noProject', { name: arg }), 1);
+  return named[0]!;
+}
+
+/** The project called `name`: the one with that launcher name, else every one whose folder has that name. */
+async function projectsNamed(name: string): Promise<Project[]> {
+  const exact = isProjectName(name) ? projectDir(name) : undefined;
+  const kind = exact && (await kindOf(exact));
+  if (exact && kind) return [{ name, dir: exact, kind }];
+  const out = new Map<string, Project>();
+  const names = new Set([...linkedProjects().keys(), ...(await readdir(PROJECTS_DIR).catch(() => [] as string[]))]);
+  for (const n of names) {
+    if (!isProjectName(n)) continue;
+    const dir = projectDir(n);
+    if (basename(dir) !== name) continue;
+    const k = await kindOf(dir);
+    if (k) out.set(dir, { name: n, dir, kind: k });
+  }
+  return [...out.values()];
 }
 
 async function texts(dir: string): Promise<Record<string, string>> {

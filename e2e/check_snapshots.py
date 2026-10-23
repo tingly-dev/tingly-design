@@ -11,7 +11,7 @@ def check(name, ok, extra=''):
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
 
 def run(projects, name):
-    out = subprocess.run(['pnpm', '-s', 'tingly-design', 'check', name, '--snapshots', '--json'], cwd=REPO, capture_output=True, text=True,
+    out = subprocess.run(['pnpm', '-s', 'tingly-design', 'check', name, '-n', '--snapshots', '--json'], cwd=REPO, capture_output=True, text=True,
                          env={**os.environ, 'DC_PROJECTS': projects}, timeout=300)
     try: return json.loads(out.stdout)
     except ValueError: raise SystemExit(f'check printed no JSON:\n{out.stdout[-2000:]}\n{out.stderr[-2000:]}')

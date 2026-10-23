@@ -57,6 +57,7 @@ const { values: opts, positionals } = (() => {
         new: { type: 'boolean' },
         interactive: { type: 'boolean', short: 'i' },
         global: { type: 'boolean' },
+        name: { type: 'boolean', short: 'n' },
         fast: { type: 'boolean' },
         since: { type: 'string' },
         limit: { type: 'string' },
@@ -97,7 +98,7 @@ function show(abs: string): string {
 }
 
 const print = (v: unknown) => console.log(JSON.stringify(v, null, 2));
-const project = (arg: string | undefined, command: string) => cmd.resolveProject(ctx, arg, command);
+const project = (arg: string | undefined, command: string) => cmd.resolveProject(ctx, arg, command, opts.name || process.env.DC_PROJECT_ARG === 'name' ? 'name' : 'path');
 /** While the editor's page opens in Chrome (a few seconds), a terminal says so. */
 const tty = () => process.stderr.isTTY && !opts.json;
 const opening = () => tty() && process.stderr.write(t('cli.opening'));
@@ -130,7 +131,8 @@ async function open(arg: string | undefined): Promise<void> {
   const running = opts.port ? null : await editor();
   if (running) {
     const { call } = await import('./running');
-    const name = !arg ? undefined : cmd.looksLikePath(arg) ? (await call<{ name: string }>(running, 'api/links', lang, { path: resolve(expandHome(arg)) })).name : (await project(arg, 'open')).name;
+    const dir = arg ? (await project(arg, 'open')).dir : undefined;
+    const name = !dir ? undefined : (await import('./store')).nameOfFolder(dir) ?? (await call<{ name: string }>(running, 'api/links', lang, { path: dir })).name;
     const url = name ? `${running.editor}?p=${encodeURIComponent(name)}` : running.editor;
     if (opts.json) return print({ url, running: true, pid: running.pid, projects: layout.PROJECTS_DIR });
     console.log(t('cli.attached', { url, pid: running.pid }));
@@ -138,10 +140,9 @@ async function open(arg: string | undefined): Promise<void> {
   }
   let name: string | undefined;
   if (arg) {
-    if (cmd.looksLikePath(arg)) {
-      const { linkFolder } = await import('./store');
-      name = await linkFolder(resolve(expandHome(arg)));
-    } else name = (await project(arg, 'open')).name;
+    const { linkFolder, nameOfFolder } = await import('./store');
+    const dir = (await project(arg, 'open')).dir;
+    name = nameOfFolder(dir) ?? (await linkFolder(dir));
   }
   const s = await start(opts.port ? Number(opts.port) : Number(process.env.PORT ?? 8787), opts.host ?? (process.env.DC_HOST?.trim() || '127.0.0.1'), !opts.port);
   const url = name ? `${s.url}?p=${encodeURIComponent(name)}` : s.url;
@@ -186,8 +187,8 @@ async function create(kind: string | undefined, target: string | undefined): Pro
     // the next step of the journey: open it, or say how
     if (!opts.json && (await w.confirm('openNow'))) {
       w.close();
-      await open(p.name);
-    } else if (!opts.json) console.log(t('cli.createdNext', { name: p.name }));
+      await open(p.dir);
+    } else if (!opts.json) console.log(t('cli.createdNext', { path: /\s/.test(show(p.dir)) ? JSON.stringify(show(p.dir)) : show(p.dir) }));
   } finally {
     w.close();
   }
