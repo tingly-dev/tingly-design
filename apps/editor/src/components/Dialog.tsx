@@ -68,6 +68,8 @@ export function Dialog({
       const first = all[0];
       const last = all[all.length - 1];
       const at = document.activeElement;
+      // a menu opened from the dialog is drawn on the body: its own keys, not the dialog's
+      if (at?.closest('[role=menu]')) return;
       if (!el.contains(at)) {
         e.preventDefault();
         first.focus();

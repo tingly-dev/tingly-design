@@ -25,6 +25,8 @@ export function useBarKeys(box: RefObject<HTMLTextAreaElement | null>): void {
     };
     // a click inside an artboard never reaches this document, but it selects something (or moves focus into its frame)
     const away = (e: PointerEvent) => {
+      // a menu opened from the bar is drawn on the body but belongs to it
+      if ((e.target as Element).closest?.('[role=menu]')) return;
       if (!box.current?.closest('.prompt, .dsask')?.contains(e.target as Node)) letGo();
     };
     const unselect = useStore.subscribe((s, prev) => {
