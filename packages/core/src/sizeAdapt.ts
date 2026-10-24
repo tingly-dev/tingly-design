@@ -179,7 +179,7 @@ export function seedFormat(source: string, from: Size, to: Size, format: string)
     if (!changed.length) continue;
     const value = changed.map((d) => `${d.prop}:${d.value}`).join(';').replace(/"/g, '&quot;');
     const end = el.startTag.end - 1;
-    edits.push({ at: source[end - 1] === '/' ? end - 1 : end, text: ` ${name}="${value}"` });
+    edits.push({ at: source[end - 1] === '/' && /[\s"']/.test(source[end - 2] ?? '') ? end - 1 : end, text: ` ${name}="${value}"` });
   }
   let out = source;
   for (const e of edits.sort((a, b) => b.at - a.at)) out = out.slice(0, e.at) + e.text + out.slice(e.at);

@@ -285,7 +285,7 @@ export function MotionProps() {
           {t('motion.motionProps.addFormat')}
         </button>
       )}
-      {shifted && (
+      {shifted && m.formats[shifted] && (
         <div className="hint">
           {t('panel.size.relayoutHint')}
           <br />
