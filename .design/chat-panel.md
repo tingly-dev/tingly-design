@@ -166,6 +166,7 @@
 
 - **外壳**：`ChatShell`（`ChatPanel.tsx`）包住 `App`。关着时 `.chat-shell` 和 `.chat-work` 都是 `display: contents`，不影响任何布局；打开时 `.chat-work` 有 `transform`，里面 `position: fixed` 的东西（顶栏、`.app`）相对它而不是窗口。两种状态下树的形状一样，所以换位置、窗口变窄都不重建作品。
 - **槽位**：列里有两个槽，输入框的和类型自己的列的。`RequestBar` 左侧时把输入部分 portal 到输入框槽；`ListColumn` 把幻灯片、文档、设计系统的列 portal 到第一个页签槽，并把页签名告诉外壳。记录里点文件名、"放回输入框"要回到输入框所在的 `RequestBar`，经外壳里的一个 ref（`bridge`）。
+- **菜单**：请求栏自己用 `translateX(-50%)` 居中，所以它也是里面 `position: fixed` 的包含块。`Menu` 因此统一 portal 到 `<body>`（和上面说的弹窗、菜单一致），调用方在哪个带 `transform` 的祖先里都按窗口坐标定位；位置菜单曾因此在仪表盘里掉到窗口外，选不到“左侧”。
 - **一轮的来源**：`turns.ts` 把服务端存的轮次和这个页面里的活动运行（`delegates`、`fast`）按 `id` 合并，活动的优先，但页面是跑到一半才打开的，则保留记录里更长的步骤。一轮结束时进 `store.turns`，快速 AI 的还 POST 给服务端（`api.keepTurn`）；快速 AI 交给 Claude Code 的那次只算 Claude Code 的一轮（`via: 'fast'`）。
 - **服务端读到"还在跑"但进程已经没了**（重启、崩溃）：`GET …/transcript` 把超过 20 秒且 `children` 里没有它的 Claude Code 轮次改成失败并写"这次运行在结束前被中断了"，不改文件。
 - **一个词的 key**：`dc.barMode` 是 `float` / `left`；旧值 `auto` 读作 `left`。

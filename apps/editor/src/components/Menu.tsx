@@ -1,7 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Info } from './icons';
 
-/** A popover menu at a screen point; closes on outside click or Escape. */
+/**
+ * A popover menu at a screen point; closes on outside click or Escape. It is drawn on the body, not
+ * where it is used: a caller inside a transformed ancestor (the request bar is centred with a
+ * transform) would otherwise make that ancestor the menu's containing block and put it off screen.
+ */
 export function Menu({
   x,
   y,
@@ -60,10 +65,11 @@ export function Menu({
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div ref={ref} className="menu" role="menu" aria-label={label} style={{ left: pos.x, top: pos.y }}>
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
