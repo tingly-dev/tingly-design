@@ -22,6 +22,7 @@ export * from './launcher';
 export * from './attachments';
 export * from './motion';
 export * from './boardSizes';
+export * from './sizeAdapt';
 export * from './looks';
 export * from './newWizard';
 export * from './activity';

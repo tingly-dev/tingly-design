@@ -20,13 +20,30 @@ export function sizeName(size: readonly number[]): string {
   return `s${size[0]}x${size[1]}`;
 }
 
-export const BOARD_GROUPS = ['screen', 'slides', 'social', 'ads', 'print', 'ratio'] as const;
+export const BOARD_GROUPS = ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio'] as const;
 export type BoardGroup = (typeof BOARD_GROUPS)[number];
 
 export const BOARD_SIZES = [
   { id: 'artboard', group: 'screen', size: [1200, 760] },
   { id: 'desktop', group: 'screen', size: [1440, 900] },
   { id: 'mobile', group: 'screen', size: [390, 844] },
+  { id: 'iphonese', group: 'device', size: [375, 667] },
+  { id: 'iphone15', group: 'device', size: [393, 852] },
+  { id: 'iphonemax', group: 'device', size: [430, 932] },
+  { id: 'pixel', group: 'device', size: [412, 915] },
+  { id: 'galaxys8', group: 'device', size: [360, 740] },
+  { id: 'galaxyfold', group: 'device', size: [280, 653] },
+  { id: 'ipadmini', group: 'device', size: [768, 1024] },
+  { id: 'ipadair', group: 'device', size: [820, 1180] },
+  { id: 'ipadpro11', group: 'device', size: [834, 1194] },
+  { id: 'ipadpro', group: 'device', size: [1024, 1366] },
+  { id: 'nesthub', group: 'device', size: [1024, 600] },
+  { id: 'laptop', group: 'device', size: [1366, 768] },
+  { id: 'macbook14', group: 'device', size: [1512, 982] },
+  { id: 'macbook16', group: 'device', size: [1728, 1117] },
+  { id: 'bilibili', group: 'social', size: [1146, 717] },
+  { id: 'xpost', group: 'social', size: [1600, 900] },
+  { id: 'igland', group: 'social', size: [1080, 566] },
   { id: 'wide', group: 'slides', size: [1920, 1080], format: 'wide' },
   { id: 'standard', group: 'slides', size: [1600, 1200] },
   { id: 'square', group: 'social', size: [1080, 1080], format: 'square' },
