@@ -1,12 +1,25 @@
-import { validSize } from './motion';
 
 /**
  * The artboard sizes a canvas offers by name: the New dialog's picker, the board panel's preset list and
  * the command line's `--size`, in groups by what the board is for. One list; to add or retire a size, change it here and give its two strings
  * in @dc/i18n (`canvas.boardSize.<id>` the name, `canvas.boardFor.<id>` where it is used), nothing else.
- * Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
+ * A size that was a motion format's key before motion shared this list names it in `format` (motion.json keeps those keys). Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
  * Sizes are CSS pixels, the unit a canvas draws in.
  */
+export const MAX_FORMAT_PX = 7680;
+
+/** A size usable for a board, slide or motion format, rounded, or null. */
+export function validSize(size: unknown): [number, number] | null {
+  if (!Array.isArray(size) || size.length !== 2) return null;
+  const [w, h] = size.map((v) => Math.round(Number(v)));
+  return w > 0 && h > 0 && w <= MAX_FORMAT_PX && h <= MAX_FORMAT_PX ? [w, h] : null;
+}
+
+/** The key a custom size gets in motion.json when its owner gives no name: `s1280x720`. */
+export function sizeName(size: readonly number[]): string {
+  return `s${size[0]}x${size[1]}`;
+}
+
 export const BOARD_GROUPS = ['screen', 'slides', 'social', 'ads', 'print', 'ratio'] as const;
 export type BoardGroup = (typeof BOARD_GROUPS)[number];
 
@@ -14,12 +27,12 @@ export const BOARD_SIZES = [
   { id: 'artboard', group: 'screen', size: [1200, 760] },
   { id: 'desktop', group: 'screen', size: [1440, 900] },
   { id: 'mobile', group: 'screen', size: [390, 844] },
-  { id: 'wide', group: 'slides', size: [1920, 1080] },
+  { id: 'wide', group: 'slides', size: [1920, 1080], format: 'wide' },
   { id: 'standard', group: 'slides', size: [1600, 1200] },
-  { id: 'square', group: 'social', size: [1080, 1080] },
-  { id: 'portrait', group: 'social', size: [1080, 1350] },
-  { id: 'tall', group: 'social', size: [1080, 1440] },
-  { id: 'story', group: 'social', size: [1080, 1920] },
+  { id: 'square', group: 'social', size: [1080, 1080], format: 'square' },
+  { id: 'portrait', group: 'social', size: [1080, 1350], format: 'portrait' },
+  { id: 'tall', group: 'social', size: [1080, 1440], format: 'upright' },
+  { id: 'story', group: 'social', size: [1080, 1920], format: 'tall' },
   { id: 'wechat', group: 'social', size: [900, 383] },
   { id: 'og', group: 'social', size: [1200, 630] },
   { id: 'thumbnail', group: 'social', size: [1280, 720] },
@@ -35,7 +48,7 @@ export const BOARD_SIZES = [
   { id: 'skyscraper', group: 'ads', size: [160, 600] },
   { id: 'a4', group: 'print', size: [794, 1123] },
   { id: 'letter', group: 'print', size: [816, 1056] },
-  { id: 'classic', group: 'ratio', size: [1440, 1080] },
+  { id: 'classic', group: 'ratio', size: [1440, 1080], format: 'classic' },
   { id: 'landscape32', group: 'ratio', size: [1620, 1080] },
   { id: 'portrait23', group: 'ratio', size: [1080, 1620] },
   { id: 'landscape21', group: 'ratio', size: [2160, 1080] },
@@ -43,7 +56,7 @@ export const BOARD_SIZES = [
   { id: 'ultrawide', group: 'ratio', size: [2520, 1080] },
   { id: 'cinema', group: 'ratio', size: [2580, 1080] },
   { id: 'wide1610', group: 'ratio', size: [1920, 1200] },
-] as const satisfies readonly { id: string; group: BoardGroup; size: [number, number] }[];
+] as const satisfies readonly { id: string; group: BoardGroup; size: [number, number]; format?: string }[];
 
 export type BoardSizeId = (typeof BOARD_SIZES)[number]['id'];
 
@@ -61,4 +74,10 @@ export function parseBoardSize(text: string): [number, number] | null {
   const named = BOARD_SIZES.find((p) => p.id === word);
   if (named) return [named.size[0], named.size[1]];
   return /^\d+\s*[x×,]\s*\d+$/.test(word) ? validSize(word.split(/[x×,]/).map(Number)) : null;
+}
+
+/** The key a size gets as a motion format: its legacy name (`tall`), else its preset id (`og`), else `s1280x720`. */
+export function formatNameOf(size: readonly number[]): string {
+  const p = boardSizeOf(size);
+  return p ? (('format' in p && p.format) || p.id) : sizeName(size);
 }

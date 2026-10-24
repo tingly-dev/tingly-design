@@ -1,10 +1,9 @@
-import { BOARD_GROUPS, BOARD_SIZES, DEFAULT_BOARD_SIZE, parseBoardSize, type BoardGroup } from './boardSizes';
-import { MOTION_SIZES, validSize } from './motion';
+import { BOARD_GROUPS, BOARD_SIZES, DEFAULT_BOARD_SIZE, parseBoardSize, validSize, type BoardGroup } from './boardSizes';
 import { freeName } from './projectArchive';
 
 /**
  * The questions `tingly-design new -i` asks, in the order of the New dialog: what kind, its title, where it lives, and
- * for a canvas or a motion piece the size (a canvas picks a category, then a size in it, as the dialog's lists do).
+ * for a canvas, a deck or a motion piece the size (picks a category, then a size in it, as the dialog's lists do).
  * The flow is here so it can be tested without a terminal; the words are not: a question is an id the terminal
  * turns into a sentence, and an answer is raw text that is checked here.
  */
@@ -23,7 +22,7 @@ export function slugOf(title: string): string {
     .slice(0, 64);
 }
 
-export type WizardSelect = 'kind' | 'group' | 'size' | 'format';
+export type WizardSelect = 'kind' | 'group' | 'size';
 export type WizardText = 'title' | 'name' | 'custom';
 /** Why an answer was not taken; the terminal says it in words and asks again. */
 export type WizardComplaint = 'empty' | 'badName' | 'taken' | 'badSize' | 'badChoice';
@@ -101,18 +100,16 @@ export async function runNewWizard(io: WizardIO, given: WizardGiven, taken: Read
   }
 
   let size = given.size;
-  if (!size && kind === 'canvas') {
-    const group = await pick(io, 'group', [...BOARD_GROUPS.map((value) => ({ value })), { value: 'custom' }], 'screen');
-    if (group === 'custom') size = await customSize(io, DEFAULT_BOARD_SIZE);
+  // a canvas, a deck and a motion piece pick a size the same way: a category, then a size in it
+  if (!size && (kind === 'canvas' || kind === 'slides' || kind === 'motion')) {
+    const first = kind === 'canvas' ? 'screen' : 'slides';
+    const group = await pick(io, 'group', [...BOARD_GROUPS.map((value) => ({ value })), { value: 'custom' }], first);
+    if (group === 'custom') size = await customSize(io, kind === 'canvas' ? DEFAULT_BOARD_SIZE : [1920, 1080]);
     else {
       const options = BOARD_SIZES.filter((p) => p.group === (group as BoardGroup)).map((p) => ({ value: p.id as string, size: p.size }));
       const id = await pick(io, 'size', options, options[0].value);
       size = parseBoardSize(id) ?? undefined;
     }
-  } else if (!size && kind === 'motion') {
-    const options = [...MOTION_SIZES.map((p) => ({ value: p.name as string, size: p.size as readonly [number, number] })), { value: 'custom' }];
-    const f = await pick(io, 'format', options, 'wide');
-    size = f === 'custom' ? await customSize(io, [1920, 1080]) : (MOTION_SIZES.find((p) => p.name === f)!.size as unknown as [number, number]);
   }
   return { kind, title, target, ...(size ? { size } : {}) };
 }

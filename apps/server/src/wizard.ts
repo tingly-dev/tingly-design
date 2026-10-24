@@ -29,9 +29,9 @@ export function terminalWizard(t: T, input: Readable, output: Writable, where = 
     });
 
   const label = (id: string, value: string, size?: readonly [number, number]) => {
-    const name = id === 'kind' ? t(`launcher.kind.${value === 'canvas' ? 'design' : value === 'doc' ? 'docs' : value}.name`) : id === 'group' ? (value === 'custom' ? t('launcher.new.sizeCustom') : t(`canvas.boardGroup.${value}`)) : value === 'custom' ? t('launcher.new.sizeCustom') : id === 'size' ? t(`canvas.boardSize.${value}`) : t(`motion.preset.${value}`);
+    const name = id === 'kind' ? t(`launcher.kind.${value === 'canvas' ? 'design' : value === 'doc' ? 'docs' : value}.name`) : id === 'group' ? (value === 'custom' ? t('launcher.new.sizeCustom') : t(`canvas.boardGroup.${value}`)) : value === 'custom' ? t('launcher.new.sizeCustom') : t(`canvas.boardSize.${value}`);
     const dims = size ? ` (${size[0]}×${size[1]})` : '';
-    const note = id === 'kind' ? t(`launcher.kind.${value === 'canvas' ? 'design' : value === 'doc' ? 'docs' : value}.blurb`) : id === 'size' ? t(`canvas.boardFor.${value}`) : id === 'format' && value !== 'custom' ? t(`motion.presetFor.${value}`) : '';
+    const note = id === 'kind' ? t(`launcher.kind.${value === 'canvas' ? 'design' : value === 'doc' ? 'docs' : value}.blurb`) : id === 'size' ? t(`canvas.boardFor.${value}`) : '';
     return { name, dims, note };
   };
 

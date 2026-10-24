@@ -3,22 +3,6 @@ import type { Locale } from '../../types';
 
 export default {
   docTitle: '{{title}} · 动效',
-  preset: {
-    wide: '横版 16:9',
-    tall: '竖版 9:16',
-    square: '方形 1:1',
-    portrait: '竖图 4:5',
-    upright: '竖图 3:4',
-    classic: '经典 4:3',
-  },
-  presetFor: {
-    wide: 'B 站、YouTube、X/Twitter、PPT 16:9',
-    tall: '抖音、视频号、快手、TikTok、Reels',
-    square: '朋友圈、X/Twitter、Instagram',
-    portrait: 'Instagram 信息流、X/Twitter',
-    upright: '小红书、视频号',
-    classic: 'PPT 4:3、老式屏幕',
-  },
   transition: {
     cut: '直接切',
     fade: '淡入淡出',
@@ -182,13 +166,9 @@ export default {
     removeHint: '删除这个尺寸',
     confirmRemove: '删除尺寸 {{name}}？',
     confirmRemoveOverrides_other: '删除尺寸 {{name}}？场景里只属于它的 {{count}} 处设置也会一起删掉。',
-    newName: '名字',
-    newWidth: '宽',
-    newHeight: '高',
-    newNameLabel: '新尺寸的名字',
-    newWidthLabel: '新尺寸的宽',
-    newHeightLabel: '新尺寸的高',
     addFormat: '＋ 添加尺寸',
+    addSize: '添加 {{size}}',
+    sizeTaken: '这个作品已经有这个尺寸了。',
     formatsHint: '所有尺寸共用场景、文字和时间。新尺寸先按版式自己适配，再切到它把不合适的地方单独调。',
     shortcuts: '快捷键',
     shortcutList: '空格 播放 / 暂停 · ← → 前后一帧（⇧ 一秒）· ⌫ 删除 · ⌘D 复制 · ⇧↵ 选中上一级 · ⌘Z 撤销 · Esc 取消选择',

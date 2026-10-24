@@ -18,6 +18,7 @@
 import type { DeckFace } from './deck';
 import type { HumanOp } from './ops';
 import { attr, type DcDoc, type DcElement } from './parse';
+import { formatNameOf, MAX_FORMAT_PX, sizeName, validSize } from './boardSizes';
 import { fxIssues } from './motionFx';
 import { checkSlide, type SlideIssue } from './slides';
 import { parseStyle } from './style';
@@ -88,33 +89,7 @@ export function isMotionFile(path: string): boolean {
   return path === MOTION_FILE || /^scenes\/[a-z0-9][a-z0-9-]{0,63}\.html$/.test(path);
 }
 
-/**
- * The sizes a piece is usually made for, named by shape (platforms come and go and share sizes;
- * the editor words each one, with the platforms that take it, in `motion.preset`). The name is the
- * format's key in motion.json.
- */
-export const MOTION_SIZES = [
-  { name: 'wide', size: [1920, 1080] },
-  { name: 'tall', size: [1080, 1920] },
-  { name: 'square', size: [1080, 1080] },
-  { name: 'portrait', size: [1080, 1350] },
-  { name: 'upright', size: [1080, 1440] },
-  { name: 'classic', size: [1440, 1080] },
-] as const satisfies readonly { name: string; size: [number, number] }[];
-
-export const MAX_FORMAT_PX = 7680;
-
-/** A size usable for a format, rounded, or null. */
-export function validSize(size: unknown): [number, number] | null {
-  if (!Array.isArray(size) || size.length !== 2) return null;
-  const [w, h] = size.map((v) => Math.round(Number(v)));
-  return w > 0 && h > 0 && w <= MAX_FORMAT_PX && h <= MAX_FORMAT_PX ? [w, h] : null;
-}
-
-/** The key a custom size gets in motion.json when its owner gives no name: `s1280x720`. */
-export function sizeName(size: [number, number]): string {
-  return `s${size[0]}x${size[1]}`;
-}
+export { MAX_FORMAT_PX, validSize, sizeName };
 
 /** The page a new scene starts on: light and plain, so neither a person nor an agent reads it as a chosen style. */
 const STARTER_BG = '#fbfbf8';
@@ -132,8 +107,7 @@ export function newMotion(
 ): { motion: MotionJson; scenes: Record<string, string> } {
   const safe = title.replace(/[<&>]/g, '');
   const size = validSize(opts.size) ?? [1920, 1080];
-  const preset = MOTION_SIZES.find((p) => p.size[0] === size[0] && p.size[1] === size[1]);
-  const format = opts.format && FORMAT_NAME_RE.test(opts.format) ? opts.format : (preset?.name ?? sizeName(size));
+  const format = opts.format && FORMAT_NAME_RE.test(opts.format) ? opts.format : formatNameOf(size);
   // the starter's type and margins are drawn for a 1080 px short side
   const k = Math.min(size[0], size[1]) / 1080;
   const px = (v: number) => Math.round(v * k);

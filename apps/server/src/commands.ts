@@ -29,8 +29,8 @@ const readIn = (p: { dir: string }, f: string) => readFile(resolve(p.dir, f), 'u
 interface KindCli {
   /** What `export --as` takes besides `zip`: the Import / Export menu's formats, by their names. */
   formats: string[];
-  /** `new --size`: a canvas takes a named size too (`wechat`), motion and slides a width and height, the others none. */
-  size: 'named' | 'plain' | null;
+  /** `new --size`: a canvas, a deck and a motion piece take a name from the New dialog's list (`wechat`) or a width and height, the others none. */
+  size: boolean;
   /** The request bar has fast AI (`PromptBar`). */
   fast: boolean;
   /** The option `--pick` fills: the one board, slide, tab or view to show first; dashboards and motion have none. */
@@ -53,7 +53,7 @@ const pngOnly = async (): Promise<PageJob[]> => [{ item: 'png' }];
 const KIND_CLI: Record<Kind, KindCli> = {
   design: {
     formats: ['png'],
-    size: 'named',
+    size: true,
     fast: true,
     pick: 'board',
     fixed: true,
@@ -73,7 +73,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
   },
   slides: {
     formats: ['pdf', 'pptx', 'png', 'html', 'md', 'notes'],
-    size: 'plain',
+    size: true,
     fast: true,
     pick: 'slide',
     fixed: true,
@@ -91,7 +91,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
   },
   docs: {
     formats: ['pdf', 'html', 'md', 'png'],
-    size: null,
+    size: false,
     fast: false,
     pick: 'tab',
     fixed: false,
@@ -106,7 +106,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
   },
   'design-system': {
     formats: ['png'],
-    size: null,
+    size: false,
     fast: false,
     pick: 'view',
     fixed: false,
@@ -117,8 +117,8 @@ const KIND_CLI: Record<Kind, KindCli> = {
       return (view ? [view] : every ? DS_VIEWS : ['overview']).map((pick) => ({ pick, item: 'png' }));
     },
   },
-  dashboard: { formats: ['png'], size: null, fast: false, fixed: false, page: false, blame: DASH_PAGE, frameFiles: noFrameFiles, jobs: pngOnly },
-  motion: { formats: ['mp4', 'gif', 'png', 'html'], size: 'plain', fast: true, fixed: false, page: false, frameFiles: noFrameFiles, jobs: pngOnly },
+  dashboard: { formats: ['png'], size: false, fast: false, fixed: false, page: false, blame: DASH_PAGE, frameFiles: noFrameFiles, jobs: pngOnly },
+  motion: { formats: ['mp4', 'gif', 'png', 'html'], size: true, fast: true, fixed: false, page: false, frameFiles: noFrameFiles, jobs: pngOnly },
 };
 
 /** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
@@ -215,12 +215,12 @@ export async function outline(p: Project) {
 
 // ---------------------------------------------------------------- new
 
-/** A size typed for a kind: a canvas takes a named size too (`wechat`), as the New dialog does; anything else is a width and height. */
-function sizeFor(ctx: Ctx, kind: Kind, text: string): [number, number] {
+/** A size typed for a kind: a name from the New dialog's list (`wechat`) or a width and height, the same for every kind that has a size. */
+function sizeFor(ctx: Ctx, text: string): [number, number] {
   const t = translator(ctx.lang);
-  const size = KIND_CLI[kind].size === 'named' ? parseBoardSize(text) : validSize(text.split(/[x×,]/i).map(Number));
+  const size = parseBoardSize(text);
   if (size) return size;
-  throw new CommandError(KIND_CLI[kind].size === 'named' ? t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }) : t('errors.badSize'));
+  throw new CommandError(t('cli.badBoardSize', { size: text, sizes: BOARD_SIZES.map((p) => `${p.id} (${p.size[0]}x${p.size[1]})`).join(', ') }));
 }
 
 /**
@@ -240,7 +240,7 @@ export async function create(ctx: Ctx, o: { kind: string | undefined; target: st
   if (!kind) throw new CommandError(t('cli.badKind', { kind: o.kind }));
   const target = o.target?.trim();
   if (!target) throw new CommandError(t('cli.needName', { kind: o.kind }));
-  const size = o.size ? sizeFor(ctx, kind, o.size) : undefined;
+  const size = o.size ? sizeFor(ctx, o.size) : undefined;
   // a bare name is a folder of that name here, as `git init`, `cargo new` and `npm create` do; `global` keeps it in the projects folder
   if (o.global && looksLikePath(target)) throw new CommandError(t('cli.globalPath', { target }));
   const global = looksLikePath(target) ? false : await bareNamesGlobal(ctx, o.global);
@@ -271,8 +271,8 @@ export async function wizardGiven(ctx: Ctx, o: { kind: string | undefined; targe
   const t = translator(ctx.lang);
   const kind = o.kind ? WIZARD_KINDS.find((w) => KINDS[w] === KINDS[o.kind!]) : undefined;
   if (o.kind && !kind) throw new CommandError(t('cli.badKind', { kind: o.kind }));
-  // only a canvas and a motion piece have a size to ask for
-  const size = o.size && (!kind || kind === 'canvas' || kind === 'motion') ? sizeFor(ctx, KINDS[kind ?? 'canvas'], o.size) : undefined;
+  // only a canvas, a deck and a motion piece have a size to ask for
+  const size = o.size && KIND_CLI[KINDS[kind ?? 'canvas']].size ? sizeFor(ctx, o.size) : undefined;
   return { kind, target: o.target, title: o.title, ...(size ? { size } : {}) };
 }
 

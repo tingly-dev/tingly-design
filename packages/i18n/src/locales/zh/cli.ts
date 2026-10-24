@@ -41,7 +41,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   -n, --name            open、check、export、prompt、history、list：参数按项目名字找，不当路径
   -i, --interactive     new：没给出的都问一遍，建好后问要不要打开
   --global              new：名字不建在当前目录，建在项目目录里
-  --size <宽>x<高>      new canvas 或 motion：第一个画板或画幅的尺寸；canvas 也可以写新建对话框里的
+  --size <宽>x<高>      new canvas、slides 或 motion：第一个画板、幻灯片或画幅的尺寸，也可以写新建对话框里的
                         尺寸名（wechat、tall、story、og、a4、wide、mpu……）
   --look <名字>         new design-system：从一个风格开始（nord、swiss-grid、dracula……），而不是空白
   --format <a,b>        export：要渲染的动效画幅（默认：全部）
@@ -94,7 +94,6 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     kind: '要做什么？',
     group: '尺寸分类',
     size: '尺寸',
-    format: '尺寸',
     title: '标题',
     name: '文件夹名，或放到别处的路径',
     custom: '宽 x 高',

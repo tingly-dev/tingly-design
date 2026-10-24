@@ -816,16 +816,56 @@
 
 .maddfmt {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
 }
 
 
-.mcustom {
-  display: grid;
-  grid-template-columns: 1fr 56px 56px auto;
-  gap: 6px;
+/* the right panel is narrow: categories run across the top, each size takes the full width on one line */
+.maddfmt .szsplit {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.maddfmt .szcats {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.maddfmt .szcat {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.maddfmt .szsplit .szrow {
+  max-height: 232px;
+}
+
+.maddfmt .szopt {
   width: 100%;
+  min-width: 0;
+}
+
+.maddfmt .szopt .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.maddfmt .szopt .dim {
+  flex: none;
+}
+
+
+.maddfmt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 
