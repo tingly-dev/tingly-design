@@ -3,7 +3,7 @@
  * The artboard sizes a canvas offers by name: the New dialog's picker, the board panel's preset list and
  * the command line's `--size`, in groups by what the board is for. One list; to add or retire a size, change it here and give its two strings
  * in @dc/i18n (`canvas.boardSize.<id>` the name, `canvas.boardFor.<id>` where it is used), nothing else.
- * A size that was a motion format's key before motion shared this list names it in `format` (motion.json keeps those keys). Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
+ * A size motion.json already named (`wide`, `tall`, …) keeps that key in `format`; every other size is `s<w>x<h>` there. Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
  * Sizes are CSS pixels, the unit a canvas draws in.
  */
 export const MAX_FORMAT_PX = 7680;
@@ -76,8 +76,8 @@ export function parseBoardSize(text: string): [number, number] | null {
   return /^\d+\s*[x×,]\s*\d+$/.test(word) ? validSize(word.split(/[x×,]/).map(Number)) : null;
 }
 
-/** The key a size gets as a motion format: its legacy name (`tall`), else its preset id (`og`), else `s1280x720`. */
+/** The key a size gets as a motion format: the legacy name of the six sizes motion.json has always used (`tall`), else `s1280x720`. */
 export function formatNameOf(size: readonly number[]): string {
   const p = boardSizeOf(size);
-  return p ? (('format' in p && p.format) || p.id) : sizeName(size);
+  return (p && 'format' in p && p.format) || sizeName(size);
 }

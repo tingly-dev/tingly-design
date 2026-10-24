@@ -89,8 +89,6 @@ export function isMotionFile(path: string): boolean {
   return path === MOTION_FILE || /^scenes\/[a-z0-9][a-z0-9-]{0,63}\.html$/.test(path);
 }
 
-export { MAX_FORMAT_PX, validSize, sizeName };
-
 /** The page a new scene starts on: light and plain, so neither a person nor an agent reads it as a chosen style. */
 const STARTER_BG = '#fbfbf8';
 const STARTER_FG = '#1d1d1b';

@@ -275,7 +275,7 @@ describe('a new piece in a chosen size', () => {
   it('names the format by its shape and keeps the 16:9 default', () => {
     expect(newMotion('T').motion.formats).toEqual({ wide: { size: [1920, 1080] } });
     expect(newMotion('T', undefined, { size: [1080, 1920] }).motion.formats).toEqual({ tall: { size: [1080, 1920] } });
-    for (const [size, name] of [[[1920, 1080], 'wide'], [[1080, 1920], 'tall'], [[1080, 1440], 'upright'], [[1200, 630], 'og'], [[1280, 720], 'thumbnail'], [[333, 777], 's333x777']] as const) expect(Object.keys(newMotion('T', undefined, { size: [...size] }).motion.formats)).toEqual([name]);
+    for (const [size, name] of [[[1920, 1080], 'wide'], [[1080, 1920], 'tall'], [[1080, 1440], 'upright'], [[1200, 630], 's1200x630'], [[333, 777], 's333x777']] as const) expect(Object.keys(newMotion('T', undefined, { size: [...size] }).motion.formats)).toEqual([name]);
   });
 
   it('gives a custom size a name the format rules accept, or the one asked for', () => {
