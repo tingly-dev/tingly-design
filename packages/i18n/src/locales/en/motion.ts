@@ -211,6 +211,7 @@ export default {
     fps: 'fps → {{fps}}',
     formatSize: 'format {{name}} → {{size}}',
     formatAdded: 'format {{name}} added',
+    formatSeeded: 'format {{name}}: layout seeded from the primary format',
     formatRemoved: 'format {{name}} removed',
     coverCreated: 'cover scene created',
     coverSet: 'cover → {{id}}',
