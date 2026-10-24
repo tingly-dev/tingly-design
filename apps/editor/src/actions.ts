@@ -359,7 +359,7 @@ export function updateBoard(file: string, patch: Partial<BoardEntry>, what = 'ch
 export function resizeBoard(file: string, w: number, h: number, scale: boolean): void {
   const b = canvasOf(get()).boards[file];
   const src = display(get(), file);
-  if (!b) return;
+  if (!b || (b.w === w && b.h === h)) return;
   if (scale && src !== undefined) {
     const from = rootSize(src) ?? [b.w, b.h];
     edit(file, (cur) => adaptSize(cur, from, [w, h]), { actor: 'human', summary: `artboard ${file} content scaled to ${w}×${h}`, undoable: true });

@@ -67,6 +67,7 @@ function adaptDecl(prop: string, value: string, sx: number, sy: number, small: b
   if (BOX.has(prop)) {
     const w = words(value);
     if (!w.length || w.length > 4) return value;
+    if (w.length === 1) return scaleValue(value, u);
     // top right bottom left, with the CSS rules for fewer values
     const sides = w.length === 1 ? [0, 0, 0, 0] : w.length === 2 ? [0, 1, 0, 1] : w.length === 3 ? [0, 1, 2, 1] : [0, 1, 2, 3];
     return w.map((v, i) => scaleValue(v, sides.indexOf(i) % 2 === 0 ? sy : sx)).join(' ');
@@ -81,19 +82,24 @@ function adaptDecl(prop: string, value: string, sx: number, sy: number, small: b
 
 /** A style attribute's text rescaled; declarations that are not lengths come back as written. */
 export function adaptStyle(style: string, sx: number, sy: number): string {
-  let out = style;
   const decls = parseStyle(style);
   // an icon or avatar keeps its shape: a box with both sides small is scaled as one
   const px = (prop: string) => Number(/^([\d.]+)px$/.exec(decls.find((d) => d.prop === prop)?.value ?? '')?.[1] ?? Infinity);
   const small = px('width') <= SMALL_PX && px('height') <= SMALL_PX;
+  // declarations come back in order and cover the text, so each is found by walking forward
+  let out = '';
+  let at = 0;
   for (const d of decls) {
+    const i = style.indexOf(d.raw, at);
+    if (i < 0) continue;
     const next = adaptDecl(d.prop, d.value, sx, sy, small);
-    if (next === d.value) continue;
     const colon = d.raw.indexOf(':');
     const lead = /^\s*/.exec(d.raw.slice(colon + 1))![0];
     const tail = /\s*$/.exec(d.raw)![0];
-    out = out.replace(d.raw, d.raw.slice(0, colon + 1) + lead + next + tail);
+    out += style.slice(at, i) + (next === d.value ? d.raw : d.raw.slice(0, colon + 1) + lead + next + tail);
+    at = i + d.raw.length;
   }
+  out += style.slice(at);
   return out;
 }
 

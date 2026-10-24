@@ -20,6 +20,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
   const { t } = useTranslation();
   const [scale, setScale] = useState(() => readPref(SCALE_PREF) !== 'off');
   const [shifted, setShifted] = useState<[number, number] | null>(null);
+  useEffect(() => setShifted(null), [file]);
   const resize = (w: number, h: number) => {
     setShifted(scale && needsRelayout([entry.w, entry.h], [w, h]) ? [w, h] : null);
     resizeBoard(file, w, h, scale);
@@ -62,7 +63,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
           <div className="hint">
             {t('panel.board.relayoutHint')}
             <br />
-            <button className="btn sm" onClick={() => void delegateToClaude(file, null, `Re-lay out ${file} for a ${shifted[0]}×${shifted[1]} artboard: the page was scaled from another shape, so rearrange sections (stack columns, resize or reorder blocks) so everything fits and reads well at this size. Keep the copy, the style and the template values.`).then(() => setShifted(null))}>
+            <button className="btn sm" onClick={() => void delegateToClaude(file, null, `Re-lay out ${file} for a ${shifted[0]}×${shifted[1]} artboard: the page was scaled from another shape, so rearrange sections (stack columns, resize or reorder blocks) so everything fits and reads well at this size. Keep the copy, the style and the template values.`).finally(() => setShifted(null))}>
               {t('panel.board.relayoutAsk')}
             </button>
           </div>

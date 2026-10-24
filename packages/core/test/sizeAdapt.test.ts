@@ -8,6 +8,14 @@ describe('adaptSize', () => {
   it('keeps a small box square', () => {
     expect(adaptStyle('width:24px;height:24px;border-radius:6px', 0.5, 1)).toBe('width:12px;height:12px;border-radius:3px');
   });
+  it('rewrites the right declaration when names overlap', () => {
+    expect(adaptStyle('border-top:2px;top:2px', 1, 2)).toBe('border-top:2px;top:4px');
+    expect(adaptStyle('min-width:100px;width:100px', 2, 2)).toBe('min-width:200px;width:200px');
+  });
+  it('scales a one-value box shorthand by the smaller factor', () => {
+    expect(adaptStyle('padding:24px', 0.5, 2)).toBe('padding:12px');
+    expect(adaptStyle('padding:24px 10px', 0.5, 2)).toBe('padding:48px 5px');
+  });
   it('leaves holes, calc and percentages alone', () => {
     const s = 'width:{{w}}px;height:calc(100% - 40px);left:50%;top:10px';
     expect(adaptStyle(s, 2, 2)).toBe('width:{{w}}px;height:calc(100% - 40px);left:50%;top:20px');
