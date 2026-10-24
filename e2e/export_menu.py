@@ -27,11 +27,11 @@ def pages(path):
 
 # kind → (project, the exports it offers, by the name a person reads)
 KINDS = {
-    'canvas': ('box-console', ['PNG image', 'PNG image @2x', 'Copy as PNG', 'PNG images', 'Source file']),
-    'slides': ('tingly-intro', ['PDF', 'PNG image', 'Copy as PNG', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
-    'design system': ('tingly-ds', ['PNG image', 'Copy as PNG']),
-    'dashboard': ('box-usage', ['PNG image', 'Copy as PNG']),
-    'docs': ('design-guide', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image', 'Copy as PNG']),
+    'canvas': ('tingly-box-console-canvas', ['PNG image', 'PNG image @2x', 'Copy as PNG', 'PNG images', 'Source file']),
+    'slides': ('tingly-design-intro-slides', ['PDF', 'PNG image', 'Copy as PNG', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
+    'design system': ('tingly-design-system', ['PNG image', 'Copy as PNG']),
+    'dashboard': ('tingly-box-usage-dashboard', ['PNG image', 'Copy as PNG']),
+    'docs': ('tingly-design-guide-doc', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image', 'Copy as PNG']),
     'motion': ('design-motion', ['Video…', 'GIF…', 'PNG image', 'Copy as PNG']),
 }
 
@@ -64,7 +64,7 @@ async def main():
                 check(f'{kind}: a status chip with the change history behind it', await chip.count() == 1 and await chip.get_attribute('data-state') == 'ok')
 
         # --- one-click PDF ---------------------------------------------------------------------------
-        for project, label, want in (('tingly-intro', 'slides', 8), ('design-guide', 'docs', 2)):
+        for project, label, want in (('tingly-design-intro-slides', 'slides', 8), ('tingly-design-guide-doc', 'docs', 2)):
             await pg.goto(f'{BASE}/?p={project}')
             await pg.wait_for_timeout(3500)
             await pg.locator('button[aria-label="Import / Export"]').first.click()
@@ -78,7 +78,7 @@ async def main():
             check(f'{label}: …with {"a page per slide" if label == "slides" else "its content"}', pages(path) >= want, pages(path))
 
         # --- Markdown: the deck as a document ---------------------------------------------------------
-        await pg.goto(f'{BASE}/?p=tingly-intro')
+        await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
         await pg.wait_for_timeout(3500)
         await pg.locator('button[aria-label="Import / Export"]').first.click()
         async with pg.expect_download(timeout=30000) as dl:
@@ -93,7 +93,7 @@ async def main():
         check('slides: …and no slide markup', '<section' not in md and 'style=' not in md)
 
         # --- Markdown: the doc as one document ------------------------------------------------------
-        await pg.goto(f'{BASE}/?p=design-guide')
+        await pg.goto(f'{BASE}/?p=tingly-design-guide-doc')
         await pg.wait_for_timeout(3500)
         await pg.locator('button[aria-label="Import / Export"]').first.click()
         async with pg.expect_download(timeout=30000) as dl:
@@ -109,7 +109,7 @@ async def main():
 
         # --- no Chrome on the server: the print window ------------------------------------------------
         await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))
-        await pg.goto(f'{BASE}/?p=tingly-intro')
+        await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
         await pg.wait_for_timeout(3500)
         await pg.locator('button[aria-label="Import / Export"]').first.click()
         check('without Chrome the PDF item says it opens the print dialog', await pg.get_by_role('menuitem', name=re.compile('^PDF')).locator('.mh', has_text='print dialog').count() == 1)

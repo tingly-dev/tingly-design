@@ -75,7 +75,7 @@ Files people brought in (attachments, imported pictures) live under `uploads/`. 
 
 ## Shader effects
 
-For light, noise, grain or glow that CSS cannot draw, start from a built-in effect: an empty seekable embed whose `data-fx` names a preset and its values (`projects/motion-effects/` uses them):
+For light, noise, grain or glow that CSS cannot draw, start from a built-in effect: an empty seekable embed whose `data-fx` names a preset and its values (`projects/tingly-design-shader-effects-motion/` uses them):
 
 ```html
 <x-embed data-fx="aurora" data-seek style="position:absolute;left:0;top:0;width:100%;height:100%"></x-embed>
@@ -108,7 +108,7 @@ For light, noise, grain or glow that CSS cannot draw, start from a built-in effe
 - The embed stays empty: the player writes the shader in. When WebGL2 is off, a built-in effect draws a simpler CSS version and the editor says so.
 - Fade a framing effect in with what it frames (`data-in` on the embed), and keep to one or two effects a scene.
 
-Only when no preset gives the look, write a GLSL ES 3.0 fragment shader in a seekable embed (copy the runtime script from `projects/motion-effects/scenes/outro.html` as is):
+Only when no preset gives the look, write a GLSL ES 3.0 fragment shader in a seekable embed (copy the runtime script from `projects/tingly-design-shader-effects-motion/scenes/outro.html` as is):
 
 ```html
 <x-embed data-seek style="position:absolute;left:0;top:0;width:100%;height:100%">

@@ -67,11 +67,11 @@ async def main():
         await pg.keyboard.press('Escape')
 
         # --- a dark editor ------------------------------------------------------------------------
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.locator('.board').first.wait_for()
         title = await pg.locator('.item.title1').first.evaluate('e => getComputedStyle(e).color')
         check('a canvas title in the default colour stays readable on a dark canvas', title == 'rgb(243, 245, 249)', title)
-        await pg.goto(BASE + '/?p=box-usage')
+        await pg.goto(BASE + '/?p=tingly-box-usage-dashboard')
         await expect(pg.locator('.dashbar button[data-preview]')).to_have_attribute('aria-label', '预览为：暗色')
         check('a dashboard opens dark when the editor is dark', True)
 
@@ -79,8 +79,8 @@ async def main():
         await pg.goto(BASE + '/?theme=claude')
         await pg.locator('.lcard[data-project]').first.wait_for()
         check('?theme=claude applies the Claude preset', await pg.evaluate(TOKEN.format('accent')) == '#d97757')
-        await pg.locator('.lcard[data-project="design-guide"]').click()
-        await pg.wait_for_url('**/?p=design-guide')
+        await pg.locator('.lcard[data-project="tingly-design-guide-doc"]').click()
+        await pg.wait_for_url('**/?p=tingly-design-guide-doc')
         check('the URL theme holds as you move around the tab', await pg.evaluate('document.documentElement.dataset.theme') == 'claude')
         await pg.screenshot(path=OUT + 'theme-claude-docs.png')
         custom = json.dumps({'base': 'dark', 'name': 'Rose', 'tokens': {'accent': '#e11d48'}})

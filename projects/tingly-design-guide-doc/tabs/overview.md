@@ -2,7 +2,7 @@
 
 Status: Draft for review · Audience: people new to Tingly Design and the agents working beside them.
 
-Tingly Design is a local design workspace where you and an AI agent edit the same files. This handbook is one of them: the Docs project `design-guide`.
+Tingly Design is a local design workspace where you and an AI agent edit the same files. This handbook is one of them: the Docs project `tingly-design-guide-doc`.
 
 ## What Tingly Design is
 

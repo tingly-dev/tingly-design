@@ -2,7 +2,7 @@
 
 状态：**已实施**。
 
-设计稿在 Tingly Design 自己里：`projects/tingly-design-ui` 的 "Top bar anatomy"、"Top bar in six kinds" 和 "Menus and dialogs" 三块板（整份自身设计稿见 [self-design.md](./self-design.md)）。改这类界面先在那里画，再改代码。
+设计稿在 Tingly Design 自己里：`projects/tingly-design-ui-canvas` 的 "Top bar anatomy"、"Top bar in six kinds" 和 "Menus and dialogs" 三块板（整份自身设计稿见 [self-design.md](./self-design.md)）。改这类界面先在那里画，再改代码。
 
 ## 1. 问题
 

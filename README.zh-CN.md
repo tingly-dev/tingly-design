@@ -91,11 +91,11 @@ claude mcp add tingly-design -- npx -y tingly-design mcp  # 然后对它说：�
 
 | 类型 | 示例 | 内容 | 文件 |
 |---|---|---|---|
-| [**画布**](docs/zh/guide/canvas.md) | [`?p=box-console`](http://localhost:5173/?p=box-console) | Tingly Box 控制台的设计评审：用量面板、团队设置、可交互的“接入 Agent”面板、请求路由图 | `canvas.json` + 每个画板一个 `.dc.html` |
-| [**幻灯片**](docs/zh/guide/slides.md) | [`?p=tingly-intro`](http://localhost:5173/?p=tingly-intro) | “Meet Tingly”：8 页介绍 Tingly Box 和 Tingly Design，网关一页带实时动画图 | `deck.json` + `slides/<id>.html` |
-| [**设计系统**](docs/zh/guide/design-system.md) | [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) | Tingly 品牌：亮暗两套主题、Instrument Serif 和 Inter、六级字号、四个组件和标志 | `design-system.json` + `tokens.json` + `components/` |
-| [**看板**](docs/zh/guide/dashboard.md) | [`?p=box-usage`](http://localhost:5173/?p=box-usage) | 一个团队三季度经 Tingly Box 网关的用量（演示数据）：两条 SQLite 实时查询、一份 CSV、一份 JSON、按服务商筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
-| [**文档**](docs/zh/guide/docs.md) | [`?p=design-guide`](http://localhost:5173/?p=design-guide) | Tingly Design 使用手册：四个标签页、项目类型表、上手清单、代码块和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
+| [**画布**](docs/zh/guide/canvas.md) | [`?p=tingly-box-console-canvas`](http://localhost:5173/?p=tingly-box-console-canvas) | Tingly Box 控制台的设计评审：用量面板、团队设置、可交互的“接入 Agent”面板、请求路由图 | `canvas.json` + 每个画板一个 `.dc.html` |
+| [**幻灯片**](docs/zh/guide/slides.md) | [`?p=tingly-design-intro-slides`](http://localhost:5173/?p=tingly-design-intro-slides) | “Meet Tingly”：8 页介绍 Tingly Box 和 Tingly Design，网关一页带实时动画图 | `deck.json` + `slides/<id>.html` |
+| [**设计系统**](docs/zh/guide/design-system.md) | [`?p=tingly-design-system`](http://localhost:5173/?p=tingly-design-system) | Tingly 品牌：亮暗两套主题、Instrument Serif 和 Inter、六级字号、四个组件和标志 | `design-system.json` + `tokens.json` + `components/` |
+| [**看板**](docs/zh/guide/dashboard.md) | [`?p=tingly-box-usage-dashboard`](http://localhost:5173/?p=tingly-box-usage-dashboard) | 一个团队三季度经 Tingly Box 网关的用量（演示数据）：两条 SQLite 实时查询、一份 CSV、一份 JSON、按服务商筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
+| [**文档**](docs/zh/guide/docs.md) | [`?p=tingly-design-guide-doc`](http://localhost:5173/?p=tingly-design-guide-doc) | Tingly Design 使用手册：四个标签页、项目类型表、上手清单、代码块和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
 | [**动效**](docs/zh/guide/motion.md) | [`?p=design-motion`](http://localhost:5173/?p=design-motion) | 36 秒的 Tingly Design 宣传片：一个想法变成设计，人改一行字，AI 接着改，再逐一列出各种类型；同一套场景出 16:9 和 9:16，带独立封面 | `motion.json` + `scenes/<id>.html` |
 
 设计系统可以装入画布或幻灯片，装入后颜色和文字样式菜单里就能直接选它的 token。
@@ -107,7 +107,7 @@ pnpm install
 pnpm dev            # 编辑器 http://localhost:5173 ，服务端 :8787
 ```
 
-打开 http://localhost:5173 选一个项目，或直接打开 http://localhost:5173/?p=box-console 看示例画布。生产方式运行：`pnpm start`（先构建，再由服务端在 8787 端口同时提供 API 和编辑器）。
+打开 http://localhost:5173 选一个项目，或直接打开 http://localhost:5173/?p=tingly-box-console-canvas 看示例画布。生产方式运行：`pnpm start`（先构建，再由服务端在 8787 端口同时提供 API 和编辑器）。
 
 在终端、脚本或 agent 里，用 `tingly-design` 命令（本仓库里是 `pnpm tingly-design`，从 npm 是 `npx tingly-design`）打开、新建、列出、检查、导出项目、交给 Claude Code 处理并查看改动历史；`tingly-design mcp` 把同样的能力作为 MCP 工具提供，见[命令行](docs/zh/cli.md)。
 

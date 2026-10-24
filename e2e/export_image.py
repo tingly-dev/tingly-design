@@ -67,13 +67,13 @@ async def main():
         shutil.rmtree(BOARD, ignore_errors=True)
 
         # docs: this tab
-        await pg.goto(BASE + '/?p=design-guide')
+        await pg.goto(BASE + '/?p=tingly-design-guide-doc')
         await pg.wait_for_selector('.app', timeout=20000)
         await pg.locator('button[aria-label="Import / Export"]').click()
         await save(pg, 'img-docs.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 700, 300)
 
         # slides: this slide, then every slide
-        await pg.goto(BASE + '/?p=tingly-intro')
+        await pg.goto(BASE + '/?p=tingly-design-intro-slides')
         await pg.wait_for_selector('.thumb', timeout=20000)
         await pg.wait_for_timeout(1500)
         await pg.locator('button[aria-label="Import / Export"]').click()
@@ -87,14 +87,14 @@ async def main():
         check(f'every slide: {n} files', len(got) >= n, got)
 
         # dashboard
-        await pg.goto(BASE + '/?p=box-usage')
+        await pg.goto(BASE + '/?p=tingly-box-usage-dashboard')
         await pg.wait_for_selector('.dashframe', timeout=20000)
         await pg.wait_for_timeout(2500)
         await pg.locator('button[aria-label="Import / Export"]').click()
         await save(pg, 'img-dash.png', lambda: pg.get_by_role('menuitem', name='PNG image').click(), 600, 300)
 
         # design system
-        await pg.goto(BASE + '/?p=tingly-ds')
+        await pg.goto(BASE + '/?p=tingly-design-system')
         await pg.wait_for_selector('.dsview', timeout=20000)
         await pg.wait_for_timeout(1000)
         await pg.locator('header.topbar button[aria-label="Import / Export"]').click()

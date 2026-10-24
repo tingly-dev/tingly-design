@@ -18,8 +18,8 @@ OUT = os.path.join(HERE, 'out', 'baseline')
 NEW = os.path.join(HERE, 'out', 'baselines-new')
 RECORD = os.environ.get('DC_RECORD') == '1'
 BRANCH = 'e2e-baselines'
-SCREENS = {'launcher': '', 'canvas': 'box-console', 'slides': 'tingly-intro', 'design-system': 'tingly-ds',
-           'dashboard': 'box-usage', 'docs': 'design-guide', 'motion': 'design-motion'}
+SCREENS = {'launcher': '', 'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design-system': 'tingly-design-system',
+           'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
 # the same kinds with the request bar moved into the conversation column on the left
 LEFT = {f'{k}-left': v for k, v in SCREENS.items() if v}
 LOOKS = [('light', 'en'), ('dark', 'en'), ('light', 'zh'), ('dark', 'zh')]

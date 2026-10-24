@@ -2,7 +2,7 @@
 
 # 看板
 
-示例 [`?p=box-usage`](http://localhost:5173/?p=box-usage) 是一个团队三季度经 Tingly Box 网关的用量看板（脚本生成的演示数据）：按服务商的请求、token、缓存命中率、费用、预算和成员用量；两个 SQLite 实时查询、一份 CSV、一份 JSON，四个计算，一个服务商筛选。
+示例 [`?p=tingly-box-usage-dashboard`](http://localhost:5173/?p=tingly-box-usage-dashboard) 是一个团队三季度经 Tingly Box 网关的用量看板（脚本生成的演示数据）：按服务商的请求、token、缓存命中率、费用、预算和成员用量；两个 SQLite 实时查询、一份 CSV、一份 JSON，四个计算，一个服务商筛选。
 
 ![看板：数据模式下点了一个单元格，右侧是它的来源](../../images/dashboard.png)
 

@@ -2,7 +2,7 @@
 
 # 设计系统
 
-示例 [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) 是 Tingly 设计系统：控制台界面稿、幻灯片和看板共用的颜色（亮暗两套）、字体、字号、间距和组件，取自 Tingly Box 官网和控制台。
+示例 [`?p=tingly-design-system`](http://localhost:5173/?p=tingly-design-system) 是 Tingly 设计系统：控制台界面稿、幻灯片和看板共用的颜色（亮暗两套）、字体、字号、间距和组件，取自 Tingly Box 官网和控制台。
 
 | 概览：封面 + 品牌手册 | 颜色：用法与对比度 |
 |---|---|

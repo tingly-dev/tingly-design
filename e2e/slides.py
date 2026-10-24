@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DECK = os.path.join(REPO, 'projects/tingly-intro')
+DECK = os.path.join(REPO, 'projects/tingly-design-intro-slides')
 CHROME = os.environ.get('DC_CHROME')  # e.g. /opt/pw-browsers/chromium-1194/chrome-linux/chrome
 
 def src(name): return open(os.path.join(DECK, name), encoding='utf-8').read()
@@ -15,8 +15,8 @@ def diff(path):
 def changed_lines(path):
     return [l for l in diff(path).splitlines() if l.startswith(('+', '-')) and not l.startswith(('+++', '---'))]
 def restore():
-    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
 
 async def wait_for(pred, timeout=6.0):
     t = time.time()
@@ -71,7 +71,7 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
-        await pg.goto(BASE + '/?p=tingly-intro&s=box')
+        await pg.goto(BASE + '/?p=tingly-design-intro-slides&s=box')
         await stage_ready(pg, 'box')
 
         # --- the deck -------------------------------------------------------------
@@ -95,7 +95,7 @@ async def main():
         await pg.keyboard.type('One endpoint for every agent')
         await pg.keyboard.press('Enter')
         ok = await wait_for(lambda: 'One endpoint for every agent</h2>' in src('slides/box.html'))
-        lines = changed_lines('projects/tingly-intro/slides/box.html')
+        lines = changed_lines('projects/tingly-design-intro-slides/slides/box.html')
         check('double-click retypes text, minimal write-back', ok and len(lines) == 2, '\n'.join(lines))
         await pg.wait_for_timeout(400)
 
@@ -196,7 +196,7 @@ async def main():
         await pg.locator('.thumb[data-slide="powerups"]').click()
         await expect(pg.locator('.issues.err')).to_contain_text('1 处')
         await expect(pg.locator('.thumb[data-slide="powerups"] .tag.err')).to_have_text('1')
-        subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro/slides/powerups.html'], cwd=REPO)
+        subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-intro-slides/slides/powerups.html'], cwd=REPO)
         await expect(pg.locator('.issues')).to_have_count(0)
 
         # --- jQuery runs on a slide too, from the Code tab ---------------------------------

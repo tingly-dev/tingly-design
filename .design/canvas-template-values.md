@@ -58,4 +58,4 @@
 
 - core 单测：多块画板的值汇总、顺序、保留项过滤、没有声明或没读到时为空。
 - e2e（`e2e/template_values.py`）：什么都没选时按画板分组；改一个值，画板的 `default` 变、画板上的内容变、别的画板不变、可以撤销；点组名选中画板并切到 Tweaks；折叠；超过 30 个值出现过滤框；没有声明时的空状态。
-- 自身设计稿 `projects/tingly-design-ui` 的 Canvas template values 板画出这一节、空状态和点击组名之后。
+- 自身设计稿 `projects/tingly-design-ui-canvas` 的 Canvas template values 板画出这一节、空状态和点击组名之后。

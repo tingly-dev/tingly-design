@@ -13,7 +13,7 @@ MOCK_LOG = os.environ.get('DC_MOCK_LOG')
 OFFSET = int(os.environ.get('DC_E2E_OFFSET', 0))
 MOCK_URL = os.environ.get('DC_MOCK_URL', f'http://127.0.0.1:{8790 + OFFSET}')
 IMAGES_URL = os.environ.get('DC_MOCK_IMAGES_URL', f'http://127.0.0.1:{8791 + OFFSET}')
-PROJECT = os.environ.get('DC_PROJECT', 'box-console')
+PROJECT = os.environ.get('DC_PROJECT', 'tingly-box-console-canvas')
 ok = True
 def check(cond, what):
     global ok

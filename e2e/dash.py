@@ -6,15 +6,15 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DASH = os.path.join(REPO, 'projects/box-usage')
+DASH = os.path.join(REPO, 'projects/tingly-box-usage-dashboard')
 CHROME = os.environ.get('DC_CHROME')
 
 def read(path): return open(path, encoding='utf-8').read()
 def write(path, text): open(path, 'w', encoding='utf-8').write(text)
 def dataset(id): return json.loads(read(os.path.join(DASH, f'datasets/{id}.json')))
 def restore():
-    subprocess.run(['git', 'checkout', '--', 'projects/box-usage'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/box-usage'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-box-usage-dashboard'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-box-usage-dashboard'], cwd=REPO)
     subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects/zz-dash')])
 
 async def wait_for(pred, timeout=6.0):
@@ -44,7 +44,7 @@ async def main():
         fr = pg.frame_locator('.dashframe')
 
         # --- the page and its data ----------------------------------------------------
-        await pg.goto(BASE + '/?p=box-usage')
+        await pg.goto(BASE + '/?p=tingly-box-usage-dashboard')
         # a source opened before the page's first report (this once looped forever)
         await pg.locator('.srow').first.click()
         await expect(pg.locator('.sview h2')).to_be_visible()
@@ -132,7 +132,7 @@ async def main():
         runs = os.path.join(DASH, '.runs.json')
         ok = await wait_for(lambda: json.loads(read(runs))['flagged'] == 1)
         check('…and written to .runs.json for Claude Code', ok)
-        check('…which git ignores', subprocess.run(['git', 'check-ignore', '-q', 'projects/box-usage/.runs.json'], cwd=REPO).returncode == 0)
+        check('…which git ignores', subprocess.run(['git', 'check-ignore', '-q', 'projects/tingly-box-usage-dashboard/.runs.json'], cwd=REPO).returncode == 0)
 
         # --- a broken dataset ----------------------------------------------------------------------
         t = dataset('budgets')

@@ -49,7 +49,7 @@ TB 侧的引用路径都相对 tingly-box 仓库。
 ```
  浏览器 / Wails 窗口
  ┌──────────────────────────────────────────────┐
- │ TB 控制台  /design?p=box-console              │   TB 自己的 SPA 路由
+ │ TB 控制台  /design?p=tingly-box-console-canvas              │   TB 自己的 SPA 路由
  │  ┌────────────────────────────────────────┐  │
  │  │ <iframe src="/apps/design/<key>/?p=…">  │  │   能力地址，见 §4.2
  │  └────────────────────────────────────────┘  │
@@ -144,7 +144,7 @@ TB 是单个 Go 二进制，桌面版也不带 Node，所以不把 tingly-design
 
 ### 4.7 地址和导航
 
-- TB 页面 `/design` 加上编辑器给的 `search`，就是可以分享和刷新的地址，比如 `/design?p=tingly-intro&s=box`。
+- TB 页面 `/design` 加上编辑器给的 `search`，就是可以分享和刷新的地址，比如 `/design?p=tingly-design-intro-slides&s=box`。
   - 编辑器发来 `ready` 或 `location` 时，TB 用 `history.replaceState` 把 `search` 写进自己的地址；
   - 页面加载时，iframe 的 `src` 是 session 的 `url` 加上这段 `search`。
 - 浏览器后退会离开 TB 的 `/design`。编辑器内部的切换（幻灯片、标签页）用的是 replace，不产生历史记录，和独立运行时一样。

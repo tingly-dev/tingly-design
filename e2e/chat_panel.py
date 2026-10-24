@@ -65,7 +65,7 @@ async def main():
             pref = lambda: pg.evaluate("localStorage.getItem('dc.barMode')")
             send = lambda text: box.fill(text)
 
-            await pg.goto(f'{base}/?p=box-console')
+            await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
 
@@ -125,8 +125,8 @@ async def main():
             check('stopping leaves the turn in the record', True)
             # Start again inside the stopped run's watcher grace period. Its delayed cleanup must
             # not clear the new run's attribution: an Edit step alone gives a chip, but not undo.
-            before_retry = {f: open(os.path.join(projects, 'box-console', f)).read()
-                            for f in os.listdir(os.path.join(projects, 'box-console')) if f.endswith('.dc.html')}
+            before_retry = {f: open(os.path.join(projects, 'tingly-box-console-canvas', f)).read()
+                            for f in os.listdir(os.path.join(projects, 'tingly-box-console-canvas')) if f.endswith('.dc.html')}
             await send('把标题再改短')
             await box.press('Enter')
             await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
@@ -135,21 +135,21 @@ async def main():
             await expect(pg.locator('.turn').last.get_by_role('button', name='撤销这次改动')).to_have_count(1)  # it appears a moment after the chip
             check('undo is offered on the newest turn only', await pg.get_by_role('button', name='撤销这次改动').count() == 1 and await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').count() == 1)
             changed_file = await pg.locator('.turn').last.locator('.file-chip').first.inner_text()
-            journal = json.load(urllib.request.urlopen(f'{base}/api/projects/box-console/journal'))
+            journal = json.load(urllib.request.urlopen(f'{base}/api/projects/tingly-box-console-canvas/journal'))
             check('the run after stopping is credited to Claude, not an outside edit', next(e for e in reversed(journal) if e['file'] == changed_file)['actor'] == 'claude')
             await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').click()
             await expect(pg.locator('.turn').last).to_contain_text('已撤销')
             for _ in range(50):
-                if open(os.path.join(projects, 'box-console', changed_file)).read() == before_retry[changed_file]: break
+                if open(os.path.join(projects, 'tingly-box-console-canvas', changed_file)).read() == before_retry[changed_file]: break
                 await pg.wait_for_timeout(100)
-            check('undo after stopping restores the next run\'s actual file change', open(os.path.join(projects, 'box-console', changed_file)).read() == before_retry[changed_file])
+            check('undo after stopping restores the next run\'s actual file change', open(os.path.join(projects, 'tingly-box-console-canvas', changed_file)).read() == before_retry[changed_file])
             check('every turn can be put back in the box', await pg.get_by_role('button', name='放回输入框').count() == 3)
             await pg.locator('.turn').first.get_by_role('button', name='放回输入框').click()
             check('putting a request back fills the box', await box.input_value() == '把标题改短')
             await box.fill('')
 
             # a request from the command line is in the record, marked as such
-            post(f'{base}/api/projects/box-console/delegate', {'prompt': '来自终端的请求', 'source': 'cli', 'fresh': True})
+            post(f'{base}/api/projects/tingly-box-console-canvas/delegate', {'prompt': '来自终端的请求', 'source': 'cli', 'fresh': True})
             await expect(pg.locator('.turn')).to_have_count(4, timeout=8000)
             check('a request from the command line shows up with its source', '来自命令行' in await pg.locator('.turn').last.inner_text())
             check('a new conversation is a divider in the record, not a clear', await pg.locator('.turn-divider').count() == 1 and await pg.locator('.turn').count() == 4, f'{await pg.locator(".turn-divider").count()} dividers, {await pg.locator(".turn").count()} turns')
@@ -159,9 +159,9 @@ async def main():
             await pg.reload(); await pg.wait_for_selector('.board'); await expect(pg.locator('.turn')).to_have_count(4, timeout=8000)
             check('the record is still there after a reload', '再改' in await pg.locator('.chat-feed').inner_text() and '来自终端的请求' in await pg.locator('.chat-feed').inner_text())
             check('left is remembered', await panel.count() == 1)
-            stored = json.load(urllib.request.urlopen(f'{base}/api/projects/box-console/transcript'))
-            check('the server keeps it in the project folder as local state', len(stored) == 4 and os.path.exists(os.path.join(projects, 'box-console', '.transcript.jsonl')))
-            check('and not in the files git or a zip would carry', all(not f.endswith('.transcript.jsonl') for f in json.load(urllib.request.urlopen(f'{base}/api/projects/box-console/files'))['files']))
+            stored = json.load(urllib.request.urlopen(f'{base}/api/projects/tingly-box-console-canvas/transcript'))
+            check('the server keeps it in the project folder as local state', len(stored) == 4 and os.path.exists(os.path.join(projects, 'tingly-box-console-canvas', '.transcript.jsonl')))
+            check('and not in the files git or a zip would carry', all(not f.endswith('.transcript.jsonl') for f in json.load(urllib.request.urlopen(f'{base}/api/projects/tingly-box-console-canvas/files'))['files']))
 
             # the column's width: dragged, remembered, back with a double click
             sep = pg.get_by_role('separator', name='调整对话的宽度')
@@ -202,7 +202,7 @@ async def main():
             await pg.evaluate("localStorage.setItem('dc.barMode', 'left')")
 
             # every kind: the same column; the kinds with a list of their own keep it as the first tab
-            for proj, kind, tab in [('tingly-intro', 'slides', '页面'), ('tingly-ds', 'design-system', '列表'), ('design-guide', 'docs', '标签页'), ('box-usage', 'dashboard', None), ('design-motion', 'motion', None)]:
+            for proj, kind, tab in [('tingly-design-intro-slides', 'slides', '页面'), ('tingly-design-system', 'design-system', '列表'), ('tingly-design-guide-doc', 'docs', '标签页'), ('tingly-box-usage-dashboard', 'dashboard', None), ('design-motion', 'motion', None)]:
                 await pg.goto(f'{base}/?p={proj}')
                 await pg.wait_for_selector('.chat-panel', timeout=10000)
                 await pg.wait_for_timeout(500)
@@ -236,7 +236,7 @@ async def main():
             # the position menu works from the bottom bar of every kind: it opens inside the window (the bar is
             # centred with a transform, which must not move the menu), and left and bottom both take effect
             await pg.set_viewport_size({'width': 1440, 'height': 800})
-            for proj, kind in [('box-console', 'design'), ('tingly-intro', 'slides'), ('tingly-ds', 'design-system'), ('design-guide', 'docs'), ('box-usage', 'dashboard'), ('design-motion', 'motion')]:
+            for proj, kind in [('tingly-box-console-canvas', 'design'), ('tingly-design-intro-slides', 'slides'), ('tingly-design-system', 'design-system'), ('tingly-design-guide-doc', 'docs'), ('tingly-box-usage-dashboard', 'dashboard'), ('design-motion', 'motion')]:
                 await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
                 await pg.goto(f'{base}/?p={proj}')
                 await pg.wait_for_selector('.board, .app', timeout=10000)

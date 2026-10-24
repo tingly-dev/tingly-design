@@ -1,6 +1,6 @@
 # 自身设计稿：用 Tingly Design 画 Tingly Design
 
-状态：**已实施**（画布 `projects/tingly-design-ui`）；§5 是还开着的问题。
+状态：**已实施**（画布 `projects/tingly-design-ui-canvas`）；§5 是还开着的问题。
 
 ## 1. 问题
 

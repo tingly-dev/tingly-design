@@ -6,21 +6,21 @@ BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 CHROME = os.environ.get('DC_CHROME')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, 'e2e', 'out') + '/'
-FLOW = os.path.join(REPO, 'projects/box-console/Flow.dc.html')
+FLOW = os.path.join(REPO, 'projects/tingly-box-console-canvas/Flow.dc.html')
 
 results = []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
 
-def restore(): subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=REPO)
+def restore(): subprocess.run(['git', 'checkout', '--', 'projects/tingly-box-console-canvas'], cwd=REPO)
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.wait_for_timeout(2500)
         flow = pg.frame_locator('[data-board="Flow.dc.html"] iframe')
         await flow.locator('text=Translated').click()

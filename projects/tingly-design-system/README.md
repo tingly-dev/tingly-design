@@ -1,6 +1,6 @@
 # Tingly Design System
 
-The shared look of the Tingly projects: [Tingly Box](https://github.com/tingly-dev/tingly-box), the open-source AI gateway that connects any agent to any model, and Tingly Design, the local design workspace this system lives in. The values come from the Tingly Box homepage and web UI; the sample deck (`projects/tingly-intro`), the console mockups (`projects/box-console`) and the usage dashboard (`projects/box-usage`) are built with it.
+The shared look of the Tingly projects: [Tingly Box](https://github.com/tingly-dev/tingly-box), the open-source AI gateway that connects any agent to any model, and Tingly Design, the local design workspace this system lives in. The values come from the Tingly Box homepage and web UI; the sample deck (`projects/tingly-design-intro-slides`), the console mockups (`projects/tingly-box-console-canvas`) and the usage dashboard (`projects/tingly-box-usage-dashboard`) are built with it.
 
 ## Voice
 

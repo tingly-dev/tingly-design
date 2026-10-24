@@ -24,7 +24,7 @@ A design system is a folder under `projects/<name>/`, laid out as the original D
 
 Files people attached to a request are kept in `uploads/`; read them as material. Nothing in the system may point at `uploads/`: copy a logo or picture it uses into `assets/<Group>/` and a font into `fonts/` (listed in `tokens.json`), and reference that copy.
 
-The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/tingly-ds` is a full example: two themes, Instrument Serif and Inter, four components; the deck in `projects/tingly-intro` is built from it.
+The editor (`pnpm dev`, http://localhost:5173/?p=<name>) shows the system — overview with the cover and brand book, colours per theme with contrast, type, spacing/radius/shadow, live component previews, assets — and edits tokens in place. `projects/tingly-design-system` is a full example: two themes, Instrument Serif and Inter, four components; the deck in `projects/tingly-design-intro-slides` is built from it.
 
 ## Starting from a look
 

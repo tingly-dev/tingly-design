@@ -33,7 +33,7 @@ A PR that changes anything a person sees (the editor, the launcher, the homepage
 
 ## Design the editor in itself
 
-`projects/tingly-design-ui` is a canvas that draws Tingly Design's own UI: how the pieces fit, the shell every kind shares, the launcher, the top bar and menus, one board per kind (a numbered wireframe with notes and its open questions), the agent bar's states and the theme tokens. Before changing anything a person sees in the editor, find its board and draw the change there first; when a PR changes the UI, it redraws the board in the same PR. Boards use the editor's light token values, real UI wording, and placeholders for content. See `.design/self-design.md`.
+`projects/tingly-design-ui-canvas` is a canvas that draws Tingly Design's own UI: how the pieces fit, the shell every kind shares, the launcher, the top bar and menus, one board per kind (a numbered wireframe with notes and its open questions), the agent bar's states and the theme tokens. Before changing anything a person sees in the editor, find its board and draw the change there first; when a PR changes the UI, it redraws the board in the same PR. Boards use the editor's light token values, real UI wording, and placeholders for content. See `.design/self-design.md`.
 
 ## Files people bring in
 
@@ -109,7 +109,7 @@ apps/server       Hono server (`app.ts` core routes and mounting, `routes/<area>
 apps/editor       React editors: `store.ts` is the one zustand store (state, selectors, loading and server events), with the request bar and conversation fields in `store/agent.ts` and the edit engine (`edit`, undo, saving queue) in `editEngine.ts` (`.design/store-slices.md`; the two files import each other, so `editEngine.ts` must not touch `useStore` while modules load);
                   components/ root holds what every kind shares (bars, menus, Dialog; the launcher in launcher/);
                   components/<kind>/ holds one kind's app and its state (`slides.ts`, `motion.ts`, …), canvas included
-projects/         sample projects, one per kind; `tingly-design-ui` is the editor's own design canvas (see "Design the editor in itself")
+projects/         sample projects, one per kind; `tingly-design-ui-canvas` is the editor's own design canvas (see "Design the editor in itself")
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)

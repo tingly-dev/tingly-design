@@ -9,7 +9,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 CHROME = os.environ.get('DC_CHROME')
 
 # one sample per kind; the samples are written in English, so an English editor shows no Chinese at all
-SAMPLES = ['box-console', 'tingly-intro', 'tingly-ds', 'box-usage', 'design-guide', 'design-motion']
+SAMPLES = ['tingly-box-console-canvas', 'tingly-design-intro-slides', 'tingly-design-system', 'tingly-box-usage-dashboard', 'tingly-design-guide-doc', 'design-motion']
 HAN = r"""() => {
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const out = [];

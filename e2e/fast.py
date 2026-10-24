@@ -3,18 +3,18 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MAIN = os.path.join(REPO, 'projects/box-console/Main.dc.html')
+MAIN = os.path.join(REPO, 'projects/tingly-box-console-canvas/Main.dc.html')
 src = lambda: open(MAIN, encoding='utf-8').read()
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-box-console-canvas'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     open(OUT + 'mock.log', 'w').close()
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': os.environ['DC_CHROME']} if os.environ.get('DC_CHROME') else {}))
         pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.wait_for_timeout(2500)
         main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
         await main.locator('h1').click()
@@ -38,7 +38,7 @@ async def main():
         await pg.screenshot(path=OUT + 'fast-done.png')
         # a part copied onto another artboard: the refused first try, then a named clone saved in the other file, the pointed one untouched
         title = re.search(r'<h1[^>]*>([^<]+)</h1>', src()).group(1)
-        usage = os.path.join(REPO, 'projects/box-console/Usage.dc.html')
+        usage = os.path.join(REPO, 'projects/tingly-box-console-canvas/Usage.dc.html')
         before = open(usage, encoding='utf-8').read()
         main_before = src()
         await main.locator('h1').click()
@@ -58,9 +58,9 @@ async def main():
         print('PASS' if src() == main_before and open(usage, encoding='utf-8').read() == before else 'FAIL', 'one undo restores both artboards')
         log = [json.loads(l) for l in open(OUT + 'mock.log')]
         print('PASS' if 'must name it' in log[-1]['last'] else 'FAIL', 'a handle of another artboard written bare was refused with how to name it')
-        print(subprocess.run(['git', 'diff', '--stat', '--', 'projects/box-console'], cwd=REPO, capture_output=True, text=True).stdout)
+        print(subprocess.run(['git', 'diff', '--stat', '--', 'projects/tingly-box-console-canvas'], cwd=REPO, capture_output=True, text=True).stdout)
         print('errors:', errs)
         await b.close()
 asyncio.run(main())
 # leave the sample canvas as committed
-subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+subprocess.run(['git', 'checkout', '--', 'projects/tingly-box-console-canvas'], cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -6,13 +6,13 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ARR = os.path.join(REPO, 'projects/tingly-intro/slides/box.html')
+ARR = os.path.join(REPO, 'projects/tingly-design-intro-slides/slides/box.html')
 CHROME = os.environ.get('DC_CHROME')
 src = lambda: open(ARR, encoding='utf-8').read()
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
     open(OUT + 'mock.log', 'w').close()
     ok = True
     async with async_playwright() as p:
@@ -20,7 +20,7 @@ async def main():
         pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + '/?p=tingly-intro&s=box')
+        await pg.goto(BASE + '/?p=tingly-design-intro-slides&s=box')
         await pg.frame_locator('.sframe.f-stage iframe').locator('section#box').wait_for()
         await pg.wait_for_timeout(500)
         # select the heading (coordinates by hand: the slide frame is scaled)
@@ -50,7 +50,7 @@ async def main():
             print(('PASS ' if good else 'FAIL ') + name)
             ok = ok and good
         await b.close()
-    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
     if not ok: raise SystemExit(1)
 
 asyncio.run(main())
