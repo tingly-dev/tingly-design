@@ -34,7 +34,7 @@ describe('runNewWizard', () => {
     expect((await runNewWizard(s.io, {}, new Set())).size).toEqual([900, 383]);
     expect(s.options.size).toContain('og');
     expect(s.options.size).not.toContain('a4');
-    const n = script(['canvas', 'Cover', '', '3', '2']);
+    const n = script(['canvas', 'Cover', '', '4', 'portrait']);
     expect((await runNewWizard(n.io, {}, new Set())).size).toEqual([1080, 1350]);
   });
 

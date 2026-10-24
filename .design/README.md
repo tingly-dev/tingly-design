@@ -22,6 +22,7 @@
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
+| [size-adapt.md](./size-adapt.md) | 加尺寸、换尺寸后内容怎么跟着变：问题、五种做法、共用的 `adaptSize` 和必要时交给 Claude 重排 | 画板已实施；幻灯片、动效是方案 |
 | [project-kinds.md](./project-kinds.md) | 一种项目类型要在哪些地方登记；跨类型功能矩阵和已知缺口 | 现行契约 |
 | [kind-registry.md](./kind-registry.md) | 把散落在各处的 `kind === …` 分支改成按层的穷尽表：问题、三种方案、建议的三步 | 方案 |
 | [store-slices.md](./store-slices.md) | 编辑器的大 store 为什么、怎么按"谁用它"切片（单个 store、不动消费方）；配图 [store-slices.pencil.md](./store-slices.pencil.md) | 方案 |

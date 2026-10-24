@@ -38,7 +38,7 @@ async def main():
         await pg.locator('.menu [data-new="motion"] .mi').click()
         dlg = pg.locator('[role=dialog]')
         check('the new-motion dialog asks for a size, 16:9 the first time', await dlg.locator('.szopt[aria-checked=true]').get_attribute('data-size') == 'wide')
-        check('motion uses the canvas categories and custom sizes', await dlg.locator('.szcat').count() == 7)
+        check('motion uses the canvas categories and custom sizes', await dlg.locator('.szcat').count() == 8)
         await dlg.locator('.szcat[data-group=social]').click()
         await dlg.locator('.szopt[data-size=story]').click()
         await expect(dlg.locator('.szfor')).to_contain_text('抖音')

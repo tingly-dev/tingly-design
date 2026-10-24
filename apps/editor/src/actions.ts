@@ -1,4 +1,6 @@
 import {
+  adaptSize,
+  rootSize,
   elementSource,
   getStyle,
   isShape,
@@ -348,6 +350,21 @@ export function updateBoard(file: string, patch: Partial<BoardEntry>, what = 'ch
       else (b as Record<string, unknown>)[k] = v;
     }
   }, `artboard ${file} ${what}`);
+}
+
+/**
+ * Give an artboard a new size. With `scale` the file's own layout follows (`adaptSize`): a frame
+ * that changes under a page written for another size only crops it.
+ */
+export function resizeBoard(file: string, w: number, h: number, scale: boolean): void {
+  const b = canvasOf(get()).boards[file];
+  const src = display(get(), file);
+  if (!b || (b.w === w && b.h === h)) return;
+  if (scale && src !== undefined) {
+    const from = rootSize(src) ?? [b.w, b.h];
+    edit(file, (cur) => adaptSize(cur, from, [w, h]), { actor: 'human', summary: `artboard ${file} content scaled to ${w}×${h}`, undoable: true });
+  }
+  updateBoard(file, { w, h }, 'resized');
 }
 
 // ---------------------------------------------------------------- pages
