@@ -233,6 +233,24 @@ async def main():
                     check(f'{kind}: one column of conversation, no tabs', await pg.locator('.chat-tabs').count() == 0)
                 if kind == 'motion':
                     check('motion: no empty slot under the timeline', await pg.locator('.mprompt').count() == 0 or not await pg.locator('.mprompt').is_visible())
+            # the position menu works from the bottom bar of every kind: it opens inside the window (the bar is
+            # centred with a transform, which must not move the menu), and left and bottom both take effect
+            await pg.set_viewport_size({'width': 1440, 'height': 800})
+            for proj, kind in [('box-console', 'design'), ('tingly-intro', 'slides'), ('tingly-ds', 'design-system'), ('design-guide', 'docs'), ('box-usage', 'dashboard'), ('design-motion', 'motion')]:
+                await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
+                await pg.goto(f'{base}/?p={proj}')
+                await pg.wait_for_selector('.board, .app', timeout=10000)
+                await pg.wait_for_timeout(700)
+                await pg.get_by_role('button', name='请求栏的位置').first.click()
+                inside = await pg.locator('.menu').evaluate('e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth; }')
+                check(f'{kind}: the position menu opens inside the window', inside)
+                await pg.get_by_role('menuitemcheckbox', name='左侧').click(timeout=5000)
+                await expect(panel).to_have_count(1)
+                check(f'{kind}: choosing the left moves the bar into the column', await pref() == 'left' and await pg.locator('.chat-composer').count() == 1)
+                await pg.locator('.chat-composer').get_by_role('button', name='请求栏的位置').click()
+                await pg.get_by_role('menuitemcheckbox', name='底部').click(timeout=5000)
+                await expect(panel).to_have_count(0)
+                check(f'{kind}: choosing the bottom puts it back', await pref() == 'float' and await pg.locator('.chat-composer').count() == 0)
             check('no page errors', not errs, errs)
             await b.close()
     finally:

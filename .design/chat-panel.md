@@ -95,7 +95,7 @@
 
 ### 3.6 怎么放进六种类型而不用写六遍
 
-面板不放进每个类型自己的布局，而是在 `App` 外面包一层外壳，外壳是一行：[对话面板][当前类型的整个应用，含顶栏]。类型的 `grid`、顶栏、浮动工具栏都不改。要处理的是各类型里 `position: fixed` 的东西（现在 `.app` 是 `inset: var(--topbar-h) 0 0 0`）：外壳给类型这一列一个新的包含块（`transform`），让它们相对这一列而不是整个窗口定位。弹窗、菜单走 `<body>` 的 portal，仍相对整个窗口，不受影响。
+面板不放进每个类型自己的布局，而是在 `App` 外面包一层外壳，外壳是一行：[对话面板][当前类型的整个应用，含顶栏]。类型的 `grid`、顶栏、浮动工具栏都不改。要处理的是各类型里 `position: fixed` 的东西（现在 `.app` 是 `inset: var(--topbar-h) 0 0 0`）：外壳给类型这一列一个新的包含块（`transform`），让它们相对这一列而不是整个窗口定位。菜单走 `<body>` 的 portal，仍相对整个窗口，不受影响。
 
 唯一要类型配合的是 3.3 的三种：它们把自己的左列注册给外壳（页签名 + 内容），左侧位置时由外壳放进面板的第一个页签，底部位置时照原样画在自己的布局里。同一份列的组件，只换容器。
 
@@ -166,6 +166,7 @@
 
 - **外壳**：`ChatShell`（`ChatPanel.tsx`）包住 `App`。关着时 `.chat-shell` 和 `.chat-work` 都是 `display: contents`，不影响任何布局；打开时 `.chat-work` 有 `transform`，里面 `position: fixed` 的东西（顶栏、`.app`）相对它而不是窗口。两种状态下树的形状一样，所以换位置、窗口变窄都不重建作品。
 - **槽位**：列里有两个槽，输入框的和类型自己的列的。`RequestBar` 左侧时把输入部分 portal 到输入框槽；`ListColumn` 把幻灯片、文档、设计系统的列 portal 到第一个页签槽，并把页签名告诉外壳。记录里点文件名、"放回输入框"要回到输入框所在的 `RequestBar`，经外壳里的一个 ref（`bridge`）。
+- **菜单**：请求栏自己用 `translateX(-50%)` 居中，所以它是里面 `position: fixed` 的包含块。`Menu` 因此 portal 到 `<body>`，调用方在哪个带 `transform` 的祖先里都按窗口坐标定位。菜单不在栏的 DOM 里，所以栏的“点外面放开输入框”和对话框的 Tab 陷阱都把 `[role=menu]` 当作自己的一部分。（`Dialog` 本身不走 portal。）
 - **一轮的来源**：`turns.ts` 把服务端存的轮次和这个页面里的活动运行（`delegates`、`fast`）按 `id` 合并，活动的优先，但页面是跑到一半才打开的，则保留记录里更长的步骤。一轮结束时进 `store.turns`，快速 AI 的还 POST 给服务端（`api.keepTurn`）；快速 AI 交给 Claude Code 的那次只算 Claude Code 的一轮（`via: 'fast'`）。
 - **服务端读到"还在跑"但进程已经没了**（重启、崩溃）：`GET …/transcript` 把超过 20 秒且 `children` 里没有它的 Claude Code 轮次改成失败并写"这次运行在结束前被中断了"，不改文件。
 - **一个词的 key**：`dc.barMode` 是 `float` / `left`；旧值 `auto` 读作 `left`。
