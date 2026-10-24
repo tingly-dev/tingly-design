@@ -1,23 +1,5 @@
 export default {
   docTitle: '{{title}} · Motion',
-  /** the format presets offered when adding a size (motion.ts FORMAT_PRESETS) */
-  preset: {
-    wide: 'Landscape 16:9',
-    tall: 'Vertical 9:16',
-    square: 'Square 1:1',
-    portrait: 'Portrait 4:5',
-    upright: 'Portrait 3:4',
-    classic: 'Classic 4:3',
-  },
-  /** the platforms each preset size is made for, shown under the picker */
-  presetFor: {
-    wide: 'YouTube, Bilibili, X/Twitter, PPT 16:9',
-    tall: 'Douyin, TikTok, WeChat Channels, Reels, Shorts',
-    square: 'WeChat Moments, X/Twitter, Instagram',
-    portrait: 'Instagram feed, X/Twitter',
-    upright: 'Xiaohongshu, WeChat Channels',
-    classic: 'PPT 4:3, older screens',
-  },
   /** how a scene leaves (data-transition) */
   transition: {
     cut: 'Cut',
@@ -183,13 +165,9 @@ export default {
     confirmRemove: 'Delete size {{name}}?',
     confirmRemoveOverrides_one: 'Delete size {{name}}? The {{count}} setting in the scenes that belongs only to it will be deleted too.',
     confirmRemoveOverrides_other: 'Delete size {{name}}? The {{count}} settings in the scenes that belong only to it will be deleted too.',
-    newName: 'Name',
-    newWidth: 'Width',
-    newHeight: 'Height',
-    newNameLabel: 'New size’s name',
-    newWidthLabel: 'New size’s width',
-    newHeightLabel: 'New size’s height',
     addFormat: '+ Add size',
+    addSize: 'Add {{size}}',
+    sizeTaken: 'This piece already has that size.',
     formatsHint: 'Every size shares the scenes, text and timing. A new size first adapts by its layout; then switch to it and adjust what doesn’t fit there.',
     shortcuts: 'Shortcuts',
     shortcutList: 'Space play / pause · ← → step a frame (⇧ a second) · ⌫ delete · ⌘D duplicate · ⇧↵ select parent · ⌘Z undo · Esc deselect',

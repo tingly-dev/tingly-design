@@ -286,7 +286,9 @@ async def main():
         # sizes set by hand
         await pg.locator('.mstage').click(position={'x': 5, 'y': 5})
         await pg.locator('button', has_text='添加尺寸').click()
-        await pg.locator('.maddfmt button', has_text='方形').click()
+        await pg.locator('.maddfmt .szcat[data-group="social"]').click()
+        await pg.locator('.maddfmt .szopt[data-size="square"]').click()
+        await pg.locator('.maddfmt button.primary').click()
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(1)
         await pg.wait_for_timeout(500)
         check('a size added in the panel lands in motion.json', '"square"' in read('motion.json'))

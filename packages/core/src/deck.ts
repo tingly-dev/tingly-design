@@ -5,7 +5,7 @@
  * a closed subset of HTML and inline CSS (see `slides.ts`).
  */
 
-import { validSize } from './motion';
+import { validSize } from './boardSizes';
 import { HIDE_CSS } from './layers';
 
 export const DECK_FILE = 'deck.json';

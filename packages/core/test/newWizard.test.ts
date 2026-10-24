@@ -42,14 +42,19 @@ describe('runNewWizard', () => {
     const s = script(['canvas', 'X', '', 'custom', '5000x0', '1080×1440']);
     expect((await runNewWizard(s.io, {}, new Set())).size).toEqual([1080, 1440]);
     expect(s.complaints).toEqual(['badSize']);
-    const m = script(['motion', 'Intro', '', 'tall']);
+    const m = script(['motion', 'Intro', '', 'social', 'story']);
     expect(await runNewWizard(m.io, {}, new Set())).toEqual({ kind: 'motion', title: 'Intro', target: 'intro', size: [1080, 1920] });
     const d = script(['motion', 'Intro', '', 'custom', '800x800']);
     expect((await runNewWizard(d.io, {}, new Set())).size).toEqual([800, 800]);
   });
 
+  it('asks a deck for its size like a canvas and a motion piece', async () => {
+    const s = script(['slides', 'Talk', '', 'slides', 'standard']);
+    expect((await runNewWizard(s.io, {}, new Set())).size).toEqual([1600, 1200]);
+  });
+
   it('asks nothing about size for the other kinds', async () => {
-    for (const kind of ['slides', 'design-system', 'dashboard', 'doc']) {
+    for (const kind of ['design-system', 'dashboard', 'doc']) {
       const s = script([kind, 'Thing', '']);
       const a = await runNewWizard(s.io, {}, new Set());
       expect(s.asked).toEqual(['kind', 'title', 'name']);
@@ -67,8 +72,8 @@ describe('runNewWizard', () => {
 
   it('suggests a free folder name, refuses a bad or taken one, and lets a path through', async () => {
     const taken = new Set(['pitch']);
-    expect((await runNewWizard(script(['slides', 'Pitch', '']).io, {}, taken)).target).toBe('pitch-2');
-    const b = script(['slides', 'Pitch', 'pitch', 'bad name!', '~/work/pitch']);
+    expect((await runNewWizard(script(['doc', 'Pitch', '']).io, {}, taken)).target).toBe('pitch-2');
+    const b = script(['doc', 'Pitch', 'pitch', 'bad name!', '~/work/pitch']);
     const a = await runNewWizard(b.io, {}, taken);
     expect(b.complaints).toEqual(['taken', 'badName']);
     expect(a.target).toBe('~/work/pitch');

@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { attr, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_SIZES, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { attr, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
@@ -36,9 +36,6 @@ export function editMotion(mutate: (raw: Record<string, unknown>) => void, summa
     { actor: 'human', summary, undoable: true },
   );
 }
-
-/** Common sizes, named the way motion.json names formats; each is labelled by `motion.preset.<name>`. */
-export const FORMAT_PRESETS = MOTION_SIZES.map((p) => ({ name: p.name, size: [...p.size] as [number, number] }));
 
 const formatsOf = (raw: Record<string, unknown>) => ((raw.formats ??= {}) as Record<string, { size: [number, number] }>);
 

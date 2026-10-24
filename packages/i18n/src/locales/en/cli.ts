@@ -40,7 +40,7 @@ Options:
   -n, --name            open, check, export, prompt, history, list: read the project argument as a name, not a path
   -i, --interactive     new: ask for whatever is not given, then offer to open the project
   --global              new: keep a bare name in the projects folder instead of a folder of that name here
-  --size <W>x<H>        new canvas or motion: the first artboard's or format's size; a canvas also takes a
+  --size <W>x<H>        new canvas, slides or motion: the first artboard's, the deck's or format's size, or a
                         name from the New dialog's list (wechat, tall, story, og, a4, wide, mpu, …)
   --look <name>         new design-system: start from a look (nord, swiss-grid, dracula, …) instead of blank
   --format <a,b>        export: the motion formats to render (default: all)
@@ -93,7 +93,6 @@ Options:
     kind: 'What are you making?',
     group: 'Size category',
     size: 'Size',
-    format: 'Size',
     title: 'Title',
     name: 'Folder name, or a path to keep it somewhere else',
     custom: 'Width x height',

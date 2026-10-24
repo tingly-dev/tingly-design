@@ -5,6 +5,7 @@ import {
   TRANSITION_KINDS,
   attr,
   checkScene,
+  formatNameOf,
   formatTime,
   getStyle,
   parseStyle,
@@ -12,12 +13,15 @@ import {
   rootElement,
   sceneIdOf,
   sceneVisibility,
+  sizeName,
   type DcDoc,
   type DcElement,
 } from '@dc/core';
 import { display, editElement, parsed, useStore } from '../../store';
-import { FORMAT_PRESETS, addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
+import { addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
+import { SizePicker } from './SizePicker';
+import { rememberSize, sameSize, type Size } from './motionSizes';
 import { ElementLayers } from '../panel/LayerTree';
 
 
@@ -188,18 +192,21 @@ export function MotionProps() {
   const m = useMotion();
   const names = Object.keys(m.formats);
   const [adding, setAdding] = useState(false);
-  const [custom, setCustom] = useState({ name: '', w: '', h: '' });
+  const [picked, setPicked] = useState<Size | null>(null);
   const { t } = useTranslation();
   const num = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : NaN);
-  const add = (name: string, size: [number, number]) => {
+  const taken = !!picked && names.some((n) => sameSize(m.formats[n].size, picked));
+  const add = (size: Size) => {
+    const base = formatNameOf(size);
+    const name = m.formats[base] ? sizeName(size) : base;
     if (addFormat(name, size)) {
+      rememberSize(size);
       setAdding(false);
-      setCustom({ name: '', w: '', h: '' });
+      setPicked(null);
       const view = useStore.getState().motionView;
       if (view) useStore.setState({ motionView: { ...view, format: name } });
     }
   };
-  const free = FORMAT_PRESETS.filter((p) => !m.formats[p.name]);
   return (
     <div className="sec">
       <div className="empty" style={{ textAlign: 'center', padding: '8px 0 4px' }}>
@@ -256,27 +263,16 @@ export function MotionProps() {
       </div>
       {adding ? (
         <div className="maddfmt">
-          {free.map((p) => (
-            <button key={p.name} className="btn outline" title={t(`motion.presetFor.${p.name}`)} onClick={() => add(p.name, p.size)}>
-              {t(`motion.preset.${p.name}`)} <span className="faint">{sizeLabel(p.size)}</span>
+          <SizePicker value={picked} onChange={setPicked} />
+          <div className="maddfmt-actions">
+            <button className="btn primary sm" disabled={!picked || taken} onClick={() => picked && add(picked)}>
+              {picked ? t('motion.motionProps.addSize', { size: `${picked[0]}×${picked[1]}` }) : t('common.add')}
             </button>
-          ))}
-          <form
-            className="mcustom"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const w = num(custom.w);
-              const h = num(custom.h);
-              if (w > 0 && h > 0) add(custom.name.trim() || `s${w}x${h}`.replace(/[^a-z0-9]/g, '').slice(0, 16), [w, h]);
-            }}
-          >
-            <input className="input" placeholder={t('motion.motionProps.newName')} value={custom.name} onChange={(e) => setCustom({ ...custom, name: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label={t('motion.motionProps.newNameLabel')} />
-            <input className="input" placeholder={t('motion.motionProps.newWidth')} value={custom.w} onChange={(e) => setCustom({ ...custom, w: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label={t('motion.motionProps.newWidthLabel')} />
-            <input className="input" placeholder={t('motion.motionProps.newHeight')} value={custom.h} onChange={(e) => setCustom({ ...custom, h: e.target.value })} onKeyDown={(e) => e.stopPropagation()} aria-label={t('motion.motionProps.newHeightLabel')} />
-            <button className="btn outline" type="submit">
-              {t('common.add')}
+            <button className="btn ghost sm" onClick={() => setAdding(false)}>
+              {t('common.cancel')}
             </button>
-          </form>
+            {taken && <span className="hint">{t('motion.motionProps.sizeTaken')}</span>}
+          </div>
         </div>
       ) : (
         <button className="btn outline" onClick={() => setAdding(true)}>

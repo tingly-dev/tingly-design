@@ -16,7 +16,6 @@ import {
   parseCover,
   parseMotion,
   checkScene,
-  MOTION_SIZES,
   newMotion,
   sizeName,
   validSize,
@@ -276,12 +275,12 @@ describe('a new piece in a chosen size', () => {
   it('names the format by its shape and keeps the 16:9 default', () => {
     expect(newMotion('T').motion.formats).toEqual({ wide: { size: [1920, 1080] } });
     expect(newMotion('T', undefined, { size: [1080, 1920] }).motion.formats).toEqual({ tall: { size: [1080, 1920] } });
-    for (const p of MOTION_SIZES) expect(Object.keys(newMotion('T', undefined, { size: [...p.size] }).motion.formats)).toEqual([p.name]);
+    for (const [size, name] of [[[1920, 1080], 'wide'], [[1080, 1920], 'tall'], [[1080, 1440], 'upright'], [[1200, 630], 's1200x630'], [[333, 777], 's333x777']] as const) expect(Object.keys(newMotion('T', undefined, { size: [...size] }).motion.formats)).toEqual([name]);
   });
 
   it('gives a custom size a name the format rules accept, or the one asked for', () => {
-    const m = parseMotion(JSON.stringify(newMotion('T', undefined, { size: [1280, 720] }).motion));
-    expect(Object.keys(m.formats)).toEqual([sizeName([1280, 720])]);
+    const m = parseMotion(JSON.stringify(newMotion('T', undefined, { size: [1281, 721] }).motion));
+    expect(Object.keys(m.formats)).toEqual([sizeName([1281, 721])]);
     expect(Object.keys(newMotion('T', undefined, { size: [1280, 720], format: 'x720' }).motion.formats)).toEqual(['x720']);
   });
 
