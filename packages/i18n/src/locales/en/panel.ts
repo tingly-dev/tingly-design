@@ -133,15 +133,17 @@ export default {
     install: 'Install',
     none: 'There are no design systems in this repository yet. Pick “Design system” when creating a project.',
   },
-  board: {
-    title: 'Artboard',
-    nameLabel: 'Artboard name',
+  size: {
     preset: 'Preset',
     presetLabel: 'Size preset',
     presetPlaceholder: 'Choose a size…',
     scaleContent: 'Scale the page with the size',
     relayoutHint: 'The shape changed a lot, so scaling alone may not fit.',
     relayoutAsk: 'Ask Claude to re-lay out',
+  },
+  board: {
+    title: 'Artboard',
+    nameLabel: 'Artboard name',
     interactive: 'Interactive (buttons respond in play mode)',
     fill: 'Web page: fill the window in full screen',
     duplicate: 'Duplicate artboard',

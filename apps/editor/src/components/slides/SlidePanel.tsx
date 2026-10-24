@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BUILDS, TRANSITIONS, attr, checkSlide, getStyle, googleFace, layerTree, rootElement, slideFile, type Layer } from '@dc/core';
+import { BUILDS, deckSize, TRANSITIONS, attr, checkSlide, getStyle, googleFace, layerTree, rootElement, slideFile, type Layer } from '@dc/core';
 import { display, editDeck, editElement, parsed, useDeck, useStore } from '../../store';
-import { isHidden, setSectionAttr, slideTitle, toggleHidden } from './slides';
+import { isHidden, resizeDeck, setSectionAttr, slideTitle, toggleHidden } from './slides';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { Chevron, RoleIcon } from '../icons';
 import { DsInstall } from '../panel/DsInstall';
+import { SizeRows } from '../panel/SizeRows';
 
 const ROLES = ['Slide', 'Column', 'Row', 'Grid', 'Text', 'Image', 'Vector', 'Link', 'Group', 'Embed', 'Artboard', 'Shape', 'Icon', 'Connector', 'Table', 'Notes'] as const;
 type KnownRole = (typeof ROLES)[number];
@@ -133,6 +134,12 @@ export function DeckProps() {
           onCommit={(v) => v.trim() && editDeck((d) => (d.title = v.trim()), t('slides.journal.title', { title: v.trim() }))}
         />
       </Row>
+      <SizeRows
+        size={deckSize(deck)}
+        scopeKey="deck"
+        onResize={resizeDeck}
+        relayout={(w, h) => `Re-lay out every slide in this deck for a ${w}×${h} page: the slides were scaled from another shape, so rearrange them (stack columns, resize or reorder blocks) so everything fits and reads well. Keep the copy, the style and the order.`}
+      />
       <h3>{t('slides.deckProps.fonts')}</h3>
       {faces.length ? (
         faces.map(([k, f]) => (

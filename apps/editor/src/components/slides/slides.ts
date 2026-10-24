@@ -1,4 +1,5 @@
 import {
+  adaptSize,
   attr,
   deckSize,
   newSlideSource,
@@ -345,3 +346,15 @@ export function slideTitle(source: string | undefined, id: string): string {
 }
 
 export { parseDc, deckOf };
+
+/** Give the deck a new size; with `scale` every slide's layout follows (`adaptSize`, `.design/size-adapt.md`). */
+export function resizeDeck(w: number, h: number, scale: boolean): void {
+  const s = get();
+  const from = deckSize(deckOf(s));
+  if (scale) {
+    for (const id of slideIds(s)) {
+      edit(slideFile(id), (src) => adaptSize(src, from, [w, h], { root: false }), { actor: 'human', summary: t('slides.journal.slideScaled', { id, size: `${w}×${h}` }), undoable: true });
+    }
+  }
+  editDeck((d) => void (d.size = [w, h]), t('slides.journal.deckSize', { size: `${w}×${h}` }));
+}
