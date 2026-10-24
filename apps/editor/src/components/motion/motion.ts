@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { attr, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { attr, seedFormat, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
@@ -59,7 +59,13 @@ export function addFormat(name: string, size: [number, number]): boolean {
     toast(t('motion.toast.nameTaken', { name }), 'error');
     return false;
   }
-  return editMotion((raw) => void (formatsOf(raw)[name] = { size }), t('motion.journal.formatAdded', { name }));
+  const from = m.formats[primaryFormat(m)]?.size;
+  const added = editMotion((raw) => void (formatsOf(raw)[name] = { size }), t('motion.journal.formatAdded', { name }));
+  // the new format starts from the primary layout rescaled, written as its own overrides (`.design/size-adapt.md`)
+  if (added && from) {
+    for (const f of sceneFiles()) edit(f, (src) => seedFormat(src, from, size, name), { actor: 'human', summary: t('motion.journal.formatSeeded', { name }), undoable: true });
+  }
+  return added;
 }
 
 /** Attributes in a scene that belong to one format. */

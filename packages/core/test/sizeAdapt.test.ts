@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adaptSize, adaptStyle, needsRelayout } from '../src';
+import { adaptSize, adaptStyle, needsRelayout, seedFormat } from '../src';
 
 describe('adaptSize', () => {
   it('scales each axis and keeps type at the smaller factor', () => {
@@ -29,5 +29,19 @@ describe('adaptSize', () => {
   it('says when the aspect ratio moved too far for a rescale alone', () => {
     expect(needsRelayout([1920, 1080], [1080, 1920])).toBe(true);
     expect(needsRelayout([1920, 1080], [1440, 900])).toBe(false);
+  });
+});
+
+describe('seedFormat', () => {
+  it('writes the changes as data-<format> overrides and leaves the style alone', () => {
+    const src = '<section id="a" style="padding:128px;display:flex"><h2 style="font-size:96px">Hi</h2><p>plain</p></section>';
+    const out = seedFormat(src, [1920, 1080], [1080, 1920], 'tall');
+    expect(out).toContain('<section id="a" style="padding:128px;display:flex" data-tall="padding:');
+    expect(out).toContain('<h2 style="font-size:96px" data-tall="font-size:54px">');
+    expect(out).toContain('<p>plain</p>');
+  });
+  it('skips an element that already has an override for the format', () => {
+    const src = '<section id="a" style="padding:100px" data-tall="padding:10px"></section>';
+    expect(seedFormat(src, [1920, 1080], [1080, 1920], 'tall')).toBe(src);
   });
 });

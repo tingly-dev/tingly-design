@@ -196,6 +196,8 @@ export default {
     savePdf: '在打印窗口里选择“存储为 PDF”。',
   },
   journal: {
+    slideScaled: '幻灯片 {{id}} 缩放到 {{size}}',
+    deckSize: '幻灯片尺寸 → {{size}}',
     title: '标题 → {{title}}',
     typefaceAdded: '添加字体 {{family}}',
     typefaceRemoved: '移除字体 {{family}}',

@@ -133,15 +133,17 @@ export default {
     install: '装入',
     none: '这个仓库里还没有设计系统。新建项目时选“设计系统”。',
   },
-  board: {
-    title: '画板',
-    nameLabel: '画板名称',
+  size: {
     preset: '预设',
     presetLabel: '尺寸预设',
     presetPlaceholder: '选择尺寸…',
     scaleContent: '改变尺寸时，内容随之缩放',
     relayoutHint: '形状变化较大，仅缩放可能放不下。',
     relayoutAsk: '让 Claude 重新排版',
+  },
+  board: {
+    title: '画板',
+    nameLabel: '画板名称',
     interactive: '可交互（播放时按钮可点）',
     fill: '网页：全屏时铺满窗口',
     duplicate: '复制画板',

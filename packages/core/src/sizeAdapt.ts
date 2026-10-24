@@ -155,3 +155,33 @@ export function rootSize(source: string): Size | null {
   const h = /^([\d.]+)px$/.exec(getStyle(style, 'height') ?? '');
   return w && h ? [parseFloat(w[1]), parseFloat(h[1])] : null;
 }
+
+/**
+ * A motion scene written for `from`, with what changes at `to` written as `data-<format>` overrides on each element
+ * (the way a person lays out a second format by hand), so the primary format's source stays as it is and removing the
+ * format removes the seed. The root keeps its size, which the format sets. Elements that already have an override for
+ * the format are left alone.
+ */
+export function seedFormat(source: string, from: Size, to: Size, format: string): string {
+  const sx = to[0] / from[0];
+  const sy = to[1] / from[1];
+  if (!(sx > 0 && sy > 0) || (sx === 1 && sy === 1)) return source;
+  const doc = parseDc(source);
+  const root = rootElement(doc);
+  const name = `data-${format}`;
+  const edits: { at: number; text: string }[] = [];
+  for (const el of doc.elements as DcElement[]) {
+    const a = el.attrs.find((x) => x.name === 'style');
+    if (!a || el.attrs.some((x) => x.name === name) || /&[a-z#]/i.test(a.value)) continue;
+    const next = parseStyle(adaptStyle(a.value, sx, sy));
+    const was = new Map(parseStyle(a.value).map((d) => [d.prop, d.value]));
+    const changed = next.filter((d) => was.get(d.prop) !== d.value && !(el === root && (d.prop === 'width' || d.prop === 'height')));
+    if (!changed.length) continue;
+    const value = changed.map((d) => `${d.prop}:${d.value}`).join(';').replace(/"/g, '&quot;');
+    const end = el.startTag.end - 1;
+    edits.push({ at: source[end - 1] === '/' && /[\s"']/.test(source[end - 2] ?? '') ? end - 1 : end, text: ` ${name}="${value}"` });
+  }
+  let out = source;
+  for (const e of edits.sort((a, b) => b.at - a.at)) out = out.slice(0, e.at) + e.text + out.slice(e.at);
+  return out;
+}

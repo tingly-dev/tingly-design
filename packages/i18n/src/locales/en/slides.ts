@@ -200,6 +200,8 @@ export default {
   },
   /** journal summaries */
   journal: {
+    slideScaled: 'slide {{id}} scaled to {{size}}',
+    deckSize: 'deck size → {{size}}',
     title: 'title → {{title}}',
     typefaceAdded: 'typeface {{family}} added',
     typefaceRemoved: 'typeface {{family}} removed',

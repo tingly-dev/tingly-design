@@ -210,6 +210,7 @@ export default {
     fps: '帧率 → {{fps}}',
     formatSize: '尺寸 {{name}} → {{size}}',
     formatAdded: '添加尺寸 {{name}}',
+    formatSeeded: '格式 {{name}}：按主格式排好初稿',
     formatRemoved: '删除尺寸 {{name}}',
     coverCreated: '新建封面场景',
     coverSet: '封面 → {{id}}',

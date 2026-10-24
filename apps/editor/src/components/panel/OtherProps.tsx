@@ -1,10 +1,9 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BOARD_SIZES, needsRelayout, NOTE_SIZES, boardTweaks, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
+import { NOTE_SIZES, boardTweaks, formatTime, setPropDefault, timeSpec, type TimeSpec, type BoardEntry, type DcDoc, type NoteEntry, type NoteFill, type PropSpec } from '@dc/core';
 import { duplicateBoard, resizeBoard, updateBoard, updateNote } from '../../actions';
-import { readPref, writePref } from '../../local';
-import { delegateToClaude } from '../../fastedit';
+import { SizeRows } from './SizeRows';
 import { deleteBoard, display, edit, useStore } from '../../store';
 import { TEXT_COLORS, sizeOf } from '../canvas/Item';
 import { frames } from '../canvas/Board';
@@ -13,18 +12,8 @@ import { ColorField, Field, Row, Seg, Select, px, toLength } from './fields';
 
 // ---------------------------------------------------------------- artboard
 
-/** Whether a new artboard size also rescales the page inside it (on unless the person turned it off). */
-const SCALE_PREF = 'dc.scaleOnResize';
-
 export function BoardProps({ file, entry }: { file: string; entry: BoardEntry }) {
   const { t } = useTranslation();
-  const [scale, setScale] = useState(() => readPref(SCALE_PREF) !== 'off');
-  const [shifted, setShifted] = useState<[number, number] | null>(null);
-  useEffect(() => setShifted(null), [file]);
-  const resize = (w: number, h: number) => {
-    setShifted(scale && needsRelayout([entry.w, entry.h], [w, h]) ? [w, h] : null);
-    resizeBoard(file, w, h, scale);
-  };
   const n = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
   return (
     <>
@@ -37,37 +26,13 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
           <Field value={String(entry.x)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { x: n(v) }, 'moved')} label="X" pre="X" />
           <Field value={String(entry.y)} onCommit={(v) => n(v) !== undefined && updateBoard(file, { y: n(v) }, 'moved')} label="Y" pre="Y" />
         </Row>
-        <Row label={t('panel.field.size')}>
-          <Field value={String(entry.w)} onCommit={(v) => n(v) !== undefined && resize(Math.max(40, n(v)!), entry.h)} label={t('panel.field.w')} pre="W" />
-          <Field value={String(entry.h)} onCommit={(v) => n(v) !== undefined && resize(entry.w, Math.max(40, n(v)!))} label={t('panel.field.h')} pre="H" />
-        </Row>
-        <Row label={t('panel.board.preset')}>
-          <Select
-            value=""
-            options={[
-              { value: '', label: t('panel.board.presetPlaceholder') },
-              ...BOARD_SIZES.map((p) => ({ value: `${p.size[0]}x${p.size[1]}`, label: `${t(`canvas.boardSize.${p.id}`)} ${p.size[0]} × ${p.size[1]}`, group: t(`canvas.boardGroup.${p.group}`) })),
-            ]}
-            onChange={(v) => {
-              const [w, h] = v.split('x').map(Number);
-              if (w && h) resize(w, h);
-            }}
-            label={t('panel.board.presetLabel')}
-          />
-        </Row>
-        <label className="check">
-          <input type="checkbox" checked={scale} onChange={(e) => { setScale(e.currentTarget.checked); writePref(SCALE_PREF, e.currentTarget.checked ? 'on' : 'off'); }} />
-          {t('panel.board.scaleContent')}
-        </label>
-        {shifted && (
-          <div className="hint">
-            {t('panel.board.relayoutHint')}
-            <br />
-            <button className="btn sm" onClick={() => void delegateToClaude(file, null, `Re-lay out ${file} for a ${shifted[0]}×${shifted[1]} artboard: the page was scaled from another shape, so rearrange sections (stack columns, resize or reorder blocks) so everything fits and reads well at this size. Keep the copy, the style and the template values.`).finally(() => setShifted(null))}>
-              {t('panel.board.relayoutAsk')}
-            </button>
-          </div>
-        )}
+        <SizeRows
+          size={[entry.w, entry.h]}
+          scopeKey={file}
+          file={file}
+          onResize={(w, h, scale) => resizeBoard(file, w, h, scale)}
+          relayout={(w, h) => `Re-lay out ${file} for a ${w}×${h} artboard: the page was scaled from another shape, so rearrange sections (stack columns, resize or reorder blocks) so everything fits and reads well at this size. Keep the copy, the style and the template values.`}
+        />
         <label className="check">
           <input type="checkbox" checked={!!entry.is_interactive} onChange={(e) => updateBoard(file, { is_interactive: e.currentTarget.checked || undefined }, 'interactive')} />
           {t('panel.board.interactive')}
