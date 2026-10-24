@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BOARD_SIZES, needsRelayout, type Size } from '@dc/core';
+import { BOARD_SIZES, MAX_FORMAT_PX, needsRelayout, type Size } from '@dc/core';
 import { delegateToClaude } from '../../fastedit';
 import { readPref, writePref } from '../../local';
 import { Field, Row, Select } from './fields';
@@ -23,7 +23,7 @@ export function SizeRows({ size, scopeKey, onResize, relayout, file }: { size: S
     setShifted(scale && needsRelayout(size, [w, h]) ? [w, h] : null);
     onResize(w, h, scale);
   };
-  const n = (v: string) => (Number.isFinite(Number(v)) ? Math.max(40, Math.round(Number(v))) : undefined);
+  const n = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Math.min(MAX_FORMAT_PX, Math.max(40, Math.round(Number(v)))) : undefined);
   return (
     <>
       <Row label={t('panel.field.size')}>

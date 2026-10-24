@@ -1,11 +1,4 @@
-
-/**
- * The artboard sizes a canvas offers by name: the New dialog's picker, the board panel's preset list and
- * the command line's `--size`, in groups by what the board is for. One list; to add or retire a size, change it here and give its two strings
- * in @dc/i18n (`canvas.boardSize.<id>` the name, `canvas.boardFor.<id>` where it is used), nothing else.
- * A size motion.json already named (`wide`, `tall`, …) keeps that key in `format`; every other size is `s<w>x<h>` there. Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
- * Sizes are CSS pixels, the unit a canvas draws in.
- */
+/** The largest width or height a board, slide or motion format may have. */
 export const MAX_FORMAT_PX = 7680;
 
 /** A size usable for a board, slide or motion format, rounded, or null. */
@@ -20,6 +13,14 @@ export function sizeName(size: readonly number[]): string {
   return `s${size[0]}x${size[1]}`;
 }
 
+
+/**
+ * The artboard sizes a canvas offers by name: the New dialog's picker, the board panel's preset list and
+ * the command line's `--size`, in groups by what the board is for. One list; to add or retire a size, change it here and give its two strings
+ * in @dc/i18n (`canvas.boardSize.<id>` the name, `canvas.boardFor.<id>` where it is used), nothing else.
+ * A size motion.json already named (`wide`, `tall`, …) keeps that key in `format`; every other size is `s<w>x<h>` there. Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
+ * Sizes are CSS pixels, the unit a canvas draws in.
+ */
 export const BOARD_GROUPS = ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio'] as const;
 export type BoardGroup = (typeof BOARD_GROUPS)[number];
 
