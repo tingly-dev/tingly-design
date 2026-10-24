@@ -20,6 +20,8 @@ RECORD = os.environ.get('DC_RECORD') == '1'
 BRANCH = 'e2e-baselines'
 SCREENS = {'launcher': '', 'canvas': 'box-console', 'slides': 'tingly-intro', 'design-system': 'tingly-ds',
            'dashboard': 'box-usage', 'docs': 'design-guide', 'motion': 'design-motion'}
+# the same kinds with the request bar moved into the conversation column on the left
+LEFT = {f'{k}-left': v for k, v in SCREENS.items() if v}
 LOOKS = [('light', 'en'), ('dark', 'en'), ('light', 'zh'), ('dark', 'zh')]
 # a pixel differs when a channel moves by more than this; a picture differs when more than this share of pixels do
 PIXEL, SHARE = 24, 0.002
@@ -71,14 +73,18 @@ async def main():
             ctx = await b.new_context(viewport={'width': 1440, 'height': 900}, color_scheme=scheme, reduced_motion='reduce',
                                       locale='zh-CN' if lang == 'zh' else 'en-US')
             pg = await ctx.new_page()
-            for screen, project in SCREENS.items():
+            for screen, project in {**SCREENS, **LEFT}.items():
                 name = f'{screen}-{scheme}-{lang}.png'
+                left = screen in LEFT
+                # a page's own frames are sandboxed and have no storage, so the write is guarded
+                await pg.add_init_script(f"try {{ localStorage.setItem('dc.barMode', '{'left' if left else 'float'}') }} catch (e) {{}}")
                 await pg.goto(f'{BASE}/?lang={lang}' + (f'&p={project}' if project else ''))
                 # the editor keeps a live connection open, so the network may never fall quiet; wait for it a while
                 try: await pg.wait_for_load_state('networkidle', timeout=3000)
                 except Exception: pass
                 await pg.add_style_tag(content=STILL)
                 await pg.wait_for_timeout(2500)
+                if left: check(f'{name}: the column is open with the work beside it', await pg.locator('.chat-panel').count() == 1)
                 shot = await pg.screenshot()
                 open(os.path.join(OUT, name), 'wb').write(shot)
                 if RECORD: open(os.path.join(NEW, name), 'wb').write(shot)
