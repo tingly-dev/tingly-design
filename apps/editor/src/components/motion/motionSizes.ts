@@ -31,10 +31,13 @@ function write(v: MotionSizes): void {
   writePref(KEY, JSON.stringify(v));
 }
 
-/** A size just used: the next piece starts here, and a custom one joins the person's own. */
-export function rememberSize(size: Size): void {
+/**
+ * A size just used: a custom one joins the person's own (every kind's picker lists them). `startHere` (motion only) also makes
+ * the next piece start at it; canvases and decks have their own defaults.
+ */
+export function rememberSize(size: Size, startHere = false): void {
   const v = readSizes();
-  write({ last: size, mine: isPreset(size) ? v.mine : [size, ...v.mine.filter((s) => !sameSize(s, size))].slice(0, KEEP) });
+  write({ last: startHere ? size : v.last, mine: isPreset(size) ? v.mine : [size, ...v.mine.filter((s) => !sameSize(s, size))].slice(0, KEEP) });
 }
 
 export function forgetSize(size: Size): void {

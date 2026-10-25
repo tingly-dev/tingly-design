@@ -14,7 +14,7 @@ import { Close } from '../icons';
 export function BoardSizePicker({ value, onChange, kind = 'design' }: { value: Size | null; onChange: (size: Size | null) => void; kind?: 'design' | 'slides' | 'motion' }) {
   const { t } = useTranslation();
   const preset = boardSizeOf(value);
-  const [mine, setMine] = useState(() => kind === 'motion' ? readSizes().mine.filter((s) => !boardSizeOf(s)) : []);
+  const [mine, setMine] = useState(() => readSizes().mine.filter((s) => !boardSizeOf(s)));
   const own = mine.some((s) => sameSize(s, value));
   const [custom, setCustom] = useState<{ w: string; h: string } | null>(null);
   const typed = custom ? validSize([custom.w, custom.h]) : null;

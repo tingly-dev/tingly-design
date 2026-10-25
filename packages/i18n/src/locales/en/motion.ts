@@ -162,6 +162,7 @@ export default {
     height: '{{name}} height',
     removeLabel: 'Delete size {{name}}',
     removeHint: 'Delete this size',
+    keepPrimary: 'The main size stays: the layouts are written for it.',
     confirmRemove: 'Delete size {{name}}?',
     confirmRemoveOverrides_one: 'Delete size {{name}}? The {{count}} setting in the scenes that belongs only to it will be deleted too.',
     confirmRemoveOverrides_other: 'Delete size {{name}}? The {{count}} settings in the scenes that belong only to it will be deleted too.',
@@ -173,6 +174,8 @@ export default {
     shortcutList: 'Space play / pause · ← → step a frame (⇧ a second) · ⌫ delete · ⌘D duplicate · ⇧↵ select parent · ⌘Z undo · Esc deselect',
   },
   toast: {
+    formatRemoved: 'Deleted size {{name}}.',
+    formatUndoLate: 'Size {{name}} was deleted before your latest change; undo that first (Ctrl/⌘ Z).',
     lastScene: 'A piece needs at least one scene.',
     badJson: 'motion.json is not valid JSON; fix it before editing',
     sizeRange: 'Sizes must be between 1 and 7680 pixels.',

@@ -10,6 +10,8 @@ export type ConfigChange =
   | { type: 'size'; file?: string; from: Size; to: Size }
   /** A motion format was added; its scenes were seeded from the primary layout. */
   | { type: 'format'; format: string; from: Size; to: Size }
+  /** A motion format was taken out again, with the scene overrides that were only about it. Nothing to re-lay out. */
+  | { type: 'formatRemoved'; format: string }
   /** A design system was installed (or updated) in a canvas or deck: `namespace` is its folder under `ds/`. */
   | { type: 'designSystem'; namespace: string; title: string }
   /** A design system's tokens were edited; `edits` are the editor's own summaries of what, oldest first. */
@@ -39,6 +41,7 @@ const FOLLOW_UP: { [T in ConfigChange['type']]: (c: Extract<ConfigChange, { type
       prompt: `Re-lay out every scene for the new "${c.format}" format: the primary layout was rescaled into data-${c.format} overrides, so rearrange them (stack columns, resize or reorder blocks) so everything fits and reads well in that format. Keep the primary format, the copy and the timing.`,
     };
   },
+  formatRemoved: () => null,
   designSystem(c) {
     return {
       reason: { id: 'designSystem' },
@@ -66,6 +69,7 @@ export function changeScope(c: ConfigChange): string {
     case 'size':
       return `size:${c.file ?? ''}`;
     case 'format':
+    case 'formatRemoved':
       return `format:${c.format}`;
     case 'designSystem':
       return `designSystem:${c.namespace}`;
@@ -79,6 +83,8 @@ export function changeScope(c: ConfigChange): string {
  * Null when it is back where it started, so nothing is left to tell. Small steps add up; a change put back is no change.
  */
 export function mergeChange(before: ConfigChange | undefined, change: ConfigChange): ConfigChange | null {
+  // a format added and removed again is no change; one removed and added again is the new one (it starts over from the primary)
+  if (change.type === 'formatRemoved' && before?.type === 'format') return null;
   if (before && before.type === change.type) {
     if ((change.type === 'size' || change.type === 'format') && (before.type === 'size' || before.type === 'format')) {
       const merged = { ...change, from: before.from };
@@ -115,5 +121,6 @@ export function describeChange(c: ConfigChange): string {
   if (c.type === 'designSystem') return `The design system ${JSON.stringify(c.title)} was installed (ds/${c.namespace}/).`;
   if (c.type === 'tokens') return `Design tokens were edited: ${c.edits.map((e) => JSON.stringify(e)).join(', ')}.`;
   if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
+  if (c.type === 'formatRemoved') return `The motion format ${JSON.stringify(c.format)} was removed, with the scene overrides that were only about it.`;
   return `A motion format ${JSON.stringify(c.format)} (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;
 }

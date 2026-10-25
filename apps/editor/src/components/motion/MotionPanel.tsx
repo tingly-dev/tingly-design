@@ -18,7 +18,7 @@ import {
   type DcDoc,
   type DcElement,
 } from '@dc/core';
-import { display, editElement, parsed, recordChange, useStore } from '../../store';
+import { display, editElement, parsed, recordChange, toast, useStore } from '../../store';
 import { addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
@@ -203,7 +203,7 @@ export function MotionProps() {
     const from = m.formats[primaryFormat(m)]?.size;
     if (addFormat(name, size)) {
       if (from) recordChange({ type: 'format', format: name, from, to: size });
-      rememberSize(size);
+      rememberSize(size, true);
       setAdding(false);
       setPicked(null);
       const view = useStore.getState().motionView;
@@ -259,7 +259,9 @@ export function MotionProps() {
                 ×
               </button>
             ) : (
-              <span className="ib" />
+              <button className="ib" aria-disabled="true" aria-label={t('motion.motionProps.keepPrimary')} title={t('motion.motionProps.keepPrimary')} onClick={() => toast(t('motion.motionProps.keepPrimary'))}>
+                ×
+              </button>
             )}
           </div>
         ))}
