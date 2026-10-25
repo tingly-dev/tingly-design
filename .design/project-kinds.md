@@ -90,6 +90,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 画布的模板值（[canvas-template-values](./canvas-template-values.md)） | `TemplateValues`（`RightPanel` 什么都没选时）、核心 `canvasTemplateValues`，字段和写回用 Tweaks 的 `TweakField` / `setPropDefault` | ✓ 按画板分组，可折叠，30 个以上有过滤 | — 幻灯片没有模板值；嵌入画板的值在元素的属性里（`BoardEmbedProps`） | — 没有模板值 | — 没有模板值 | — 没有模板值 | — 嵌入画板的值在元素的属性里；场景没有模板值 | 有意只做画布：模板值是画布里画板的 `data-props`，别的类型没有"整份稿子的值"这个问题 |
 | 画板里模板文字和颜色的原地编辑（[template-text-editing](./template-text-editing.md)） | core 的 `textRetype.ts`（`retypeKind` / `planRetype`）、运行时双击和提交、`retypeText`（store）、属性面板 `ColorField` 的 `bound` | ✓ 带洞的文字、循环里的列表项、数据洞的提示、颜色绑定 | — 幻灯片的文字没有洞（闭合的 HTML 子集） | — 没有模板 | — 没有模板 | — 没有模板 | — 场景没有洞 | 有意只做画布：洞和 `data-props` 是画布画板的模板机制 |
 | AI 能查到的项目配置（[config-awareness](./config-awareness.md)） | core `settingsProject`（`SETTINGS` 按类型的表）；`open` 的 `settings`、委托请求里的 `Project settings now` | ✓ 画板尺寸、设计系统 | ✓ 页面尺寸、设计系统 | ✓ 主题、颜色、字体名 | ✓ 数据集来源 | ✓ 文档外观 | ✓ 格式、帧率、速度 | 跟进提议（配置变化后的“让 Claude 跟进”）是第 2、3 期，还没做 |
+| 配置变化后的跟进提议（[config-awareness](./config-awareness.md)） | core `followUpFor` / `describeChange`；编辑器的 `recordChange`、`FollowUp`（在 `RequestBar` 里） | ✓ 画板改尺寸 | ✓ 页面改尺寸 | — 还没有会产生提议的变化（第 3 期：tokens） | — 还没有（第 3 期：数据来源） | — 还没有 | ✓ 新增格式 | 提议不自动运行；每次委托都会带上“自上次运行以来改了什么” |
 
 ## 4. 做跨类型功能时
 

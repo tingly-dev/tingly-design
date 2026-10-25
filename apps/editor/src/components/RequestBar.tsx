@@ -7,6 +7,7 @@ import type { LastRun } from '../store/agent';
 import { stopRun } from '../fastedit';
 import { keepAttachments, useAttachments } from '../attachments';
 import { AttachButton, AttachTray } from './Attachments';
+import { FollowUp } from './FollowUp';
 import { RunFeed, useAutoGrow } from './RunFeed';
 import { BarPill, BarTools, HistoryList, useBarKeys } from './AgentBar';
 import { useChat } from './ChatPanel';
@@ -136,6 +137,7 @@ export function RequestBar({
       onDrop={attach.handlers.onDrop}
     >
       {!inColumn && (historyOpen ? <HistoryList onReuse={reuse} onOpen={onOpen} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />)}
+      <FollowUp onEdit={reuse} />
       <div className="head">
         {head}
         <BarTools />

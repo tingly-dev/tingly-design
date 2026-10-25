@@ -1,6 +1,6 @@
 // The request bar and the conversation: the fast model's run, Claude Code's runs, the stored turns and where the prompt lives.
 // Pure: it holds the types, the initial values and the patches; `store.ts` composes them into the one `useStore`.
-import type { AgentStep, Conversation, Turn } from '@dc/core';
+import type { AgentStep, ConfigChange, Conversation, Turn } from '@dc/core';
 import type { ServerEvent } from '../api';
 import { readPref } from '../local';
 
@@ -81,6 +81,10 @@ export interface AgentState {
   conversation: Conversation | null;
   /** the next Claude Code request starts a fresh session even though one could be continued */
   freshNext: boolean;
+  /** settings the person changed by hand since Claude Code last ran: told to it with the next request */
+  changes: ConfigChange[];
+  /** the change the bar offers a follow-up for */
+  followUp: ConfigChange | null;
 }
 
 export const agentInitial = (): AgentState => ({
@@ -98,10 +102,12 @@ export const agentInitial = (): AgentState => ({
   chatTab: 'chat',
   chatNote: null,
   freshNext: false,
+  changes: [],
+  followUp: null,
 });
 
 /** What a newly opened project starts from: the conversation of the last one is gone (the bar's own look is kept). */
-export const agentReset = (): Partial<AgentState> => ({ delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false });
+export const agentReset = (): Partial<AgentState> => ({ delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false, changes: [], followUp: null });
 
 /** Add a turn to the stored ones, or replace the one with its id. */
 function upsertTurn(list: Turn[], turn: Turn): Turn[] {

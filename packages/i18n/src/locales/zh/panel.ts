@@ -138,8 +138,6 @@ export default {
     presetLabel: '尺寸预设',
     presetPlaceholder: '选择尺寸…',
     scaleContent: '改变尺寸时，内容随之缩放',
-    relayoutHint: '形状变化较大，仅缩放可能放不下。',
-    relayoutAsk: '让 Claude 重新排版',
   },
   board: {
     title: '画板',

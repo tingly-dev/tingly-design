@@ -20,6 +20,7 @@ import {
   sectionsOf,
   slideFile,
   slideIdOf,
+  describeChange,
 } from '@dc/core';
 import { api } from './api';
 import { t } from './i18n';
@@ -193,7 +194,10 @@ export async function delegateToClaude(
     // a motion piece: where the person stopped, so "this" and "here" mean something; told to Claude Code, not echoed as the request
     const view = get().kind === 'motion' ? get().motionView : null;
     const where = view?.scene ? view.landed ? `Stopped at the start of scene ${view.scene} (looking at the whole page as it lands), viewing the ${view.format} format.` : `Stopped at ${(view.at / 1000).toFixed(1)} s into scene ${view.scene}, viewing the ${view.format} format.` : '';
-    const context = [where, opts.context].filter(Boolean).join('\n\n');
+    // settings the person changed by hand since the last run: Claude Code is told, whether or not they took the offer
+    const changed = get().changes;
+    const changes = changed.length ? `Settings the person changed since your last run:\n${changed.map((c) => `- ${describeChange(c)}`).join('\n')}` : '';
+    const context = [where, changes, opts.context].filter(Boolean).join('\n\n');
     // the server continues the project's conversation unless the request says otherwise: a hand-over from fast AI brings its own context, and a person can ask for a new one
     const fresh = !!opts.via || get().freshNext;
     const { id } = await api.delegate(project, {
@@ -206,7 +210,7 @@ export async function delegateToClaude(
       journal,
       ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
-    set({ freshNext: false });
+    set({ freshNext: false, changes: [], followUp: null });
     if (opts.via) set((s) => ({ delegates: s.delegates.map((d) => (d.id === id ? { ...d, via: opts.via } : d)) }));
     return true;
   } catch (e) {

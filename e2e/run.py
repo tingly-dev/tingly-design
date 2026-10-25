@@ -35,7 +35,7 @@ SUITES = {
     'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'pptx': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev',
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',
     'ai_settings': 'dev-bare', 'image_gen': 'dev-bare',
-    'conversation': 'fake-claude',
+    'conversation': 'fake-claude', 'follow_up': 'fake-claude',
     'attach': 'build', 'run_feed': 'build', 'chat_panel': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',
     'check_snapshots': 'build',
     'embed': 'bundle',

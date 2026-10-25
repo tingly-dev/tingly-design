@@ -138,8 +138,6 @@ export default {
     presetLabel: 'Size preset',
     presetPlaceholder: 'Choose a size…',
     scaleContent: 'Scale the page with the size',
-    relayoutHint: 'The shape changed a lot, so scaling alone may not fit.',
-    relayoutAsk: 'Ask Claude to re-lay out',
   },
   board: {
     title: 'Artboard',

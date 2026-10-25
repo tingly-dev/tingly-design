@@ -136,9 +136,7 @@ export function DeckProps() {
       </Row>
       <SizeRows
         size={deckSize(deck)}
-        scopeKey="deck"
         onResize={resizeDeck}
-        relayout={(w, h) => `Re-lay out every slide in this deck for a ${w}×${h} page: the slides were scaled from another shape, so rearrange them (stack columns, resize or reorder blocks) so everything fits and reads well. Keep the copy, the style and the order.`}
       />
       <h3>{t('slides.deckProps.fonts')}</h3>
       {faces.length ? (

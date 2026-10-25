@@ -21,6 +21,8 @@ import {
   type DeckJson,
   type ProjectKind,
   isDataPath,
+  followUpFor,
+  type ConfigChange,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
 import { t } from './i18n';
@@ -343,6 +345,15 @@ function onEvent(e: ServerEvent): void {
 export function setBarMode(mode: BarMode): void {
   writePref('dc.barMode', mode);
   set({ barMode: mode, historyOpen: false, chatNote: null });
+}
+
+/** A setting changed by hand: Claude Code hears of it with the next request, and the bar offers a follow-up when the change is worth one. */
+export function recordChange(change: ConfigChange, offer = true): void {
+  set((s) => ({ changes: [...s.changes, change].slice(-20), followUp: offer && followUpFor(change) ? change : s.followUp }));
+}
+
+export function dismissFollowUp(): void {
+  set({ followUp: null });
 }
 
 export function setBarCollapsed(on: boolean): void {

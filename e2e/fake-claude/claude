@@ -8,7 +8,7 @@ if (args[0] === '--version') { console.log('0.0.0-fake'); process.exit(0); }
 const i = args.indexOf('--resume');
 const resume = i >= 0 ? args[i + 1] : null;
 const log = (o) => fs.appendFileSync(process.env.FAKE_CLAUDE_LOG || '/tmp/fake-claude.log', JSON.stringify(o) + '\n');
-log({ ev: 'start', resume });
+log({ ev: 'start', resume, prompt: args[args.indexOf('-p') + 1] });
 if (resume === '00000000-0000-4000-8000-000000000000') {
   process.stderr.write(`No conversation found with session ID: ${resume}\n`);
   log({ ev: 'end', code: 1 });

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkProject, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
+import { checkProject, describeChange, followUpFor, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
 
 const SAMPLES = join(__dirname, '../../../projects');
 
@@ -147,5 +147,19 @@ describe('settingsProject', () => {
     expect(() => settingsProject('design', { 'canvas.json': '{"boards":{"a.dc.html":null},"designSystems":{}}' })).not.toThrow();
     expect(settingsProject('design', { 'canvas.json': '{"designSystems":{}}' }).designSystems).toEqual([]);
     expect(settingsProject('slides', { 'deck.json': '{"designSystems":"x"}' }).designSystems).toEqual([]);
+  });
+});
+
+describe('followUpFor', () => {
+  it('offers a re-layout only when the shape changed a lot', () => {
+    expect(followUpFor({ type: 'size', file: 'a.dc.html', from: [1200, 760], to: [1100, 760] })).toBeNull();
+    const offer = followUpFor({ type: 'size', file: 'a.dc.html', from: [1200, 760], to: [390, 844] });
+    expect(offer?.reason.id).toBe('size');
+    expect(offer?.prompt).toContain('a.dc.html');
+    expect(followUpFor({ type: 'size', from: [1920, 1080], to: [1080, 1920] })?.prompt).toContain('every slide');
+    expect(followUpFor({ type: 'format', format: 'tall', from: [1920, 1080], to: [1080, 1920] })?.prompt).toContain('data-tall');
+  });
+  it('describes a change for Claude Code', () => {
+    expect(describeChange({ type: 'size', from: [1920, 1080], to: [1080, 1920] })).toBe('The deck page was resized from 1920×1080 to 1080×1920.');
   });
 });
