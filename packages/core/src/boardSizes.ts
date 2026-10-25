@@ -21,7 +21,7 @@ export function sizeName(size: readonly number[]): string {
  * A size motion.json already named (`wide`, `tall`, …) keeps that key in `format`; every other size is `s<w>x<h>` there. Platform sizes are the ones the platforms publish for posts and covers; they drift, so a size is one line to change.
  * Sizes are CSS pixels, the unit a canvas draws in.
  */
-export const BOARD_GROUPS = ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio'] as const;
+export const BOARD_GROUPS = ['screen', 'device', 'slides', 'social', 'wechat', 'cn', 'global', 'ads', 'print', 'ratio'] as const;
 export type BoardGroup = (typeof BOARD_GROUPS)[number];
 
 export const BOARD_SIZES = [
@@ -42,23 +42,35 @@ export const BOARD_SIZES = [
   { id: 'laptop', group: 'device', size: [1366, 768] },
   { id: 'macbook14', group: 'device', size: [1512, 982] },
   { id: 'macbook16', group: 'device', size: [1728, 1117] },
-  { id: 'bilibili', group: 'social', size: [1146, 717] },
-  { id: 'xpost', group: 'social', size: [1600, 900] },
-  { id: 'igland', group: 'social', size: [1080, 566] },
+  { id: 'wechat', group: 'wechat', size: [900, 383] },
+  { id: 'wxsub', group: 'wechat', size: [200, 200] },
+  { id: 'wxguide', group: 'wechat', size: [900, 500] },
   { id: 'wide', group: 'slides', size: [1920, 1080], format: 'wide' },
   { id: 'standard', group: 'slides', size: [1600, 1200] },
   { id: 'square', group: 'social', size: [1080, 1080], format: 'square' },
   { id: 'portrait', group: 'social', size: [1080, 1350], format: 'portrait' },
   { id: 'tall', group: 'social', size: [1080, 1440], format: 'upright' },
   { id: 'story', group: 'social', size: [1080, 1920], format: 'tall' },
-  { id: 'wechat', group: 'social', size: [900, 383] },
+  { id: 'wxchannelh', group: 'wechat', size: [1080, 608] },
   { id: 'og', group: 'social', size: [1200, 630] },
   { id: 'thumbnail', group: 'social', size: [1280, 720] },
-  { id: 'pin', group: 'social', size: [1000, 1500] },
-  { id: 'xheader', group: 'social', size: [1500, 500] },
-  { id: 'linkedin', group: 'social', size: [1584, 396] },
-  { id: 'fbcover', group: 'social', size: [851, 315] },
-  { id: 'channelart', group: 'social', size: [2560, 1440] },
+  { id: 'wxchannelv', group: 'wechat', size: [1080, 1260] },
+  { id: 'bilibili', group: 'cn', size: [1146, 717] },
+  { id: 'dycover', group: 'cn', size: [1242, 1660] },
+  { id: 'dybg', group: 'cn', size: [1125, 633] },
+  { id: 'wbcover', group: 'cn', size: [980, 300] },
+  { id: 'wbheadline', group: 'cn', size: [980, 560] },
+  { id: 'wblong', group: 'cn', size: [800, 2000] },
+  { id: 'xpost', group: 'global', size: [1600, 900] },
+  { id: 'xheader', group: 'global', size: [1500, 500] },
+  { id: 'igland', group: 'global', size: [1080, 566] },
+  { id: 'lishare', group: 'global', size: [1200, 627] },
+  { id: 'linkedin', group: 'global', size: [1584, 396] },
+  { id: 'licompany', group: 'global', size: [1128, 191] },
+  { id: 'fbcover', group: 'global', size: [851, 315] },
+  { id: 'fbevent', group: 'global', size: [1920, 1005] },
+  { id: 'pin', group: 'global', size: [1000, 1500] },
+  { id: 'channelart', group: 'global', size: [2560, 1440] },
   { id: 'mpu', group: 'ads', size: [300, 250] },
   { id: 'leaderboard', group: 'ads', size: [728, 90] },
   { id: 'billboard', group: 'ads', size: [970, 250] },

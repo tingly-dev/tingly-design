@@ -30,9 +30,9 @@ describe('runNewWizard', () => {
   });
 
   it('picks a canvas size in two steps, by number or by name', async () => {
-    const s = script(['1', 'Cover', 'cover', 'social', 'wechat']);
+    const s = script(['1', 'Cover', 'cover', 'wechat', 'wechat']);
     expect((await runNewWizard(s.io, {}, new Set())).size).toEqual([900, 383]);
-    expect(s.options.size).toContain('og');
+    expect(s.options.size).toContain('wxchannelh');
     expect(s.options.size).not.toContain('a4');
     const n = script(['canvas', 'Cover', '', '4', 'portrait']);
     expect((await runNewWizard(n.io, {}, new Set())).size).toEqual([1080, 1350]);

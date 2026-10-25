@@ -103,7 +103,7 @@ export function BoardSizePicker({ value, onChange, kind = 'design' }: { value: S
       </div>
       {tab !== 'custom' && (
         <p className="szfor" data-for={preset?.id}>
-          {own && value ? t('launcher.new.sizeMine', { size: value.join('×') }) : preset ? `${t(`canvas.boardSize.${preset.id}`)} ${preset.size[0]}×${preset.size[1]} · ${t(`canvas.boardFor.${preset.id}`)}` : ''}
+          {own && value ? t('launcher.new.sizeMine', { size: value.join('×') }) : preset && preset.group === tab ? `${t(`canvas.boardSize.${preset.id}`)} ${preset.size[0]}×${preset.size[1]} · ${t(`canvas.boardFor.${preset.id}`)}` : ''}
         </p>
       )}
     </div>
