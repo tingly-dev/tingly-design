@@ -176,6 +176,7 @@ export default {
   },
   toast: {
     formatRemoved: '已删除尺寸 {{name}}。',
+    formatUndoLate: '尺寸 {{name}} 是在你最近一次改动之前删的，请先撤销那次改动（Ctrl/⌘ Z）。',
     lastScene: '作品至少要有一个场景。',
     badJson: 'motion.json 不是合法的 JSON，先修好它再改',
     sizeRange: '尺寸要在 1 到 7680 像素之间。',

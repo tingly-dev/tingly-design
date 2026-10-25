@@ -306,7 +306,7 @@ async def main():
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(1)
         await pg.wait_for_timeout(500)
         check('Undo in the toast brings the size back', '"square"' in read('motion.json'))
-        check('the main size has no delete button', await pg.locator('button[aria-label^="删除尺寸"]').count() == len(json.loads(read('motion.json'))['formats']) - 1)
+        check('the main size has no delete button', await pg.locator('button[aria-label^="删除尺寸"]').count() == len(json.loads(read('motion.json'))['formats']) - 1 and await pg.locator('button[aria-label="删除尺寸 wide"]').count() == 0)
         pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('button[aria-label="删除尺寸 square"]').click()
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(0)

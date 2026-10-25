@@ -175,6 +175,7 @@ export default {
   },
   toast: {
     formatRemoved: 'Deleted size {{name}}.',
+    formatUndoLate: 'Size {{name}} was deleted before your latest change; undo that first (Ctrl/⌘ Z).',
     lastScene: 'A piece needs at least one scene.',
     badJson: 'motion.json is not valid JSON; fix it before editing',
     sizeRange: 'Sizes must be between 1 and 7680 pixels.',

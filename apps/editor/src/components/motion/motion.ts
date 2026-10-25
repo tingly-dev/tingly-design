@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { attr, seedFormat, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { attr, changeScope, seedFormat, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
@@ -97,7 +97,11 @@ export function removeFormat(name: string): void {
   const names = Object.keys(m.formats);
   if (names.length < 2 || !m.formats[name]) return;
   const re = formatAttrs(name);
-  const steps = get().undo.length;
+  const scope = `format:${name}`;
+  const prev = get().changes.find((c) => changeScope(c) === scope);
+  const view = get().motionView;
+  // the overrides and motion.json go in separate edits; the toast's Undo takes back exactly those, as one
+  let steps = 0;
   for (const f of sceneFiles()) {
     const ops = [];
     for (const el of parseDc(display(get(), f) ?? '').elements) {
@@ -108,19 +112,21 @@ export function removeFormat(name: string): void {
         ops.push({ kind: 'attr' as const, tid: el.tid, name: 'data-only', value: rest.length ? rest.join(' ') : null });
       }
     }
-    if (ops.length) editElement(f, ops);
+    if (ops.length && editElement(f, ops)) steps++;
   }
-  editMotion((raw) => void delete formatsOf(raw)[name], t('motion.journal.formatRemoved', { name }));
-  const view = get().motionView;
+  if (editMotion((raw) => void delete formatsOf(raw)[name], t('motion.journal.formatRemoved', { name }))) steps++;
+  const mine = get().undo.at(-1);
   if (view?.format === name) useStore.setState({ motionView: { ...view, format: names[0] } });
   recordChange({ type: 'formatRemoved', format: name }, false);
-  // the overrides and motion.json go in separate steps; Undo here brings the whole size back at once
-  const took = Math.max(0, get().undo.length - steps);
   toast(t('motion.toast.formatRemoved', { name }), 'info', {
     label: t('common.undo'),
     run: () => {
-      for (let i = 0; i < took; i++) undo();
-      forgetChange(`format:${name}`);
+      // anything done since is newer than the removal: Undo there would take that back instead
+      if (get().undo.at(-1) !== mine) return toast(t('motion.toast.formatUndoLate', { name }), 'error');
+      for (let i = 0; i < steps; i++) undo();
+      forgetChange(scope);
+      if (prev) recordChange(prev, false);
+      if (view?.format === name) useStore.setState({ motionView: { ...view } });
     },
   });
 }
