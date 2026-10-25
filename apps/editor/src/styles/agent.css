@@ -67,6 +67,25 @@
 }
 
 
+/* the offer after a setting changed by hand: a quiet row above the head, never a modal (.design/config-awareness.md) */
+.follow-up {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 8px 12px 0;
+  padding: 6px 8px 6px 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.follow-up .why {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
 .prompt .body,
 .dsask .body {
   display: flex;

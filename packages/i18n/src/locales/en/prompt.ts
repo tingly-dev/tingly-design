@@ -18,6 +18,14 @@ export default {
     seconds: '{{s}}s',
     minutes: '{{m}}m {{ss}}s',
   },
+  /** the offer under the request bar after a setting changed (.design/config-awareness.md) */
+  followUp: {
+    size: 'Scaling alone may not fit this new shape.',
+    format: 'The scaled scenes may not fit the new format.',
+    ask: 'Ask Claude to re-lay out',
+    edit: 'Edit the request',
+    dismiss: 'Dismiss',
+  },
   run: {
     claudeWorking: 'Claude Code is working',
     claudeStarting: 'Claude Code is starting',

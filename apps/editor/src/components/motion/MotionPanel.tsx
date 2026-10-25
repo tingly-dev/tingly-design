@@ -8,7 +8,6 @@ import {
   formatNameOf,
   formatTime,
   getStyle,
-  needsRelayout,
   primaryFormat,
   parseStyle,
   parseTime,
@@ -19,8 +18,7 @@ import {
   type DcDoc,
   type DcElement,
 } from '@dc/core';
-import { display, editElement, parsed, useStore } from '../../store';
-import { delegateToClaude } from '../../fastedit';
+import { display, editElement, parsed, recordChange, useStore } from '../../store';
 import { addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
@@ -196,7 +194,6 @@ export function MotionProps() {
   const names = Object.keys(m.formats);
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<Size | null>(null);
-  const [shifted, setShifted] = useState<string | null>(null);
   const { t } = useTranslation();
   const num = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : NaN);
   const taken = !!picked && names.some((n) => sameSize(m.formats[n].size, picked));
@@ -205,7 +202,7 @@ export function MotionProps() {
     const name = m.formats[base] ? sizeName(size) : base;
     const from = m.formats[primaryFormat(m)]?.size;
     if (addFormat(name, size)) {
-      setShifted(from && needsRelayout(from, size) ? name : null);
+      if (from) recordChange({ type: 'format', format: name, from, to: size });
       rememberSize(size);
       setAdding(false);
       setPicked(null);
@@ -284,18 +281,6 @@ export function MotionProps() {
         <button className="btn outline" onClick={() => setAdding(true)}>
           {t('motion.motionProps.addFormat')}
         </button>
-      )}
-      {shifted && m.formats[shifted] && (
-        <div className="hint">
-          {t('panel.size.relayoutHint')}
-          <br />
-          <button
-            className="btn sm"
-            onClick={() => void delegateToClaude(undefined, null, `Re-lay out every scene for the new "${shifted}" format: the primary layout was rescaled into data-${shifted} overrides, so rearrange them (stack columns, resize or reorder blocks) so everything fits and reads well in that format. Keep the primary format, the copy and the timing.`).finally(() => setShifted(null))}
-          >
-            {t('panel.size.relayoutAsk')}
-          </button>
-        </div>
       )}
       <p className="hint" style={{ margin: 0 }}>
         {t('motion.motionProps.formatsHint')}

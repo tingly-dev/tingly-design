@@ -28,10 +28,8 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
         </Row>
         <SizeRows
           size={[entry.w, entry.h]}
-          scopeKey={file}
           file={file}
           onResize={(w, h, scale) => resizeBoard(file, w, h, scale)}
-          relayout={(w, h) => `Re-lay out ${file} for a ${w}×${h} artboard: the page was scaled from another shape, so rearrange sections (stack columns, resize or reorder blocks) so everything fits and reads well at this size. Keep the copy, the style and the template values.`}
         />
         <label className="check">
           <input type="checkbox" checked={!!entry.is_interactive} onChange={(e) => updateBoard(file, { is_interactive: e.currentTarget.checked || undefined }, 'interactive')} />

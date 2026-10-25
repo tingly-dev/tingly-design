@@ -19,6 +19,13 @@ export default {
     seconds: '{{s}} 秒',
     minutes: '{{m}} 分 {{ss}} 秒',
   },
+  followUp: {
+    size: '形状变化较大，仅缩放可能放不下。',
+    format: '缩放后的场景放进新格式可能放不下。',
+    ask: '让 Claude 重新排版',
+    edit: '改写请求',
+    dismiss: '忽略',
+  },
   run: {
     claudeWorking: 'Claude Code 正在处理',
     claudeStarting: 'Claude Code 正在启动',

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BOARD_SIZES, MAX_FORMAT_PX, needsRelayout, type Size } from '@dc/core';
-import { delegateToClaude } from '../../fastedit';
+import { BOARD_SIZES, MAX_FORMAT_PX, type Size } from '@dc/core';
+import { recordChange } from '../../store';
 import { readPref, writePref } from '../../local';
 import { Field, Row, Select } from './fields';
 
@@ -10,17 +10,16 @@ const SCALE_PREF = 'dc.scaleOnResize';
 
 /**
  * The size rows every kind's panel shares: W and H, the preset list, the switch that makes the content follow the size
- * (`.design/size-adapt.md`) and, when the shape changed a lot, the offer to hand the re-layout to Claude Code.
- * `onResize` does the work and gets the switch; `relayout` is the model-facing request for the new size.
+ * (`.design/size-adapt.md`). `onResize` does the work and gets the switch; the change is recorded for Claude Code, and when the
+ * shape changed a lot and the content was scaled, the request bar offers the re-layout (`.design/config-awareness.md`).
+ * `file` is the artboard being resized (none for a whole deck).
  */
-export function SizeRows({ size, scopeKey, onResize, relayout, file }: { size: Size; scopeKey: string; onResize: (w: number, h: number, scale: boolean) => void; relayout: (w: number, h: number) => string; file?: string }) {
+export function SizeRows({ size, onResize, file }: { size: Size; onResize: (w: number, h: number, scale: boolean) => void; file?: string }) {
   const { t } = useTranslation();
   const [scale, setScale] = useState(() => readPref(SCALE_PREF) !== 'off');
-  const [shifted, setShifted] = useState<Size | null>(null);
-  useEffect(() => setShifted(null), [scopeKey]);
   const resize = (w: number, h: number) => {
     if (w === size[0] && h === size[1]) return;
-    setShifted(scale && needsRelayout(size, [w, h]) ? [w, h] : null);
+    recordChange({ type: 'size', ...(file ? { file } : {}), from: size, to: [w, h] }, scale);
     onResize(w, h, scale);
   };
   const n = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Math.min(MAX_FORMAT_PX, Math.max(40, Math.round(Number(v)))) : undefined);
@@ -55,15 +54,6 @@ export function SizeRows({ size, scopeKey, onResize, relayout, file }: { size: S
         />
         {t('panel.size.scaleContent')}
       </label>
-      {shifted && (
-        <div className="hint">
-          {t('panel.size.relayoutHint')}
-          <br />
-          <button className="btn sm" onClick={() => void delegateToClaude(file, null, relayout(shifted[0], shifted[1])).finally(() => setShifted(null))}>
-            {t('panel.size.relayoutAsk')}
-          </button>
-        </div>
-      )}
     </>
   );
 }
