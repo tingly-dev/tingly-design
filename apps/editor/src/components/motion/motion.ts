@@ -7,7 +7,7 @@ import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
 import { boardEmbed } from '../../boards';
-import { deleteFile, display, edit, editElement, parsed, toast, useStore } from '../../store';
+import { deleteFile, display, edit, editElement, forgetChange, parsed, recordChange, toast, undo, useStore } from '../../store';
 import { t } from '../../i18n';
 
 const get = useStore.getState;
@@ -97,6 +97,7 @@ export function removeFormat(name: string): void {
   const names = Object.keys(m.formats);
   if (names.length < 2 || !m.formats[name]) return;
   const re = formatAttrs(name);
+  const steps = get().undo.length;
   for (const f of sceneFiles()) {
     const ops = [];
     for (const el of parseDc(display(get(), f) ?? '').elements) {
@@ -112,6 +113,16 @@ export function removeFormat(name: string): void {
   editMotion((raw) => void delete formatsOf(raw)[name], t('motion.journal.formatRemoved', { name }));
   const view = get().motionView;
   if (view?.format === name) useStore.setState({ motionView: { ...view, format: names[0] } });
+  recordChange({ type: 'formatRemoved', format: name }, false);
+  // the overrides and motion.json go in separate steps; Undo here brings the whole size back at once
+  const took = Math.max(0, get().undo.length - steps);
+  toast(t('motion.toast.formatRemoved', { name }), 'info', {
+    label: t('common.undo'),
+    run: () => {
+      for (let i = 0; i < took; i++) undo();
+      forgetChange(`format:${name}`);
+    },
+  });
 }
 
 /** A scene's length (`data-duration`, before playback speed), written on its section. */

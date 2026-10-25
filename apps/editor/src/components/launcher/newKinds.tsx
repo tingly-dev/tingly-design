@@ -105,6 +105,9 @@ export const KIND_NEW: Record<ProjectKind, KindNew> = {
     bad: (s) => !s.board,
     size: (s) => (s.board && !sameSize(s.board, DEFAULT_BOARD_SIZE) ? s.board : undefined),
     after: (s) => ({ designSystem: s.designSystem || undefined }),
+    remember: (s) => {
+      if (s.board) rememberSize(s.board);
+    },
   },
   slides: {
     ...plain,
@@ -113,6 +116,9 @@ export const KIND_NEW: Record<ProjectKind, KindNew> = {
     bad: (s) => !s.slideSize,
     size: (s) => s.slideSize ?? undefined,
     after: (s) => ({ designSystem: s.designSystem || undefined }),
+    remember: (s) => {
+      if (s.slideSize) rememberSize(s.slideSize);
+    },
   },
   motion: {
     ...plain,
@@ -120,7 +126,7 @@ export const KIND_NEW: Record<ProjectKind, KindNew> = {
     bad: (s) => !s.size,
     size: (s) => s.size ?? undefined,
     remember: (s) => {
-      if (s.size) rememberSize(s.size);
+      if (s.size) rememberSize(s.size, true);
     },
   },
   'design-system': { ...plain, Fields: ({ s }) => <LookPicker value={s.look} onChange={s.setLook} />, look: (s) => s.look || undefined },

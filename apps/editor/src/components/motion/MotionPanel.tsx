@@ -203,7 +203,7 @@ export function MotionProps() {
     const from = m.formats[primaryFormat(m)]?.size;
     if (addFormat(name, size)) {
       if (from) recordChange({ type: 'format', format: name, from, to: size });
-      rememberSize(size);
+      rememberSize(size, true);
       setAdding(false);
       setPicked(null);
       const view = useStore.getState().motionView;
@@ -259,7 +259,7 @@ export function MotionProps() {
                 ×
               </button>
             ) : (
-              <span className="ib" />
+              <span className="ib" title={t('motion.motionProps.keepPrimary')} aria-hidden />
             )}
           </div>
         ))}

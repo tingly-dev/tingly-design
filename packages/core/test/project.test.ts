@@ -165,6 +165,14 @@ describe('followUpFor', () => {
 });
 
 describe('mergeChange', () => {
+  it('lets a format added and removed again cancel out, and keeps a removal otherwise', () => {
+    const added = { type: 'format' as const, format: 'tall', from: [1920, 1080] as [number, number], to: [1080, 1920] as [number, number] };
+    const removed = { type: 'formatRemoved' as const, format: 'tall' };
+    expect(mergeChange(added, removed)).toBeNull();
+    expect(mergeChange(undefined, removed)).toEqual(removed);
+    expect(followUpFor(removed)).toBeNull();
+    expect(describeChange(removed)).toContain('"tall" was removed');
+  });
   const size = (from: [number, number], to: [number, number]) => ({ type: 'size' as const, file: 'a.dc.html', from, to });
   it('joins changes to one thing from where it started, and drops one put back', () => {
     const first = mergeChange(undefined, size([1920, 1080], [1500, 1080]))!;

@@ -164,6 +164,7 @@ export default {
     height: '{{name}} 高',
     removeLabel: '删除尺寸 {{name}}',
     removeHint: '删除这个尺寸',
+    keepPrimary: '主尺寸会保留：版面是按它写的。',
     confirmRemove: '删除尺寸 {{name}}？',
     confirmRemoveOverrides_other: '删除尺寸 {{name}}？场景里只属于它的 {{count}} 处设置也会一起删掉。',
     addFormat: '＋ 添加尺寸',
@@ -174,6 +175,7 @@ export default {
     shortcutList: '空格 播放 / 暂停 · ← → 前后一帧（⇧ 一秒）· ⌫ 删除 · ⌘D 复制 · ⇧↵ 选中上一级 · ⌘Z 撤销 · Esc 取消选择',
   },
   toast: {
+    formatRemoved: '已删除尺寸 {{name}}。',
     lastScene: '作品至少要有一个场景。',
     badJson: 'motion.json 不是合法的 JSON，先修好它再改',
     sizeRange: '尺寸要在 1 到 7680 像素之间。',

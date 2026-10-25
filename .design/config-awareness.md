@@ -56,7 +56,7 @@ core 里加一张按类型的穷尽表 `SETTINGS: Record<ProjectKind, (files) =>
 
 ### 4.2 变化与跟进提议
 
-- **变化是数据。** 面板提交一次配置变化时，除了写文件，还记一条结构化的 `ConfigChange`：`{ type, scope, from, to }`，`type` 是闭集（`size`、`format-added`、`design-system`、`speed`……）。它同时是改动记录里的一行（动作者是人），所以刷新后还在、命令行 `history` 也能看到。
+- **变化是数据。** 面板提交一次配置变化时，除了写文件，还记一条结构化的 `ConfigChange`：`{ type, scope, from, to }`，`type` 是闭集（`size`、`format-added`、`format-removed`、`design-system`、`speed`……；删除只告诉 AI，不提供跟进，刚加又删互相抵消）。它同时是改动记录里的一行（动作者是人），所以刷新后还在、命令行 `history` 也能看到。
 - **一张表决定提议什么。** core 的 `FOLLOW_UP: Record<ChangeType, (change, kind) => { reason, prompt } | null>`：返回 `null` 表示这种变化不值得提议（例如比例只变了 5%）。`needsRelayout` 的判断挪进这张表，尺寸只是其中一行。提示词是英文的模型请求，`reason`（给人看的一句话）走 i18n（`packages/i18n` 新区域或 `panel` 区域，中英文同时写）。
 - **一个部件显示。** 共用的 `FollowUp` 取代三处各自的 `shifted` 提示：出现在请求栏上方一行（对话列模式在列里），文案是“尺寸改成了 1080×1920 · 让 Claude 重新排版”，三个动作：**发送**（带预填提示词，可先在请求栏里改）、**改写**（把提示词放进输入框，不发送）、**忽略**。提议不是弹窗，不挡操作。
 - **何时消失。** 点了发送或忽略；或者之后又有同一范围的新变化（取代旧的）；或者人自己发的请求覆盖了它（见下一条）。待办的变化记在编辑器的状态里：每次 Claude 运行带走它们（见下一条），所以它们是“自上次运行以来”的变化。
