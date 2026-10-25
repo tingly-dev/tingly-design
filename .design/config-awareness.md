@@ -1,6 +1,6 @@
 # 配置变化：让 AI 能响应、能查到
 
-状态：**方案**（未实施）。尺寸变化后的“让 Claude 重新排版”是已有的唯一一例，见 [size-adapt.md](./size-adapt.md)。
+状态：**方案**；第 1 期（§4.1 的配置事实：`settingsProject`、`open` 的 `settings`、委托请求里的 `Project settings now`、各技能的一句话）已实施，§4.2 的跟进提议未实施。尺寸变化后的“让 Claude 重新排版”是已有的唯一一例，见 [size-adapt.md](./size-adapt.md)。
 
 ## 1. 问题
 

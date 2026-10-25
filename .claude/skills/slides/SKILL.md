@@ -5,6 +5,8 @@ description: Read before creating or editing a slide deck under projects/ (deck.
 
 # Slide decks
 
+> Before you edit, read the project's current settings (sizes, installed design systems, formats, look) from `open`'s `settings`, or from the "Project settings now" line at the top of your request, instead of guessing them from the files. When a request follows a settings change, rework what that change affects.
+
 A deck is a folder under `projects/<name>/`, laid out as the original Slides type lays out `project/`:
 
 - `deck.json` — the deck's title, slide order, sections and typefaces.

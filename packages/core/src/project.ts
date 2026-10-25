@@ -145,6 +145,70 @@ export function outlineProject(kind: ProjectKind, files: ProjectFiles): ProjectO
   return { kind, ...OUTLINE[kind](files[INDEX_FILE[kind]], files) };
 }
 
+/**
+ * The settings a person set by hand that change what a good edit is, read as data (`.design/config-awareness.md`).
+ * Plain values, no wording; every key is optional because each kind has its own.
+ */
+export interface ProjectSettings {
+  /** Canvas, slides: the design systems installed in the project, by namespace. */
+  designSystems?: string[];
+  /** Slides: the page size. */
+  size?: [number, number];
+  /** Canvas: each board's size. */
+  boards?: { id: string; size: [number, number] }[];
+  /** Motion: each format's size, the primary first. */
+  formats?: { id: string; size: [number, number] }[];
+  /** Motion: frames per second, and the playback rate over the authored timing. */
+  fps?: number;
+  speed?: number;
+  /** Docs: the look of the whole doc. */
+  look?: { headingFont: string; bodyFont: string; width: string; lang: string };
+  /** Dashboard: where each dataset's rows come from. */
+  datasets?: { id: string; source?: string }[];
+  /** Design system: its namespace, themes, and the colour and font names. */
+  namespace?: string;
+  themes?: string[];
+  colors?: string[];
+  fonts?: string[];
+}
+
+const namespacesOf = (list: unknown[]): string[] => list.flatMap((r) => (isObject(r) && typeof r.namespace === 'string' ? [r.namespace] : []));
+
+/** What each kind has set, like `OUTLINE`: one entry per kind, so a kind added later fails to compile until it says what it keeps. */
+const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFiles) => ProjectSettings> = {
+  design(index) {
+    const c = parseCanvas(index);
+    return { designSystems: namespacesOf(c.designSystems), boards: Object.entries(c.boards).map(([f, b]) => ({ id: f.replace(/\.dc\.html$/, ''), size: [b.w, b.h] })) };
+  },
+  slides(index) {
+    const d = parseDeck(index);
+    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems) };
+  },
+  motion(index) {
+    const m = parseMotion(index);
+    return { formats: Object.entries(m.formats).map(([id, f]) => ({ id, size: f.size })), fps: m.fps, speed: m.speed && m.speed > 0 ? m.speed : 1 };
+  },
+  docs(index) {
+    return { look: { ...parseDoc(index).settings } };
+  },
+  dashboard(_index, files) {
+    return {
+      datasets: Object.keys(files)
+        .filter((f) => datasetIdOf(f))
+        .sort()
+        .map((f) => ({ id: datasetIdOf(f)!, source: parseDataset(files[f]).dataset?.source.kind })),
+    };
+  },
+  'design-system'(index, files) {
+    const tokens = resolveTokens(json(files[DS_TOKENS]) ?? {});
+    return { namespace: parseDsIndex(index).namespace, themes: tokens.themes.map((t) => t.id), colors: tokens.colors.map((c) => c.name), fonts: Object.keys(tokens.families) };
+  },
+};
+
+export function settingsProject(kind: ProjectKind, files: ProjectFiles): ProjectSettings {
+  return SETTINGS[kind](files[INDEX_FILE[kind]], files);
+}
+
 /** The first heading's text, as the slide or scene's name in a list. */
 function firstHeading(src: string | undefined): string | undefined {
   const m = /<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/i.exec(src ?? '');

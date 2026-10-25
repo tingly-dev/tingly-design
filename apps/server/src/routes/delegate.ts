@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { claudeCliReady } from './shared';
-import { checkUploads, isTurn } from '@dc/core';
-import { HttpError, kindOf, projectDir } from '../store';
+import { checkUploads, isTurn, settingsProject } from '@dc/core';
+import { HttpError, kindOf, projectDir, readFolder } from '../store';
 import { readTranscript, recordTurn } from '../transcript';
 import { forgetConversation, isDelegateRunning, readConversation, startDelegate, stopDelegate, type DelegateRequest } from '../delegate';
 import { logWarn } from '../log';
@@ -21,7 +21,11 @@ export function registerDelegate(app: Hono): void {
     if (!req.prompt?.trim()) throw new HttpError(400, 'promptMissing');
     const bad = checkUploads(req.attachments);
     if (bad) throw new HttpError(400, 'badRequest', { detail: bad });
-    return c.json({ id: startDelegate(p, req, (await kindOf(projectDir(p))) ?? 'design', langOf(c), (await imageState(p)).on) });
+    const kind = (await kindOf(projectDir(p))) ?? 'design';
+    // the settings are read here, not trusted from the caller: they are what the project has now
+    const files = Object.fromEntries(Object.entries(await readFolder(projectDir(p))).map(([f, s]) => [f, s.content]));
+    req.settings = settingsProject(kind, files);
+    return c.json({ id: startDelegate(p, req, kind, langOf(c), (await imageState(p)).on) });
   });
 
   /** The Claude Code conversation the project keeps: the next request continues it unless it asks for a new one. */

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkProject, journalSince, outlineProject, parseSince, projectKind, type ProjectFiles } from '../src';
+import { checkProject, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
 
 const SAMPLES = join(__dirname, '../../../projects');
 
@@ -118,4 +118,23 @@ describe('history --since', () => {
   it('says when the entry is not there', () => {
     expect(journalSince(entries, { id: 'ffffffff' })).toBeNull();
   });
+});
+
+describe('settingsProject', () => {
+  it('reads each kind\'s settings as data', () => {
+    const files = {
+      'motion.json': JSON.stringify({ v: 1, title: 'T', formats: { wide: { size: [1920, 1080] }, tall: { size: [1080, 1920] } }, fps: 24, order: [], speed: 2 }),
+    };
+    expect(settingsProject('motion', files)).toEqual({ formats: [{ id: 'wide', size: [1920, 1080] }, { id: 'tall', size: [1080, 1920] }], fps: 24, speed: 2 });
+    expect(settingsProject('slides', { 'deck.json': JSON.stringify({ title: 'D', size: [1080, 1920], designSystems: [{ namespace: 'acme' }, 'junk'] }) })).toMatchObject({ size: [1080, 1920], designSystems: ['acme'] });
+    expect(settingsProject('docs', { 'doc.json': JSON.stringify({ title: 'D', tabs: [], settings: { width: 'wide' } }) }).look?.width).toBe('wide');
+  });
+  for (const s of samples) {
+    it(`${s} has settings`, () => {
+      const files = read(join(SAMPLES, s));
+      const kind = projectKind(Object.keys(files))!;
+      expect(Object.keys(settingsProject(kind, files)).length).toBeGreaterThan(0);
+      expect(() => JSON.stringify(settingsProject(kind, files))).not.toThrow();
+    });
+  }
 });

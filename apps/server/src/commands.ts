@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, settingsProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, PROJECTS_DIR, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -210,7 +210,8 @@ export async function projects() {
 }
 
 export async function outline(p: Project) {
-  return { name: p.name, dir: p.dir, ...outlineProject(p.kind, await texts(p.dir)) };
+  const files = await texts(p.dir);
+  return { name: p.name, dir: p.dir, ...outlineProject(p.kind, files), settings: settingsProject(p.kind, files) };
 }
 
 // ---------------------------------------------------------------- new

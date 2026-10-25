@@ -50,7 +50,7 @@ const TOOLS = [
   },
   {
     name: 'open',
-    description: `Enter a project: its folder, outline (boards, slides, scenes, tabs, datasets) and the resource uri of its format reference, which you read before editing its files. With \`kind\`, creates the project first: \`project\` is then a launcher name or a path to a folder to create it in. Kinds: ${Object.keys(KINDS).filter((k) => k !== 'docs').join(', ')}.`,
+    description: `Enter a project: its folder, outline (boards, slides, scenes, tabs, datasets), its current settings (sizes, installed design systems, motion formats, fps and speed, doc look, dataset sources, design-system themes and tokens: look here instead of guessing from the files) and the resource uri of its format reference, which you read before editing its files. With \`kind\`, creates the project first: \`project\` is then a launcher name or a path to a folder to create it in. Kinds: ${Object.keys(KINDS).filter((k) => k !== 'docs').join(', ')}.`,
     inputSchema: {
       type: 'object',
       properties: {

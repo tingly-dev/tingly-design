@@ -38,5 +38,6 @@
   "画布的模板值": {"design": ["template_values"]},
   "画板里模板文字和颜色的原地编辑": {"design": ["tweak_text"]},
   "对话记录": {"design": ["chat_panel"], "slides": ["chat_panel"], "design-system": ["chat_panel"], "dashboard": ["chat_panel"], "docs": ["chat_panel"], "motion": ["chat_panel"]},
-  "边栏宽度可拖": {"design": ["side_resize"], "slides": ["side_resize"], "design-system": ["side_resize"], "dashboard": ["side_resize"], "docs": ["side_resize"], "motion": ["side_resize"]}
+  "边栏宽度可拖": {"design": ["side_resize"], "slides": ["side_resize"], "design-system": ["side_resize"], "dashboard": ["side_resize"], "docs": ["side_resize"], "motion": ["side_resize"]},
+  "AI 能查到的项目配置": {"design": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "slides": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "design-system": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "dashboard": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "docs": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "motion": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e"}
 }
