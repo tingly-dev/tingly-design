@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { editMotion, motionImport } from './motion';
+import { editMotion, motionImport, setSpeed } from './motion';
 import { notesOf } from '../slides/slides';
 import { FileMenu } from '../FileMenu';
 import { VideoExportDialog, type ScenePick } from './VideoExportDialog';
@@ -82,9 +82,8 @@ export function MotionApp() {
   });
   const viewFormat = useStore((s) => s.motionView?.format);
   const fmt = format in motion.formats ? format : primary;
-  const [speed, setSpeed] = useState<number | null>(null);
-  const projectSpeed = speedOf(motion.speed);
-  const rate = speed ?? projectSpeed;
+  // the piece's own speed, saved in motion.json: what plays here is what exports
+  const rate = speedOf(motion.speed);
 
   // the timeline, from the files themselves: the stage needs it before (and without) the player
   // a clip's right edge being dragged: its new length shows at once, on the axis as it was when the drag began
@@ -261,12 +260,12 @@ export function MotionApp() {
         )}
         <label className="mspeed" title={t('motion.bar.speedHint')}>
           {t('motion.bar.speed')}
-          <select value={String(rate)} onChange={(e) => setSpeed(Number(e.target.value) === projectSpeed ? null : Number(e.target.value))}>
-            {[...new Set([...SPEEDS, projectSpeed])]
+          <select value={String(rate)} onChange={(e) => setSpeed(Number(e.target.value))}>
+            {[...new Set([...SPEEDS, rate])]
               .sort((a, b) => a - b)
               .map((v) => (
                 <option key={v} value={String(v)}>
-                  {v === projectSpeed ? t('motion.bar.speedOptionProject', { speed: v }) : `${v}×`}
+                  {v}×
                 </option>
               ))}
           </select>

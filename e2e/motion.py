@@ -317,15 +317,25 @@ async def main():
         await expect(pg).to_have_url(BASE + '/?p=design-motion&f=tall')
         box = await pg.locator('.medit .sframe').bounding_box()
         check('the tall format plays standing up', box and box['height'] > box['width'], str(box))
-        # the piece plays at its own speed (motion.json); 1× makes it that many times longer, the files untouched
+        # the speed is the piece's own, saved in motion.json: a preset in the bar or any value in the panel
         total = lambda t: float(re.search(r'/\s*([\d.]+)', t).group(1))
         at_project = total(await pg.locator('.mtime').inner_text())
         project_speed = float(re.search(r'"speed":\s*([\d.]+)', read('motion.json')).group(1))
-        before = read('motion.json')
         await pg.locator('.mspeed select').select_option('1')
         await expect(pg.locator('.mtime')).not_to_contain_text(f'/ {at_project}')
         at_one = total(await pg.locator('.mtime').inner_text())
-        check('speed changes the length without touching the files', abs(at_one - at_project * project_speed) < 0.2 and read('motion.json') == before, f'{at_project} → {at_one} at {project_speed}×')
+        check('a speed picked in the bar changes the length and is saved (1× leaves no key)', abs(at_one - at_project * project_speed) < 0.2 and '"speed"' not in read('motion.json'), f'{at_project} → {at_one} at {project_speed}×')
+        field = pg.locator('.inp input[aria-label="速度"]')
+        await field.fill('1.3')
+        await field.press('Enter')
+        await expect(pg.locator('.mspeed select')).to_have_value('1.3')
+        await pg.wait_for_timeout(500)
+        at_free = total(await pg.locator('.mtime').inner_text())
+        check('any speed typed in the panel is saved and offered in the bar', '"speed": 1.3' in read('motion.json') and abs(at_free - at_one / 1.3) < 0.2, f'{at_one} → {at_free}')
+        await field.fill('9')
+        await field.press('Enter')
+        await pg.wait_for_timeout(500)
+        check('a speed out of range changes nothing', '"speed": 1.3' in read('motion.json'))
         await pg.screenshot(path=OUT + 'motion-tall.png')
 
         # --- notes: on the piece and on a scene ---------------------------------------------------------

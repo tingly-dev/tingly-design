@@ -12,6 +12,8 @@ export type ConfigChange =
   | { type: 'format'; format: string; from: Size; to: Size }
   /** A motion format was taken out again, with the scene overrides that were only about it. Nothing to re-lay out. */
   | { type: 'formatRemoved'; format: string }
+  /** A motion piece's playback speed was set (the whole piece moves with it; nothing to re-lay out). */
+  | { type: 'speed'; from: number; to: number }
   /** A design system was installed (or updated) in a canvas or deck: `namespace` is its folder under `ds/`. */
   | { type: 'designSystem'; namespace: string; title: string }
   /** A design system's tokens were edited; `edits` are the editor's own summaries of what, oldest first. */
@@ -42,6 +44,7 @@ const FOLLOW_UP: { [T in ConfigChange['type']]: (c: Extract<ConfigChange, { type
     };
   },
   formatRemoved: () => null,
+  speed: () => null,
   designSystem(c) {
     return {
       reason: { id: 'designSystem' },
@@ -75,6 +78,8 @@ export function changeScope(c: ConfigChange): string {
       return `designSystem:${c.namespace}`;
     case 'tokens':
       return 'tokens';
+    case 'speed':
+      return 'speed';
   }
 }
 
@@ -93,6 +98,7 @@ export function mergeChange(before: ConfigChange | undefined, change: ConfigChan
     // the same edit again (a colour dragged) is one edit, kept at its latest place
     if (change.type === 'tokens' && before.type === 'tokens') return { type: 'tokens', edits: [...before.edits.filter((e) => !change.edits.includes(e)), ...change.edits].slice(-8) };
   }
+  if (change.type === 'speed' && before?.type === 'speed') return before.from === change.to ? null : { ...change, from: before.from };
   if (change.type === 'size' || change.type === 'format') return sameSize(change.from, change.to) ? null : change;
   return change;
 }
@@ -109,6 +115,7 @@ export function withoutSent(c: ConfigChange, sent: ConfigChange[]): ConfigChange
     return left.length ? { type: 'tokens', edits: left } : null;
   }
   if (c === told) return null;
+  if (c.type === 'speed' && told.type === 'speed') return told.to === c.to ? null : { ...c, from: told.to };
   // changed again while the request was on its way: what is left runs from where the request left it
   if ((c.type === 'size' || c.type === 'format') && (told.type === 'size' || told.type === 'format')) return sameSize(told.to, c.to) ? null : { ...c, from: told.to };
   return c;
@@ -121,6 +128,7 @@ export function describeChange(c: ConfigChange): string {
   if (c.type === 'designSystem') return `The design system ${JSON.stringify(c.title)} was installed (ds/${c.namespace}/).`;
   if (c.type === 'tokens') return `Design tokens were edited: ${c.edits.map((e) => JSON.stringify(e)).join(', ')}.`;
   if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
+  if (c.type === 'speed') return `The motion piece's playback speed was changed from ${c.from}× to ${c.to}×; every scene, entrance and pause plays at that rate, so the video is ${c.to > c.from ? 'shorter' : 'longer'} (the timing in the scene files is unchanged).`;
   if (c.type === 'formatRemoved') return `The motion format ${JSON.stringify(c.format)} was removed, with the scene overrides that were only about it.`;
   return `A motion format ${JSON.stringify(c.format)} (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;
 }

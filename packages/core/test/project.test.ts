@@ -173,6 +173,13 @@ describe('mergeChange', () => {
     expect(followUpFor(removed)).toBeNull();
     expect(describeChange(removed)).toContain('"tall" was removed');
   });
+  it('tells Claude about a speed change, offers nothing, and joins steps from where they started', () => {
+    const a = { type: 'speed' as const, from: 1, to: 1.25 };
+    expect(followUpFor(a)).toBeNull();
+    expect(describeChange(a)).toContain('from 1× to 1.25×');
+    expect(mergeChange(a, { type: 'speed', from: 1.25, to: 1.5 })).toEqual({ type: 'speed', from: 1, to: 1.5 });
+    expect(mergeChange(a, { type: 'speed', from: 1.25, to: 1 })).toBeNull();
+  });
   const size = (from: [number, number], to: [number, number]) => ({ type: 'size' as const, file: 'a.dc.html', from, to });
   it('joins changes to one thing from where it started, and drops one put back', () => {
     const first = mergeChange(undefined, size([1920, 1080], [1500, 1080]))!;

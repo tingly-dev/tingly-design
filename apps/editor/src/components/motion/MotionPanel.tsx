@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
+  MAX_SPEED,
+  MIN_SPEED,
   TRANSITION_KINDS,
   attr,
   checkScene,
@@ -14,12 +16,13 @@ import {
   rootElement,
   sceneIdOf,
   sceneVisibility,
+  speedOf,
   sizeName,
   type DcDoc,
   type DcElement,
 } from '@dc/core';
 import { display, editElement, parsed, recordChange, toast, useStore } from '../../store';
-import { addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
+import { addFormat, editMotion, setSpeed, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
 import { rememberSize, sameSize, type Size } from './motionSizes';
@@ -235,6 +238,9 @@ export function MotionProps() {
             if (n >= 1 && n <= 120) editMotion((r) => (r.fps = n), t('motion.journal.fps', { fps: n }));
           }}
         />
+      </Row>
+      <Row label={t('motion.motionProps.speed')} title={t('motion.motionProps.speedHint', { min: MIN_SPEED, max: MAX_SPEED })}>
+        <Field value={String(speedOf(m.speed))} unit="×" label={t('motion.motionProps.speed')} onCommit={(v) => v.trim() && setSpeed(Number(v.trim().replace(/×$/, '')))} />
       </Row>
       <h3>{t('motion.motionProps.formats')}</h3>
       <div className="mformats">
