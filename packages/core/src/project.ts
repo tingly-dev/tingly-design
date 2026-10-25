@@ -163,22 +163,27 @@ export interface ProjectSettings {
   speed?: number;
   /** Docs: the look of the whole doc. */
   look?: { headingFont: string; bodyFont: string; width: string; lang: string };
-  /** Dashboard: where each dataset's rows come from. */
-  datasets?: { id: string; source?: string }[];
-  /** Design system: its namespace, themes, and the colour and font names. */
+  /** Dashboard: where each dataset's rows come from (a `data/` file or `connector/tool`), and whether it fails to read. */
+  datasets?: { id: string; source?: string; broken?: boolean }[];
+  /** Design system: its namespace, theme ids, the first colour names (and how many there are) and the typeface stack of each role. */
   namespace?: string;
   themes?: string[];
   colors?: string[];
-  fonts?: string[];
+  colorCount?: number;
+  fonts?: Record<string, string>;
 }
 
-const namespacesOf = (list: unknown[]): string[] => list.flatMap((r) => (isObject(r) && typeof r.namespace === 'string' ? [r.namespace] : []));
+const namespacesOf = (list: unknown): string[] => (Array.isArray(list) ? list : []).flatMap((r) => (isObject(r) && typeof r.namespace === 'string' ? [r.namespace] : []));
+
+/** A long list of names is cut here: the files hold the rest, and the same line goes into every request. */
+const NAMES_MAX = 40;
 
 /** What each kind has set, like `OUTLINE`: one entry per kind, so a kind added later fails to compile until it says what it keeps. */
 const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFiles) => ProjectSettings> = {
   design(index) {
     const c = parseCanvas(index);
-    return { designSystems: namespacesOf(c.designSystems), boards: Object.entries(c.boards).map(([f, b]) => ({ id: f.replace(/\.dc\.html$/, ''), size: [b.w, b.h] })) };
+    const order = [...c.order.filter((f) => c.boards[f]), ...Object.keys(c.boards).filter((f) => !c.order.includes(f))];
+    return { designSystems: namespacesOf(c.designSystems), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
   },
   slides(index) {
     const d = parseDeck(index);
@@ -196,17 +201,33 @@ const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFi
       datasets: Object.keys(files)
         .filter((f) => datasetIdOf(f))
         .sort()
-        .map((f) => ({ id: datasetIdOf(f)!, source: parseDataset(files[f]).dataset?.source.kind })),
+        .map((f) => {
+          const { dataset, error } = parseDataset(files[f]);
+          const src = dataset?.source as { kind?: string; url?: string; connector?: string; tool?: string } | undefined;
+          const source = src?.kind === 'file' ? src.url : src?.kind === 'query' ? `${src.connector}/${src.tool}` : undefined;
+          return { id: datasetIdOf(f)!, ...(source ? { source } : {}), ...(error ? { broken: true } : {}) };
+        }),
     };
   },
   'design-system'(index, files) {
     const tokens = resolveTokens(json(files[DS_TOKENS]) ?? {});
-    return { namespace: parseDsIndex(index).namespace, themes: tokens.themes.map((t) => t.id), colors: tokens.colors.map((c) => c.name), fonts: Object.keys(tokens.families) };
+    return {
+      namespace: parseDsIndex(index).namespace,
+      themes: tokens.themes.map((t) => t.id),
+      colors: tokens.colors.slice(0, NAMES_MAX).map((c) => c.name),
+      colorCount: tokens.colors.length,
+      fonts: tokens.families,
+    };
   },
 };
 
+/** A project's settings; an index a person broke by hand reads as no settings, never as an error. */
 export function settingsProject(kind: ProjectKind, files: ProjectFiles): ProjectSettings {
-  return SETTINGS[kind](files[INDEX_FILE[kind]], files);
+  try {
+    return SETTINGS[kind](files[INDEX_FILE[kind]], files);
+  } catch {
+    return {};
+  }
 }
 
 /** The first heading's text, as the slide or scene's name in a list. */

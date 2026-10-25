@@ -129,12 +129,23 @@ describe('settingsProject', () => {
     expect(settingsProject('slides', { 'deck.json': JSON.stringify({ title: 'D', size: [1080, 1920], designSystems: [{ namespace: 'acme' }, 'junk'] }) })).toMatchObject({ size: [1080, 1920], designSystems: ['acme'] });
     expect(settingsProject('docs', { 'doc.json': JSON.stringify({ title: 'D', tabs: [], settings: { width: 'wide' } }) }).look?.width).toBe('wide');
   });
-  for (const s of samples) {
-    it(`${s} has settings`, () => {
+  it('reads real values from the samples', () => {
+    for (const s of samples) {
       const files = read(join(SAMPLES, s));
       const kind = projectKind(Object.keys(files))!;
-      expect(Object.keys(settingsProject(kind, files)).length).toBeGreaterThan(0);
-      expect(() => JSON.stringify(settingsProject(kind, files))).not.toThrow();
-    });
-  }
+      const st = settingsProject(kind, files);
+      const o = outlineProject(kind, files);
+      if (kind === 'design') expect(st.boards).toEqual(o.items.map((i) => ({ id: i.id, size: i.size })));
+      if (kind === 'slides') expect(st.size![0]).toBeGreaterThan(0);
+      if (kind === 'motion') expect(st.formats).toEqual(o.items.filter((i) => i.type === 'format').map((i) => ({ id: i.id, size: i.size })));
+      if (kind === 'design-system') expect(st.themes!.length + st.colors!.length).toBeGreaterThan(0);
+      if (kind === 'dashboard') expect(st.datasets!.length).toBeGreaterThan(0);
+      if (kind === 'docs') expect(st.look!.lang).toBeTruthy();
+    }
+  });
+  it('reads a broken index as no settings', () => {
+    expect(() => settingsProject('design', { 'canvas.json': '{"boards":{"a.dc.html":null},"designSystems":{}}' })).not.toThrow();
+    expect(settingsProject('design', { 'canvas.json': '{"designSystems":{}}' }).designSystems).toEqual([]);
+    expect(settingsProject('slides', { 'deck.json': '{"designSystems":"x"}' }).designSystems).toEqual([]);
+  });
 });
