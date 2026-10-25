@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkProject, describeChange, followUpFor, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
+import { changeScope, checkProject, describeChange, mergeChange, followUpFor, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
 
 const SAMPLES = join(__dirname, '../../../projects');
 
@@ -161,5 +161,28 @@ describe('followUpFor', () => {
   });
   it('describes a change for Claude Code', () => {
     expect(describeChange({ type: 'size', from: [1920, 1080], to: [1080, 1920] })).toBe('The deck page was resized from 1920×1080 to 1080×1920.');
+  });
+});
+
+describe('mergeChange', () => {
+  const size = (from: [number, number], to: [number, number]) => ({ type: 'size' as const, file: 'a.dc.html', from, to });
+  it('joins changes to one thing from where it started, and drops one put back', () => {
+    const first = mergeChange(undefined, size([1920, 1080], [1500, 1080]))!;
+    const second = mergeChange(first, size([1500, 1080], [1080, 1080]));
+    expect(second).toMatchObject({ from: [1920, 1080], to: [1080, 1080] });
+    expect(followUpFor(second!)).not.toBeNull();
+    expect(mergeChange(second!, size([1080, 1080], [1920, 1080]))).toBeNull();
+  });
+  it('keeps scopes apart and joins token edits', () => {
+    expect(changeScope(size([1, 1], [2, 2]))).not.toBe(changeScope({ type: 'size', from: [1, 1], to: [2, 2] }));
+    const t = mergeChange({ type: 'tokens', edits: ['a'] }, { type: 'tokens', edits: ['b'] });
+    expect(t).toEqual({ type: 'tokens', edits: ['a', 'b'] });
+    expect(mergeChange({ type: 'look', key: 'width', from: 'default', to: 'wide' }, { type: 'look', key: 'width', from: 'wide', to: 'default' })).toBeNull();
+  });
+  it('offers a restyle for a design system and a check for tokens, nothing for a doc look', () => {
+    expect(followUpFor({ type: 'designSystem', namespace: 'look-nord', title: 'Nord' })?.prompt).toContain('ds/look-nord/');
+    expect(followUpFor({ type: 'tokens', edits: ['color brand'] })?.reason.id).toBe('tokens');
+    expect(followUpFor({ type: 'look', key: 'width', from: 'default', to: 'wide' })).toBeNull();
+    expect(describeChange({ type: 'tokens', edits: ['color brand'] })).toContain('color brand');
   });
 });

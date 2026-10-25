@@ -22,7 +22,11 @@ export default {
   followUp: {
     size: 'Scaling alone may not fit this new shape.',
     format: 'The scaled scenes may not fit the new format.',
+    designSystem: 'A design system was installed. The existing work does not use it yet.',
+    tokens: 'The design tokens changed. The components may still use the old values.',
     ask: 'Ask Claude to re-lay out',
+    askRestyle: 'Ask Claude to restyle',
+    askTokens: 'Ask Claude to follow the tokens',
     edit: 'Edit the request',
     dismiss: 'Dismiss',
   },

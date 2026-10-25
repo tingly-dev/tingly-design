@@ -68,7 +68,7 @@ pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
 | `python3 e2e/baseline.py` | 截图基线：要先 `pnpm dev`；启动页和每种类型的示例，以及请求栏挪到左侧对话列后的同一批示例，明暗 × 中英（52 张，1440×900），每张和 `e2e-baselines` 分支上的那张比；超过 0.2% 的像素变了就算失败，截图和差异图留在 `e2e/out/baseline/`；`DC_RECORD=1` 把新截图写到 `e2e/out/baselines-new/`，`DC_BASELINES=<文件夹>` 改成和一个文件夹比 |
 | `python3 e2e/ai_settings.py` | AI 模型设置：要先用没有 `ANTHROPIC_*` 变量、`DC_CONFIG` 指向临时文件的环境跑 `pnpm dev`，再跑 `python3 e2e/mock_anthropic.py`；请求栏的提示、从启动页和项目里打开对话框、Tingly Box / 自定义地址、拒绝不合法地址、经模拟模型测试、保存后不回传密钥、Claude Code 用自己登录的选项 |
 | `python3 e2e/conversation.py` | 项目保存的 Claude Code 对话：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`，由一个冒充 `claude` 的脚本记录每次调用：第一条请求开一段对话、服务端把会话号存在项目文件夹里，下一条接着说，`fresh` 开新的，显式给的会话优先，Claude Code 已不认识的会话自动改开新对话（11 项）|
-| `python3 e2e/follow_up.py` | 手动改了设置之后的提议：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`；幻灯片尺寸小改不出提议，改成形状差很多时请求栏上方出现“重新排版”提议且不自动运行，“改写请求”把准备好的请求放进输入框，“忽略”收起，改回原样不出提议，接受则把它连同改了什么、项目设置一起交给 Claude Code（12 项）|
+| `python3 e2e/follow_up.py` | 手动改了设置之后的提议：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`；幻灯片尺寸小改不出提议，改成形状差很多时请求栏上方出现“重新排版”提议且不自动运行，“改写请求”把准备好的请求放进输入框，“忽略”收起，改回原样不出提议，装入设计系统会提议换成这套风格，接受则把它连同改了什么、项目设置一起交给 Claude Code（14 项）|
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
 | `python3 e2e/fast_slides.py` | 幻灯片上的快速 AI：报错重试、越出幻灯片格式时撤销并把原因告诉模型 |
 | `python3 e2e/fast_motion.py` | 动效场景上的快速 AI：模型看到作品尺寸和播放头所在的场景、报错重试、越出格式时撤销并说明、保留时间属性 |

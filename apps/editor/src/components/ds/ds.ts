@@ -13,7 +13,7 @@ import {
   type DsTokens,
 } from '@dc/core';
 import { api } from '../../api';
-import { display, edit, toast, useStore } from '../../store';
+import { display, edit, recordChange, toast, useStore } from '../../store';
 import { SERVER } from '../../base';
 import { filesOf, type ImportTarget } from '../ImportHere';
 import { t } from '../../i18n';
@@ -48,7 +48,9 @@ export function useDsIndex(): DsIndex {
 
 /** Change tokens.json as data; the server rebuilds tokens.css from it. */
 export function editTokens(fn: (json: Record<string, unknown>) => void, summary: string): boolean {
-  return edit(DS_TOKENS, (src) => editTokensJson(src, fn), { actor: 'human', summary });
+  const done = edit(DS_TOKENS, (src) => editTokensJson(src, fn), { actor: 'human', summary });
+  if (done) recordChange({ type: 'tokens', edits: [summary] });
+  return done;
 }
 
 export function editDsIndex(fn: (d: DsIndex) => void, summary: string): boolean {
