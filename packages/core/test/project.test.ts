@@ -179,6 +179,7 @@ describe('mergeChange', () => {
     expect(describeChange(a)).toContain('from 1× to 1.25×');
     expect(mergeChange(a, { type: 'speed', from: 1.25, to: 1.5 })).toEqual({ type: 'speed', from: 1, to: 1.5 });
     expect(mergeChange(a, { type: 'speed', from: 1.25, to: 1 })).toBeNull();
+    expect(mergeChange(a, { type: 'speed', from: 1.5, to: 1 })).toBeNull();
   });
   const size = (from: [number, number], to: [number, number]) => ({ type: 'size' as const, file: 'a.dc.html', from, to });
   it('joins changes to one thing from where it started, and drops one put back', () => {

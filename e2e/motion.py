@@ -335,7 +335,11 @@ async def main():
         await field.fill('9')
         await field.press('Enter')
         await pg.wait_for_timeout(500)
-        check('a speed out of range changes nothing', '"speed": 1.3' in read('motion.json'))
+        check('a speed out of range changes nothing and the field goes back', '"speed": 1.3' in read('motion.json') and await field.input_value() == '1.3')
+        await field.focus()
+        await field.press('ArrowUp')
+        await pg.wait_for_timeout(500)
+        check('arrow keys step the speed by a quarter', '"speed": 1.55' in read('motion.json'))
         await pg.screenshot(path=OUT + 'motion-tall.png')
 
         # --- notes: on the piece and on a scene ---------------------------------------------------------

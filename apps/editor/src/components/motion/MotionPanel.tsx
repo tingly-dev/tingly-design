@@ -196,6 +196,7 @@ export function MotionProps() {
   const m = useMotion();
   const names = Object.keys(m.formats);
   const [adding, setAdding] = useState(false);
+  const [speedKey, setSpeedKey] = useState(0);
   const [picked, setPicked] = useState<Size | null>(null);
   const { t } = useTranslation();
   const num = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : NaN);
@@ -240,7 +241,17 @@ export function MotionProps() {
         />
       </Row>
       <Row label={t('motion.motionProps.speed')} title={t('motion.motionProps.speedHint', { min: MIN_SPEED, max: MAX_SPEED })}>
-        <Field value={String(speedOf(m.speed))} unit="×" label={t('motion.motionProps.speed')} onCommit={(v) => v.trim() && setSpeed(Number(v.trim().replace(/×$/, '')))} />
+        <Field
+          key={speedKey}
+          value={String(speedOf(m.speed))}
+          unit="×"
+          step={0.25}
+          label={t('motion.motionProps.speed')}
+          onCommit={(v) => {
+            // a refused value goes back to the one that stands
+            if (v.trim() && !setSpeed(Number(v.trim().replace(/×$/, '')))) setSpeedKey((k) => k + 1);
+          }}
+        />
       </Row>
       <h3>{t('motion.motionProps.formats')}</h3>
       <div className="mformats">

@@ -98,7 +98,10 @@ export function mergeChange(before: ConfigChange | undefined, change: ConfigChan
     // the same edit again (a colour dragged) is one edit, kept at its latest place
     if (change.type === 'tokens' && before.type === 'tokens') return { type: 'tokens', edits: [...before.edits.filter((e) => !change.edits.includes(e)), ...change.edits].slice(-8) };
   }
-  if (change.type === 'speed' && before?.type === 'speed') return before.from === change.to ? null : { ...change, from: before.from };
+  if (change.type === 'speed') {
+    const merged = before?.type === 'speed' ? { ...change, from: before.from } : change;
+    return merged.from === merged.to ? null : merged;
+  }
   if (change.type === 'size' || change.type === 'format') return sameSize(change.from, change.to) ? null : change;
   return change;
 }
@@ -128,7 +131,7 @@ export function describeChange(c: ConfigChange): string {
   if (c.type === 'designSystem') return `The design system ${JSON.stringify(c.title)} was installed (ds/${c.namespace}/).`;
   if (c.type === 'tokens') return `Design tokens were edited: ${c.edits.map((e) => JSON.stringify(e)).join(', ')}.`;
   if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
-  if (c.type === 'speed') return `The motion piece's playback speed was changed from ${c.from}× to ${c.to}×; every scene, entrance and pause plays at that rate, so the video is ${c.to > c.from ? 'shorter' : 'longer'} (the timing in the scene files is unchanged).`;
+  if (c.type === 'speed') return `The motion piece's playback speed (speed in motion.json) was changed from ${c.from}× to ${c.to}×; the timing written in the scene files is unchanged.`;
   if (c.type === 'formatRemoved') return `The motion format ${JSON.stringify(c.format)} was removed, with the scene overrides that were only about it.`;
   return `A motion format ${JSON.stringify(c.format)} (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;
 }
