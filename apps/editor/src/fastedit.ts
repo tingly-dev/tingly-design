@@ -210,7 +210,8 @@ export async function delegateToClaude(
       journal,
       ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
-    set({ freshNext: false, changes: [], followUp: null });
+    // only what this request told Claude Code: a change made while it was being sent waits for the next one
+    set((s) => ({ freshNext: false, changes: s.changes.filter((c) => !changed.includes(c)), followUp: s.followUp && changed.includes(s.followUp) ? null : s.followUp }));
     if (opts.via) set((s) => ({ delegates: s.delegates.map((d) => (d.id === id ? { ...d, via: opts.via } : d)) }));
     return true;
   } catch (e) {

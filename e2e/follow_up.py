@@ -59,18 +59,18 @@ async def main():
         check('and still starts no run', len(started()) == 0)
         await pg.locator('.prompt textarea').fill('')
 
-        # dismiss
-        await w.fill('1920'); await w.press('Enter')
-        await w.fill('1000'); await w.press('Enter')
-        await h.fill('1900'); await h.press('Enter')
-        await pg.wait_for_timeout(400)
-        if await offer.count():
-            await offer.get_by_role('button', name='忽略').click()
+        # dismiss: changes to the same thing are one change, from where it started
+        await w.fill('1080'); await w.press('Enter')
+        await h.fill('1080'); await h.press('Enter')
+        await expect(offer).to_have_count(1)
+        await offer.get_by_role('button', name='忽略').click()
         check('dismissing removes the offer', await offer.count() == 0)
-
-        # accept: the prepared request is sent, and Claude Code is told what changed
         await w.fill('1920'); await w.press('Enter')
         await h.fill('1080'); await h.press('Enter')
+        await pg.wait_for_timeout(400)
+        check('a change put back offers nothing', await offer.count() == 0)
+
+        # accept: the prepared request is sent, and Claude Code is told what changed
         await w.fill('1080'); await w.press('Enter')
         await h.fill('1920'); await h.press('Enter')
         await expect(offer).to_have_count(1)
@@ -79,7 +79,7 @@ async def main():
         while time.time() - t < 15 and not started(): await asyncio.sleep(0.2)
         s = started()
         check('accepting sends the prepared request to Claude Code', len(s) == 1 and 'Re-lay out every slide' in s[0].get('prompt', ''), s)
-        check('and tells it what the person changed', len(s) == 1 and 'Settings the person changed since your last run' in s[0].get('prompt', '') and 'was resized from' in s[0].get('prompt', ''), s)
+        check('and tells it what the person changed', len(s) == 1 and 'Settings the person changed since your last run' in s[0].get('prompt', '') and 'was resized from 1920×1080 to 1080×1920' in s[0].get('prompt', ''), s)
         check('the settings are in the request too', len(s) == 1 and 'Project settings now' in s[0].get('prompt', ''), s)
         check('the offer is gone after it', await offer.count() == 0)
         check('no page errors', not errs, errs)

@@ -20,7 +20,8 @@ export function FollowUp({ onEdit }: { onEdit: (prompt: string) => void }) {
         className="btn sm"
         onClick={() => {
           dismissFollowUp();
-          void delegateToClaude(file, null, offer.prompt);
+          // a request that could not start is not lost: it goes into the box to send again
+          void delegateToClaude(file, null, offer.prompt).then((started) => !started && onEdit(offer.prompt));
         }}
       >
         {t('prompt.followUp.ask')}

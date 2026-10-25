@@ -45,6 +45,7 @@ export function followUpFor(change: ConfigChange): FollowUp | null {
 /** One line for Claude Code: what the person changed since its last run. */
 export function describeChange(c: ConfigChange): string {
   const px = (s: Size) => `${s[0]}×${s[1]}`;
-  if (c.type === 'size') return `${c.file ? `Artboard ${c.file}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
-  return `A motion format "${c.format}" (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;
+  // names come from the project's files: quoted, so an odd one stays a name
+  if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
+  return `A motion format ${JSON.stringify(c.format)} (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;
 }

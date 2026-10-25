@@ -347,9 +347,25 @@ export function setBarMode(mode: BarMode): void {
   set({ barMode: mode, historyOpen: false, chatNote: null });
 }
 
+const changeScope = (c: ConfigChange): string => (c.type === 'size' ? `size:${c.file ?? ''}` : `format:${c.format}`);
+
 /** A setting changed by hand: Claude Code hears of it with the next request, and the bar offers a follow-up when the change is worth one. */
 export function recordChange(change: ConfigChange, offer = true): void {
-  set((s) => ({ changes: [...s.changes, change].slice(-20), followUp: offer && followUpFor(change) ? change : s.followUp }));
+  set((s) => {
+    // changes to the same thing are one change, from where it started to where it is now: small steps add up, and a change put back is no change
+    const same = (c: ConfigChange) => changeScope(c) === changeScope(change);
+    const before = s.changes.find(same);
+    const merged: ConfigChange = before ? { ...change, from: before.from } : change;
+    const settled = merged.from[0] === merged.to[0] && merged.from[1] === merged.to[1];
+    const rest = s.changes.filter((c) => !same(c));
+    const offered = !settled && offer && !!followUpFor(merged);
+    return {
+      changes: (settled ? rest : [...rest, merged]).slice(-20),
+      followUp: offered ? merged : s.followUp && same(s.followUp) ? null : s.followUp,
+      // the offer is the point of the change: show it even to a bar folded to its pill (the folded preference stays)
+      ...(offered ? { barCollapsed: false } : {}),
+    };
+  });
 }
 
 export function dismissFollowUp(): void {
