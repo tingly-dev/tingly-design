@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
+  MAX_SPEED,
+  MIN_SPEED,
   TRANSITION_KINDS,
   attr,
   checkScene,
@@ -14,12 +16,13 @@ import {
   rootElement,
   sceneIdOf,
   sceneVisibility,
+  speedOf,
   sizeName,
   type DcDoc,
   type DcElement,
 } from '@dc/core';
 import { display, editElement, parsed, recordChange, toast, useStore } from '../../store';
-import { addFormat, editMotion, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
+import { addFormat, editMotion, setSpeed, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
 import { rememberSize, sameSize, type Size } from './motionSizes';
@@ -193,6 +196,7 @@ export function MotionProps() {
   const m = useMotion();
   const names = Object.keys(m.formats);
   const [adding, setAdding] = useState(false);
+  const [speedKey, setSpeedKey] = useState(0);
   const [picked, setPicked] = useState<Size | null>(null);
   const { t } = useTranslation();
   const num = (v: string) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : NaN);
@@ -233,6 +237,19 @@ export function MotionProps() {
           onCommit={(v) => {
             const n = num(v);
             if (n >= 1 && n <= 120) editMotion((r) => (r.fps = n), t('motion.journal.fps', { fps: n }));
+          }}
+        />
+      </Row>
+      <Row label={t('motion.motionProps.speed')} title={t('motion.motionProps.speedHint', { min: MIN_SPEED, max: MAX_SPEED })}>
+        <Field
+          key={speedKey}
+          value={String(speedOf(m.speed))}
+          unit="×"
+          step={0.25}
+          label={t('motion.motionProps.speed')}
+          onCommit={(v) => {
+            // a refused value goes back to the one that stands
+            if (v.trim() && !setSpeed(Number(v.trim().replace(/×$/, '')))) setSpeedKey((k) => k + 1);
           }}
         />
       </Row>

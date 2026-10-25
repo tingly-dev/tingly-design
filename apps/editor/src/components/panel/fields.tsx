@@ -37,6 +37,7 @@ export function Field({
   pre,
   numeric = true,
   width,
+  step,
 }: {
   value: string;
   placeholder?: string;
@@ -46,6 +47,8 @@ export function Field({
   pre?: string;
   numeric?: boolean;
   width?: number;
+  /** Arrow-key step (Shift takes ten of them), for values smaller than whole numbers. Default 1. */
+  step?: number;
 }) {
   const [text, setText] = useState(value);
   const focused = useRef(false);
@@ -81,8 +84,8 @@ export function Field({
             const m = /^(-?\d+(?:\.\d+)?)(.*)$/.exec(cur.trim());
             if (!m) return;
             e.preventDefault();
-            const step = (e.shiftKey ? 10 : 1) * (e.key === 'ArrowUp' ? 1 : -1);
-            const next = `${Math.round((parseFloat(m[1]) + step) * 10) / 10}${m[2]}`;
+            const by = (e.shiftKey ? 10 : 1) * (step ?? 1) * (e.key === 'ArrowUp' ? 1 : -1);
+            const next = `${Math.round((parseFloat(m[1]) + by) * 100) / 100}${m[2]}`;
             setText(next);
             onCommit(next);
           }

@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { attr, changeScope, seedFormat, DEFAULT_SCENE_MS, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { attr, changeScope, seedFormat, DEFAULT_SCENE_MS, MAX_SPEED, MIN_SPEED, speedOf, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
 import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
@@ -129,6 +129,26 @@ export function removeFormat(name: string): void {
       if (view?.format === name) useStore.setState({ motionView: { ...view } });
     },
   });
+}
+
+/**
+ * Set the piece's playback speed (`speed` in motion.json; 1 is written as no key). Any value from MIN_SPEED to MAX_SPEED;
+ * anything else says so and changes nothing. Claude Code hears of it with the next request, but nothing is offered (no re-layout).
+ */
+export function setSpeed(value: number): boolean {
+  if (!Number.isFinite(value) || value < MIN_SPEED || value > MAX_SPEED) {
+    toast(t('motion.toast.speedRange', { min: MIN_SPEED, max: MAX_SPEED }), 'error');
+    return false;
+  }
+  const to = speedOf(Math.round(value * 100) / 100);
+  const from = motionOf().speed ?? 1;
+  if (to === from) return true;
+  const done = editMotion((raw) => {
+    if (to === 1) delete raw.speed;
+    else raw.speed = to;
+  }, t('motion.journal.speed', { speed: to }));
+  if (done) recordChange({ type: 'speed', from, to }, false);
+  return done;
 }
 
 /** A scene's length (`data-duration`, before playback speed), written on its section. */
