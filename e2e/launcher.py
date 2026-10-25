@@ -244,19 +244,19 @@ async def main():
         for k in ('design', 'slides', 'motion'):
             await dlg.locator(f'[role=radio][data-kind="{k}"]').click()
             cats = await dlg.locator('.szcat').evaluate_all('els => els.map(e => e.dataset.group)')
-            check(f'{k}: the same grouped size menu', cats == ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio', 'custom'], str(cats))
+            check(f'{k}: the same grouped size menu', cats == ['screen', 'device', 'slides', 'social', 'wechat', 'cn', 'global', 'ads', 'print', 'ratio', 'custom'], str(cats))
         await dlg.locator('[role=radio][data-kind="design"]').click()
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Phone')
         await dlg.locator('.nopts select').first.select_option('tingly-ds')
         # the sizes are a picker of named, concrete sizes with where each is used under it
         cats = await dlg.locator('.szcat').evaluate_all('els => els.map(e => e.dataset.group)')
-        check('the categories are listed on the left, Custom last', cats == ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio', 'custom'], str(cats))
+        check('the categories are listed on the left, Custom last', cats == ['screen', 'device', 'slides', 'social', 'wechat', 'cn', 'global', 'ads', 'print', 'ratio', 'custom'], str(cats))
         names = []
         for g in cats[:-1]:
             await dlg.locator(f'.szcat[data-group="{g}"]').click()
             names += await dlg.locator('.sizes .szopt').evaluate_all('els => els.map(e => e.dataset.size)')
-        check('each category shows only its own sizes', len(names) >= 20 and {'wechat', 'tall', 'story', 'og', 'a4', 'mobile', 'mpu', 'thumbnail'} <= set(names), str(names))
-        await dlg.locator('.szcat[data-group="social"]').click()
+        check('each category shows only its own sizes', len(names) >= 50 and {'wechat', 'wxchannelh', 'wxchannelv', 'wxsub', 'dycover', 'tall', 'story', 'og', 'a4', 'mobile', 'mpu', 'thumbnail'} <= set(names), str(names))
+        await dlg.locator('.szcat[data-group="wechat"]').click()
         check('the sizes show their width and height', '900×383' in await dlg.locator('.sizes [data-size="wechat"]').inner_text())
         await dlg.locator('.sizes [data-size="wechat"]').click()
         check('picking a size says where it is used', '公众号' in await dlg.locator('.sizes .szfor').inner_text(), await dlg.locator('.sizes .szfor').inner_text())

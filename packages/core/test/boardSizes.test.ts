@@ -38,6 +38,17 @@ describe('BOARD_SIZES', () => {
     expect(BOARD_SIZES.find((p) => p.id === 'og')?.size).toEqual([1200, 630]);
     expect(boardSizeOf([1, 2])).toBeUndefined();
   });
+
+  it('has the WeChat and Chinese platform sizes, landscape and portrait', () => {
+    const size = (id: string) => BOARD_SIZES.find((p) => p.id === id);
+    expect([size('wxchannelh')?.size, size('wxchannelv')?.size]).toEqual([[1080, 608], [1080, 1260]]);
+    expect(size('wxsub')?.size).toEqual([200, 200]);
+    expect(size('wechat')?.group).toBe('wechat');
+    expect(size('dycover')?.size).toEqual([1242, 1660]);
+    expect(size('bilibili')?.group).toBe('cn');
+    expect(size('wbcover')?.group).toBe('cn');
+    expect(size('xheader')?.group).toBe('global');
+  });
 });
 
 describe('parseBoardSize', () => {
