@@ -5,6 +5,8 @@ description: Read before creating or editing a dashboard under projects/ (dash.j
 
 # Dashboards
 
+> Before you edit, read the project's current settings (sizes, installed design systems, formats, look) from the MCP `open` result's `settings`, the command line's `list <project> --json`, or the "Project settings now" line in your request, instead of guessing them from the files. When a request follows a settings change, rework what that change affects.
+
 A dashboard is a page you write over **datasets** the editor loads, checks and refreshes. It is the original Dashboard type with its store documents as files of `projects/<name>/`:
 
 | path | the original's document | what |

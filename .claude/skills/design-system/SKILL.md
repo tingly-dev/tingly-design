@@ -5,6 +5,8 @@ description: Read before creating or editing a design system under projects/ (de
 
 # Design systems
 
+> Before you edit, read the project's current settings (sizes, installed design systems, formats, look) from the MCP `open` result's `settings`, the command line's `list <project> --json`, or the "Project settings now" line in your request, instead of guessing them from the files. When a request follows a settings change, rework what that change affects.
+
 A design system is a folder under `projects/<name>/`, laid out as the original Design System type lays out `project/`:
 
 | path | what |

@@ -5,6 +5,8 @@ description: Read before creating or editing a design canvas under projects/ (ca
 
 # DC canvas files
 
+> Before you edit, read the project's current settings (sizes, installed design systems, formats, look) from the MCP `open` result's `settings`, the command line's `list <project> --json`, or the "Project settings now" line in your request, instead of guessing them from the files. When a request follows a settings change, rework what that change affects.
+
 A canvas is a folder under `projects/<name>/`:
 
 - `canvas.json` — where every artboard sits, plus notes and titles.

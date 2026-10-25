@@ -89,6 +89,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 从项目导入（[import-from-project](./import-from-project.md)） | `ImportHere` 菜单的"从项目导入…"、`BoardPicker`、`POST …/import-board`、`<x-embed src>`（`XBoard`、播放器的 `mountBoard`）、`BoardEmbedProps` | 来源：画板（会动的带 `$time`）；Tweaks 有时间滑块。不收：画布之间直接复制画板就行，用不着嵌入 | ✓ 当前这一页；放映时循环；HTML 导出带运行时 | ✗ 第一期没做：组件可以是来源，但装入设计系统已经覆盖"用别人的组件" | ✗ 看板页面是一份代码，没有可嵌入的位置 | ✗ 文档正文是 Markdown，没有嵌入块 | ✓ 播放头所在场景，`data-seek` 逐帧；播放器、命令行渲染都画 | 副本在 `uploads/<来源>-<画板>/`，来源记在索引的 `imports`；启动页预览、PNG 导出不画嵌入的画板 |
 | 画布的模板值（[canvas-template-values](./canvas-template-values.md)） | `TemplateValues`（`RightPanel` 什么都没选时）、核心 `canvasTemplateValues`，字段和写回用 Tweaks 的 `TweakField` / `setPropDefault` | ✓ 按画板分组，可折叠，30 个以上有过滤 | — 幻灯片没有模板值；嵌入画板的值在元素的属性里（`BoardEmbedProps`） | — 没有模板值 | — 没有模板值 | — 没有模板值 | — 嵌入画板的值在元素的属性里；场景没有模板值 | 有意只做画布：模板值是画布里画板的 `data-props`，别的类型没有"整份稿子的值"这个问题 |
 | 画板里模板文字和颜色的原地编辑（[template-text-editing](./template-text-editing.md)） | core 的 `textRetype.ts`（`retypeKind` / `planRetype`）、运行时双击和提交、`retypeText`（store）、属性面板 `ColorField` 的 `bound` | ✓ 带洞的文字、循环里的列表项、数据洞的提示、颜色绑定 | — 幻灯片的文字没有洞（闭合的 HTML 子集） | — 没有模板 | — 没有模板 | — 没有模板 | — 场景没有洞 | 有意只做画布：洞和 `data-props` 是画布画板的模板机制 |
+| AI 能查到的项目配置（[config-awareness](./config-awareness.md)） | core `settingsProject`（`SETTINGS` 按类型的表）；`open` 的 `settings`、委托请求里的 `Project settings now` | ✓ 画板尺寸、设计系统 | ✓ 页面尺寸、设计系统 | ✓ 主题、颜色、字体名 | ✓ 数据集来源 | ✓ 文档外观 | ✓ 格式、帧率、速度 | 跟进提议（配置变化后的“让 Claude 跟进”）是第 2、3 期，还没做 |
 
 ## 4. 做跨类型功能时
 
