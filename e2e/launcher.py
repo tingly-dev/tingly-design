@@ -244,13 +244,13 @@ async def main():
         for k in ('design', 'slides', 'motion'):
             await dlg.locator(f'[role=radio][data-kind="{k}"]').click()
             cats = await dlg.locator('.szcat').evaluate_all('els => els.map(e => e.dataset.group)')
-            check(f'{k}: the same grouped size menu', cats == ['screen', 'slides', 'social', 'ads', 'print', 'ratio', 'custom'], str(cats))
+            check(f'{k}: the same grouped size menu', cats == ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio', 'custom'], str(cats))
         await dlg.locator('[role=radio][data-kind="design"]').click()
         await dlg.locator('input[aria-label="标题"]').fill('ZZ Phone')
         await dlg.locator('.nopts select').first.select_option('tingly-ds')
         # the sizes are a picker of named, concrete sizes with where each is used under it
         cats = await dlg.locator('.szcat').evaluate_all('els => els.map(e => e.dataset.group)')
-        check('the categories are listed on the left, Custom last', cats == ['screen', 'slides', 'social', 'ads', 'print', 'ratio', 'custom'], str(cats))
+        check('the categories are listed on the left, Custom last', cats == ['screen', 'device', 'slides', 'social', 'ads', 'print', 'ratio', 'custom'], str(cats))
         names = []
         for g in cats[:-1]:
             await dlg.locator(f'.szcat[data-group="{g}"]').click()
