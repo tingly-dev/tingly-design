@@ -24,7 +24,7 @@ export function FollowUp({ onEdit }: { onEdit: (prompt: string) => void }) {
           void delegateToClaude(file, null, offer.prompt).then((started) => !started && onEdit(offer.prompt));
         }}
       >
-        {t('prompt.followUp.ask')}
+        {t(`prompt.followUp.ask.${offer.reason.id}`)}
       </button>
       <button
         className="btn sm ghost"

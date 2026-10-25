@@ -22,6 +22,9 @@ import {
   type ProjectKind,
   isDataPath,
   followUpFor,
+  changeScope,
+  isStream,
+  mergeChange,
   type ConfigChange,
 } from '@dc/core';
 import { api, type FileState, type Health, type ServerEvent } from './api';
@@ -347,25 +350,29 @@ export function setBarMode(mode: BarMode): void {
   set({ barMode: mode, historyOpen: false, chatNote: null });
 }
 
-const changeScope = (c: ConfigChange): string => (c.type === 'size' ? `size:${c.file ?? ''}` : `format:${c.format}`);
-
 /** A setting changed by hand: Claude Code hears of it with the next request, and the bar offers a follow-up when the change is worth one. */
 export function recordChange(change: ConfigChange, offer = true): void {
   set((s) => {
-    // changes to the same thing are one change, from where it started to where it is now: small steps add up, and a change put back is no change
-    const same = (c: ConfigChange) => changeScope(c) === changeScope(change);
+    const scope = changeScope(change);
+    const same = (c: ConfigChange) => changeScope(c) === scope;
     const before = s.changes.find(same);
-    const merged: ConfigChange = before ? { ...change, from: before.from } : change;
-    const settled = merged.from[0] === merged.to[0] && merged.from[1] === merged.to[1];
+    const merged = mergeChange(before, change);
     const rest = s.changes.filter((c) => !same(c));
-    const offered = !settled && offer && !!followUpFor(merged);
+    // edits to tokens come in streams: the offer shows for the first one since Claude last ran, and a dismissal holds
+    const quiet = isStream(change) && !!before;
+    const offered = !!merged && offer && !quiet && !!followUpFor(merged);
     return {
-      changes: (settled ? rest : [...rest, merged]).slice(-20),
-      followUp: offered ? merged : s.followUp && same(s.followUp) ? null : s.followUp,
+      changes: (merged ? [...rest, merged] : rest).slice(-20),
+      followUp: offered ? merged : s.followUp && same(s.followUp) ? (quiet ? merged : null) : s.followUp,
       // the offer is the point of the change: show it even to a bar folded to its pill (the folded preference stays)
       ...(offered ? { barCollapsed: false } : {}),
     };
   });
+}
+
+/** A change that no longer holds (a design system taken out again): neither the offer nor the report of it stays. */
+export function forgetChange(scope: string): void {
+  set((s) => ({ changes: s.changes.filter((c) => changeScope(c) !== scope), followUp: s.followUp && changeScope(s.followUp) === scope ? null : s.followUp }));
 }
 
 export function dismissFollowUp(): void {

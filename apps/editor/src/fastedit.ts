@@ -21,6 +21,7 @@ import {
   slideFile,
   slideIdOf,
   describeChange,
+  withoutSent,
 } from '@dc/core';
 import { api } from './api';
 import { t } from './i18n';
@@ -211,7 +212,7 @@ export async function delegateToClaude(
       ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
     // only what this request told Claude Code: a change made while it was being sent waits for the next one
-    set((s) => ({ freshNext: false, changes: s.changes.filter((c) => !changed.includes(c)), followUp: s.followUp && changed.includes(s.followUp) ? null : s.followUp }));
+    set((s) => ({ freshNext: false, changes: s.changes.flatMap((c) => withoutSent(c, changed) ?? []), followUp: s.followUp && changed.includes(s.followUp) ? null : s.followUp }));
     if (opts.via) set((s) => ({ delegates: s.delegates.map((d) => (d.id === id ? { ...d, via: opts.via } : d)) }));
     return true;
   } catch (e) {

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type DesignSystemChoice } from '../../api';
 import { DesignSystemPicker } from '../DesignSystemPicker';
 import { useInstalled } from '../ds/ds';
-import { toast, useStore } from '../../store';
+import { forgetChange, recordChange, toast, useStore } from '../../store';
 
 /**
  * Design systems in a canvas or deck: install a project system or built-in look
@@ -26,6 +26,8 @@ export function DsInstall() {
     setBusy(true);
     try {
       const r = await api.installDs(project, from);
+      const rec = (r.record ?? {}) as { namespace?: string; title?: string };
+      if (rec.namespace) recordChange({ type: 'designSystem', namespace: rec.namespace, title: rec.title ?? rec.namespace });
       toast(r.fonts.length ? t('panel.ds.installedWithFonts', { count: r.fonts.length }) : t('panel.ds.installed'));
       setPick('');
     } catch (e) {
@@ -68,7 +70,7 @@ export function DsInstall() {
                 disabled={busy}
                 onClick={async () => {
                   if (!project) return;
-                  await api.uninstallDs(project, x.record.namespace).catch((e) => toast(e.message, 'error'));
+                  await api.uninstallDs(project, x.record.namespace).then(() => forgetChange(`designSystem:${x.record.namespace}`), (e) => toast(e.message, 'error'));
                 }}
               >
                 {t('common.remove')}
