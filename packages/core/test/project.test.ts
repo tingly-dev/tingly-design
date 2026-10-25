@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { changeScope, checkProject, describeChange, mergeChange, followUpFor, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
+import { changeScope, checkProject, describeChange, mergeChange, withoutSent, followUpFor, journalSince, outlineProject, parseSince, projectKind, settingsProject, type ProjectFiles } from '../src';
 
 const SAMPLES = join(__dirname, '../../../projects');
 
@@ -177,12 +177,16 @@ describe('mergeChange', () => {
     expect(changeScope(size([1, 1], [2, 2]))).not.toBe(changeScope({ type: 'size', from: [1, 1], to: [2, 2] }));
     const t = mergeChange({ type: 'tokens', edits: ['a'] }, { type: 'tokens', edits: ['b'] });
     expect(t).toEqual({ type: 'tokens', edits: ['a', 'b'] });
-    expect(mergeChange({ type: 'look', key: 'width', from: 'default', to: 'wide' }, { type: 'look', key: 'width', from: 'wide', to: 'default' })).toBeNull();
+    expect(mergeChange({ type: 'tokens', edits: ['a', 'b'] }, { type: 'tokens', edits: ['a'] })).toEqual({ type: 'tokens', edits: ['b', 'a'] });
+    expect(withoutSent({ type: 'tokens', edits: ['a', 'b'] }, [{ type: 'tokens', edits: ['a'] }])).toEqual({ type: 'tokens', edits: ['b'] });
+    expect(withoutSent({ type: 'tokens', edits: ['a'] }, [{ type: 'tokens', edits: ['a'] }])).toBeNull();
+    const told = size([1920, 1080], [1080, 1920]);
+    expect(withoutSent(told, [told])).toBeNull();
+    expect(withoutSent({ ...told, to: [1080, 1080] }, [told])).toMatchObject({ from: [1080, 1920], to: [1080, 1080] });
   });
-  it('offers a restyle for a design system and a check for tokens, nothing for a doc look', () => {
+  it('offers a restyle for a design system and a check for tokens', () => {
     expect(followUpFor({ type: 'designSystem', namespace: 'look-nord', title: 'Nord' })?.prompt).toContain('ds/look-nord/');
     expect(followUpFor({ type: 'tokens', edits: ['color brand'] })?.reason.id).toBe('tokens');
-    expect(followUpFor({ type: 'look', key: 'width', from: 'default', to: 'wide' })).toBeNull();
     expect(describeChange({ type: 'tokens', edits: ['color brand'] })).toContain('color brand');
   });
 });

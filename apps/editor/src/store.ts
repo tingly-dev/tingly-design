@@ -23,6 +23,7 @@ import {
   isDataPath,
   followUpFor,
   changeScope,
+  isStream,
   mergeChange,
   type ConfigChange,
 } from '@dc/core';
@@ -358,7 +359,7 @@ export function recordChange(change: ConfigChange, offer = true): void {
     const merged = mergeChange(before, change);
     const rest = s.changes.filter((c) => !same(c));
     // edits to tokens come in streams: the offer shows for the first one since Claude last ran, and a dismissal holds
-    const quiet = change.type === 'tokens' && !!before;
+    const quiet = isStream(change) && !!before;
     const offered = !!merged && offer && !quiet && !!followUpFor(merged);
     return {
       changes: (merged ? [...rest, merged] : rest).slice(-20),
@@ -367,6 +368,11 @@ export function recordChange(change: ConfigChange, offer = true): void {
       ...(offered ? { barCollapsed: false } : {}),
     };
   });
+}
+
+/** A change that no longer holds (a design system taken out again): neither the offer nor the report of it stays. */
+export function forgetChange(scope: string): void {
+  set((s) => ({ changes: s.changes.filter((c) => changeScope(c) !== scope), followUp: s.followUp && changeScope(s.followUp) === scope ? null : s.followUp }));
 }
 
 export function dismissFollowUp(): void {

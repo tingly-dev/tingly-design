@@ -49,7 +49,8 @@ export function useDsIndex(): DsIndex {
 /** Change tokens.json as data; the server rebuilds tokens.css from it. */
 export function editTokens(fn: (json: Record<string, unknown>) => void, summary: string): boolean {
   const done = edit(DS_TOKENS, (src) => editTokensJson(src, fn), { actor: 'human', summary });
-  if (done) recordChange({ type: 'tokens', edits: [summary] });
+  // nothing to follow the tokens yet in a system without components: Claude is told, but nothing is offered
+  if (done) recordChange({ type: 'tokens', edits: [summary] }, Object.keys(useStore.getState().files).some((f) => /^components\/[^/]+\.html$/.test(f)));
   return done;
 }
 

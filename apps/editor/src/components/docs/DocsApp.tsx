@@ -25,7 +25,7 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
-import { display, isSaving, recordChange, useStore } from '../../store';
+import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { copyImage, htmlToPng, saveImage } from '../../imageExport';
 import type { Editor } from '@tiptap/core';
@@ -287,11 +287,7 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
 function Settings({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const d = useDocIndex();
-  const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => {
-    const from = (d.settings as unknown as Record<string, string>)[k];
-    editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
-    if (from !== v) recordChange({ type: 'look', key: k, from, to: v }, false);
-  };
+  const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
   const seg = (k: 'headingFont' | 'bodyFont' | 'width', opts: [string, string][]) => (
     <div className="seg">
       {opts.map(([v, label]) => (

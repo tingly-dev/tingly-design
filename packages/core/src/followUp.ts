@@ -13,9 +13,7 @@ export type ConfigChange =
   /** A design system was installed (or updated) in a canvas or deck: `namespace` is its folder under `ds/`. */
   | { type: 'designSystem'; namespace: string; title: string }
   /** A design system's tokens were edited; `edits` are the editor's own summaries of what, oldest first. */
-  | { type: 'tokens'; edits: string[] }
-  /** A doc's look (`heading font`, `body font`, `width`) was changed. */
-  | { type: 'look'; key: string; from: string; to: string };
+  | { type: 'tokens'; edits: string[] };
 
 /** An offer: `reason` is a key the editor turns into a sentence, `prompt` the request for Claude Code. */
 export interface FollowUp {
@@ -53,8 +51,6 @@ const FOLLOW_UP: { [T in ConfigChange['type']]: (c: Extract<ConfigChange, { type
       prompt: "The design tokens were edited by hand (see the changes listed above). Check this design system's components and make them follow the tokens: replace hard-coded colours, sizes and fonts that should use a variable, and fix what the new values break. Keep the components' structure and names.",
     };
   },
-  // the editor applies a doc's look itself: there is nothing for Claude to rework
-  look: () => null,
 };
 
 /** The offer a change deserves, or null when it needs none. */
@@ -75,8 +71,6 @@ export function changeScope(c: ConfigChange): string {
       return `designSystem:${c.namespace}`;
     case 'tokens':
       return 'tokens';
-    case 'look':
-      return `look:${c.key}`;
   }
 }
 
@@ -90,11 +84,28 @@ export function mergeChange(before: ConfigChange | undefined, change: ConfigChan
       const merged = { ...change, from: before.from };
       return sameSize(merged.from, merged.to) ? null : merged;
     }
-    if (change.type === 'look' && before.type === 'look') return before.from === change.to ? null : { ...change, from: before.from };
-    if (change.type === 'tokens' && before.type === 'tokens') return { type: 'tokens', edits: [...before.edits, ...change.edits].slice(-8) };
+    // the same edit again (a colour dragged) is one edit, kept at its latest place
+    if (change.type === 'tokens' && before.type === 'tokens') return { type: 'tokens', edits: [...before.edits.filter((e) => !change.edits.includes(e)), ...change.edits].slice(-8) };
   }
   if (change.type === 'size' || change.type === 'format') return sameSize(change.from, change.to) ? null : change;
   return change;
+}
+
+/** Changes that come in streams (a colour dragged): the offer shows for the first since Claude last ran, and dismissing it holds. */
+export const isStream = (c: ConfigChange): boolean => c.type === 'tokens';
+
+/** `c` without what a request that carried `sent` already told Claude Code; null when nothing is left. */
+export function withoutSent(c: ConfigChange, sent: ConfigChange[]): ConfigChange | null {
+  const told = sent.find((s) => changeScope(s) === changeScope(c));
+  if (!told) return c;
+  if (c.type === 'tokens' && told.type === 'tokens') {
+    const left = c.edits.filter((e) => !told.edits.includes(e));
+    return left.length ? { type: 'tokens', edits: left } : null;
+  }
+  if (c === told) return null;
+  // changed again while the request was on its way: what is left runs from where the request left it
+  if ((c.type === 'size' || c.type === 'format') && (told.type === 'size' || told.type === 'format')) return sameSize(told.to, c.to) ? null : { ...c, from: told.to };
+  return c;
 }
 
 /** One line for Claude Code: what the person changed since its last run. */
@@ -103,7 +114,6 @@ export function describeChange(c: ConfigChange): string {
   // names come from the project's files: quoted, so an odd one stays a name
   if (c.type === 'designSystem') return `The design system ${JSON.stringify(c.title)} was installed (ds/${c.namespace}/).`;
   if (c.type === 'tokens') return `Design tokens were edited: ${c.edits.map((e) => JSON.stringify(e)).join(', ')}.`;
-  if (c.type === 'look') return `The doc's ${JSON.stringify(c.key)} changed from ${JSON.stringify(c.from)} to ${JSON.stringify(c.to)}.`;
   if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
   return `A motion format ${JSON.stringify(c.format)} (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;
 }

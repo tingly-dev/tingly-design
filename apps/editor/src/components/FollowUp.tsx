@@ -3,8 +3,6 @@ import { followUpFor } from '@dc/core';
 import { delegateToClaude } from '../fastedit';
 import { dismissFollowUp, useStore } from '../store';
 
-const ASK = { size: 'prompt.followUp.ask', format: 'prompt.followUp.ask', designSystem: 'prompt.followUp.askRestyle', tokens: 'prompt.followUp.askTokens' } as const;
-
 /**
  * The offer under the request bar after a setting changed by hand and the shape or style it left may need Claude Code
  * (.design/config-awareness.md): send the prepared request, put it in the box to change first, or let it go. Never a run on its own.
@@ -26,7 +24,7 @@ export function FollowUp({ onEdit }: { onEdit: (prompt: string) => void }) {
           void delegateToClaude(file, null, offer.prompt).then((started) => !started && onEdit(offer.prompt));
         }}
       >
-        {t(ASK[offer.reason.id])}
+        {t(`prompt.followUp.ask.${offer.reason.id}`)}
       </button>
       <button
         className="btn sm ghost"
