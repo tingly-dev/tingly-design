@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "title": "Anthropic SDK 2026-10-21 升级",
+  "formats": { "tall": { "size": [1080, 1920] } },
+  "fps": 30,
+  "order": ["hook", "versions", "sampling", "messages", "auth", "sdkside", "also", "outro"],
+  "audio": [],
+  "note": "视频号竖版微视频。事实全部来自 Anthropic 官方 Release notes(2026-10-21)与迁移指南 platform.claude.com/docs/en/api/migration-2026-10-21。",
+  "cover": "cover"
+}
