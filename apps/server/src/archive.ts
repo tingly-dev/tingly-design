@@ -5,10 +5,12 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import {
   ARCHIVE_FORMAT,
   ARCHIVE_MANIFEST,
+  DASH_INDEX,
   DS_TOKENS,
   INDEX_FILE,
   archiveKeeps,
   archivePath,
+  datasetIdOf,
   detectClaudeDesign,
   docFromMarkdown,
   freeName,
@@ -16,6 +18,7 @@ import {
   hasClaudeDesign,
   toClaudeDesign,
   installedSystems,
+  parseDash,
   planArchive,
   projectNameFrom,
   renameSystems,
@@ -28,8 +31,12 @@ import {
   type ArchiveOptions,
   type ClaudeDesignNote,
   type ClaudeDesignKind,
+  type DatasetJson,
+  type QuerySource,
+  type Table,
 } from '@dc/core';
 import { HttpError, PROJECTS_DIR, isProjectName, kindOf, linkedProjects, projectDir, resolveKey } from './store';
+import { callTool } from './connectors';
 import type { TFunction } from '@dc/i18n';
 import { VERSION } from './layout';
 
@@ -275,6 +282,31 @@ export async function importFiles(files: Record<string, Uint8Array>, fileName: s
   return { name, systems, notes: [] };
 }
 
+/** The rows of a dashboard's SQLite queries, by dataset id: each is run here, best effort — one that fails stays a query. */
+async function queryRows(name: string, project: Record<string, Uint8Array>): Promise<Record<string, Table>> {
+  const out: Record<string, Table> = {};
+  const params = parseDash(project[DASH_INDEX] ? strFromU8(project[DASH_INDEX]) : undefined).params;
+  for (const [rel, data] of Object.entries(project)) {
+    const id = datasetIdOf(rel);
+    if (!id) continue;
+    let ds: DatasetJson;
+    try {
+      ds = JSON.parse(strFromU8(data)) as DatasetJson;
+    } catch {
+      continue;
+    }
+    const src = ds.source as QuerySource | undefined;
+    if (!src || src.kind !== 'query' || src.connector !== 'sqlite') continue;
+    try {
+      const r = (await callTool(name, src.connector, src.tool, src.args ?? {}, params)) as { columns?: unknown; rows?: unknown };
+      if (Array.isArray(r?.columns) && Array.isArray(r?.rows)) out[id] = { columns: r.columns as string[], rows: r.rows as Record<string, unknown>[] };
+    } catch {
+      // the query is wrong or its database is gone: the dataset goes out as the query it is
+    }
+  }
+  return out;
+}
+
 /** The project as Claude's own format: the original type's layout as one .zip (.design/claude-design-format.md). */
 export async function packClaudeDesign(name: string, dir = projectDir(name)): Promise<{ bytes: Uint8Array; file: string; files: number; notes: ClaudeDesignNote[] }> {
   const kind = await kindOf(dir);
@@ -286,7 +318,7 @@ export async function packClaudeDesign(name: string, dir = projectDir(name)): Pr
   try {
     title = JSON.parse((await readFile(join(dir, INDEX_FILE[kind]), 'utf8').catch(() => '{}')) || '{}').title;
   } catch {}
-  const pkg = toClaudeDesign(kind, project, typeof title === 'string' && title ? title : name);
+  const pkg = toClaudeDesign(kind, project, typeof title === 'string' && title ? title : name, kind === 'dashboard' ? await queryRows(name, project) : {});
   const zip: Zippable = {};
   for (const [p, d] of Object.entries(pkg.files)) zip[p] = [d, { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|zip)$/i.test(p) ? 0 : 6 }];
   return { bytes: zipSync(zip), file: `${name}-claude-design.zip`, files: Object.keys(pkg.files).length, notes: pkg.notes };

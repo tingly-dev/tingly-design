@@ -69,6 +69,14 @@ async def main():
         names = z.namelist()
         check('dashboard: the store documents', 'dash/meta.json' in names and any(n.startswith('datasets/') for n in names) and 'files/index.html' in names, names)
         check('dashboard: attached data under blobs/, no local database', any(n.startswith('blobs/') for n in names) and not any(n.endswith('.db') for n in names), names)
+        # a SQLite query's rows go with the package: blobs/<id>.csv, the dataset pointed at it, the call kept in request
+        daily = json.loads(z.read('datasets/daily.json'))
+        check('dashboard: a query dataset carries its rows as blobs/<id>.csv',
+              'blobs/daily.csv' in names and z.read('blobs/daily.csv').decode().startswith('day,requests')
+              and daily['source'] == {'kind': 'file', 'url': 'blobs/daily.csv', 'name': 'daily.csv'}
+              and daily.get('request', {}).get('args', {}).get('db') == 'data/box.db',
+              {'blobs': [n for n in names if n.startswith('blobs/')], 'source': daily.get('source'), 'request': daily.get('request')})
+        check('dashboard: both sqlite queries materialized', 'blobs/by_provider.csv' in names, [n for n in names if n.startswith('blobs/')])
         for kind, p in NO.items():
             try:
                 get(f'/api/projects/{p}/claude-design')

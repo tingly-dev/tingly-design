@@ -138,6 +138,52 @@ describe('toClaudeDesign', () => {
     expect(r.notes).toEqual([{ key: 'sqlite' }]);
   });
 
+  it('writes a SQLite query with its rows as the CSV they make, the call kept in request', () => {
+    const files: Files = {
+      'dash.json': b('{"title":"Sales","params":{}}'),
+      'datasets/daily.json': b(JSON.stringify({ title: 'Daily', source: { kind: 'query', connector: 'sqlite', tool: 'query', args: { db: 'data/box.db', sql: 'SELECT day, n FROM daily' } } })),
+      'data/box.db': b('sqlite'),
+    };
+    const r = toClaudeDesign('dashboard', files, 'Sales', { daily: { columns: ['day', 'n'], rows: [{ day: '2026-10-01', n: 3 }] } });
+    expect(Object.keys(r.files).sort()).toEqual(['README.md', 'blobs/daily.csv', 'dash/meta.json', 'datasets/daily.json']);
+    expect(t(r.files['blobs/daily.csv'])).toBe('day,n\n2026-10-01,3\n');
+    const ds = JSON.parse(t(r.files['datasets/daily.json']));
+    expect(ds.source).toEqual({ kind: 'file', url: 'blobs/daily.csv', name: 'daily.csv' });
+    expect(ds.request).toEqual({ connector: 'sqlite', tool: 'query', args: { db: 'data/box.db', sql: 'SELECT day, n FROM daily' } });
+    expect(r.notes).toEqual([{ key: 'queryData', params: { count: 1 } }]);
+    expect(t(r.files['README.md'])).toContain('blobs/daily.csv');
+  });
+
+  it('leaves a SQLite query whose rows did not come, and other connectors, as queries', () => {
+    const files: Files = {
+      'dash.json': b('{"title":"S","params":{}}'),
+      'datasets/local.json': b(JSON.stringify({ title: 'L', source: { kind: 'query', connector: 'sqlite', tool: 'query', args: { db: 'data/gone.db', sql: 'SELECT 1' } } })),
+      'datasets/bq.json': b(JSON.stringify({ title: 'B', source: { kind: 'query', connector: 'BigQuery', tool: 'q', args: {} } })),
+      'data/box.db': b('sqlite'),
+    };
+    const r = toClaudeDesign('dashboard', files, 'S', { other: { columns: ['x'], rows: [] } });
+    expect(JSON.parse(t(r.files['datasets/local.json'])).source.kind).toBe('query');
+    expect(r.notes).toEqual([
+      { key: 'connector', params: { names: 'BigQuery' } },
+      { key: 'sqlite' },
+    ]);
+  });
+
+  it('round-trips a materialized query: the CSV comes back as data/ and the call stays', () => {
+    const files: Files = {
+      'dash.json': b('{"title":"S","params":{}}'),
+      'datasets/r.json': b(JSON.stringify({ title: 'R', source: { kind: 'query', connector: 'sqlite', tool: 'query', args: { db: 'data/box.db', sql: 'SELECT 1' } } })),
+      'files/index.html': b('<p>'),
+    };
+    const pkg = toClaudeDesign('dashboard', files, 'S', { r: { columns: ['a'], rows: [{ a: 1 }] } }).files;
+    const back = fromClaudeDesign(pkg, detectClaudeDesign(Object.keys(pkg))!);
+    expect(Object.keys(back.files).sort()).toEqual(['dash.json', 'data/r.csv', 'datasets/r.json', 'files/index.html']);
+    expect(t(back.files['data/r.csv'])).toBe('a\n1\n');
+    const ds = JSON.parse(t(back.files['datasets/r.json']));
+    expect(ds.source.url).toBe('data/r.csv');
+    expect(ds.request.args.sql).toBe('SELECT 1');
+  });
+
   it('round-trips a canvas and a dashboard', () => {
     const canvas: Files = { 'canvas.json': b('{"v":3}'), 'Main.dc.html': b('<x-dc>') };
     const out = toClaudeDesign('design', canvas, 'C').files;

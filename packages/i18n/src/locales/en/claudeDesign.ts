@@ -14,5 +14,6 @@ export default {
     localSystem: 'The index names a design system that lives here, not on claude.ai. Install the real one before publishing.',
     slidePictures: 'Slide pictures ({{count}}) are files under uploads/. They must be uploaded as assets before the deck is published; the README says how.',
     sqlite: 'A local SQLite database was left out, because the original Dashboard cannot read one.',
+    queryData: 'The rows of {{count}} SQLite queries went into the package as CSV under blobs/; each dataset points at its file, with the query kept in it.',
   },
 };

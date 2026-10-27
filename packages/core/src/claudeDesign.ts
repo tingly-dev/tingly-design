@@ -1,5 +1,5 @@
 import { CANVAS_FILE } from './canvas';
-import { DASH_INDEX, DASH_PAGE, DATASET_ID_RE, DASH_DATA_TYPES, parseDash, stringifyDash, type DatasetJson } from './dash';
+import { DASH_INDEX, DASH_PAGE, DATASET_ID_RE, DASH_DATA_TYPES, parseDash, stringifyDash, tableToCsv, type DatasetJson, type Table } from './dash';
 import { DECK_FILE } from './deck';
 import { DS_INDEX } from './designSystem';
 import { DEFAULT_SETTINGS, DOC_INDEX, stringifyDoc, tabFile, type DocJson } from './docs';
@@ -27,7 +27,7 @@ export function hasClaudeDesign(kind: ProjectKind): kind is ClaudeDesignKind {
 
 /** Something the person should know after an exchange; the editor and command line say it in words (`claudeDesign.note.<key>`). */
 export interface ClaudeDesignNote {
-  key: 'missingPictures' | 'missingData' | 'connector' | 'localSystem' | 'slidePictures' | 'sqlite';
+  key: 'missingPictures' | 'missingData' | 'connector' | 'localSystem' | 'slidePictures' | 'sqlite' | 'queryData';
   params?: Record<string, string | number>;
 }
 
@@ -238,11 +238,13 @@ export interface ClaudeDesignExport {
   notes: ClaudeDesignNote[];
 }
 
-/** The package for a project's files (`rel` paths, what the archive keeps): the original layout, and a README that says how to publish it. */
-export function toClaudeDesign(kind: ClaudeDesignKind, project: Files, title: string): ClaudeDesignExport {
+/** The package for a project's files (`rel` paths, what the archive keeps): the original layout, and a README that says how to publish it.
+ *  `queries` holds the rows a caller ran for SQLite query datasets, by dataset id; a dashboard's query that has rows here goes out as the CSV
+ *  the rows make, with the call kept in the dataset's `request`. */
+export function toClaudeDesign(kind: ClaudeDesignKind, project: Files, title: string, queries: Record<string, Table> = {}): ClaudeDesignExport {
   const notes: ClaudeDesignNote[] = [];
   const out: Files = {};
-  if (kind === 'dashboard') dashboardTo(project, out, notes);
+  if (kind === 'dashboard') dashboardTo(project, out, notes, queries);
   else {
     for (const [rel, d] of Object.entries(project)) if (archiveKeeps(rel, { journal: false })) out[`${PROJECT_DIR}${rel}`] = d;
     const index = project[kind === 'design' ? CANVAS_FILE : kind === 'slides' ? DECK_FILE : DS_INDEX];
@@ -267,12 +269,14 @@ function localSystems(index: Uint8Array | undefined): number {
   }
 }
 
-function dashboardTo(project: Files, out: Files, notes: ClaudeDesignNote[]): void {
+function dashboardTo(project: Files, out: Files, notes: ClaudeDesignNote[], queries: Record<string, Table>): void {
   const dash = parseDash(project[DASH_INDEX] ? text(project[DASH_INDEX]) : undefined);
   out['dash/meta.json'] = bytes(JSON.stringify({ title: dash.title }, null, 2) + '\n');
   if (Object.keys(dash.params).length) out['dash/params.json'] = bytes(JSON.stringify(dash.params, null, 2) + '\n');
   let sqlite = false;
-  const queries = new Set<string>();
+  let materialized = 0;
+  let sqliteQueries = 0;
+  const queriesOut = new Set<string>();
   for (const [rel, d] of Object.entries(project)) {
     const ds = /^datasets\/([A-Za-z0-9_-]{1,64})\.json$/.exec(rel);
     if (ds) {
@@ -284,10 +288,21 @@ function dashboardTo(project: Files, out: Files, notes: ClaudeDesignNote[]): voi
         out[rel] = d;
         continue;
       }
-      const src = j.source as { kind?: string; url?: string; connector?: string };
+      const src = j.source as { kind?: string; url?: string; connector?: string; tool?: string; args?: Record<string, unknown> };
       if (src?.kind === 'file' && src.url) src.url = `blobs/${src.url.replace(/^data\//, '')}`;
-      // a SQLite query gets the sqlite note below, not the connector one
-      if (src?.kind === 'query' && src.connector && src.connector !== 'sqlite') queries.add(src.connector);
+      // a SQLite query with rows the caller ran goes out as the CSV they make; the call stays in `request`,
+      // the paused-query shape the editor already reads. Other connectors stay queries.
+      const isSqlite = src?.kind === 'query' && src.connector === 'sqlite';
+      if (isSqlite) sqliteQueries++;
+      const rows = isSqlite ? queries[ds[1]] : undefined;
+      if (src?.kind === 'query') {
+        if (rows) {
+          j.request = { connector: src.connector!, tool: src.tool ?? 'query', args: src.args ?? {} };
+          j.source = { kind: 'file', url: `blobs/${ds[1]}.csv`, name: `${ds[1]}.csv` };
+          out[`blobs/${ds[1]}.csv`] = bytes(tableToCsv(rows));
+          materialized++;
+        } else if (src.connector && src.connector !== 'sqlite') queriesOut.add(src.connector);
+      }
       out[rel] = bytes(JSON.stringify(j, null, 2) + '\n');
     } else if (rel.startsWith('files/')) out[rel] = d;
     else if (rel.startsWith('data/')) {
@@ -295,8 +310,10 @@ function dashboardTo(project: Files, out: Files, notes: ClaudeDesignNote[]): voi
       else out[`blobs/${rel.slice('data/'.length)}`] = d;
     }
   }
-  if (queries.size) notes.push({ key: 'connector', params: { names: [...queries].join(', ') } });
-  if (sqlite) notes.push({ key: 'sqlite' });
+  if (queriesOut.size) notes.push({ key: 'connector', params: { names: [...queriesOut].join(', ') } });
+  if (materialized) notes.push({ key: 'queryData', params: { count: materialized } });
+  // the database itself never goes; saying so is only worth a note when rows did not replace it
+  if (sqlite && (sqliteQueries === 0 || sqliteQueries > materialized)) notes.push({ key: 'sqlite' });
 }
 
 const KIND_NAME: Record<ClaudeDesignKind, string> = { design: 'Design', slides: 'Slides', 'design-system': 'Design System', dashboard: 'Dashboard' };
@@ -329,7 +346,8 @@ function readme(kind: ClaudeDesignKind, title: string, files: string[], notes: C
     slidePictures: '- Pictures under `project/uploads/` are referenced by relative path. A slide may only use `/_blob/<id>` or a design system\'s file: upload them as assets and point each `<img src>` at the reply\'s `url` before publishing.',
     localSystem: '- `designSystems` still names a design system that lived in Tingly Design (`projects/<name>`). Install the real one as the SKILL.md says, or drop the record.',
     connector: '- Some datasets query a connector (`source.kind: "query"`) that may not exist in the artifact\'s workspace; point them at one that does or replace them with an attached file.',
-    sqlite: '- The project read a local SQLite database; it is not included, because the original Dashboard cannot read one. Export the rows a dataset needs to CSV and attach those.',
+    queryData: '- SQLite queries went out with their rows: each has a `blobs/<id>.csv`, its dataset points at it (`source.kind: "file"`) and keeps the call in `request`. Upload the CSV as an asset and set that dataset\'s `source.url` to the reply\'s `url`.',
+    sqlite: '- The project read a local SQLite database; the database itself is not included, because the original Dashboard cannot read one. Queries whose rows could not be read are still `source.kind: "query"` — run them and attach the rows as a file.',
   };
   const extra = notes.map((n) => hints[n.key]).filter(Boolean);
   if (extra.length) lines.push('', '## Before you publish', '', ...(extra as string[]));
