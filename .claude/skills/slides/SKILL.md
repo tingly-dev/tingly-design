@@ -40,16 +40,19 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files: an
 ## A slide file
 
 ```html
-<section id="plan" data-transition="fade" style="background:#fbfbf8;color:#1a1a1a;font-family:'Source Serif 4', Georgia, serif;padding:128px 128px 160px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+<section id="plan" data-transition="fade" style="background:#10233f;color:#eef2f7;font-family:'Source Serif 4', Georgia, serif;padding:128px 128px 160px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
 <h2 style="font-size:72px;font-weight:400;line-height:1.1">Changes</h2>
-<div style="display:flex;gap:32px">
-<div style="flex:1;display:flex;flex-direction:column;gap:12px;background:#ffffff;padding:40px;border:1px solid #e3e6e4;border-radius:16px">
+<div style="display:flex;gap:96px;align-items:flex-end">
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<p style="font-size:200px;line-height:1;font-weight:600">3×</p>
+<p style="font-size:28px;max-width:560px">faster write-back — one trunk, no merge step.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px">
 <h3 style="font-size:32px;font-weight:600">One path</h3>
-<p style="font-size:28px">Everything ships from one branch.</p>
+<p style="font-size:28px">Everything ships from the branch the editor writes to.</p>
 </div>
-<img src="assets/hq-1a2b3c4d.jpg" alt="HQ" style="width:480px;height:360px;object-fit:cover;border-radius:16px">
 </div>
-<p style="position:absolute;left:128px;bottom:64px;width:800px;font-size:24px;color:#6a7179">Source: poll</p>
+<p style="position:absolute;left:128px;bottom:64px;width:800px;font-size:24px;color:#9fb0c8">Source: poll</p>
 <aside>Speaker notes: plain text, read by the presenter.</aside>
 </section>
 ```
@@ -131,6 +134,7 @@ You are a presentation designer, not a web designer. Every slide:
 - Size all content and margins to the deck’s dimensions. The numeric layout guidance below assumes 1920×1080; adapt it for other sizes. Vertical space at that default size: 824px inside the margins. A heading ≈ size × lines × 1.1; a table row ≈ 2.1 × font-size per text line; a card = lines × size × line-height + padding, never a smaller fixed height (leave height out). Text wraps only at spaces: size boxes to their longest word (about 0.6 × font-size per character). Too much? Split the slide; nothing shrinks.
 - Footer band: page number, source or logo is ONE pinned 24px row at `bottom:64px`; that slide gets `padding:128px 128px 160px`; nothing else past y 920.
 - Rhythm: slides of one kind share markup; repeated elements keep their places, the heading at the top margin (never centered with the body), so it never hops. Fill about 70% of the column, or use `justify-content:space-between` or a `flex:1` spacer. Touching boxes share one stroke (`border-top:none` on each after the first) or keep a gap.
+- Vary: neighbouring slides do not share one layout. Alternate the idioms `reference/layout.md` gives you (statement, big number, KPI grid, comparison, quote, full-bleed image, timeline, table, chart) so no template runs three slides in a row, and change the background tone where a section starts (the colour bullet's second tone and the accent statement slide are for exactly that). A deck that repeats one template page after page reads as a draft.
 - Images: only the person's files or a design system's (in the deck folder). Photos `object-fit:cover`; screenshots and diagrams `object-fit:contain` on a contrasting background. "36pt" means 72px.
 
 ## The references

@@ -126,3 +126,22 @@ writeback            #F7F7F4         0
 4. **多样化示例项目。** `tingly-intro` 之外再放一两个风格完全不同的 deck。
 5. **设计系统加版式和方向（§4.4）**，新页菜单用版式，内置几套起始风格。
 6. 图片来源（#32 图片生成）。
+
+---
+
+## 6. 结果（2026-10-27，#145 修复后）
+
+研究写就之后、本次修复之前，main 上已经落地了第 1 步的大部分（#169 把原版指导改写进 skill 与 `reference/`，#328 让 Claude 读项目设置）。本次修复补齐其余：相邻页版式变化写进 skill 与 `SLIDES_SYSTEM`、skill 的唯一示例从卡片排换成深底大数字页、起始封面被明确为"空白起点"（`isStarterCover` 字节级识别，fast AI 的 outline 标注新 deck）、给新 deck 装入设计系统/内置风格时起始封面按 `dsGlance` 上色、示例 deck `tingly-intro` 重排为 8 页 8 种版式。设计与决定见 `.design/slides-variety.md`。
+
+**薄 brief 实验**（研究 §5 第 3 步）：两个 brief 各自通过真实委托路径生成（server 起的 Claude Code 读同一份 skill + `SLIDES_SYSTEM`，`DC_DELEGATE_MODEL=cc[1m]`）：
+
+| | Brief A：『Make a short deck about switching our team's weekly meeting to async written updates.』 | Brief B：『Make a deck introducing Aurora, our new sleep-tracking app.』 |
+|---|---|---|
+| 输出 | `/tmp/briefs/async-shift/`，7 页 | `/tmp/briefs/aurora-intro/` |
+| 方向（回复自述） | 编辑出版风：Source Serif 4 + IBM Plex Sans，暖纸底、teal/ember 强调；说服性的内部提案，先说假设与占位符 | （见下方补录） |
+| 版式 | 纸底封面+元信息行 / 大数字等式+三卡 / 样例更新卡 / 双栏对比表 / 分栏陈述 / 四周时间线 / 深绿收尾声明页 | |
+| 背景 | 浅纸底为主 + 深色收尾，强调色点 eyebrow 与数字 | |
+
+与旧默认（`#fbfbf8` + 无衬线 + 卡片排）相比，方向、字体、配色、版式均不再雷同；每个 deck 内部相邻页不重排。**首轮瑕疵**（`check --snapshots` 如实抓到，属"做完再看"的正常回路，不是单调问题）：A 用了子集外的 `border-collapse`（error）、多处 `padding-top`（自动治愈警告）、大数字等式在占位符 `[60]` 处折行、收尾页胶囊与标题叠压；B 见下。
+
+环境备注：委托子进程的模型名来自环境别名展开（`ANTHROPIC_DEFAULT_OPUS_MODEL=opus[1m]` 会让 CLI 报 `unrecognized_model` 而整轮无输出），以 `DC_DELEGATE_MODEL` 固定为可用模型后可靠；同模型偶发一次同样的失败，重试即过，疑似 CLI 侧模型列表竞态，与本仓库代码无关。

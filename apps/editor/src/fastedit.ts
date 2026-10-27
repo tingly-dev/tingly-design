@@ -21,6 +21,7 @@ import {
   slideFile,
   slideIdOf,
   describeChange,
+  isStarterCover,
   withoutSent,
 } from '@dc/core';
 import { api } from './api';
@@ -38,6 +39,9 @@ function deckOutline(file: string): string {
   const deck = deckOf(s);
   const ids = slideIds(s);
   const lines = [`"${deck.title}", ${ids.length} slides, ${deckSize(deck).join('×')} each`];
+  if (ids.length === 1 && isStarterCover(display(s, slideFile(ids[0])), deck)) {
+    lines.push('This deck is new: its only slide is the untouched plain starter, a blank start rather than a look the person chose. Design this slide for the request instead of keeping the starter look.');
+  }
   let n = 0;
   for (const g of sectionsOf(deck, ids)) {
     if (g.description) lines.push(`section: ${g.description}`);

@@ -14,6 +14,7 @@ import {
   withSlideId,
   faceMarkup,
   isSlideFile,
+  isStarterCover,
   textBoxIndent,
   roleOf,
 } from '../src';
@@ -99,6 +100,23 @@ describe('slide files', () => {
     const s = newSlideSource('next', { like: 'background:#111;color:#eee;margin:0;padding:128px;z-index:2' });
     expect(s).toMatch(/^<section id="next" style="background:#111;color:#eee;padding:128px">/);
     expect(checkSlide(parseDc(s), 'next')).toEqual([]);
+  });
+
+  it('a new slide takes a design system\'s paint, and the untouched starter cover is recognised', () => {
+    const painted = newSlideSource('cover', { title: 'Q3 review', body: '', paint: { background: '#2e3440', color: '#eceff4', family: "'Inter','Noto Sans SC',sans-serif" } });
+    expect(painted).toMatch(/^<section id="cover" style="background:#2e3440;color:#eceff4;font-family:'Inter','Noto Sans SC',sans-serif;/);
+    expect(painted).toContain('padding:128px');
+    expect(checkSlide(parseDc(painted), 'cover')).toEqual([]);
+    // a paint value with markup metacharacters is dropped, the default stays
+    const safe = newSlideSource('cover', { title: 'T', body: '', paint: { background: 'red;font-family:x', color: '#111' } });
+    expect(safe).toContain('background:#fbfbf8');
+    expect(safe).toContain('color:#111');
+    const deck = parseDeck(JSON.stringify({ v: 4, title: 'Q3 review', cover: 'cover', order: ['cover'], sections: {}, faces: {}, designSystems: [] }));
+    expect(isStarterCover(newSlideSource('cover', { title: 'Q3 review', body: '', titleSize: 112 }), deck)).toBe(true);
+    expect(isStarterCover(painted, deck)).toBe(false);
+    expect(isStarterCover(undefined, deck)).toBe(false);
+    const grown = { ...deck, order: ['cover', 'next'] };
+    expect(isStarterCover(newSlideSource('cover', { title: 'Q3 review', body: '' }), grown)).toBe(false);
   });
 });
 
