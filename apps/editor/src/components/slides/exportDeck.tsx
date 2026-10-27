@@ -248,7 +248,7 @@ export function pickSlide(what: string): boolean {
 export function slidesExportItems(direct: boolean | null): ExportItem[] {
   return [
     { id: 'pdf', label: t('common.transfer.label.pdf'), hint: pdfHint(t('common.transfer.hint.slidesPdf'), direct), icon: <FilePdf />, run: () => exportDeck('pdf') },
-    { id: 'pptx', label: t('slides.pptx.label'), hint: t('slides.pptx.hint'), icon: <FileText />, run: exportDeckPptx },
+    { id: 'pptx', label: t('slides.pptx.label'), hint: t('slides.pptx.hint'), icon: <FileText />, run: arg => exportDeckPptx(typeof arg === 'string' ? arg : undefined) },
     { id: 'png', label: t('common.transfer.label.png'), hint: t('common.transfer.hint.slideOne'), icon: <Picture />, run: () => exportSlideImages(useStore.getState().slide) },
     { id: 'copy-png', label: t('common.transfer.label.copyPng'), hint: t('common.transfer.hint.slideOne'), icon: <CopyPicture />, run: async () => void (await copySlideImage(useStore.getState().slide)) },
     { id: 'pngs', label: t('common.transfer.label.pngs'), hint: t('common.transfer.hint.slidesEvery'), icon: <Picture />, run: () => exportSlideImages(true) },

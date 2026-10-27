@@ -290,6 +290,15 @@ def inspect_native(path, image):
               len(ET.fromstring(z.read('ppt/presentation.xml')).findall('.//p:sldId', NS)) == 2)
 
 
+def inspect_range(path, expected, label):
+    """A range export holds exactly the named visible slides, in deck order."""
+    with zipfile.ZipFile(path) as z:
+        roots = [ET.fromstring(z.read(p)) for p in sorted(p for p in z.namelist() if re.fullmatch(r'ppt/slides/slide\d+\.xml', p))]
+        texts = [''.join(root.itertext()) for root in roots]
+    check(f'range export: {label} holds exactly {len(expected)} slides in deck order',
+          len(roots) == len(expected) and all(want in got for want, got in zip(expected, texts)), texts)
+
+
 async def menu(pg, label='Import / Export'):
     await pg.get_by_role('button', name=label, exact=True).first.click()
     result = pg.get_by_role('menu', name=label, exact=True)
@@ -531,9 +540,29 @@ async def main():
     check('CLI: shared browser export writes PPTX', code == 0 and len(cli_artifacts) == 1, output)
     if cli_artifacts:
         inspect_native(cli_artifacts[0], image)
-    cli_error = OUT / (PREFIX + '-single-slide-must-not-exist.pptx')
-    code, output = await cli('export', name, '-n', '--as', 'pptx', '--slide', 'cover', '--out', str(cli_error))
-    check('CLI: whole-deck PPTX rejects a single-slide selector', code != 0 and not cli_error.exists(), output)
+    # One slide, a span, a list, and a range that names nothing: the visible deck is what ranges count.
+    cli_one = OUT / (PREFIX + '-cli-one')
+    code, output = await cli('export', name, '-n', '--as', 'pptx', '--slide', 'cover', '--out', str(cli_one))
+    one_files = list(cli_one.glob('*.pptx')) if cli_one.is_dir() else []
+    check('CLI: pptx --slide exports a single slide by id', code == 0 and len(one_files) == 1, output)
+    if one_files:
+        inspect_range(one_files[0], ['Native product title'], '--slide cover')
+    cli_span = OUT / (PREFIX + '-cli-span')
+    code, output = await cli('export', name, '-n', '--as', 'pptx', '--slide', '1-2', '--out', str(cli_span))
+    span_files = list(cli_span.glob('*.pptx')) if cli_span.is_dir() else []
+    check('CLI: pptx --slide span counts visible slides (hidden skipped)', code == 0 and len(span_files) == 1, output)
+    if span_files:
+        inspect_range(span_files[0], ['Native product title', 'Second visible page'], '--slide 1-2')
+    cli_list = OUT / (PREFIX + '-cli-list')
+    code, output = await cli('export', name, '-n', '--as', 'pptx', '--slide', '2', '--out', str(cli_list))
+    list_files = list(cli_list.glob('*.pptx')) if cli_list.is_dir() else []
+    check('CLI: pptx --slide 2 is the second visible slide', code == 0 and len(list_files) == 1, output)
+    if list_files:
+        inspect_range(list_files[0], ['Second visible page'], '--slide 2')
+    cli_none = OUT / (PREFIX + '-cli-none')
+    code, output = await cli('export', name, '-n', '--as', 'pptx', '--slide', '99', '--out', str(cli_none))
+    check('CLI: a range naming no visible slide fails without a file',
+          code != 0 and not (cli_none.exists() and list(cli_none.glob('*.pptx'))), output)
     rpc = await asyncio.to_thread(api, '/mcp', {
         'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',
         'params': {'name': 'export', 'arguments': {'project': name, 'as': 'pptx'}}}, 'POST')

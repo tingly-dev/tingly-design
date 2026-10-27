@@ -120,6 +120,8 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
             if (!drawn) fail(slide.id, `image-type:${src}`);
             url = dataUrl(file.bytes, drawn);
             loaded.set(src, url);
+            // an SVG keeps its vectors: the capture adds the picture of it readers without SVG show
+            if (drawn === 'image/svg+xml') images[url] = { bytes: file.bytes.slice(), mime: 'image/svg+xml', widthPx: 1, heightPx: 1 };
             ops.push({ kind: 'attr', tid: el.tid, name: 'src', value: url });
             continue;
           }

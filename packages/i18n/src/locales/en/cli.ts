@@ -205,7 +205,6 @@ Options:
   },
   skillsKept: 'Add --force to replace the copies that differ.',
   needZip: 'Name the file to import: tingly-design import <file.zip, file.pptx, file.md or folder>',
-  pptxWholeDeck: 'PowerPoint export includes the whole deck. Remove --slide (or the MCP pick) and try again.',
   pptxKept: 'Original PowerPoint: {{source}} · Conversion report: {{report}}',
   noClaudeDesign: 'A {{kind}} has no Claude Design format. Docs go through Markdown (--as md); motion has no original type.',
   importedClaudeDesign: 'Imported {{name}} ({{kind}} from Claude Design) into {{path}}',

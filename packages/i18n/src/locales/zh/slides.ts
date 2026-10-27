@@ -35,6 +35,7 @@ export default {
     rasterization: '这一页的部分内容无法转成图片。请重新导出；如果反复出现，请简化下面标出的元素。',
     shapeWarning: '圆角由 PowerPoint 原生圆角矩形近似呈现。',
     busy: '已有一项 PowerPoint 导出正在进行。请先完成或取消，再开始另一项。',
+    range: '“{{range}}”不对应任何可见页。请用从 1 起的可见位置（如 2 或 2-4 这样的范围），或页 id。',
     resource: '无法冻结或加载演示文稿的资源。请检查本地图片和声明的字体后重试。',
     cancelled: '导出已取消，未保存文件。',
     cancel: '取消导出',

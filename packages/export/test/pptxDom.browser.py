@@ -24,7 +24,8 @@ async def main():
             await page.set_content('''<style>*{box-sizing:border-box}body{margin:0} section{position:relative;width:800px;height:450px;background:white;font-family:Arial;font-size:20px}p{margin:0}x-shape{display:block}</style><section id="slide"></section>''')
             await page.add_script_tag(path=str(bundle))
             await page.add_script_tag(path=str(writer))
-            result = await page.evaluate('''async () => {
+            try:
+                result = await page.evaluate('''async () => {
                 const {slidesDomToPptx}=PptxDom;
                 const root=document.querySelector('section');
                 const opts={title:'Native 中文',widthIn:10};
@@ -60,13 +61,25 @@ async def main():
                     '<div style="width:100px;height:100px;background:linear-gradient(red,blue)">visible</div>',
                     '<svg width="20" height="20"><rect width="20" height="20"/></svg>',
                     '<x-embed style="display:block;width:100px;height:100px"></x-embed>',
-                    '<p style="transform:rotate(10deg)">rotated</p>',
                     '<div style="width:100px;height:20px;overflow:hidden"><p>clipped</p></div>',
                     '<div style="width:100px;height:40px;background:red;box-shadow:0 2px 8px black">shadow</div>'
                 ]) {
                     root.innerHTML=html;r=await slidesDomToPptx([root],opts);
                     test(!r.ok && !r.deck && r.diagnostics.some(d=>d.severity==='error'&&d.path),'unsupported content fails atomically');
                 }
+                root.innerHTML='<p style="position:absolute;left:100px;top:200px;transform:rotate(10deg)">rotated</p>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                const spun=r.deck.slides[0].objects[0];
+                test(spun.type==='text'&&Math.abs(spun.rotation-10)<0.01&&Math.abs(spun.y-200)<1.5&&spun.x>85&&spun.x<115&&spun.height>15&&spun.height<30,'a rotation-only transform stays native text with its laid-out box: '+JSON.stringify(spun));
+                test((await PptxWriter.writePptx(r.deck)).length>1000,'writer accepts the spun object');
+                root.innerHTML='<p style="transform:rotate(45deg)">degenerate</p>';
+                r=await slidesDomToPptx([root],opts);test(!r.ok,'a 45° spin has no unambiguous laid-out box and fails');
+                root.innerHTML='<div style="position:absolute;left:150px;top:150px;width:400px;height:120px;transform:rotate(10deg)"><p style="transform:rotate(20deg)">nested</p><p>plain</p></div>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                const nested=r.deck.slides[0].objects.filter(o=>o.type==='text');
+                test(nested.length===2&&Math.round(nested.find(o=>o.paragraphs[0].runs[0].text==='nested')?.rotation)===30&&Math.abs((nested.find(o=>o.paragraphs[0].runs[0].text==='plain')?.rotation??99)-10)<0.01,'nested rotations compose');
+                root.innerHTML='<p style="transform:skew(10deg)">skewed</p>';
+                r=await slidesDomToPptx([root],opts);test(!r.ok,'skew is still drawn, not approximated');
                 root.innerHTML='<img style="width:40px;height:20px;object-fit:contain" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==">';
                 const image=root.querySelector('img');await image.decode();
                 r=await slidesDomToPptx([root],opts);test(!r.ok,'no implicit image fetch or data URL decoding');
@@ -100,13 +113,19 @@ async def main():
                 root.innerHTML='<div style="width:300px;height:100px;background:linear-gradient(red,blue);padding:10px"><p>On gradient</p></div><svg width="20" height="20"><rect width="20" height="20"/></svg>';
                 r=await slidesDomToPptx([root],drawing);check(r.ok,JSON.stringify(r));
                 objs=r.deck.slides[0].objects;
-                test(rcalls.length===2&&rcalls[0][0]==='div'&&rcalls[0][1]==='self'&&rcalls[0][2]==='gradient'&&rcalls[1][0]==='svg'&&rcalls[1][1]==='subtree','gradient drawn as its own box only, SVG with its contents: '+JSON.stringify(rcalls));
+                test(rcalls.length===2&&rcalls[0][0]==='div'&&rcalls[0][1]==='self'&&rcalls[0][2]==='gradient'&&rcalls[1][0]==='svg'&&rcalls[1][1]==='subtree'&&rcalls[1][2]==='svg','gradient drawn as its own box only, SVG with its contents: '+JSON.stringify(rcalls));
                 test(objs[0].type==='image'&&objs[1].type==='text'&&objs[1].paragraphs[0].runs[0].text==='On gradient'&&objs[2].type==='image','text over a drawn box stays native, in paint order');
-                test(r.diagnostics.filter(d=>d.code==='rasterized'&&d.severity==='warning').length===2,'each picture is reported');
+                test(r.diagnostics.filter(d=>d.code==='rasterized'&&d.severity==='warning').length===1,'the drawn gradient is reported; the SVG is native, not a picture');
+                const drawing0=objs[2];
+                test(drawing0.asset&&r.deck.assets[drawing0.asset].mime==='image/svg+xml'&&r.deck.assets[drawing0.asset].fallback instanceof Uint8Array,'an SVG element carries the SVG and its rendered stand-in');
+                test(drawing0.x===5&&drawing0.y===6&&drawing0.width===7&&drawing0.height===8,'the SVG takes the picture of it as drawn: '+JSON.stringify([drawing0.x,drawing0.y,drawing0.width,drawing0.height]));
                 rcalls.length=0;
-                root.innerHTML='<div style="transform:rotate(5deg)"><p>Turned</p></div><p>Kept</p>';
+                root.innerHTML='<div style="position:absolute;left:200px;top:200px;width:300px;transform:rotate(5deg)"><p>Turned</p></div><p>Kept</p>';
                 r=await slidesDomToPptx([root],drawing);check(r.ok,JSON.stringify(r));
-                test(rcalls.length===1&&rcalls[0][1]==='subtree'&&r.deck.slides[0].objects.length===2&&r.deck.slides[0].objects[1].paragraphs[0].runs[0].text==='Kept','a transformed element is one picture, without its native children duplicated');
+                test(rcalls.length===0,'a rotation-only div is native now, nothing rasterized: '+JSON.stringify(rcalls));
+                const turned=r.deck.slides[0].objects.filter(o=>o.type==='text');
+                test(turned.length===2&&Math.abs((turned.find(o=>o.paragraphs[0].runs[0].text==='Turned')?.rotation??99)-5)<0.01,'its text keeps the subtree rotation');
+                root.innerHTML='<div style="width:100px;height:40px;background:linear-gradient(red,blue)"><p>grad</p></div>';
                 r=await slidesDomToPptx([root],{...opts,rasterizeElement:async()=>{throw new Error('nope')}});
                 test(!r.ok&&r.diagnostics.some(d=>d.feature==='rasterization'),'a failing rasterizer fails the slide, never silently drops the element');
                 r=await slidesDomToPptx([root],{...opts,rasterizeElement:async()=>null});check(r.ok,JSON.stringify(r));
@@ -131,6 +150,16 @@ async def main():
                 root.innerHTML='<table style="border-collapse:separate;border-spacing:6px"><tr><td>gap</td><td>gap</td></tr></table><table><tr><td><svg width="10" height="10"></svg></td></tr></table>';
                 r=await slidesDomToPptx([root],opts);
                 test(!r.deck||!r.deck.slides[0].objects.some(o=>o.type==='table'),'spaced cells and cells with drawings stay per element');
+                root.innerHTML='<table style="border-collapse:collapse"><tr>'
+                  +'<td style="width:120px;height:60px;padding:0;border:3px double rgb(17,17,17);position:relative"><p>box</p></td>'
+                  +'<td style="width:120px;height:60px;padding:0;position:relative"><p>diag</p><svg viewBox="0 0 1 1" preserveAspectRatio="none" style="position:absolute;left:0px;top:0px;width:100%;height:100%;overflow:visible"><path d="M0 0L1 1" fill="none" stroke="rgb(204,0,0)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></td></tr>'
+                  +'<tr><td colspan="2" style="width:240px;height:60px;padding:0;position:relative"><div style="position:absolute;left:90px;top:-90px;width:240px;height:60px;display:flex;flex-direction:column;justify-content:center;transform:rotate(270deg)"><p>vertical</p></div></td></tr></table>';
+                r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
+                const exotic=r.deck.slides[0].objects.find(o=>o.type==='table');check(exotic,JSON.stringify(r.deck.slides[0].objects.map(o=>o.type)));
+                test(exotic.rows[0][0].borders.every(b=>b&&b.double),'a CSS double border stays a native double border');
+                test(exotic.rows[0][1].tl2br&&exotic.rows[0][1].tl2br.color==='CC0000'&&exotic.rows[0][1].tl2br.widthPx===2&&!exotic.rows[0][1].tr2bl,"the importer's diagonal SVG comes back as the cell's diagonal border: "+JSON.stringify(exotic.rows[0][1]));
+                test(exotic.rows[1][0].textDirection==='vert270'&&exotic.rows[1][0].paragraphs[0].runs[0].text==='vertical'&&exotic.rows[1][0].verticalAlign==='middle',"the importer's spun text box comes back as a vertical cell: "+JSON.stringify(exotic.rows[1][0]));
+                test((await PptxWriter.writePptx(r.deck)).length>1000,'writer accepts double borders, diagonals and vertical cells');
                 root.innerHTML='<table style="border-collapse:collapse"><tr><td><p>one</p><p>two</p></td><td>x<br><br>y</td></tr></table>';
                 r=await slidesDomToPptx([root],opts);check(r.ok,JSON.stringify(r));
                 const tb2=r.deck.slides[0].objects.find(o=>o.type==='table');check(tb2,JSON.stringify(r.deck.slides[0].objects.map(o=>o.type)));const paras=tb2.rows[0].map(c=>c.paragraphs.map(p=>p.runs.map(x=>x.text).join('')));
@@ -172,6 +201,8 @@ async def main():
                 root.remove();r=await slidesDomToPptx([root],opts);test(!r.ok,'disconnected root fails');
                 return {assertions:count};
             }''')
+            except Exception as error:
+                raise SystemExit(f'FAIL browser contract: {error}')
             print(f"PASS real Chrome PPTX DOM contracts: {result['assertions']} assertions")
             await browser.close()
 

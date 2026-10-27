@@ -48,16 +48,42 @@ function notes(warnings: { slide: string; diagnostic: PptxDomDiagnostic }[] = []
 }
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 
+/** The visible slides a `--slide` range names: comma-separated positions (1-based, over the visible
+ * deck) and `a-b` spans, or slide ids, as in `2`, `1-4`, `cover` or `1,3-4`. Throws what the person should read. */
+export function slidesForRange(range: string, visible: string[]): string[] {
+  const picked: string[] = [];
+  const take = (id: string) => { if (!picked.includes(id)) picked.push(id); };
+  const bad = (atom: string): never => { throw new Error(t('slides.pptx.range', { range: atom })); };
+  for (const atom of range.split(',')) {
+    const part = atom.trim();
+    const span = /^(\d+)\s*-\s*(\d+)$/.exec(part);
+    if (span) {
+      const from = Number(span[1]), to = Number(span[2]);
+      if (from < 1 || to < from || to > visible.length) bad(part);
+      for (let n = from; n <= to; n++) take(visible[n - 1]);
+    } else if (/^\d+$/.test(part)) {
+      const n = Number(part);
+      if (n < 1 || n > visible.length) bad(part);
+      take(visible[n - 1]);
+    } else if (visible.includes(part)) take(part);
+    else bad(part);
+  }
+  return picked;
+}
+
 /** Also used by headless FileMenu jobs: resolving means the actual download finished. */
-export async function exportDeckPptx(): Promise<void> {
+export async function exportDeckPptx(range?: string): Promise<void> {
   if (controller) throw new Error(t('slides.pptx.busy'));
   const s = useStore.getState();
   const deck = deckOf(s);
+  const visible = slideIds(s).filter(id => !isHidden(id));
+  // a range names slides of the visible deck; the strip numbers and jump links stay deck-wide
   const ids = slideIds(s);
+  const chosen = range ? slidesForRange(range, visible) : visible;
   const snapshot = {
     title: deck.title, faces: structuredClone(deck.faces), size: deckSize(deck),
-    slides: ids.filter(id => !isHidden(id)).map(id => ({ id, source: display(s, slideFile(id)) ?? '' })),
-    boards: boardFilesFor(ids.map(id => display(s, slideFile(id))), p => display(s, p)),
+    slides: chosen.map(id => ({ id, source: display(s, slideFile(id)) ?? '' })),
+    boards: boardFilesFor(chosen.map(id => display(s, slideFile(id))), p => display(s, p)),
     base: s.project ? api.rawBase(s.project) : '', runtimeOrigin: SERVER,
   };
   const mine = new AbortController(); controller = mine;
@@ -66,7 +92,9 @@ export async function exportDeckPptx(): Promise<void> {
     const result = await deckSnapshotToPptx(snapshot, { signal: mine.signal, progress: progress => update({ status: 'running', progress, ids }) });
     if (mine.signal.aborted) return;
     const name = deck.title.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'deck';
-    download(`${name}.pptx`, new Blob([result.bytes as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
+    // a range export says which slides it holds, so two of them do not overwrite each other
+    const file = range ? `${name}-${range.replace(/[\\/:*?"<>|\s]+/g, '')}.pptx` : `${name}.pptx`;
+    download(file, new Blob([result.bytes as Uint8Array<ArrayBuffer>], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
     update({ status: 'done', ids, warnings: result.diagnostics });
   } catch (error) {
     if (mine.signal.aborted) { if (state) update({ status: 'cancelled', ids }); }

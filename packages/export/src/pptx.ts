@@ -14,8 +14,10 @@ export interface PptxDeck {
   assets?: Record<string, PptxAsset>;
 }
 export interface PptxSlide { background?: string; notes?: string; objects: PptxObject[] }
-/** PNG/JPEG header dimensions must match the supplied dimensions; no image decoding occurs here. */
-export interface PptxAsset { bytes: Uint8Array; mime: 'image/png' | 'image/jpeg'; widthPx: number; heightPx: number }
+/** PNG/JPEG header dimensions must match the supplied dimensions; no image decoding occurs here.
+ * An SVG asset carries its rendered PNG stand-in (`fallback`): readers without SVG support (and
+ * previews) show it, PowerPoint shows the SVG itself. */
+export interface PptxAsset { bytes: Uint8Array; mime: 'image/png' | 'image/jpeg' | 'image/svg+xml'; widthPx: number; heightPx: number; fallback?: Uint8Array }
 /** `opacity` 0..1 (1 when absent); `charSpacingPx` is extra space after each character, like CSS letter-spacing. */
 export interface PptxTextStyle { fontFace: string; fontSizePx: number; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; charSpacingPx?: number; opacity?: number }
 export interface PptxRun { text: string; style?: Partial<PptxTextStyle> }
@@ -28,13 +30,17 @@ export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagr
 export interface PptxShape extends PptxBox { type: 'shape'; shape: 'rect' | 'roundRect' | 'ellipse' | 'line'; fill?: string; fillOpacity?: number; radiusPx?: number; stroke?: { color: string; widthPx: number } }
 /** cover crops centrally, contain centers within the box, stretch fills the box. */
 export interface PptxImage extends PptxBox { type: 'image'; asset: string; fit?: 'contain' | 'cover' | 'stretch' }
-/** One side of a cell's border; null for none. */
-export interface PptxCellBorder { color: string; widthPx: number }
+/** One side of a cell's border; null for none. `double` draws two same-width lines (cmpd="dbl"). */
+export interface PptxCellBorder { color: string; widthPx: number; double?: boolean }
 /** `borders` are top, right, bottom, left; `paddingPx` the same order. A cell spanning columns or rows
- * is listed once, in the row and column it starts at; the cells it covers are left out. */
+ * is listed once, in the row and column it starts at; the cells it covers are left out. `tl2br`/`tr2bl`
+ * are the diagonal borders PowerPoint draws across a cell. */
 export interface PptxTableCell {
   paragraphs: PptxParagraph[]; style: PptxTextStyle; colspan?: number; rowspan?: number;
   fill?: string; fillOpacity?: number; borders?: (PptxCellBorder | null)[]; paddingPx?: number[]; verticalAlign?: 'top' | 'middle' | 'bottom';
+  tl2br?: PptxCellBorder | null; tr2bl?: PptxCellBorder | null;
+  /** vertical cell text: `vert` runs top to bottom, `vert270` bottom to top */
+  textDirection?: 'vert' | 'vert270';
 }
 /** A native PowerPoint table: column widths and row heights in pixels, each row's cells in column order. Never rotated. */
 export interface PptxTable extends PptxBox { type: 'table'; columnsPx: number[]; rowsPx: number[]; rows: PptxTableCell[][] }
@@ -50,6 +56,11 @@ export type PptxObject = PptxText | PptxShape | PptxImage | PptxTable;
  * Rejects unknown fields and unsupported objects rather than silently dropping them.
  * Validation completes and byte inputs are copied before the lazy dependency loads.
  */
+/** A cell whose double borders or diagonals PptxGenJS cannot write: normalizePptx401 patches the
+ * written table XML afterwards. `cell` is the cell's `<a:tc>` index inside its `<a:tbl>` (every grid
+ * position, merge continuations included), `double` in top/right/bottom/left order. */
+export interface PptxTablePatch { slide: number; table: number; cell: number; double: [boolean, boolean, boolean, boolean]; tl2br?: { color: string; emu: number }; tr2bl?: { color: string; emu: number } }
+
 export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
   validate(deck);
   // Isolate the async boundary from subsequent caller edits, including asset bytes.
@@ -59,18 +70,24 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
   if (pptx.version !== '4.0.1') throw new Error('pptx: unsupported PptxGenJS version');
   const inch = drawing.widthIn / drawing.widthPx;
   const pt = inch * 72;
+  const emu = (px: number) => Math.round(px * inch * 914400);
+  const patches: PptxTablePatch[] = [];
+  const fallbacks: { svg: Uint8Array; png: Uint8Array }[] = [];
+  const remember = (a: PptxAsset) => { if (a.mime === 'image/svg+xml' && a.fallback && !fallbacks.some(f => bytesEqual(f.svg, a.bytes))) fallbacks.push({ svg: a.bytes.slice(), png: a.fallback.slice() }); };
+  for (const a of Object.values(drawing.assets ?? {})) remember(a);
   pptx.defineLayout({ name: 'DC', width: drawing.widthIn, height: drawing.heightPx * inch });
   pptx.layout = 'DC'; pptx.title = drawing.title; pptx.author = ''; pptx.subject = ''; pptx.company = '';
   const assets = new Map(Object.entries(drawing.assets ?? {}).map(([id, a], index) => [id, {
     ...a, data: `${a.mime};base64,${base64(a.bytes)}`,
     // PptxGenJS 4.0.1 deduplicates by path within a slide, even with data.
     // This is an internal key, never a caller path. Data is always provided, so no IO.
-    path: `dc-asset-${index}.${a.mime === 'image/png' ? 'png' : 'jpeg'}`,
+    path: `dc-asset-${index}.${a.mime === 'image/png' ? 'png' : a.mime === 'image/jpeg' ? 'jpeg' : 'svg'}`,
   }]));
-  for (const page of drawing.slides) {
+  for (const [slideIndex, page] of drawing.slides.entries()) {
     const slide = pptx.addSlide();
     if (page.background) slide.background = { color: page.background };
     if (page.notes !== undefined) slide.addNotes(page.notes);
+    let tables = 0;
     for (const obj of page.objects) {
       const pos = { x: obj.x * inch, y: obj.y * inch, w: obj.width * inch, h: obj.height * inch, rotate: obj.rotation ?? 0 };
       if (obj.type === 'text') {
@@ -81,6 +98,7 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
           const pad = (cell.paddingPx ?? [0, 0, 0, 0]).map(v => v * pt);
           return { text: textRuns(cell.paragraphs, cell.style, pt), options: {
             ...(cell.colspan && cell.colspan > 1 ? { colspan: cell.colspan } : {}), ...(cell.rowspan && cell.rowspan > 1 ? { rowspan: cell.rowspan } : {}),
+            ...(cell.textDirection ? { textDirection: cell.textDirection } : {}),
             valign: cell.verticalAlign ?? 'top',
             // 4.0.1 reads a margin list as points when its first value is 1 or more, otherwise as inches
             margin: (pad[0] >= 1 ? pad : pad.map(v => v / 72)) as [number, number, number, number],
@@ -88,6 +106,27 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
             ...(cell.fill ? { fill: { color: cell.fill, transparency: transparency(cell.fillOpacity) } } : {}),
           } };
         }));
+        // Cells whose borders pptxgenjs cannot express — same-width double lines and diagonals — are
+        // patched into the written XML afterwards (a rotated table cannot be native, so patches are moot).
+        if (!obj.rotation) {
+          const nc = obj.columnsPx.length, covered = obj.rowsPx.map(() => new Array<boolean>(nc).fill(false));
+          for (const [r, row] of obj.rows.entries()) {
+            let col = 0;
+            for (const cell of row) {
+              while (covered[r][col]) col++;
+              const span = (cell.colspan ?? 1) as number, down = (cell.rowspan ?? 1) as number;
+              const double = [0, 1, 2, 3].map(k => !!cell.borders?.[k]?.double) as [boolean, boolean, boolean, boolean];
+              if (double.some(Boolean) || cell.tl2br || cell.tr2bl) patches.push({
+                slide: slideIndex, table: tables, cell: r * nc + col, double,
+                ...(cell.tl2br ? { tl2br: { color: cell.tl2br.color, emu: emu(cell.tl2br.widthPx) } } : {}),
+                ...(cell.tr2bl ? { tr2bl: { color: cell.tr2bl.color, emu: emu(cell.tr2bl.widthPx) } } : {}),
+              });
+              for (let y = r; y < r + down; y++) for (let x = col; x < col + span; x++) covered[y][x] = true;
+              col += span;
+            }
+          }
+          tables++;
+        }
         slide.addTable(rows, { x: pos.x, y: pos.y, w: pos.w, h: pos.h, colW: obj.columnsPx.map(v => v * inch), rowH: obj.rowsPx.map(v => v * inch), autoPage: false });
       } else if (obj.type === 'shape') {
         slide.addShape(pptx.ShapeType[obj.shape], { ...pos,
@@ -113,7 +152,10 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
     }
   }
   const result = await pptx.write({ outputType: 'uint8array', compression: true });
-  return normalizePptx401(result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer), drawing.slides.length);
+  return normalizePptx401(result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer), drawing.slides.length, patches, fallbacks);
+}
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 /** Paragraphs as PptxGenJS runs: each run carries its paragraph's properties (4.0.1 takes them per run). */
@@ -196,14 +238,22 @@ function validate(d: unknown): asserts d is PptxDeck {
   const assets = d.assets === undefined ? {} : d.assets;
   record(assets, 'assets'); if (Object.keys(assets).length > 2048) fail('asset count');
   for (const [id, a] of Object.entries(assets)) {
-    text(id, 'asset id', 256); record(a, `asset ${id}`, ['bytes', 'mime', 'widthPx', 'heightPx']);
+    text(id, 'asset id', 256); record(a, `asset ${id}`, ['bytes', 'mime', 'widthPx', 'heightPx', 'fallback']);
     if (!(a.bytes instanceof Uint8Array) || a.bytes.length === 0 || a.bytes.length > 32 * 1024 * 1024) fail(`asset ${id}.bytes`);
     byteTotal += a.bytes.length; if (byteTotal > 128 * 1024 * 1024) fail('media budget');
-    choice(a.mime, 'asset MIME', ['image/png', 'image/jpeg']);
+    choice(a.mime, 'asset MIME', ['image/png', 'image/jpeg', 'image/svg+xml']);
     number(a.widthPx, 'image width', 1, 40_000); number(a.heightPx, 'image height', 1, 40_000);
     if (!Number.isInteger(a.widthPx) || !Number.isInteger(a.heightPx) || a.widthPx * a.heightPx > 40_000_000) fail('image pixels');
-    const dim = dimensions(a.bytes, a.mime === 'image/png');
-    if (!dim || dim[0] !== a.widthPx || dim[1] !== a.heightPx) fail('image header/dimensions');
+    if (a.mime === 'image/svg+xml') {
+      // an SVG stands in a real PNG: readers without SVG support (and previews) show it
+      if (!(a.fallback instanceof Uint8Array) || !a.fallback.length || a.fallback.length > 32 * 1024 * 1024) fail(`asset ${id}.fallback`);
+      const dim = dimensions(a.fallback, true);
+      if (!dim || dim[0] !== a.widthPx || dim[1] !== a.heightPx) fail(`asset ${id}.fallback dimensions`);
+    } else {
+      if (a.fallback !== undefined) fail(`asset ${id}.fallback`);
+      const dim = dimensions(a.bytes, a.mime === 'image/png');
+      if (!dim || dim[0] !== a.widthPx || dim[1] !== a.heightPx) fail('image header/dimensions');
+    }
   }
   list(d.slides, 'slides', 1, 500);
   for (const [i, s] of d.slides.entries()) {
@@ -241,7 +291,12 @@ function validate(d: unknown): asserts d is PptxDeck {
           for (const cell of row) {
             const c = `${q}.rows[${r}]`;
             if (++nodes > 50_000) fail('text node budget');
-            record(cell, c, ['paragraphs', 'style', 'colspan', 'rowspan', 'fill', 'fillOpacity', 'borders', 'paddingPx', 'verticalAlign']);
+            record(cell, c, ['paragraphs', 'style', 'colspan', 'rowspan', 'fill', 'fillOpacity', 'borders', 'paddingPx', 'verticalAlign', 'tl2br', 'tr2bl', 'textDirection']);
+            if (cell.textDirection !== undefined) choice(cell.textDirection, c, ['vert', 'vert270']);
+            for (const side of ['tl2br', 'tr2bl'] as const) {
+              const diag = cell[side];
+              if (diag !== undefined && diag !== null) { record(diag, c, ['color', 'widthPx', 'double']); colour(diag.color, c); number(diag.widthPx, c, 0.01, 1000); number(diag.widthPx * d.widthIn / d.widthPx * 914400, `${c}.diagonal.emu`, 1, 20116800); }
+            }
             const span = (cell.colspan ?? 1) as number, down = (cell.rowspan ?? 1) as number;
             if (!Number.isInteger(span) || !Number.isInteger(down) || span < 1 || down < 1) fail(`${c}.span`);
             while (col < nc && covered[r][col]) col++;
@@ -256,7 +311,7 @@ function validate(d: unknown): asserts d is PptxDeck {
             if (cell.paddingPx !== undefined) { list(cell.paddingPx, `${c}.paddingPx`, 4, 4); for (const v of cell.paddingPx) number(v, `${c}.paddingPx`, 0, 2 * d.widthPx); }
             if (cell.borders !== undefined) {
               list(cell.borders, `${c}.borders`, 4, 4);
-              for (const b of cell.borders) if (b !== null) { record(b, c, ['color', 'widthPx']); colour(b.color, c); number(b.widthPx, c, 0.01, 1000); number(b.widthPx * d.widthIn / d.widthPx * 914400, `${c}.border.emu`, 1, 20116800); }
+              for (const b of cell.borders) if (b !== null) { record(b, c, ['color', 'widthPx', 'double']); colour(b.color, c); number(b.widthPx, c, 0.01, 1000); if (b.double !== undefined && typeof b.double !== 'boolean') fail(`${c}.double`); number(b.widthPx * d.widthIn / d.widthPx * 914400, `${c}.border.emu`, 1, 20116800); }
             }
           }
         }

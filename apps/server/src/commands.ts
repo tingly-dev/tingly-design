@@ -86,6 +86,8 @@ const KIND_CLI: Record<Kind, KindCli> = {
     async jobs(_p, as, o, one) {
       const slide = one(o.slide);
       if (as === 'png') return slide ? [{ pick: slide, item: 'png' }] : [{ item: 'pngs' }];
+      // pptx takes the whole visible deck, or the slides a `--slide` range names (no pick: nothing is shown first)
+      if (as === 'pptx' && o.slide?.trim()) return [{ arg: o.slide.trim(), item: 'pptx' }];
       return [{ item: as }];
     },
   },
@@ -455,7 +457,6 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   if (as === 'zip') return exportZip(p, o);
   if (as === 'claude-design') return exportClaudeDesign(ctx, p, o);
   if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip', ...(hasClaudeDesign(p.kind) ? ['claude-design'] : [])].join(', ') }));
-  if (p.kind === 'slides' && as === 'pptx' && o.slide?.trim()) throw new CommandError(t('cli.pptxWholeDeck'));
   if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);

@@ -20,6 +20,8 @@ export interface PageJob {
   pick?: string;
   /** the menu item's id */
   item: string;
+  /** what the command line named for this run (a slides pptx range), handed to the item */
+  arg?: string;
 }
 
 export interface PageFile {
@@ -93,7 +95,7 @@ export async function exportFromPage(o: PageOptions & { jobs: PageJob[]; layout?
         continue;
       }
       await quiet();
-      const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)})`, job.item === 'pptx' ? PPTX_DEADLINE : 120_000);
+      const r = await call<{ files: { name: string; type: string; data: string }[]; errors: string[] }>(`window.tinglyDesign.run(${JSON.stringify(job.item)}${job.arg !== undefined ? `, ${JSON.stringify(job.arg)}` : ''})`, job.item === 'pptx' ? PPTX_DEADLINE : 120_000);
       out.push({ ...job, errors: r.errors, files: r.files.map((f) => ({ name: f.name, type: f.type, data: Buffer.from(f.data, 'base64') })) });
       // each job shows its own board, slide or view: look at what is on screen now, each finding once
       if (o.layout) for (const f of await layout(o.layout.fixed, o.layout.page)) looked.set(JSON.stringify(f), f);

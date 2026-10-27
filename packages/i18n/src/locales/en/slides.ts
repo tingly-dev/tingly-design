@@ -32,6 +32,7 @@ export default {
     rasterization: 'Part of this slide could not be drawn as a picture. Export again; if it repeats, simplify the element shown below.',
     shapeWarning: 'Rounded corners are approximated by PowerPoint’s native rounded rectangle.',
     busy: 'A PowerPoint export is already running. Finish or cancel it before starting another.',
+    range: '“{{range}}” names no visible slide. Use visible positions counting from 1 (2, or a span like 2-4), or a slide id.',
     resource: 'A deck resource could not be frozen or loaded. Check local pictures and declared fonts, then try again.',
     cancelled: 'Export cancelled. No file was saved.',
     cancel: 'Cancel export',

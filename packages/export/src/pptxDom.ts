@@ -1,10 +1,12 @@
 /** Browser-only layout snapshot. No source parsing, network or editor imports.
  * Supply connected, unscaled rendered slide roots with fonts/images already loaded.
  * Native objects are preferred: solid or translucent boxes (square or uniformly rounded),
- * rect/rounded/ellipse/line x-shape, PNG/JPEG images, list markers and horizontal text
+ * rect/rounded/ellipse/line x-shape, PNG/JPEG/SVG images, list markers and horizontal text
  * measured with DOM Range (one native text object per rendered text-node line). Children
  * paint in CSS stacking order (in-flow, then positioned by z-index, ties in source order).
- * What has no native equivalent (gradients, shadows, SVG, embeds, transforms, clipping…)
+ * A rotation-only transform (about the box centre, never 45°+k·90°) stays native: the subtree
+ * is measured as laid out and every object carries PowerPoint's own rotation.
+ * What has no native equivalent (gradients, shadows, skew/scale transforms, embeds, clipping…)
  * fails unless the caller supplies `rasterizeElement`: then only that element becomes a
  * picture, either with its children (`subtree`) or just its own painting (`self`, its
  * children stay native). `rasterizeSlide` remains the coarser whole-slide alternative.
@@ -12,7 +14,7 @@
  * This produces drawing data, not validated package bytes: writePptx still validates
  * asset headers/dimensions, text controls and font/physical-unit bounds before writing.
  */
-import type { PptxAsset, PptxDeck, PptxObject, PptxSlide, PptxTextStyle } from './pptx';
+import type { PptxAsset, PptxCellBorder, PptxDeck, PptxObject, PptxSlide, PptxTextStyle } from './pptx';
 
 export interface PptxDomDiagnostic {
   code: 'invalid-input' | 'unsupported' | 'not-ready' | 'budget' | 'asset' | 'rasterized' | 'text-metrics' | 'shape-approximation' | 'approximated';
@@ -68,6 +70,23 @@ export function pptxDomPaint(value: string): { color: string; opacity: number } 
   return { color: m.slice(1, 4).map(v => Number(v).toString(16).padStart(2, '0')).join('').toUpperCase(), opacity };
 }
 
+/** Where a subtree's local layout sits on the page: page = R(rot)·(local − c) + o, where (c) is the
+ * laid-out centre the subtree's rotation turns about and (o) where that centre lands on the page.
+ * The root's space is the identity; entering an element spun by θ about its centre composes one more. */
+interface Space { rot: number; cx: number; cy: number; ox: number; oy: number }
+const IDENTITY: Space = { rot: 0, cx: 0, cy: 0, ox: 0, oy: 0 };
+const rotate = (deg: number, x: number, y: number): [number, number] => {
+  const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return [x * c - y * s, x * s + y * c];
+};
+/** The rectangle an element measured as laid out, from the bounding box its rotation produced:
+ * W = w·|cos| + h·|sin|, H = w·|sin| + h·|cos|. Undefined near 45°+k·90°, where the two solutions meet. */
+export function unspinRect(width: number, height: number, deg: number): { width: number; height: number } | undefined {
+  const r = (deg * Math.PI) / 180, c = Math.abs(Math.cos(r)), s = Math.abs(Math.sin(r)), d = c * c - s * s;
+  if (Math.abs(d) < 1e-4) return undefined;
+  const w = (width * c - height * s) / d, h = (height * c - width * s) / d;
+  return w > 0.01 && h > 0.01 ? { width: w, height: h } : undefined;
+}
 export async function slidesDomToPptx(roots: readonly HTMLElement[], options: PptxDomOptions): Promise<PptxDomResult> {
   const diagnostics: PptxDomDiagnostic[] = [];
   const limits = { ...defaults, ...options.limits };
@@ -93,12 +112,13 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
   };
   const assets: Record<string, PptxAsset> = {};
   function asset(value: PptxAsset): string {
-    if (!(value?.bytes instanceof Uint8Array) || !value.bytes.length || !['image/png', 'image/jpeg'].includes(value.mime) || !Number.isSafeInteger(value.widthPx) || !Number.isSafeInteger(value.heightPx) || value.widthPx <= 0 || value.heightPx <= 0 || value.widthPx * value.heightPx > limits.maxImagePixels) throw new Error('asset');
-    assetBytes += value.bytes.byteLength;
-    if (value.bytes.byteLength > 32 * 1024 * 1024 || Object.keys(assets).length >= 256) throw new Error('budget');
+    if (!(value?.bytes instanceof Uint8Array) || !value.bytes.length || !['image/png', 'image/jpeg', 'image/svg+xml'].includes(value.mime) || !Number.isSafeInteger(value.widthPx) || !Number.isSafeInteger(value.heightPx) || value.widthPx <= 0 || value.heightPx <= 0 || value.widthPx * value.heightPx > limits.maxImagePixels) throw new Error('asset');
+    if (value.mime === 'image/svg+xml' && (!(value.fallback instanceof Uint8Array) || !value.fallback.length)) throw new Error('asset');
+    assetBytes += value.bytes.byteLength + (value.fallback?.byteLength ?? 0);
+    if (value.bytes.byteLength > 32 * 1024 * 1024 || (value.fallback?.byteLength ?? 0) > 32 * 1024 * 1024 || Object.keys(assets).length >= 256) throw new Error('budget');
     if (assetBytes > limits.maxAssetBytes) throw new Error('budget');
     const id = `dom-${Object.keys(assets).length + 1}`;
-    assets[id] = { ...value, bytes: value.bytes.slice() }; return id;
+    assets[id] = { ...value, bytes: value.bytes.slice(), ...(value.fallback ? { fallback: value.fallback.slice() } : {}) }; return id;
   }
   const slides: PptxSlide[] = [];
   let widthPx = 0, heightPx = 0;
@@ -107,18 +127,39 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
     const start = diagnostics.length;
     const output: PptxSlide = { objects: [] };
     let pageW = 0, pageH = 0;
-    const push = (object: PptxObject) => {
-      // Nothing of it on the page: leave it out. Shapes reaching far off the page are cut to it (the
-      // writer keeps geometry within a page of the slide); text and pictures that far out are dropped.
-      if (object.x > pageW || object.y > pageH || object.x + object.width < 0 || object.y + object.height < 0) return;
-      if (object.x < -pageW || object.y < -pageH || object.x + object.width > 2 * pageW || object.y + object.height > 2 * pageH) {
-        if (object.type !== 'shape') { issue(slide, '', 'approximated', 'outside-slide', 'warning'); return; }
+    /** Boxes flow through in a subtree's laid-out (local) coordinates; `push` puts each object on
+     * the page through the subtree's space, carrying its rotation. `local` is the way back: a
+     * measured bounding box (painted, so spun) becomes the laid-out box, its own `spun` unspun. */
+    const push = (object: PptxObject, space: Space = IDENTITY) => {
+      if (space.rot || space.cx || space.cy || space.ox || space.oy) {
+        const [ux, uy] = rotate(space.rot, object.x + object.width / 2 - space.cx, object.y + object.height / 2 - space.cy);
+        object = { ...object, x: space.ox + ux - object.width / 2, y: space.oy + uy - object.height / 2, ...(object.rotation || space.rot ? { rotation: (object.rotation ?? 0) + space.rot } : {}) };
+      }
+      // Nothing of it on the page: leave it out. What a rotation paints reaches past its box, so
+      // spun objects test their rotated bounds; shapes reaching far past the page are cut to it
+      // (the writer keeps geometry within a page of the slide) unless that would bend the rotation.
+      const rotation = object.rotation ?? 0;
+      const r = (rotation * Math.PI) / 180;
+      const c = Math.abs(Math.cos(r)), s = Math.abs(Math.sin(r));
+      const W = object.width * c + object.height * s, H = object.width * s + object.height * c;
+      const bounds = { x: object.x + object.width / 2 - W / 2, y: object.y + object.height / 2 - H / 2, width: W, height: H };
+      if (bounds.x > pageW || bounds.y > pageH || bounds.x + bounds.width < 0 || bounds.y + bounds.height < 0) return;
+      if (bounds.x < -pageW || bounds.y < -pageH || bounds.x + bounds.width > 2 * pageW || bounds.y + bounds.height > 2 * pageH) {
+        if (object.type !== 'shape' || rotation) { issue(slide, '', 'approximated', 'outside-slide', 'warning'); return; }
         const x = Math.max(object.x, 0), y = Math.max(object.y, 0);
         object = { ...object, x, y, width: Math.min(object.x + object.width, pageW) - x, height: Math.min(object.y + object.height, pageH) - y };
       }
       if (++objects > limits.maxObjects) throw new Error('budget');
       output.objects.push(object);
     };
+    const local = (r: { x: number; y: number; width: number; height: number }, space: Space, spun = 0) => {
+      if (!spun && !space.rot && !space.cx && !space.cy && !space.ox && !space.oy) return r;
+      const laid = spun ? unspinRect(r.width, r.height, spun) : r;
+      if (!laid) throw new Error('transform');
+      const [cx, cy] = rotate(-space.rot, r.x + r.width / 2 - space.ox, r.y + r.height / 2 - space.oy);
+      return { x: space.cx + cx - laid.width / 2, y: space.cy + cy - laid.height / 2, width: laid.width, height: laid.height };
+    };
+
     /** Tree order of the slide's elements, for painting positioned boxes. */
     const order = new Map<Element, number>();
     try {
@@ -150,6 +191,33 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
       // Painted wholly off the page: nothing to see, and the writer keeps geometry near the page.
       const offPage = (b: { x: number; y: number; width: number; height: number }) => b.x >= rb.width || b.y >= rb.height || b.x + b.width <= 0 || b.y + b.height <= 0;
       const css = (el: Element, pseudo?: string) => win!.getComputedStyle(el, pseudo);
+      /** The rotation of a transform that is only a spin about the box centre, in degrees; null when
+       * there is none or it is anything else (skew, scale, translation, an off-centre origin, 45°). */
+      function spinOf(el: Element, st: CSSStyleDeclaration, space: Space = IDENTITY): number | null {
+        const prop = st.getPropertyValue('rotate');
+        let deg: number;
+        if (st.transform === 'none') {
+          if (st.getPropertyValue('scale') !== 'none' || st.getPropertyValue('translate') !== 'none') return null;
+          if (prop === 'none') return 0;
+          deg = parseFloat(prop);
+        } else {
+          if (prop !== 'none') return null;
+          const m = /^matrix\(([^)]+)\)$/.exec(st.transform)?.[1].split(',').map(Number);
+          if (!m || m.length !== 6 || Math.abs(m[4]) > 1e-6 || Math.abs(m[5]) > 1e-6 || Math.abs(m[0] - m[3]) > 1e-6 || Math.abs(m[1] + m[2]) > 1e-6 || Math.abs(m[0] * m[0] + m[1] * m[1] - 1) > 1e-6) return null;
+          deg = (Math.atan2(m[1], m[0]) * 180) / Math.PI;
+        }
+        if (!Number.isFinite(deg)) return null;
+        deg = ((deg % 360) + 360) % 360;
+        if (deg > 359.9 || deg < 0.1) return 0;
+        // the transform spins about the unrotated border box: accept only the centre
+        const painted = el.getBoundingClientRect();
+        const laid = local({ x: painted.left - rb.left, y: painted.top - rb.top, width: painted.width, height: painted.height }, space, deg + space.rot);
+        if (!laid) return null;
+        const [hx, hy] = st.transformOrigin.split(/\s+/);
+        const cx = hx.endsWith('%') ? laid.width / 2 : parseFloat(hx), cy = hy.endsWith('%') ? laid.height / 2 : parseFloat(hy);
+        if (!Number.isFinite(cx) || !Number.isFinite(cy) || Math.abs(cx - laid.width / 2) > 0.5 || Math.abs(cy - laid.height / 2) > 0.5) return null;
+        return deg;
+      }
       const raster = options.rasterizeElement;
       /** Without a rasterizer, an element with no native form is reported and left out (the slide fails); with one, the caller draws it. */
       const refuse = (path: string, feature: string) => { if (raster) throw new Error(feature); issue(slide, path, 'unsupported', feature); };
@@ -209,7 +277,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         if (mode === 'capitalize' && (!previous || /\s/.test(previous))) return value.toUpperCase();
         return value;
       }
-      function text(node: Text, path: string, alpha: number) {
+      function text(node: Text, path: string, alpha: number, space: Space) {
         const parent = node.parentElement!;
         const st = css(parent);
         if (st.visibility !== 'visible') return;
@@ -218,13 +286,13 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         if (!value.trim() && !pre) return;
         const ts = styleText(st, path, alpha, decorations(parent));
         const range = root.ownerDocument.createRange();
-        let chunk = '', previous: DOMRect | undefined, first: DOMRect | undefined;
+        let chunk = '', previous: { x: number; y: number; width: number; height: number } | undefined, first: { x: number; y: number; width: number; height: number } | undefined;
         const flush = () => {
           if (!pre) chunk = chunk.trimEnd();
           if (chunk && first && previous) {
-            const b = box(first);
-            b.width = previous.right - first.left;
-            if (b.width > 0 && !offPage(b)) push({ type: 'text', ...b, style: ts, paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: chunk }] }] });
+            const b = { ...first };
+            b.width = previous.x + previous.width - first.x;
+            if (b.width > 0 && !offPage(b)) push({ type: 'text', ...b, style: ts, paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: chunk }] }] }, space);
           }
           chunk = ''; first = undefined; previous = undefined;
         };
@@ -236,13 +304,17 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           const b = rects[0];
           let char = transformText(value.slice(i, i + n), i ? value.slice(i - 1, i) : st.textTransform === 'capitalize' ? before(node) : '', st.textTransform); i += n;
           if (!b || b.width <= 0) continue;
+          // a spun subtree's boxes measure spun: lines group where the text was laid out
+          let at: { x: number; y: number; width: number; height: number };
+          try { at = local({ x: b.left - rb.left, y: b.top - rb.top, width: b.width, height: b.height }, space, space.rot); }
+          catch { range.detach(); throw new Error('transform'); }
           if (/^[\t\r\n ]+$/.test(char) && !pre) {
             // collapsed white space: some builds still give the collapsed characters a width
             if (!chunk || chunk.endsWith(' ')) continue;
             char = ' ';
           }
-          if (previous && (Math.abs(previous.top - b.top) > 0.5 || b.left < previous.left - 0.5)) flush();
-          first ??= b; previous = b; chunk += char;
+          if (previous && (Math.abs(previous.y - at.y) > 0.5 || at.x < previous.x - 0.5)) flush();
+          first ??= at; previous = at; chunk += char;
         }
         flush(); range.detach();
         if (!diagnostics.slice(start).some(d => d.code === 'text-metrics')) issue(slide, path, 'text-metrics', 'font-not-embedded', 'warning');
@@ -261,7 +333,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         if (/^["']/.test(type)) return type.slice(1, -1);
         return ({ disc: '•', circle: '◦', square: '▪', decimal: `${n}.`, 'decimal-leading-zero': `${String(n).padStart(2, '0')}.`, 'lower-alpha': `${alpha(n)}.`, 'lower-latin': `${alpha(n)}.`, 'upper-alpha': `${alpha(n).toUpperCase()}.`, 'upper-latin': `${alpha(n).toUpperCase()}.`, 'lower-roman': `${roman(n)}.`, 'upper-roman': `${roman(n).toUpperCase()}.` } as Record<string, string>)[type];
       }
-      function listMarker(el: HTMLElement, st: CSSStyleDeclaration, path: string, alpha: number) {
+      function listMarker(el: HTMLElement, st: CSSStyleDeclaration, path: string, alpha: number, space: Space, spun: number) {
         if (st.display !== 'list-item' || st.listStyleType === 'none') return;
         if (st.listStyleImage !== 'none') throw new Error('list-image');
         const label = marker(el, st);
@@ -280,8 +352,8 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         const b = el.getBoundingClientRect();
         const contentLeft = b.left + parseFloat(st.borderLeftWidth) + parseFloat(st.paddingLeft);
         const left = (st.listStylePosition === 'inside' ? line.left : contentLeft) - width;
-        const at = box(new DOMRect(left, line.top, width, line.height));
-        if (!offPage(at)) push({ type: 'text', ...at, style: styleText(ms, path, alpha, { underline: false, strike: false }), paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: label }] }] });
+        const at = local({ x: left - rb.left, y: line.top - rb.top, width, height: line.height }, space, spun);
+        if (!offPage(at)) push({ type: 'text', ...at, style: styleText(ms, path, alpha, { underline: false, strike: false }), paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: label }] }] }, space);
       }
       /** Whether clipping at this element's padding box cuts anything it contains. */
       function clips(el: Element): boolean {
@@ -293,9 +365,10 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         range.detach();
         return cut;
       }
-      /** What stops this element's subtree from being drawn natively. */
-      function subtreeFeature(el: Element, st: CSSStyleDeclaration): string | undefined {
-        if (st.transform !== 'none' || st.getPropertyValue('rotate') !== 'none' || st.getPropertyValue('scale') !== 'none' || st.getPropertyValue('translate') !== 'none') return 'transform';
+      /** What stops this element's subtree from being drawn natively. `spin` is its own rotation-only
+       * transform (0 when it has none, null when the transform is anything else): a spin stays native. */
+      function subtreeFeature(el: Element, st: CSSStyleDeclaration, spin: number | null): string | undefined {
+        if (spin === null && (st.transform !== 'none' || st.getPropertyValue('rotate') !== 'none' || st.getPropertyValue('scale') !== 'none' || st.getPropertyValue('translate') !== 'none')) return 'transform';
         if (st.filter !== 'none' || st.backdropFilter !== 'none' || st.mixBlendMode !== 'normal') return 'compositing';
         if (st.clipPath !== 'none' || st.getPropertyValue('mask-image') !== 'none') return 'clipping';
         if (st.position === 'fixed' || st.position === 'sticky') return 'position';
@@ -314,17 +387,18 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         return undefined;
       }
       /** Whether this element paints nothing of its own (no background, border or effect). */
-      const bare = (el: Element, st: CSSStyleDeclaration) => !(Number(st.opacity) < 1) && !subtreeFeature(el, st) && !selfFeature(el, st) && !pptxDomPaint(st.backgroundColor)
+      const bare = (el: Element, st: CSSStyleDeclaration) => !(Number(st.opacity) < 1) && !subtreeFeature(el, st, spinOf(el, st)) && !selfFeature(el, st) && !pptxDomPaint(st.backgroundColor)
         && (['Top', 'Right', 'Bottom', 'Left'] as const).every(s => !(parseFloat(st[`border${s}Width`]) > 0 && st[`border${s}Style`] !== 'none'));
       /** A table whose cells hold only text, drawn as a native PowerPoint table: its grid comes from where
        * the cells are drawn, so tables laid out by CSS and by absolute positions both qualify. False leaves
        * the table to the ordinary walk (shapes and text per element), as for anything it cannot say. */
-      function nativeTable(table: Element, path: string, alpha: number): boolean {
-        try { return drawTable(table, path, alpha); }
+      function nativeTable(table: Element, path: string, alpha: number, space: Space): boolean {
+        try { return drawTable(table, path, alpha, space); }
         catch (error) { if (error instanceof Error && FATAL.includes(error.message)) throw error; return false; }
       }
-      function drawTable(table: Element, path: string, alpha: number): boolean {
-        if (alpha < 1) return false;
+      function drawTable(table: Element, path: string, alpha: number, space: Space): boolean {
+        // a native table never rotates; a spun table's cells go to the ordinary walk (spun text each)
+        if (alpha < 1 || space.rot) return false;
         const cells = Array.from(table.querySelectorAll('td, th')).filter(c => c.closest('table') === table && css(c).display !== 'none');
         if (!cells.length || cells.length > 5000) return false;
         // rows, sections and captions add nothing a native table could not show
@@ -359,19 +433,59 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
             paragraphs: c.paragraphs, style: c.style, ...(p.c1 - p.c0 > 1 ? { colspan: p.c1 - p.c0 } : {}), ...(p.r1 - p.r0 > 1 ? { rowspan: p.r1 - p.r0 } : {}),
             ...(c.fill ? { fill: c.fill.color, ...(c.fill.opacity < 1 ? { fillOpacity: c.fill.opacity } : {}) } : {}),
             borders: borders[k], paddingPx: c.padding, verticalAlign: c.valign,
+            ...(c.direction ? { textDirection: c.direction } : {}), ...(c.tl2br ? { tl2br: c.tl2br } : {}), ...(c.tr2bl ? { tr2bl: c.tr2bl } : {}),
           };
         }));
         const at0 = box(new DOMRect(xs[0], ys[0], xs[nc] - xs[0], ys[nr] - ys[0]));
         if (offPage(at0)) return true;
-        push({ type: 'table', ...at0, columnsPx: xs.slice(1).map((x, i) => x - xs[i]), rowsPx: ys.slice(1).map((y, i) => y - ys[i]), rows });
+        push({ type: 'table', ...at0, columnsPx: xs.slice(1).map((x, i) => x - xs[i]), rowsPx: ys.slice(1).map((y, i) => y - ys[i]), rows }, space);
         if (!diagnostics.slice(start).some(d => d.code === 'text-metrics')) issue(slide, path, 'text-metrics', 'font-not-embedded', 'warning');
         return true;
       }
       type Para = { runs: { text: string; style: PptxTextStyle }[]; align?: 'left' | 'center' | 'right' | 'justify'; spaceBeforePx?: number; spaceAfterPx?: number; lineHeightPx?: number };
+      /** The importer draws a cell's diagonal borders as one canonical unit-square SVG across the cell
+       * (mirrored when the table runs right to left); anything else is not a diagonal. */
+      const importerDiagonals = (td: Element): { tl2br?: PptxCellBorder; tr2bl?: PptxCellBorder; svg: Element[] } => {
+        const tbox = td.getBoundingClientRect();
+        const out: { tl2br?: PptxCellBorder; tr2bl?: PptxCellBorder; svg: Element[] } = { svg: [] };
+        for (const child of Array.from(td.children)) {
+          if (child.tagName.toUpperCase() !== 'SVG' || child.getAttribute('viewBox') !== '0 0 1 1' || child.getAttribute('preserveAspectRatio') !== 'none') continue;
+          const st = css(child);
+          if (st.position !== 'absolute') continue;
+          const box2 = child.getBoundingClientRect();
+          // the square maps onto the whole cell (a collapsed neighbour's border may inset it a little)
+          if (Math.abs(box2.left - tbox.left) > 3 || Math.abs(box2.top - tbox.top) > 3 || Math.abs(box2.width - tbox.width) > 3 || Math.abs(box2.height - tbox.height) > 3) continue;
+          const paths = Array.from(child.children).filter(c => c.tagName.toUpperCase() === 'PATH');
+          if (paths.length !== 1 || child.children.length !== 1) continue;
+          const d = paths[0].getAttribute('d'), stroke = pptxDomPaint(paths[0].getAttribute('stroke') ?? '');
+          const width = parseFloat(paths[0].getAttribute('stroke-width') ?? '');
+          if (!d || !stroke || stroke.opacity < 1 || !(width > 0) || paths[0].getAttribute('fill') !== 'none' || paths[0].getAttribute('vector-effect') !== 'non-scaling-stroke') continue;
+          const border = { color: stroke.color, widthPx: width };
+          if (d === 'M0 0L1 1') out.tl2br = border;
+          else if (d === 'M0 1L1 0' || d === 'M1 0L0 1') out.tr2bl = border;
+          else continue;
+          out.svg.push(child);
+        }
+        return out;
+      };
+      /** The importer draws a vertical cell's text as one canonical flex column of swapped size spun
+       * ±90° about the centre: the cell keeps its text and gains a text direction. */
+      const importerSpunText = (td: Element, skip: Element[]): { box: Element; direction: 'vert' | 'vert270' } | undefined => {
+        const kids = Array.from(td.children).filter(c => css(c).display !== 'none' && !skip.includes(c));
+        if (kids.length !== 1 || kids[0].tagName !== 'DIV') return undefined;
+        const box = kids[0], st = css(box);
+        const spin = spinOf(box, st);
+        if (spin !== 90 && spin !== 270) return undefined;
+        if (st.display !== 'flex' || st.flexDirection !== 'column') return undefined;
+        const b = box.getBoundingClientRect(), t = td.getBoundingClientRect();
+        const laid = unspinRect(b.width, b.height, spin);
+        if (!laid || Math.abs(laid.width - t.width) > 1 || Math.abs(laid.height - t.height) > 1) return undefined;
+        return { box, direction: spin === 90 ? 'vert' : 'vert270' };
+      };
       /** A cell's text, fill, borders, insets and vertical alignment, or undefined when it holds anything else. */
       function cellContent(td: Element, path: string) {
         const st = css(td);
-        if (Number(st.opacity) < 1 || subtreeFeature(td, st) || selfFeature(td, st) || st.visibility !== 'visible') return undefined;
+        if (Number(st.opacity) < 1 || subtreeFeature(td, st, spinOf(td, st)) || selfFeature(td, st) || st.visibility !== 'visible') return undefined;
         const fill = pptxDomPaint(st.backgroundColor);
         const borders = (['Top', 'Right', 'Bottom', 'Left'] as const).map(s => {
           const width = parseFloat(st[`border${s}Width`]), style = st[`border${s}Style`];
@@ -379,23 +493,38 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           const paint = pptxDomPaint(st[`border${s}Color`]);
           if (!paint) return null;
           if (paint.opacity < 1 || !['solid', 'double'].includes(style)) throw new Error('border');
-          if (style === 'double') approximated(path, 'double-border');
-          return { color: paint.color, widthPx: width };
+          return { color: paint.color, widthPx: width, ...(style === 'double' ? { double: true } : {}) };
         });
+        const diagonals = importerDiagonals(td);
+        const spun = importerSpunText(td, diagonals.svg);
         // the insets and alignment: through wrappers that only place the text (the importer's flex column)
         let container = td, valign: 'top' | 'middle' | 'bottom' | undefined, inset: Element = td;
         if (st.display === 'table-cell') { valign = st.verticalAlign === 'middle' ? 'middle' : st.verticalAlign === 'bottom' ? 'bottom' : 'top'; }
+        if (spun) {
+          // the spun box fills the cell and places the text: its anchor and insets are the cell's
+          container = spun.box;
+          const ws = css(container);
+          valign = ws.justifyContent === 'center' ? 'middle' : ws.justifyContent === 'flex-end' || ws.justifyContent === 'end' ? 'bottom' : 'top';
+          inset = container;
+        }
         for (;;) {
           const cs = css(container);
-          if (cs.display === 'flex' && cs.flexDirection === 'column' && !valign) { valign = cs.justifyContent === 'center' ? 'middle' : cs.justifyContent === 'flex-end' || cs.justifyContent === 'end' ? 'bottom' : 'top'; inset = container; }
-          const kids = Array.from(container.childNodes).filter(n => n.nodeType === 1 ? css(n as Element).display !== 'none' : n.nodeType === 3 && !!n.textContent?.trim());
+          if (!spun && cs.display === 'flex' && cs.flexDirection === 'column' && !valign) { valign = cs.justifyContent === 'center' ? 'middle' : cs.justifyContent === 'flex-end' || cs.justifyContent === 'end' ? 'bottom' : 'top'; inset = container; }
+          const kids = Array.from(container.childNodes).filter(n => n.nodeType === 1 ? css(n as Element).display !== 'none' && !diagonals.svg.includes(n as Element) : n.nodeType === 3 && !!n.textContent?.trim());
           const only = kids.length === 1 && kids[0].nodeType === 1 ? kids[0] as Element : undefined;
           if (!only || !bare(only, css(only)) || /^(inline|contents)$/.test(css(only).display)) break;
           container = only;
         }
         const tb = td.getBoundingClientRect(), outer = (el: Element) => { const s = css(el), b = el.getBoundingClientRect(); return { top: b.top + parseFloat(s.borderTopWidth) + parseFloat(s.paddingTop), right: b.right - parseFloat(s.borderRightWidth) - parseFloat(s.paddingRight), bottom: b.bottom - parseFloat(s.borderBottomWidth) - parseFloat(s.paddingBottom), left: b.left + parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft) }; };
-        const v = outer(inset), h = outer(container);
-        const padding = [v.top - tb.top, tb.right - h.right, tb.bottom - v.bottom, h.left - tb.left].map(x => Math.max(0, x));
+        let padding: number[];
+        if (spun) {
+          // the spun box measures rotated; its computed insets are what the cell shows
+          const ws = css(container);
+          padding = [parseFloat(ws.paddingTop) + parseFloat(ws.borderTopWidth), parseFloat(ws.paddingRight) + parseFloat(ws.borderRightWidth), parseFloat(ws.paddingBottom) + parseFloat(ws.borderBottomWidth), parseFloat(ws.paddingLeft) + parseFloat(ws.borderLeftWidth)];
+        } else {
+          const v = outer(inset), h = outer(container);
+          padding = [v.top - tb.top, tb.right - h.right, tb.bottom - v.bottom, h.left - tb.left].map(x => Math.max(0, x));
+        }
         // paragraphs: each block a paragraph, inline text its runs
         const paragraphs: Para[] = [];
         const paragraphOf = (el: Element, s: CSSStyleDeclaration): Para => ({
@@ -420,7 +549,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
             }
             if (node.nodeType !== 1) continue;
             const child = node as Element, cs = css(child);
-            if (cs.display === 'none') continue;
+            if (cs.display === 'none' || diagonals.svg.includes(child)) continue;
             if (child.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(child.tagName.toUpperCase()) || child.tagName === 'IMG' || !bare(child, cs) || cs.visibility !== 'visible') throw new Error('cell-content');
             if (child.tagName === 'BR') { close({ ...current, runs: [] }, true); continue; }
             if (cs.display === 'list-item' && cs.listStyleType !== 'none' || /table|grid/.test(cs.display)) throw new Error('cell-content');
@@ -434,14 +563,15 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         if (current.runs.length || !paragraphs.length) paragraphs.push(current);
         for (const p of paragraphs) { const last = p.runs[p.runs.length - 1]; if (last && !/pre/.test(css(container).whiteSpace)) last.text = last.text.replace(/ $/, ''); p.runs = p.runs.filter(r => r.text); }
         const style = styleText(st, path, 1, decorations(td));
-        return { paragraphs: paragraphs.map(p => ({ ...p, runs: p.runs.map(r => ({ text: r.text, style: r.style })) })), style, fill, borders, padding, valign };
+        return { paragraphs: paragraphs.map(p => ({ ...p, runs: p.runs.map(r => ({ text: r.text, style: r.style })) })), style, fill, borders, padding, valign,
+          ...(spun ? { direction: spun.direction } : {}), ...(diagonals.tl2br ? { tl2br: diagonals.tl2br } : {}), ...(diagonals.tr2bl ? { tr2bl: diagonals.tr2bl } : {}) };
       }
       /** A positioned box waiting for its stacking context: CSS paints it after that context's in-flow
        * content, by z-index then tree order, wherever it sits in the tree below. */
       interface Layer { el: Element; path: string; alpha: number; z: number; order: number }
       const positioned = (st: CSSStyleDeclaration, parent: CSSStyleDeclaration) => st.position !== 'static' || (['flex', 'inline-flex', 'grid', 'inline-grid'].includes(parent.display) && st.zIndex !== 'auto');
       const zOf = (st: CSSStyleDeclaration) => st.zIndex === 'auto' ? 0 : Number(st.zIndex);
-      async function walk(el: Element, path: string, alpha: number, layers: Layer[]): Promise<void> {
+      async function walk(el: Element, path: string, alpha: number, layers: Layer[], space: Space = IDENTITY): Promise<void> {
         check();
         if (el.tagName === 'ASIDE') return;
         const st = css(el);
@@ -453,9 +583,9 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         const assetMark = Object.keys(assets).length, bytesMark = assetBytes;
         try {
           // Hidden: its own painting and text are not drawn; a descendant may still show itself.
-          if (st.visibility !== 'visible') await children(el, st, path, alpha, own, false);
-          else await element(el, st, path, alpha, own);
-          if (context) await paintLayers(own);
+          if (st.visibility !== 'visible') await children(el, st, path, alpha, own, false, space);
+          else await element(el, st, path, alpha, own, space);
+          if (context) await paintLayers(own, space);
         } catch (error) {
           const feature = error instanceof Error ? error.message : 'unknown';
           if (!raster || FATAL.includes(feature) || feature === 'rasterization') throw error;
@@ -468,7 +598,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           await picture(el, path, 'subtree', feature);
         }
       }
-      async function paintLayers(layers: Layer[]) {
+      async function paintLayers(layers: Layer[], space: Space) {
         while (layers.length) {
           let next = 0;
           for (let i = 1; i < layers.length; i++) {
@@ -476,11 +606,11 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
             if (a.z < b.z || (a.z === b.z && a.order < b.order)) next = i;
           }
           const [layer] = layers.splice(next, 1);
-          await walk(layer.el, layer.path, layer.alpha, layers);
+          await walk(layer.el, layer.path, layer.alpha, layers, space);
         }
       }
       /** In-flow children in order (flex `order`, then source); positioned ones go to the stacking context's layers, negative z-index first. */
-      async function children(el: Element, st: CSSStyleDeclaration, path: string, alpha: number, layers: Layer[], showText = true) {
+      async function children(el: Element, st: CSSStyleDeclaration, path: string, alpha: number, layers: Layer[], showText = true, space: Space = IDENTITY) {
         const flow: { node: ChildNode; i: number; z: number; order: number }[] = [];
         for (const [i, node] of Array.from(el.childNodes).entries()) {
           if (node.nodeType === 3) { if (showText) flow.push({ node, i, z: 0, order: 0 }); continue; }
@@ -492,19 +622,33 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         }
         flow.sort((a, b) => a.z - b.z || a.order - b.order || a.i - b.i);
         for (const { node, i } of flow) {
-          if (node.nodeType === 3) text(node as Text, `${path}/${i}`, alpha);
-          else await walk(node as Element, `${path}/${i}`, alpha, layers);
+          if (node.nodeType === 3) text(node as Text, `${path}/${i}`, alpha, space);
+          else await walk(node as Element, `${path}/${i}`, alpha, layers, space);
         }
       }
-      async function element(el: Element, st: CSSStyleDeclaration, path: string, inheritedAlpha: number, layers: Layer[]): Promise<void> {
+      async function element(el: Element, st: CSSStyleDeclaration, path: string, inheritedAlpha: number, layers: Layer[], space: Space = IDENTITY): Promise<void> {
         const tag = el.tagName.toUpperCase();
-        if (el.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(tag)) { refuse(path, tag.toLowerCase()); return; }
-        const feature = subtreeFeature(el, st);
+        // a drawing keeps its native form; every other replaced element and foreign object is drawn
+        if (tag !== 'SVG' && (el.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(tag))) { refuse(path, tag.toLowerCase()); return; }
+        const spin = spinOf(el, st, space);
+        const feature = subtreeFeature(el, st, spin);
         if (feature) { refuse(path, feature); return; }
-        const b = box(el.getBoundingClientRect());
+        // the element as laid out: its bounding box measures spun by its own rotation and the subtree's
+        const spun = space.rot + (spin ?? 0);
+        let b: { x: number; y: number; width: number; height: number };
+        const painted = el.getBoundingClientRect();
+        try { b = local({ x: painted.left - rb.left, y: painted.top - rb.top, width: painted.width, height: painted.height }, space, spun); }
+        catch { refuse(path, 'transform'); return; }
+        // children lay out inside this box; a spin about its centre gives them their own space
+        let inner = space;
+        if (spin) {
+          const [lx, ly] = rotate(space.rot, b.x + b.width / 2 - space.cx, b.y + b.height / 2 - space.cy);
+          inner = { rot: space.rot + spin, cx: b.x + b.width / 2, cy: b.y + b.height / 2, ox: space.ox + lx, oy: space.oy + ly };
+        }
         const alpha = inheritedAlpha * Number(st.opacity);
         if (alpha <= 0) return;
-        if (el !== root && offPage(b) && st.position !== 'static') return;
+        // a spun box's paint reaches past its laid-out box, so only an unspun one is dropped here
+        if (el !== root && !spun && offPage(b) && st.position !== 'static') return;
         let own = selfFeature(el, st);
         let fill: { color: string; opacity: number } | undefined;
         try { fill = pptxDomPaint(st.backgroundColor); } catch { own ??= 'background'; }
@@ -552,18 +696,19 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         }
         // rounded corners bend the border, which separate lines cannot follow
         if (edges.length && shape !== 'rect') own ??= 'border';
-        if (own && tag === 'IMG') { refuse(path, own); return; }
+        if (own && (tag === 'IMG' || tag === 'SVG')) { refuse(path, own); return; }
         if (own && !raster) { refuse(path, own); return; }
         if (el === root) output.background = fill?.opacity === 1 ? fill.color : 'FFFFFF';
         if (own) { edges = []; await picture(el, path, 'self', own); }
         else {
           const shown = fill && !(el === root && fill.opacity === 1);
+          // the element's own painting turns with it: it leaves through its children's space
           if ((shown || stroke || tag === 'X-SHAPE') && (el !== root || shown || stroke)) {
             if (stroke && alpha < 1) { refuse(path, 'compositing'); return; }
             const opacity = (fill?.opacity ?? 1) * alpha;
-            push({ type: 'shape', ...b, shape, fill: fill?.color, ...(fill && opacity < 1 ? { fillOpacity: opacity } : {}), ...(shape === 'roundRect' && radius ? { radiusPx: radius } : {}), stroke });
+            push({ type: 'shape', ...b, shape, fill: fill?.color, ...(fill && opacity < 1 ? { fillOpacity: opacity } : {}), ...(shape === 'roundRect' && radius ? { radiusPx: radius } : {}), stroke }, inner);
           }
-          for (const edge of edges) push(edge);
+          for (const edge of edges) push(edge, inner);
         }
         if (tag === 'IMG') {
           const image = el as HTMLImageElement;
@@ -572,12 +717,23 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           if (!options.resolveImage) throw new Error('asset');
           const resolved = await bounded(options.resolveImage(image, { slide, signal: options.signal }));
           const id = asset(resolved);
-          push({ type: 'image', ...b, asset: id, fit: st.objectFit === 'fill' ? 'stretch' : st.objectFit as 'contain' | 'cover' });
+          push({ type: 'image', ...b, asset: id, fit: st.objectFit === 'fill' ? 'stretch' : st.objectFit as 'contain' | 'cover' }, inner);
           return;
         }
-        if (tag === 'TABLE' && nativeTable(el, path, alpha)) return;
-        if (tag === 'LI') listMarker(el as HTMLElement, st, path, alpha);
-        await children(el, st, path, alpha, layers);
+        if (tag === 'SVG') {
+          // a drawing stays a drawing: the SVG itself goes in the package and the caller's picture
+          // of it walks in readers that cannot show one; nothing about it is editable either way
+          if (!raster) { refuse(path, 'svg'); return; }
+          const drawn = await bounded(raster(el, { slide, mode: 'subtree', feature: 'svg', signal: options.signal }));
+          if (!drawn || offPage(drawn)) return;
+          if (![drawn.x, drawn.y, drawn.width, drawn.height].every(Number.isFinite) || drawn.width <= 0 || drawn.height <= 0) throw new Error('rasterization');
+          const id = asset({ bytes: new TextEncoder().encode(el.outerHTML), mime: 'image/svg+xml', widthPx: drawn.asset.widthPx, heightPx: drawn.asset.heightPx, fallback: drawn.asset.bytes });
+          push({ type: 'image', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height, asset: id, fit: 'stretch' }, IDENTITY);
+          return;
+        }
+        if (tag === 'TABLE' && nativeTable(el, path, alpha, inner)) return;
+        if (tag === 'LI') listMarker(el as HTMLElement, st, path, alpha, inner, 0);
+        await children(el, st, path, alpha, layers, true, inner);
       }
       await walk(root, 'root', 1, []);
     } catch (error) {
