@@ -137,6 +137,8 @@ export default {
     preset: '预设',
     presetLabel: '尺寸预设',
     presetPlaceholder: '选择尺寸…',
+    mine: '你的尺寸',
+    mineForget: '把 {{size}} 从你的尺寸里去掉',
     scaleContent: '改变尺寸时，内容随之缩放',
   },
   board: {
