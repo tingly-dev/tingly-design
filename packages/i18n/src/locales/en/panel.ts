@@ -137,6 +137,8 @@ export default {
     preset: 'Preset',
     presetLabel: 'Size preset',
     presetPlaceholder: 'Choose a size…',
+    mine: 'Your sizes',
+    mineForget: 'Remove {{size}} from your sizes',
     scaleContent: 'Scale the page with the size',
   },
   board: {
