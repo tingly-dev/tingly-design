@@ -1,0 +1,255 @@
+/* The launcher's dialogs: the backdrop (.lmodal) and the New dialog's first step (kind, name,
+   folder), with the folder and commit states they share. The New dialog's later steps (sizes,
+   optional choices, looks) are in launcher-new.css. */
+.lmodal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--backdrop);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+
+.ldialog {
+  width: min(520px, 100%);
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  background: var(--panel);
+  border-radius: var(--r-float);
+  box-shadow: var(--lift-shadow);
+  animation: pop-in 0.16s var(--ease);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+
+.ldialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+.ldialog h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+
+.ldialog .kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+
+.ldialog .kblurb {
+  margin: -4px 0 0;
+  min-height: 2.8em;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+
+.ldialog .where {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin-top: -4px;
+}
+
+
+.ldialog .where .path {
+  font: 12px var(--mono);
+  color: var(--faint);
+}
+
+
+.ldialog .where .folder {
+  flex: 1;
+}
+
+
+.kopt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--panel);
+  font: inherit;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+
+.kopt svg {
+  color: var(--tone);
+}
+
+
+.kopt:hover {
+  border-color: var(--tone);
+}
+
+
+.kopt[aria-checked='true'] {
+  border-color: var(--tone);
+  background: var(--tone-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+
+.ldialog .field {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+
+.ldialog .input {
+  height: 32px;
+  width: 100%;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  padding: 0 8px;
+  font: inherit;
+}
+
+
+.ldialog .folder .input:focus-visible {
+  box-shadow: none;
+}
+
+
+.ldialog .folder {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+
+.ldialog .folder .pre {
+  padding: 0 4px 0 8px;
+  font: 12px var(--mono);
+  color: var(--faint);
+}
+
+
+.ldialog .folder .input {
+  border: 0;
+  padding-left: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: 0;
+}
+
+
+.ldialog .folder .input:first-child {
+  padding-left: 8px;
+}
+
+
+.ldialog .where-hint {
+  margin-top: -10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+
+.ldialog .input.mono {
+  font: 12.5px var(--mono);
+}
+
+
+.lmodal:has(.lcommit) {
+  z-index: 1000;
+}
+
+
+.ldialog .commit-where {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: -4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+
+.ldialog .commit-where[data-state='new'] {
+  color: var(--ink);
+}
+
+
+.ldialog .commit-changes {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.ldialog .folder-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  margin-top: -6px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+
+.ldialog .folder-state svg {
+  flex: none;
+  color: var(--accent);
+}
+
+
+.ldialog .folder-state.s-project {
+  color: var(--ink);
+}
+
+
+.ldialog .folder-state.s-busy,
+.ldialog .folder-state.s-file {
+  color: var(--danger);
+}
+
+
+.ldialog .folder:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+
+.ldialog .problem {
+  min-height: 18px;
+  margin-top: -8px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+
+.ldialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
