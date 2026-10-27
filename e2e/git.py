@@ -132,7 +132,6 @@ async def main():
             await pg.locator('.menu [data-new="docs"] [role=menuitem], .menu [data-new="docs"] button').first.click()
             nd = pg.locator('.ldialog')
             check(f'[{tag}] in the projects folder (already a repository) the checkbox is not offered', await nd.locator('[data-git]').count() == 0)
-            await nd.locator('.where .linkish').click()
             await nd.locator('.folder .input').fill(os.path.join(code, 'more'))
             await expect(nd.locator('.where-hint')).to_contain_text('more')
             check(f'[{tag}] inside another repository it is not offered either', await nd.locator('[data-git]').count() == 0)
