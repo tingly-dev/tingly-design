@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { IconBold, IconCode, IconHighlight, IconItalic, IconStrikethrough } from '@tabler/icons-react';
+import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -20,6 +20,32 @@ import { RichCodeBlock } from './richCode';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
+
+/** Opens the link the selection is in; visible only while a link is, so it subscribes itself (the editor does not re-render on selection moves). */
+function OpenLink({ editor }: { editor: Editor }) {
+  const { t } = useTranslation();
+  const [, force] = useState(0);
+  useEffect(() => {
+    const f = () => force((n) => n + 1);
+    editor.on('transaction', f);
+    return () => {
+      editor.off('transaction', f);
+    };
+  }, [editor]);
+  if (!editor.isActive('link')) return null;
+  return (
+    <button
+      aria-label={t('docs.format.openLink')}
+      title={t('docs.format.openLink')}
+      onClick={() => {
+        const href = editor.getAttributes('link').href;
+        if (href) window.open(String(href), '_blank', 'noopener,noreferrer');
+      }}
+    >
+      <IconExternalLink size={16} stroke={1.7} aria-hidden="true" />
+    </button>
+  );
+}
 
 type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'diagram' | 'formula' | 'table' | 'hr' | 'date' | 'image';
 
@@ -175,7 +201,16 @@ export function DocEditor({ tab }: { tab: string }) {
           return false;
         },
         handleClick: (_view, _pos, ev) => {
-          const id = (ev.target as HTMLElement).closest?.('[data-thread]')?.getAttribute('data-thread');
+          const el = ev.target as HTMLElement;
+          // ⌘-click / Ctrl-click opens the link; a plain click keeps placing the cursor for editing
+          if ((ev.metaKey || ev.ctrlKey) && ev.button === 0) {
+            const a = el.closest?.('a');
+            if (a?.href) {
+              window.open(a.href, '_blank', 'noopener,noreferrer');
+              return true;
+            }
+          }
+          const id = el.closest?.('[data-thread]')?.getAttribute('data-thread');
           if (id) useDocs.setState({ thread: id, rail: true });
           return false;
         },
@@ -347,6 +382,7 @@ export function DocEditor({ tab }: { tab: string }) {
           <button className={editor.isActive('highlight') ? 'on' : ''} onClick={() => editor.chain().focus().toggleHighlight().run()} aria-label={t('docs.format.highlight')}>
             <IconHighlight size={16} stroke={1.7} aria-hidden="true" />
           </button>
+          <OpenLink editor={editor} />
           <button
             className={editor.isActive('link') ? 'on' : ''}
             aria-label={t('docs.format.link')}

@@ -595,6 +595,12 @@
 }
 
 
+/* a table wider than the page scrolls in place instead of pushing the page wide */
+.docbody .tableWrapper {
+  overflow-x: auto;
+}
+
+
 .docbody table {
   border-collapse: collapse;
   margin: 1em 0;

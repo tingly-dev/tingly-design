@@ -81,6 +81,7 @@ export default {
     inlineCode: 'Inline code',
     highlight: 'Highlight',
     link: 'Link',
+    openLink: 'Open link',
     linkPrompt: 'Link address',
     comment: 'Comment',
   },

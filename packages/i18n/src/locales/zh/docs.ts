@@ -83,6 +83,7 @@ export default {
     inlineCode: '行内代码',
     highlight: '高亮',
     link: '链接',
+    openLink: '打开链接',
     linkPrompt: '链接地址',
     comment: '评论',
   },
