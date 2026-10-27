@@ -55,13 +55,13 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   const [dataFile, setDataFile] = useState<{ file: File; rows: number } | null>(null);
   const [dataError, setDataError] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
-  const folderRef = useRef<HTMLInputElement>(null);
   useEffect(() => titleRef.current?.focus(), []);
   useEffect(() => {
     api.projects().then((l) => setSystems(l.filter((p) => p.kind === 'design-system')), () => setSystems([]));
   }, []);
-  // the folder is a detail: it follows the title, falls back to the type's name for a title with no
-  // letters (Chinese, say), and steps aside for a name that is taken, until the person edits it
+  // the folder is a field of its own: it follows the title, falls back to the type's name for a title with no
+  // letters (Chinese, say), and steps aside for a name that is taken — until the person types in it (a name
+  // keeps the project in projects/, a full path puts it there); clearing the field follows the title again
   const auto = freeName(slugOf(title) || kind, taken);
   const name = folder ?? auto;
   // a full path puts the project there instead of in the projects folder
@@ -140,30 +140,19 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
         </div>
       )}
       <div className="where">
-        {folder === null ? (
-          <>
-            <span className="path" data-folder={name}>
-              projects/{name}
-            </span>
-            <button
-              type="button"
-              className="linkish"
-              onClick={() => {
-                setFolder(name);
-                setTimeout(() => folderRef.current?.focus());
-              }}
-            >
-              {t('launcher.new.folderEdit')}
-            </button>
-          </>
-        ) : (
-          <span className="folder">
-            {!path && <span className="pre">projects/</span>}
-            <input ref={folderRef} className="input" aria-label={t('launcher.new.folderLabel')} value={folder} onChange={(e) => setFolder(e.target.value.trim())} />
-          </span>
-        )}
+        <span className="folder">
+          {!path && <span className="pre">projects/</span>}
+          <input
+            className="input"
+            aria-label={t('launcher.new.folder')}
+            placeholder={t('launcher.new.folderPlaceholder')}
+            value={folder ?? auto}
+            onChange={(e) => setFolder(e.target.value.trim() || null)}
+            spellCheck={false}
+          />
+        </span>
       </div>
-      {folder !== null && linksOn && (
+      {linksOn && (
         <div className="where-hint" data-where={path ? 'path' : 'name'}>
           {path && info && info !== 'checking' && !('error' in info) && info.state === 'free' ? t('launcher.new.pathFree', { path: info.path }) : t('launcher.new.folderHint')}
         </div>
