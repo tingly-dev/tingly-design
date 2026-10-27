@@ -5,7 +5,7 @@ import { stopRun } from '../fastedit';
 import { undo, undoDelegate, useStore } from '../store';
 import { useTurns } from '../turns';
 import { ArrowDown, Chevron, Done, Failed, Reuse, Spinner, Undo, UndoAll } from './icons';
-import { elapsedLabel, Entry, useNow } from './RunFeed';
+import { elapsedLabel, Entry, RunFiles, useNow } from './RunFeed';
 
 /**
  * The conversation of a project: every request, what the agent did about it, what it answered
@@ -110,22 +110,7 @@ export function TurnBody({ turn, latest, onOpen, onReuse }: { turn: Turn } & Act
         </ol>
       )}
       {!running && (answer ? <p className={`run-result${turn.state === 'done' ? '' : ' bad'}`}>{answer}</p> : null)}
-      {changed.length > 0 && (
-        <div className="run-files">
-          <span>{running ? t('prompt.run.filesChanging') : t('prompt.run.filesChanged')}</span>
-          {changed.map((f) =>
-            onOpen ? (
-              <button key={f} className="file-chip" onClick={() => onOpen(f)} title={t('prompt.run.viewFile', { file: f })}>
-                {f}
-              </button>
-            ) : (
-              <code key={f} className="file-chip">
-                {f}
-              </code>
-            ),
-          )}
-        </div>
-      )}
+      {changed.length > 0 && <RunFiles changed={changed} label={running ? t('prompt.run.filesChanging') : t('prompt.run.filesChanged')} onOpen={onOpen} />}
       {!running && (undoable || onReuse) && (
         <div className="run-actions turn-actions">
           {undoable && (

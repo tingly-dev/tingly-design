@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { elapsed, type AgentStep, type TurnEntry } from '@dc/core';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -131,6 +131,44 @@ export function Entry({ e, current }: { e: TurnEntry; current: boolean }) {
   );
 }
 
+/** The right end of a run's header: what can still be done to the run once it ended, and the collapse button. */
+function FeedActions({ running, children }: { running: boolean; children?: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <span className="run-actions">
+      {running ? null : (
+        <>
+          {children}
+          <button className="ib sm" aria-label={t('prompt.run.collapse')} onClick={close}>
+            <Close />
+          </button>
+        </>
+      )}
+    </span>
+  );
+}
+
+/** The files a run changed, as chips; a file the app can open is a button. */
+export function RunFiles({ changed, label, onOpen }: { changed: string[]; label: string; onOpen?: (f: string) => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="run-files">
+      <span>{label}</span>
+      {changed.map((f) =>
+        onOpen ? (
+          <button key={f} className="file-chip" onClick={() => onOpen(f)} title={t('prompt.run.viewFile', { file: f })}>
+            {f}
+          </button>
+        ) : (
+          <code key={f} className="file-chip">
+            {f}
+          </code>
+        ),
+      )}
+    </div>
+  );
+}
+
 function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: string) => void; onOpen?: (f: string) => void }) {
   const { t } = useTranslation();
   const running = d.state === 'start' || d.state === 'progress';
@@ -172,25 +210,18 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
             {t('prompt.run.steps', { count: d.log.filter((e) => 'step' in e).length })} <Chevron open={open} />
           </button>
         )}
-        <span className="run-actions">
-          {running ? null : (
-            <>
-              {Object.keys(d.after).length > 0 && !d.undone && (
-                <button className="btn outline sm" onClick={() => undoDelegate(d.id)} title={t('prompt.run.undoAllHint')}>
-                  <UndoAll /> {t('prompt.run.undoAll')}
-                </button>
-              )}
-              {d.state !== 'done' && onReuse && (
-                <button className="btn outline sm" onClick={() => onReuse(d.prompt)} title={t('prompt.run.reuseHint')}>
-                  <Reuse /> {t('prompt.run.reuse')}
-                </button>
-              )}
-              <button className="ib sm" aria-label={t('prompt.run.collapse')} onClick={close}>
-                <Close />
-              </button>
-            </>
+        <FeedActions running={running}>
+          {Object.keys(d.after).length > 0 && !d.undone && (
+            <button className="btn outline sm" onClick={() => undoDelegate(d.id)} title={t('prompt.run.undoAllHint')}>
+              <UndoAll /> {t('prompt.run.undoAll')}
+            </button>
           )}
-        </span>
+          {d.state !== 'done' && onReuse && (
+            <button className="btn outline sm" onClick={() => onReuse(d.prompt)} title={t('prompt.run.reuseHint')}>
+              <Reuse /> {t('prompt.run.reuse')}
+            </button>
+          )}
+        </FeedActions>
       </header>
       {(shown.length > 0 || running) && (
         <ol className={`run-steps${open ? '' : ' folded'}`} ref={list} onScroll={onScroll}>
@@ -209,20 +240,11 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
       )}
       {!running && result && <p className={`run-result${d.state === 'done' ? '' : ' bad'}`}>{result}</p>}
       {changed.length > 0 && (
-        <div className="run-files">
-          <span>{running ? t('prompt.run.filesChanging') : d.undone ? t('prompt.run.filesRestored') : t('prompt.run.filesChanged')}</span>
-          {changed.map((f) =>
-            onOpen ? (
-              <button key={f} className="file-chip" onClick={() => onOpen(f)} title={t('prompt.run.viewFile', { file: f })}>
-                {f}
-              </button>
-            ) : (
-              <code key={f} className="file-chip">
-                {f}
-              </code>
-            ),
-          )}
-        </div>
+        <RunFiles
+          changed={changed}
+          label={running ? t('prompt.run.filesChanging') : d.undone ? t('prompt.run.filesRestored') : t('prompt.run.filesChanged')}
+          onOpen={onOpen}
+        />
       )}
     </section>
   );
@@ -268,25 +290,18 @@ function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }
             {t('prompt.run.statements', { count: statements.length })} <Chevron open={open} />
           </button>
         )}
-        <span className="run-actions">
-          {running ? null : (
-            <>
-              {canUndo && (
-                <button className="btn outline sm" onClick={undo} title={t('prompt.run.undoHint')}>
-                  <Undo size={14} /> {t('common.undo')}
-                </button>
-              )}
-              {f.status === 'error' && !jq && f.prompt && onReuse && (
-                <button className="btn outline sm" onClick={() => onReuse(f.prompt!)} title={t('prompt.run.reuseHint')}>
-                  <Reuse /> {t('prompt.run.reuse')}
-                </button>
-              )}
-              <button className="ib sm" aria-label={t('prompt.run.collapse')} onClick={close}>
-                <Close />
-              </button>
-            </>
+        <FeedActions running={running}>
+          {canUndo && (
+            <button className="btn outline sm" onClick={undo} title={t('prompt.run.undoHint')}>
+              <Undo size={14} /> {t('common.undo')}
+            </button>
           )}
-        </span>
+          {f.status === 'error' && !jq && f.prompt && onReuse && (
+            <button className="btn outline sm" onClick={() => onReuse(f.prompt!)} title={t('prompt.run.reuseHint')}>
+              <Reuse /> {t('prompt.run.reuse')}
+            </button>
+          )}
+        </FeedActions>
       </header>
       {showLines && f.lines.length > 0 && (
         <ol className="run-steps code" ref={list} onScroll={onScroll}>
