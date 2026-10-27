@@ -4,7 +4,9 @@
   <img src="docs/images/readme/cover.png" alt="Tingly Design" width="640">
 </p>
 
-<h3 align="center">人和 AI 改同一份文件的开源设计工具。</h3>
+<h3 align="center">AI 起稿，你来定稿。</h3>
+
+<p align="center"><sub>开源的 AI 设计工作室。</sub></p>
 
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
