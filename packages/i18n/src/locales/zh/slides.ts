@@ -150,7 +150,7 @@ export default {
     line: '直线',
   },
   stage: {
-    notesPlaceholder: '演讲者备注（只在放映的备注窗口里出现）',
+    notesPlaceholder: '演讲者备注（只在放映的备注栏里出现）',
     notesLabel: '演讲者备注',
     errors_other: '{{count}} 处超出幻灯片格式',
     hints_other: '{{count}} 处提示',
