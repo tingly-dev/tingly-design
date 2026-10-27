@@ -9,6 +9,29 @@ import { useElementSize } from '../../hooks';
 
 export const secs = (ms: number) => (ms / 1000).toFixed(1);
 
+/**
+ * A pointer drag that ends on release or Escape: the listeners take themselves
+ * down, `end` runs on both paths, `commit` only on a release (not on Escape).
+ */
+function dragGesture(move: (ev: PointerEvent) => void, end: () => void, commit: () => void): void {
+  const finish = (ok: boolean) => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('keydown', key, true);
+    end();
+    if (ok) commit();
+  };
+  const up = () => finish(true);
+  const key = (ev: KeyboardEvent) => {
+    if (ev.key !== 'Escape') return;
+    ev.stopPropagation();
+    finish(false);
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('keydown', key, true);
+}
+
 type Line = ReturnType<typeof motionTimeline>;
 type Clip = Line['scenes'][number];
 
@@ -79,26 +102,16 @@ export function Timeline(p: {
     const total = timeline.duration;
     const perMs = lanes.w / Math.max(1, total);
     let last = d0;
-    const move = (ev: PointerEvent) => {
-      last = snapSceneMs(d0 + (ev.clientX - x0) / perMs);
-      p.onDrag({ id, ms: last, total });
-    };
-    const end = (commit: boolean) => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('keydown', key, true);
-      p.onDrag(null);
-      if (commit && last !== d0) setSceneDuration(id, last);
-    };
-    const up = () => end(true);
-    const key = (ev: KeyboardEvent) => {
-      if (ev.key !== 'Escape') return;
-      ev.stopPropagation();
-      end(false);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('keydown', key, true);
+    dragGesture(
+      (ev) => {
+        last = snapSceneMs(d0 + (ev.clientX - x0) / perMs);
+        p.onDrag({ id, ms: last, total });
+      },
+      () => p.onDrag(null),
+      () => {
+        if (last !== d0) setSceneDuration(id, last);
+      },
+    );
   };
   // the cover pin: drag along the axis to another frame; the stage follows so the frame shows as it moves
   const dragPin = (e: React.PointerEvent) => {
@@ -110,27 +123,15 @@ export function Timeline(p: {
     let last = at(e.clientX);
     setPinMs(last);
     seek(last / rate);
-    const move = (ev: PointerEvent) => {
-      last = at(ev.clientX);
-      setPinMs(last);
-      seek(last / rate);
-    };
-    const end = (commit: boolean) => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('keydown', key, true);
-      setPinMs(null);
-      if (commit) setCoverAt(last);
-    };
-    const up = () => end(true);
-    const key = (ev: KeyboardEvent) => {
-      if (ev.key !== 'Escape') return;
-      ev.stopPropagation();
-      end(false);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('keydown', key, true);
+    dragGesture(
+      (ev) => {
+        last = at(ev.clientX);
+        setPinMs(last);
+        seek(last / rate);
+      },
+      () => setPinMs(null),
+      () => setCoverAt(last),
+    );
   };
   const commitLength = (text: string) => {
     const v = Number(text.trim().replace(/s$/, ''));
