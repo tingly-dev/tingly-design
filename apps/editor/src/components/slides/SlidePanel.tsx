@@ -6,6 +6,7 @@ import { isHidden, resizeDeck, setSectionAttr, slideTitle, toggleHidden } from '
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { Chevron, RoleIcon } from '../icons';
 import { DsInstall } from '../panel/DsInstall';
+import { IssueList } from '../panel/issues';
 import { SizeRows } from '../panel/SizeRows';
 
 const ROLES = ['Slide', 'Column', 'Row', 'Grid', 'Text', 'Image', 'Vector', 'Link', 'Group', 'Embed', 'Artboard', 'Shape', 'Icon', 'Connector', 'Table', 'Notes'] as const;
@@ -57,19 +58,7 @@ export function SlideProps({ file }: { file: string }) {
         </label>
       </Row>
       <h3>{t('slides.slideProps.check')}</h3>
-      {issues.length ? (
-        <ul className="issue-list">
-          {issues.map((i, n) => (
-            <li key={n} className={i.level} onClick={() => i.tid !== null && useStore.setState({ selection: { kind: 'el', file, tid: i.tid } })}>
-              {i.message}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="hint" style={{ margin: 0 }}>
-          {t('slides.slideProps.valid')}
-        </p>
-      )}
+      <IssueList issues={issues} file={file} empty={t('slides.slideProps.valid')} />
     </div>
   );
 }
