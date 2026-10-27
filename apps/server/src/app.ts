@@ -18,6 +18,7 @@ import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 import { registerDesignSystems } from './routes/designSystems';
 import { registerImportBoard } from './routes/importBoard';
+import { registerPptxSlides } from './routes/pptxSlides';
 import { registerAssets } from './routes/assets';
 import { registerDashboards } from './routes/dashboards';
 import { registerAi } from './routes/ai';
@@ -263,6 +264,7 @@ app.delete('/api/projects/:p/file', async (c) => {
 
 registerDesignSystems(app);
 registerImportBoard(app);
+registerPptxSlides(app);
 registerAssets(app);
 registerDashboards(app);
 registerHistory(app);

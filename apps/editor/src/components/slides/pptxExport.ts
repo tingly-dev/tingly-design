@@ -177,6 +177,9 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
     const ready = waitMessage(data => data?.dc === 'ready' ? true : undefined);
     frame.srcdoc = sandboxDoc(snapshot.runtimeOrigin, 'runtime');
     document.body.appendChild(frame);
+    // the runtime inside measures the slide as soon as it is up: the parent must have laid
+    // this frame out first, or its viewport is still 0 wide and every measurement is 0
+    frame.getBoundingClientRect();
     await ready;
     const deck: PptxDeck = { title: snapshot.title, widthPx: width, heightPx: height, widthIn, slides: [], assets: {} };
     const diagnostics: { slide: string; diagnostic: PptxDomDiagnostic }[] = [];

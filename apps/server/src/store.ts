@@ -13,6 +13,7 @@ import {
   DASH_DATA_TYPES,
   IMAGE_TYPES,
   isKeptPath,
+  isPptxImportPath,
   isUploadPath,
   DOC_INDEX,
   isDocFile,
@@ -322,7 +323,7 @@ export function assetRel(rel: string): string {
   // a dashboard's data files: csv, tsv, json, SQLite
   if (isDataPath(r)) return r;
   // what people brought in: files attached to requests, folders they imported
-  if (isUploadPath(r) || isKeptPath(r) || /^uploads\/pptx-[a-f0-9]{32}\/source\.pptx$/.test(r)) return r;
+  if (isUploadPath(r) || isKeptPath(r) || isPptxImportPath(r)) return r;
   const m = /^(assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts|ds\/[a-z0-9][a-z0-9_-]{0,63}\/(?:assets(?:\/[A-Za-z0-9_][A-Za-z0-9_ -]{0,60})?|fonts))\/([A-Za-z0-9_-][A-Za-z0-9_. -]{0,120})\.([a-z0-9]+)$/i.exec(r);
   if (!m || r.includes('..') || !ASSET_TYPES[m[3].toLowerCase()]) throw new HttpError(400, 'notAssetPath', { path: rel });
   return r;

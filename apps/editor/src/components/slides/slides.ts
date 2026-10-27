@@ -15,7 +15,8 @@ import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { deleteFile, deckOf, display, edit, editDeck, editElement, parsed, slideIds, toast, useStore } from '../../store';
 import { replaceUrl } from '../../host';
-import { filesOf, type ImportTarget } from '../ImportHere';
+import { filesOf, importFilesLabel, type ImportTarget } from '../ImportHere';
+import { appendPptx } from './pptxAppend';
 import { boardEmbed } from '../../boards';
 import { t } from '../../i18n';
 
@@ -292,19 +293,25 @@ async function placeImage(file: File, nth = 0): Promise<void> {
 }
 
 /**
- * What a deck takes: pictures and SVGs go onto the slide that is open. A web
- * page does not: a slide is a closed subset of HTML that an arbitrary page
- * would not fit (PowerPoint import is the way decks will come in).
+ * What a deck takes: pictures and SVGs go onto the slide that is open, and a
+ * PowerPoint joins the deck as slides at the end (its pages become ordinary
+ * editable slides, one undo for the whole batch). A web page does not: a slide
+ * is a closed subset of HTML that an arbitrary page would not fit.
  */
 export const slidesImport: ImportTarget = {
-  accepts: ['image', 'drawing'],
+  accepts: ['image', 'drawing', 'pptx'],
   get what() {
     return t('slides.import.what');
   },
   run: async (picked) => {
+    const decks = filesOf(picked, 'pptx');
+    const parts: string[] = [];
+    for (const [i, f] of decks.entries()) parts.push(await appendPptx(f.path.split('/').pop() ?? `deck-${i + 1}.pptx`, f.bytes));
     const files = filesOf(picked, 'image', 'drawing');
     for (const [i, f] of files.entries()) await placeImage(new File([f.bytes as Uint8Array<ArrayBuffer>], f.path.split('/').pop()!, { type: f.type }), i);
-    return files.length === 1 ? t('slides.import.placedOne', { name: files[0].path.split('/').pop() }) : t('slides.import.placedMany', { count: files.length });
+    if (files.length) parts.push(files.length === 1 ? t('slides.import.placedOne', { name: files[0].path.split('/').pop() }) : t('slides.import.placedMany', { count: files.length }));
+    if (!parts.length) throw new Error(importFilesLabel(t, ['image', 'drawing', 'pptx']));
+    return parts.join(t('importer.listSeparator'));
   },
   board: {
     get what() {

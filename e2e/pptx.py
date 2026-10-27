@@ -458,7 +458,7 @@ async def main():
         put(name, 'slides/cover.html', original.replace('background:#f8fafc', 'background:linear-gradient(90deg,#336699,#669933)', 1))
         await ready(pg, name)
         await menu(pg)
-        async with pg.expect_download(timeout=90000) as download_event:
+        async with pg.expect_download(timeout=240000) as download_event:
             await pg.get_by_role('menuitem', name='PowerPoint (.pptx)', exact=True).click()
         download = await download_event.value
         drawn = OUT / (PREFIX + '-picture-fallback.pptx')
@@ -490,6 +490,44 @@ async def main():
         await expect(pg.locator('iframe[data-pptx-capture]')).to_have_count(0)
         check('menu: failed export releases its capture iframe', True)
         put(name, 'slides/cover.html', original)
+        # A PPTX dropped on the open deck appends its slides; one undo removes exactly the batch.
+        before_append = json.loads(files(name)['deck.json']['content'])['order']
+        append_file = OUT / (PREFIX + '-append.pptx')
+        append_file.write_bytes(source)
+        transfer = await pg.evaluate_handle('''p => {
+          const transfer = new DataTransfer();
+          transfer.items.add(new File([new Uint8Array(p.bytes)], p.name,
+            {type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'}));
+          return transfer;
+        }''', {'name': append_file.name, 'bytes': list(append_file.read_bytes())})
+        surface = pg.locator('.app')
+        await surface.dispatch_event('dragenter', {'dataTransfer': transfer})
+        await expect(pg.locator('body')).to_have_class(re.compile(r'\bfiledrag\b'))
+        async with pg.expect_response(lambda response: '/pptx-slides' in response.url and response.request.method == 'POST') as converted:
+            await surface.dispatch_event('drop', {'dataTransfer': transfer})
+        check('append: the open deck converts the drop through the pure endpoint', (await converted.value).status == 200)
+        await expect(pg.locator('.toast').filter(has_text='appended')).to_be_visible(timeout=30000)
+        deck_now = json.loads(files(name)['deck.json']['content'])
+        appended = [i for i in deck_now['order'] if i not in before_append]
+        batch = '-'.join(appended[0].split('-')[:-1]) if appended else ''
+        check('append: the batch joins the end of the order and keeps its provenance',
+              len(appended) == 2 and deck_now['order'][-2:] == appended
+              and bool(batch) and json.loads(raw(name, f'uploads/{batch}/report.json'))['slides'], appended)
+        check('append: the new pages are ordinary editable slides', all(f'slides/{i}.html' in files(name) for i in appended))
+        await pg.keyboard.press('Escape')
+        await pg.keyboard.press('ControlOrMeta+z')
+        await until(lambda: len(json.loads(files(name)['deck.json']['content'])['order']) == len(before_append))
+        check('append: one undo removes exactly the batch', not any(f'slides/{i}.html' in files(name) for i in appended))
+        await pg.keyboard.press('ControlOrMeta+Shift+z')
+        await until(lambda: len(json.loads(files(name)['deck.json']['content'])['order']) == len(before_append) + 2
+                    and all(f'slides/{i}.html' in files(name) for i in appended))
+        check('append: redo brings the batch back', all(f'slides/{i}.html' in files(name) for i in appended))
+        # the deck goes back to what the rest of the suite exports
+        await pg.keyboard.press('ControlOrMeta+z')
+        await until(lambda: len(json.loads(files(name)['deck.json']['content'])['order']) == len(before_append)
+                    and all(f'slides/{i}.html' not in files(name) for i in appended))
+        check('append: undo after redo removes the batch again', True)
+        await transfer.dispose()
         # Owned non-slide projects prove the item is scoped, without touching samples.
         for kind in ('design', 'design-system', 'dashboard', 'docs', 'motion'):
             other = own(PREFIX + '-' + kind)

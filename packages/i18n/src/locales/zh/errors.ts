@@ -29,6 +29,7 @@ export default {
   badNamespace: '不是有效的命名空间',
   notCanvasOrDeck: '不是画布或幻灯片',
   importBoardInto: '画板只能导入到幻灯片或动效里',
+  pptxIntoSlides: 'PowerPoint 只能追加到幻灯片',
   notCanvas: '{{name}} 不是画布',
   noBoard: '{{name}} 里没有画板 {{board}}',
   unsupportedFileType: '不支持的文件类型：{{type}}',

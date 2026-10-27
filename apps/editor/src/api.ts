@@ -3,6 +3,17 @@ import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
 
+/** A PPTX converted for the open deck: the slides as sources, their media as base64 uploads,
+ * the presentation's page shape, and the conversion diagnostics. Nothing has been written. */
+export interface PptxAppendPlan {
+  ok: true;
+  id: string;
+  size: [number, number];
+  slides: { id: string; source: string }[];
+  files: Record<string, string>;
+  diagnostics: PptxDiagnostic[];
+}
+
 /** A project folder, or an immutable built-in template; the two cannot collide. */
 export type DesignSystemChoice = string | { look: string };
 
@@ -226,6 +237,15 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ from, board }),
     }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
+
+  /** Convert a PowerPoint into slides for the open deck: a pure conversion (nothing is written);
+   * the slides' media rides along as base64 and the editor performs the append transaction. */
+  pptxSlides: (p: string, bytes: Uint8Array, name: string) =>
+    call(at(`api/projects/${enc(p)}/pptx-slides?name=${enc(name)}`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: bytes as Uint8Array<ArrayBuffer>,
+    }).then((r) => json<PptxAppendPlan>(r)),
 
   uninstallDs: (p: string, namespace: string) =>
     call(at(`api/projects/${enc(p)}/design-systems?namespace=${enc(namespace)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),

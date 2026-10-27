@@ -12,13 +12,15 @@ import {
   parseCanvas,
   stringifyCanvas,
   CANVAS_FILE,
+  DECK_FILE,
+  slideFile,
   type Actor,
   type CanvasJson,
   type HumanOp,
 } from '@dc/core';
 import { api } from './api';
 import { t } from './i18n';
-import { display, parsed, toast, useStore, type FileEntry, type Pending, type State } from './store';
+import { display, editDeck, parsed, toast, useStore, type FileEntry, type Pending, type State } from './store';
 
 // the store and this file import each other: nothing here may touch `useStore` while the modules load
 const get = () => useStore.getState();
@@ -42,6 +44,8 @@ interface EditOptions {
   summary: string;
   prompt?: string;
   undoable?: boolean;
+  /** a change spanning files (a PPTX appended to the deck): its undo removes exactly these slides */
+  batch?: { ids: string[]; sources: Record<string, string> };
 }
 
 /** Queue an edit already computed against `basis`. `apply` replays it on a newer file after a conflict. */
@@ -55,7 +59,7 @@ export function enqueueResult(
   if (optimistic === basis) return false;
   const item: Pending = { id: ++pendingId, basis, optimistic, apply, actor: opts.actor, summary: opts.summary, prompt: opts.prompt };
   patchEntry(file, (e) => ({ ...e, pending: [...e.pending, item] }));
-  if (opts.undoable !== false) set((s) => ({ undo: [...s.undo, { file, before: basis, after: optimistic }].slice(-100), redo: [] }));
+  if (opts.undoable !== false) set((s) => ({ undo: [...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}) }].slice(-100), redo: [] }));
   void pump(file);
   return true;
 }
@@ -207,6 +211,7 @@ export function undo(): void {
   const item = get().undo.at(-1);
   if (!item) return;
   set((s) => ({ undo: s.undo.slice(0, -1), redo: [...s.redo, item] }));
+  if (item.batch) return batchRemove(item.batch);
   edit(item.file, (src) => rebaseSwap(src, item.after, item.before), { actor: 'undo', summary: 'undo', undoable: false });
 }
 
@@ -214,12 +219,53 @@ export function redo(): void {
   const item = get().redo.at(-1);
   if (!item) return;
   set((s) => ({ redo: s.redo.slice(0, -1), undo: [...s.undo, item] }));
+  if (item.batch) return batchRestore(item.batch);
   edit(item.file, (src) => rebaseSwap(src, item.before, item.after), { actor: 'undo', summary: 'redo', undoable: false });
+}
+
+/** Undo of a whole appended batch: the deck drops exactly these ids (a targeted edit, so later
+ * slides anyone else added stay), and the batch's files go away once their queued edits saved. */
+function batchRemove(batch: { ids: string[]; sources: Record<string, string> }): void {
+  void (async () => {
+    const project = get().project;
+    for (const id of batch.ids) {
+      const file = slideFile(id);
+      await savedUpTo(file);
+      const version = get().files[file]?.server?.version;
+      if (version && project) {
+        const r = await api.remove(project, file, version);
+        if ('conflict' in r) return toast(t('app.save.deleteConflict', { file }), 'error');
+      }
+      set((s) => {
+        const files = { ...s.files };
+        delete files[file];
+        return { files };
+      });
+    }
+    editDeck((d) => {
+      d.order = d.order.filter((id) => !batch.ids.includes(id));
+    }, t('slides.append.undone'), false);
+  })();
+}
+
+/** Redo of a batch: the slides rejoin the end of the deck and their files are written back. */
+function batchRestore(batch: { ids: string[]; sources: Record<string, string> }): void {
+  editDeck((d) => {
+    d.order = [...d.order, ...batch.ids.filter((id) => !d.order.includes(id))];
+  }, t('slides.append.redone'), false);
+  void (async () => {
+    const project = get().project;
+    if (!project) return;
+    await savedUpTo(DECK_FILE);
+    for (const id of batch.ids) {
+      await api.put(project, slideFile(id), { content: batch.sources[id], baseVersion: null, actor: 'undo', summary: 'redo' });
+    }
+  })();
 }
 
 /** Delete a file once its queued edits are saved (a deck's slides, an artboard). */
 /** Wait (up to five seconds) for the queued edits of a file to be saved, so a delete goes against its newest version. */
-async function savedUpTo(file: string): Promise<void> {
+export async function savedUpTo(file: string): Promise<void> {
   for (let i = 0; i < 50 && (get().files[file]?.pending.length ?? 0) > 0; i++) await new Promise((r) => setTimeout(r, 100));
 }
 

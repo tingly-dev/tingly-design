@@ -70,6 +70,8 @@ interface UndoItem {
   file: string;
   before: string;
   after: string;
+  /** a change spanning files (a PPTX appended to this deck): its undo removes exactly these slides */
+  batch?: { ids: string[]; sources: Record<string, string> };
 }
 
 export type Tool = 'select' | 'hand' | 'text' | 'frame' | 'note' | 'draw' | 'rect' | 'oval' | 'line' | 'arrow';
@@ -237,7 +239,7 @@ export function useSlideIds(): string[] {
   return useStore((s) => slideIds(s));
 }
 
-export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoable = true): boolean {
+export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoable = true, batch?: { ids: string[]; sources: Record<string, string> }): boolean {
   return edit(
     DECK_FILE,
     (src) => {
@@ -245,7 +247,7 @@ export function editDeck(mutate: (d: DeckJson) => void, summary: string, undoabl
       mutate(d);
       return stringifyDeck(d);
     },
-    { actor: 'human', summary, undoable },
+    { actor: 'human', summary, undoable, batch },
   );
 }
 

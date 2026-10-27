@@ -27,6 +27,7 @@ export default {
   badNamespace: 'Not a valid namespace',
   notCanvasOrDeck: 'Not a canvas or a slide deck',
   importBoardInto: 'An artboard can only be imported into a slide deck or a motion piece',
+  pptxIntoSlides: 'A PowerPoint appends only to a slide deck',
   notCanvas: '{{name}} is not a canvas',
   noBoard: '{{name}} has no artboard {{board}}',
   unsupportedFileType: 'This file type is not supported: {{type}}',

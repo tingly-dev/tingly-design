@@ -185,12 +185,22 @@ export default {
     lastSlide: 'A deck needs at least one slide.',
   },
   import: {
-    what: 'Pictures and SVGs go onto the current slide; the original files stay in the project’s uploads/.',
+    what: 'Pictures and SVGs go onto the current slide, a PowerPoint (.pptx) joins the deck as slides at the end; the original files stay in the project’s uploads/.',
     placedOne: 'Placed {{name}}.',
     placedMany: 'Placed {{count}} images.',
     boardWhat: 'An artboard is copied into this deck and goes onto the current slide. One that moves (an effect) fills the slide behind everything and plays while presenting; set its options in the panel.',
     boardPlaced: 'Imported {{title}} onto this slide.',
     noSlide: 'Open a slide before importing.',
+  },
+  append: {
+    added: '{{name}}: {{count}} slides appended to the deck.',
+    addedSkipped: '{{name}}: {{count}} slides appended; {{skipped}} pages of the file could not be converted — uploads/{{name}}/report.json has the details.',
+    refused: '{{name}} could not be converted as slides ({{count}} problems). No slide was appended.',
+    failed: '{{name}} could not be appended.',
+    journal: '{{count}} slides appended from {{name}}',
+    journalOne: 'slide {{id}} appended from {{name}}',
+    undone: 'The appended slides were removed.',
+    redone: 'The appended slides came back.',
   },
   export: {
     noNotes: '(No notes)',
