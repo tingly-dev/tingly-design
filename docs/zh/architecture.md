@@ -67,9 +67,9 @@ packages/core       格式解析、DOM 副本、最小补丁回写、人工操�
                     看板的数据集、CSV 解析、SQL 检查与参数绑定、标注核对；文档的按块合并与重放、评论定位；启动页卡片、36 个设计系统风格、项目压缩包与 Claude Design 格式、PowerPoint 导入
 packages/export     在浏览器里导出、不装东西：DOM 画成图、帧编成 MP4 或 WebM 和 GIF、混音、内联网页字体、原生对象的 PowerPoint，以及各浏览器能写什么（.design/export.md）
 packages/i18n       界面文字的英文和中文（locales/<语言>/<区域>.ts）、语言匹配、服务端和导入器用的翻译函数（.design/i18n.md）
-packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
+packages/sandbox    画板运行时、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE；画板运行时是入口旁边的一组模块（stage.ts 共享状态、render.tsx 模板渲染、scene.ts 舞台上的动效场景、overlay.ts 选中层、drag.ts 与 resize.ts 拖拽和缩放、text.ts 就地改字、inspect.ts 告诉面板什么、messages.ts 帧的收件箱、input.ts DOM 事件）
 apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI（一个项目一份对话）、用本机的 Chrome 和 ffmpeg 精确渲染动效、一键 PDF、git 提交、项目 .zip 导入导出、图像生成、看板的数据连接器；`tingly-design` 命令（cli.ts、commands.ts）和同一份命令作为 MCP 工具（mcp.ts）
-apps/editor         React + Vite + zustand 的编辑器：各类型共用的部件在 components/ 根下；每种类型的编辑器和它的状态在 components/<kind>/（canvas、slides、ds、dash、docs、motion）
+apps/editor         React + Vite + zustand 的编辑器：唯一的 store 是 store.ts，切片在旁边（store/agent.ts 请求栏与对话、editEngine.ts 编辑引擎与撤销）；各类型共用的部件在 components/ 根下；每种类型的编辑器和它的状态在 components/<kind>/（canvas、slides、ds、dash、docs、motion）
 projects/           示例项目：box-console（画布）、tingly-intro（幻灯片）、tingly-ds（设计系统）、box-usage（看板）、design-guide（文档，含一个“架构”页签）、design-motion（动效）；tingly-design-ui 是编辑器自己的设计画布
 scripts/            dash-query.mjs：只读地查看板的 SQLite 数据库（给 Claude Code 用）；bundle.mjs：宿主随自己发布的文件夹（docs/zh/embedding.md）；sync-tingly-box-theme.mjs：把 Tingly Box 的调色板拷进编辑器（docs/zh/theming.md）
 .claude/skills/     给 Claude Code 看的格式说明：dc-canvas、slides、design-system、dashboard、docs、motion（委托时会让它先读）；issue-resolve 是维护者的 issue 跟进
