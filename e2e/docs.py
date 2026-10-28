@@ -1,7 +1,7 @@
 """End-to-end checks for docs: rich-text editing written back block by block, tabs, comments, AI rewrite, export.
 Run with `pnpm dev` up: python3 e2e/docs.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 The AI rewrite check needs the mock model (see README): it is skipped when the server has no API key."""
-import os, shutil, asyncio, subprocess, time, json, urllib.request
+import re, os, shutil, asyncio, subprocess, time, json, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -60,11 +60,11 @@ async def main():
         await pg.locator('button[data-more]').click()
         await pg.locator('[role=menuitem]:has-text("快捷键")').click()
         dlg = pg.locator('.shortcutsdlg')
-        check('Keyboard shortcuts lists the keys of a doc and the common ones', await dlg.locator('kbd').filter(has_text='⌘↵').count() == 1 and await dlg.locator('kbd').filter(has_text='⌘Z').count() == 1)
+        check('Keyboard shortcuts lists the keys of a doc and the common ones', await dlg.locator('kbd').filter(has_text='⌘↵').count() == 1 and await dlg.locator('kbd', has_text=re.compile(r'^⌘Z$')).count() == 1)
         await pg.keyboard.press('Escape')
         await expect(dlg).to_have_count(0)
-        await pg.locator('body').click(position={'x': 5, 'y': 400})
-        await pg.keyboard.press('Shift+/')
+        await pg.evaluate('document.activeElement && document.activeElement.blur()')
+        await pg.keyboard.press('?')
         check('? opens the same list', await dlg.count() == 1)
         await pg.keyboard.press('Escape')
         check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'the agents working beside them')
