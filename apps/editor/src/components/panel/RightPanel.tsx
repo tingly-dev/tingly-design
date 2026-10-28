@@ -1,4 +1,5 @@
 import { SideResizer } from '../SideResizer';
+import { ShortcutLine } from '../Shortcuts';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { attr } from '@dc/core';
@@ -145,9 +146,7 @@ export function RightPanel() {
         <div className="sec">
           <DsInstall />
           <h3>{t('panel.canvas.shortcuts')}</h3>
-          <p className="hint" style={{ margin: 0 }}>
-            {t('panel.canvas.shortcutList')}
-          </p>
+          <ShortcutLine kind="design" />
         </div>
       </>
     );

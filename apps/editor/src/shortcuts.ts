@@ -41,6 +41,12 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
     // canvas tools mean nothing on a scene
     if (!meta && !shift && TOOL_KEYS[k]) return true;
   }
+  if (key === '?' && !meta && !_alt) {
+    useStore.setState({ shortcutsOpen: !s.shortcutsOpen });
+    return true;
+  }
+  // the dialog is modal: its own Esc closes it, and nothing behind it hears a key meanwhile
+  if (s.shortcutsOpen) return false;
   if (s.focused) {
     if (key === 'Escape') useStore.setState({ focused: null });
     return key === 'Escape';

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ShortcutLine } from '../Shortcuts';
 import { useTranslation } from 'react-i18next';
 import { BUILDS, deckSize, TRANSITIONS, attr, checkSlide, getStyle, googleFace, layerTree, rootElement, slideFile, type Layer } from '@dc/core';
 import { display, editDeck, editElement, parsed, useDeck, useStore } from '../../store';
@@ -184,9 +185,7 @@ export function DeckProps() {
       </p>
       <DsInstall />
       <h3>{t('slides.deckProps.shortcuts')}</h3>
-      <p className="hint" style={{ margin: 0 }}>
-        {t('slides.deckProps.shortcutList')}
-      </p>
+      <ShortcutLine kind="slides" />
     </div>
   );
 }

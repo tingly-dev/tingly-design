@@ -186,7 +186,6 @@ export default {
     sizeTaken: 'This piece already has that size.',
     formatsHint: 'Every size shares the scenes, text and timing. A new size first adapts by its layout; then switch to it and adjust what doesn’t fit there.',
     shortcuts: 'Shortcuts',
-    shortcutList: 'Space play / pause · ← → step a frame (⇧ a second) · ⌫ delete · ⌘D duplicate · ⇧↵ select parent · ⌘Z undo · Esc deselect',
   },
   toast: {
     formatRemoved: 'Deleted size {{name}}.',

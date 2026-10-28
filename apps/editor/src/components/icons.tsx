@@ -89,6 +89,7 @@ import {
   IconStar,
   IconDots,
   IconRefresh,
+  IconKeyboard,
   IconMoon,
   IconPalette,
   IconSun,
@@ -148,6 +149,7 @@ export const Home = tabler(IconHome);
 export const Star = tabler(IconStar, 14);
 export const More = tabler(IconDots);
 export const Refresh = tabler(IconRefresh);
+export const Keyboard = tabler(IconKeyboard);
 export const Moon = tabler(IconMoon);
 export const Palette = tabler(IconPalette);
 export const Sun = tabler(IconSun);

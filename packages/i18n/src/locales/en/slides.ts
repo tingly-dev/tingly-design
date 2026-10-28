@@ -89,7 +89,6 @@ export default {
     addFont: 'Add font',
     fontsHint: 'Up to 4. Use a font by writing its name in an element’s font-family.',
     shortcuts: 'Shortcuts',
-    shortcutList: '↑↓ / PageUp PageDown change slide (with nothing selected) · ⌘D duplicate · ⌫ delete · ⇧↵ select parent · ↵ select child · ⌘Z undo · F5 present',
   },
   strip: {
     label: 'Slides',

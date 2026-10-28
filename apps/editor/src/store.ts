@@ -139,6 +139,8 @@ export interface State extends AgentState {
   editingNote: string | null;
   menu: { x: number; y: number } | null;
   journalOpen: boolean;
+  /** the "Keyboard shortcuts" dialog */
+  shortcutsOpen: boolean;
   view: { x: number; y: number; zoom: number };
   viewport: { w: number; h: number };
   runtimeErrors: Record<string, string | null>;
@@ -176,6 +178,7 @@ export const useStore = create<State>(() => ({
   editingNote: null,
   menu: null,
   journalOpen: false,
+  shortcutsOpen: false,
   view: { x: 80, y: 120, zoom: 0.5 },
   viewport: { w: 1000, h: 700 },
   runtimeErrors: {},
@@ -288,7 +291,7 @@ export async function openProject(name: string): Promise<void> {
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, conversation: s.conversation ?? conversation, turns }));
+  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');

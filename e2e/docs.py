@@ -1,7 +1,7 @@
 """End-to-end checks for docs: rich-text editing written back block by block, tabs, comments, AI rewrite, export.
 Run with `pnpm dev` up: python3 e2e/docs.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 The AI rewrite check needs the mock model (see README): it is skipped when the server has no API key."""
-import os, shutil, asyncio, subprocess, time, json, urllib.request
+import re, os, shutil, asyncio, subprocess, time, json, urllib.request
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -57,6 +57,16 @@ async def main():
         check('tabs, subtabs and the outline', await pg.locator('.tabrow.sub').count() == 1 and await pg.locator('.outline button').count() == 4)
         check('a table, a task list and a quote render', await body.locator('table tr').count() == 7 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
         await expect(body.locator('.cmark')).to_have_count(1)
+        await pg.locator('button[data-more]').click()
+        await pg.locator('[role=menuitem]:has-text("快捷键")').click()
+        dlg = pg.locator('.shortcutsdlg')
+        check('Keyboard shortcuts lists the keys of a doc and the common ones', await dlg.locator('kbd').filter(has_text='⌘↵').count() == 1 and await dlg.locator('kbd', has_text=re.compile(r'^⌘Z$')).count() == 1)
+        await pg.keyboard.press('Escape')
+        await expect(dlg).to_have_count(0)
+        await pg.evaluate('document.activeElement && document.activeElement.blur()')
+        await pg.keyboard.press('?')
+        check('? opens the same list', await dlg.count() == 1)
+        await pg.keyboard.press('Escape')
         check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'the agents working beside them')
         # a link opens with ⌘/Ctrl-click, or with the selection menu's open button (issue #342); the target is stubbed so nothing leaves the machine
         await ctx.route('**github.com/tingly-dev/tingly-box**', lambda r: asyncio.ensure_future(r.fulfill(status=200, body='')))
