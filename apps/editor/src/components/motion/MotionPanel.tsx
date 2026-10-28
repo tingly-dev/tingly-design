@@ -27,6 +27,7 @@ import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
 import { rememberSize, sameSize, type Size } from './motionSizes';
 import { ElementLayers } from '../panel/LayerTree';
+import { IssueList } from '../panel/issues';
 
 
 function useMotion() {
@@ -174,19 +175,7 @@ export function SceneProps({ file }: { file: string }) {
         <ColorField value={getStyle(style, 'color') ?? ''} onCommit={(v) => set('color', v || null)} label={t('motion.sceneProps.textColor')} />
       </Row>
       <h3>{t('motion.sceneProps.check')}</h3>
-      {issues.length ? (
-        <ul className="issue-list">
-          {issues.map((i, n) => (
-            <li key={n} className={i.level} onClick={() => i.tid !== null && useStore.setState({ selection: { kind: 'el', file, tid: i.tid } })}>
-              {i.message}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="hint" style={{ margin: 0 }}>
-          {t('motion.sceneProps.valid')}
-        </p>
-      )}
+      <IssueList issues={issues} file={file} empty={t('motion.sceneProps.valid')} />
     </div>
   );
 }

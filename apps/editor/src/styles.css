@@ -9,6 +9,8 @@
 @import './styles/agent.css';
 @import './styles/overlays.css';
 @import './styles/launcher.css';
+@import './styles/launcher-dialogs.css';
+@import './styles/launcher-list.css';
 @import './styles/launcher-new.css';
 @import './styles/slides.css';
 @import './styles/design-system.css';

@@ -1,0 +1,460 @@
+/* launcher: groups, list view, row menu */
+
+
+.lview {
+  display: inline-flex;
+  height: 32px;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+
+.lview button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+
+.lview button:hover {
+  color: var(--ink);
+}
+
+
+.lview button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+
+.lcell {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+
+.lcell > .lcard,
+.lcell > .lrow {
+  flex: 1;
+  min-width: 0;
+}
+
+
+.lmore {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--muted);
+  box-shadow: 0 0 0 1px var(--hairline);
+  cursor: pointer;
+}
+
+
+.lcell:hover .lmore,
+.lcell:focus-within .lmore {
+  color: var(--ink);
+}
+
+
+.lmore:hover {
+  color: var(--ink);
+  background: var(--panel);
+}
+
+
+.lsection + .lsection {
+  margin-top: 22px;
+}
+
+
+.lmain h3 {
+  margin: 0 0 10px;
+}
+
+
+.lghead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px 2px 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+
+.lghead:hover {
+  background: var(--panel-2);
+}
+
+
+.lghead .n {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+
+.lgroup {
+  font-family: var(--font-ui, inherit);
+  color: var(--ink-2);
+}
+
+
+.llist {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--hairline), 0 1px 2px var(--tint);
+  overflow: hidden;
+}
+
+
+.lrow,
+.lrowhead {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) minmax(0, 1fr) 110px 124px 44px;
+  align-items: center;
+  column-gap: 14px;
+}
+
+
+.lrow {
+  height: 44px;
+  padding: 0 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+
+.llist .lcell:last-child .lrow {
+  border-bottom: 0;
+}
+
+
+.lrow:hover,
+.lrow:focus-visible {
+  background: var(--panel-2);
+}
+
+
+.lrow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+
+.lrow .c-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+
+.lrow .name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.launcher .kic {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+
+
+.lrow .recent {
+  flex: none;
+  font-size: 11px;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+
+.lnogroup .lrow,
+.lnogroup .lrowhead {
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) 110px 124px 44px;
+}
+
+
+.lnogroup .c-group {
+  display: none;
+}
+
+
+.lrow .c-path {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.lrow .c-path,
+.lrow .c-group,
+.lrow .c-size,
+.lrow .c-when {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.lrow .c-group,
+.lrow .c-size,
+.lrow .c-when {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+
+.lrowhead {
+  height: 32px;
+  padding: 0 0 0 14px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.lrowhead button {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+
+.lrowhead button[aria-pressed='true'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+
+.lrowhead .c-title {
+  padding-left: 36px;
+}
+
+
+.llist .lmore {
+  top: 8px;
+  right: 8px;
+  box-shadow: none;
+  background: none;
+}
+
+
+.llist .lmore:hover {
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--hairline);
+}
+
+
+.lgrid.ltail {
+  margin-top: 14px;
+}
+
+
+.menu-form {
+  padding: 4px 4px 6px;
+  min-width: 220px;
+}
+
+
+.menu-input {
+  width: 100%;
+}
+
+
+.menu-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.toast-act {
+  pointer-events: auto;
+  margin-left: 12px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+
+@media (max-width: 760px) {
+  .lrow,
+  .lrowhead {
+    grid-template-columns: minmax(0, 1fr) 124px 44px;
+  }
+  .lrow .c-path,
+  .lrow .c-group,
+  .lrowhead .c-path,
+  .lrowhead .c-group {
+    display: none;
+  }
+  .lrow .c-size,
+  .lrowhead .c-size {
+    display: none;
+  }
+}
+
+
+@media (max-width: 640px) {
+  .lhead .tools,
+  .lsearch {
+    width: 100%;
+  }
+  .lsearch {
+    flex: 1;
+  }
+  .lhead {
+    position: static;
+  }
+  .lstrip {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .lstrip .lnew .blurb {
+    display: none;
+  }
+  .lstrip .lnew .ic {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--r);
+  border: 0;
+  background: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+
+.row:hover {
+  background: var(--hover);
+}
+
+
+.row .name {
+  flex: 1;
+}
+
+
+.row .meta {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+
+/* the logo is a link to the repository, with nothing to say so until it is pointed at */
+
+
+.lhead .brand .mark {
+  display: inline-flex;
+  border-radius: 9px;
+}
+
+
+.lhead .brand .mark:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
+.lhead .brand .mark:hover svg {
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+
+
+/* feedback stays at the foot of the page: quiet text, not a banner */
+
+
+.lfoot {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 24px 22px;
+  margin-top: auto;
+  font-size: 12px;
+}
+
+
+.lfoot a {
+  color: var(--faint);
+  text-decoration: none;
+}
+
+
+.lfoot a:hover,
+.lfoot a:focus-visible {
+  color: var(--ink-2);
+  text-decoration: underline;
+}

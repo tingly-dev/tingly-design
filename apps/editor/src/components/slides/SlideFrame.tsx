@@ -1,21 +1,15 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { deckSize, elementSource, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
+import { deckSize, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
 import { api } from '../../api';
 import { deckOf, display, editElement, parsed, useStore } from '../../store';
+import { stageCounts, stageInspect, stageMove, stageResize, stageSelect } from '../runtime';
 import { frames, post } from '../canvas/Board';
-import { handleKey, leaveField } from '../../shortcuts';
+import { handleKey } from '../../shortcuts';
 import { SERVER } from '../../base';
 import { htmlLang } from '../../i18n';
 import { useBoardFiles } from '../../boards';
 
 export type FrameUse = 'stage' | 'thumb' | 'present';
-
-/** After a move the element's tid changes; find it again by its own source text. */
-function follow(file: string, slice: string | null, fallback: number): number {
-  const src = display(useStore.getState(), file);
-  if (!src || !slice) return fallback;
-  return parsed(src).elements.find((e) => src.slice(e.range.start, e.range.end) === slice)?.tid ?? fallback;
-}
 
 /** A motion scene on the stage: its file, the piece's typefaces, the format and the time it is stopped at. */
 export interface SceneStage {
@@ -91,18 +85,15 @@ export const SlideFrame = memo(function SlideFrame({
       if (m.dc === 'steps') return stepsCb.current?.(m.total);
       if (m.dc === 'key') return void handleKey(m.key, m.meta, m.shift, m.alt);
       if (use !== 'stage') return;
-      const s = useStore.getState();
       switch (m.dc) {
-        case 'select': {
-          leaveField();
-          useStore.setState({ selection: m.tid === null ? { kind: 'board', file } : { kind: 'el', file, tid: m.tid }, menu: null });
+        case 'select':
+          stageSelect(file, m.tid);
           break;
-        }
         case 'inspect':
-          if (!m.info || (s.selection?.kind === 'el' && s.selection.file === file)) useStore.setState({ inspect: m.info });
+          stageInspect(m, file);
           break;
         case 'counts':
-          useStore.setState((st) => ({ counts: { ...st.counts, [file]: m.counts } }));
+          stageCounts(m.counts, file);
           break;
         case 'contextmenu': {
           const r = frame.current.getBoundingClientRect();
@@ -112,15 +103,11 @@ export const SlideFrame = memo(function SlideFrame({
         case 'text':
           editElement(file, [{ kind: 'text', tid: m.tid, text: m.text }]);
           break;
-        case 'move': {
-          const src = display(s, file);
-          const slice = src ? elementSource(parsed(src), m.tid) : null;
-          if (editElement(file, [{ kind: 'moveTo', tid: m.tid, target: m.target, where: m.where }]))
-            useStore.setState({ selection: { kind: 'el', file, tid: follow(file, slice, m.tid) } });
+        case 'move':
+          stageMove(m, file);
           break;
-        }
         case 'resize':
-          editElement(file, [{ kind: 'styles', tid: m.tid, set: m.set }]);
+          stageResize(m, file);
           break;
         case 'dragout': {
           // the subset has no margin: drop the margin:0 an artboard drag adds

@@ -8,6 +8,8 @@
  *   editor            core, export, i18n, import
  * Nothing imports sandbox: it is used as its built IIFEs. Tests are not checked.
  * `pnpm depcheck` runs it; CI fails on a new arrow.
+ * core keeps its single barrel (`src/index.ts`): the bundlers tree-shake it, and subpath
+ * exports would give the same file two import paths, hence two module instances.
  */
 const sources = ['apps/editor', 'apps/server', 'packages/core', 'packages/export', 'packages/i18n', 'packages/import', 'packages/sandbox'];
 const allowed = {

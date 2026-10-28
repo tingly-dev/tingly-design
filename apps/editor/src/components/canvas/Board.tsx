@@ -1,12 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
-import { elementSource, roleOf, rootElement, sandboxDoc, retypeKind, setPropDefault, tweakTextBinding, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
+import { roleOf, rootElement, sandboxDoc, retypeKind, setPropDefault, tweakTextBinding, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
 import { canvasOf, display, edit, editElement, parsed, retypeText, toast, useStore } from '../../store';
+import { stageCounts, stageInspect, stageMove, stageResize, stageSelect } from '../runtime';
 import { focusBoard, onPage } from './view';
 import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
-import { handleKey, leaveField } from '../../shortcuts';
+import { handleKey } from '../../shortcuts';
 import { CopyPicture, Download, Expand, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
@@ -118,14 +119,6 @@ export async function pickBoard(what: string): Promise<boolean> {
   return true;
 }
 
-/** After a move the element's tid changes; find it again by its own source text. */
-function follow(file: string, slice: string | null, fallback: number): number {
-  const src = display(useStore.getState(), file);
-  if (!src || !slice) return fallback;
-  const doc = parsed(src);
-  return doc.elements.find((e) => src.slice(e.range.start, e.range.end) === slice)?.tid ?? fallback;
-}
-
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
 export const BoardView = memo(function BoardView({ file, entry }: { file: string; entry: BoardEntry }) {
@@ -182,15 +175,14 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             textTool(m.tid);
             break;
           }
-          leaveField();
-          useStore.setState({ selection: m.tid === null ? { kind: 'board', file } : { kind: 'el', file, tid: m.tid }, menu: null, editingNote: null });
+          stageSelect(file, m.tid);
           break;
         }
         case 'inspect':
-          if (!m.info || (s.selection?.kind === 'el' && s.selection.file === file)) useStore.setState({ inspect: m.info });
+          stageInspect(m, file);
           break;
         case 'counts':
-          useStore.setState((st) => ({ counts: { ...st.counts, [file]: m.counts } }));
+          stageCounts(m.counts, file);
           break;
         case 'contextmenu': {
           const r = frame.current.getBoundingClientRect();
@@ -212,15 +204,11 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         case 'noedit':
           toast(t(`canvas.text.noedit.${m.why}`));
           break;
-        case 'move': {
-          const src = display(s, file);
-          const slice = src ? elementSource(parsed(src), m.tid) : null;
-          if (editElement(file, [{ kind: 'moveTo', tid: m.tid, target: m.target, where: m.where }]))
-            useStore.setState({ selection: { kind: 'el', file, tid: follow(file, slice, m.tid) } });
+        case 'move':
+          stageMove(m, file);
           break;
-        }
         case 'resize':
-          editElement(file, [{ kind: 'styles', tid: m.tid, set: m.set }]);
+          stageResize(m, file);
           break;
         case 'dragout': {
           const ops = [{ kind: 'styles' as const, tid: m.tid, set: m.set }];
