@@ -48,7 +48,6 @@ export default {
     nameLabel: '设计系统名称',
     nothingToSave: '画面上没有可保存的内容。',
     renameHint: '双击改名',
-    theme: '主题',
   },
   section: {
     editLabel: '编辑 {{path}}',

@@ -29,6 +29,10 @@ export default {
   stop: 'Stop',
   undo: 'Undo',
   untitled: 'Untitled',
+  preview: {
+    as: 'Preview as',
+    current: 'Preview as: {{name}}',
+  },
   pane: {
     inspector: 'Properties panel',
     inspectorHint: 'Properties panel (⌘\\)',

@@ -85,7 +85,6 @@ export default {
     nameLabel: 'Design system name',
     nothingToSave: 'Nothing on screen to save.',
     renameHint: 'Double-click to rename',
-    theme: 'Theme',
   },
   section: {
     editLabel: 'Edit {{path}}',

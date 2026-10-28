@@ -7,6 +7,8 @@ import { display, edit, toast, useStore } from '../../store';
 import { dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
 import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle } from '../TopBar';
+import { PreviewAs } from '../PreviewAs';
+import { Palette } from '../icons';
 import { fileStem, nodeToPng } from '../../imageExport';
 import { ColorsView, FamiliesView, TypeView } from './TokenViews';
 import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews';
@@ -181,6 +183,7 @@ export function DsApp() {
   return (
     <>
     <TopBar title={<ProjectTitle value={index.title} label={tr('ds.app.nameLabel')} hint={tr('ds.app.renameHint')} onRename={(v) => editDsIndex((d) => (d.title = v), `title → ${v}`)} />}>
+      {t.themes.length > 1 && <PreviewAs icon={<Palette />} options={t.themes.map((x) => ({ id: x.id, label: x.name }))} value={theme} onChange={setTheme} />}
   <FileMenu
         claudeDesign
         target={dsImport}
@@ -217,20 +220,6 @@ export function DsApp() {
               {tr('ds.nav.issues')} <span className="cnt">{t.issues.length}</span>
             </button>
           )}
-          <div className="navfoot">
-            {t.themes.length > 1 && (
-              <label className="themes">
-                {tr('ds.app.theme')}
-                <select value={theme} onChange={(e) => setTheme(e.target.value)} aria-label={tr('ds.app.theme')}>
-                  {t.themes.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
         </nav>
       </ListColumn>
       <main className="dsmain">
