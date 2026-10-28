@@ -26,6 +26,7 @@ import {
 } from './dash';
 import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
+import { PreviewAs } from '../PreviewAs';
 import { Moon, Refresh, Sun, Target } from '../icons';
 import { fileStem } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
@@ -233,7 +234,7 @@ export function DashApp() {
         <Filters />
         <BarButton icon={<Refresh />} label={t('dash.bar.refresh')} title={t('dash.bar.refreshAllTitle')} onClick={refreshAll} />
         <BarButton icon={<Target />} label={t('dash.bar.dataMode')} title={t('dash.bar.dataModeTitle')} on={mode === 'data'} onClick={() => setMode(mode === 'data' ? 'page' : 'data')} />
-        <BarButton icon={theme === 'dark' ? <Sun /> : <Moon />} label={t('dash.bar.toggleTheme')} title={theme === 'dark' ? t('dash.bar.light') : t('dash.bar.dark')} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+        <PreviewAs icon={theme === 'dark' ? <Moon /> : <Sun />} options={[{ id: 'light', label: t('dash.bar.light') }, { id: 'dark', label: t('dash.bar.dark') }]} value={theme} onChange={(v) => setTheme(v as 'light' | 'dark')} />
         <FileMenu
           claudeDesign
           target={dashImport}

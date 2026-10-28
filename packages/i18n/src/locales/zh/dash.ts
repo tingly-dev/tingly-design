@@ -22,7 +22,6 @@ export default {
     dataMode: '数据模式',
     dataModeTitle: '点一个数字或图表，看它的来源',
     dataModeHint: '数据模式：点一个数字、图表或表格，看它的来源。Esc 退出。',
-    toggleTheme: '切换明暗',
     light: '亮色',
     dark: '暗色',
     code: '代码',

@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docColorCss, docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -208,6 +208,7 @@ body{max-width:${d.settings.width === 'wide' ? 1000 : 720}px;margin:40px auto;pa
 h1,h2,h3,h4{font-family:${d.settings.headingFont === 'serif' ? serif : sans};line-height:1.3}
 table{border-collapse:collapse;display:block;max-width:100%;overflow-x:auto}td,th{border:1px solid #d6d4ce;padding:6px 10px}pre{background:#f5f5f3;padding:12px;border-radius:8px;overflow:auto}
 code{font-family:ui-monospace,Menlo,monospace;font-size:.9em}blockquote{margin:0;padding-left:16px;border-left:3px solid #d6d4ce;color:#555}
+${docColorCss()}
 img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;padding-top:24px}@media print{.tab+.tab{break-before:page;border:0}}
 </style></head><body>${parts.join('\n')}</body></html>`;
 }

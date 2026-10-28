@@ -31,6 +31,10 @@ export default {
   send: '发送',
   stop: '停止',
   undo: '撤销',
+  preview: {
+    as: '预览为',
+    current: '预览为：{{name}}',
+  },
   pane: {
     inspector: '属性面板',
     inspectorHint: '属性面板（⌘\\）',

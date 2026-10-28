@@ -158,6 +158,15 @@ async def main():
         await expect(pg.locator('.topbar h1.dashtitle')).to_have_text('zz-ds')
         check('a new system starts small and clean', await pg.locator('.navi.warn').count() == 0 and os.path.exists(os.path.join(REPO, 'projects/zz-ds/tokens.css')))
 
+        # --- preview as ---------------------------------------------------------------------------
+        await pg.goto(BASE + '/?p=tingly-ds')
+        await pg.locator('button[data-preview]').wait_for()
+        before = await pg.locator('.app.ds').get_attribute('data-theme')
+        await pg.locator('button[data-preview]').click()
+        await pg.locator('[role=menu] [role=menuitemcheckbox][aria-checked=false]').first.click()
+        after = await pg.locator('.app.ds').get_attribute('data-theme')
+        check('the top bar\'s Preview as menu switches the system\'s theme', before != after, f'{before} {after}')
+
         # --- installing into the deck -----------------------------------------------------
         restore()
         await pg.goto(BASE + '/?p=tingly-intro&s=box')
