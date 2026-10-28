@@ -1,7 +1,7 @@
 import { adaptSize, deckSize, DECK_FILE, slideFile } from '@dc/core';
 import type { PptxDiagnostic } from '@dc/core';
 import { api, type PptxAppendPlan } from '../../api';
-import { savedUpTo } from '../../editEngine';
+import { removeFileNow, savedUpTo } from '../../editEngine';
 import { t } from '../../i18n';
 import { deckOf, editDeck, useStore } from '../../store';
 
@@ -39,7 +39,7 @@ export async function appendPptx(name: string, bytes: Uint8Array): Promise<strin
     for (const slide of plan.slides) {
       // undone while the batch was still landing: stop and take back what landed
       if (!deckOf(useStore.getState()).order.includes(ids[0])) {
-        for (const id of landed) await removeSlide(project, id);
+        for (const id of landed) await removeFileNow(id);
         return t('slides.append.undone');
       }
       await api.put(project, slideFile(slide.id), { content: sources[slide.id], baseVersion: null, actor: 'human', summary: t('slides.append.journalOne', { id: slide.id, name }) });
@@ -48,7 +48,7 @@ export async function appendPptx(name: string, bytes: Uint8Array): Promise<strin
   } catch (error) {
     // nothing half-appended stays: the pages that landed go away, then the ids leave the order
     try {
-      for (const id of landed) await removeSlide(project, id);
+      for (const id of landed) await removeFileNow(id);
       editDeck((d) => {
         d.order = d.order.filter((id) => !ids.includes(id));
       }, t('slides.append.undone'), false);
@@ -56,20 +56,7 @@ export async function appendPptx(name: string, bytes: Uint8Array): Promise<strin
     throw error;
   }
   const skipped = plan.diagnostics.filter((d) => d.code === 'slide_skipped').length;
-  return skipped ? t('slides.append.addedSkipped', { name, count: ids.length, skipped }) : t('slides.append.added', { name, count: ids.length });
-}
-
-/** Delete one of the batch's slide files, as `deleteFile` does for a single file. */
-async function removeSlide(project: string, id: string): Promise<void> {
-  const file = slideFile(id);
-  await savedUpTo(file);
-  const version = useStore.getState().files[file]?.server?.version;
-  if (version) await api.remove(project, file, version);
-  useStore.setState((s) => {
-    const files = { ...s.files };
-    delete files[file];
-    return { files };
-  });
+  return skipped ? t('slides.append.addedSkipped', { name, count: ids.length, skipped, report: `uploads/${plan.id}/report.json` }) : t('slides.append.added', { name, count: ids.length });
 }
 
 function base64Bytes(base64: string): Uint8Array {

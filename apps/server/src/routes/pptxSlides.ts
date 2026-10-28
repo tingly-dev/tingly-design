@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { randomUUID } from 'node:crypto';
 import { importPptx } from '@dc/core';
 import { HttpError, kindOf, projectDir } from '../store';
 
@@ -14,7 +15,7 @@ export function registerPptxSlides(app: Hono): void {
     if (!bytes.length) throw new HttpError(400, 'emptyFile');
     // the same collision-free namespace a new-project import uses; slide ids and the
     // uploads/ folder derive from it, so two appends can never collide
-    const id = `pptx-${crypto.randomUUID().replace(/-/g, '')}`;
+    const id = `pptx-${randomUUID().replace(/-/g, '')}`;
     const name = (c.req.query('name') ?? '').replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]+/g, ' ').trim();
     const result = importPptx(bytes, { id, title: name || 'deck' });
     if (!result.ok) return c.json({ ok: false as const, diagnostics: result.diagnostics }, 400);

@@ -194,7 +194,7 @@ export default {
   },
   append: {
     added: '{{name}}: {{count}} slides appended to the deck.',
-    addedSkipped: '{{name}}: {{count}} slides appended; {{skipped}} pages of the file could not be converted — uploads/{{name}}/report.json has the details.',
+    addedSkipped: '{{name}}: {{count}} slides appended; {{skipped}} pages of the file could not be converted — {{report}} has the details.',
     refused: '{{name}} could not be converted as slides ({{count}} problems). No slide was appended.',
     failed: '{{name}} could not be appended.',
     journal: '{{count}} slides appended from {{name}}',

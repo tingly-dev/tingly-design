@@ -227,20 +227,10 @@ export function redo(): void {
  * slides anyone else added stay), and the batch's files go away once their queued edits saved. */
 function batchRemove(batch: { ids: string[]; sources: Record<string, string> }): void {
   void (async () => {
-    const project = get().project;
-    for (const id of batch.ids) {
-      const file = slideFile(id);
-      await savedUpTo(file);
-      const version = get().files[file]?.server?.version;
-      if (version && project) {
-        const r = await api.remove(project, file, version);
-        if ('conflict' in r) return toast(t('app.save.deleteConflict', { file }), 'error');
-      }
-      set((s) => {
-        const files = { ...s.files };
-        delete files[file];
-        return { files };
-      });
+    try {
+      for (const id of batch.ids) await removeFileNow(id);
+    } catch {
+      return toast(t('app.save.deleteConflict', { file: slideFile(batch.ids[0]) }), 'error');
     }
     editDeck((d) => {
       d.order = d.order.filter((id) => !batch.ids.includes(id));
@@ -261,6 +251,22 @@ function batchRestore(batch: { ids: string[]; sources: Record<string, string> })
       await api.put(project, slideFile(id), { content: batch.sources[id], baseVersion: null, actor: 'undo', summary: 'redo' });
     }
   })();
+}
+
+/** Delete a slide's file once its queued edits saved; throws when someone saved it in between. */
+export async function removeFileNow(id: string): Promise<void> {
+  const project = get().project, file = slideFile(id);
+  await savedUpTo(file);
+  const version = get().files[file]?.server?.version;
+  if (project && version) {
+    const r = await api.remove(project, file, version);
+    if ('conflict' in r) throw new Error('conflict');
+  }
+  set((s) => {
+    const files = { ...s.files };
+    delete files[file];
+    return { files };
+  });
 }
 
 /** Delete a file once its queued edits are saved (a deck's slides, an artboard). */

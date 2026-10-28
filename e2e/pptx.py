@@ -69,6 +69,14 @@ def files(name):
     return api(f'/api/projects/{name}/files')['files']
 
 
+def files_settled(name):
+    # files(), tolerating the instant a deleted file vanishes between the server's list and read
+    try:
+        return files(name)
+    except (urllib.error.HTTPError, urllib.error.URLError):
+        return None
+
+
 def raw(name, path):
     return request(f'/api/projects/{name}/raw/' + urllib.parse.quote(path, safe='/'))
 
@@ -516,16 +524,17 @@ async def main():
         check('append: the new pages are ordinary editable slides', all(f'slides/{i}.html' in files(name) for i in appended))
         await pg.keyboard.press('Escape')
         await pg.keyboard.press('ControlOrMeta+z')
-        await until(lambda: len(json.loads(files(name)['deck.json']['content'])['order']) == len(before_append))
-        check('append: one undo removes exactly the batch', not any(f'slides/{i}.html' in files(name) for i in appended))
+        await until(lambda: (f := files_settled(name)) and len(json.loads(f['deck.json']['content'])['order']) == len(before_append)
+                    and all(f'slides/{i}.html' not in f for i in appended))
+        check('append: one undo removes exactly the batch', True)
         await pg.keyboard.press('ControlOrMeta+Shift+z')
-        await until(lambda: len(json.loads(files(name)['deck.json']['content'])['order']) == len(before_append) + 2
-                    and all(f'slides/{i}.html' in files(name) for i in appended))
+        await until(lambda: (f := files_settled(name)) and len(json.loads(f['deck.json']['content'])['order']) == len(before_append) + 2
+                    and all(f'slides/{i}.html' in f for i in appended))
         check('append: redo brings the batch back', all(f'slides/{i}.html' in files(name) for i in appended))
         # the deck goes back to what the rest of the suite exports
         await pg.keyboard.press('ControlOrMeta+z')
-        await until(lambda: len(json.loads(files(name)['deck.json']['content'])['order']) == len(before_append)
-                    and all(f'slides/{i}.html' not in files(name) for i in appended))
+        await until(lambda: (f := files_settled(name)) and len(json.loads(f['deck.json']['content'])['order']) == len(before_append)
+                    and all(f'slides/{i}.html' not in f for i in appended))
         check('append: undo after redo removes the batch again', True)
         await transfer.dispose()
         # Owned non-slide projects prove the item is scoped, without touching samples.

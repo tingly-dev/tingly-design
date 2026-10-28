@@ -81,7 +81,7 @@ const rotate = (deg: number, x: number, y: number): [number, number] => {
 };
 /** The rectangle an element measured as laid out, from the bounding box its rotation produced:
  * W = w·|cos| + h·|sin|, H = w·|sin| + h·|cos|. Undefined near 45°+k·90°, where the two solutions meet. */
-export function unspinRect(width: number, height: number, deg: number): { width: number; height: number } | undefined {
+function unspinRect(width: number, height: number, deg: number): { width: number; height: number } | undefined {
   const r = (deg * Math.PI) / 180, c = Math.abs(Math.cos(r)), s = Math.abs(Math.sin(r)), d = c * c - s * s;
   if (Math.abs(d) < 1e-4) return undefined;
   const w = (width * c - height * s) / d, h = (height * c - width * s) / d;

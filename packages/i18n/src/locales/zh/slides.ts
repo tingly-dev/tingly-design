@@ -191,7 +191,7 @@ export default {
   },
   append: {
     added: '{{name}}：已向牌组追加 {{count}} 页幻灯片。',
-    addedSkipped: '{{name}}：已追加 {{count}} 页；原文件有 {{skipped}} 页无法转换——详情见 uploads/{{name}}/report.json。',
+    addedSkipped: '{{name}}：已追加 {{count}} 页；原文件有 {{skipped}} 页无法转换——详情见 {{report}}。',
     refused: '{{name}} 无法转换为幻灯片（{{count}} 个问题）。没有追加任何一页。',
     failed: '{{name}} 追加失败。',
     journal: '从 {{name}} 追加 {{count}} 页幻灯片',

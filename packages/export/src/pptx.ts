@@ -154,7 +154,7 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
   const result = await pptx.write({ outputType: 'uint8array', compression: true });
   return normalizePptx401(result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer), drawing.slides.length, patches, fallbacks);
 }
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 

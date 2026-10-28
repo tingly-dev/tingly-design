@@ -1,5 +1,5 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
-import type { PptxTablePatch } from './pptx';
+import { bytesEqual, type PptxTablePatch } from './pptx';
 
 /** Only for this writer's freshly generated PptxGenJS 4.0.1 package, never imported OOXML.
  * Byte-for-byte XML edits retain all run/notes/media content. Fail closed if the pinned
@@ -101,7 +101,4 @@ function patchCell(tc: string, patch: PptxTablePatch): string {
   if (insert) next = last ? next.replace(last[0], () => `${last[0]}${insert}`) : next.replace(/<a:tcPr(?:\s[^>]*)?>/, open => `${open}${insert}`);
   if (next === tc) unexpected();
   return next;
-}
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
