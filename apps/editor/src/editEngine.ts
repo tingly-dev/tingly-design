@@ -70,7 +70,7 @@ export function enqueueResult(
   if (optimistic === basis) return false;
   const item: Pending = { id: ++pendingId, basis, optimistic, apply, actor: opts.actor, summary: opts.summary, prompt: opts.prompt };
   patchEntry(file, (e) => ({ ...e, pending: [...e.pending, item] }));
-  if (opts.undoable !== false) set((s) => ({ undo: [...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}), ...(opts.group ? { group: opts.group } : {}) }].slice(-100), redo: [] }));
+  if (opts.undoable !== false) set((s) => ({ undo: capUndo([...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}), ...(opts.group ? { group: opts.group } : {}) }]), redo: [] }));
   void pump(file);
   return true;
 }
@@ -221,6 +221,16 @@ export function editCanvas(mutate: (c: CanvasJson) => void, summary: string, und
     },
     { actor: 'human', summary, undoable },
   );
+}
+
+/** The last 100 changes; a group cut by the limit goes whole, so no undo brings back half of a reply. */
+function capUndo<T extends { group?: number }>(list: T[]): T[] {
+  if (list.length <= 100) return list;
+  const cut = list.length - 100;
+  const group = list[cut - 1].group;
+  let from = cut;
+  while (group !== undefined && from < list.length && list[from].group === group) from++;
+  return list.slice(from);
 }
 
 /** The last undo step: one item, or every item of the group the last one belongs to. */

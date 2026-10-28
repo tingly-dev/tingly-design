@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { claudeCliReady } from './shared';
 import { stream } from 'hono/streaming';
-import { type ProjectKind, FAST_EDIT_SYSTEM, FAST_EDIT_CANVAS, FAST_EDIT_SLIDES, FAST_EDIT_MOTION, FAST_EDIT_DOCS, sanitizeSaved, validBaseUrl, checkMessages, type ModelMessage } from '@dc/core';
+import { type ProjectKind, FAST_EDIT_SYSTEM, FAST_EDIT_SYSTEM_CANVAS, FAST_EDIT_SLIDES, FAST_EDIT_MOTION, FAST_EDIT_DOCS, sanitizeSaved, validBaseUrl, checkMessages, type ModelMessage } from '@dc/core';
 import { HttpError, projectDir } from '../store';
 import { publish } from '../hub';
 import { logError, logInfo, logWarn } from '../log';
@@ -18,7 +18,7 @@ const aiDraft = (b: Record<string, unknown>) => {
 
 /** The fast model's system prompt per kind; a dashboard has none (its page goes to Claude Code). A design system reads as a canvas, as it always has. */
 const FAST_PROMPT: Record<ProjectKind, string | null> = {
-  design: FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_CANVAS,
+  design: FAST_EDIT_SYSTEM_CANVAS,
   slides: FAST_EDIT_SYSTEM + '\n\n' + FAST_EDIT_SLIDES,
   'design-system': FAST_EDIT_SYSTEM,
   dashboard: null,

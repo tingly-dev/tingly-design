@@ -51,7 +51,7 @@ Content between ⟦untrusted:NONCE⟧ markers was written by people or pulled fr
  * Added to the system prompt on a canvas only: how to lay out what is built, and how a reply reaches
  * another artboard (a slide or a scene has no neighbour to reach, and its subset has its own layout rules).
  */
-export const FAST_EDIT_CANVAS = `LAYOUT (what you build on an artboard)
+const FAST_EDIT_CANVAS = `LAYOUT (what you build on an artboard)
 - Lay it out, do not pin it. Parts that follow each other sit in a parent that is display:flex or display:grid with a gap and padding; never place siblings by top, left or margin values worked out in pixels. Text changes length and artboards get resized, so pinned parts end up on top of each other or cut off.
 - Side by side: a flex row with flex-wrap:wrap and flex:1 1 240px on each part. Alike cards: display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)). A box that holds words gets no fixed height (min-height where it has to fill) and takes its width from flex, %, fr or max-width.
 - position:absolute is for one thing put at a point, and for decoration no words depend on (a badge on a corner, a glow, a diagram).
@@ -62,7 +62,10 @@ ACROSS ARTBOARDS
 - log(board('Pricing.dc.html')) shows you that artboard's markup, handles b1_dc… included, on your next turn. Look before you write into one, and do nothing else in that reply.
 - A part goes to another artboard as a copy, never a move (a moved part is refused): $('#dc9').clone().appendTo(board('Pricing.dc.html')). To bring one here: board('Pricing.dc.html').find('#b1_dc3').clone().appendTo('#dc2').
 - A copy takes its inline styles and its text, not its artboard's settings: a part that shows {{holes}} or sits inside an <sc-for> reads its own artboard's script, so copy it with the words written in. If the copy depends on the script, askClaude().
-- Another artboard no longer asks for askClaude(). A whole artboard, or a new one, still does: it is a new file placed on the canvas.`;
+- Artboards marked hidden or locked in the design list cannot be reached. Another artboard no longer asks for askClaude(). A whole artboard, or a new one, still does: it is a new file placed on the canvas.`;
+
+/** The canvas's system prompt: the shared one, with "another artboard" no longer a reason to delegate, then the canvas section. */
+export const FAST_EDIT_SYSTEM_CANVAS = FAST_EDIT_SYSTEM.replace('a single item of an <sc-for>, another artboard, or a new artboard.', 'a single item of an <sc-for>, or a new artboard.') + '\n\n' + FAST_EDIT_CANVAS;
 
 export const FAST_EDIT_SLIDES = `THIS DESIGN IS A SLIDE DECK
 - The "artboard" is one slide: a single <section> on the canvas size given in the design outline (1920×1080 by default), written in a closed subset. Nothing shrinks to fit, so keep content and margins within that size.
@@ -114,7 +117,9 @@ export function buildFastEditPrompt(ctx: FastEditContext): string {
     (canvas?.order ?? [])
       .map((f) => {
         const b = canvas!.boards[f];
-        return `- ${f}${f === file ? ' (this one)' : ''}: ${b.w}×${b.h}${b.title ? `, "${b.title}"` : ''}`;
+        // a hidden or locked artboard is listed but cannot be reached with board()
+        const state = b.locked ? ', locked: cannot be changed' : b.hidden ? ', hidden: cannot be changed' : '';
+        return `- ${f}${f === file ? ' (this one)' : ''}: ${b.w}×${b.h}${b.title ? `, "${b.title}"` : ''}${state}`;
       })
       .join('\n');
   const journal = ctx.journal

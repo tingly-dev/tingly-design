@@ -112,6 +112,8 @@ export class FastEditSession {
   private current: string;
   delegated = false;
   private readonly others = new Map<string, OtherBoard>();
+  /** `$` that refuses a selector naming another artboard's handle; `board(file)` is how a line reaches one */
+  private readonly guarded: JQ;
 
   /**
    * `others` are the sources of the artboards a reply may also reach, by file. They are not in the
@@ -129,6 +131,10 @@ export class FastEditSession {
     const body = win.document.body;
     body.replaceChildren(this.copy.root);
     installPlugins($, () => this.copy);
+    this.guarded = Object.assign((sel: unknown, ...rest: unknown[]) => {
+      this.checkSelector(sel);
+      return $(sel, ...rest);
+    }, $);
     Object.keys(others)
       .sort()
       .forEach((file, i) => this.others.set(file, { file, prefix: `b${i + 1}_dc`, source: others[file] }));
@@ -200,11 +206,12 @@ export class FastEditSession {
     };
     const forget = () => {};
     // `$` is jQuery that refuses a selector naming another artboard's handle; `board(file)` is how a line reaches one
-    const guarded = Object.assign((sel: unknown, ...rest: unknown[]) => {
-      this.checkSelector(sel);
-      return (this.$ as (...a: unknown[]) => unknown)(sel, ...rest);
-    }, this.$);
-    const board = (name: unknown) => this.$(this.board(name).copy!.root).children().not('helmet, style, script');
+    const guarded = this.guarded;
+    const board = (name: unknown) => {
+      const roots = this.$(this.board(name).copy!.root).children().not('helmet, style, script');
+      if (!roots.length) throw new Error(`board(${JSON.stringify(String(name))}): that artboard has no element yet to put anything in.`);
+      return roots;
+    };
     const isChain = src.startsWith('.');
     if (isChain) {
       if (!this.last || typeof this.last !== 'object') {

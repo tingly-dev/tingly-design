@@ -8,6 +8,8 @@ import {
   applyHumanOps,
   setPropDefault,
   FastEditSession,
+  FAST_EDIT_SYSTEM,
+  FAST_EDIT_SYSTEM_CANVAS,
   StatementSplitter,
   splitStatements,
   setStyle,
@@ -213,6 +215,20 @@ describe('fast edit across artboards', () => {
     expect(bare.error).toContain(`board("Other.dc.html").find('#b1_dc${h1.tid}')`);
     // the same line, named, goes through
     expect(s.run(`board('Other.dc.html').find('#b1_dc${h1.tid}').text('x')`).others?.['Other.dc.html']).toContain('>x</h1>');
+  });
+
+  it('a canvas prompt no longer sends another artboard to Claude Code, a slide prompt still does', () => {
+    expect(FAST_EDIT_SYSTEM).toContain('a single item of an <sc-for>, another artboard, or a new artboard.');
+    expect(FAST_EDIT_SYSTEM_CANVAS).not.toContain('another artboard, or a new artboard');
+    expect(FAST_EDIT_SYSTEM_CANVAS).toContain('ACROSS ARTBOARDS');
+  });
+
+  it('says on an empty artboard that there is nothing to put things in', () => {
+    const { win, $ } = env();
+    const empty = BOARD.replace(/<div style="width:1200px[\s\S]*<\/div>\n<\/x-dc>/, '</x-dc>');
+    const r = new FastEditSession(BOARD, win, $, { 'Empty.dc.html': empty }).run(`board('Empty').append('<p>x</p>')`);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/no element yet/);
   });
 
   it('refuses a move and an artboard it does not know', () => {
