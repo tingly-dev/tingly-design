@@ -21,8 +21,6 @@ export default {
     issuesHint: '时间上的问题',
     issues: '检查',
     journal: '记录',
-    panel: '属性面板',
-    panelHint: '属性面板（⌘\\）',
   },
   export: {
     title: '导出视频',

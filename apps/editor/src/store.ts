@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { initialPane, rememberPane, type PaneId } from './panes';
 import { turnOfDelegate, turnOfFast } from './turns';
 import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type BarMode, type DelegateState } from './store/agent';
 import {
@@ -119,8 +120,8 @@ export interface State extends AgentState {
   selection: Selection;
   tool: Tool;
   mode: Mode;
-  /** right panel */
-  panelOpen: boolean;
+  /** the side pane open in the right column (inspector, data sources, code, comments), or none; see panes.ts */
+  pane: PaneId | null;
   panelTab: 'props' | 'code' | 'tweaks';
   /** what the runtime measured about the selected element */
   inspect: Inspect | null;
@@ -163,7 +164,7 @@ export const useStore = create<State>(() => ({
   selection: null,
   tool: 'select',
   mode: 'edit',
-  panelOpen: readPref('dc.panelOpen') !== '0',
+  pane: null,
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -285,7 +286,7 @@ export async function openProject(name: string): Promise<void> {
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, conversation: s.conversation ?? conversation, turns }));
+  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
@@ -428,7 +429,17 @@ export function undoDelegate(id: string): void {
   set((s) => ({ delegates: s.delegates.map((x) => (x.id === id ? { ...x, undone: true } : x)) }));
 }
 
-// remember whether the panel is open, per browser
+// remember which pane is open, per kind and browser
 useStore.subscribe((st, prev) => {
-  if (st.panelOpen !== prev.panelOpen) writePref('dc.panelOpen', st.panelOpen ? '1' : '0');
+  if (st.kind && st.kind === prev.kind && st.pane !== prev.pane) rememberPane(st.kind, st.pane);
 });
+
+/** Show a pane (a request, a link from a file chip or a comment): never closes it. */
+export function openPane(id: PaneId): void {
+  useStore.setState({ pane: id });
+}
+
+/** Open a pane, or close it when it is the one open. */
+export function togglePane(id: PaneId): void {
+  useStore.setState((s) => ({ pane: s.pane === id ? null : id }));
+}

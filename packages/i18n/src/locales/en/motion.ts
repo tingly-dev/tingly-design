@@ -19,8 +19,6 @@ export default {
     issuesHint: 'Timing problems',
     issues: 'Check',
     journal: 'Log',
-    panel: 'Properties panel',
-    panelHint: 'Properties panel (⌘\\)',
   },
   export: {
     title: 'Export video',

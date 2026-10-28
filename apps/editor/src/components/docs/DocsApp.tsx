@@ -295,7 +295,7 @@ export function DocsApp() {
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
-  const rail = useDocs((s) => s.rail);
+  const rail = useStore((s) => s.pane === 'comments');
   const comments = useComments();
   const [pop, setPop] = useState<'settings' | 'versions' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
@@ -339,7 +339,6 @@ export function DocsApp() {
           </div>
         )}
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
-        <BarButton icon={<Message />} label={t('docs.app.comments')} on={rail} badge={open ? <span className="badge blue">{open}</span> : null} onClick={() => useDocs.setState({ rail: !rail })} />
       </TopBar>
       <ListColumn label={t('docs.app.tabs')} className="docs">
         <aside className="doctabs" aria-label={t('docs.app.tabs')}>

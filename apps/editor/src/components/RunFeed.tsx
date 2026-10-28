@@ -323,7 +323,7 @@ function editAsJQuery(file: string | undefined, code: string) {
   const onFile = s.selection && 'file' in s.selection && s.selection.file === file;
   useStore.setState({
     jqDraft: code,
-    panelOpen: true,
+    pane: 'inspector' as const,
     panelTab: 'code',
     ...(file && !onFile ? { selection: { kind: 'board', file } as const } : {}),
   });

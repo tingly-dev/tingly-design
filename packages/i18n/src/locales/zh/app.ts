@@ -101,8 +101,6 @@ export default {
     exitPlay: '退出播放',
     play: '播放',
     playHint: '播放：按钮和链接可以点（Esc 退出）',
-    panel: '属性面板',
-    panelHint: '属性面板（⌘\\）',
     zoomButton: '{{zoom}}%，缩放',
     zoom: '缩放',
     zoomIn: '放大',

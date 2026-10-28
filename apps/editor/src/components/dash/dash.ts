@@ -25,7 +25,7 @@ import {
   type ToDash,
 } from '@dc/core';
 import { api } from '../../api';
-import { display, edit, toast, useStore } from '../../store';
+import { display, edit, openPane, toast, useStore } from '../../store';
 import { currentTheme, onTheme } from '../../theme';
 import { at } from '../../base';
 import { t } from '../../i18n';
@@ -59,7 +59,6 @@ interface DashState {
   /** the source open in Sources */
   open: string | null;
   pick: DashPick | null;
-  side: 'sources' | 'code' | null;
   /** bumped to load the page afresh */
   pageKey: number;
 }
@@ -75,7 +74,6 @@ export const useDash = create<DashState>(() => ({
   theme: savedDashTheme() ?? currentTheme()?.theme.scheme ?? 'light',
   open: null,
   pick: null,
-  side: 'sources',
   pageKey: 0,
 }));
 
@@ -467,7 +465,8 @@ export const dashImport: ImportTarget = {
       edit(datasetFile(id), () => JSON.stringify(dataset, null, 2) + '\n', { actor: 'human', summary: `dataset ${id} imported from ${name}`, undoable: false });
       added.push(id);
     }
-    dset({ side: 'sources', open: added[0] ?? null });
+    dset({ open: added[0] ?? null });
+    openPane('sources');
     return added.length === 1 ? t('dash.import.addedOne', { file: files[0].path.split('/').pop(), id: added[0] }) : t('dash.import.addedMany', { count: added.length });
   },
 };

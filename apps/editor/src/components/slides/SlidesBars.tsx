@@ -98,7 +98,6 @@ export function SlidesTopBar() {
           onRename={(v) => editDeck((d) => (d.title = v), t('slides.journal.title', { title: v }))}
         />
       }
-      panel={{ label: t('slides.toolbar.panel'), hint: t('slides.toolbar.panelHint') }}
     >
       <button ref={playBtn} className="tb" aria-haspopup="menu" aria-expanded={menu === 'play'} aria-label={t('slides.toolbar.present')} title={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
         <Presentation />

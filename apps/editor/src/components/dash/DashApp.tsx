@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASH_PAGE, sandboxDoc, type FromDash, type QuerySource } from '@dc/core';
-import { display, isSaving, useStore } from '../../store';
+import { display, isSaving, openPane, useStore } from '../../store';
 import {
   changedParams,
   datasetsChanged,
@@ -26,7 +26,7 @@ import {
 } from './dash';
 import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { CodeI, Database, Moon, Refresh, Sun, Target } from '../icons';
+import { Moon, Refresh, Sun, Target } from '../icons';
 import { fileStem } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
@@ -115,7 +115,8 @@ function PageFrame() {
           break;
         }
         case 'dash-pick':
-          useDash.setState({ pick: m.pick, open: m.pick.sources[0] ?? null, side: 'sources' });
+          useDash.setState({ pick: m.pick, open: m.pick.sources[0] ?? null });
+          openPane('sources');
           break;
         case 'dash-exported': {
           const w = imageWaits.get(m.id);
@@ -208,10 +209,7 @@ export function DashApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const mode = useDash((s) => s.mode);
   const theme = useDash((s) => s.theme);
-  const side = useDash((s) => s.side);
-  const report = useDash((s) => s.report);
-  const states = useDash((s) => s.states);
-  const problems = (report?.flagged ?? 0) + (report?.errors.length ?? 0) + Object.values(states).filter((s) => s.status === 'error' || s.status === 'connect').length;
+  const side = useStore((s) => s.pane);
 
   useEffect(() => {
     resetDash();
@@ -242,8 +240,6 @@ export function DashApp() {
           label={t('dash.kind')}
           items={imageExportItems({ hint: t('common.transfer.hint.dashPage'), name: `${fileStem(index.title, 'dashboard')}.png`, make: () => pageImage() })}
         />
-        <BarButton icon={<Database />} label={t('dash.sources.label')} on={side === 'sources'} badge={problems ? <span className="badge">{problems}</span> : null} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })} />
-        <BarButton icon={<CodeI />} label={t('dash.bar.code')} on={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })} />
       </TopBar>
       <main className="dashmain">
         {mode === 'data' && <div className="dashhint">{t('dash.bar.dataModeHint')}</div>}

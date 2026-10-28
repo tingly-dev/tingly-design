@@ -100,7 +100,6 @@ export function CanvasTopBar() {
   return (
     <TopBar
       title={<ProjectTitle value={canvas.title} label={t('panel.canvas.nameLabel')} hint={t('common.topbar.rename')} onRename={(v) => editCanvas((c) => (c.title = v), `title → ${v}`)} />}
-      panel={{ label: t('app.view.panel'), hint: t('app.view.panelHint') }}
     >
       <BarButton
         icon={<Play />}

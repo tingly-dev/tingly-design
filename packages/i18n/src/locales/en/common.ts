@@ -29,6 +29,10 @@ export default {
   stop: 'Stop',
   undo: 'Undo',
   untitled: 'Untitled',
+  pane: {
+    inspector: 'Properties panel',
+    inspectorHint: 'Properties panel (⌘\\)',
+  },
   item: {
     cannotUndo: 'This cannot be undone.',
     restoreFailed: 'Could not bring “{{name}}” back.',

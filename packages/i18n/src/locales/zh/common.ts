@@ -31,6 +31,10 @@ export default {
   send: '发送',
   stop: '停止',
   undo: '撤销',
+  pane: {
+    inspector: '属性面板',
+    inspectorHint: '属性面板（⌘\\）',
+  },
   item: {
     cannotUndo: '删除后无法撤销。',
     restoreFailed: '无法恢复“{{name}}”。',
