@@ -106,7 +106,10 @@ export function CanvasTopBar() {
         label={mode === 'play' ? t('app.view.exitPlay') : t('app.view.play')}
         title={t('app.view.playHint')}
         on={mode === 'play'}
-        onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
+        onClick={() => {
+          if (mode === 'play' && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+          useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null });
+        }}
       />
       <FileMenu claudeDesign target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
     </TopBar>
