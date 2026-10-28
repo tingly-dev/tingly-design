@@ -73,6 +73,7 @@ async def main():
         async with ctx.expect_page() as pop:
             await body.locator('a', has_text='Tingly Box').first.click(modifiers=['Meta'])
         opened = await pop.value
+        await opened.wait_for_url(re.compile(r'^https://github\.com/tingly-dev/tingly-box'))  # a new tab starts at about:blank
         check('a link opens with ⌘/Ctrl-click', opened.url.startswith('https://github.com/tingly-dev/tingly-box'), opened.url)
         await opened.close()
         # double-click within the first word (the link's centre is the space between them), as with comments
@@ -81,6 +82,7 @@ async def main():
         async with ctx.expect_page() as pop:
             await pg.locator('.bubble button[aria-label="打开链接"]').click()
         opened = await pop.value
+        await opened.wait_for_url(re.compile(r'^https://github\.com/tingly-dev/tingly-box'))
         check('the selection menu opens the link too', opened.url.startswith('https://github.com/tingly-dev/tingly-box'), opened.url)
         await opened.close()
         await ctx.unroute('**github.com/tingly-dev/tingly-box**')

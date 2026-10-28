@@ -98,6 +98,13 @@ async def run(pg, lang, scheme):
             await expect(dlg).to_have_count(1)
             await pg.wait_for_timeout(300)
             check(f'{tag}: opens as a modal with focus inside', await pg.evaluate(INSIDE))
+            # the floating request bar sits under the scrim: the point at its centre belongs to the modal layer, not to the bar
+            if await pg.locator('.prompt').count():
+                check(f'{tag}: the request bar is under the dialog layer', await pg.evaluate('''() => {
+                    const r = document.querySelector('.prompt').getBoundingClientRect();
+                    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                    return !!el && !el.closest('.prompt');
+                }'''))
             if SHOTS:
                 await pg.screenshot(path=os.path.join(SHOTS, f'{name}-{lang}-{scheme}.png'))
             # walk further than the dialog has controls: focus never leaves it
