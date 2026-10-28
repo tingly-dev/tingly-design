@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough } from '@tabler/icons-react';
+import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -9,7 +9,7 @@ import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
-import { docsUserMessage, quoteAt, tabFile } from '@dc/core';
+import { DOC_COLOR_NAMES, docsUserMessage, quoteAt, tabFile } from '@dc/core';
 import { api } from '../../api';
 import { display, openPane, toast, useStore } from '../../store';
 import { dateLocale, saveTab, useComments, useDocs, threadsOf } from './docs';
@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';
 import { RichCodeBlock } from './richCode';
+import { TextColor } from './textColor';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
@@ -44,6 +45,63 @@ function OpenLink({ editor }: { editor: Editor }) {
     >
       <IconExternalLink size={16} stroke={1.7} aria-hidden="true" />
     </button>
+  );
+}
+
+/** Colours the selected words from the doc's palette (names, drawn with theme tokens); subscribes itself like `OpenLink`. */
+function TextColorPicker({ editor }: { editor: Editor }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [, force] = useState(0);
+  useEffect(() => {
+    const f = ({ transaction }: { transaction: { selectionSet: boolean } }) => {
+      if (transaction.selectionSet) setOpen(false);
+      force((n) => n + 1);
+    };
+    editor.on('transaction', f);
+    return () => {
+      editor.off('transaction', f);
+    };
+  }, [editor]);
+  const { from, to } = editor.state.selection;
+  const anyColor = editor.state.doc.rangeHasMark(from, to, editor.schema.marks.textColor);
+  const current = editor.isActive('textColor') ? (editor.getAttributes('textColor').color as string) : null;
+  return (
+    <>
+      <button className={open || anyColor ? 'on' : ''} aria-expanded={open} aria-label={t('docs.format.color')} title={t('docs.format.color')} onClick={() => setOpen(!open)}>
+        <IconTypography size={16} stroke={1.7} aria-hidden="true" />
+        <span className="swatchbar" data-color={current ?? undefined} />
+      </button>
+      {open && (
+        <span className="swatches" role="group" aria-label={t('docs.format.color')}>
+          {DOC_COLOR_NAMES.map((c) => (
+            <button
+              key={c}
+              className={`swatch${current === c ? ' on' : ''}`}
+              data-color={c}
+              aria-label={t(`docs.color.${c}`)}
+              title={t(`docs.color.${c}`)}
+              onClick={() => {
+                if (current === c) editor.chain().focus().unsetTextColor().run();
+                else editor.chain().focus().setTextColor(c).run();
+                setOpen(false);
+              }}
+            />
+          ))}
+          <button
+            aria-label={t('docs.color.clear')}
+            title={t('docs.color.clear')}
+            disabled={!anyColor}
+            onClick={() => {
+              editor.chain().focus().unsetTextColor().run();
+              setOpen(false);
+            }}
+          >
+            <IconX size={14} stroke={1.7} aria-hidden="true" />
+          </button>
+        </span>
+      )}
+    </>
   );
 }
 
@@ -176,6 +234,7 @@ export function DocEditor({ tab }: { tab: string }) {
         TaskItem.configure({ nested: true }),
         TableKit.configure({ table: { resizable: false } }),
         Highlight,
+        TextColor,
         ProjectImage,
         Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? tModule('docs.editor.headingPlaceholder') : tModule('docs.editor.placeholder')) }),
         Markdown.configure({ markedOptions: { gfm: true } }),
@@ -383,6 +442,7 @@ export function DocEditor({ tab }: { tab: string }) {
           <button className={editor.isActive('highlight') ? 'on' : ''} onClick={() => editor.chain().focus().toggleHighlight().run()} aria-label={t('docs.format.highlight')}>
             <IconHighlight size={16} stroke={1.7} aria-hidden="true" />
           </button>
+          <TextColorPicker editor={editor} />
           <OpenLink editor={editor} />
           <button
             className={editor.isActive('link') ? 'on' : ''}

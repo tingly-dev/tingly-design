@@ -37,6 +37,12 @@
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
   --scrim-ink: color-mix(in srgb, var(--ink) 78%, transparent);
   --mark: color-mix(in srgb, #ffc400 30%, var(--panel));
+  --doc-red: #c62828;
+  --doc-orange: #b45309;
+  --doc-green: #1f7a43;
+  --doc-blue: #2f6fed;
+  --doc-purple: #6d4fd8;
+  --doc-gray: #64748b;
   --comment: rgba(255, 196, 0, 0.22);
   --comment-on: rgba(255, 196, 0, 0.45);
   --comment-line: rgba(230, 160, 0, 0.7);
@@ -88,6 +94,12 @@
   --t-green: #4ade80;
   --t-pink: #f472b6;
   --mark: color-mix(in srgb, #ffc400 28%, var(--panel));
+  --doc-red: #ff8a80;
+  --doc-orange: #fb9a4b;
+  --doc-green: #4ade80;
+  --doc-blue: #7aa5ff;
+  --doc-purple: #a78bfa;
+  --doc-gray: #9aa4b2;
   --comment: rgba(255, 196, 0, 0.16);
   --comment-on: rgba(255, 196, 0, 0.32);
   --check-a: #2e3037;

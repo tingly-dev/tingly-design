@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { docToMarkdown, markdownToTab } from '../src';
+import { outlineOf, wordCount, docColorCss, docToMarkdown, isDocColor, markdownToTab } from '../src';
 
 const index = (title: string, tabs: object[]) => JSON.stringify({ title, tabs });
 const files = (m: Record<string, string>) => (id: string) => m[id];
@@ -81,6 +81,23 @@ describe('docToMarkdown', () => {
   it('keeps remote pictures and handles an empty doc', () => {
     expect(docToMarkdown(index('D', [{ id: 'm', title: 'M' }]), files({ m: '![](https://x.dev/a.png)' })).images).toEqual([]);
     expect(docToMarkdown(index('Empty', []), files({})).markdown).toBe('# Empty\n');
+  });
+});
+
+describe('text colour', () => {
+  it('keeps a coloured span through the export and names only palette colours', () => {
+    const { markdown } = docToMarkdown(index('T', [{ id: 'a', title: 'A' }]), files({ a: '# A\n\nsee <span data-color="red">**this**</span> ==now==\n' }));
+    expect(markdown).toContain('see <span data-color="red">**this**</span> <mark>now</mark>');
+    expect(isDocColor('red')).toBe(true);
+    expect(isDocColor('#f00')).toBe(false);
+    expect(docColorCss()).toContain('span[data-color="red"]{color:#c62828}');
+  });
+});
+
+describe('text colour in counts and outlines', () => {
+  it('does not count the tag as words or show it in a heading', () => {
+    expect(wordCount('<span data-color="red">hello</span>')).toBe(1);
+    expect(outlineOf('# A <span data-color="red">Big</span> title')[0].text).toBe('A Big title');
   });
 });
 
