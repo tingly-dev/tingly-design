@@ -129,6 +129,17 @@ async def main():
         await expect(pg.locator('.tile[data-asset="assets/Marks/dot.png"]')).to_be_visible()
         check('uploads land in their group, keeping their name', os.path.exists(os.path.join(DS, 'assets/Marks/dot.png')))
 
+        # an asset cannot be restored, so it is the one delete that asks first (in the editor's own dialog, not the window's)
+        dot = os.path.join(DS, 'assets/Marks/dot.png')
+        await pg.locator('.tile[data-asset="assets/Marks/dot.png"] button[aria-label^="删除"]').click()
+        await expect(pg.get_by_role('dialog')).to_be_visible()
+        await pg.get_by_role('dialog').get_by_role('button', name='取消').click()
+        await pg.wait_for_timeout(300)
+        check('cancelling the asset question keeps the file', os.path.exists(dot))
+        await pg.locator('.tile[data-asset="assets/Marks/dot.png"] button[aria-label^="删除"]').click()
+        await pg.get_by_role('dialog').get_by_role('button', name='删除').click()
+        check('confirming it deletes the asset', await wait_for(lambda: not os.path.exists(dot)))
+
         # --- issues from an outside edit -------------------------------------------------
         t = tokens()
         t['color']['tokens'].append({'name': 'oops', 'value': 'red'})
