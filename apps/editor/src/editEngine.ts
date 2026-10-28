@@ -306,7 +306,7 @@ export async function deleteFile(file: string): Promise<boolean> {
   return true;
 }
 
-export async function deleteBoard(file: string): Promise<void> {
+export async function deleteBoard(file: string, offerBack = true): Promise<void> {
   const project = get().project;
   if (!project) return;
   const c0 = canvasOf(get());
@@ -319,7 +319,16 @@ export async function deleteBoard(file: string): Promise<void> {
   }, `artboard ${file} removed`, false);
   set({ selection: null });
   // wait for any queued edits of the file itself, then delete it
-  if (!(await deleteFile(file)) || !entry || source === undefined) return;
+  if (!(await deleteFile(file))) {
+    // the file stayed (someone saved it meanwhile): the artboard goes back on the canvas rather than being left unlisted
+    if (entry)
+      editCanvas((c) => {
+        c.boards[file] = entry;
+        if (!c.order.includes(file)) c.order.splice(at < 0 ? c.order.length : Math.min(at, c.order.length), 0, file);
+      }, `artboard ${file} kept`, false);
+    return;
+  }
+  if (!entry || source === undefined || !offerBack) return;
   offerUndo(entry.title || file.replace(/\.dc\.html$/, ''), async () => {
     await putFiles({ [file]: source });
     editCanvas((c) => {

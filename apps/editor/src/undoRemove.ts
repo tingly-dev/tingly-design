@@ -9,12 +9,25 @@ import { toast, useStore } from './store';
  * its index. Only what cannot be brought back (a design system's binary assets) is confirmed first.
  */
 export function offerUndo(name: string, restore: () => void | Promise<void>): void {
-  toast(t('common.item.removed', { name }), 'info', { label: t('common.undo'), run: () => void restore() });
+  const project = useStore.getState().project;
+  toast(t('common.item.removed', { name }), 'info', {
+    label: t('common.undo'),
+    run: () => {
+      // another project was opened since: what was removed here is not put into that one
+      if (useStore.getState().project !== project) return;
+      Promise.resolve()
+        .then(restore)
+        .catch(() => toast(t('common.item.restoreFailed', { name }), 'error'));
+    },
+  });
 }
 
-/** Write removed files back as new files (their old versions are gone). */
+/** Write removed files back as new files (their old versions are gone); throws when a file has appeared at the same path since. */
 export async function putFiles(files: Record<string, string>): Promise<void> {
   const project = useStore.getState().project;
   if (!project) return;
-  for (const [file, content] of Object.entries(files)) await api.put(project, file, { content, baseVersion: null, actor: 'undo', summary: 'restored' });
+  for (const [file, content] of Object.entries(files)) {
+    const r = await api.put(project, file, { content, baseVersion: null, actor: 'undo', summary: 'restored' });
+    if ('conflict' in r) throw new Error(`${file} exists`);
+  }
 }

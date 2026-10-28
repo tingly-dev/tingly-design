@@ -91,7 +91,7 @@ export function duplicateSlide(id: string): string | null {
   return copy;
 }
 
-export async function deleteSlide(id: string): Promise<void> {
+export async function deleteSlide(id: string, offerBack = true): Promise<void> {
   const s = get();
   const ids = slideIds(s);
   if (ids.length <= 1) return toast(t('slides.toast.lastSlide'));
@@ -112,7 +112,7 @@ export async function deleteSlide(id: string): Promise<void> {
     }
   }, t('slides.journal.slideRemoved', { id }), false);
   goToSlide(next);
-  if (!(await deleteFile(slideFile(id))) || source === undefined) return;
+  if (!(await deleteFile(slideFile(id))) || source === undefined || !offerBack) return;
   offerUndo(slideTitle(source, id), async () => {
     await putFiles({ [slideFile(id)]: source });
     editDeck((d) => {

@@ -33,6 +33,7 @@ export default {
   undo: '撤销',
   item: {
     cannotUndo: '删除后无法撤销。',
+    restoreFailed: '无法恢复“{{name}}”。',
     removed: '已删除“{{name}}”',
     addAfter: '在后面添加',
     duplicate: '复制',

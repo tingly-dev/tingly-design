@@ -95,7 +95,8 @@ export function copySelection(): void {
 export function cutSelection(): void {
   if (locked()) return;
   copySelection();
-  deleteSelection();
+  // the clipboard holds what was cut: no Undo that would leave two copies
+  deleteSelection(false);
 }
 
 export function paste(): void {
@@ -153,7 +154,7 @@ export function duplicateSelection(): void {
   }
 }
 
-export function deleteSelection(): void {
+export function deleteSelection(offerBack = true): void {
   const s = get();
   const sel = s.selection;
   if (locked()) return;
@@ -169,8 +170,8 @@ export function deleteSelection(): void {
     toast(t('app.scene.notInEditor'));
   } else if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
-    if (s.kind === 'slides' && slide) void deleteSlide(slide);
-    else void deleteBoard(sel.file);
+    if (s.kind === 'slides' && slide) void deleteSlide(slide, offerBack);
+    else void deleteBoard(sel.file, offerBack);
   }
 }
 
