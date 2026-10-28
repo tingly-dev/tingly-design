@@ -14,5 +14,6 @@ export default {
     localSystem: '索引里写的设计系统在本机，不在 claude.ai 上。发布之前请装入真正的那一个。',
     slidePictures: '幻灯片里的 {{count}} 张图片是 uploads/ 下的文件。发布前要先作为素材上传，README 里写了怎么做。',
     sqlite: '本地的 SQLite 数据库没有带上，因为原版 Dashboard 读不了它。',
+    queryData: '{{count}} 个 SQLite 查询的行已按 CSV 放进包里的 blobs/，各数据集指向自己的文件，查询留在数据集里。',
   },
 };

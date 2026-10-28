@@ -32,6 +32,7 @@ Things the toast, or the README, will tell you:
 
 - **Slides' pictures** are files under `uploads/`; the original only accepts uploaded assets there, so Claude Code uploads them before publishing.
 - **A design system installed from a project here** is named by a local path. Install the real one on claude.ai.
-- **A local SQLite database** is left out; the original Dashboard cannot read one. Datasets that query a connector the other side does not have need replacing with an attached file.
+- **A SQLite query's rows go along** as a `blobs/<id>.csv` per dataset; the dataset points at its file and keeps the query. Claude Code uploads the CSV as an asset before publishing. The database itself is left out — the original Dashboard cannot read one — and a query whose rows could not be read stays a query.
+- **Datasets that query a connector** the other side does not have need replacing with an attached file.
 
 The change log, rendered videos, the git folder and other local files never go in a package. To keep a project as it is (change log and design systems included), use **Whole project (.zip)** instead.
