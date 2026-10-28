@@ -138,6 +138,11 @@ async def main():
         ok = await wait_for(lambda: 'data-color' not in tab('overview'))
         check('clearing the colour takes the span out', ok, [l for l in tab('overview').splitlines() if 'See ' in l])
 
+        before = tab('overview')
+        write(os.path.join(DOC, 'tabs/overview.md'), before.rstrip('\n') + "\n\nWritten by Claude Code: <span data-color='blue'>a blue phrase</span>.\n")
+        await expect(body.locator('span[data-color=blue]')).to_have_text('a blue phrase')
+        check('a span written outside the editor is drawn coloured', True)
+
         # --- someone else writes at the same time ------------------------------------------
         before = tab('overview')
         write(os.path.join(DOC, 'tabs/overview.md'), before.replace('## What Tingly Design is', '## What Tingly Design does'))

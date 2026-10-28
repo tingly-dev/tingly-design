@@ -54,16 +54,21 @@ function TextColorPicker({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const [, force] = useState(0);
   useEffect(() => {
-    const f = () => force((n) => n + 1);
+    const f = ({ transaction }: { transaction: { selectionSet: boolean } }) => {
+      if (transaction.selectionSet) setOpen(false);
+      force((n) => n + 1);
+    };
     editor.on('transaction', f);
     return () => {
       editor.off('transaction', f);
     };
   }, [editor]);
+  const { from, to } = editor.state.selection;
+  const anyColor = editor.state.doc.rangeHasMark(from, to, editor.schema.marks.textColor);
   const current = editor.isActive('textColor') ? (editor.getAttributes('textColor').color as string) : null;
   return (
     <>
-      <button className={open || current ? 'on' : ''} aria-expanded={open} aria-label={t('docs.format.color')} title={t('docs.format.color')} onClick={() => setOpen(!open)}>
+      <button className={open || anyColor ? 'on' : ''} aria-expanded={open} aria-label={t('docs.format.color')} title={t('docs.format.color')} onClick={() => setOpen(!open)}>
         <IconTypography size={16} stroke={1.7} aria-hidden="true" />
         <span className="swatchbar" data-color={current ?? undefined} />
       </button>
@@ -77,7 +82,8 @@ function TextColorPicker({ editor }: { editor: Editor }) {
               aria-label={t(`docs.color.${c}`)}
               title={t(`docs.color.${c}`)}
               onClick={() => {
-                editor.chain().focus().setTextColor(c).run();
+                if (current === c) editor.chain().focus().unsetTextColor().run();
+                else editor.chain().focus().setTextColor(c).run();
                 setOpen(false);
               }}
             />
@@ -85,7 +91,7 @@ function TextColorPicker({ editor }: { editor: Editor }) {
           <button
             aria-label={t('docs.color.clear')}
             title={t('docs.color.clear')}
-            disabled={!current}
+            disabled={!anyColor}
             onClick={() => {
               editor.chain().focus().unsetTextColor().run();
               setOpen(false);

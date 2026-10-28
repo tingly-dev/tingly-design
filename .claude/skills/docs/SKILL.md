@@ -23,7 +23,7 @@ Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/design-gui
 
 GitHub-flavoured Markdown, one tab per file, starting with the tab's own `# Title`. What the editor shows and edits:
 
-- headings `#`–`######`, paragraphs (a line break inside one is two trailing spaces), **bold**, *italic*, ~~strike~~, `code`, `==highlight==` (the editor's highlighter; not standard Markdown, but it is what the editor reads and writes), and coloured words as `<span data-color="red">words</span>` (the only raw HTML the editor reads; the name is one of `red`, `orange`, `green`, `blue`, `purple`, `gray`, drawn with a colour that holds in dark mode; never a hex value or a `style`).
+- headings `#`–`######`, paragraphs (a line break inside one is two trailing spaces), **bold**, *italic*, ~~strike~~, `code`, `==highlight==` (the editor's highlighter; not standard Markdown, but it is what the editor reads and writes), and coloured words as `<span data-color="red">words</span>` (the only raw HTML the editor reads; the name is one of `red`, `orange`, `green`, `blue`, `purple`, `gray`, drawn with a colour that holds in dark mode; never a hex value or a `style`, and spans do not nest).
 - bullet, numbered and task lists (`- [ ]`, `- [x]`), nested by two spaces; block quotes; fenced code blocks with a language (three languages draw themselves when the cursor is elsewhere, the file keeps the plain fence: ` ```mermaid ` a diagram, ` ```latex ` a formula, ` ```csv ` / ` ```tsv ` a table; prefer them to ASCII art); tables (a header row and a rule row; `:--` / `--:` align); `---` rules; images `![alt](../assets/x.png)`; links.
 - Other raw HTML is not editable in the editor; avoid it.
 

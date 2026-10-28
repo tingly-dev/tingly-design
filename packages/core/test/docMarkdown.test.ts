@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { docColorCss, docToMarkdown, isDocColor, markdownToTab } from '../src';
+import { outlineOf, wordCount, docColorCss, docToMarkdown, isDocColor, markdownToTab } from '../src';
 
 const index = (title: string, tabs: object[]) => JSON.stringify({ title, tabs });
 const files = (m: Record<string, string>) => (id: string) => m[id];
@@ -91,6 +91,13 @@ describe('text colour', () => {
     expect(isDocColor('red')).toBe(true);
     expect(isDocColor('#f00')).toBe(false);
     expect(docColorCss()).toContain('span[data-color="red"]{color:#c62828}');
+  });
+});
+
+describe('text colour in counts and outlines', () => {
+  it('does not count the tag as words or show it in a heading', () => {
+    expect(wordCount('<span data-color="red">hello</span>')).toBe(1);
+    expect(outlineOf('# A <span data-color="red">Big</span> title')[0].text).toBe('A Big title');
   });
 });
 

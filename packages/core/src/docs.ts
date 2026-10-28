@@ -375,7 +375,7 @@ export interface Heading {
 
 function plain(tokens: Token[] | undefined): string {
   if (!tokens) return '';
-  return tokens.map((t) => ('tokens' in t && t.tokens ? plain(t.tokens) : 'text' in t ? String(t.text) : '')).join('');
+  return tokens.map((t) => (t.type === 'html' ? '' : 'tokens' in t && t.tokens ? plain(t.tokens) : 'text' in t ? String(t.text) : '')).join('');
 }
 
 export function outlineOf(source: string): Heading[] {
@@ -391,7 +391,7 @@ export function outlineOf(source: string): Heading[] {
 
 /** Words as people count them: each CJK character is one, other runs of letters and digits are one. */
 export function wordCount(source: string): number {
-  const text = source.replace(/```[\s\S]*?```/g, ' ').replace(/[#>*_`~|[\]()!-]/g, ' ');
+  const text = source.replace(/```[\s\S]*?```/g, ' ').replace(/<\/?[a-z][^>\n]*>/gi, ' ').replace(/[#>*_`~|[\]()!-]/g, ' ');
   const cjk = text.match(/[぀-ヿ㐀-鿿豈-﫿가-힯]/g)?.length ?? 0;
   const words = text.replace(/[぀-ヿ㐀-鿿豈-﫿가-힯]/g, ' ').match(/[\p{L}\p{N}]+/gu)?.length ?? 0;
   return cjk + words;

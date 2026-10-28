@@ -10,7 +10,7 @@ declare module '@tiptap/core' {
   }
 }
 
-const SPAN = new RegExp(`^<span data-color="(${DOC_COLOR_NAMES.join('|')})">([\\s\\S]*?)</span>`);
+const SPAN = new RegExp(`^<span data-color=["'](${DOC_COLOR_NAMES.join('|')})["']>([\\s\\S]*?)</span>`);
 
 /** Coloured words. In the Markdown file they are `<span data-color="red">…</span>` (names, not hex: `docColors.ts`); the editor draws the name with a theme token. */
 export const TextColor = Mark.create({
