@@ -198,3 +198,43 @@ describe('themeRecordOf', () => {
     expect(themeRecordOf(undefined)).toBeNull();
   });
 });
+
+describe('what the review of the first version found', () => {
+  const BARE = '<div style="background:#ffffff;color:#222222"><b style="background:#0000ff;color:#ffffff">go</b></div>';
+
+  it('rewrites a page colour only as a background, so white button text keeps reading', () => {
+    const plan = planTheme([BARE], [TINGLY], { system: 'tingly', theme: 'dark' }, null)!;
+    const out = applyThemePlan(BARE, plan.files[0]);
+    expect(out).toContain('background:#111317');
+    expect(out).toContain('color:#ffffff'); // the button's text is not the page
+  });
+
+  it('does not lose the original when a file added later is themed in a second pass', () => {
+    const first = planTheme([ORIGINAL_A], [TINGLY], { system: 'tingly', theme: 'light' }, null)!;
+    const themed = applyThemePlan(ORIGINAL_A, first.files[0]);
+    const second = planTheme([themed, ORIGINAL_B], [TINGLY], { system: 'tingly', theme: 'light' }, first.record)!;
+    expect(second.record?.base?.colors.page).toBe(first.record?.base?.colors.page);
+  });
+
+  it('does not take a page for a themed one because a few of its colours match', () => {
+    const page = '<div style="background:#123456;color:#654321;border-color:#aa5500"><i style="color:#ffffff">a</i><i style="color:#ffffff">b</i></div>';
+    expect(detectTheme(scanSources([page]), [TINGLY])).toBeNull();
+  });
+
+  it('leaves urls alone, in an import and in a background', () => {
+    const css = '<style>@import url("https://fonts.example/css#abc");a{background:url(data:image/png;base64,#abc) #f7f7f4}</style>';
+    const plan = planTheme([css], [TINGLY], { system: 'tingly', theme: 'dark' }, null)!;
+    const out = applyThemePlan(css, plan.files[0]);
+    expect(out).toContain('url("https://fonts.example/css#abc")');
+    expect(out).toContain('base64,#abc');
+  });
+
+  it('counts only colours no system owns as the ones that stay', () => {
+    const plan = planTheme([BOARD], [TINGLY], { system: 'tingly', theme: 'dark' }, null)!;
+    expect(plan.stay).toBe(0);
+    expect(plan.changes).toBeGreaterThan(0);
+  });
+});
+
+const ORIGINAL_A = '<div style="background:#eeeeee;color:#222222"><i style="color:#e11d48">a</i></div>';
+const ORIGINAL_B = '<div style="background:#000000;color:#dddddd"><i style="color:#00ff00">b</i></div>';

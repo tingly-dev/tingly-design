@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { COLOUR_GROUPS, colourGroup, detectTheme, dsGlance, normColour, scanSources, themeContrast, type ThemeSystem } from '@dc/core';
+import { COLOUR_GROUPS, colourGroup, detectTheme, dsGlance, scanSources, strayColours, themeContrast, type ThemeSystem } from '@dc/core';
 import { useStore } from '../../store';
 import { Segmented } from '../Segmented';
 import { DsInstall } from './DsInstall';
-import { applyTheme, planFor, themeName, useThemeInputs, type ThemeScope } from './themeApply';
+import { applyTheme, themeName, useThemeInputs, type ThemeScope } from './themeApply';
 
 /**
  * The Theme tab of a canvas or deck (`.design/project-theme.md`): every theme of every installed design system as a
@@ -16,15 +16,13 @@ export function ThemeTab() {
   const { t } = useTranslation();
   const slides = useStore((s) => s.kind === 'slides');
   const [scope, setScope] = useState<ThemeScope>('all');
-  const { kind, systems, record, sources } = useThemeInputs(slides ? scope : 'all');
+  const { systems, record, sources } = useThemeInputs(slides ? scope : 'all');
   const stats = useMemo(() => scanSources(sources), [sources]);
   const worn = useMemo(() => detectTheme(stats, systems, record), [stats, systems, record]);
-  const canOriginal = useMemo(() => !!planFor(kind, systems, sources, record, 'original'), [kind, systems, sources, record]);
+  // the original is there when the work was switched from one (the plan itself is made when the card is clicked)
+  const canOriginal = !!record?.base && !!worn;
   const wornSystem = worn ? systems.find((x) => x.namespace === worn.system) : undefined;
-  const stay = useMemo(() => {
-    const own = new Set(wornSystem && worn ? wornSystem.tokens.colors.map((c) => normColour(c.values[worn.theme] ?? '')) : []);
-    return [...stats.colours.keys()].filter((k) => !own.has(k)).length;
-  }, [stats, wornSystem, worn]);
+  const stay = useMemo(() => strayColours(stats, systems).length, [stats, systems]);
 
   return (
     <div className="sec themetab">

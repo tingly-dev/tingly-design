@@ -51,6 +51,8 @@ interface EditOptions {
   undoable?: boolean;
   /** a change spanning files (a PPTX appended to the deck): its undo removes exactly these slides */
   batch?: { ids: string[]; sources: Record<string, string> };
+  /** this edit and the others of the same group are one step of undo and redo */
+  group?: string;
 }
 
 /** Queue an edit already computed against `basis`. `apply` replays it on a newer file after a conflict. */
@@ -64,7 +66,7 @@ export function enqueueResult(
   if (optimistic === basis) return false;
   const item: Pending = { id: ++pendingId, basis, optimistic, apply, actor: opts.actor, summary: opts.summary, prompt: opts.prompt };
   patchEntry(file, (e) => ({ ...e, pending: [...e.pending, item] }));
-  if (opts.undoable !== false) set((s) => ({ undo: [...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}) }].slice(-100), redo: [] }));
+  if (opts.undoable !== false) set((s) => ({ undo: [...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}), ...(opts.group ? { group: opts.group } : {}) }].slice(-100), redo: [] }));
   void pump(file);
   return true;
 }
@@ -217,20 +219,44 @@ export function editCanvas(mutate: (c: CanvasJson) => void, summary: string, und
   );
 }
 
+/** The steps at the end of a stack that belong to the last one's group (or just that one). */
+function lastStep(stack: State['undo']): State['undo'] {
+  const last = stack.at(-1);
+  if (!last) return [];
+  if (!last.group) return [last];
+  let from = stack.length - 1;
+  while (from > 0 && stack[from - 1].group === last.group) from--;
+  return stack.slice(from);
+}
+
 export function undo(): void {
-  const item = get().undo.at(-1);
-  if (!item) return;
-  set((s) => ({ undo: s.undo.slice(0, -1), redo: [...s.redo, item] }));
-  if (item.batch) return batchRemove(item.batch);
-  edit(item.file, (src) => rebaseSwap(src, item.after, item.before), { actor: 'undo', summary: 'undo', undoable: false });
+  const items = lastStep(get().undo);
+  if (!items.length) return;
+  set((s) => ({ undo: s.undo.slice(0, s.undo.length - items.length), redo: [...s.redo, ...items] }));
+  for (const item of items) {
+    if (item.batch) batchRemove(item.batch);
+    else edit(item.file, (src) => rebaseSwap(src, item.after, item.before), { actor: 'undo', summary: 'undo', undoable: false });
+  }
 }
 
 export function redo(): void {
-  const item = get().redo.at(-1);
-  if (!item) return;
-  set((s) => ({ redo: s.redo.slice(0, -1), undo: [...s.undo, item] }));
-  if (item.batch) return batchRestore(item.batch);
-  edit(item.file, (src) => rebaseSwap(src, item.before, item.after), { actor: 'undo', summary: 'redo', undoable: false });
+  const items = lastStep(get().redo);
+  if (!items.length) return;
+  set((s) => ({ redo: s.redo.slice(0, s.redo.length - items.length), undo: [...s.undo, ...items] }));
+  for (const item of items) {
+    if (item.batch) batchRestore(item.batch);
+    else edit(item.file, (src) => rebaseSwap(src, item.before, item.after), { actor: 'undo', summary: 'redo', undoable: false });
+  }
+}
+
+/** True while the last step of undo is this group's, so undoing it is undoing exactly that action. */
+export function isLastGroup(group: string): boolean {
+  return get().undo.at(-1)?.group === group;
+}
+
+/** Forget a group's steps (its action was taken back another way). */
+export function dropGroup(group: string): void {
+  set((s) => ({ undo: s.undo.filter((u) => u.group !== group), redo: s.redo.filter((u) => u.group !== group) }));
 }
 
 /** Undo of a whole appended batch: the deck drops exactly these ids (a targeted edit, so later

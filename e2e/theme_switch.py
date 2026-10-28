@@ -115,7 +115,12 @@ async def main():
             check('and the record', await wait_for(lambda: 'theme' not in index(CANVAS, 'canvas.json')))
 
             await dark.click()
-            await wait_for(lambda: '#111317' in src(CANVAS, 'Main.dc.html'))
+            await wait_for(lambda: '#111317' in src(CANVAS, 'Main.dc.html') and '#111317' in src(CANVAS, 'Other.dc.html'))
+            await pg.evaluate('document.activeElement && document.activeElement.blur()')
+            await pg.locator('body').press('Control+z')
+            check('⌘Z takes the whole switch back in one step', await wait_for(lambda: src(CANVAS, 'Main.dc.html') == THEMED and src(CANVAS, 'Other.dc.html') == THEMED2 and 'theme' not in index(CANVAS, 'canvas.json')))
+            await pg.locator('body').press('Control+Shift+z')
+            check('and ⇧⌘Z does it again', await wait_for(lambda: '#111317' in src(CANVAS, 'Main.dc.html') and '#111317' in src(CANVAS, 'Other.dc.html') and index(CANVAS, 'canvas.json').get('theme', {}).get('theme') == 'dark'))
             await light.click()
             check('switching back is the same one click', await wait_for(lambda: src(CANVAS, 'Main.dc.html').lower() == THEMED.lower() or ('#f7f7f4' in src(CANVAS, 'Main.dc.html').lower() and '#111317' not in src(CANVAS, 'Main.dc.html'))))
 

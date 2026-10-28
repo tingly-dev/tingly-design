@@ -169,12 +169,13 @@ export function themeContrast(t: DsTokens, theme: string): ContrastCheck[] {
 /** Declarations of the page's style: inline `style`, `<style>` blocks and the presentation attributes colours live in; scripts are left alone. */
 const DECL_CONTEXT =
   /(<script\b[\s\S]*?<\/script>)|(<style\b[^>]*>)([\s\S]*?)(<\/style>)|((?<![\w-])style\s*=\s*)("[^"]*"|'[^']*')|((?<![\w-])(?:fill|stroke|stop-color|flood-color|color)\s*=\s*)("[^"]*"|'[^']*')/gi;
-const DECL = /([\w-]+)(\s*:\s*)([^;{}]*)/g;
+const DECL = /url\([^)]*\)|([\w-]+)(\s*:\s*)((?:url\([^)]*\)|[^;{}])*)/g;
 
 type Visit = (prop: string, value: string) => string | undefined;
 
 function declList(text: string, visit: Visit): string {
-  return text.replace(DECL, (m, prop: string, colon: string, value: string) => {
+  return text.replace(DECL, (m, prop: string | undefined, colon: string, value: string) => {
+    if (prop === undefined) return m;
     const out = visit(prop.toLowerCase(), value);
     return out === undefined ? m : prop + colon + out;
   });
@@ -231,42 +232,72 @@ export interface SourceStats {
   pages: Map<string, number>;
 }
 
-export function scanSources(sources: string[]): SourceStats {
+function scanOne(source: string): SourceStats {
   const stats: SourceStats = { colours: new Map(), fonts: new Map(), pages: new Map() };
-  for (const source of sources) {
-    mapDecls(source, (prop, value) => {
-      if (prop === 'font-family') {
-        const raw = value.replace(/!important/i, '').trim();
-        const n = normFont(raw);
-        if (n && !n.includes('{{')) {
-          const f = stats.fonts.get(n) ?? { raw, count: 0 };
-          f.count++;
-          stats.fonts.set(n, f);
-        }
-        return undefined;
+  mapDecls(source, (prop, value) => {
+    if (prop === 'font-family') {
+      const raw = value.replace(/!important/i, '').trim();
+      const n = normFont(raw);
+      if (n && !n.includes('{{')) {
+        const f = stats.fonts.get(n) ?? { raw, count: 0 };
+        f.count++;
+        stats.fonts.set(n, f);
       }
-      mapColourValue(value, (n, raw) => {
-        const u = stats.colours.get(n) ?? { raw, count: 0, props: {} };
-        u.count++;
-        u.props[prop] = (u.props[prop] ?? 0) + 1;
-        stats.colours.set(n, u);
-        return undefined;
-      });
+      return undefined;
+    }
+    mapColourValue(value, (n, raw) => {
+      const u = stats.colours.get(n) ?? { raw, count: 0, props: {} };
+      u.count++;
+      u.props[prop] = (u.props[prop] ?? 0) + 1;
+      stats.colours.set(n, u);
       return undefined;
     });
-    try {
-      const doc = parseDc(source);
-      const root = rootElement(doc);
-      const style = root ? attr(root, 'style') : undefined;
-      const paint = style ? (getStyle(style, 'background') ?? getStyle(style, 'background-color')) : undefined;
-      let found: string | undefined;
-      if (paint) mapColourValue(paint, (n) => ((found ??= n), undefined));
-      if (found) stats.pages.set(found, (stats.pages.get(found) ?? 0) + 1);
-    } catch {
-      // a file that does not parse has no page colour
-    }
+    return undefined;
+  });
+  try {
+    const root = rootElement(parseDc(source));
+    const style = root ? attr(root, 'style') : undefined;
+    const paint = style ? (getStyle(style, 'background') ?? getStyle(style, 'background-color')) : undefined;
+    let found: string | undefined;
+    if (paint) mapColourValue(paint, (n) => ((found ??= n), undefined));
+    if (found) stats.pages.set(found, 1);
+  } catch {
+    // a file that does not parse has no page colour
   }
   return stats;
+}
+
+// the Theme tab reads every file on each change while it is open; a file that did not change is not read again
+const scanCache = new Map<string, SourceStats>();
+function scanCached(source: string): SourceStats {
+  let s = scanCache.get(source);
+  if (!s) {
+    s = scanOne(source);
+    if (scanCache.size >= 400) scanCache.delete(scanCache.keys().next().value!);
+    scanCache.set(source, s);
+  }
+  return s;
+}
+
+export function scanSources(sources: string[]): SourceStats {
+  if (sources.length === 1) return scanCached(sources[0]);
+  const all: SourceStats = { colours: new Map(), fonts: new Map(), pages: new Map() };
+  for (const src of sources) {
+    const st = scanCached(src);
+    for (const [k, u] of st.colours) {
+      const a = all.colours.get(k) ?? { raw: u.raw, count: 0, props: {} };
+      a.count += u.count;
+      for (const [p, n] of Object.entries(u.props)) a.props[p] = (a.props[p] ?? 0) + n;
+      all.colours.set(k, a);
+    }
+    for (const [k, f] of st.fonts) {
+      const a = all.fonts.get(k) ?? { raw: f.raw, count: 0 };
+      a.count += f.count;
+      all.fonts.set(k, a);
+    }
+    for (const [k, n] of st.pages) all.pages.set(k, (all.pages.get(k) ?? 0) + n);
+  }
+  return all;
 }
 
 // ---------------------------------------------------------------- what a project wears
@@ -276,16 +307,26 @@ export interface WornTheme extends ThemeTarget {
   score: number;
 }
 
+/** The share of a file's colour uses that must be a theme's tokens for the file to wear it. */
+const WEARS_SHARE = 0.4;
+
 /** The (system, theme) whose token values the files use most, or null when they use none of them: the original look. */
 export function detectTheme(stats: SourceStats, systems: ThemeSystem[], prefer?: ThemeTarget | null): WornTheme | null {
   let best: WornTheme | null = null;
+  const total = [...stats.colours.values()].reduce((n, u) => n + u.count, 0);
   for (const s of systems) {
     for (const th of s.tokens.themes) {
       const values = new Set(s.tokens.colors.map((c) => normColour(c.values[th.id] ?? '')).filter((v): v is string => !!v));
       let score = 0;
-      for (const v of values) score += stats.colours.get(v)?.count ?? 0;
+      let distinct = 0;
+      for (const v of values) {
+        const n = stats.colours.get(v)?.count ?? 0;
+        score += n;
+        if (n) distinct++;
+      }
       const better = !best || score > best.score || (score === best.score && prefer?.system === s.namespace && prefer.theme === th.id);
-      if (score > 0 && better) best = { system: s.namespace, theme: th.id, score };
+      // a few white buttons in an otherwise unthemed page are not the system's surface: several of its colours, and most of the uses, have to be its own
+      if (score > 0 && score >= total * WEARS_SHARE && distinct >= Math.min(2, stats.colours.size) && better) best = { system: s.namespace, theme: th.id, score };
     }
   }
   return best;
@@ -301,6 +342,8 @@ export interface PlannedColour {
   from: string;
   to: string;
   count: number;
+  /** only where the colour is written for one of these properties (a page colour is a background, not the text on a button) */
+  props?: RegExp;
 }
 
 export interface PlannedFont {
@@ -337,12 +380,35 @@ export interface PlanOptions {
 
 const MONO = /mono|code|courier|consolas|menlo/i;
 
-function finish(files: FilePlan[], plan: Omit<ThemePlan, 'files' | 'stay' | 'changes'>, all: SourceStats): ThemePlan {
+/** Where a role's colour is rewritten when the work never wore a system: its page colour as a background, its text colour as text, stroke or border. */
+const ROLE_PROPS: Partial<Record<ColourRole, RegExp>> = {
+  page: /^(background(-color)?|fill|stop-color)$/,
+  ink: /^(color|fill|stroke|caret-color|text-decoration-color|(border|outline)(-[a-z]+)*)$/,
+};
+
+const usesOf = (u: ColourUse | undefined, props?: RegExp): number =>
+  !u ? 0 : props ? Object.entries(u.props).reduce((n, [p, c]) => n + (props.test(p) ? c : 0), 0) : u.count;
+
+/** Every colour any installed system's themes hold, written one way. */
+function tokenColours(systems: ThemeSystem[]): Set<string> {
+  const out = new Set<string>();
+  for (const s of systems) for (const c of s.tokens.colors) for (const v of Object.values(c.values)) { const n = normColour(v); if (n) out.add(n); }
+  return out;
+}
+
+/** The distinct colours in the files that belong to no installed design system. */
+export function strayColours(stats: SourceStats, systems: ThemeSystem[]): string[] {
+  const known = tokenColours(systems);
+  return [...stats.colours.keys()].filter((k) => !known.has(k));
+}
+
+function finish(files: FilePlan[], plan: Omit<ThemePlan, 'files' | 'stay' | 'changes'>, all: SourceStats, systems: ThemeSystem[]): ThemePlan {
   const touched = new Set(files.flatMap((f) => f.colours.map((c) => c.from)));
   return {
     ...plan,
     files,
-    stay: [...all.colours.keys()].filter((k) => !touched.has(k)).length,
+    // what no system owns and the switch did not take: those colours are still the old ones
+    stay: strayColours(all, systems).filter((k) => !touched.has(k)).length,
     changes: files.reduce((n, f) => n + f.colours.reduce((m, c) => m + c.count, 0) + f.fonts.reduce((m, x) => m + x.count, 0), 0),
   };
 }
@@ -429,7 +495,7 @@ export function planTheme(sources: string[], systems: ThemeSystem[], to: ThemeTa
       const tok = rt[role];
       const toValue = tok?.values[to.theme];
       if (!from || !tok || !toValue || from === normColour(toValue)) continue;
-      colours.push({ role, token: tok.name, from, to: toValue, count: 0 });
+      colours.push({ role, token: tok.name, from, to: toValue, count: 0, props: ROLE_PROPS[role] });
       baseColours[role] = st.colours.get(from)?.raw ?? from;
     }
     const baseFonts: Record<string, string> = {};
@@ -448,14 +514,15 @@ export function planTheme(sources: string[], systems: ThemeSystem[], to: ThemeTa
     }
     for (const i of bare) {
       files[i] = {
-        colours: colours.map((c) => ({ ...c, count: each[i].colours.get(c.from)?.count ?? 0 })).filter((c) => c.count),
+        colours: colours.map((c) => ({ ...c, count: usesOf(each[i].colours.get(c.from), c.props) })).filter((c) => c.count),
         fonts: fonts.map((f) => ({ ...f, count: each[i].fonts.get(f.from)?.count ?? 0 })).filter((f) => f.count),
       };
     }
-    if (colours.length || fonts.length) base = { colors: baseColours, fonts: baseFonts };
+    // what the work was before it first wore a system stays: files added later and themed in a second pass do not replace it
+    if (colours.length || fonts.length) base = { colors: { ...baseColours, ...record?.base?.colors }, fonts: { ...baseFonts, ...record?.base?.fonts } };
   }
   const from = detectTheme(all, systems, record);
-  return finish(files, { from, to, record: { ...to, ...(base ? { base } : {}) } }, all);
+  return finish(files, { from, to, record: { ...to, ...(base ? { base } : {}) } }, all, systems);
 }
 
 /** What putting the original look back would do; null when the work has none to go back to. */
@@ -476,8 +543,9 @@ export function planOriginal(sources: string[], systems: ThemeSystem[], record: 
       const tok = roles[role as ColourRole];
       const value = tok ? normColour(tok.values[cur.theme] ?? '') : null;
       if (!tok || !value || value === normColour(raw) || colours.some((c) => c.from === value)) continue;
-      const count = st.colours.get(value)?.count ?? 0;
-      if (count) colours.push({ role, token: tok.name, from: value, to: raw, count });
+      const props = ROLE_PROPS[role as ColourRole];
+      const count = usesOf(st.colours.get(value), props);
+      if (count) colours.push({ role, token: tok.name, from: value, to: raw, count, props });
     }
     const fonts: PlannedFont[] = [];
     if (opts.fonts) {
@@ -489,13 +557,13 @@ export function planOriginal(sources: string[], systems: ThemeSystem[], record: 
     }
     return { colours, fonts };
   });
-  return finish(files, { from, to: 'original', record: null }, all);
+  return finish(files, { from, to: 'original', record: null }, all, systems);
 }
 
 /** One file's source with its part of a plan written over it. */
 export function applyThemePlan(source: string, plan: FilePlan | undefined): string {
   if (!plan) return source;
-  const cm = new Map(plan.colours.map((c) => [c.from, c.to]));
+  const cm = new Map(plan.colours.map((c) => [c.from, c]));
   const fm = new Map(plan.fonts.map((f) => [f.from, f.to]));
   if (!cm.size && !fm.size) return source;
   return mapDecls(source, (prop, value) => {
@@ -506,7 +574,10 @@ export function applyThemePlan(source: string, plan: FilePlan | undefined): stri
       return m[1] + to + m[3];
     }
     if (!cm.size) return undefined;
-    const out = mapColourValue(value, (n) => cm.get(n));
+    const out = mapColourValue(value, (n) => {
+      const c = cm.get(n);
+      return c && (!c.props || c.props.test(prop)) ? c.to : undefined;
+    });
     return out === value ? undefined : out;
   });
 }

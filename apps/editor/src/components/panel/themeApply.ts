@@ -4,6 +4,10 @@ import {
   CANVAS_FILE,
   DECK_FILE,
   applyThemePlan,
+  parseCanvas,
+  parseDeck,
+  stringifyCanvas,
+  stringifyDeck,
   changeScope,
   planOriginal,
   planTheme,
@@ -15,7 +19,7 @@ import {
   type ThemeTarget,
 } from '@dc/core';
 import { t } from '../../i18n';
-import { display, edit, editCanvas, editDeck, forgetChange, recordChange, slideIds, toast, useStore, canvasOf } from '../../store';
+import { canvasOf, display, dropGroup, edit, forgetChange, isLastGroup, recordChange, slideIds, toast, undo, useStore } from '../../store';
 import { installedOf, type Installed } from '../ds/ds';
 
 /**
@@ -88,6 +92,8 @@ export function applyTheme(to: ThemeTarget | 'original', scope: ThemeScope): voi
   }
 
   const summary = to === 'original' ? 'theme → original look' : `theme → ${name}`;
+  // every file of one switch, and the index, are one step of undo
+  const group = `theme-${Date.now()}`;
   const before: Record<string, string> = {};
   const after: Record<string, string> = {};
   files.forEach((f, i) => {
@@ -96,16 +102,28 @@ export function applyTheme(to: ThemeTarget | 'original', scope: ThemeScope): voi
     if (next === src) return;
     before[f] = src;
     after[f] = next;
-    // one switch is many files: undone from its toast or by the Original look, not by one ⌘Z per file
-    edit(f, (cur) => applyThemePlan(cur, plan.files[i]), { actor: 'human', summary, undoable: false });
+    edit(f, (cur) => applyThemePlan(cur, plan.files[i]), { actor: 'human', summary, group });
   });
-  const setRecord = (r: ThemeRecord | null) => {
+  const setRecord = (r: ThemeRecord | null, grouped: boolean) => {
     if (!whole) return;
-    const mutate = (c: Record<string, unknown>) => (r ? (c.theme = r) : delete c.theme);
-    if (s.kind === 'slides') editDeck(mutate, summary, false);
-    else editCanvas(mutate, summary, false);
+    const index = s.kind === 'slides' ? DECK_FILE : CANVAS_FILE;
+    const set = (c: Record<string, unknown>) => (r ? (c.theme = r) : delete c.theme);
+    edit(
+      index,
+      (src) => {
+        if (s.kind === 'slides') {
+          const d = structuredClone(parseDeck(src));
+          set(d);
+          return stringifyDeck(d);
+        }
+        const c = structuredClone(parseCanvas(src));
+        set(c);
+        return stringifyCanvas(c);
+      },
+      { actor: 'human', summary, ...(grouped ? { group } : { undoable: false }) },
+    );
   };
-  setRecord(plan.record);
+  setRecord(plan.record, true);
 
   const file = whole ? undefined : files[0];
   recordChange({ type: 'theme', namespace: sys?.namespace ?? '', title: sys?.title ?? null, theme: sys && to !== 'original' ? to.theme : 'original', stay: plan.stay, file });
@@ -114,13 +132,17 @@ export function applyTheme(to: ThemeTarget | 'original', scope: ThemeScope): voi
     run: () => {
       const now = useStore.getState();
       if (now.project !== s.project) return;
+      forgetChange(changeScope({ type: 'theme', namespace: '', title: null, theme: '', stay: 0, file }));
+      // nothing was done since: the same step ⌘Z takes
+      if (isLastGroup(group)) return undo();
+      // something was: put the files back by what they were, the ones still as this switch left them
       let skipped = false;
       for (const f of Object.keys(before)) {
         if (display(now, f) !== after[f]) skipped = true;
         else edit(f, (cur) => (cur === after[f] ? before[f] : cur), { actor: 'human', summary: `undo ${summary}`, undoable: false });
       }
-      setRecord(record);
-      forgetChange(changeScope({ type: 'theme', namespace: '', title: null, theme: '', stay: 0, file }));
+      setRecord(record, false);
+      dropGroup(group);
       if (skipped) toast(t('panel.theme.restoreFailed'), 'error');
     },
   });
