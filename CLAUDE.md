@@ -57,6 +57,8 @@ A canvas's template values (every artboard's `data-props`, grouped by artboard) 
 
 Text and colours an artboard's template manages are edited where they are drawn: double-click retypes copy with holes (`Hello {{name}}!`, `{{plan.name}}` in an `<sc-for>` over a list declared in `data-props`) into the literal text or the tweak, holes kept (core's `textRetype.ts`, `retypeText` in the store); text fed only by the script says why it cannot be; the Properties panel shows a colour set by a hole as its real colour and edits the tweak (`.design/template-text-editing.md`; canvas only on purpose).
 
+The canvas's fast AI is told to lay out with flex or grid and gap, not pixel offsets, and one reply may copy a part to another artboard: the other (visible, unlocked) artboards stay out of the sandbox document and a line reaches one only through `board(file)`, with handles of their own (`#b1_dc3`); a part goes over as a `clone()`, a move or a bare handle is refused, and a reply that saved several files is one undo step (`group`). Canvas only on purpose; a whole artboard is still Claude Code's (`FAST_EDIT_CANVAS` in core's `prompt.ts`, `FastEditSession` in `exec.ts`, `.design/canvas-fast-edit.md`).
+
 Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
 
 # Keep these in sync (read this before every change)

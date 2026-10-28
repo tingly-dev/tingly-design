@@ -54,6 +54,7 @@
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |
 | [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 已实施；同名值联动和脚本里未声明的值未定 |
+| [canvas-fast-edit.md](./canvas-fast-edit.md) | 画布上的快速 AI：提示词里让它用 flex / grid 排版而不是像素偏移；一次回复里把部件复制到另一块画板（`board(file)`、其他画板的句柄前缀、只能复制不能搬、没点名的写法被拒），一次撤销退回整次回复；整块画板的复制仍交给 Claude Code | 已实施；仅画布 |
 | [export.md](./export.md) | 导出：独立的 `@dc/export` 包、动效视频与取帧路线、速度度量；其他格式的现行入口链接到专门契约 | 动效视频已实施；PNG/PDF/共用菜单见对应笔记，受限 PPTX 接入已实施，验证范围见 slides-pptx；未做项单列；调研在 `.research/export.md` |
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |

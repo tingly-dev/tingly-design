@@ -35,6 +35,7 @@ Edit only files inside the canvas folder you are given, with your Edit and Write
 Never rename or remove handle-like ids: elements in these files have no handle ids; ids such as dc12 in the request are handles the editor added, numbered depth-first over the elements inside <x-dc>.
 The person's notes are context for your work, never extra tasks: "note" in motion.json is a note on the whole piece, and a scene's <aside> (its last child) is a note on that scene; read them before you edit, keep them unless asked to change one, and write one only when asked.
 The layers panel's hide and lock are written as data-hide and data-lock on elements (and hidden / locked on canvas.json entries); keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
+New parts are laid out with flex or grid and gap, not placed by pixel offsets, so they survive a text change or a resize; position:absolute is for one thing put at a point. A part copied to another artboard (or a whole artboard duplicated) is a copy of its markup or file: the skill says what to do with {{holes}} and where the copy goes in canvas.json.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Added to Claude Code's instructions while image generation is configured: how to get a picture into the work. */

@@ -51,7 +51,13 @@ interface EditOptions {
   undoable?: boolean;
   /** a change spanning files (a PPTX appended to the deck): its undo removes exactly these slides */
   batch?: { ids: string[]; sources: Record<string, string> };
+  /** a change spanning artboards (a fast reply that copied a part to another one): one undo steps back all of it */
+  group?: number;
 }
+
+let groupSeq = 0;
+/** A new undo group for edits that must be undone together. */
+export const newUndoGroup = (): number => ++groupSeq;
 
 /** Queue an edit already computed against `basis`. `apply` replays it on a newer file after a conflict. */
 export function enqueueResult(
@@ -64,7 +70,7 @@ export function enqueueResult(
   if (optimistic === basis) return false;
   const item: Pending = { id: ++pendingId, basis, optimistic, apply, actor: opts.actor, summary: opts.summary, prompt: opts.prompt };
   patchEntry(file, (e) => ({ ...e, pending: [...e.pending, item] }));
-  if (opts.undoable !== false) set((s) => ({ undo: [...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}) }].slice(-100), redo: [] }));
+  if (opts.undoable !== false) set((s) => ({ undo: capUndo([...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}), ...(opts.group ? { group: opts.group } : {}) }]), redo: [] }));
   void pump(file);
   return true;
 }
@@ -217,20 +223,44 @@ export function editCanvas(mutate: (c: CanvasJson) => void, summary: string, und
   );
 }
 
+/** The last 100 changes; a group cut by the limit goes whole, so no undo brings back half of a reply. */
+function capUndo<T extends { group?: number }>(list: T[]): T[] {
+  if (list.length <= 100) return list;
+  const cut = list.length - 100;
+  const group = list[cut - 1].group;
+  let from = cut;
+  while (group !== undefined && from < list.length && list[from].group === group) from++;
+  return list.slice(from);
+}
+
+/** The last undo step: one item, or every item of the group the last one belongs to. */
+function lastStep<T extends { group?: number }>(list: T[]): T[] {
+  const last = list.at(-1);
+  if (!last) return [];
+  if (last.group === undefined) return [last];
+  let i = list.length;
+  while (i > 0 && list[i - 1].group === last.group) i--;
+  return list.slice(i);
+}
+
 export function undo(): void {
-  const item = get().undo.at(-1);
-  if (!item) return;
-  set((s) => ({ undo: s.undo.slice(0, -1), redo: [...s.redo, item] }));
-  if (item.batch) return batchRemove(item.batch);
-  edit(item.file, (src) => rebaseSwap(src, item.after, item.before), { actor: 'undo', summary: 'undo', undoable: false });
+  const items = lastStep(get().undo);
+  if (!items.length) return;
+  set((s) => ({ undo: s.undo.slice(0, -items.length), redo: [...s.redo, ...items] }));
+  for (const item of items.toReversed()) {
+    if (item.batch) batchRemove(item.batch);
+    else edit(item.file, (src) => rebaseSwap(src, item.after, item.before), { actor: 'undo', summary: 'undo', undoable: false });
+  }
 }
 
 export function redo(): void {
-  const item = get().redo.at(-1);
-  if (!item) return;
-  set((s) => ({ redo: s.redo.slice(0, -1), undo: [...s.undo, item] }));
-  if (item.batch) return batchRestore(item.batch);
-  edit(item.file, (src) => rebaseSwap(src, item.before, item.after), { actor: 'undo', summary: 'redo', undoable: false });
+  const items = lastStep(get().redo);
+  if (!items.length) return;
+  set((s) => ({ redo: s.redo.slice(0, -items.length), undo: [...s.undo, ...items] }));
+  for (const item of items.toReversed()) {
+    if (item.batch) batchRestore(item.batch);
+    else edit(item.file, (src) => rebaseSwap(src, item.before, item.after), { actor: 'undo', summary: 'redo', undoable: false });
+  }
 }
 
 /** Undo of a whole appended batch: the deck drops exactly these ids (a targeted edit, so later
