@@ -34,29 +34,19 @@ function ramps(colors: DsColor[]): { ramp: string; steps: DsColor[] }[] {
     .map(([ramp, steps]) => ({ ramp, steps: steps.sort((a, b) => Number(RAMP_RE.exec(a.name)![2]) - Number(RAMP_RE.exec(b.name)![2])) }));
 }
 
-export interface GuideOptions {
-  /** whether tokens.css exists next to tokens.json (a snippet shows the variable only then); default true */
-  tokensCss?: boolean;
-}
-
-/** The appendix, from the heading to the end marker. */
-export function consumingGuide(t: DsTokens, opts: GuideOptions = {}): string {
-  const css = opts.tokensCss ?? true;
+/** The appendix, from the begin marker to the end marker. `tokens.css` exists whenever this is written (the server rebuilds both together). */
+export function consumingGuide(t: DsTokens): string {
   const first = t.themes[0].id;
   const themed = t.themes.length > 1;
   const out: string[] = [BEGIN, GUIDE_HEADING, ''];
   out.push('Written from `tokens.json` each time it changes: change a value there, never here or in `tokens.css`.', '');
 
   out.push('### Use it', '');
-  if (css) {
-    out.push(
-      '- A page: `<link rel="stylesheet" href="tokens.css">` (the path from the page to this system\'s `tokens.css`). It defines every colour, spacing, radius and shadow as a custom property, `--font-<key>` for each family, a class per text style, and the `@font-face` rules.',
-      '- A canvas artboard or a slide cannot link a stylesheet (its frame loads only inline styles and Google Fonts), so there write each value from the tables below; to keep the variables, copy the `:root { … }` blocks of `tokens.css` into the artboard\'s `<helmet><style>`. A canvas or deck that installed this system also has its `tokens.json` at `ds/<folder>/tokens.json`.',
-      '- Where `var()` cannot go (a chart\'s options, an SVG attribute such as `fill` which not every browser reads `var()` in), write the value from the tables below.',
-    );
-  } else {
-    out.push('- There is no `tokens.css` yet: write each value from the tables below.');
-  }
+  out.push(
+    '- A page: `<link rel="stylesheet" href="tokens.css">` (the path from the page to this system\'s `tokens.css`). It defines every colour, spacing, radius and shadow as a custom property, `--font-<key>` for each family, a class per text style, and the `@font-face` rules.',
+    '- A canvas artboard or a slide cannot link a stylesheet (its frame loads only inline styles and Google Fonts), so there write each value from the tables below; to keep the variables, copy the `:root { … }` blocks of `tokens.css` into the artboard\'s `<helmet><style>`. A canvas or deck that installed this system also has its `tokens.json` at `ds/<folder>/tokens.json`.',
+    '- Where `var()` cannot go (a chart\'s options, an SVG attribute such as `fill` which not every browser reads `var()` in), write the value from the tables below.',
+  );
   if (themed) {
     out.push(
       `- Themes: ${t.themes.map((th) => code(th.id)).join(', ')}. ${code(first)} is the default (\`:root\`). For another theme put \`data-theme="<id>"\` on the element that wraps the page; the variables change, and the tables give each theme's value for the places a variable cannot go.`,
@@ -72,21 +62,20 @@ export function consumingGuide(t: DsTokens, opts: GuideOptions = {}): string {
     const plain = t.colors.filter((c) => !ramped.has(c.name) && !STATE_RE.test(c.name));
     const vals = (c: DsColor) => t.themes.map((th) => code(c.values[th.id] ?? c.values[first] ?? ''));
     // with one theme and a variable the CSS column already holds the value as its fallback
-    const valueCols = !css || themed;
-    const head = ['token', ...(css ? ['CSS'] : []), ...(valueCols ? t.themes.map((th) => th.name || th.id) : []), 'use'];
-    const row = (c: DsColor) => [code(c.name), ...(css ? [code(`var(${cssVar(c.name)}, ${c.values[first]})`)] : []), ...(valueCols ? vals(c) : []), c.usage ?? ''];
+    const valueCols = themed;
+    const head = ['token', 'CSS', ...(valueCols ? t.themes.map((th) => th.name || th.id) : []), 'use'];
+    const row = (c: DsColor) => [code(c.name), code(`var(${cssVar(c.name)}, ${c.values[first]})`), ...(valueCols ? vals(c) : []), c.usage ?? ''];
     out.push('### Colours', '');
-    out.push(
-      css
-        ? `Write a colour as ${code(`color: var(${cssVar(t.colors[0].name)}, ${t.colors[0].values[first]})`)}: the variable first, the ${code(first)} value as the fallback, both from the same row.`
-        : 'Use the value from the row.',
-      '',
-    );
+    out.push(`Write a colour as ${code(`color: var(${cssVar(t.colors[0].name)}, ${t.colors[0].values[first]})`)}: the variable first, the ${code(first)} value as the fallback, both from the same row.`, '');
     if (plain.length) out.push(table(head, plain.map(row)), '');
     if (states.length) out.push('Interaction states:', '', table(head, states.map(row)), '');
     for (const r of ramps(t.colors)) {
+      const step = (x: DsColor) => RAMP_RE.exec(x.name)![2];
+      const differs = themed && r.steps.some((x) => t.themes.some((th) => x.values[th.id] !== x.values[first]));
+      const line = (th: string) => r.steps.map((x) => `${step(x)} ${code(x.values[th] ?? x.values[first] ?? '')}`).join(', ');
       out.push(
-        `Ramp ${code(r.ramp)}: ${r.steps.map((s) => `${RAMP_RE.exec(s.name)![2]} ${code(s.values[first] ?? '')}`).join(', ')}${themed && r.steps.some((x) => t.themes.some((th) => x.values[th.id] !== x.values[first])) ? ` (${first}; other themes differ: read tokens.json)` : ''}. ${css ? 'Variable: ' + code(`--${r.ramp}-<step>`) + '.' : ''}`,
+        `Ramp ${code(r.ramp)}, variables ${code(`--${r.ramp.replace(/\./g, '\\.')}-<step>`)}:`,
+        ...(differs ? t.themes.map((th) => `- ${th.name || th.id}: ${line(th.id)}`) : [`- ${line(first)}`]),
         '',
       );
     }
@@ -95,25 +84,20 @@ export function consumingGuide(t: DsTokens, opts: GuideOptions = {}): string {
   const styles = t.groups.flatMap((g) => g.styles.map((s) => ({ s, g })));
   if (styles.length || Object.keys(t.families).length) {
     out.push('### Type', '');
-    out.push(
-      css
-        ? 'Set text in one of the styles below: give the element the class (a style `body` is `class="body"`), or write the values from the Styles table. No literal sizes of your own.'
-        : 'Set text in one of the styles below, with its values from the Styles table. No literal sizes of your own.',
-      '',
-    );
+    out.push('Set text in one of the styles below: give the element the class (a style `body` is `class="body"`), or write the values from the Styles table. No literal sizes of your own.', '');
     const fams = Object.entries(t.families);
     if (fams.length) {
-      out.push('Families:', '', table(['family', ...(css ? ['CSS variable'] : []), 'stack'], fams.map(([k, v]) => [code(k), ...(css ? [code(`var(--font-${k})`)] : []), code(v)])), '');
+      out.push('Families:', '', table(['family', 'CSS variable', 'stack'], fams.map(([k, v]) => [code(k), code(`var(--font-${k})`), code(v)])), '');
     }
     if (styles.length) {
       out.push(
         'Styles:',
         '',
         table(
-          ['style', ...(css ? ['CSS'] : []), 'family', 'size', 'line height', 'weight', 'italic', 'letter spacing', 'use'],
+          ['style', 'CSS', 'family', 'size', 'line height', 'weight', 'italic', 'letter spacing', 'use'],
           styles.map(({ s, g }) => {
             const fam = s.family ?? g.family;
-            return [code(s.name), ...(css ? [code(`.${s.name.replace(/\./g, '\\.')}`)] : []), fam ? code(fam) : '', code(s.fontSize), s.lineHeight ?? '', s.fontWeight ?? '', s.fontStyle === 'italic' ? 'yes' : '', s.letterSpacing ?? '', s.usage ?? ''];
+            return [code(s.name), code(`.${s.name.replace(/\./g, '\\.')}`), fam ? code(fam) : '', code(s.fontSize), s.lineHeight ?? '', s.fontWeight ?? '', s.fontStyle === 'italic' ? 'yes' : '', s.letterSpacing ?? '', s.usage ?? ''];
           }),
         ),
         '',
@@ -124,7 +108,7 @@ export function consumingGuide(t: DsTokens, opts: GuideOptions = {}): string {
       for (const f of t.fonts) {
         out.push(`- ${code(f.family)}${f.weight ? ` ${f.weight}` : ''}${f.style ? ` ${f.style}` : ''}: ${code(f.file)}${/\.ttc$/i.test(f.file) ? ' (a font collection: kept as a file, browsers do not load a collection in `@font-face`; install it on the machine that draws the page or convert a member to woff2)' : ''}`);
       }
-      for (const h of t.hosted) out.push(`- ${code(h.family)}: Google Fonts, loaded by ${css ? '`tokens.css`' : 'this link'} (${h.href})`);
+      for (const h of t.hosted) out.push(`- ${code(h.family)}: Google Fonts, loaded by \`tokens.css\` (${h.href})`);
       out.push('');
     }
   }
@@ -136,21 +120,22 @@ export function consumingGuide(t: DsTokens, opts: GuideOptions = {}): string {
     if (f.note) out.push(f.note, '');
     out.push(
       table(
-        ['token', ...(css ? ['CSS'] : []), shadow && themed ? `value (${first})` : 'value', 'use'],
-        f.tokens.map((x) => [code(x.name), ...(css ? [code(`var(${cssVar(x.name)})`)] : []), code(shadow ? (x.values?.[first] ?? x.value) : x.value), x.usage ?? '']),
+        ['token', 'CSS', shadow && themed ? `value (${first})` : 'value', 'use'],
+        f.tokens.map((x) => [code(x.name), code(`var(${cssVar(x.name)})`), code(shadow ? (x.values?.[first] ?? x.value) : x.value), x.usage ?? '']),
       ),
       '',
     );
   }
-  if (css) out.push(`${code(DS_TOKENS_CSS)} is the stylesheet; it never needs editing.`, '');
+  out.push(`${code(DS_TOKENS_CSS)} is the stylesheet; it never needs editing.`, '');
   out.push(END);
   return out.join('\n');
 }
 
 /** `readme` with the appendix replaced (between its markers) or appended; unchanged text keeps its bytes. */
 export function withConsumingGuide(readme: string, guide: string): string {
-  const a = readme.indexOf(BEGIN);
-  const b = readme.indexOf(END);
-  if (a >= 0 && b > a) return readme.slice(0, a) + guide + readme.slice(b + END.length);
+  // the appendix is the last thing in the file: a marker quoted in the brand book above it is not the one
+  const b = readme.lastIndexOf(END);
+  const a = b >= 0 ? readme.lastIndexOf(BEGIN, b) : -1;
+  if (a >= 0) return readme.slice(0, a) + guide + readme.slice(b + END.length);
   return readme.replace(/\s*$/, '') + '\n\n' + guide + '\n';
 }

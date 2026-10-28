@@ -70,7 +70,7 @@ async function addFolder(into: Zippable, dir: string, prefix: string, opts: Pick
   let n = 0;
   for (const rel of await walkAll(dir)) {
     if (!archiveKeeps(rel, opts)) continue;
-    into[`${prefix}/${rel}`] = [new Uint8Array(await readFile(join(dir, rel))), { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|ttf|otf|ttc|zip)$/i.test(rel) ? 0 : 6 }];
+    into[`${prefix}/${rel}`] = [new Uint8Array(await readFile(join(dir, rel))), { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|zip)$/i.test(rel) ? 0 : 6 }];
     n++;
   }
   return n;
@@ -320,6 +320,6 @@ export async function packClaudeDesign(name: string, dir = projectDir(name)): Pr
   } catch {}
   const pkg = toClaudeDesign(kind, project, typeof title === 'string' && title ? title : name, kind === 'dashboard' ? await queryRows(name, project) : {});
   const zip: Zippable = {};
-  for (const [p, d] of Object.entries(pkg.files)) zip[p] = [d, { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|ttf|otf|ttc|zip)$/i.test(p) ? 0 : 6 }];
+  for (const [p, d] of Object.entries(pkg.files)) zip[p] = [d, { level: /\.(png|jpe?g|gif|webp|mp4|webm|mp3|m4a|woff2?|zip)$/i.test(p) ? 0 : 6 }];
   return { bytes: zipSync(zip), file: `${name}-claude-design.zip`, files: Object.keys(pkg.files).length, notes: pkg.notes };
 }

@@ -34,7 +34,7 @@ describe('consumingGuide', () => {
   it('writes a colour with its variable and fallback, and sets ramps and states apart', () => {
     expect(md).toContain('`var(--ink, #111111)`');
     expect(md).toContain('Interaction states:');
-    expect(md).toContain('Ramp `gray`: 100 `#f4f4f4`, 500 `#888888`, 900 `#222222`');
+    expect(md).toContain('Ramp `gray`, variables `--gray-<step>`:\n- 100 `#f4f4f4`, 500 `#888888`, 900 `#222222`');
     expect(md).not.toMatch(/\| `gray-100`/);
   });
 
@@ -48,10 +48,20 @@ describe('consumingGuide', () => {
     expect(md).toContain('a font collection');
   });
 
-  it('without tokens.css gives values only', () => {
-    const plain = consumingGuide(tokens, { tokensCss: false });
-    expect(plain).toContain('There is no `tokens.css` yet');
-    expect(plain).not.toContain('var(--ink');
+  it('lists a ramp once when the themes agree, per theme when they differ', () => {
+    const dark = resolveTokens({
+      color: {
+        themes: [{ id: 'light', name: 'Light' }, { id: 'dark', name: 'Dark' }],
+        tokens: [
+          { name: 'sand-100', value: { light: '#f6efe3', dark: '#2a241a' } },
+          { name: 'sand-300', value: { light: '#e3d2b4', dark: '#4a3f2a' } },
+          { name: 'sand-500', value: { light: '#b99a63', dark: '#8a7340' } },
+        ],
+      },
+    });
+    const g = consumingGuide(dark);
+    expect(g).toContain('- Dark: 100 `#2a241a`, 300 `#4a3f2a`, 500 `#8a7340`');
+    expect(md).not.toContain('- Light: 100 `#f4f4f4`');
   });
 });
 
@@ -62,8 +72,17 @@ describe('withConsumingGuide', () => {
     const g = consumingGuide(tokens);
     const once = withConsumingGuide(a, g);
     expect(withConsumingGuide(once, g)).toBe(once);
-    const changed = withConsumingGuide(once, consumingGuide(tokens, { tokensCss: false }));
+    const changed = withConsumingGuide(once, consumingGuide(resolveTokens({ color: { tokens: [{ name: 'ink', value: '#000000' }] } })));
     expect(changed.match(/Consuming this system/g)).toHaveLength(1);
     expect(changed.startsWith('# Ember\n\nBrand book.')).toBe(true);
+  });
+
+  it('is not fooled by a marker quoted above the appendix', () => {
+    const quoted = '# Ember\n\nUse `<!-- consuming-this-system:begin -->` to mark it.\n';
+    const g = consumingGuide(tokens);
+    const once = withConsumingGuide(quoted, g);
+    const again = withConsumingGuide(once, g);
+    expect(again).toBe(once);
+    expect(again.startsWith(quoted)).toBe(true);
   });
 });

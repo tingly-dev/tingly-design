@@ -541,10 +541,22 @@ export async function regenTokensCss(name: string): Promise<{ css: Written | nul
   const cur = await readOne(name, DS_TOKENS_CSS);
   const wroteCss = cur?.content === css ? null : { content: css, version: await writeAtomic(name, DS_TOKENS_CSS, css) };
   // the README's "Consuming this system" appendix follows the tokens the same way (a system without a README gets none)
-  const readme = await readOne(name, DS_README);
-  const next = readme && withConsumingGuide(readme.content, consumingGuide(t));
-  const wroteReadme = next !== null && next !== undefined && next !== readme!.content ? { content: next, version: await writeAtomic(name, DS_README, next) } : null;
+  const wroteReadme = await regenGuide(name, t);
   return { css: wroteCss, readme: wroteReadme };
+}
+
+/** The README's appendix for `t`; the file is read again just before it is written so a brand-book edit made meanwhile is kept. */
+async function regenGuide(name: string, t: ReturnType<typeof resolveTokens>): Promise<Written | null> {
+  const guide = consumingGuide(t);
+  for (let tries = 0; tries < 3; tries++) {
+    const cur = await readOne(name, DS_README);
+    if (!cur) return null;
+    const next = withConsumingGuide(cur.content, guide);
+    if (next === cur.content) return null;
+    if ((await readOne(name, DS_README))?.version !== cur.version) continue;
+    return { content: next, version: await writeAtomic(name, DS_README, next) };
+  }
+  return null;
 }
 
 /** Binary files of a project (images, fonts), for the asset views. */
