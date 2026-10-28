@@ -384,3 +384,9 @@ export function setTiming(file: string, tid: number, timing: { inSpec?: AnimSpec
 export function setKeys(file: string, tid: number, tracks: KeyTrack[] | null): boolean {
   return editElement(file, [{ kind: 'attr', tid, name: 'data-keys', value: tracks && tracks.length ? formatKeys(tracks) : null }]);
 }
+
+/**
+ * How a file a run changed is shown in the motion editor: the player seeks to its scene. The
+ * player and the timeline live in `MotionApp`, which sets this while it is mounted.
+ */
+export const motionLocator: { current: ((file: string) => boolean) | null } = { current: null };

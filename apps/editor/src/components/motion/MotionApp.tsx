@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MOTION_FILE, formatTime, motionTimeline, parseMotion, parseTime, primaryFormat, sceneFile, sceneTiming, speedOf, DEFAULT_SCENE_MS } from '@dc/core';
 import { api } from '../../api';
-import { editMotion, motionImport, setSpeed } from './motion';
+import { editMotion, motionImport, motionLocator, setSpeed } from './motion';
 import { notesOf } from '../slides/slides';
 import { FileMenu } from '../FileMenu';
 import { VideoExportDialog, type ScenePick } from './VideoExportDialog';
@@ -202,6 +202,20 @@ export function MotionApp() {
   // space plays; arrows step a frame (a second with Shift)
   const keys = useRef({ play, pause, seek, playing, fps: motion.fps, duration });
   keys.current = { play, pause, seek, playing, fps: motion.fps, duration };
+  // a file a run changed is shown by seeking to its scene (`locate.ts` asks through this)
+  const locate = useRef<(f: string) => boolean>(() => false);
+  locate.current = (f) => {
+    const w = timeline.scenes.find((x) => sceneFile(x.id) === f);
+    if (w) seek(w.start / rate);
+    return !!w;
+  };
+  useEffect(() => {
+    const mine = (f: string) => locate.current(f);
+    motionLocator.current = mine;
+    return () => {
+      if (motionLocator.current === mine) motionLocator.current = null;
+    };
+  }, []);
   useEffect(() => {
     motionKeys.handle = (key, meta, shift) => {
       const k = keys.current;
@@ -386,12 +400,7 @@ export function MotionApp() {
         {notesOpen && <MotionNotes motion={motion} scenes={scenes} sceneId={stage.id} />}
         {issuesOpen && <MotionIssues info={info} />}
         <div className={`mprompt${barInColumn ? ' in-column' : barCollapsed ? ' collapsed' : ''}`}>
-          <PromptBar
-            onOpen={(f) => {
-              const w = timeline.scenes.find((x) => sceneFile(x.id) === f);
-              if (w) seek(w.start / rate);
-            }}
-          />
+          <PromptBar />
         </div>
       </main>
       {exportDialog && info && (

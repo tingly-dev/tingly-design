@@ -24,11 +24,10 @@ import {
   want,
   dashImport,
 } from './dash';
-import { FileMenu } from '../FileMenu';
-import { CopyPicture, Picture } from '../icons';
+import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 import { CodeI, Database, Moon, Refresh, Sun, Target } from '../icons';
-import { copyImage, fileStem, saveImage } from '../../imageExport';
+import { fileStem } from '../../imageExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
@@ -241,22 +240,7 @@ export function DashApp() {
           claudeDesign
           target={dashImport}
           label={t('dash.kind')}
-          items={[
-            {
-              id: 'png',
-              label: t('common.transfer.label.png'),
-              hint: t('common.transfer.hint.dashPage'),
-              icon: <Picture />,
-              run: async () => void (await saveImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())),
-            },
-            {
-              id: 'copy-png',
-              label: t('common.transfer.label.copyPng'),
-              hint: t('common.transfer.hint.dashPage'),
-              icon: <CopyPicture />,
-              run: async () => void (await copyImage(`${fileStem(index.title, 'dashboard')}.png`, () => pageImage())),
-            },
-          ]}
+          items={imageExportItems({ hint: t('common.transfer.hint.dashPage'), name: `${fileStem(index.title, 'dashboard')}.png`, make: () => pageImage() })}
         />
         <BarButton icon={<Database />} label={t('dash.sources.label')} on={side === 'sources'} badge={problems ? <span className="badge">{problems}</span> : null} onClick={() => useDash.setState({ side: side === 'sources' ? null : 'sources' })} />
         <BarButton icon={<CodeI />} label={t('dash.bar.code')} on={side === 'code'} onClick={() => useDash.setState({ side: side === 'code' ? null : 'code' })} />
@@ -266,11 +250,6 @@ export function DashApp() {
         <PageFrame />
         <AskClaude
           file={DASH_PAGE}
-          onOpen={(f) => {
-            const id = /^datasets\/(.+)\.json$/.exec(f)?.[1];
-            if (id) useDash.setState({ open: id, side: 'sources' });
-            else if (f === DASH_PAGE) useDash.setState({ side: 'code' });
-          }}
           placeholder={t('dash.ask.placeholder')}
           context={() => {
             const { pick, open } = useDash.getState();

@@ -26,6 +26,7 @@
 | [config-awareness.md](./config-awareness.md) | 配置变化与 AI：改尺寸、设计系统、格式等之后给人一条“让 Claude 跟进”的提议（共用部件 + 一张表，不自动跑），并让 AI 在 `open` 和每次委托里查到当前关键配置 | 第 1 期（配置事实）已实施；跟进提议是方案 |
 | [project-kinds.md](./project-kinds.md) | 一种项目类型要在哪些地方登记；跨类型功能矩阵和已知缺口 | 现行契约 |
 | [kind-registry.md](./kind-registry.md) | 把散落在各处的 `kind === …` 分支改成按层的穷尽表：问题、三种方案、建议的三步 | 方案 |
+| [cross-kind-consistency.md](./cross-kind-consistency.md) | 六种类型里同一概念各写一遍的盘点（有序条目的增删复制挪、删除规矩、侧面板、分段选择、作品外观、快捷键、导出条目）、三层收拢方案（交互原语、按类型的条目模型、面板与当前视图）、分期与待定的产品问题 | 方案 |
 | [store-slices.md](./store-slices.md) | 编辑器的大 store 为什么、怎么按"谁用它"切片（单个 store、不动消费方）；配图 [store-slices.pencil.md](./store-slices.pencil.md) | 方案 |
 | [five-kinds.md](./five-kinds.md) | 从 Design 扩展到幻灯片、设计系统、看板、文档（文件名沿用“五种”；第六种动效见 [motion.md](./motion.md)） | 前半是当初的方案，"进度"一节是实施结论 |
 | [motion.md](./motion.md) | 第六种类型：宣传视频和动效素材 | 研究 + phase 0 验证；已登记为类型，编辑舞台和播放器已实施 |

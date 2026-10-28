@@ -6,6 +6,7 @@ import { useStore } from '../store';
 import { Menu, MenuItem } from './Menu';
 import { PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode } from '../theme';
 import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
+import { InlineRename } from './InlineRename';
 import { ProjectMenu } from './ProjectMenu';
 import { SyncStatus } from './SyncStatus';
 
@@ -15,25 +16,7 @@ import { SyncStatus } from './SyncStatus';
  */
 export function ProjectTitle({ value, label, hint, onRename }: { value: string; label: string; hint: string; onRename: (v: string) => void }) {
   const [renaming, setRenaming] = useState(false);
-  if (renaming)
-    return (
-      <input
-        className="dashtitle"
-        autoFocus
-        defaultValue={value}
-        aria-label={label}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setRenaming(false);
-        }}
-        onBlur={(e) => {
-          setRenaming(false);
-          const v = e.currentTarget.value.trim();
-          if (v && v !== value) onRename(v);
-        }}
-      />
-    );
+  if (renaming) return <InlineRename className="dashtitle" value={value} label={label} onCommit={onRename} onDone={() => setRenaming(false)} />;
   return (
     <h1 className="dashtitle" title={hint} onDoubleClick={() => setRenaming(true)}>
       {value}

@@ -128,30 +128,6 @@
 }
 
 
-.seg {
-  display: inline-flex;
-  border: 1px solid var(--line-2);
-  border-radius: 7px;
-  overflow: hidden;
-}
-
-
-.seg button {
-  flex: 1;
-  border: 0;
-  background: none;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-
-
-.seg button[aria-pressed='true'] {
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  font-weight: 500;
-}
-
-
 .doctabs {
   background: var(--panel);
   border-right: 1px solid var(--line);
@@ -233,52 +209,14 @@
 
 .tabrow .more {
   opacity: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  padding: 0 6px;
-  color: var(--muted);
 }
 
 
 .tabrow:hover .more,
-.tabrow.on .more {
+.tabrow.on .more,
+.tabrow .more:focus-visible,
+.tabrow .more[aria-expanded='true'] {
   opacity: 1;
-}
-
-
-.tabmenu {
-  position: absolute;
-  right: 4px;
-  top: 30px;
-  z-index: 30;
-  background: var(--panel);
-  border-radius: 8px;
-  box-shadow: var(--float-shadow);
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  min-width: 110px;
-}
-
-
-.tabmenu button {
-  border: 0;
-  background: none;
-  text-align: left;
-  padding: 6px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-
-.tabmenu button:hover {
-  background: var(--hover);
-}
-
-
-.tabmenu .danger {
-  color: var(--danger);
 }
 
 

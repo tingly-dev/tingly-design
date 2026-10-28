@@ -1,3 +1,8 @@
+import { ItemMenuItems } from '../ItemMenu';
+import { MenuItem } from '../Menu';
+import { RowMenu } from '../RowMenu';
+import { InlineRename } from '../InlineRename';
+import { Segmented } from '../Segmented';
 import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
@@ -26,16 +31,16 @@ import DOMPurify from 'dompurify';
 import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
-import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
-import { copyImage, htmlToPng, saveImage } from '../../imageExport';
+import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
+import { htmlToPng } from '../../imageExport';
 import type { Editor } from '@tiptap/core';
 import { Versions } from './Versions';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
-import { FileMenu, type ExportItem } from '../FileMenu';
-import { CopyPicture, FilePdf, FileText, Picture } from '../icons';
+import { FileMenu, imageExportItems, type ExportItem } from '../FileMenu';
+import { FilePdf, FileText } from '../icons';
 import { t as tNow } from '../../i18n';
 import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
@@ -44,53 +49,33 @@ import { History, LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
-function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
+function TabRow({ id, title, sub, current, first, last }: { id: string; title: string; sub: boolean; current: boolean; first: boolean; last: boolean }) {
   const { t } = useTranslation();
   const [renaming, setRenaming] = useState(false);
-  const [menu, setMenu] = useState(false);
   return (
     <li className={`tabrow${sub ? ' sub' : ''}${current ? ' on' : ''}`}>
       {renaming ? (
-        <input
-          autoFocus
-          defaultValue={title}
-          aria-label={t('docs.tab.nameLabel')}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') e.currentTarget.blur();
-            if (e.key === 'Escape') setRenaming(false);
-          }}
-          onBlur={(e) => {
-            setRenaming(false);
-            const v = e.currentTarget.value.trim();
-            if (v && v !== title) renameTab(id, v);
-          }}
-        />
+        <InlineRename value={title} label={t('docs.tab.nameLabel')} onCommit={(v) => renameTab(id, v)} onDone={() => setRenaming(false)} />
       ) : (
         <button className="tabname" aria-current={current ? 'page' : undefined} onClick={() => openTab(id)} onDoubleClick={() => setRenaming(true)}>
           {title}
         </button>
       )}
-      <button className="ib more" aria-label={t('docs.tab.actions', { title })} onClick={() => setMenu(!menu)}>
-        ⋯
-      </button>
-      {menu && (
-        <div className="tabmenu" onMouseLeave={() => setMenu(false)}>
-          <button onClick={() => (setMenu(false), setRenaming(true))}>{t('docs.tab.rename')}</button>
-          {!sub && <button onClick={() => (setMenu(false), addTab(t('docs.tab.newSubTitle'), id))}>{t('docs.tab.addSub')}</button>}
-          <button onClick={() => (setMenu(false), moveTab(id, -1))}>{t('docs.tab.moveUp')}</button>
-          <button onClick={() => (setMenu(false), moveTab(id, 1))}>{t('docs.tab.moveDown')}</button>
-          <button
-            className="danger"
-            onClick={() => {
-              setMenu(false);
+      <RowMenu label={t('docs.tab.actions', { title })}>
+        {(close) => (
+          <ItemMenuItems
+            close={close}
+            adds={!sub && <MenuItem label={t('docs.tab.addSub')} onSelect={() => (close(), addTab(t('docs.tab.newSubTitle'), id))} />}
+            onDuplicate={() => duplicateTab(id)}
+            onEarlier={first ? null : () => moveTab(id, -1)}
+            onLater={last ? null : () => moveTab(id, 1)}
+            onRename={() => setRenaming(true)}
+            onDelete={() => {
               if (confirm(sub ? t('docs.tab.confirmDeleteSub', { title }) : t('docs.tab.confirmDelete', { title }))) void deleteTab(id);
             }}
-          >
-            {t('common.delete')}
-          </button>
-        </div>
-      )}
+          />
+        )}
+      </RowMenu>
     </li>
   );
 }
@@ -266,23 +251,7 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => saveDocMarkdown(name, tab!),
     },
     { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
-    {
-      id: 'png',
-      label: tNow('common.transfer.label.png'),
-      hint: tNow('common.transfer.hint.docTab'),
-      icon: <Picture />,
-      disabled: !tab,
-      rule: true,
-      run: async () => void (await saveImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }))),
-    },
-    {
-      id: 'copy-png',
-      label: tNow('common.transfer.label.copyPng'),
-      hint: tNow('common.transfer.hint.docTab'),
-      icon: <CopyPicture />,
-      disabled: !tab,
-      run: async () => void (await copyImage(`${name}.png`, () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }))),
-    },
+    ...imageExportItems({ hint: tNow('common.transfer.hint.docTab'), name: `${name}.png`, disabled: !tab, rule: true, make: () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }) }),
   ];
 }
 
@@ -290,29 +259,23 @@ function Settings({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const d = useDocIndex();
   const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
-  const seg = (k: 'headingFont' | 'bodyFont' | 'width', opts: [string, string][]) => (
-    <div className="seg">
-      {opts.map(([v, label]) => (
-        <button key={v} aria-pressed={d.settings[k] === v} onClick={() => set(k, v)}>
-          {label}
-        </button>
-      ))}
-    </div>
+  const seg = (k: 'headingFont' | 'bodyFont' | 'width', label: string, opts: [string, string][]) => (
+    <Segmented label={label} value={d.settings[k]} onChange={(v) => set(k, v)} options={opts.map(([value, text]) => ({ value, label: text }))} />
   );
   return (
     <div className="popmenu settings" onMouseLeave={onClose}>
       <label>{t('docs.settings.headingFont')}</label>
-      {seg('headingFont', [
+      {seg('headingFont', t('docs.settings.headingFont'), [
         ['sans', t('docs.settings.sans')],
         ['serif', t('docs.settings.serif')],
       ])}
       <label>{t('docs.settings.bodyFont')}</label>
-      {seg('bodyFont', [
+      {seg('bodyFont', t('docs.settings.bodyFont'), [
         ['sans', t('docs.settings.sans')],
         ['serif', t('docs.settings.serif')],
       ])}
       <label>{t('docs.settings.width')}</label>
-      {seg('width', [
+      {seg('width', t('docs.settings.width'), [
         ['default', t('docs.settings.standard')],
         ['wide', t('docs.settings.wide')],
       ])}
@@ -385,9 +348,10 @@ export function DocsApp() {
           <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
           <h3>{t('docs.app.tabs')}</h3>
           <ul>
-            {order.map((x) => (
-              <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
-            ))}
+            {order.map((x) => {
+              const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
+              return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
+            })}
           </ul>
           <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
             {t('docs.app.addTab')}
@@ -402,10 +366,6 @@ export function DocsApp() {
         </div>
         <AskClaude
           file={tab ? tabFile(tab) : undefined}
-          onOpen={(f) => {
-            const id = /^tabs\/(.+)\.md$/.exec(f)?.[1];
-            if (id && order.some((x) => x.id === id)) openTab(id);
-          }}
           placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;

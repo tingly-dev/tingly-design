@@ -5,7 +5,9 @@ import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } 
 import { Menu, MenuItem } from './Menu';
 import { offerExports, type Pick } from '../headless';
 import { saveClaudeDesign, saveProjectArchive } from '../projectArchive';
-import { Caret, FileText, FileZip, Frame, Transfer } from './icons';
+import { copyImage, saveImage } from '../imageExport';
+import { t as tNow } from '../i18n';
+import { Caret, CopyPicture, FileText, FileZip, Frame, Picture, Transfer } from './icons';
 
 /**
  * Everything that moves files across the project's edge, in one place: one button in every
@@ -28,6 +30,18 @@ export interface ExportItem {
   run: (arg?: string) => void | Promise<void>;
   /** put a rule above this item (a new family of formats) */
   rule?: boolean;
+}
+
+/**
+ * "Save as PNG" and "Copy as PNG" for one picture, as the pair every kind offers: the same labels,
+ * icons and failure toasts. A kind gives what the picture shows (`hint`), the file name and how to
+ * draw it; `rule` puts a rule above the pair when it starts a new family of formats.
+ */
+export function imageExportItems({ hint, name, make, disabled, rule }: { hint: string; name: string; make: () => Promise<Blob>; disabled?: boolean; rule?: boolean }): ExportItem[] {
+  return [
+    { id: 'png', label: tNow('common.transfer.label.png'), hint, icon: <Picture />, disabled, rule, run: async () => void (await saveImage(name, make)) },
+    { id: 'copy-png', label: tNow('common.transfer.label.copyPng'), hint, icon: <CopyPicture />, disabled, run: async () => void (await copyImage(name, make)) },
+  ];
 }
 
 export function FileMenu({

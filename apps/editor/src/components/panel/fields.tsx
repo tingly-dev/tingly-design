@@ -212,28 +212,6 @@ function ColorText({ value, placeholder, onCommit, label }: { value: string; pla
   );
 }
 
-export function Seg<T extends string>({
-  value,
-  options,
-  onChange,
-  label,
-}: {
-  value: T | '';
-  options: { value: T; label: ReactNode; title?: string; disabled?: boolean }[];
-  onChange: (v: T) => void;
-  label: string;
-}) {
-  return (
-    <div className="seg" role="group" aria-label={label}>
-      {options.map((o) => (
-        <button key={o.value} aria-pressed={value === o.value} title={o.title} aria-label={o.title} disabled={o.disabled} onClick={() => onChange(o.value)}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function Select({
   value,
   options,

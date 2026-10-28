@@ -1,21 +1,19 @@
+import { Segmented } from './Segmented';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { elementLabel, attr, type Attachment } from '@dc/core';
 import { display, parsed, useCanvas, useStore } from '../store';
 import type { LastRun } from '../store/agent';
-import { focusBoard } from './canvas/view';
 import { delegateToClaude, runFastEdit } from '../fastedit';
 import { ContextChip } from './AgentBar';
 import { ImageToggle } from './ImageToggle';
 import { RequestBar } from './RequestBar';
 import { offerPrompt } from '../headless';
-import { slideIdOf } from '@dc/core';
 
 type Target = 'ai' | 'claude';
 
 /** Where requests go: the fast in-page model or Claude Code. jQuery typed by hand lives in the Code tab (panel/JQueryBox.tsx). */
-/** `onOpen` shows a file a Claude Code run changed, for kinds whose own view knows how (motion seeks to the scene). */
-export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) {
+export function PromptBar() {
   const { t } = useTranslation();
   const sel = useStore((s) => s.selection);
   const fast = useStore((s) => s.fast);
@@ -87,12 +85,6 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
     void runFastEdit(file, tid, req, files);
     return true;
   };
-  const open = (f: string) => {
-    if (onOpen) return onOpen(f);
-    const slide = slideIdOf(f);
-    if (slides && slide) useStore.setState({ slide });
-    else if (canvas.boards[f]) focusBoard(f);
-  };
 
   return (
     <RequestBar
@@ -131,18 +123,15 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
       }
       picker={
         <>
-          <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
-            {(
-              [
-                ['ai', t('prompt.bar.fastAi')],
-                ['claude', 'Claude Code'],
-              ] as const
-            ).map(([k, l]) => (
-              <button key={k} aria-pressed={target === k} onClick={() => setTarget(k)}>
-                {l}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label={t('prompt.bar.who')}
+            value={target}
+            onChange={setTarget}
+            options={[
+              { value: 'ai', label: t('prompt.bar.fastAi') },
+              { value: 'claude', label: 'Claude Code' },
+            ]}
+          />
           {why && (
             <button className="tb setup" onClick={() => useStore.setState({ aiSettingsOpen: true })}>
               {t('prompt.bar.setUp')}
@@ -155,7 +144,6 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
       busyRun={busyRun}
       busyText={target === 'claude' ? t('prompt.bar.busyClaude') : t('prompt.bar.busyFast')}
       onSend={send}
-      onOpen={open}
     />
   );
 }

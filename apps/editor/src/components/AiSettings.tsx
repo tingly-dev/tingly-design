@@ -1,3 +1,4 @@
+import { Segmented } from './Segmented';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, resolveAi, validBaseUrl, validProfile } from '@dc/core';
@@ -276,18 +277,16 @@ function AiSettings() {
       <section>
         <h3>Claude Code</h3>
         <p className="note">{t('aiSettings.claudeNote')}</p>
-        <div className="seg" role="group" aria-label="Claude Code">
-          {(
-            [
-              ['shared', t('aiSettings.routeShared')],
-              ['login', t('aiSettings.routeLogin')],
-            ] as const
-          ).map(([k, l]) => (
-            <button type="button" key={k} data-route={k} aria-pressed={route === k} onClick={() => setChosen(k)}>
-              {l}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Claude Code"
+          data="route"
+          value={route}
+          onChange={setChosen}
+          options={[
+            { value: 'shared', label: t('aiSettings.routeShared') },
+            { value: 'login', label: t('aiSettings.routeLogin') },
+          ]}
+        />
         {route === 'shared' && profileShown && (
           <>
             <label className="field">

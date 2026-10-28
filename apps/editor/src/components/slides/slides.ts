@@ -126,6 +126,14 @@ export function moveSlide(id: string, before: string | null): void {
   }, t('slides.journal.slideMoved', { id }));
 }
 
+/** Move a slide one place earlier (-1) or later (1); the first cannot go earlier, the last not later. */
+export function shiftSlide(id: string, dir: -1 | 1): void {
+  const ids = slideIds(get());
+  const i = ids.indexOf(id);
+  if (i < 0 || i + dir < 0 || i + dir >= ids.length) return;
+  moveSlide(id, dir < 0 ? ids[i - 1] : (ids[i + 2] ?? null));
+}
+
 function sectionEl(id: string): DcElement | undefined {
   const src = display(get(), slideFile(id));
   return src ? rootElement(parsed(src)) : undefined;

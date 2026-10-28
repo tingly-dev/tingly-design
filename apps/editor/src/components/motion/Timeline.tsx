@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { sceneFile, snapSceneMs, type MotionJson, type motionTimeline } from '@dc/core';
 import { addCover, addScene, deleteScene, duplicateScene, moveScene, removeCover, setCoverAt, setSceneDuration } from './motion';
 import { LaneLabels, LaneRows, useLanes, type BarDraft } from './ElementLanes';
-import { Menu, MenuItem } from '../Menu';
+import { ItemMenuItems } from '../ItemMenu';
+import { Menu } from '../Menu';
 import { notesOf } from '../slides/slides';
 import { PauseFilled, Picture, PlayFilled } from '../icons';
 import { useElementSize } from '../../hooks';
@@ -343,12 +344,15 @@ export function Timeline(p: {
           )}
           {menu && (
             <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label={t('motion.stage.sceneMenu')}>
-              <MenuItem label={t('motion.stage.sceneAddAfter')} onSelect={() => (setMenu(null), afterAdd(addScene(menu.id)))} />
-              <MenuItem label={t('motion.stage.sceneDuplicate')} onSelect={() => (setMenu(null), afterAdd(duplicateScene(menu.id)))} />
-              <MenuItem disabled={motion.order[0] === menu.id} label={t('motion.stage.sceneEarlier')} onSelect={() => (setMenu(null), moveScene(menu.id, -1))} />
-              <MenuItem disabled={motion.order.at(-1) === menu.id} label={t('motion.stage.sceneLater')} onSelect={() => (setMenu(null), moveScene(menu.id, 1))} />
-              <hr />
-              <MenuItem label={t('motion.stage.sceneDelete')} danger onSelect={() => (setMenu(null), void deleteScene(menu.id))} />
+              <ItemMenuItems
+                close={() => setMenu(null)}
+                axis="horizontal"
+                onAdd={() => afterAdd(addScene(menu.id))}
+                onDuplicate={() => afterAdd(duplicateScene(menu.id))}
+                onEarlier={motion.order[0] === menu.id ? null : () => moveScene(menu.id, -1)}
+                onLater={motion.order.at(-1) === menu.id ? null : () => moveScene(menu.id, 1)}
+                onDelete={() => void deleteScene(menu.id)}
+              />
             </Menu>
           )}
           {!cover && axis > 0 && <div className="mhead" style={{ left: `${(time / axis) * 100}%` }} />}
