@@ -58,6 +58,22 @@ async def main():
         check('a table, a task list and a quote render', await body.locator('table tr').count() == 7 and await body.locator('ul[data-type=taskList] li').count() == 5 and await body.locator('blockquote').count() == 1)
         await expect(body.locator('.cmark')).to_have_count(1)
         check('a comment thread is pinned to its words', await body.locator('.cmark').inner_text() == 'the agents working beside them')
+        # a link opens with ⌘/Ctrl-click, or with the selection menu's open button (issue #342); the target is stubbed so nothing leaves the machine
+        await ctx.route('**github.com/tingly-dev/tingly-box**', lambda r: asyncio.ensure_future(r.fulfill(status=200, body='')))
+        async with ctx.expect_page() as pop:
+            await body.locator('a', has_text='Tingly Box').first.click(modifiers=['Meta'])
+        opened = await pop.value
+        check('a link opens with ⌘/Ctrl-click', opened.url.startswith('https://github.com/tingly-dev/tingly-box'), opened.url)
+        await opened.close()
+        # double-click within the first word (the link's centre is the space between them), as with comments
+        await body.locator('a', has_text='Tingly Box').first.dblclick(position={'x': 5, 'y': 9})
+        await expect(pg.locator('.bubble button[aria-label="打开链接"]')).to_be_visible()
+        async with ctx.expect_page() as pop:
+            await pg.locator('.bubble button[aria-label="打开链接"]').click()
+        opened = await pop.value
+        check('the selection menu opens the link too', opened.url.startswith('https://github.com/tingly-dev/tingly-box'), opened.url)
+        await opened.close()
+        await ctx.unroute('**github.com/tingly-dev/tingly-box**')
         for t in ['Workflow', 'Write-back and sync', 'Project kinds', 'Architecture', 'Overview']:
             await pg.locator('.tabname', has_text=t).click()
             await expect(pg.locator('.tabrow.on .tabname')).to_have_text(t)
@@ -248,7 +264,7 @@ async def main():
         async with pg.expect_download() as dl:
             await pg.get_by_role('menuitem', name='HTML 网页').click()
         html = read(await (await dl.value).path())
-        check('export the whole doc as HTML', '<h1>Project kinds</h1>' in html and '<table>' in html)
+        check('export the whole doc as HTML', '<h1>Project kinds</h1>' in html and '<table>' in html and 'overflow-x:auto' in html)
 
         # --- a new doc ----------------------------------------------------------------------------
         await pg.goto(BASE + '/')
@@ -258,6 +274,21 @@ async def main():
         await pg.locator('[role=dialog] button[type="submit"]').click()
         await expect(body.locator('h1')).to_have_text('zz-doc')
         check('a new doc starts with one tab', os.path.exists(os.path.join(REPO, 'projects/zz-doc/tabs/main.md')))
+
+        # a table wider than the page scrolls in place; the page itself does not (issue #341)
+        await body.locator('h1').click()
+        await pg.keyboard.press('End')
+        await pg.keyboard.press('Enter')
+        await pg.keyboard.type('/table')
+        await expect(pg.locator('.slashmenu button[aria-selected=true]')).to_have_text('表格')
+        await pg.keyboard.press('Enter')
+        await expect(body.locator('table')).to_have_count(1)
+        await body.locator('table td').first.click()
+        await pg.keyboard.type('x' * 240)
+        wide = await pg.evaluate(
+            "() => ({ wrap: getComputedStyle(document.querySelector('.docbody .tableWrapper')).overflowX,"
+            " page: document.querySelector('.docscroll').scrollWidth - document.querySelector('.docscroll').clientWidth })")
+        check('a table wider than the page scrolls in place', wide['wrap'] == 'auto' and wide['page'] <= 1, json.dumps(wide))
 
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
