@@ -163,6 +163,35 @@ async def main():
         await expect(fr.locator('h1')).to_have_text('zz-dash')
         check('a new dashboard starts with a page and no data', os.path.exists(os.path.join(REPO, 'projects/zz-dash/dash.json')) and await pg.locator('.srow').count() == 0)
 
+        # --- what the page drew wrong: NaN, an empty chart, labels over each other or cut off ---------------
+        zz = os.path.join(REPO, 'projects/zz-dash')
+        os.makedirs(os.path.join(zz, 'data'), exist_ok=True); os.makedirs(os.path.join(zz, 'datasets'), exist_ok=True)
+        write(os.path.join(zz, 'data/none.csv'), 'member,requests\n')
+        write(os.path.join(zz, 'datasets/none.json'), json.dumps({'title': 'Nothing yet', 'description': 'No rows.', 'source': {'kind': 'file', 'url': 'data/none.csv', 'name': 'none.csv'}, 'updated': {'at': '2026-10-01T09:00:00Z', 'by': 'Sample data'}}))
+        write(os.path.join(zz, 'files/index.html'), '''<div style="padding:20px;font:14px sans-serif">
+<p>Total: <span id="t">—</span></p>
+<div id="empty" data-source="none"><svg width="400" height="120"><path class="domain" d="M0,100H400" stroke="#999"/></svg></div>
+<svg id="over" width="400" height="60"><text x="10" y="30">January sales</text><text x="60" y="30">February sales</text></svg>
+</div>
+<script>
+dash.onData(() => {
+  if (dash.data('none').status !== 'ok') return;
+  document.getElementById('t').textContent = Math.round(Number(undefined));
+});
+</script>''')
+        runs = os.path.join(zz, '.runs.json')
+        await pg.goto(BASE + '/?p=zz-dash')
+        if await pg.locator('.dashbar button[data-pane=sources]').get_attribute('aria-pressed') != 'true': await pg.locator('.dashbar button[data-pane=sources]').click()
+        await expect(pg.locator('.sproblems li', has_text='NaN')).to_be_visible(timeout=15000)
+        await expect(pg.locator('.sproblems li', has_text='什么也没画')).to_be_visible()
+        await expect(pg.locator('.sproblems li', has_text='叠在一起')).to_be_visible()
+        check('Sources → 问题 lists a NaN, an empty chart and overlapping labels', True)
+        await pg.screenshot(path=OUT + 'dash-drawn.png')
+        ok = await wait_for(lambda: len(json.loads(read(runs)).get('drawn', [])) >= 3, 8)
+        drawn = json.loads(read(runs)).get('drawn', []) if os.path.exists(runs) else []
+        check('.runs.json carries what was drawn wrong, each naming its element', ok and {d['rule'] for d in drawn} >= {'nan', 'empty', 'labelOverlap'} and all(d['element'] for d in drawn), json.dumps(drawn)[:300])
+        check('the empty chart names its dataset', any(d['rule'] == 'empty' and d.get('source') == 'none' for d in drawn), json.dumps(drawn)[:300])
+
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()
     restore()

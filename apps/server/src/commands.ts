@@ -379,6 +379,12 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   const faint = new Map<string, { count: number; ratio: number; text: string }>();
   for (const l of layout) {
     const file = (l.where && where.get(l.where)) ?? (KIND_CLI[p.kind].blame ?? l.where ?? p.name);
+    if (l.element !== undefined) {
+      // what a dashboard drew wrong: the element, the dataset it shows, the text concerned, and how many more like it
+      const more = l.more ?? 0;
+      problems.push({ level: 'warning', file, code: 'layout', rule: more ? `${l.rule}More` : l.rule, params: { where: l.source ? `${l.element} (${l.source})` : l.element, text: l.text ?? '', other: l.other ?? '', more } });
+      continue;
+    }
     if (l.rule !== 'contrast') {
       problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: l.rule === 'gap' ? { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 } : l.rule === 'squeezed' ? { text: l.text ?? '', lines: l.lines ?? 0 } : { text: l.text ?? '' } });
       continue;
