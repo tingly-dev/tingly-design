@@ -44,7 +44,8 @@ permissions:
 jobs:
   e2e:
     name: E2E (${{ github.event_name == 'pull_request' && 'smoke' || format('full {0}/4', matrix.shard) }})
-    runs-on: ubuntu-latest
+    # pinned: Playwright 1.56 (Chromium 141, see e2e/requirements.txt) has no headless shell for ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false  # a red slice should not hide what the others found
