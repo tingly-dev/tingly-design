@@ -218,7 +218,9 @@ function docHtml(d: DocJson, only?: string): string {
     });
   const serif = '"Source Serif 4", Georgia, "Songti SC", "Noto Serif SC", serif';
   const sans = 'system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif';
-  return `<!doctype html><html lang="${d.settings.lang}"><head><meta charset="utf-8"><title>${d.title.replace(/[<&]/g, '')}</title><style>
+  // the serif look names a hosted face: without the link the page (and every picture of it) draws a stand-in
+  const fonts = d.settings.headingFont === 'serif' || d.settings.bodyFont === 'serif' ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap">' : '';
+  return `<!doctype html><html lang="${d.settings.lang}"><head><meta charset="utf-8"><title>${d.title.replace(/[<&]/g, '')}</title>${fonts}<style>
 body{max-width:${d.settings.width === 'wide' ? 1000 : 720}px;margin:40px auto;padding:0 24px;font:16px/1.75 ${d.settings.bodyFont === 'serif' ? serif : sans};color:#1d1d1b}
 h1,h2,h3,h4{font-family:${d.settings.headingFont === 'serif' ? serif : sans};line-height:1.3}
 table{border-collapse:collapse;display:block;max-width:100%;overflow-x:auto}td,th{border:1px solid #d6d4ce;padding:6px 10px}pre{background:#f5f5f3;padding:12px;border-radius:8px;overflow:auto}
@@ -343,6 +345,19 @@ export function DocsApp() {
     const id = new URLSearchParams(location.search).get('t');
     if (id) useDocs.setState({ tab: id });
   }, []);
+
+  // The serif look names a hosted face: load it while such a doc is open, so the tab shows what its exports draw.
+  useEffect(() => {
+    const id = 'doc-look-font';
+    const serif = d.settings.headingFont === 'serif' || d.settings.bodyFont === 'serif';
+    if (serif && !document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap';
+      document.head.appendChild(link);
+    } else if (!serif) document.getElementById(id)?.remove();
+  }, [d.settings.headingFont, d.settings.bodyFont]);
   useEffect(() => {
     document.title = d.title;
   }, [d.title]);

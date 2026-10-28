@@ -362,6 +362,8 @@ async def main():
             check(f'{kind}: the built-in is installed directly', len(records) == 1 and records[0]['title'] == 'Nord' and records[0]['artifact'] == 'builtin:nord' and any(c['name'] == 'surface' and c['value'] == '#2e3440' for c in tokens['color']['tokens']))
             if kind == 'slides':
                 check('a built-in deck gets its hosted fonts', bool(data.get('faces')))
+                cover = open(os.path.join(target, 'slides/cover.html'), encoding='utf-8').read()
+                check('the untouched starter cover takes the look\'s paint', '#2e3440' in cover and '#fbfbf8' not in cover)
             # Reinstalling is idempotent, and invalid requests leave the copy untouched.
             response = await pg.request.post(BASE + f'/api/projects/{name}/design-systems', data={'look': 'nord'})
             data = json.load(open(os.path.join(target, index), encoding='utf-8'))

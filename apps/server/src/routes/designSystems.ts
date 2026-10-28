@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
 import { editIndex } from './shared';
-import { CANVAS_FILE, DECK_FILE, DS_INDEX, DS_TOKENS, dsFolderOf, parseDsIndex, resolveTokens, type DsRecord, lookOf, lookTokens } from '@dc/core';
+import { CANVAS_FILE, DECK_FILE, DS_INDEX, DS_TOKENS, deckSize, dsFolderOf, dsGlance, isStarterCover, newSlideSource, parseDeck, parseDsIndex, resolveTokens, slideFile, type DsRecord, lookOf, lookTokens } from '@dc/core';
 import { HttpError, isProjectName, kindOf, projectDir, resolveKey, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf } from '../store';
-import { publish } from '../hub';
+import { publish, record } from '../hub';
 import { trOf } from '../i18n';
 
 /** Design systems: install one into a canvas or deck, tokens, components. */
@@ -70,6 +70,24 @@ export function registerDesignSystems(app: Hono): void {
         },
         `design system ${index.title} installed`,
       );
+      // A deck that is still only its starter cover takes the system's paint, so the look
+      // the person picked is what they see first; a deck already designed keeps its slides.
+      if (kind === 'slides') {
+        const deck = parseDeck((await readOne(p, DECK_FILE))?.content ?? '{}');
+        const cover = deck.cover ?? deck.order[0];
+        const rel = cover ? slideFile(cover) : '';
+        const cur = rel ? await readOne(p, rel) : undefined;
+        if (rel && isStarterCover(cur?.content, deck)) {
+          const glance = dsGlance(resolved);
+          const paint = { background: glance.paper ?? glance.surface, color: glance.ink, family: glance.headingFont ?? glance.bodyFont };
+          if (paint.background && paint.color) {
+            const content = newSlideSource(cover!, { title: deck.title, body: '', size: deckSize(deck), titleSize: 112, paint });
+            const v = await writeAtomic(p, rel, content);
+            publish(p, { type: 'file', path: rel, content, version: v, actor: 'human' });
+            await record(p, { actor: 'human', file: rel, summary: `starter cover painted from ${index.title}`, version: v });
+          }
+        }
+      }
       return c.json({ record: rec, fonts: copied });
     });
   });

@@ -5,16 +5,32 @@
  * frame (each runtime answers with a data URL or a blob). Saving and failing look the
  * same everywhere: one toast, a file named after the project.
  */
-import { canvasPng, rasterize } from '@dc/export';
+import { canvasPng, fontCss, rasterize } from '@dc/export';
 import { download } from './local';
 import { t } from './i18n';
 import { toast } from './store';
 
 export const fileStem = (title: string, fallback: string) => (title || fallback).replace(/[\\/:*?"<>|]+/g, '-').trim() || fallback;
 
-/** A node of the editor's page as a PNG; `filter` leaves out chrome that sits inside it. */
-export async function nodeToPng(node: HTMLElement, o: { scale?: number; width?: number; height?: number; backgroundColor?: string; filter?: (n: Node) => boolean; style?: Partial<CSSStyleDeclaration> } = {}): Promise<Blob> {
-  const canvas = await rasterize(node, { pixelRatio: o.scale ?? 2, width: o.width, height: o.height, backgroundColor: o.backgroundColor, embedFonts: true, filter: o.filter, style: o.style });
+/** The web fonts a document names: its stylesheet links (fetched, cut to `text` and inlined by `fontCss`) plus the faces its inline styles declare. */
+async function fontEmbedCss(doc: Document, text: string): Promise<string> {
+  const sources: (string | { family: string; url: string })[] = [];
+  for (const link of doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')) if (link.href) sources.push(link.href);
+  for (const style of doc.querySelectorAll('style')) {
+    for (const m of style.textContent?.matchAll(/font-family\s*:\s*"([^"]+)"[^{}]*?url\(\s*"?([^")]+)"?\s*\)/g) ?? []) {
+      sources.push({ family: m[1], url: new URL(m[2], doc.baseURI).href });
+    }
+  }
+  try {
+    return await fontCss(sources, text);
+  } catch {
+    return '';
+  }
+}
+
+/** A node of the editor's page as a PNG; `filter` leaves out chrome that sits inside it. A picture draws in a foreignObject that cannot fetch fonts, so a node whose document loads web fonts needs `fontEmbedCSS` (see `htmlToPng`). */
+export async function nodeToPng(node: HTMLElement, o: { scale?: number; width?: number; height?: number; backgroundColor?: string; filter?: (n: Node) => boolean; style?: Partial<CSSStyleDeclaration>; fontEmbedCSS?: string } = {}): Promise<Blob> {
+  const canvas = await rasterize(node, { pixelRatio: o.scale ?? 2, width: o.width, height: o.height, backgroundColor: o.backgroundColor, fontEmbedCSS: o.fontEmbedCSS, embedFonts: o.fontEmbedCSS === undefined, filter: o.filter, style: o.style });
   return canvasPng(canvas);
 }
 
@@ -38,7 +54,8 @@ export async function htmlToPng(html: string, o: { width: number; height?: numbe
     await doc.fonts?.ready;
     await Promise.all([...doc.images].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = i.onerror = r), undefined)))));
     const height = o.height ?? Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
-    return await nodeToPng(doc.body, { scale: o.scale, width: o.width, height, backgroundColor: o.backgroundColor ?? opaque(getComputedStyle(doc.body).backgroundColor, getComputedStyle(doc.documentElement).backgroundColor) });
+    const fontEmbedCSS = await fontEmbedCss(doc, (doc.body.textContent ?? '').slice(0, 4000));
+    return await nodeToPng(doc.body, { scale: o.scale, width: o.width, height, backgroundColor: o.backgroundColor ?? opaque(getComputedStyle(doc.body).backgroundColor, getComputedStyle(doc.documentElement).backgroundColor), fontEmbedCSS });
   } finally {
     frame.remove();
   }

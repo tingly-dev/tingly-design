@@ -155,11 +155,31 @@ export function uniqueSectionKey(deck: DeckJson): string {
 const DEFAULT_SECTION_STYLE =
   "background:#fbfbf8;color:#1d1d1b;font-family:'Noto Sans SC', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px";
 
-/** A new slide. `like` is a neighbour's section style, so a new slide keeps the deck's look. */
-export function newSlideSource(id: string, opts: { like?: string; title?: string; body?: string; size?: [number, number]; titleSize?: number } = {}): string {
+/** The starter's plain paint, restyled from a design system (what installing one into a fresh deck shows). */
+export interface SlidePaint {
+  background?: string;
+  color?: string;
+  /** a full font-family stack */
+  family?: string;
+}
+
+const cleanPaint = (v: string | undefined): string | undefined => (v && /^[^;"<>\\]+$/.test(v.trim()) ? v.trim() : undefined);
+
+/** A new slide. `like` is a neighbour's section style, so a new slide keeps the deck's look. `paint` restyles the default look from a design system. */
+export function newSlideSource(id: string, opts: { like?: string; title?: string; body?: string; size?: [number, number]; titleSize?: number; paint?: SlidePaint } = {}): string {
   const [w, h] = deckSize({ size: opts.size });
   const k = Math.min(w / SLIDE_W, h / SLIDE_H);
-  const style = (opts.like ?? DEFAULT_SECTION_STYLE.replace('padding:128px', `padding:${Math.round(128 * k)}px`).replace('gap:48px', `gap:${Math.round(48 * k)}px`))
+  const paint = opts.like ? undefined : opts.paint;
+  const style = (opts.like ??
+    [
+      `background:${cleanPaint(paint?.background) ?? '#fbfbf8'}`,
+      `color:${cleanPaint(paint?.color) ?? '#1d1d1b'}`,
+      `font-family:${cleanPaint(paint?.family) ?? "'Noto Sans SC', Arial, sans-serif"}`,
+      `padding:${Math.round(128 * k)}px`,
+      'display:flex',
+      'flex-direction:column',
+      `gap:${Math.round(48 * k)}px`,
+    ].join(';'))
     .split(';')
     .map((d) => d.trim())
     .filter((d) => d && /^(background|color|font-family|padding|display|flex-direction|gap)\s*:/.test(d))
@@ -170,6 +190,17 @@ export function newSlideSource(id: string, opts: { like?: string; title?: string
 <h2 style="font-size:${Math.round((opts.titleSize ?? 72) * k)}px;font-weight:600;line-height:1.1">${esc(opts.title ?? 'Title')}</h2>
 ${body === '' ? '' : `<p style="font-size:${Math.round(32 * k)}px;line-height:1.4;width:${Math.round(960 * k)}px">${esc(body)}</p>\n`}</section>
 `;
+}
+
+/** The starter cover as `createProject` writes it. */
+function starterCoverSource(deck: DeckJson): string {
+  const id = deck.cover ?? deck.order[0];
+  return id ? newSlideSource(id, { title: deck.title, body: '', size: deckSize(deck), titleSize: 112 }) : '';
+}
+
+/** Whether `source` is the deck's untouched starter cover: the blank start the prompts call new, not a look the person chose. */
+export function isStarterCover(source: string | undefined, deck: DeckJson): boolean {
+  return deck.order.length === 1 && !!source && source === starterCoverSource(deck);
 }
 
 /** Point a slide file's `<section id>` at a new id (duplicating, renaming). */
