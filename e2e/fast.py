@@ -1,4 +1,4 @@
-import os, asyncio, subprocess, time, json
+import os, re, asyncio, subprocess, time, json
 from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
@@ -36,6 +36,28 @@ async def main():
         await expect(main.locator('li').nth(2)).to_have_text('改动写入 journal')
         print('PASS rendered on artboard')
         await pg.screenshot(path=OUT + 'fast-done.png')
+        # a part copied onto another artboard: the refused first try, then a named clone saved in the other file, the pointed one untouched
+        title = re.search(r'<h1[^>]*>([^<]+)</h1>', src()).group(1)
+        usage = os.path.join(REPO, 'projects/box-console/Usage.dc.html')
+        before = open(usage, encoding='utf-8').read()
+        main_before = src()
+        await main.locator('h1').click()
+        await pg.locator('.prompt textarea').fill('把这个标题复制到另一块画板')
+        await pg.locator('.prompt .send').click()
+        for _ in range(40):
+            if open(usage, encoding='utf-8').read() != before: break
+            await pg.wait_for_timeout(250)
+        await pg.wait_for_timeout(500)
+        after = open(usage, encoding='utf-8').read()
+        print('PASS' if after.count(title) == before.count(title) + 1 and 'id="dc' not in after and 'id="b1_dc' not in after and 'color:#0e7490' in src() else 'FAIL', 'part copied onto the other artboard, both files saved, no handle ids saved')
+        # one undo steps back the whole reply, in both artboards
+        await pg.keyboard.press('Control+z')
+        for _ in range(40):
+            if src() == main_before and open(usage, encoding='utf-8').read() == before: break
+            await pg.wait_for_timeout(250)
+        print('PASS' if src() == main_before and open(usage, encoding='utf-8').read() == before else 'FAIL', 'one undo restores both artboards')
+        log = [json.loads(l) for l in open(OUT + 'mock.log')]
+        print('PASS' if 'must name it' in log[-1]['last'] else 'FAIL', 'a handle of another artboard written bare was refused with how to name it')
         print(subprocess.run(['git', 'diff', '--stat', '--', 'projects/box-console'], cwd=REPO, capture_output=True, text=True).stdout)
         print('errors:', errs)
         await b.close()

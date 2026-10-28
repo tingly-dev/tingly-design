@@ -19,7 +19,7 @@ window.addEventListener('message', (e) => {
   if (!m || typeof m !== 'object' || !('dc' in m)) return;
   try {
     if (m.dc === 'begin') {
-      session = new FastEditSession(m.source, window as Window & typeof globalThis, jQuery);
+      session = new FastEditSession(m.source, window as Window & typeof globalThis, jQuery, m.others);
       sessionId = m.id;
       post({ dc: 'begun', id: m.id, markup: session.markup() });
     } else if (m.dc === 'run') {

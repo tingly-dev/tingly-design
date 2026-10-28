@@ -24,7 +24,12 @@ export interface StatementResult {
   error?: string;
   log?: string;
   delegate?: boolean;
+  /** other artboards (by file) this statement changed, as source; only the ones that changed */
+  others?: Record<string, string>;
 }
+
+/** The ending an artboard's file name may leave off when a reply names it. */
+const BOARD_EXT = '.dc.html';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JQ = any;
@@ -92,22 +97,41 @@ export function installPlugins($: JQ, copy: () => DesignCopy): void {
   };
 }
 
+/** An artboard other than the one being edited: parsed the first time a reply names it. */
+interface OtherBoard {
+  file: string;
+  prefix: string;
+  /** the source as the session last saw it */
+  source: string;
+  copy?: DesignCopy;
+}
+
 export class FastEditSession {
   readonly copy: DesignCopy;
   private last: unknown = undefined;
   private current: string;
   delegated = false;
+  private readonly others = new Map<string, OtherBoard>();
 
+  /**
+   * `others` are the sources of the artboards a reply may also reach, by file. They are not in the
+   * document: only `board(file)` gets to them, and the handles of their elements carry their own
+   * prefix (`b1_dc3`), so no handle ever names a different element than the one it was shown on.
+   */
   constructor(
     source: string,
     private readonly win: Window & typeof globalThis,
     private readonly $: JQ,
+    others: Record<string, string> = {},
   ) {
     this.copy = new DesignCopy(source, win.document);
     this.current = source;
     const body = win.document.body;
     body.replaceChildren(this.copy.root);
     installPlugins($, () => this.copy);
+    Object.keys(others)
+      .sort()
+      .forEach((file, i) => this.others.set(file, { file, prefix: `b${i + 1}_dc`, source: others[file] }));
   }
 
   get source(): string {
@@ -118,14 +142,41 @@ export class FastEditSession {
     return this.copy.markup();
   }
 
+  /** The other artboard a reply names: its file, or the file without its ending. */
+  private board(name: unknown): OtherBoard {
+    const key = String(name);
+    const b = this.others.get(key) ?? this.others.get(key + BOARD_EXT);
+    if (!b) {
+      const names = [...this.others.keys()];
+      throw new Error(`board(${JSON.stringify(key)}): no such artboard to reach from here.${names.length ? ` The others are ${names.map((n) => JSON.stringify(n)).join(', ')}.` : ' This design has no other artboard that can be edited.'}`);
+    }
+    b.copy ??= new DesignCopy(b.source, this.win.document, b.prefix);
+    return b;
+  }
+
+  /** A selector that holds another artboard's handle was not written to reach it: refuse, and say how. */
+  private checkSelector(sel: unknown): void {
+    if (typeof sel !== 'string') return;
+    for (const m of sel.matchAll(/#(b\d+)_dc\d+/g)) {
+      const b = [...this.others.values()].find((o) => o.prefix.startsWith(m[1] + '_'));
+      if (b) throw new Error(`${m[0]} is a part of the artboard ${JSON.stringify(b.file)}. A line that reaches another artboard must name it: board(${JSON.stringify(b.file)}).find('${m[0]}')`);
+    }
+  }
+
+  /** The copy a node belongs to (the artboard being edited, or one a reply reached). */
+  private ownerOf(node: Node): DesignCopy {
+    for (const b of this.others.values()) if (b.copy && b.copy.root.contains(node)) return b.copy;
+    return this.copy;
+  }
+
   private describe(x: unknown): string {
     const W = this.win;
     if (x && typeof x === 'object' && 'jquery' in (x as object)) {
       const arr = (x as JQ).toArray() as Node[];
       if (!arr.length) return '(no elements matched)';
-      return arr.map((n) => this.copy.markup(n)).join('\n');
+      return arr.map((n) => this.ownerOf(n).markup(n)).join('\n');
     }
-    if (x instanceof W.Node) return this.copy.markup(x);
+    if (x instanceof W.Node) return this.ownerOf(x).markup(x);
     if (x === undefined) return 'undefined';
     if (typeof x === 'string') return x;
     try {
@@ -148,6 +199,12 @@ export class FastEditSession {
       this.delegated = true;
     };
     const forget = () => {};
+    // `$` is jQuery that refuses a selector naming another artboard's handle; `board(file)` is how a line reaches one
+    const guarded = Object.assign((sel: unknown, ...rest: unknown[]) => {
+      this.checkSelector(sel);
+      return (this.$ as (...a: unknown[]) => unknown)(sel, ...rest);
+    }, this.$);
+    const board = (name: unknown) => this.$(this.board(name).copy!.root).children().not('helmet, style, script');
     const isChain = src.startsWith('.');
     if (isChain) {
       if (!this.last || typeof this.last !== 'object') {
@@ -157,28 +214,42 @@ export class FastEditSession {
     }
     let fn: (...a: unknown[]) => unknown;
     try {
-      fn = new Function('$', 'jQuery', 'log', 'askClaude', 'forget', '__last', `"use strict";\nreturn (${src}\n);`) as typeof fn;
+      fn = new Function('$', 'jQuery', 'log', 'askClaude', 'forget', 'board', '__last', `"use strict";\nreturn (${src}\n);`) as typeof fn;
     } catch {
       try {
-        fn = new Function('$', 'jQuery', 'log', 'askClaude', 'forget', '__last', `"use strict";\n${src}\n`) as typeof fn;
+        fn = new Function('$', 'jQuery', 'log', 'askClaude', 'forget', 'board', '__last', `"use strict";\n${src}\n`) as typeof fn;
       } catch (e) {
         return { ok: false, source: this.current, changed: false, error: 'SyntaxError: ' + (e as Error).message };
       }
     }
     try {
-      const v = fn(this.$, this.$, log, askClaude, forget, this.last);
+      const v = fn(guarded, guarded, log, askClaude, forget, board, this.last);
       if (v && typeof v === 'object' && 'jquery' in (v as object)) this.last = v;
     } catch (e) {
       return { ok: false, source: this.current, changed: false, error: `${(e as Error).name}: ${(e as Error).message}` };
     }
+    // a part goes to another artboard only as a copy: a moved one is still tied to the source of its first artboard
+    const copies = [this.copy, ...[...this.others.values()].flatMap((b) => (b.copy ? [b.copy] : []))];
+    if (copies.length > 1 && copies.some((c) => Array.from(c.root.querySelectorAll('*')).some((el) => copies.some((o) => o !== c && o.sourceOf(el))))) {
+      return { ok: false, source: this.current, changed: false, error: 'A line moved a part from one artboard to another. A part goes to another artboard as a copy, and the original stays: $(\'#dc9\').clone().appendTo(board(\'Other.dc.html\'))' };
+    }
     let next: string;
+    const others: Record<string, string> = {};
     try {
       next = applyPatches(this.copy.source, this.copy.patches());
+      for (const b of this.others.values()) {
+        if (!b.copy) continue;
+        const text = applyPatches(b.copy.source, b.copy.patches());
+        if (text !== b.source) {
+          b.source = text;
+          others[b.file] = text;
+        }
+      }
     } catch (e) {
       return { ok: false, source: this.current, changed: false, error: 'Could not write the change back: ' + (e as Error).message };
     }
-    const changed = next !== this.current;
+    const changed = next !== this.current || Object.keys(others).length > 0;
     this.current = next;
-    return { ok: true, source: next, changed, log: logs.length ? logs.join('\n') : undefined, delegate };
+    return { ok: true, source: next, changed, log: logs.length ? logs.join('\n') : undefined, delegate, ...(Object.keys(others).length ? { others } : {}) };
   }
 }

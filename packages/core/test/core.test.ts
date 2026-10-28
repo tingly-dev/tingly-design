@@ -176,6 +176,57 @@ $('#dc${ul.tid}').next().children().first().repeat(3)
   });
 });
 
+describe('fast edit across artboards', () => {
+  const OTHER = BOARD.replace('Claude Code', 'Other');
+  const list = find(BOARD, 'ul');
+
+  it('copies a part onto another artboard and leaves both sources otherwise untouched', () => {
+    const { win, $ } = env();
+    const s = new FastEditSession(BOARD, win, $, { 'Other.dc.html': OTHER });
+    const r = s.run(`$('#dc${list.tid}').clone().appendTo(board('Other.dc.html'))`);
+    expect(r.error).toBeUndefined();
+    expect(r.changed).toBe(true);
+    // the artboard pointed at is as it was; the other one gained the copy, without a handle id
+    expect(r.source).toBe(BOARD);
+    expect(r.others?.['Other.dc.html']).toContain('<li>One</li>');
+    expect(r.others?.['Other.dc.html']).not.toMatch(/id="(b1_)?dc\d+"/);
+    expect(r.others?.['Other.dc.html']!.length).toBeGreaterThan(OTHER.length);
+  });
+
+  it('brings a part from another artboard here, and names it by file with or without its ending', () => {
+    const { win, $ } = env();
+    const s = new FastEditSession(BOARD, win, $, { 'Other.dc.html': OTHER });
+    const r = s.run(`board('Other').find('#b1_dc${find(OTHER, 'h1').tid}').clone().appendTo('#dc${find(BOARD, 'div').tid}')`);
+    expect(r.error).toBeUndefined();
+    expect(r.others).toBeUndefined();
+    expect(r.source).toContain('>Other</h1>');
+    expect(r.source).not.toMatch(/id="(b1_)?dc\d+"/);
+  });
+
+  it('shows another artboard with its own handles, and refuses a handle written without naming it', () => {
+    const { win, $ } = env();
+    const s = new FastEditSession(BOARD, win, $, { 'Other.dc.html': OTHER });
+    const h1 = find(OTHER, 'h1');
+    expect(s.run(`log(board('Other.dc.html'))`).log).toContain(`id="b1_dc${h1.tid}"`);
+    const bare = s.run(`$('#b1_dc${h1.tid}').text('x')`);
+    expect(bare.ok).toBe(false);
+    expect(bare.error).toContain(`board("Other.dc.html").find('#b1_dc${h1.tid}')`);
+    // the same line, named, goes through
+    expect(s.run(`board('Other.dc.html').find('#b1_dc${h1.tid}').text('x')`).others?.['Other.dc.html']).toContain('>x</h1>');
+  });
+
+  it('refuses a move and an artboard it does not know', () => {
+    const { win, $ } = env();
+    const s = new FastEditSession(BOARD, win, $, { 'Other.dc.html': OTHER });
+    const moved = s.run(`$('#dc${list.tid}').appendTo(board('Other.dc.html'))`);
+    expect(moved.ok).toBe(false);
+    expect(moved.error).toMatch(/as a copy/);
+    const none = new FastEditSession(BOARD, win, $).run(`board('Nope.dc.html')`);
+    expect(none.ok).toBe(false);
+    expect(none.error).toMatch(/no other artboard/);
+  });
+});
+
 describe('statement splitter', () => {
   it('waits for brackets and template literals to close across chunks', () => {
     const sp = new StatementSplitter();

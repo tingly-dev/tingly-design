@@ -49,7 +49,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 
 | 功能 | 共用部件 | 画布 | 幻灯片 | 设计系统 | 看板 | 文档 | 动效 | 备注 |
 |---|---|---|---|---|---|---|---|--- |
-| 快速 AI（jQuery 写回） | `PromptBar`、`fastedit.ts`、`/fast-edit` | ✓ | ✓（越出幻灯片子集会撤回并说明） | ✗ | ✗（页面交给 Claude Code 写，服务端拒绝） | ✓ 选中段落改写，走 `FAST_EDIT_DOCS` | ✓ 播放头所在场景，走 `FAST_EDIT_MOTION`，用 `checkScene` 检查；非主尺寸里的样式写成覆盖 | |
+| 快速 AI（jQuery 写回） | `PromptBar`、`fastedit.ts`、`/fast-edit` | ✓ 提示词要求用 flex / grid 排版；一次回复可以把部件复制到另一块画板（`board(file)`，[canvas-fast-edit.md](./canvas-fast-edit.md)），其他类型没有同时可见的"另一页"，所以不做 | ✓（越出幻灯片子集会撤回并说明） | ✗ | ✗（页面交给 Claude Code 写，服务端拒绝） | ✓ 选中段落改写，走 `FAST_EDIT_DOCS` | ✓ 播放头所在场景，走 `FAST_EDIT_MOTION`，用 `checkScene` 检查；非主尺寸里的样式写成覆盖 | |
 | 交给 Claude Code | `AskClaude`（`AskClaude.tsx`）、`PromptBar` 的 `askClaude()`、`delegate.ts` | ✓ | ✓ | ✓ | ✓（可跑 `scripts/dash-query.mjs`） | ✓ | ✓ | |
 | 运行反馈（[agent-feedback.md](./agent-feedback.md)） | `RunFeed`（挂在 `PromptBar` 和 `AskClaude` 里）、core 的 `describeTool`、`DELETE …/delegate/:id` | ✓ 改动文件可定位画板；运行中画板有徽标 | ✓ 定位到那一页 | ✓ 文件只列不跳（没有单一视图可定位） | ✓ 打开数据来源或代码面板 | ✓ 切到那个标签页 | ✓ 跳到那个场景 | |
 | 请求栏面板（[agent-panel.md](./agent-panel.md)、[chat-panel.md](./chat-panel.md)） | `AgentBar.tsx`（位置菜单、药丸、历史、新对话/接着标记）、`ChatPanel.tsx`（`ChatShell` 外壳、左侧列、`ListColumn`）、`RequestBar.tsx`、`delegate.ts` 的 `--resume` | ✓ | ✓ 左列（页面）成为列里的第一个页签；放映不画列 | ✓ 左列（列表）成为第一个页签 | ✓ | ✓ 左列（标签页）成为第一个页签；批注仍在右边 | ✓ 左侧时不占槽位（`.mprompt` 隐藏），在底部时槽位固定高度 | 位置：底部（默认）或左侧一直打开的对话列，各类型共用，偏好 `dc.barMode`（旧的 `auto` 读作 `left`）；窗口放不下时自动退回底部（各类型下限在 `ChatPanel.tsx` 的 `MIN_WORK`）；"接着"只对 Claude Code，快速 AI 每次从头开始。列在外壳里，类型的布局不改 |

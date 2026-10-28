@@ -34,7 +34,7 @@ import { headlessRun } from './headless';
 import { readPref, writePref } from './local';
 import { deleteFile, edit } from './editEngine';
 
-export { deleteBoard, deleteFile, edit, editCanvas, editElement, enqueueResult, inertDocument, isSaving, redo, retypeText, undo } from './editEngine';
+export { deleteBoard, deleteFile, edit, editCanvas, editElement, enqueueResult, inertDocument, isSaving, newUndoGroup, redo, retypeText, undo } from './editEngine';
 
 /**
  * Editor state. Each file has the last version the server confirmed and a
@@ -73,6 +73,8 @@ interface UndoItem {
   after: string;
   /** a change spanning files (a PPTX appended to this deck): its undo removes exactly these slides */
   batch?: { ids: string[]; sources: Record<string, string> };
+  /** items of one group are undone and redone together */
+  group?: number;
 }
 
 export type Tool = 'select' | 'hand' | 'text' | 'frame' | 'note' | 'draw' | 'rect' | 'oval' | 'line' | 'arrow';

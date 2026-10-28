@@ -84,7 +84,8 @@ export type FromRuntime =
   | { dc: 'navigate'; href: string };
 
 export type ToExecutor =
-  | { dc: 'begin'; id: string; source: string }
+  /** `others`: the artboards (by file) a reply may also reach with board(); only a canvas passes them */
+  | { dc: 'begin'; id: string; source: string; others?: Record<string, string> }
   | { dc: 'run'; id: string; code: string }
   | { dc: 'markup'; id: string };
 

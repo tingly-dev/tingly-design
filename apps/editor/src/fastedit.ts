@@ -27,7 +27,7 @@ import {
 import { api } from './api';
 import { t } from './i18n';
 import { ExecSession, replay } from './executor';
-import { canvasOf, deckOf, display, enqueueResult, slideIds, toast, useStore } from './store';
+import { canvasOf, deckOf, display, enqueueResult, newUndoGroup, slideIds, toast, useStore } from './store';
 import type { FastLine, LastRun } from './store/agent';
 import { visibleBoards } from './components/canvas/view';
 import { slideTitle } from './components/slides/slides';
@@ -63,6 +63,23 @@ function newSlideErrors(file: string, before: string, after: string): string[] {
   return check(after)
     .filter((i) => i.level === 'error' && !known.has(i.message))
     .map((i) => i.message);
+}
+
+/**
+ * The other artboards of a canvas a reply may reach with board(): the ones the person sees and may
+ * edit (not hidden, not locked). Other kinds have no neighbour to reach.
+ */
+function reachableBoards(file: string): Record<string, string> {
+  const s = get();
+  if (s.kind !== 'design') return {};
+  const c = canvasOf(s);
+  const out: Record<string, string> = {};
+  for (const f of c.order) {
+    const b = c.boards[f];
+    const src = display(s, f);
+    if (f !== file && b && !b.hidden && !b.locked && src !== undefined) out[f] = src;
+  }
+  return out;
 }
 
 /** A motion piece for the model: its sizes, the scenes with their length, where the playhead is. */
@@ -239,13 +256,19 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
   const pointed = pointedInfo(file, tid);
   const nonce = Math.random().toString(36).slice(2, 8);
   let markupOnce: string | null = null;
+  // the other artboards as they were when the request started; a reply that changes some saves them with the pointed one
+  const othersBase = reachableBoards(file);
+  const clearDrafts = () => {
+    setDraft(file, undefined);
+    for (const f of Object.keys(othersBase)) setDraft(f, undefined);
+  };
   const messages: ModelMessage[] = [];
   let retries = 0;
   let logRounds = 0;
 
   try {
     for (;;) {
-      const { session, markup } = await ExecSession.begin(base);
+      const { session, markup } = await ExecSession.begin(base, othersBase);
       if (markupOnce === null) {
         markupOnce = markup;
         const text = buildFastEditPrompt({
@@ -273,6 +296,8 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
       const done: string[] = [];
       const logs: string[] = [];
       let out: string = base;
+      /** other artboards this reply changed, by file */
+      const outs: Record<string, string> = {};
       let failed: { line: string; error: string } | null = null;
       let delegate = false;
 
@@ -292,6 +317,10 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         if (r.changed) {
           out = r.source;
           setDraft(file, out);
+          for (const [f, src] of Object.entries(r.others ?? {})) {
+            outs[f] = src;
+            setDraft(f, src);
+          }
         }
         return true;
       };
@@ -313,13 +342,13 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
       if (stop) await reader.cancel().catch(() => {});
 
       if (delegate) {
-        setDraft(file, undefined);
+        clearDrafts();
         if (!(await delegateToClaude(file, tid, prompt, attachments, { via: 'fast' }))) setFast({ status: 'error', note: t('app.fast.handOffFailed'), endedAt: Date.now() });
         return;
       }
       const f = failed as { line: string; error: string } | null;
       if (f) {
-        setDraft(file, undefined);
+        clearDrafts();
         if (retries++ >= 2) {
           setFast({ status: 'error', note: t('app.fast.threeFailures', { error: f.error }), endedAt: Date.now() });
           return;
@@ -328,14 +357,14 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         messages.push({ role: 'assistant', content: reply.trim() || '(empty)' }, { role: 'user', content: retryMessage(f.error, f.line) });
         continue;
       }
-      if (logs.length && out === base && logRounds++ < 2) {
+      if (logs.length && out === base && !Object.keys(outs).length && logRounds++ < 2) {
         messages.push({ role: 'assistant', content: reply.trim() }, { role: 'user', content: logMessage(logs) });
         continue;
       }
       const broke = (get().kind === 'slides' || get().kind === 'motion') && out !== base ? newSlideErrors(file, base, out) : [];
       if (broke.length && retries < 2) {
         retries++;
-        setDraft(file, undefined);
+        clearDrafts();
         pushLine({ code: t('app.fast.retrySlide', { n: retries }), ok: true, divider: true });
         messages.push(
           { role: 'assistant', content: reply.trim() || '(empty)' },
@@ -343,21 +372,21 @@ export async function runFastEdit(file: string, tid: number | null, prompt: stri
         );
         continue;
       }
-      setDraft(file, undefined);
-      if (out === base) {
+      clearDrafts();
+      const touched = Object.keys(outs);
+      if (out === base && !touched.length) {
         setFast({ status: 'done', note: t('app.fast.noChange'), endedAt: Date.now() });
         return;
       }
-      enqueueResult(file, base, out, (src) => replay(done, src), {
-        actor: 'fast-edit',
-        summary: t('app.journal.statements', { count: done.length }),
-        prompt,
-      });
+      // a reply that reached more than one artboard saves each of them and is undone as one step
+      const save = { actor: 'fast-edit' as const, summary: t('app.journal.statements', { count: done.length }), prompt, ...(touched.length ? { group: newUndoGroup() } : {}) };
+      enqueueResult(file, base, out, (src) => replay(done, src, othersBase), save);
+      for (const f of touched) enqueueResult(f, othersBase[f], outs[f], (src) => replay(done, base, { ...othersBase, [f]: src }, f), save);
       setFast({ status: 'done', endedAt: Date.now(), changed: true });
       return;
     }
   } catch (e) {
-    setDraft(file, undefined);
+    clearDrafts();
     if ((e as Error).name === 'AbortError') setFast({ status: 'error', note: t('app.fast.stopped'), endedAt: Date.now() });
     else {
       setFast({ status: 'error', note: (e as Error).message, endedAt: Date.now() });

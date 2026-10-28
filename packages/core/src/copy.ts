@@ -24,7 +24,8 @@ import { setStyle } from './style';
  */
 
 export const HANDLE_PREFIX = 'dc';
-export const HANDLE_RE = /^dc\d+$/;
+/** A handle: `dc12` on the artboard being edited, `b1_dc12` on another artboard the same reply may reach (`board()`). */
+export const HANDLE_RE = /^(?:b\d+_)?dc\d+$/;
 
 export interface Patch extends Range {
   text: string;
@@ -89,7 +90,8 @@ export class DesignCopy {
   private readonly handled = new WeakSet<Element>();
   private readonly byTid = new Map<number, Element>();
 
-  constructor(source: string | DcDoc, document: Document) {
+  /** `prefix` is the handle namespace: another artboard's handles carry its own, so a handle names one element in the whole reply. */
+  constructor(source: string | DcDoc, document: Document, readonly prefix: string = HANDLE_PREFIX) {
     this.doc = typeof source === 'string' ? parseDc(source) : source;
     this.document = document;
     this.root = document.createElement('dc-root');
@@ -132,7 +134,7 @@ export class DesignCopy {
       }
     }
     if (!el.hasAttribute('id')) {
-      el.setAttribute('id', HANDLE_PREFIX + n.tid);
+      el.setAttribute('id', this.prefix + n.tid);
       this.handled.add(el);
     }
     this.src.set(el, n);
@@ -153,7 +155,7 @@ export class DesignCopy {
   /** The selector a model uses for a tid: the element's own id or its handle. */
   handle(tid: number): string {
     const el = this.byTid.get(tid);
-    return el ? '#' + el.getAttribute('id') : '#' + HANDLE_PREFIX + tid;
+    return el ? '#' + el.getAttribute('id') : '#' + this.prefix + tid;
   }
 
   sourceOf(node: Node): DcNode | undefined {
