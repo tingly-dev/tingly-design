@@ -131,6 +131,13 @@
       "w": 1900,
       "h": 1540,
       "title": "Composer"
+    },
+    "Theme.dc.html": {
+      "x": 9000,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas and deck theme"
     }
   },
   "order": [
@@ -145,6 +152,7 @@
     "Canvas.dc.html",
     "TemplateValues.dc.html",
     "TemplateText.dc.html",
+    "Theme.dc.html",
     "Slides.dc.html",
     "DesignSystem.dc.html",
     "Dashboard.dc.html",
