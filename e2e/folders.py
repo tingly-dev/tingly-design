@@ -165,9 +165,21 @@ async def main():
             await nd.locator('.folder .input').fill(busy)
             await expect(nd.locator('.problem.on')).to_be_visible()
             check(f'[{tag}] a folder with other files in it is refused', await nd.locator('button[type=submit]').is_disabled())
-            check(f'[{tag}] the projects/ prefix leaves when a full path is typed', await nd.locator('.folder .pre').count() == 0)
+            check(f'[{tag}] there is no projects/ prefix: the location is always a full path', await nd.locator('.folder .pre').count() == 0)
+            # --- browsing for the location --------------------------------------------------------
+            await nd.locator('[data-browse]').click()
+            picker = pg.locator('.lpicker')
+            await picker.wait_for()
+            await expect(picker.locator('.picker-bar .input')).to_have_value(os.path.dirname(busy).replace(os.path.expanduser('~'), '~', 1))
+            check(f'[{tag}] the picker opens where the typed path is and lists its folders', await picker.locator('.picker-row').count() >= 1)
+            await picker.locator('.picker-row', has_text=os.path.basename(busy)).click()
+            await expect(picker.locator('.picker-bar .input')).to_have_value(re.compile(re.escape(os.path.basename(busy)) + '$'))
+            await picker.locator('button[type=submit]').click()
+            await expect(picker).to_have_count(0)
+            v = await nd.locator('.folder .input').input_value()
+            check(f'[{tag}] a chosen folder with files in it gets a new folder inside it', v.startswith(busy.replace(os.path.expanduser('~'), '~', 1)) and v != busy.replace(os.path.expanduser('~'), '~', 1), v)
             await nd.locator('.folder .input').fill('plain-name')
-            check(f'[{tag}] a plain name keeps the projects/ prefix', await nd.locator('.folder .pre').count() == 1)
+            check(f'[{tag}] a plain name still means a folder in the projects folder', await nd.locator('.folder .pre').count() == 0 and await nd.locator('button[type=submit]').is_enabled())
             await pg.keyboard.press('Escape')
 
             # --- remove from list, undo ------------------------------------------------------

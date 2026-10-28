@@ -1480,3 +1480,88 @@
   color: var(--ink-2);
   text-decoration: underline;
 }
+
+
+.ldialog .where > .input {
+  flex: 1;
+  min-width: 0;
+}
+
+
+.ldialog .folder .input.mono,
+.ldialog .folder .input {
+  min-width: 0;
+}
+
+
+.lpicker .picker-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+.lpicker .picker-bar .input {
+  flex: 1;
+  min-width: 0;
+}
+
+
+.lpicker .picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--panel);
+}
+
+
+.lpicker .picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+
+.lpicker .picker-row:hover,
+.lpicker .picker-row:focus-visible {
+  background: var(--accent-soft);
+}
+
+
+.lpicker .picker-row .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.lpicker .picker-row .tag {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+
+.lpicker .picker-note {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}

@@ -10,9 +10,18 @@ import { Dialog } from '../Dialog';
 import { KINDS, KindIcon } from './kinds';
 import { KIND_NEW, type NewState } from './newKinds';
 import { open } from './recent';
+import { FolderPicker } from './FolderPicker';
 
 /** A folder written as a full path (`~/…`, `/…`, `C:\…`) rather than a name in the projects folder. */
 export const isFolderPath = (v: string) => /^(~($|[\\/])|\/|[A-Za-z]:[\\/])/.test(v);
+
+/** The name of a project written as a full path directly inside the projects folder, else null. */
+function insideProjects(value: string, projectsPath: string): string | null {
+  const v = value.replace(/[\\/]+$/, '');
+  const cut = Math.max(v.lastIndexOf('/'), v.lastIndexOf('\\'));
+  const leaf = v.slice(cut + 1);
+  return cut > 0 && v.slice(0, cut) === projectsPath.replace(/[\\/]+$/, '') && NAME_RE.test(leaf) ? leaf : null;
+}
 
 /** What the server says is at a typed path, asked once the typing pauses. */
 function useFolderInfo(path: string | null): FolderInfo | 'checking' | { error: string } | null {
@@ -39,11 +48,13 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   const { t } = useTranslation();
   const linksOn = useStore((s) => s.health?.links !== false);
   const projectsInRepo = useStore((s) => !!s.health?.projectsInRepo);
+  const projectsPath = useStore((s) => s.health?.projectsPath ?? '');
   const [git, setGit] = useState(false);
   const [kind, setKind] = useState<ProjectKind>(initial);
   const [title, setTitle] = useState('');
   const [folder, setFolder] = useState<string | null>(at ?? null);
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   // a motion piece starts in the size last used (16:9 the first time)
   const [size, setSize] = useState<Size | null>(() => readSizes().last ?? [1920, 1080]);
   // Each visual kind keeps its own size when switching; the design system and data table are optional.
@@ -63,9 +74,14 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // letters (Chinese, say), and steps aside for a name that is taken — until the person types in it (a name
   // keeps the project in projects/, a full path puts it there); clearing the field follows the title again
   const auto = freeName(slugOf(title) || kind, taken);
-  const name = folder ?? auto;
-  // a full path puts the project there instead of in the projects folder
-  const path = linksOn && isFolderPath(name) ? name : null;
+  // the default location is written out in full too, so every place reads the same; the projects folder
+  // is just where it starts (a host that keeps projects to itself gets the bare name instead)
+  const full = linksOn && !!projectsPath;
+  const value = folder ?? (full ? `${projectsPath}/${auto}` : auto);
+  const inside = full ? insideProjects(value, projectsPath) : null;
+  const name = inside ?? value;
+  // a full path puts the project there; one directly in the projects folder is still a project of that name
+  const path = linksOn && !inside && isFolderPath(value) ? value : null;
   const info = useFolderInfo(path);
   const state: NewState = { size, setSize, board, setBoard, slideSize, setSlideSize, look, setLook, designSystem, setDesignSystem, systems, dataFile, setDataFile, dataError, setDataError };
   const here = KIND_NEW[kind];
@@ -93,6 +109,13 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // a repository from the start is offered only where the project would not already be in one
   const inRepo = path ? !!info && info !== 'checking' && !('error' in info) && !!info.repo : projectsInRepo;
   const offerGit = !inRepo && !waiting;
+  // a folder chosen in the picker is the location when nothing is in it; when it holds files the project
+  // goes in a new folder inside it, named like the default, which the person can still change
+  const picked = async (chosen: string) => {
+    setPicking(false);
+    const at = await api.folder(chosen).catch(() => null);
+    setFolder(at?.state === 'free' ? chosen : `${chosen.replace(/[\\/]+$/, '')}/${auto}`);
+  };
   const submit = async () => {
     if (!name || problem || waiting || busy || sizeBad) return;
     setBusy(true);
@@ -141,16 +164,21 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
       )}
       <div className="where">
         <span className="folder">
-          {!path && <span className="pre">projects/</span>}
+          {!path && !full && <span className="pre">projects/</span>}
           <input
             className="input"
             aria-label={t('launcher.new.folder')}
             placeholder={t('launcher.new.folderPlaceholder')}
-            value={folder ?? auto}
+            value={value}
             onChange={(e) => setFolder(e.target.value.trim() || null)}
             spellCheck={false}
           />
         </span>
+        {linksOn && (
+          <button type="button" className="btn sm" data-browse="" onClick={() => setPicking(true)}>
+            {t('launcher.folder.browse')}
+          </button>
+        )}
       </div>
       {linksOn && (
         <div className="where-hint" data-where={path ? 'path' : 'name'}>
@@ -168,6 +196,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
           {t(`launcher.kind.${kind}.create`)}
         </button>
       </footer>
+      {picking && <FolderPicker start={path ?? (full ? projectsPath : '')} onClose={() => setPicking(false)} onPick={(p) => void picked(p)} />}
     </Dialog>
   );
 }
@@ -180,6 +209,7 @@ export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => voi
   const { t } = useTranslation();
   const [path, setPath] = useState('');
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   const typed = path.trim();
   const usable = isFolderPath(typed);
   const info = useFolderInfo(usable ? typed : null);
@@ -216,7 +246,13 @@ export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => voi
   return (
     <Dialog label={t('launcher.folder.title')} className="lopen" onClose={onClose} onSubmit={() => void submit()}>
       <p className="kblurb">{t('launcher.folder.blurb')}</p>
-      <input autoFocus className="input mono" aria-label={t('launcher.folder.label')} placeholder={t('launcher.folder.placeholder')} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
+      <div className="where">
+        <input autoFocus className="input mono" aria-label={t('launcher.folder.label')} placeholder={t('launcher.folder.placeholder')} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
+        <button type="button" className="btn sm" data-browse="" onClick={() => setPicking(true)}>
+          {t('launcher.folder.browse')}
+        </button>
+      </div>
+      {picking && <FolderPicker start={usable ? typed : ''} onClose={() => setPicking(false)} onPick={(p) => { setPath(p); setPicking(false); }} />}
       <div className={`folder-state${ready ? ` s-${info.state}` : ''}`} role="status" data-state={ready ? info.state : undefined}>
         {ready && info.state === 'project' && <KindIcon kind={info.kind!} size={14} />}
         <span>{status}</span>
