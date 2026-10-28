@@ -123,6 +123,21 @@ async def main():
         ok = await wait_for(lambda: 'See **Workflow**' in tab('overview'))
         check('the selection menu makes text bold', ok, [l for l in tab('overview').splitlines() if 'See ' in l])
 
+        # --- text colour -----------------------------------------------------------------------
+        await pg.keyboard.press('ArrowRight')  # collapse the selection to its end, then select the word again
+        for _ in 'Workflow': await pg.keyboard.press('Shift+ArrowLeft')
+        await pg.locator('.bubble button[aria-label="文字颜色"]').click()
+        await pg.locator('.bubble .swatch[data-color=red]').click()
+        ok = await wait_for(lambda: 'See <span data-color="red">**Workflow**</span>' in tab('overview') or 'See **<span data-color="red">Workflow</span>**' in tab('overview'))
+        check('the selection menu colours text, kept as a span in the Markdown', ok, [l for l in tab('overview').splitlines() if 'See ' in l])
+        await expect(body.locator('span[data-color=red]')).to_have_text('Workflow')
+        css = await body.locator('span[data-color=red]').evaluate('e => getComputedStyle(e).color')
+        check('the colour is drawn from a theme token', css != await body.locator('p').last.evaluate('e => getComputedStyle(e).color'), css)
+        await pg.locator('.bubble button[aria-label="文字颜色"]').click()
+        await pg.locator('.bubble button[aria-label="清除颜色"]').click()
+        ok = await wait_for(lambda: 'data-color' not in tab('overview'))
+        check('clearing the colour takes the span out', ok, [l for l in tab('overview').splitlines() if 'See ' in l])
+
         # --- someone else writes at the same time ------------------------------------------
         before = tab('overview')
         write(os.path.join(DOC, 'tabs/overview.md'), before.replace('## What Tingly Design is', '## What Tingly Design does'))
