@@ -20,6 +20,24 @@ def check(name, ok, extra=''):
     results.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
 
+async def stage_point(pg, sel, fx=0.5, fy=0.5):
+    """Where an element inside the scaled stage frame really is on screen: Playwright's own
+    box for elements deep in a transformed srcdoc iframe is off on some Chromiums, so the
+    frame-internal point is mapped through the frame's transform by hand."""
+    pos = await ([f for f in pg.frames if f != pg.main_frame][-1]).evaluate(
+        """([sel, fx, fy]) => {
+            const r = document.querySelector(sel).getBoundingClientRect();
+            return {x: r.x + r.width * fx, y: r.y + r.height * fy, w: r.width};
+        }""", [sel, fx, fy])
+    geo = await pg.evaluate("""() => {
+        const fr = document.querySelector('.medit iframe');
+        const r = fr.getBoundingClientRect();
+        const inner = fr.closest('.sinner');
+        const s = inner ? new DOMMatrix(getComputedStyle(inner).transform).a : 1;
+        return {left: r.x, top: r.y, scale: s};
+    }""")
+    return (geo['left'] + pos['x'] * geo['scale'], geo['top'] + pos['y'] * geo['scale'], pos['w'] * geo['scale'])
+
 async def main():
     os.makedirs(OUT, exist_ok=True)
     restore()
@@ -61,21 +79,25 @@ async def main():
         await pg.get_by_role('button', name='+ 场景').click()
         await expect(pg.locator('.mscene')).to_have_count(2)
         await expect(pg.locator('.mscene.on .mname')).to_have_text('scene-2')
+        await pg.wait_for_timeout(1500)
         check('+ Scene adds a scene after the current one and goes to it', order() == ['title', 'scene-2'], str(order()))
         sc = open(os.path.join(REPO, 'projects/zz-motion/scenes/scene-2.html')).read()
         check('the new scene is a timed page in the piece\'s look', 'data-duration="4s"' in sc and 'id="scene-2"' in sc, sc[:200])
         await pg.locator('.mscene', has_text='title').click(button='right')
         await pg.get_by_role('menuitem', name='复制').click()
         await expect(pg.locator('.mscene')).to_have_count(3)
+        await pg.wait_for_timeout(1500)
         check('Duplicate puts a copy right after', order() == ['title', 'title-copy', 'scene-2'], str(order()))
         await pg.locator('.mscene', has_text='scene-2').click(button='right')
         await pg.get_by_role('menuitem', name='前移').click()
         await expect(pg.locator('.mscene .mname').first).to_have_text('title')
+        await pg.wait_for_timeout(1500)
         check('Move earlier swaps with the one before', order() == ['title', 'scene-2', 'title-copy'], str(order()))
         await pg.screenshot(path=OUT + 'motion-scenes.png')
         await pg.locator('.mscene', has_text='title-copy').click(button='right')
         await pg.get_by_role('menuitem', name='删除').click()
         await expect(pg.locator('.mscene')).to_have_count(2)
+        await pg.wait_for_timeout(1500)
         check('Delete takes the scene out and removes its file', order() == ['title', 'scene-2'] and not os.path.exists(os.path.join(REPO, 'projects/zz-motion/scenes/title-copy.html')))
 
         # the last size is the next default; a custom one is kept in the person's own
@@ -205,6 +227,87 @@ async def main():
         await pg.wait_for_timeout(700)
         check('dragging a clip edge changes its length', 'data-duration="3s"' not in read('scenes/kind-slides.html') and 'data-duration=' in read('scenes/kind-slides.html'), read('scenes/kind-slides.html')[:160])
 
+        # --- the element timeline: one bar per animated element of the scene under the playhead ----------
+        await pg.locator('.mscene', has_text='kind-slides').click()
+        await expect(pg.locator('.mlanebar')).to_have_count(11)
+        check('the scene under the playhead shows a bar per animated element', await pg.locator('.mlanelabel').count() == 11)
+        bar = pg.locator('.mlanebar').nth(1)
+        await bar.click()
+        await pg.wait_for_timeout(400)
+        check('clicking a bar selects the element and jumps to where it is settled', await pg.locator('.manim').count() == 1)
+        edge = bar.locator('.mseg.in .medge.l')
+        eb = await edge.bounding_box()
+        before_in = re.search(r'<h2 data-in="([^"]+)"', read('scenes/kind-slides.html')).group(1)
+        await pg.mouse.move(eb['x'] + 2, eb['y'] + eb['height'] / 2)
+        await pg.mouse.down()
+        await pg.mouse.move(eb['x'] + 2 + 20, eb['y'] + eb['height'] / 2, steps=5)
+        await pg.mouse.up()
+        await pg.wait_for_timeout(700)
+        after_in = re.search(r'<h2 data-in="([^"]+)"', read('scenes/kind-slides.html')).group(1)
+        check('dragging the entrance edge writes a new @start', after_in != before_in and '@' in after_in, f'{before_in} -> {after_in}')
+        # an automatic start: the sample always writes @time, so take one away on disk first
+        idea_path = os.path.join(REPO, SAMPLE, 'scenes/idea.html')
+        disk = read('scenes/idea.html')
+        assert 'data-in="fade 500ms @0.6s"' in disk, 'sample idea scene is not as expected'
+        open(idea_path, 'w').write(disk.replace('data-in="fade 500ms @0.6s"', 'data-in="fade 500ms"'))
+        await pg.locator('.mscene', has_text='idea').click()
+        for _ in range(20):
+            if await pg.locator('.mseg.auto').count() > 0:
+                break
+            await pg.wait_for_timeout(500)
+        check('the idea scene on disk holds an automatic start', '@0.6s' not in read('scenes/idea.html'), read('scenes/idea.html')[:120])
+        check('a start the file left automatic is drawn dashed', await pg.locator('.mauto').count() >= 1)
+        auto_bar = pg.locator('.mlanebar:has(.mseg.auto)').first
+        ab = await auto_bar.bounding_box()
+        before_auto = set(re.findall(r'data-in="([^"]+)"', read('scenes/idea.html')))
+        no_at = {v for v in before_auto if '@' not in v}
+        await pg.mouse.move(ab['x'] + ab['width'] / 2, ab['y'] + ab['height'] / 2)
+        await pg.mouse.down()
+        await pg.mouse.move(ab['x'] + ab['width'] / 2 + 20, ab['y'] + ab['height'] / 2, steps=5)
+        await pg.mouse.up()
+        await pg.wait_for_timeout(700)
+        after_auto = set(re.findall(r'data-in="([^"]+)"', read('scenes/idea.html')))
+        check('dragging an automatic start writes the time down', no_at and not any(v in after_auto for v in no_at) and any('@' in v and v.split(' @')[0].split()[0] in {x.split()[0] for x in no_at} for v in after_auto), f'{sorted(before_auto)} -> {sorted(after_auto)}')
+
+        # --- keyframes: diamonds on the timeline, the key at the playhead from the panel -----------------
+        await pg.locator('.mscene', has_text='kind-slides').click()
+        await pg.locator('.mlanebar').nth(1).click()
+        await pg.wait_for_timeout(400)
+        scrub = pg.locator('.mscrub')
+        start = int(await scrub.get_attribute('value')) * 1.5
+        await scrub.fill(str(round((start + 1200) / 1.5)))
+        await pg.wait_for_timeout(300)
+        await pg.locator('.maddtrack button', has_text='opacity').click()
+        await pg.wait_for_timeout(700)
+        keys_before = re.search(r'data-keys="([^"]+)"', read('scenes/kind-slides.html')).group(1)
+        check('starting a track at the playhead writes data-keys', 'opacity:' in keys_before, keys_before)
+        await pg.locator('.mlanelabel', has_text='Slides').locator('.mchev').first.click()
+        await pg.wait_for_timeout(300)
+        key = pg.locator('.mkey').first
+        kb = await key.bounding_box()
+        await pg.mouse.move(kb['x'] + kb['width'] / 2, kb['y'] + kb['height'] / 2)
+        await pg.mouse.down()
+        await pg.mouse.move(kb['x'] + kb['width'] / 2 + 20, kb['y'] + kb['height'] / 2, steps=5)
+        await pg.mouse.up()
+        await pg.wait_for_timeout(700)
+        keys_after = re.search(r'data-keys="([^"]+)"', read('scenes/kind-slides.html')).group(1)
+        check('dragging a diamond moves that key', keys_after != keys_before, f'{keys_before} -> {keys_after}')
+        op = pg.locator('input[aria-label="不透明度"]')
+        await op.fill('0.5')
+        await op.press('Enter')
+        await pg.wait_for_timeout(700)
+        keys_op = re.search(r'data-keys="([^"]+)"', read('scenes/kind-slides.html')).group(1)
+        check('with a track, the panel opacity edit writes the key at the playhead', '0.5@' in keys_op and keys_op != keys_after, keys_op)
+        preset = pg.locator('.manim select').first
+        await preset.select_option('fade')
+        await pg.wait_for_timeout(700)
+        check('the Animation section rewrites the same attribute', '<h2 data-in="fade' in read('scenes/kind-slides.html'), read('scenes/kind-slides.html')[:200])
+        await pg.screenshot(path=OUT + 'motion-lanes.png')
+        # the stage checks below assume the sample's own timing: put it back and reload
+        subprocess.run(['git', 'checkout', '--', SAMPLE], cwd=REPO)
+        await pg.goto(BASE + '/?p=design-motion')
+        await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
+
         # --- editing on the stage --------------------------------------------------------------------
         await pg.locator('.mscene', has_text='kind-slides').click()
         h2 = stage.locator('section#kind-slides h2')
@@ -213,12 +316,13 @@ async def main():
         await expect(h2).to_have_attribute('data-dc-rest', '')
         await expect(pg.locator('.mwhere')).to_have_text('kind-slides · 0.0 s · 落定')
         check('a scene opens on its first moment, drawn landed like a page', True)
-        await h2.click()
+        hx, hy, _ = await stage_point(pg, 'section#kind-slides h2')
+        await pg.mouse.click(hx, hy)
         await expect(pg.locator('.mfmt-where')).to_contain_text('所有尺寸')
         await expect(pg.locator('.prompt .target')).to_contain_text('Slides')
         check('a scene takes clicks like a slide', True)
 
-        await h2.dblclick()
+        await pg.mouse.dblclick(hx, hy)
         await pg.keyboard.press('ControlOrMeta+a')
         await pg.keyboard.type('Decks')
         await pg.keyboard.press('Enter')
@@ -226,9 +330,12 @@ async def main():
         await pg.wait_for_timeout(600)
         check('double-click retypes text into the scene file', '>Decks</h2>' in read('scenes/kind-slides.html'))
 
-        await h2.click()
-        hb = await h2.bounding_box()
-        x, y = hb['x'] + hb['width'], hb['y'] + hb['height'] / 2
+        hx, hy, _ = await stage_point(pg, 'section#kind-slides h2')
+        hx, hy, _ = await stage_point(pg, 'section#kind-slides h2')
+        await pg.mouse.click(hx, hy)
+        await expect(pg.locator('.mlane.sel')).to_have_count(1)
+        await pg.wait_for_timeout(400)
+        x, y, hw = await stage_point(pg, 'section#kind-slides h2', 1.0, 0.5)
         await pg.mouse.move(x, y)
         await pg.mouse.down()
         await pg.mouse.move(x - 40, y, steps=4)
@@ -269,7 +376,8 @@ async def main():
         await scrub.fill(at(600))
         await expect(h2).not_to_have_attribute('data-dc-off', '')
         mid = float(await h2.evaluate('e => getComputedStyle(e).opacity'))
-        await h2.click()
+        hx, hy, _ = await stage_point(pg, 'section#kind-slides h2')
+        await pg.mouse.click(hx, hy)
         await expect(h2).to_have_attribute('data-dc-rest', '')
         rest = float(await h2.evaluate('e => getComputedStyle(e).opacity'))
         check('selected mid-entrance, an element is drawn landed', mid < 0.99 and rest == 1, f'{mid} {rest}')
@@ -297,12 +405,12 @@ async def main():
         pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('button[aria-label="删除尺寸 square"]').click()
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(0)
-        await pg.wait_for_timeout(500)
+        await pg.wait_for_timeout(1500)
         check('a size is removed', '"square"' not in read('motion.json'))
         # one Undo in the toast brings the size back whole (its overrides and motion.json), the primary has no ×
         await pg.locator('.toast-act').click()
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(1)
-        await pg.wait_for_timeout(500)
+        await pg.wait_for_timeout(1500)
         check('Undo in the toast brings the size back', '"square"' in read('motion.json'))
         check('the main size has no delete button', await pg.locator('button[aria-label^="删除尺寸"]').count() == len(json.loads(read('motion.json'))['formats']) - 1 and await pg.locator('button[aria-label="删除尺寸 wide"]').count() == 0)
         pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
@@ -321,13 +429,14 @@ async def main():
         project_speed = float(re.search(r'"speed":\s*([\d.]+)', read('motion.json')).group(1))
         await pg.locator('.mspeed select').select_option('1')
         await expect(pg.locator('.mtime')).not_to_contain_text(f'/ {at_project}')
+        await pg.wait_for_timeout(1200)
         at_one = total(await pg.locator('.mtime').inner_text())
         check('a speed picked in the bar changes the length and is saved (1× leaves no key)', abs(at_one - at_project * project_speed) < 0.2 and '"speed"' not in read('motion.json'), f'{at_project} → {at_one} at {project_speed}×')
         field = pg.locator('.inp input[aria-label="速度"]')
         await field.fill('1.3')
         await field.press('Enter')
         await expect(pg.locator('.mspeed select')).to_have_value('1.3')
-        await pg.wait_for_timeout(500)
+        await pg.wait_for_timeout(1500)
         at_free = total(await pg.locator('.mtime').inner_text())
         check('any speed typed in the panel is saved and offered in the bar', '"speed": 1.3' in read('motion.json') and abs(at_free - at_one / 1.3) < 0.2, f'{at_one} → {at_free}')
         await field.fill('9')

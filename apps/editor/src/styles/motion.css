@@ -40,7 +40,7 @@
 .mstage {
   position: relative;
   flex: 1;
-  min-height: 0;
+  min-height: 200px;
   display: grid;
   place-items: center;
 }
@@ -962,4 +962,290 @@
   .mexp-pace {
     display: none;
   }
+}
+
+
+/* the element rows under the scene blocks: one bar per animated element of the
+   scene under the playhead; labels stand in the cover's column so bar and
+   label share one height, and the playhead runs through them all */
+
+
+.mlanerows {
+  position: relative;
+}
+
+
+/* many animated elements: the rows scroll inside a capped strip (labels follow
+   from the cover's column), so the stage keeps its room */
+
+
+.mlanescroll {
+  max-height: 176px;
+  overflow-y: hidden;
+}
+
+
+.mlanescroll.rows {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+
+.mlanescroll.rows::-webkit-scrollbar {
+  display: none;
+}
+
+
+.mlane {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+
+.mlanebar {
+  position: absolute;
+  top: 4px;
+  height: 14px;
+  min-width: 2px;
+  display: flex;
+  border-radius: 4px;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  cursor: grab;
+  overflow: visible;
+}
+
+
+.mlanebar:active {
+  cursor: grabbing;
+}
+
+
+.mlane.sel .mlanebar {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+
+.mlane.off .mlanebar {
+  opacity: 0.45;
+}
+
+
+.mlanebar .mseg {
+  position: relative;
+  height: 100%;
+  min-width: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 4px 0 0 4px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+
+.mlanebar .mseg.out {
+  border-radius: 0 4px 4px 0;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+
+.mlanebar .mseg b {
+  position: absolute;
+  inset: 0;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 14px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+
+.mlanebar .mseg.auto {
+  border-left: 2px dashed var(--faint);
+}
+
+
+.mlanebar .medge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+}
+
+
+.mlanebar .medge.l {
+  left: 0;
+  /* on a short segment both edges fit in a few pixels: the left one wins the overlap */
+  z-index: 2;
+}
+
+
+.mlanebar .medge.r {
+  right: 0;
+  z-index: 1;
+}
+
+
+.mlanebar .mauto {
+  position: absolute;
+  left: 0;
+  top: -2px;
+  bottom: -2px;
+  width: 0;
+  border-left: 2px dashed var(--faint);
+}
+
+
+/* the ▸ that opens an element's keyframe tracks, before its label */
+
+
+.mlanelabel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+
+.mlanelabel-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.mchev {
+  flex: none;
+  width: 14px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+
+.mchev i {
+  display: block;
+  width: 0;
+  height: 0;
+  margin: 5px auto;
+  border: 4px solid transparent;
+  border-left-color: currentcolor;
+  border-right-width: 0;
+  transform-origin: 3px 4px;
+}
+
+
+.mchev[aria-expanded='true'] i {
+  transform: rotate(90deg);
+}
+
+
+/* a keyframe track's diamonds; one drags along the axis */
+
+
+.mlane-keyrow {
+  position: relative;
+}
+
+
+.mkey {
+  position: absolute;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  padding: 0;
+  border: 0;
+  background: var(--accent);
+  transform: rotate(45deg);
+  border-radius: 2px;
+  cursor: grab;
+}
+
+
+.mkey:hover {
+  filter: brightness(1.15);
+}
+
+
+.mkey:active {
+  cursor: grabbing;
+}
+
+
+/* the snap guide while a bar or diamond is dragged */
+
+
+.msnapline {
+  position: absolute;
+  top: 0;
+  width: 0;
+  border-left: 1px dashed var(--accent);
+  pointer-events: none;
+}
+
+
+/* labels for the rows, in the cover's column */
+
+
+.mlanelabel,
+.mlanekeylabel {
+  padding-right: 2px;
+  font-size: 10px;
+  line-height: 22px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+
+.mlanekeylabel {
+  padding-left: 10px;
+  color: var(--faint);
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* the Animation section: a ◆ before a tracked property, the ◇ buttons to start one */
+
+
+.manim .mtrack {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.manim .mdia {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+
+
+.manim .maddtrack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+
+.manim .maddtrack .ib {
+  width: auto;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--muted);
 }

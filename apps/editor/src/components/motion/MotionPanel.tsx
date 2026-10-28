@@ -2,14 +2,24 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
+  AUTO_START_MS,
+  AUTO_STAGGER_MS,
+  KEY_PROPS,
   MAX_SPEED,
   MIN_SPEED,
+  MOTION_PRESETS,
   TRANSITION_KINDS,
+  animDefaults,
   attr,
+  attrsForFormat,
   checkScene,
+  easingOf,
+  easingTokenOf,
   formatNameOf,
   formatTime,
   getStyle,
+  halfFrameMs,
+  newTrack,
   primaryFormat,
   parseStyle,
   parseTime,
@@ -18,11 +28,17 @@ import {
   sceneVisibility,
   speedOf,
   sizeName,
+  styleInFormat,
+  trackValueAt,
+  withKeyAt,
+  type AnimSpec,
   type DcDoc,
   type DcElement,
+  type KeyProp,
 } from '@dc/core';
 import { display, editElement, parsed, recordChange, toast, useStore } from '../../store';
-import { addFormat, editMotion, setSpeed, motionOf, overridesOf, removeFormat, setFormatSize } from './motion';
+import { addFormat, editMotion, setSpeed, motionOf, overridesOf, removeFormat, setFormatSize, setKeys, setTiming, timingOf } from './motion';
+import { useLanes } from './ElementLanes';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
 import { rememberSize, sameSize, type Size } from './motionSizes';
@@ -325,4 +341,179 @@ export function MotionLayers() {
   );
   if (!file) return <div className="layers" />;
   return <ElementLayers file={file} away={away} />;
+}
+
+const EASES = ['linear', 'ease', 'ease-in', 'ease-out', 'ease-in-out', 'smooth', 'snap', 'spring'];
+
+/** The value an element has for a keyframe prop before any track: its style, or the neutral default. */
+function keyValueNow(raw: Record<string, string>, fmt: string, prop: KeyProp): number {
+  if (prop === 'opacity') {
+    const v = parseFloat(getStyle(styleInFormat(raw, fmt), 'opacity') ?? '');
+    return Number.isFinite(v) ? v : 1;
+  }
+  if (prop === 'scale') {
+    const v = parseFloat((getStyle(styleInFormat(raw, fmt), 'scale') ?? '').replace(/^([\d.]+).*/, '$1'));
+    return Number.isFinite(v) ? v : 1;
+  }
+  return 0;
+}
+
+/**
+ * The “Animation” section: the element's entrance and exit as plain numbers
+ * (preset, length, @start, easing), and its keyframe tracks — the value at
+ * the playhead, a ◇ to start a track there, × to drop one (`.design/
+ * motion-editing.md` §3.5). Timing is always shared by every size.
+ */
+export function AnimRow({ file, el }: { file: string; el: DcElement }) {
+  const view = useStore((s) => s.motionView);
+  const m = useMotion();
+  const { t } = useTranslation();
+  const formats = Object.keys(m.formats);
+  const fmt = view?.format ?? primaryFormat(m);
+  const raw = Object.fromEntries(el.attrs.map((a) => [a.name, a.value]));
+  const merged = attrsForFormat(raw, fmt, formats) ?? raw;
+  const shown = timingOf(merged, null);
+  const nameOf = (kind: 'in' | 'out') => (fmt !== formats[0] && raw[`data-${kind}-${fmt}`] !== undefined ? `data-${kind}-${fmt}` : `data-${kind}`);
+  const at = view && !view.landed ? Math.max(0, view.at) : 0;
+  const dur = parseTime(merged['data-duration']) ?? 4000;
+  const tol = halfFrameMs(m.fps);
+  const lane = useLanes(m, fmt, sceneIdOf(file)).find((l) => l.tid === el.tid);
+  const put = (part: { inSpec?: AnimSpec | null; outSpec?: AnimSpec | null }) => setTiming(file, el.tid, { ...part, inName: nameOf('in'), outName: nameOf('out') });
+  const secs = (ms: number) => String(+(ms / 1000).toFixed(2));
+  const easingRow = (dir: 'in' | 'out', spec: AnimSpec) => (
+    <Select
+      narrow
+      value={easingTokenOf(spec.easing)}
+      options={[...EASES, ...(!EASES.includes(easingTokenOf(spec.easing)) ? [easingTokenOf(spec.easing)] : [])].map((e) => ({ value: e, label: e }))}
+      onChange={(v) => {
+        const css = easingOf(v);
+        if (css) put(dir === 'in' ? { inSpec: { ...spec, easing: css } } : { outSpec: { ...spec, easing: css } });
+      }}
+      label={t('motion.anim.easing')}
+    />
+  );
+  const lengthRow = (dir: 'in' | 'out', spec: AnimSpec) => (
+    <Field
+      value={String(spec.duration)}
+      unit="ms"
+      label={t('motion.anim.length')}
+      onCommit={(v) => {
+        const n = Math.round(Number(v));
+        if (Number.isFinite(n) && n >= 50 && n <= 600_000) put(dir === 'in' ? { inSpec: { ...spec, duration: n } } : { outSpec: { ...spec, duration: n } });
+      }}
+    />
+  );
+  const startRow = (dir: 'in' | 'out', spec: AnimSpec) => {
+    const auto = spec.start ?? (dir === 'in' ? (lane?.inStart ?? AUTO_START_MS) : (lane?.outStart ?? Math.max(0, dur - spec.duration)));
+    return (
+      <Field
+        value={spec.start != null ? secs(spec.start) : ''}
+        placeholder={secs(auto)}
+        unit="s"
+        label={t('motion.anim.start')}
+        onCommit={(v) => {
+          const n = Math.round(Number(v) * 1000);
+          if (Number.isFinite(n) && n >= 0) put(dir === 'in' ? { inSpec: { ...spec, start: Math.min(n, dur) } } : { outSpec: { ...spec, start: Math.min(n, dur) } });
+        }}
+      />
+    );
+  };
+  const presetRow = (dir: 'in' | 'out', spec: AnimSpec | null) => (
+    <Select
+      value={spec?.preset ?? ''}
+      options={[{ value: '', label: t('motion.anim.none') }, ...MOTION_PRESETS.map((p) => ({ value: p, label: p }))]}
+      onChange={(v) => {
+        if (!v) return put(dir === 'in' ? { inSpec: null } : { outSpec: null });
+        const d = animDefaults(v as AnimSpec['preset'], dir);
+        const next: AnimSpec = { preset: v as AnimSpec['preset'], duration: d.duration, start: spec?.start ?? null, easing: d.easing };
+        put(dir === 'in' ? { inSpec: next } : { outSpec: next });
+      }}
+      label={dir === 'in' ? t('motion.anim.enter') : t('motion.anim.leave')}
+    />
+  );
+  return (
+    <div className="sec manim">
+      <h3>{t('motion.anim.heading')}</h3>
+      <Row label={t('motion.anim.enter')}>{presetRow('in', shown.inSpec)}</Row>
+      {shown.inSpec && (
+        <>
+          <Row label="">
+            {lengthRow('in', shown.inSpec)}
+            {easingRow('in', shown.inSpec)}
+          </Row>
+          <Row label={t('motion.anim.start')} title={shown.inSpec.start == null ? t('motion.anim.autoStart', { time: secs(lane?.inStart ?? AUTO_START_MS) }) : undefined}>
+            {startRow('in', shown.inSpec)}
+          </Row>
+        </>
+      )}
+      <Row label={t('motion.anim.leave')}>
+        {shown.outSpec ? (
+          presetRow('out', shown.outSpec)
+        ) : (
+          <button className="btn outline sm" title={t('motion.anim.addLeaveHint')} onClick={() => put({ outSpec: { preset: 'fade', duration: 500, start: null, easing: 'ease-in' } })}>
+            {t('motion.anim.addLeave')}
+          </button>
+        )}
+      </Row>
+      {shown.outSpec && (
+        <>
+          <Row label="">
+            {lengthRow('out', shown.outSpec)}
+            {easingRow('out', shown.outSpec)}
+          </Row>
+          <Row label={t('motion.anim.start')} title={shown.outSpec.start == null ? t('motion.anim.autoStart', { time: secs(lane?.outStart ?? Math.max(0, dur - shown.outSpec.duration)) }) : undefined}>
+            {startRow('out', shown.outSpec)}
+          </Row>
+        </>
+      )}
+      {shown.tracks.map((tr) => (
+        <Row
+          key={tr.prop}
+          label={
+            <span className="mtrack">
+              <i className="mdia" aria-hidden />
+              {tr.prop}
+            </span>
+          }
+          title={t('motion.anim.trackAt', { prop: tr.prop })}
+        >
+          <Field
+            value={String(+trackValueAt(tr.keys, at).toFixed(2))}
+            label={t('motion.anim.trackAt', { prop: tr.prop })}
+            onCommit={(v) => {
+              const n = Number(v);
+              if (Number.isFinite(n)) setKeys(file, el.tid, withKeyAt(shown.tracks, tr.prop, at, n, tol));
+            }}
+          />
+          <span className="hint">{t('motion.anim.frames', { count: tr.keys.length })}</span>
+          <button className="ib" aria-label={t('motion.anim.trackDrop', { prop: tr.prop })} title={t('motion.anim.trackDrop', { prop: tr.prop })} onClick={() => setKeys(file, el.tid, shown.tracks.filter((x) => x.prop !== tr.prop))}>
+            ×
+          </button>
+        </Row>
+      ))}
+      {KEY_PROPS.some((p) => !shown.tracks.some((x) => x.prop === p)) && (
+        <Row label={t('motion.anim.keys')} title={t('motion.anim.trackAdd', { prop: KEY_PROPS.find((p) => !shown.tracks.some((x) => x.prop === p))! })}>
+          <div className="maddtrack">
+            {KEY_PROPS.filter((p) => !shown.tracks.some((x) => x.prop === p)).map((p) => (
+              <button
+                key={p}
+                className="ib"
+                aria-label={t('motion.anim.trackAdd', { prop: p })}
+                title={t('motion.anim.trackAdd', { prop: p })}
+                onClick={() => {
+                  const v = keyValueNow(raw, fmt, p);
+                  setKeys(file, el.tid, [...shown.tracks, newTrack(p, at, v, v)]);
+                }}
+              >
+                ◇ {p}
+              </button>
+            ))}
+          </div>
+        </Row>
+      )}
+      <p className="hint" style={{ margin: 0 }}>
+        {t('motion.anim.hint')}
+      </p>
+    </div>
+  );
 }

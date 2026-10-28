@@ -2,7 +2,7 @@
  * Motion pieces in the editor: motion.json edits that keep what the file has,
  * the piece's formats (sizes), and where the stage stands.
  */
-import { attr, changeScope, seedFormat, DEFAULT_SCENE_MS, MAX_SPEED, MIN_SPEED, speedOf, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type MotionJson } from '@dc/core';
+import { attr, changeScope, seedFormat, DEFAULT_SCENE_MS, MAX_SPEED, MIN_SPEED, speedOf, newSlideSource, withSlideId, MOTION_FILE, FORMAT_NAME_RE, formatAnim, formatKeys, formatTime, newCoverScene, snapSceneMs, uniqueSlideId, parseAnim, parseKeys, parseTime, sceneTiming, parseDc, parseMotion, primaryFormat, rootElement, sceneFile, sceneIdOf, type AnimSpec, type HumanOp, type KeyTrack, type MotionJson } from '@dc/core';
 import { api } from '../../api';
 import { insertHtml } from '../../actions';
 import { filesOf, type ImportTarget } from '../ImportHere';
@@ -335,4 +335,52 @@ export function moveScene(id: string, dir: -1 | 1): void {
   if (i < 0 || j < 0 || j >= order.length) return;
   [order[i], order[j]] = [order[j], order[i]];
   editMotion((raw) => void (raw.order = order), t('motion.journal.sceneMoved', { id }));
+}
+
+// ------------------------------------------------------------- timing of one element
+
+/** One element's timing in the format on screen: its entrance, exit and keyframe tracks. */
+export interface ElementTiming {
+  inSpec: AnimSpec | null;
+  outSpec: AnimSpec | null;
+  tracks: KeyTrack[];
+  /** The attribute to write back to: a format's own `data-in-<format>` only where it already exists. */
+  inName: string;
+  outName: string;
+}
+
+/** Read what the timeline rows and the Animation section both show. */
+export function timingOf(attrs: Record<string, string>, format: string | null): ElementTiming {
+  const raw = (kind: 'in' | 'out') => {
+    const shared = `data-${kind}`;
+    const own = format ? `data-${kind}-${format}` : null;
+    return own && attrs[own] !== undefined ? own : shared;
+  };
+  const inSpec = parseAnim(attrs['data-in'], 'in');
+  const outSpec = parseAnim(attrs['data-out'], 'out');
+  const tracks = parseKeys(attrs['data-keys']);
+  return {
+    inSpec: inSpec && !('error' in inSpec) ? inSpec : null,
+    outSpec: outSpec && !('error' in outSpec) ? outSpec : null,
+    tracks: 'error' in tracks ? [] : tracks,
+    inName: raw('in'),
+    outName: raw('out'),
+  };
+}
+
+/**
+ * Write an element's entrance and/or exit back (one edit, so one Undo): each
+ * spec as its attribute, null clearing it. Timing is shared by every size; a
+ * format's own attribute is written only where the element already has one.
+ */
+export function setTiming(file: string, tid: number, timing: { inSpec?: AnimSpec | null; outSpec?: AnimSpec | null; inName: string; outName: string }): boolean {
+  const ops: HumanOp[] = [];
+  if (timing.inSpec !== undefined) ops.push({ kind: 'attr', tid, name: timing.inName, value: timing.inSpec ? formatAnim(timing.inSpec, 'in') : null });
+  if (timing.outSpec !== undefined) ops.push({ kind: 'attr', tid, name: timing.outName, value: timing.outSpec ? formatAnim(timing.outSpec, 'out') : null });
+  return ops.length > 0 && editElement(file, ops);
+}
+
+/** Write an element's keyframe tracks back (`data-keys`), or clear them. */
+export function setKeys(file: string, tid: number, tracks: KeyTrack[] | null): boolean {
+  return editElement(file, [{ kind: 'attr', tid, name: 'data-keys', value: tracks && tracks.length ? formatKeys(tracks) : null }]);
 }

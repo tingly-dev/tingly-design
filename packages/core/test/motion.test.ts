@@ -21,6 +21,13 @@ import {
   validSize,
   parseTime,
   planScene,
+  formatAnim,
+  formatKeys,
+  trackValueAt,
+  withKeyAt,
+  withKeyTime,
+  keysForEdits,
+  type KeyTrack,
   sceneBaseCss,
   sceneIdOf,
   snapSceneMs,
@@ -297,5 +304,77 @@ describe('a new piece in a chosen size', () => {
     expect(wide).toContain('font-size:112px');
     expect(small).toContain('font-size:56px');
     expect(small).toContain('padding:64px');
+  });
+});
+
+describe('motion: writing timing back', () => {
+  it('serializes an entrance, omitting what the preset defaults to', () => {
+    expect(formatAnim({ preset: 'rise', duration: 500, start: null, easing: 'ease-out' }, 'in')).toBe('rise');
+    expect(formatAnim({ preset: 'rise', duration: 700, start: 200, easing: 'ease-out' }, 'in')).toBe('rise 700ms @200ms');
+    expect(formatAnim({ preset: 'fade', duration: 300, start: 1000, easing: 'ease-in' }, 'out')).toBe('fade 300ms @1s');
+    expect(formatAnim({ preset: 'pop', duration: 500, start: null, easing: 'cubic-bezier(.3,1.6,.5,1)' }, 'in')).toBe('pop');
+    expect(formatAnim({ preset: 'slam', duration: 350, start: null, easing: 'ease-in' }, 'out')).toBe('slam ease-in');
+    // and what comes back parses to the same spec
+    const spec = { preset: 'rise' as const, duration: 700, start: 200, easing: 'cubic-bezier(.2,.8,.2,1)' };
+    expect(parseAnim(formatAnim(spec, 'in'), 'in')).toEqual(spec);
+  });
+
+  it('serializes keyframe tracks and parses them back', () => {
+    const tracks: KeyTrack[] = [
+      { prop: 'x', keys: [{ t: 0, v: 0 }, { t: 2000, v: 120, easing: 'ease-in-out' }] },
+      { prop: 'scale', keys: [{ t: 2000, v: 1 }, { t: 3000, v: 1.2 }] },
+    ];
+    const text = formatKeys(tracks);
+    expect(text).toBe('x: 0@0s 120@2s ease-in-out; scale: 1@2s 1.2@3s');
+    expect(parseKeys(text)).toEqual(tracks);
+    expect(parseKeys(formatKeys([{ prop: 'opacity', keys: [{ t: 0, v: 1 }, { t: 500, v: 0 }] }]))).toEqual([
+      { prop: 'opacity', keys: [{ t: 0, v: 1 }, { t: 500, v: 0 }] },
+    ]);
+  });
+
+  it('reads a track value at a time, interpolating between keys', () => {
+    const keys = [{ t: 0, v: 0 }, { t: 2000, v: 100 }];
+    expect(trackValueAt(keys, 0)).toBe(0);
+    expect(trackValueAt(keys, 1000)).toBe(50);
+    expect(trackValueAt(keys, 2500)).toBe(100);
+    expect(trackValueAt(keys, -5)).toBe(0);
+  });
+
+  it('writes the key under the playhead, or inserts one in its place', () => {
+    const tracks: KeyTrack[] = [{ prop: 'x', keys: [{ t: 0, v: 0 }, { t: 2000, v: 100 }] }];
+    // within half a frame of the key at 2 s: that key changes
+    const replaced = withKeyAt(tracks, 'x', 2010, 140, 17);
+    expect(replaced[0].keys).toHaveLength(2);
+    expect(replaced[0].keys[1]).toEqual({ t: 2000, v: 140 });
+    // away from any key: one is inserted, in order
+    const inserted = withKeyAt(tracks, 'x', 1000, 50, 17);
+    expect(inserted[0].keys).toEqual([{ t: 0, v: 0 }, { t: 1000, v: 50 }, { t: 2000, v: 100 }]);
+    // another property starts its own track
+    const added = withKeyAt(tracks, 'opacity', 500, 0.5, 17);
+    expect(added.map((x) => x.prop).sort()).toEqual(['opacity', 'x']);
+  });
+
+  it('moves a key, held between its neighbours', () => {
+    const tracks: KeyTrack[] = [{ prop: 'x', keys: [{ t: 0, v: 0 }, { t: 1000, v: 50 }, { t: 2000, v: 100 }] }];
+    expect(withKeyTime(tracks, 'x', 1, 1500)[0].keys[1].t).toBe(1500);
+    expect(withKeyTime(tracks, 'x', 1, 5000)[0].keys[1].t).toBe(1990);
+    expect(withKeyTime(tracks, 'x', 1, -10)[0].keys[1].t).toBe(10);
+  });
+
+  it('edits of a tracked property become data-keys writes at the playhead', () => {
+    const doc = parseDc('<section id="s"><h1 style="opacity:1" data-in="fade 500ms" data-keys="opacity: 1@0 0@1s">Hi</h1></section>');
+    // mid-segment: the playhead gets its own key
+    const out = keysForEdits([{ kind: 'style', tid: 1, prop: 'opacity', value: '0.25' }], doc, 500, 17);
+    expect(out).toEqual([{ kind: 'attr', tid: 1, name: 'data-keys', value: 'opacity: 1@0s 0.25@500ms 0@1s' }]);
+    // on a key: that key changes
+    const on = keysForEdits([{ kind: 'style', tid: 1, prop: 'opacity', value: '0.25' }], doc, 1000, 17);
+    expect(on).toEqual([{ kind: 'attr', tid: 1, name: 'data-keys', value: 'opacity: 1@0s 0.25@1s' }]);
+    // only untracked properties: untouched
+    const keep = keysForEdits([{ kind: 'styles', tid: 1, set: { color: 'red', 'font-size': '20px' } }], doc, 500, 17);
+    expect(keep).toEqual([{ kind: 'styles', tid: 1, set: { color: 'red', 'font-size': '20px' } }]);
+    // a set with both: the tracked one splits off
+    const split = keysForEdits([{ kind: 'styles', tid: 1, set: { opacity: '0.5', 'font-size': '20px' } }], doc, 500, 17);
+    expect(split).toContainEqual({ kind: 'styles', tid: 1, set: { 'font-size': '20px' } });
+    expect(split.find((o) => o.kind === 'attr')).toMatchObject({ tid: 1, name: 'data-keys' });
   });
 });

@@ -17,7 +17,7 @@ import { BuildRow, DeckProps, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
 import { JQueryBox } from './JQueryBox';
 import { TemplateValues } from './TemplateValues';
-import { FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
+import { AnimRow, FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
 export function RightPanel() {
@@ -63,6 +63,7 @@ export function RightPanel() {
           <FormatNote file={file} el={el} />
           {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
           <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
+          <AnimRow key={`a${file}#${el.tid}`} file={file} el={el} />
         </>
       );
     else if (sel?.kind === 'el') body = <div className="empty">{t('panel.empty.goneFromScene')}</div>;
