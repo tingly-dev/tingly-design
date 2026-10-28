@@ -38,6 +38,10 @@ export default {
   claudeDefault: 'Claude Code’s default',
   cliOk: 'The claude command is installed.',
   cliMissing: 'There is no claude command on this machine, so nothing can be handed over.',
+  profile: 'Profile',
+  profileMain: 'Main Claude Code routing',
+  profileNote: 'Leave empty for the routing you use with claude in Tingly Box, or type the name or id of one of its Claude Code profiles (for example p1).',
+  badProfile: 'A profile name uses letters, digits, - and _ only.',
   sharedNeedsKey: 'Add a key above, or switch to Claude Code’s own sign-in.',
   saved: 'AI settings saved',
 };
