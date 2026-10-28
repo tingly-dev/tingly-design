@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DS_COVER, DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
 import { display, edit, toast, useStore } from '../../store';
-import { dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
+import { dsViewFromUrl, useDsView, type DsViewId, dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
 import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle } from '../TopBar';
 import { PreviewAs } from '../PreviewAs';
@@ -18,8 +18,7 @@ import { currentTheme } from '../../theme';
 import { replaceUrl } from '../../host';
 import { useTranslation } from 'react-i18next';
 
-const ALL_VIEWS = ['overview', 'colors', 'type', 'space', 'components', 'assets', 'issues'] as const;
-type View = (typeof ALL_VIEWS)[number];
+type View = DsViewId;
 
 const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
 
@@ -164,7 +163,10 @@ export function DsApp() {
   const { t: tr } = useTranslation();
   const t = useTokens();
   const index = useDsIndex();
-  const [view, setView] = useState<View>(() => (new URLSearchParams(location.search).get('v') as View) || 'overview');
+  const view = useDsView((s) => s.view);
+  const setView = (v: View) => useDsView.setState({ view: v });
+  // a design system opens on the page its address names, not the one the last one was left on
+  useEffect(() => useDsView.setState({ view: dsViewFromUrl() }), []);
   // previews open in the system's dark theme when the editor itself is dark
   const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|\u6697|\u6df1/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
   useEffect(() => {
@@ -188,7 +190,6 @@ export function DsApp() {
         claudeDesign
         target={dsImport}
         label={tr('ds.app.label')}
-        pick={(what) => ALL_VIEWS.includes(what as View) && (setView(what as View), true)}
         items={imageExportItems({
           hint: tr('common.transfer.hint.dsView'),
           name: `${fileStem(index.title, 'design-system')}-${view}.png`,

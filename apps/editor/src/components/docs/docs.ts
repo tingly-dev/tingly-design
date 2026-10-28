@@ -317,3 +317,13 @@ export const docsImport: ImportTarget = {
     return docs.length === 1 ? t('docs.import.addedOne', { name: docs[0].path.split('/').pop() }) : t('docs.import.addedMany', { count: docs.length });
   },
 };
+
+/** Shows one tab, by its id or its title (headless.ts, `views.ts`). */
+export function showTab(what: string): boolean {
+  const d = parseDoc(display(useStore.getState(), DOC_INDEX));
+  const want = what.trim().toLowerCase();
+  const tab = tabOrder(d).find((x) => x.id === what) ?? tabOrder(d).find((x) => x.title.trim().toLowerCase() === want);
+  if (!tab) return false;
+  openTab(tab.id);
+  return true;
+}
