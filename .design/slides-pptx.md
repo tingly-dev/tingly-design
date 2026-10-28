@@ -1,6 +1,6 @@
 # Slides: PPTX import and export
 
-已实施（独立受限模块、新项目导入：包级严格、对象级尽力而为，内置表格样式全覆盖，经典与 Office 2016 图表重绘；整份可见 deck 导出：原生优先、原生表格、逐元素图片化）；聚焦产品套件 90/90 通过，导入与导出两个方向都用 LibreOffice 渲染的图像差分作保真度量；真实 PowerPoint 打开/渲染仍未验收。下文区分当前契约、验证边界与未来提案。
+已实施（独立受限模块、新项目导入：包级严格、对象级尽力而为，内置表格样式全覆盖，经典与 Office 2016 图表重绘；向已开 deck 追加：服务端纯转换、编辑器事务化写回、整批撤销；整份可见 deck 导出与 `--slide` 范围导出：原生优先、原生表格、逐元素图片化、只含旋转的变换写原生旋转、SVG 原生图片、表格双线与对角线边框、竖排单元格）；聚焦产品套件 106/106 通过，导入方向曾用 LibreOffice 渲染的图像差分作保真度量（本机无 LibreOffice 时未重跑）；成品另经 python-pptx 独立读回校验；真实 PowerPoint 打开/渲染仍未验收。下文区分当前契约、验证边界与未来提案。
 
 ## 1. 当前产品边界
 
@@ -12,18 +12,18 @@
 - 转换成功后，服务端独占保留目标名字，以隐藏 staging 写文件再发布；重名加后缀，并发导入不覆盖已有项目。失败清理 staging 和预留目录，不留下可打开的半成品。使用 `projectDir`，不另建项目寻址规则。
 - 生成普通 deck、可编辑页面和 `uploads/<id>/` 下的精确 `source.pptx`、媒体、`report.json`。`deck.json.pptxImport` 指向报告；报告包含源尺寸、deck 尺寸、part → slide 对应和结构化诊断，随整个项目归档保留。deck 保留演示文稿的页形：横向页放进 1920×1080、竖向页放进 1080×1920（4:3 得 1440×1080），不是 1920×1080 时写 `deck.json` 的 `size`。
 - picker/drop 的结果是常驻对话框，不是即逝 toast：同一种说明只出现一次，下面列出它涉及的页（连续页写成范围，全部页写“每一页”）和对象；错误在前，包级说明才显示 part。成功时可下载原文件、JSON 报告，再打开新项目。失败留在启动页并说明没有创建项目。诊断和操作文案为英中 i18n；核心只返回 code 与参数。API 返回 `pptx` 元数据或结构化错误诊断，CLI 输出本地化诊断及保留的原文件/报告路径。
-- **不支持向已开 deck 追加 PPTX**。当前 `ImportHere` 的图片/SVG 路径不因此扩大。PPTX 也没有被加入模型附件的通用文字解析类型。
+- **向已开 deck 追加 PPTX**：把 `.pptx` 拖进打开的 slides 项目（或导入菜单选取）时，它的页作为普通可编辑幻灯片接到牌组末尾。转换走服务端 `POST /api/projects/:p/pptx-slides` 的**纯转换**（不写任何文件），写回由编辑器事务化完成：uploads 先落（不可见），deck.json 的 `order` 先行追加（每页落地即出现在正确位置），页文件逐个写入；任何一步失败回滚整批。撤销是**批次级**的一条：只移除本批的页与索引项，不覆盖他人的后续修改，redo 原样恢复。页形与 deck 不同时按 `adaptSize` 缩放（同 deck 改尺寸的默认）。批次报告与原件留在 `uploads/pptx-<import>/`；deck 级 `pptxImport` 指向创建它的那次导入，不因追加改写。新项目导入的 `ImportHere` 图片/SVG 路径照旧；PPTX 也没有被加入模型附件的通用文字解析类型。
 
 ### 整份可见 deck 导出
 
 - 幻灯片 `FileMenu` 的“PowerPoint（.pptx）”直接开始导出，跳过隐藏页和隐藏元素，保留原生 speaker notes。不增加“图片/可编辑”模式选择。
-- `exportDeckPptx` 冻结标题、字体声明、页面尺寸（`deckSize`，1920 px 对应 13.333 in，其它尺寸同密度）、可见页顺序和当前源；`deckSnapshotToPptx` 在渲染前读取并固定资源 bytes。专用 `sandbox="allow-scripts"` iframe 使用真实 slides runtime 渲染（嵌入块真实运行，不是缩略图占位），等待字体、图片与对应源提交后，在框架内部调用 DOM 布局适配器。父页面只通过受限 `dcPptx` 消息接收临时绘图 DTO，不跨 opaque origin 读 DOM。捕获框架放在视口内、缩到 1% 且透明：放在视口外时 Chrome 停掉其中嵌入框架的动画帧，嵌入块交出空白。
+- `exportDeckPptx` 冻结标题、字体声明、页面尺寸（`deckSize`，1920 px 对应 13.333 in，其它尺寸同密度）、可见页顺序和当前源；`deckSnapshotToPptx` 在渲染前读取并固定资源 bytes。专用 `sandbox="allow-scripts"` iframe 使用真实 slides runtime 渲染（嵌入块真实运行，不是缩略图占位），追加后先让父页完成一次布局（页面重载后框架可能在布局前就绪，视口会是 0 宽），等待字体、图片与对应源提交后，在框架内部调用 DOM 布局适配器。父页面只通过受限 `dcPptx` 消息接收临时绘图 DTO，不跨 opaque origin 读 DOM。捕获框架放在视口内、缩到 1% 且透明：放在视口外时 Chrome 停掉其中嵌入框架的动画帧，嵌入块交出空白。
 - **原生优先**：文字（字距、`text-transform`、删除线、半透明颜色、继承的下划线）、实色/半透明填充、统一圆角（roundRect 带半径，正圆为 ellipse）、四边一致的边框为描边、只在部分边上的实线边框为独立线条、列表符号（disc/circle/square/数字/字母/罗马数字，按 `::marker` 字体测量放在首行左侧）、**原生表格**（见下）、`opacity`（乘进文字与填充透明度）、PNG/JPEG 图片与备注。兄弟元素按 CSS 叠放顺序输出（流内内容与直接文字，然后定位元素按 z-index，flex `order`，同级按源顺序），不再要求 runtime paint-layer 标记。完全在页外的元素省略，部分出界的保留。文字阴影、small-caps、word-spacing、非实线下划线被省略并给近似提醒，以保持文字可编辑。
 - **原生表格**：`<table>` 的单元格只含文字时写成 PowerPoint 表格对象，用户在 PowerPoint 里拿到的是能加行、改样式的表格，而不是一堆盒子。网格取自单元格实际画在哪里（CSS 表格布局和导入器的绝对定位都适用）：边线去重成列宽/行高，跨行跨列由覆盖的格数得出，每个格位必须恰好被一个单元格覆盖。每格带实色/半透明填充、四边实线边框（双线近似为同宽实线并提醒；只有一侧画了的共享边归两侧）、内边距与垂直对齐（穿过只负责摆放文字的包装层，如导入器的 flex 列），文字按块级元素分段、内联元素成 run，带对齐、段前段后和行高。表格不写表格样式，只有单元格自己的格式。条件不满足（格间距、单元格里有图片/SVG/旋转文字/背景或边框的子元素、渐变单元格、整体半透明）时整张表回到逐元素路径，不部分原生。PowerPoint 会按自己的字体度量撑高放不下的行。
 - **逐元素图片化**：PowerPoint 没有对应对象的元素只把它自己变成图片，放在它原来的叠放位置。两种范围：`self` 只画元素自己的盒子（渐变、阴影、伪元素、非实线或带透明度的边框、非统一圆角），其文字与子元素仍原生；`subtree` 连同后代一起画（SVG/canvas/x-icon/x-connector/表单控件等替换元素、x-embed 与 iframe、transform、filter/混合、clip-path/mask、确实裁掉内容的 overflow、渐变文字、竖排/RTL、非 PNG/JPEG 图片和带裁剪/内边距的图片）。原生处理过程中抛出的任何非致命问题都回滚该元素已写出的对象，再整体图片化，因此不会重复也不会遗漏。图片由 sandbox 内的 `FrameRasterizer`（与图片导出同一套 foreignObject 复制）画整页，借 `visibility` 只留目标元素（不改布局），2× 像素，按实际 alpha 裁到所画范围（阴影包含在内）；嵌入框架用 `snapFrame` 交出自己的画面。
 - 失败只来自无法读取或超出限制：可见图片读不到、字体失败、预算/超时、图片化本身失败。失败给出定位诊断，不下载部分成品。文字按实测行框输出、每行不换行（`wrap="none"`），不保证 PowerPoint 的完整段落重排语义或字体度量一致，不嵌入字体。
 - 常驻结果对话框显示进度；成功时说明有多少元素作为图片放入，并按页（可点击跳到该页）汇总各类图片化元素的数量与省略的文字效果；失败页与对象路径可跳转；运行中可取消。超时、取消和失败都清理捕获框架与监听。整次截止随页数增长（60 秒 + 每页 15 秒，上限 10 分钟），单页 30 秒。导入报告/原文件的下载属于导入结果，不宣称导出另有报告文件下载。
-- 成品通过 `local.download` 交付；CLI `tingly-design export talk --as pptx --out ./exports`、MCP `export` 使用同一 `FORMATS` / `pageJobs` / FileMenu 路径。PPTX 是整份可见 deck，明确拒绝 `--slide`，不把当前选页误称为范围。其他类型没有 PPTX 项：此格式表达演示文稿，不是所有项目的通用导出。
+- 成品通过 `local.download` 交付；CLI `tingly-design export talk --as pptx --out ./exports`、MCP `export` 使用同一 `FORMATS` / `pageJobs` / FileMenu 路径。PPTX 导出整份可见 deck，`--slide`（或 MCP 的 `pick`）接受范围：`2`、`2-4`、`1,3-4` 或页 id，按可见位置从 1 起数，隐藏页不可指名；范围导出的文件名带范围，交互菜单的按钮仍是整份 deck。其他类型没有 PPTX 项：此格式表达演示文稿，不是所有项目的通用导出。
 
 ## 2. 独立模块契约（保留独立可用）
 
@@ -52,11 +52,11 @@ writer 对刚由 PptxGenJS 4.0.1 生成的包执行有限结构修正：notesMas
 
 ## 3. 验证状态与门槛
 
-实施状态不等于任意格式保真承诺。产品 `e2e/pptx.py` 已登记在 `e2e/run.py` 和 `e2e/coverage.json`，聚焦产品运行 **90/90 通过**。覆盖真实 picker/drop/API、源编辑保存重开、FileMenu 下载、原生对象/备注、渐变背景逐元素图片化而标题仍为原生文字、不可读图片的失败与取消清理、非 slides 无入口、英中/明暗、CLI/MCP 共用导出及安全 ZIP/Markdown/Claude Design picker 回归。此结论只适用于这些路径与断言，不是整个仓库 e2e 全量或任意 PPTX 的通过证明；矩阵的 ✓ 表示已接线的受限能力。
+实施状态不等于任意格式保真承诺。产品 `e2e/pptx.py` 已登记在 `e2e/run.py` 和 `e2e/coverage.json`，聚焦产品运行 **106/106 通过**。覆盖真实 picker/drop/API、源编辑保存重开、FileMenu 下载、原生对象/备注、渐变背景逐元素图片化而标题仍为原生文字、不可读图片的失败与取消清理、非 slides 无入口、英中/明暗、CLI/MCP 共用导出及安全 ZIP/Markdown/Claude Design picker 回归；外加向已开 deck 追加（drop → 纯转换端点 → order/凭据 → 可编辑页 → 撤销 → 重做 → 再撤销）与 `--slide` 单页/范围/越界导出。此结论只适用于这些路径与断言，不是整个仓库 e2e 全量或任意 PPTX 的通过证明；矩阵的 ✓ 表示已接线的受限能力。
 
 已取得的验证与仍待验证的项目分开看：
 
-- 独立模块有 package/security、跨模块源编辑（`pptxBridge.test.ts`）、真实 Chrome DOM 布局（含 CSS 表格与绝对定位表格的原生化）和 smoke 语料检查。`scripts/pptx-fidelity/corpus.py <dir>` 生成两份覆盖语料（python-pptx）：`tables.pptx` 是 74 种内置样式各两种标志组合加单元格格式页，`charts.pptx` 是 26 种图表（python-pptx 能写的类型、手写的股价/复合饼/曲面/组合/3D/日期/对数轴，以及六种 chartex）；交给 `compare.py --import` 评分，导出方向用 `compare.py <导入后的项目>`。集成状态的 focused core/export/import/i18n/eval 检查及 typecheck/build/bundle 已通过；完整单元运行仍有既有 baseline 失败，不能写成全量 `pnpm test` 通过。
+- 独立模块有 package/security、跨模块源编辑（`pptxBridge.test.ts`）、真实 Chrome DOM 布局（含 CSS 表格与绝对定位表格、旋转子树、原生 SVG、双线/对角线/竖排单元格的原生化）和 smoke 语料检查。成品的成品包另经 python-pptx（独立读者）读回：页数与顺序、CJK 文字与备注、隐藏内容不泄漏、竖排单元格、`cmpd="dbl"` 与对角线、`svgBlip` 及其 PNG 替身，全部通过；真实 Office、LibreOffice 差分与 Open XML SDK 校验在验证机上不可用时保持未验收状态。`scripts/pptx-fidelity/corpus.py <dir>` 生成两份覆盖语料（python-pptx）：`tables.pptx` 是 74 种内置样式各两种标志组合加单元格格式页，`charts.pptx` 是 26 种图表（python-pptx 能写的类型、手写的股价/复合饼/曲面/组合/3D/日期/对数轴，以及六种 chartex）；交给 `compare.py --import` 评分，导出方向用 `compare.py <导入后的项目>`。集成状态的 focused core/export/import/i18n/eval 检查及 typecheck/build/bundle 已通过；完整单元运行仍有既有 baseline 失败，不能写成全量 `pnpm test` 通过。
 - 精确版本 writer 的含备注/混合 run、无备注、三页、十二页成品已有独立 Office2019 schema 检查证据；真实 Chrome 菜单、CLI、MCP 导出的三个成品也通过 Open XML SDK Office2019 检查（3 files / 0 errors）。独立验证工具在 `scripts/validate-pptx/`，不随产品运行。
 - **图像差分**：导入方向是 `compare.py --import <file.pptx> --fonts`（经 CLI 导入，参考图为 LibreOffice 渲染的原文件，对比编辑器 PDF）；导出方向是 `scripts/pptx-fidelity/compare.py <project> --fonts` 用真实命令行导出 PDF（编辑器自己的渲染）和 PPTX，用 LibreOffice 渲染 PPTX，两边按同宽栅格化逐像素比较，输出每页参考图、渲染图、差异图和差异像素比例。LibreOffice 是独立读者但不是 PowerPoint；它的已知偏差（例如带 alpha 的文字加字距会被截短）不等于导出错误，需看图判断。示例 deck 与压力 deck 的结果见 [验证记录](../.research/slides-pptx-verification.md)。
 - Schema 合法不等于 Office 打开后的视觉保真或逐对象可编辑验收。现有用户提供语料的打开确认不能扩大为所有 writer 成品的 Office 互操作证明；真实 Office 字体、换行、对象编辑与视觉比较仍是单独门槛。详细既有证据及其适用范围见 [验证记录](../.research/slides-pptx-verification.md)。
@@ -85,9 +85,8 @@ writer 对刚由 PptxGenJS 4.0.1 生成的包执行有限结构修正：notesMas
 
 以下是后续方向，不是当前首版承诺：
 
-- **向已开 deck 追加 PPTX**：必须先有真实批次可见性、并发合并、冲突安全 ID、失败回滚与撤销。当前页面发现规则会找回不在 order 的页面，独立页面写入再写索引不是原子事务。撤销应仅移除本批次，不覆盖他人的后续修改。
-- **继续扩大导入映射**：非矩形图片遮罩、地图图表、真正的 3D 透视（现在 3D 图表画成平面并提醒）、项目符号字形（现在 `–` 等字符画成圆点）、3D 与发光/反射特效需逐项定义和测试。旧 `.ppt`、宏、加密包、动画和音视频不在当前支持中。图表若要可编辑，需要先有 slides 里的图表格式。
-- **更多原生化**：只含旋转的 transform 可写成原生旋转；原生表格可再覆盖竖排文字（`vert`）、对角线和双线（PptxGenJS 4.0.1 写不出，需要 normalization 补写）；SVG 可附原生 SVG 图片；重绘的图表可写回原生图表对象。嵌入块是“导出那一刻”的画面，动画型嵌入没有确定静态时刻。
+- **继续扩大导入映射**：非矩形图片遮罩、地图图表、真正的 3D 透视（现在 3D 图表画成平面并提醒）、项目符号字形（现在 `–` 等字符画成圆点）、3D 与发光/反射特效需逐项定义和测试。旧 `.ppt`、宏、加密包、动画和音视频不在当前支持中。
+- **更多原生化**：竖排文字（`vert`）经由单元格自身的竖排（`textDirection`）已覆盖；只含旋转的 transform、对角线与双线表格边框（normalization 写 `cmpd="dbl"` 与 `lnTlToBr`/`lnBlToTr`）、原生 SVG 图片（`svgBlip` 附调用方渲染的 PNG 替身）已实施。仍开放：非矩形图片遮罩式的表格裁剪、重绘的图表写回原生图表对象（需要 slides 里先有图表格式）。嵌入块是“导出那一刻”的画面，动画型嵌入没有确定静态时刻。
 - **更强互操作与性能证据**：真实 Office 环境中的 CJK/混合 run、字体替代、换行和逐对象编辑；大型 deck 的耗时、内存与重复导出；未来追加的并发/撤销。资源上限不是性能承诺。能力扩展须同步技能、用户指南、自身设计板、矩阵和对应验证。
 
 ## 6. 参考

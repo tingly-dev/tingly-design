@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { createHash } from 'node:crypto';
 import { isKeptPath, isUploadPath, isDataPath } from '@dc/core';
 import { ASSET_TYPES, HttpError, assetType, listAssets, removeAsset, projectDir, assetRel, readAsset, writeAsset } from '../store';
+import { isPptxImportPath } from '@dc/core';
 import { publish } from '../hub';
 
 const MAX_ASSET = 20 * 1024 * 1024;
@@ -52,7 +53,7 @@ export function registerAssets(app: Hono): void {
     const p = c.req.param('p');
     projectDir(p);
     const rel = c.req.query('path') ?? '';
-    if (!isKeptPath(rel)) throw new HttpError(400, 'cannotKeep', { path: rel });
+    if (!isKeptPath(rel) && !isPptxImportPath(rel)) throw new HttpError(400, 'cannotKeep', { path: rel });
     const bytes = new Uint8Array(await c.req.arrayBuffer());
     if (bytes.length > MAX_ASSET) throw new HttpError(413, 'fileTooLarge', { size: '20 MB' });
     await writeAsset(p, rel, bytes);

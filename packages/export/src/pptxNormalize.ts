@@ -1,10 +1,13 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { bytesEqual, type PptxTablePatch } from './pptx';
 
 /** Only for this writer's freshly generated PptxGenJS 4.0.1 package, never imported OOXML.
  * Byte-for-byte XML edits retain all run/notes/media content. Fail closed if the pinned
  * generator's known vocabulary changes; this is not a general OOXML repair facility.
- */
-export function normalizePptx401(bytes: Uint8Array, slideCount: number): Uint8Array {
+ * `patches` add what 4.0.1 cannot write: `cmpd="dbl"` borders and diagonal `<a:lnTlToBr>`/
+ * `<a:lnBlToTr>` in table cells; `fallbacks` replace the PNG stand-in of an SVG asset with the
+ * caller's own rendering (4.0.1 draws a loose one in the browser and a broken one in Node). */
+export function normalizePptx401(bytes: Uint8Array, slideCount: number, patches: PptxTablePatch[] = [], fallbacks: { svg: Uint8Array; png: Uint8Array }[] = []): Uint8Array {
   const parts = unzipSync(bytes);
   const unexpected = (): never => { throw new Error('pptx: unexpected PptxGenJS 4.0.1 package structure'); };
   const read = (name: string) => parts[name] ? strFromU8(parts[name]) : unexpected();
@@ -41,5 +44,61 @@ export function normalizePptx401(bytes: Uint8Array, slideCount: number): Uint8Ar
       return paragraph.replace(/<a:pPr\b[^>]*>.*?<\/a:pPr>/g, tag => { if (seen) return ''; seen = true; return tag; });
     }));
   }
+
+  // Table borders the generator cannot express, one slide at a time, in the order written.
+  const bySlide = new Map<number, PptxTablePatch[]>();
+  for (const p of patches) { const list = bySlide.get(p.slide) ?? []; list.push(p); bySlide.set(p.slide, list); }
+  for (const [slide, list] of bySlide) {
+    const name = `ppt/slides/slide${slide + 1}.xml`;
+    let xml = read(name);
+    const tables = [...xml.matchAll(/<a:tbl>(.*?)<\/a:tbl>/gs)];
+    const byTable = new Map<number, PptxTablePatch[]>();
+    for (const p of list) { const cell = byTable.get(p.table) ?? []; cell.push(p); byTable.set(p.table, cell); }
+    for (const [table, cells] of [...byTable].reverse()) {
+      if (table >= tables.length) unexpected();
+      const tbl = tables[table][1];
+      const tcs = tbl.match(/<a:tc(?:\s[^>]*)?>.*?<\/a:tc>/gs) ?? unexpected();
+      let next = tbl;
+      for (const patch of [...cells].reverse()) {
+        if (patch.cell >= tcs.length) unexpected();
+        next = next.replace(tcs[patch.cell], () => patchCell(tcs[patch.cell], patch));
+      }
+      xml = xml.replace(tbl, () => next);
+    }
+    put(name, xml);
+  }
+
+  // The writer's SVG assets carry their rendered PNG stand-in: 4.0.1 writes the SVG bytes as
+  // both media parts (a broken image in Node, its own rendering in the browser), so the `.png`
+  // part holding a known asset's exact SVG bytes is replaced with that asset's stand-in.
+  if (fallbacks.length) {
+    for (const name of Object.keys(parts)) {
+      if (!/^ppt\/media\/.+\.png$/.test(name)) continue;
+      const found = fallbacks.find(f => bytesEqual(f.svg, parts[name]!));
+      if (found) parts[name] = found.png.slice();
+    }
+  }
   return zipSync(parts, { level: 6 });
+}
+
+/** Double borders become `cmpd="dbl"` on the written line; diagonals join the line children of
+ * `<a:tcPr>` (CT_TableCellProperties: lnL, lnR, lnT, lnB, lnTlToBr, lnBlToTr, then the fill). */
+function patchCell(tc: string, patch: PptxTablePatch): string {
+  const unexpected = (): never => { throw new Error('pptx: unexpected PptxGenJS 4.0.1 table cell'); };
+  let next = tc;
+  const sides = ['lnT', 'lnR', 'lnB', 'lnL'];
+  for (const [s, double] of patch.double.entries()) {
+    if (!double) continue;
+    const open = new RegExp(`<a:${sides[s]}(?:\\s[^>]*)?>`).exec(next)?.[0];
+    if (!open || !/cmpd="sng"/.test(open)) return unexpected();
+    const fixed = open.replace('cmpd="sng"', 'cmpd="dbl"');
+    next = next.replace(open, () => fixed);
+  }
+  const diagonal = (which: 'lnTlToBr' | 'lnBlToTr', d: { color: string; emu: number }) =>
+    `<a:${which} w="${d.emu}" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="${d.color}"/></a:solidFill><a:prstDash val="solid"/></a:${which}>`;
+  const last = [...next.matchAll(/<\/a:ln[TRLB]>/g)].at(-1);
+  const insert = [patch.tl2br ? diagonal('lnTlToBr', patch.tl2br) : '', patch.tr2bl ? diagonal('lnBlToTr', patch.tr2bl) : ''].join('');
+  if (insert) next = last ? next.replace(last[0], () => `${last[0]}${insert}`) : next.replace(/<a:tcPr(?:\s[^>]*)?>/, open => `${open}${insert}`);
+  if (next === tc) unexpected();
+  return next;
 }

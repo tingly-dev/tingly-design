@@ -13,7 +13,8 @@ export interface HeadlessItem {
   label: string;
   hint?: string;
   disabled?: boolean;
-  run: () => void | Promise<void>;
+  /** `arg` carries what the command line named for this run (a slides pptx range); most items ignore it */
+  run: (arg?: string) => void | Promise<void>;
 }
 
 export interface HeadlessFile {
@@ -110,14 +111,14 @@ const api = {
     return ok;
   },
   /** Run one item and return the files it saved and the errors it would have shown. */
-  async run(id: string): Promise<{ files: HeadlessFile[]; errors: string[] }> {
+  async run(id: string, arg?: string): Promise<{ files: HeadlessFile[]; errors: string[] }> {
     const item = (await current()).items.find((x) => x.id === id);
     if (!item) return { files: [], errors: [`no-item:${id}`] };
     if (item.disabled) return { files: [], errors: [`disabled:${id}`] };
     const mine = { files: [] as Promise<HeadlessFile>[], errors: [] as string[] };
     catching = mine;
     try {
-      await item.run();
+      await item.run(arg);
     } catch (e) {
       mine.errors.push((e as Error).message);
     } finally {

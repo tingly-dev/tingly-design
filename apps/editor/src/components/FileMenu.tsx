@@ -24,8 +24,8 @@ export interface ExportItem {
   hint?: string;
   icon?: ReactNode;
   disabled?: boolean;
-  /** does the export; a thrown error becomes a toast. Saving and its own toasts are the item's business */
-  run: () => void | Promise<void>;
+  /** does the export; the command line's `arg` (a slides pptx range) reaches items that take one. A thrown error becomes a toast. Saving and its own toasts are the item's business */
+  run: (arg?: string) => void | Promise<void>;
   /** put a rule above this item (a new family of formats) */
   rule?: boolean;
 }

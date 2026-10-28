@@ -124,6 +124,12 @@ export function isKeptPath(rel: string): boolean {
   return attachmentKind(name) !== null || KEPT_EXTRA.has(ext(name));
 }
 
+/** What a PowerPoint import keeps beside the media it extracts: the original package and its
+ * conversion report, under the import's own namespace (uploads/pptx-<import>/…). */
+export function isPptxImportPath(rel: string): boolean {
+  return /^uploads\/pptx-[a-f0-9]{32}\/(source\.pptx|report\.json)$/.test(rel);
+}
+
 /** Why a list of kept attachments cannot be handed on, or null when it can. The server checks again. */
 export function checkUploads(list: unknown): string | null {
   if (list === undefined) return null;

@@ -39,7 +39,7 @@ Work in this order, one tool per step: \`projects\` (what exists) → \`open\` (
 The prompts \`make\` and \`edit\` start this order with the format reference already included.`;
 
 const project = { type: 'string', description: 'A project name from `projects`, or the path to a project folder.' };
-const pick = { type: 'string', description: 'One board (file or title), slide (id or 1-based number), doc tab (id or title), design-system view (overview, colors, type, space, components, assets) or motion format; leave out for all.' };
+const pick = { type: 'string', description: 'One board (file or title), slide (id or 1-based number; slides pptx also takes a range: 2, 2-4, 1,3-4), doc tab (id or title), design-system view (overview, colors, type, space, components, assets) or motion format; leave out for all.' };
 
 const TOOLS = [
   {

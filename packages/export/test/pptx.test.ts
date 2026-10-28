@@ -4,6 +4,7 @@ import { writePptx, type PptxDeck, type PptxObject } from '../src/pptx';
 
 const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
 const box = { x: 100, y: 50, width: 400, height: 200 };
+const SVG_BYTES = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 1"><rect width="2" height="1" fill="#123456"/></svg>');
 const text = (s = 'Hello 中文 <&> "'): PptxObject => ({ type: 'text', ...box, style: { fontFace: 'Aptos', fontSizePx: 32 }, paragraphs: [{ runs: [{ text: s }] }] });
 const deck = (objects: PptxObject[] = [text()]): PptxDeck => ({ title: 'Deck 中文 <&>', widthPx: 1000, heightPx: 500, widthIn: 10, slides: [{ objects }] });
 const xml = (files: Record<string, Uint8Array>, name: string) => strFromU8(files[name]);
@@ -223,6 +224,63 @@ describe('writePptx native drawing contract', () => {
     await expect(writePptx(deck([{ ...base, rows: [[{ ...cell, colspan: 3 }]] }]))).rejects.toThrow(/invalid/);
     await expect(writePptx(deck([{ ...base, rotation: 90, rows: [[cell, cell]] }]))).rejects.toThrow(/invalid/);
     await expect(writePptx(deck([{ ...base, rows: [[cell, cell]] }]))).resolves.toBeInstanceOf(Uint8Array);
+  });
+  it('patches double borders and diagonals into the table XML, counting merge continuations', async () => {
+    const cell = (t: string, more: Record<string, unknown> = {}) => ({ paragraphs: [{ runs: t ? [{ text: t }] : [] }], style: { fontFace: 'Aptos', fontSizePx: 20 }, ...more });
+    const table: PptxObject = { type: 'table', ...box, columnsPx: [100, 100, 200], rowsPx: [100, 100], rows: [
+      // the first cell sits before a colspan: its <a:tc> is index 0 even though the row lists one cell
+      [cell('D', { colspan: 2, borders: [{ color: '111111', widthPx: 3, double: true }, { color: '222222', widthPx: 1 }, null, { color: '333333', widthPx: 2, double: true }], tl2br: { color: 'CC0000', widthPx: 2 } }),
+        cell('diag', { tr2bl: { color: '00AA00', widthPx: 1 }, borders: [null, { color: '444444', widthPx: 1 }, null, null] })],
+      [cell('plain'), cell('b'), cell('c')],
+    ] };
+    const s = xml(await unpack(deck([table])), 'ppt/slides/slide1.xml');
+    const tcs = s.match(/<a:tc(?:\s[^>]*)?>.*?<\/a:tc>/gs) ?? [];
+    expect(tcs).toHaveLength(6); // 3 grid positions per row, merge continuations included
+    // 1px of this page (1000px = 10in) is 9144 EMU
+    expect(tcs[0]).toContain('<a:lnT w="27432" cap="flat" cmpd="dbl"');
+    expect(tcs[0]).toContain('<a:lnL w="18288" cap="flat" cmpd="dbl"');
+    expect(tcs[0]).toContain('<a:lnR w="9144" cap="flat" cmpd="sng"');
+    expect(tcs[0]).toContain('<a:lnTlToBr w="18288" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="CC0000"/>');
+    expect(tcs[0]).not.toContain('lnBlToTr');
+    expect(tcs[1]).toBe('<a:tc hMerge="1"><a:tcPr/></a:tc>'); // the covered grid position is patched by index, never touched
+    expect(tcs[2]).toContain('<a:lnBlToTr w="9144"');
+    expect(tcs[2]).toContain(String.raw`<a:srgbClr val="00AA00"/>`);
+    expect(tcs[3]).not.toContain('cmpd="dbl"');
+    // diagonals join the line children before any fill, in CT_TableCellProperties order
+    expect(tcs[0]).toMatch(/<\/a:lnTlToBr>\s*<\/a:tcPr>|<\/a:lnTlToBr><a:solidFill>/);
+  });
+  it('writes vertical cell text as the cell direction and keeps native double borders on plain cells', async () => {
+    const cell = (t: string, more: Record<string, unknown> = {}) => ({ paragraphs: [{ runs: t ? [{ text: t }] : [] }], style: { fontFace: 'Aptos', fontSizePx: 20 }, ...more });
+    const table: PptxObject = { type: 'table', ...box, columnsPx: [100, 100], rowsPx: [100], rows: [[
+      cell('竖排', { textDirection: 'vert270', borders: [{ color: '111111', widthPx: 2, double: true }, null, null, null] }), cell('flat'),
+    ]] };
+    const s = xml(await unpack(deck([table])), 'ppt/slides/slide1.xml');
+    const tcs = s.match(/<a:tc(?:\s[^>]*)?>.*?<\/a:tc>/gs) ?? [];
+    expect(tcs[0]).toContain('vert="vert270"');
+    expect(tcs[0]).toContain('cmpd="dbl"');
+    expect(tcs[1]).not.toContain('vert=');
+  });
+  it('carries an SVG asset with its rendered PNG stand-in and svgBlip extension', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 1"><rect width="2" height="1" fill="#123456"/></svg>';
+    const d = deck([{ type: 'image', ...box, asset: 'drawing', fit: 'stretch' }]);
+    d.assets = { drawing: { bytes: SVG_BYTES, mime: 'image/svg+xml', widthPx: 2, heightPx: 1, fallback: png } };
+    const f = await unpack(d);
+    const s = xml(f, 'ppt/slides/slide1.xml');
+    expect(s).toContain('asvg:svgBlip');
+    const media = Object.keys(f).filter(k => /^ppt\/media\//.test(k)).sort();
+    const svgPart = media.find(k => k.endsWith('.svg'));
+    const pngPart = media.find(k => k.endsWith('.png'));
+    expect(svgPart).toBeTruthy();
+    expect(f[svgPart!].every((v, i) => v === SVG_BYTES[i])).toBe(true);
+    expect([...f[pngPart!]]).toEqual([...png]); // the stand-in is the caller's picture, not the SVG bytes
+    expect(xml(f, '[Content_Types].xml')).toContain('image/svg+xml');
+  });
+  it('rejects an SVG asset without a stand-in, and a stand-in whose dimensions do not match', async () => {
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 1"/>');
+    const base = { bytes: svg, mime: 'image/svg+xml' as const, widthPx: 2, heightPx: 1 };
+    await expect(writePptx({ ...deck(), assets: { a: { ...base } } })).rejects.toThrow(/fallback/);
+    await expect(writePptx({ ...deck(), assets: { a: { ...base, fallback: png, widthPx: 3 } } })).rejects.toThrow(/dimensions/);
+    await expect(writePptx({ ...deck(), assets: { a: { ...base, fallback: png } } })).resolves.toBeInstanceOf(Uint8Array);
   });
   it('does not mutate the supplied drawing or typed byte arrays', async () => {
     const d = deck(); const before = structuredClone(d); Object.freeze(d.slides[0].objects[0]);

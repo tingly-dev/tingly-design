@@ -16,7 +16,7 @@ export default {
   skippedMore_other: '{{count}} file types can\'t be kept in the project and weren\'t saved: {{files}} and more',
   listSeparator: ', ',
   // the short names a menu item is built from: "Import HTML, SVG, image…"
-  materialShort: { page: 'HTML', drawing: 'SVG', image: 'image', markdown: 'Markdown', data: 'CSV / JSON', font: 'font' },
+  materialShort: { page: 'HTML', drawing: 'SVG', image: 'image', markdown: 'Markdown', data: 'CSV / JSON', font: 'font', pptx: 'PowerPoint' },
   material: {
     page: 'Web pages (.html, with their folder)',
     drawing: 'SVG',
@@ -24,6 +24,7 @@ export default {
     markdown: 'Markdown (.md)',
     data: 'Data (CSV, TSV, JSON)',
     font: 'Fonts (WOFF2, WOFF, TTF, OTF)',
+    pptx: 'PowerPoint (.pptx)',
   },
   here: {
     files_one: '{{count}} file',

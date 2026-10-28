@@ -206,7 +206,6 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
   },
   skillsKept: '加上 --force 替换不一样的副本。',
   needZip: '请给出要导入的文件：tingly-design import <文件.zip、文件.pptx、文件.md或文件夹>',
-  pptxWholeDeck: 'PowerPoint 导出包含整份演示文稿。请移除 --slide（或 MCP 的 pick）后重试。',
   pptxKept: '原始 PowerPoint：{{source}} · 转换报告：{{report}}',
   noClaudeDesign: '{{kind}}没有 Claude Design 格式。文档请用 --as md；动效在原版里没有对应类型。',
   importedClaudeDesign: '已导入 {{name}}（来自 Claude Design 的{{kind}}），位于 {{path}}',

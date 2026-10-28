@@ -136,10 +136,14 @@ export function answerPptxCapture(mount: HTMLElement, committed: () => string): 
         title: m.title, widthIn: m.widthIn, signal,
         limits: { timeoutMs: m.timeoutMs },
         resolveImage: async image => {
-          const asset = m.images?.[image.getAttribute('src') ?? ''];
-          // a picture PowerPoint cannot hold as it is (SVG, WebP, GIF) is drawn instead
-          if (!asset) throw new Error('image-format');
-          return asset;
+          const found = m.images?.[image.getAttribute('src') ?? ''];
+          // a picture PowerPoint cannot hold as it is (WebP, GIF) is drawn instead
+          if (!found) throw new Error('image-format');
+          // an SVG stays a vector: the picture of it drawn here is the stand-in readers without SVG show
+          if (found.mime !== 'image/svg+xml') return found;
+          const drawn = await rasterizeElement(section, image, 'subtree', drawer, signal);
+          if (!drawn) throw new Error('image-format');
+          return { bytes: found.bytes, mime: 'image/svg+xml', widthPx: drawn.asset.widthPx, heightPx: drawn.asset.heightPx, fallback: drawn.asset.bytes };
         },
         rasterizeElement: (el, context) => rasterizeElement(section, el, context.mode, drawer, signal),
       });
