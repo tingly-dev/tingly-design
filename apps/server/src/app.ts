@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, createProject, inspectFolder, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { HttpError, LINKS_ON, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -60,6 +60,7 @@ app.get('/api/health', async (c) => {
     imageGen: aiResolved().image.active,
     claudeCli: claudeCliReady(),
     projectsDir: fromRoot(PROJECTS_DIR),
+    projectsPath: showPath(PROJECTS_DIR),
     projectsInRepo: !!(await repoOf(PROJECTS_DIR)),
     links: LINKS_ON,
     theme: DC_THEME,
@@ -126,6 +127,12 @@ app.post('/api/projects', async (c) => {
 app.get('/api/folder', async (c) => {
   if (!LINKS_ON) throw new HttpError(403, 'linksOff');
   return c.json(await inspectFolder(c.req.query('path') ?? ''));
+});
+
+/** The folders inside a folder, for the launcher's folder picker. */
+app.get('/api/browse', async (c) => {
+  if (!LINKS_ON) throw new HttpError(403, 'linksOff');
+  return c.json(await browseFolder(c.req.query('path') ?? ''));
 });
 
 /** Open a project folder that lives anywhere: it joins the launcher under a name, which comes back. */
