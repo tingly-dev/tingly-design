@@ -288,6 +288,16 @@ async def main():
         check('play mode runs artboard logic', ok)
         await pg.keyboard.press('Escape')
 
+        # deleting an artboard asks nothing; the toast's Undo brings it back with its file
+        glow = os.path.join(REPO, 'projects/box-console/Glow.dc.html')
+        await pg.locator('.layers .lr[data-key="Glow.dc.html"]').click()
+        await pg.keyboard.press('Delete')
+        ok = await wait_for(lambda: 'Glow.dc.html' not in canvas()['boards'] and not os.path.exists(glow))
+        check('deleting an artboard removes it and its file without asking', ok)
+        await pg.locator('.toast-act').click()
+        ok = await wait_for(lambda: 'Glow.dc.html' in canvas()['boards'] and os.path.exists(glow) and canvas()['order'][-1] == 'Glow.dc.html')
+        check('Undo in the toast brings the artboard back to its place', ok, str(canvas()['order']))
+
         await pg.locator('.syncchip').click()
         n = await pg.locator('.jline').count()
         check('journal popover lists edits', n >= 3, str(n))

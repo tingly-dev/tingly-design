@@ -19,6 +19,7 @@ import { filesOf, importFilesLabel, type ImportTarget } from '../ImportHere';
 import { appendPptx } from './pptxAppend';
 import { boardEmbed } from '../../boards';
 import { t } from '../../i18n';
+import { offerUndo, putFiles } from '../../undoRemove';
 
 /**
  * Deck commands: slides are files placed by deck.json `order`, so adding,
@@ -90,12 +91,15 @@ export function duplicateSlide(id: string): string | null {
   return copy;
 }
 
-export async function deleteSlide(id: string): Promise<void> {
+export async function deleteSlide(id: string, offerBack = true): Promise<void> {
   const s = get();
   const ids = slideIds(s);
   if (ids.length <= 1) return toast(t('slides.toast.lastSlide'));
   const i = ids.indexOf(id);
   const next = ids[i + 1] ?? ids[i - 1] ?? null;
+  const source = display(s, slideFile(id));
+  const was = deckOf(s);
+  const starts = Object.entries(was.sections).filter(([, sec]) => sec.start === id);
   editDeck((d) => {
     d.order = d.order.filter((x) => x !== id);
     if (d.cover === id) d.cover = next ?? undefined;
@@ -108,7 +112,16 @@ export async function deleteSlide(id: string): Promise<void> {
     }
   }, t('slides.journal.slideRemoved', { id }), false);
   goToSlide(next);
-  await deleteFile(slideFile(id));
+  if (!(await deleteFile(slideFile(id))) || source === undefined || !offerBack) return;
+  offerUndo(slideTitle(source, id), async () => {
+    await putFiles({ [slideFile(id)]: source });
+    editDeck((d) => {
+      if (!d.order.includes(id)) d.order.splice(Math.min(i, d.order.length), 0, id);
+      if (was.cover === id) d.cover = id;
+      for (const [k, sec] of starts) d.sections[k] = { ...sec };
+    }, t('slides.journal.slideRestored', { id }), false);
+    goToSlide(id);
+  });
 }
 
 /** Move a slide to sit before `before` (null: the end). */

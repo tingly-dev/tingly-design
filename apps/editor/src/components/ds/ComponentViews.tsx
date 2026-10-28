@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { askConfirm } from '../ConfirmDialog';
 import { componentNames, parseCardMarker, type DsIndex, type DsTokens } from '@dc/core';
 import { api } from '../../api';
 import { FONT_RE, IMAGE_RE, markdown, previewDoc, rawUrl, uploadTo, useAssets, assetsChanged, type AssetFile } from './ds';
@@ -166,7 +167,7 @@ function Tile({ a }: { a: AssetFile }) {
           aria-label={tr('ds.assets.deleteName', { name })}
           title={tr('common.delete')}
           onClick={async () => {
-            if (!project || !confirm(tr('ds.assets.confirmDelete', { path: a.path }))) return;
+            if (!project || !(await askConfirm(tr('ds.assets.confirmDelete', { path: a.path })))) return;
             await api.removeAsset(project, a.path).catch((e) => toast(e.message, 'error'));
             assetsChanged();
           }}

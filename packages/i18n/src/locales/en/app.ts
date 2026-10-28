@@ -48,10 +48,6 @@ export default {
     newTitle: 'New artboard',
     copyTitle: '{{title}} copy',
   },
-  confirm: {
-    deleteSlide: 'Delete this slide ({{slide}})? Its file will be deleted too (you can get it back with git).',
-    deleteBoard: 'Delete artboard {{file}}? Its file will be deleted too (you can get it back with git).',
-  },
   page: {
     name: 'Page {{n}}',
   },

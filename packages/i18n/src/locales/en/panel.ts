@@ -148,7 +148,6 @@ export default {
     fill: 'Web page: fill the window in full screen',
     duplicate: 'Duplicate artboard',
     delete: 'Delete artboard',
-    deleteConfirm: 'Delete artboard {{file}}? Its file is deleted too (you can get it back from git).',
     file: 'File: {{file}}',
   },
   embed: {

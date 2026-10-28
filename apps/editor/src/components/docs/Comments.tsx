@@ -85,9 +85,7 @@ function Thread({ t, tab }: { t: DocThread; tab: string }) {
             </button>
             <button
               className="btn ghost danger"
-              onClick={() => {
-                if (confirm(tr('docs.comments.confirmDelete'))) deleteThread(t.id);
-              }}
+              onClick={() => deleteThread(t.id)}
             >
               {tr('common.delete')}
             </button>

@@ -213,6 +213,7 @@ export default {
     slideDuplicated: '从 {{id}} 复制幻灯片',
     slideAdded: '加入幻灯片 {{id}}',
     slideRemoved: '删除幻灯片 {{id}}',
+    slideRestored: '恢复幻灯片 {{id}}',
     slideMoved: '移动幻灯片 {{id}}',
     sectionAdded: '从 {{id}} 开始新的一节',
     sectionRenamed: '重命名节 {{key}}',

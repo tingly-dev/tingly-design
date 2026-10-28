@@ -9,6 +9,7 @@ import { filesOf, type ImportTarget } from '../ImportHere';
 import { boardEmbed } from '../../boards';
 import { deleteFile, display, edit, editElement, forgetChange, parsed, recordChange, toast, undo, useStore } from '../../store';
 import { t } from '../../i18n';
+import { offerUndo, putFiles } from '../../undoRemove';
 
 const get = useStore.getState;
 
@@ -76,19 +77,6 @@ function formatAttrs(name: string): RegExp {
 /** Every scene file in the project, in order and not. */
 function sceneFiles(): string[] {
   return Object.keys(get().files).filter((f) => sceneIdOf(f) !== null && display(get(), f) !== undefined);
-}
-
-/** How many places in the scenes say something only about this format. */
-export function overridesOf(name: string): number {
-  const re = formatAttrs(name);
-  let n = 0;
-  for (const f of sceneFiles()) {
-    for (const el of parseDc(display(get(), f) ?? '').elements) {
-      n += el.attrs.filter((a) => re.test(a.name)).length;
-      if (el.attrs.some((a) => a.name === 'data-only' && a.value.split(/\s+/).includes(name))) n++;
-    }
-  }
-  return n;
 }
 
 /** Remove a format and everything the scenes say only about it. The first format can't go. */
@@ -316,15 +304,28 @@ export function duplicateScene(id: string): string | null {
   return copy;
 }
 
-/** Take a scene out of the piece and delete its file. The last one stays. */
+/** Take a scene out of the piece and delete its file; Undo brings it back. The last one stays. */
 export async function deleteScene(id: string): Promise<void> {
   const ids = orderIds();
   if (ids.length <= 1) return void toast(t('motion.toast.lastScene'));
+  const source = display(get(), sceneFile(id));
+  const at = ids.indexOf(id);
+  let wasCover = false;
   editMotion((raw) => {
+    wasCover = raw.cover === id;
     raw.order = ids.filter((x) => x !== id);
     if (raw.cover === id) delete raw.cover;
   }, t('motion.journal.sceneRemoved', { id }));
-  await deleteFile(sceneFile(id));
+  if (!(await deleteFile(sceneFile(id))) || source === undefined) return;
+  offerUndo(id, async () => {
+    await putFiles({ [sceneFile(id)]: source });
+    editMotion((raw) => {
+      const order = orderIds().filter((x) => x !== id);
+      order.splice(Math.min(at, order.length), 0, id);
+      raw.order = order;
+      if (wasCover) raw.cover = id;
+    }, t('motion.journal.sceneRestored', { id }));
+  });
 }
 
 /** Move a scene one place earlier (-1) or later (1). */

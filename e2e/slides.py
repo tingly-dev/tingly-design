@@ -180,6 +180,13 @@ async def main():
         await pg.get_by_role('menuitem', name='删除').click()
         ok = await wait_for(lambda: 'slide-9' not in deck()['order'] and not os.path.exists(os.path.join(DECK, 'slides/slide-9.html')))
         check('deleting a slide removes its file and its place', ok)
+        # nothing asked: the toast's Undo brings the slide back to the front with its file
+        await pg.locator('.toast-act').click()
+        ok = await wait_for(lambda: deck()['order'][0] == 'slide-9' and os.path.exists(os.path.join(DECK, 'slides/slide-9.html')))
+        check('Undo in the toast brings a deleted slide back', ok, str(deck()['order']))
+        await pg.locator('.thumb[data-slide="slide-9"]').click(button='right')
+        await pg.get_by_role('menuitem', name='删除').click()
+        ok = await wait_for(lambda: 'slide-9' not in deck()['order'] and not os.path.exists(os.path.join(DECK, 'slides/slide-9.html')))
         check('sections survive add/move/delete', len(deck()['sections']) == 4 and deck()['sections']['s1']['start'] == 'cover', json.dumps(deck()['sections']))
 
         # --- the subset check shows edits made outside -----------------------------------
