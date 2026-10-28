@@ -25,7 +25,6 @@ export default {
     dataMode: 'Data mode',
     dataModeTitle: 'Click a number or chart to see where it comes from',
     dataModeHint: 'Data mode: click a number, chart or table to see where it comes from. Esc to exit.',
-    toggleTheme: 'Toggle light and dark',
     light: 'Light',
     dark: 'Dark',
     code: 'Code',
