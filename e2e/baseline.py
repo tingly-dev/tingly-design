@@ -7,7 +7,7 @@ at. A picture with no baseline yet passes and says so. Baselines depend on the m
 are recorded where they are compared: DC_RECORD=1 writes every picture to e2e/out/baselines-new/ without comparing,
 and the E2E patrol workflow run by hand with "record baselines" pushes that folder to the branch. DC_BASELINES=<folder> compares against
 a folder instead of the branch."""
-import os, sys, asyncio, base64, shutil, subprocess
+import os, re, sys, asyncio, base64, shutil, subprocess
 from playwright.async_api import async_playwright
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -23,6 +23,8 @@ SCREENS = {'launcher': '', 'canvas': 'box-console', 'slides': 'tingly-intro', 'd
 # the same kinds with the request bar moved into the conversation column on the left
 LEFT = {f'{k}-left': v for k, v in SCREENS.items() if v}
 LOOKS = [('light', 'en'), ('dark', 'en'), ('light', 'zh'), ('dark', 'zh')]
+# open states of the editor's chrome, not only the first screen: project, then how to reach the state
+STATES = {'canvas-theme-tab': ('box-console', 'theme'), 'canvas-shortcuts': ('box-console', 'shortcuts')}
 # a pixel differs when a channel moves by more than this; a picture differs when more than this share of pixels do
 PIXEL, SHARE = 24, 0.002
 
@@ -73,7 +75,7 @@ async def main():
             ctx = await b.new_context(viewport={'width': 1440, 'height': 900}, color_scheme=scheme, reduced_motion='reduce',
                                       locale='zh-CN' if lang == 'zh' else 'en-US')
             pg = await ctx.new_page()
-            for screen, project in {**SCREENS, **LEFT}.items():
+            for screen, project in {**SCREENS, **LEFT, **{k: v[0] for k, v in STATES.items()}}.items():
                 name = f'{screen}-{scheme}-{lang}.png'
                 left = screen in LEFT
                 # a page's own frames are sandboxed and have no storage, so the write is guarded
@@ -85,6 +87,14 @@ async def main():
                 await pg.add_style_tag(content=STILL)
                 await pg.wait_for_timeout(2500)
                 if left: check(f'{name}: the column is open with the work beside it', await pg.locator('.chat-panel').count() == 1)
+                if screen in STATES:
+                    if STATES[screen][1] == 'theme':
+                        await pg.get_by_role('tab', name=re.compile('^(Theme|主题)$')).click()
+                    else:
+                        await pg.evaluate('document.activeElement && document.activeElement.blur()')
+                        await pg.keyboard.press('?')
+                        check(f'{name}: the shortcuts dialog is open', await pg.locator('.shortcutsdlg').count() == 1)
+                    await pg.wait_for_timeout(500)
                 shot = await pg.screenshot()
                 open(os.path.join(OUT, name), 'wb').write(shot)
                 if RECORD: open(os.path.join(NEW, name), 'wb').write(shot)
