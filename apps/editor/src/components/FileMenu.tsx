@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from '../store';
+import { toast, useStore } from '../store';
+import { SHOW_VIEW } from '../views';
 import { ImportHere, importFilesLabel, type ImportControls, type ImportTarget } from './ImportHere';
 import { Menu, MenuItem } from './Menu';
-import { offerExports, type Pick } from '../headless';
+import { offerExports } from '../headless';
 import { saveClaudeDesign, saveProjectArchive } from '../projectArchive';
 import { copyImage, saveImage } from '../imageExport';
 import { t as tNow } from '../i18n';
@@ -48,7 +49,6 @@ export function FileMenu({
   target,
   label,
   items,
-  pick,
   button = 'icon',
   align = 'right',
   claudeDesign = false,
@@ -58,8 +58,6 @@ export function FileMenu({
   label: string;
   /** a function when the list depends on what is selected: it is read when the menu opens */
   items: ExportItem[] | (() => ExportItem[]);
-  /** shows one board, slide, tab or view by id or name, for `tingly-design export --board/--slide/--tab/--view` (headless.ts) */
-  pick?: Pick;
   button?: 'icon' | 'text';
   align?: 'left' | 'right';
   /** this kind has an original Claude type with files to exchange (docs go through Markdown, motion has none; .design/claude-design-format.md) */
@@ -75,7 +73,10 @@ export function FileMenu({
   };
   const close = () => setPos(null);
   // the command line runs the same items without opening the menu
-  useEffect(() => offerExports(items, pick));
+  const kind = useStore((s) => s.kind);
+  // the command line shows a part of the work through the kind's `SHOW_VIEW` before it runs an item
+  const show = kind ? (SHOW_VIEW[kind] ?? undefined) : undefined;
+  useEffect(() => offerExports(items, show));
   const run = async (item: ExportItem) => {
     close();
     try {

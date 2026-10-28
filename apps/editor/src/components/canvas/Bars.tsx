@@ -22,7 +22,7 @@ import {
 } from '../icons';
 import { InlineRename } from '../InlineRename';
 import { FileMenu } from '../FileMenu';
-import { canvasExportItems, pickBoard } from './Board';
+import { canvasExportItems } from './Board';
 import { canvasImport } from './canvasImport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 
@@ -108,7 +108,7 @@ export function CanvasTopBar() {
         on={mode === 'play'}
         onClick={() => useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null })}
       />
-      <FileMenu claudeDesign target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} pick={pickBoard} />
+      <FileMenu claudeDesign target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
     </TopBar>
   );
 }

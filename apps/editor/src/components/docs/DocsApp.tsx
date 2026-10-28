@@ -213,15 +213,6 @@ img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;paddin
 </style></head><body>${parts.join('\n')}</body></html>`;
 }
 
-/** Shows one tab, by its id or its title (headless.ts). */
-function pickTab(d: DocJson, what: string): boolean {
-  const want = what.trim().toLowerCase();
-  const tab = tabOrder(d).find((x) => x.id === what) ?? tabOrder(d).find((x) => x.title.trim().toLowerCase() === want);
-  if (!tab) return false;
-  openTab(tab.id);
-  return true;
-}
-
 /** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
 function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
@@ -338,7 +329,7 @@ export function DocsApp() {
             {pop === 'versions' && <Versions key={tab} tab={tab} onClose={() => setPop(null)} />}
           </div>
         )}
-        <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} pick={(what) => pickTab(d, what)} />
+        <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} />
       </TopBar>
       <ListColumn label={t('docs.app.tabs')} className="docs">
         <aside className="doctabs" aria-label={t('docs.app.tabs')}>

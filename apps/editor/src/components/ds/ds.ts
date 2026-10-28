@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { create } from 'zustand';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import {
@@ -230,3 +231,9 @@ export const dsImport: ImportTarget = {
     return f && a ? t('ds.import.addedBoth', { fonts: f, assets: a }) : t('ds.import.addedOne', { what: f || a });
   },
 };
+
+export const DS_VIEW_IDS = ['overview', 'colors', 'type', 'space', 'components', 'assets', 'issues'] as const;
+export type DsViewId = (typeof DS_VIEW_IDS)[number];
+
+/** Which page of the design system is showing (`?v=` in the address); the nav and `showView` both set it. */
+export const useDsView = create<{ view: DsViewId }>(() => ({ view: (new URLSearchParams(location.search).get('v') as DsViewId) || 'overview' }));
