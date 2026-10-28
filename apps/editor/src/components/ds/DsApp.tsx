@@ -189,7 +189,7 @@ export function DsApp() {
         items={imageExportItems({
           hint: tr('common.transfer.hint.dsView'),
           name: `${fileStem(index.title, 'design-system')}-${view}.png`,
-          make: () => {
+          make: async () => {
             const node = document.querySelector<HTMLElement>('.dsmain .dsview');
             if (!node) throw new Error(tr('ds.app.nothingToSave'));
             const bg = getComputedStyle(document.querySelector('.app.ds')!).backgroundColor;

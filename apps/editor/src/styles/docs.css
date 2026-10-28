@@ -214,6 +214,7 @@
 
 .tabrow:hover .more,
 .tabrow.on .more,
+.tabrow .more:focus-visible,
 .tabrow .more[aria-expanded='true'] {
   opacity: 1;
 }

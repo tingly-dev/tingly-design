@@ -10,6 +10,8 @@ import { More } from './icons';
  */
 export function RowMenu({ label, children }: { label: string; children: (close: () => void) => ReactNode }) {
   const btn = useRef<HTMLButtonElement>(null);
+  // the menu closes itself on a press outside it, the button included: remember it was open then, so the click that follows does not open it again
+  const wasOpen = useRef(false);
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const close = () => setAt(null);
   return (
@@ -21,9 +23,11 @@ export function RowMenu({ label, children }: { label: string; children: (close: 
         aria-expanded={!!at}
         aria-label={label}
         title={label}
+        onPointerDown={() => (wasOpen.current = !!at)}
         onClick={() => {
+          if (wasOpen.current) return void (wasOpen.current = false);
           const r = btn.current!.getBoundingClientRect();
-          setAt(at ? null : { x: r.right, y: r.bottom + 4 });
+          setAt({ x: r.right, y: r.bottom + 4 });
         }}
       >
         <More />
