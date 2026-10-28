@@ -35,6 +35,7 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files: an
 - `order`: slide ids (`[A-Za-z0-9_-]{1,64}`) in deck order. A slide file `order` leaves out shows last.
 - `sections`: the outline — any key → one sentence and the id of its first slide. A section runs until the next one starts.
 - `faces`: at most 4 typefaces, keyed by the family lowercased with spaces as `-`: `family` plus `href` (a `https://fonts.googleapis.com/css2?…` link) or `src` (a font file path such as `assets/Brand.woff2`). Basic and generic faces need no entry.
+- `theme` (`{system, theme, base}`) is kept by the editor's Theme tab: the design system's theme the deck was last switched to, and `base` the page, text and accent colours and typefaces it had before (so the Original look can come back). Slides keep plain values, never `var()`; when you restyle, use the values of the installed system's tokens (`ds/<name>/tokens.json`). Keep the key, don't edit `base`.
 - Keep every key you are not changing. To add a slide: write its file and put its id in `order`. To remove one: take its id out of `order` (and out of `cover` / a section `start`) and ask the person to delete the slide in the editor.
 
 ## A slide file

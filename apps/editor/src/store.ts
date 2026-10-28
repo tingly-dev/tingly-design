@@ -122,7 +122,7 @@ export interface State extends AgentState {
   mode: Mode;
   /** the side pane open in the right column (inspector, data sources, code, comments), or none; see panes.ts */
   pane: PaneId | null;
-  panelTab: 'props' | 'code' | 'tweaks';
+  panelTab: 'props' | 'code' | 'tweaks' | 'theme';
   /** what the runtime measured about the selected element */
   inspect: Inspect | null;
   /** rendered instances per tid, per artboard (for "Repeating group · N items") */

@@ -1034,3 +1034,207 @@ body.resizing-side iframe {
 .marks .btn {
   gap: 4px;
 }
+
+
+/* The Theme tab: a card per theme of every installed design system, then the theme the work wears */
+.themetab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+.th-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+
+.th-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+
+.th-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+
+.th-card:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+
+.th-card[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+
+.th-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.th-spec {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+
+.th-spec i {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+
+.th-orig .th-spec {
+  background: repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 6px, var(--panel) 6px, var(--panel) 12px);
+  color: var(--muted);
+}
+
+
+.th-name,
+.th-sub {
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.th-sub {
+  color: var(--muted);
+  margin-top: -3px;
+}
+
+
+.th-now {
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+
+.th-now .hint {
+  margin: 2px 0 0;
+}
+
+
+.th-gt {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+
+.th-sws {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 4px 8px;
+}
+
+
+.th-sw {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font: 11.5px var(--mono);
+}
+
+
+.th-sw i {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+
+.th-sw span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.th-contrast {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+
+.th-contrast li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+
+.th-contrast li.ok b {
+  color: var(--ok);
+}
+
+
+.th-contrast li.low {
+  background: var(--warn-soft);
+}
+
+
+.th-contrast li.low b {
+  color: var(--warn);
+}
+
+
+.th-font {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+}
+
+
+.th-font small {
+  font: 11.5px var(--mono);
+  color: var(--muted);
+}

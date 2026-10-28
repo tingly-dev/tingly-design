@@ -24,11 +24,13 @@ export default {
     format: '缩放后的场景放进新格式可能放不下。',
     designSystem: '装入了一套设计系统，现有的内容还没有用上它。',
     tokens: '设计 token 改了，组件里可能还在用旧的值。',
+    theme: '换了主题，不属于设计系统的颜色保持原样。',
     ask: {
       size: '让 Claude 重新排版',
       format: '让 Claude 重新排版',
       designSystem: '让 Claude 换成这套风格',
       tokens: '让 Claude 跟上 token',
+      theme: '让 Claude 换掉其余的',
     },
     edit: '改写请求',
     dismiss: '忽略',

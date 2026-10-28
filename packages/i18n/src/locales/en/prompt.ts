@@ -24,11 +24,13 @@ export default {
     format: 'The scaled scenes may not fit the new format.',
     designSystem: 'A design system was installed. The existing work does not use it yet.',
     tokens: 'The design tokens changed. The components may still use the old values.',
+    theme: 'Switched to a theme. Colours that are not from a design system stayed as they were.',
     ask: {
       size: 'Ask Claude to re-lay out',
       format: 'Ask Claude to re-lay out',
       designSystem: 'Ask Claude to restyle',
       tokens: 'Ask Claude to follow the tokens',
+      theme: 'Ask Claude to restyle the rest',
     },
     edit: 'Edit the request',
     dismiss: 'Dismiss',
