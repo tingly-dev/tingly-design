@@ -374,7 +374,7 @@ export function resolveTokens(input: unknown): DsTokens {
     const family = typeof ff?.family === 'string' ? ff.family.trim().replace(/^["']|["']$/g, '') : '';
     const file = typeof ff?.file === 'string' ? ff.file.trim() : '';
     // both end up inside url("…") and "…" in a stylesheet: plain names only
-    if (!/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,80}$/.test(family) || !/^[A-Za-z0-9_][A-Za-z0-9_./ -]{0,200}\.(woff2?|ttf|otf)$/i.test(file) || file.includes('..')) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,80}$/.test(family) || !/^[A-Za-z0-9_][A-Za-z0-9_./ -]{0,200}\.(woff2?|ttf|otf|ttc)$/i.test(file) || file.includes('..')) {
       drop(`type.fonts[${i}]`, 'A font needs a family and a file under fonts/.');
       continue;
     }
@@ -590,7 +590,7 @@ export function styleFamily(t: DsTokens, style: DsTypeStyle, group?: DsTypeGroup
 
 function fontFormat(file: string): string {
   const ext = file.slice(file.lastIndexOf('.') + 1).toLowerCase();
-  return ext === 'woff2' ? 'woff2' : ext === 'woff' ? 'woff' : ext === 'otf' ? 'opentype' : 'truetype';
+  return ext === 'woff2' ? 'woff2' : ext === 'woff' ? 'woff' : ext === 'otf' ? 'opentype' : ext === 'ttc' ? 'collection' : 'truetype';
 }
 
 /** tokens.css as the original compiles it. `fontBase` prefixes font file paths (for an installed copy). */

@@ -329,7 +329,7 @@ export function scheduleRuns(): void {
       if (s.status === 'loading') continue;
       datasets[id] = { status: s.status === 'ok' ? 'ok' : s.status === 'connect' ? 'absent' : 'failed', message: s.message, rows: s.rows.length || undefined, cut: s.cut, ms: s.ms, at: s.at ? new Date(s.at).toISOString() : undefined };
     }
-    const runs = { at: new Date().toISOString(), params, datasets, marks: report?.marks ?? [], flagged: report?.flagged ?? 0, errors: report?.errors ?? [] };
+    const runs = { at: new Date().toISOString(), params, datasets, marks: report?.marks ?? [], drawn: report?.drawn ?? [], flagged: report?.flagged ?? 0, errors: report?.errors ?? [] };
     void fetch(at(`api/projects/${encodeURIComponent(project)}/runs`), { method: 'PUT', body: JSON.stringify(runs, null, 1) }).catch(() => {});
   }, 1500);
 }

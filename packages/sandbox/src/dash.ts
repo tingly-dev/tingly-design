@@ -12,6 +12,7 @@ import * as d3 from 'd3';
 import {
   EMPTY_STATE,
   checkMark,
+  drawnCheck,
   isCellMark,
   markOf,
   resolveMark,
@@ -497,6 +498,19 @@ function checkTable(table: HTMLTableElement, source: string, t: Table | null, ou
   }
 }
 
+/** The page has its data and is not redrawing: what it shows now is what a reader sees. */
+function settled(): boolean {
+  return !loadingSince && !root.querySelector('[data-dash-source-state=loading], [data-dash-source-state=refreshing]');
+}
+
+function safeDrawn() {
+  try {
+    return drawnCheck(root);
+  } catch {
+    return [];
+  }
+}
+
 let reportTimer = 0;
 let lastReport = '';
 function scheduleReport(): void {
@@ -506,6 +520,7 @@ function scheduleReport(): void {
       read: [...read],
       marked: [...marked],
       marks: marksOut,
+      drawn: settled() ? safeDrawn() : [],
       flagged,
       errors: [...errors.values()],
       calcs: [...calcs.values()].map((c) => c.info),
@@ -520,6 +535,10 @@ function scheduleReport(): void {
     post({ dc: 'dash-report', report, derived });
   }, 250);
 }
+
+// a tab or a chart the reader opens draws without new data: look again once the page has been quiet for a moment
+// (a running d3 transition mutates the page until it ends, so it is never measured half way)
+new MutationObserver(() => scheduleReport()).observe(root, { childList: true, subtree: true, attributes: true, characterData: true });
 
 /** Enough of a calc's or loader's result for Sources to show. */
 function trim(s: DataState): DataState {

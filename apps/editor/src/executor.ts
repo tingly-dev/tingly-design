@@ -61,10 +61,11 @@ function send(m: ToExecutor): Promise<FromExecutor> {
 export class ExecSession {
   private constructor(readonly id: string) {}
 
-  static async begin(source: string): Promise<{ session: ExecSession; markup: string }> {
+  /** `others`: the artboards (by file) a reply on a canvas may also reach with board() */
+  static async begin(source: string, others?: Record<string, string>): Promise<{ session: ExecSession; markup: string }> {
     await boot();
     const id = 's' + ++seq;
-    const r = await send({ dc: 'begin', id, source });
+    const r = await send({ dc: 'begin', id, source, ...(others && Object.keys(others).length ? { others } : {}) });
     if (r.dc === 'fail') throw new Error(r.error);
     if (r.dc !== 'begun') throw new Error('unexpected executor reply');
     return { session: new ExecSession(id), markup: r.markup };
@@ -78,14 +79,19 @@ export class ExecSession {
   }
 }
 
-/** Re-run a finished reply on another version of the file (after a save conflict). */
-export async function replay(statements: string[], source: string): Promise<string> {
-  const { session } = await ExecSession.begin(source);
+/**
+ * Re-run a finished reply on another version of the file (after a save conflict). A reply that reached
+ * other artboards is re-run with them as they were, and `want` names the one whose result is wanted.
+ */
+export async function replay(statements: string[], source: string, others?: Record<string, string>, want?: string): Promise<string> {
+  const { session } = await ExecSession.begin(source, others);
   let out = source;
+  let wanted = want ? others?.[want] ?? '' : '';
   for (const s of statements) {
     const r = await session.run(s);
     if (!r.ok) throw new Error(t('app.executor.replayFailed', { error: r.error }));
     out = r.source;
+    if (want && r.others?.[want] !== undefined) wanted = r.others[want];
   }
-  return out;
+  return want ? wanted : out;
 }

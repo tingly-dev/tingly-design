@@ -203,3 +203,11 @@ describe('design system files', () => {
       expect(isDsTextFile(no), no).toBe(false);
   });
 });
+
+describe('font collections', () => {
+  it('accepts a .ttc and declares it as a collection', () => {
+    const t = resolveTokens({ type: { fonts: [{ family: 'Noto Sans CJK', file: 'NotoSansCJK.ttc', weight: '400' }] } });
+    expect(t.fonts.map((f) => f.file)).toEqual(['fonts/NotoSansCJK.ttc']);
+    expect(compileTokensCss(t)).toContain('url("fonts/NotoSansCJK.ttc") format("collection")');
+  });
+});

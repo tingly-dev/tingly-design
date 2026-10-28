@@ -347,7 +347,7 @@ export function TypeView({ t }: { t: DsTokens }) {
           ref={fontInput}
           type="file"
           hidden
-          accept=".woff2,.woff,.ttf,.otf"
+          accept=".woff2,.woff,.ttf,.otf,.ttc"
           onChange={async (e) => {
             const files = e.currentTarget.files;
             if (!files?.length) return;

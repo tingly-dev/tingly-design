@@ -32,6 +32,10 @@ class H(BaseHTTPRequestHandler):
                      f"$('{h}').next().append(`<li></li>`)\n"
                      f"$('{h}').next().children().first().repeat(3)\n"
                      f".text((i) => ['同步到所有 Agent', '保留每个 Agent 的覆盖', '改动写入 journal'][i])\n")
+        elif re.search('复制到另一块画板|onto the other artboard', first.rsplit('\nprompt\n', 1)[-1]):
+            # a part copied onto another artboard; the first try writes the other artboard's handle without naming it and is refused
+            other = re.search(r"- (\S+\.dc\.html): ", first).group(1)
+            reply = (f"$('#b1_dc1').text('x')\n" if len(msgs) == 1 else f"$('{h}').css('color', '#0e7490')\n$('{h}').clone().appendTo(board('{other}'))\n")
         elif len(msgs) == 1:
             # first try: one good line, then a line that throws -> the editor must undo and retry
             reply = f"$('{h}').css('color', '#b42318')\n$('{h}').nope()\n"

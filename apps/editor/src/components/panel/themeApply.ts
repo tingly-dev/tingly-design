@@ -19,7 +19,7 @@ import {
   type ThemeTarget,
 } from '@dc/core';
 import { t } from '../../i18n';
-import { canvasOf, display, dropGroup, edit, forgetChange, isLastGroup, recordChange, slideIds, toast, undo, useStore } from '../../store';
+import { canvasOf, display, dropGroup, edit, forgetChange, isLastGroup, newUndoGroup, recordChange, slideIds, toast, undo, useStore } from '../../store';
 import { installedOf, type Installed } from '../ds/ds';
 
 /**
@@ -93,7 +93,7 @@ export function applyTheme(to: ThemeTarget | 'original', scope: ThemeScope): voi
 
   const summary = to === 'original' ? 'theme → original look' : `theme → ${name}`;
   // every file of one switch, and the index, are one step of undo
-  const group = `theme-${Date.now()}`;
+  const group = newUndoGroup();
   const before: Record<string, string> = {};
   const after: Record<string, string> = {};
   files.forEach((f, i) => {

@@ -61,6 +61,48 @@ try:
     check('text squeezed into a narrow column is reported', ('slides/grid.html', 'squeezed') in got, str(list(got)))
     check('layout findings are warnings, so the check still passes', all(p['level'] == 'warning' for p in got.values()))
     check('each slide is still drawn', len(r['snapshots']) == len(deck['order']), str(r.get('snapshots'))[:300])
+    # a dashboard: a number that came out as NaN, a chart with nothing in it, labels over each other or cut off
+    dclean = os.path.join(projects, 'zz-dash-clean')
+    shutil.copytree(os.path.join(REPO, 'projects', 'box-usage'), dclean, ignore=keep)
+    dbad = os.path.join(projects, 'zz-dash-bad')
+    os.makedirs(os.path.join(dbad, 'datasets')); os.makedirs(os.path.join(dbad, 'data')); os.makedirs(os.path.join(dbad, 'files'))
+    shutil.copy(os.path.join(REPO, 'projects/box-usage/data/team.csv'), os.path.join(dbad, 'data/team.csv'))
+    open(os.path.join(dbad, 'data/none.csv'), 'w').write('member,requests\n')
+    json.dump({'title': 'Bad', 'params': {}}, open(os.path.join(dbad, 'dash.json'), 'w'))
+    for id_, f in (('team', 'team.csv'), ('none', 'none.csv')):
+        json.dump({'title': id_, 'description': id_, 'source': {'kind': 'file', 'url': 'data/' + f, 'name': f}, 'updated': {'at': '2026-10-01T09:00:00Z', 'by': 'Sample data'}}, open(os.path.join(dbad, 'datasets', id_ + '.json'), 'w'))
+    open(os.path.join(dbad, 'files/index.html'), 'w').write('''<div style="padding:20px;font:14px sans-serif">
+<p id="total">Total: <span id="t">—</span></p>
+<div id="bars" data-source="team"><svg id="b" width="400" height="120"></svg></div>
+<div id="empty" data-source="none"><svg id="e" width="400" height="120"><g class="tick"><line x1="0" x2="400" y1="100" y2="100" stroke="#999"/></g><path class="domain" d="M0,100H400" stroke="#999"/></svg></div>
+<svg id="over" width="400" height="60"><text x="10" y="30" font-size="14">January sales</text><text x="60" y="30" font-size="14">February sales</text></svg>
+<div style="display:none"><div id="tab2" data-source="team"><svg width="300" height="100"></svg></div></div>
+<div id="css" data-source="team" style="width:63%;height:8px;background:#36c"></div>
+<p>An unset variable is undefined in JavaScript.</p>
+<svg id="tip" width="400" height="60"><text x="10" y="30" font-size="14">Tick one</text><g style="opacity:0"><text x="10" y="30" font-size="14">Hidden tooltip</text></g></svg>
+<svg id="cut" width="200" height="60"><text x="120" y="30" font-size="14">A label that is too long</text></svg>
+</div>
+<script>
+dash.onData(() => {
+  const s = dash.data('team');
+  if (s.status !== 'ok') return;
+  document.getElementById('t').textContent = Math.round(s.data.map((d) => Number(d.nope)).reduce((a, b) => a + b, 0));
+  const svg = d3.select('#b');
+  svg.selectAll('rect').data(s.data).join('rect').attr('x', 0).attr('y', (d, i) => i * 10).attr('height', 8).attr('width', (d) => Number(d.nope) * 2);
+});
+</script>''')
+    ok = run(projects, 'zz-dash-clean')
+    check('the sample dashboard draws with no drawn-wrong warnings', not [p for p in ok['problems'] if p['code'] == 'layout' and p.get('rule') in ('nan', 'nanMore', 'empty', 'labelOverlap', 'labelOverlapMore', 'labelClipped', 'labelClippedMore')], json.dumps([p for p in ok['problems'] if p['code'] == 'layout'])[:400])
+    d = run(projects, 'zz-dash-bad')
+    dgot = {p.get('rule'): p for p in d['problems'] if p['code'] == 'layout'}
+    nan = dgot.get('nanMore') or dgot.get('nan')
+    check('a number that came out as NaN is reported with its text', nan and 'NaN' in nan['params']['text'], json.dumps(list(dgot)))
+    check('a NaN drawn into a bar is named with the dataset', any('team' in p['params'].get('where', '') and 'NaN' in p['params']['text'] for p in d['problems'] if p['code'] == 'layout' and p.get('rule', '').startswith('nan')), json.dumps(dgot)[:400])
+    check('a chart with only axes is reported as empty, with its dataset', dgot.get('empty') and 'none' in dgot['empty']['params']['where'] and '#empty' in dgot['empty']['params']['where'], json.dumps(dgot.get('empty')))
+    check('labels over each other are reported', 'labelOverlap' in dgot and 'sales' in dgot['labelOverlap']['params']['text'], json.dumps(list(dgot)))
+    check('a label cut off by its chart is reported', 'labelClipped' in dgot and '#cut' in dgot['labelClipped']['params']['where'], json.dumps(list(dgot)))
+    check('the chart that did draw is not called empty', len([p for p in d['problems'] if p.get('rule') == 'empty']) == 1)
+    check('a chart in a hidden tab, a CSS bar, the word undefined in prose and a hidden tooltip are not reported', not any(x in json.dumps(p) for p in d['problems'] if p['code'] == 'layout' for x in ('#tab2', '#css', 'unset variable', 'Hidden tooltip', '#tip')), json.dumps(dgot)[:500])
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

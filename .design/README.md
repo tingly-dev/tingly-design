@@ -49,11 +49,13 @@
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [claude-design-format.md](./claude-design-format.md) | 和原版 Claude Design 互相搬作品：包就是原版的文件布局（`project/…`，看板是存储文档），导入并进“导入项目”不选类型，导出挨着“整个项目”；图片和数据怎么对应、哪些类型没有 | 已实施（编辑器、启动页、命令行）；Docs 往返、查询数据集的数据是没做的 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
+| [drawn-check.md](./drawn-check.md) | 看板画出来的样子自查：`NaN`、空图表、标签重叠或被裁；同一段探针既在打开的页面里写进 `.runs.json` 的 `drawn`，也在 `check --snapshots` 里报成版面警告 | 已实施 |
 | [canvas-check.md](./canvas-check.md) | 画布检查器：`checkCanvas` 把 `dc-canvas` 技能里写错了不报错的规则做成纯文本检查，返回规则 id 和参数，措辞留给命令行 / 编辑器 | 核心函数和 `check` 命令已实施；编辑器提示是方案 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |
 | [project-theme.md](./project-theme.md) | 画布和幻灯片的主题：右侧面板的“主题”页签，点一张卡把整个作品换成设计系统的某个主题；按角色换颜色（幻灯片连字体），“原样”和 Undo 回去，范围（所有页 / 这一页），对比度，为什么不是 `var()` | 已实施（画布、幻灯片）；§7 位置、画布字体、命令行未定 |
 | [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 已实施；同名值联动和脚本里未声明的值未定 |
+| [canvas-fast-edit.md](./canvas-fast-edit.md) | 画布上的快速 AI：提示词里让它用 flex / grid 排版而不是像素偏移；一次回复里把部件复制到另一块画板（`board(file)`、其他画板的句柄前缀、只能复制不能搬、没点名的写法被拒），一次撤销退回整次回复；整块画板的复制仍交给 Claude Code | 已实施；仅画布 |
 | [export.md](./export.md) | 导出：独立的 `@dc/export` 包、动效视频与取帧路线、速度度量；其他格式的现行入口链接到专门契约 | 动效视频已实施；PNG/PDF/共用菜单见对应笔记，受限 PPTX 接入已实施，验证范围见 slides-pptx；未做项单列；调研在 `.research/export.md` |
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
@@ -61,6 +63,7 @@
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |
 | [cli.md](./cli.md) | 命令行 `tingly-design`：命令用编辑器里同一个词（`open`、`new`、`list`、`check`、`export`）；服务端拆成路由和启动；核心给数据、命令行给措辞；`server.mjs` 就是 `serve`；找到正在运行的编辑器（`.server.json`）、`history`；其他类型的导出由本机 Chrome 打开编辑器、跑导出菜单自己的项（`headless.ts`、`pageExport.ts`），`check --snapshots`；命令抽成数据（`commands.ts`），同一份作为 MCP 工具（`/mcp`、`tingly-design mcp`），`skills add`；`prompt` 交给编辑器跑 Claude Code；`new -i` 交互式新建（流程在核心、提问在终端） | 第 1–5 步已实施；§6 是还开着的和暂不做的 |
 | [design-system-looks.md](./design-system-looks.md) | 设计系统的起点：从 36 个风格（html-ppt 的主题，MIT）里选一个，按感觉分五组；新建对话框、`new design-system --look`；原始英文名，画布和幻灯片可直接从收起的“内置”组装入；颜色字体圆角阴影之外，还带原主题规则画的组件和封面；DESIGN.md 导入是下一步 | 已实施；§5 是还原度，§6 是没做的 |
+| [design-system-guide.md](./design-system-guide.md) | 设计系统的“怎么用”：README 末尾由 tokens.json 生成的使用说明（链接、主题、变量与备用值、色阶、字体族、文字样式），画布和幻灯片为什么只能用值，以及 `.ttc` 字体集合 | 已实施；开放问题是画板链接样式表 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [chat-panel.md](./chat-panel.md) | 对话面板：请求栏的位置收成底部和左侧（左侧一直打开，取代右侧自动隐藏；已有左列的类型用页签），面板里是一份能回头读的对话记录（每轮的请求、步骤、回答、改动），存在服务端，命令行和 MCP 的请求也在里面；窄窗口放不下时退回底部 | 已实施；§7 是没做的 |
