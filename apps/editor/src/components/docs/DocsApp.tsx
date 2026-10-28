@@ -45,7 +45,7 @@ import { t as tNow } from '../../i18n';
 import { saveDocMarkdown } from './markdownExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { History, LayoutCols, Message } from '../icons';
+import { History, LayoutCols } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
@@ -300,7 +300,6 @@ export function DocsApp() {
   const [pop, setPop] = useState<'settings' | 'versions' | null>(null);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
-  const open = comments.threads.filter((x) => x.tab === tab && !x.resolved).length;
 
   useEffect(() => {
     const id = new URLSearchParams(location.search).get('t');

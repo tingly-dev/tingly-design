@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import { elapsed, type AgentStep, type TurnEntry } from '@dc/core';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { undo, undoDelegate, useStore } from '../store';
+import { openPane, undo, undoDelegate, useStore } from '../store';
 import type { DelegateState, FastState } from '../store/agent';
 import {
   Chevron,
@@ -321,9 +321,9 @@ function FastRun({ f, onReuse }: { f: FastState; onReuse?: (p: string) => void }
 function editAsJQuery(file: string | undefined, code: string) {
   const s = useStore.getState();
   const onFile = s.selection && 'file' in s.selection && s.selection.file === file;
+  openPane('inspector');
   useStore.setState({
     jqDraft: code,
-    pane: 'inspector' as const,
     panelTab: 'code',
     ...(file && !onFile ? { selection: { kind: 'board', file } as const } : {}),
   });

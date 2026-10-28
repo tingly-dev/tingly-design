@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { initialPane, rememberPane, type PaneId } from './panes';
+import { initialPane, KIND_PANE_IDS, rememberPane, type PaneId } from './panes';
 import { turnOfDelegate, turnOfFast } from './turns';
 import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type BarMode, type DelegateState } from './store/agent';
 import {
@@ -436,10 +436,10 @@ useStore.subscribe((st, prev) => {
 
 /** Show a pane (a request, a link from a file chip or a comment): never closes it. */
 export function openPane(id: PaneId): void {
-  useStore.setState({ pane: id });
+  useStore.setState((s) => (s.kind && KIND_PANE_IDS[s.kind].includes(id) ? { pane: id } : {}));
 }
 
 /** Open a pane, or close it when it is the one open. */
 export function togglePane(id: PaneId): void {
-  useStore.setState((s) => ({ pane: s.pane === id ? null : id }));
+  useStore.setState((s) => (s.kind && KIND_PANE_IDS[s.kind].includes(id) ? { pane: s.pane === id ? null : id } : {}));
 }
