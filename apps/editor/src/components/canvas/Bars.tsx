@@ -20,6 +20,7 @@ import {
   Shapes,
   TextT,
 } from '../icons';
+import { InlineRename } from '../InlineRename';
 import { FileMenu } from '../FileMenu';
 import { canvasExportItems, pickBoard } from './Board';
 import { canvasImport } from './canvasImport';
@@ -61,22 +62,7 @@ function PagesMenu({ onClose, x, y }: { onClose: () => void; x: number; y: numbe
       {pages.map((p) =>
         renaming === p.id ? (
           <div key={p.id} style={{ padding: '2px 4px' }}>
-            <input
-              autoFocus
-              defaultValue={p.name}
-              aria-label={t('app.pages.nameLabel')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  renamePage(p.id, e.currentTarget.value);
-                  setRenaming(null);
-                }
-                if (e.key === 'Escape') setRenaming(null);
-              }}
-              onBlur={(e) => {
-                renamePage(p.id, e.currentTarget.value);
-                setRenaming(null);
-              }}
-            />
+            <InlineRename value={p.name} label={t('app.pages.nameLabel')} onCommit={(v) => renamePage(p.id, v)} onDone={() => setRenaming(null)} />
           </div>
         ) : (
           <MenuItem

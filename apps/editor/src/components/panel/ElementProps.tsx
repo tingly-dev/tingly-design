@@ -24,7 +24,8 @@ import {
   TextRight,
   Wrap,
 } from '../icons';
-import { ColorField, Field, Row, Seg, Select, contrastRatio, isTransparent, px, toHex, toLength } from './fields';
+import { ColorField, Field, Row, Select, contrastRatio, isTransparent, px, toHex, toLength } from './fields';
+import { Segmented } from '../Segmented';
 
 type Set_ = Record<string, string | null>;
 
@@ -303,7 +304,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
         {layout === 'stack' && (
           <>
             <Row label={t('panel.el.direction')}>
-              <Seg
+              <Segmented
                 value={dir}
                 label={t('panel.el.direction')}
                 options={[
@@ -417,7 +418,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
             <Field value={px(sv('letter-spacing'))} placeholder={px(cv('letter-spacing')).replace('normal', '0')} onCommit={one('letter-spacing')} label={t('panel.el.letterSpacing')} pre={t('panel.el.letterSpacingPre')} />
           </Row>
           <Row label={t('panel.el.alignRow')}>
-            <Seg
+            <Segmented
               value={(sv('text-align') || cv('text-align').replace('start', 'left')) as 'left'}
               label={t('panel.el.textAlign')}
               options={[
@@ -468,7 +469,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
             </div>
           )}
           <Row label={t('panel.field.border')}>
-            <Seg
+            <Segmented
               value={borderStyle}
               label={t('panel.field.borderStyle')}
               options={[
@@ -513,7 +514,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
             />
           </Row>
           <Row label={t('panel.el.overflow')}>
-            <Seg
+            <Segmented
               value={(sv('overflow') || cv('overflow')) === 'hidden' ? 'hidden' : 'visible'}
               label={t('panel.el.overflow')}
               options={[

@@ -1,4 +1,5 @@
 import { SideResizer } from '../SideResizer';
+import { InlineRename } from '../InlineRename';
 import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,21 +86,7 @@ function SectionHead({ k, description }: { k: string; description: string }) {
   return (
     <div className="shead">
       {editing ? (
-        <input
-          autoFocus
-          defaultValue={description}
-          aria-label={t('slides.section.descriptionLabel')}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') e.currentTarget.blur();
-            if (e.key === 'Escape') setEditing(false);
-          }}
-          onBlur={(e) => {
-            setEditing(false);
-            const v = e.currentTarget.value.trim();
-            if (v && v !== description) renameSection(k, v);
-          }}
-        />
+        <InlineRename value={description} label={t('slides.section.descriptionLabel')} onCommit={(v) => renameSection(k, v)} onDone={() => setEditing(false)} />
       ) : (
         <span className="d" title={t('slides.section.renameHint')} onDoubleClick={() => setEditing(true)}>
           {description || t('slides.section.unnamed')}
