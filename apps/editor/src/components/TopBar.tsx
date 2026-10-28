@@ -1,12 +1,13 @@
 import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ISSUES_URL, REPO_URL } from '../links';
-import { Bug, Check, External, More, Panel, Star } from './icons';
+import { Bug, Check, External, More, Star } from './icons';
 import { useStore } from '../store';
 import { Menu, MenuItem } from './Menu';
 import { PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode } from '../theme';
 import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
 import { InlineRename } from './InlineRename';
+import { PaneToggles } from './panes';
 import { ProjectMenu } from './ProjectMenu';
 import { SyncStatus } from './SyncStatus';
 
@@ -109,10 +110,10 @@ function MoreMenu() {
   );
 }
 
-/** The kind's own actions go in `children`; `panel` adds the right-panel toggle at their end, the same button in every kind that has a panel. */
-export function TopBar({ title, panel, children }: { title: ReactNode; panel?: { label: string; hint: string }; children?: ReactNode }) {
+/** The kind's own actions go in `children`; the toggles of its side panes follow them, the same buttons in the same place in every kind that has a column. */
+export function TopBar({ title, children }: { title: ReactNode; children?: ReactNode }) {
   const { t } = useTranslation();
-  const panelOpen = useStore((s) => s.panelOpen);
+  const kind = useStore((s) => s.kind);
   return (
     <header className="topbar dashbar" role="banner" aria-label={t('common.topbar.label')}>
       <ProjectMenu />
@@ -120,11 +121,7 @@ export function TopBar({ title, panel, children }: { title: ReactNode; panel?: {
       <SyncStatus />
       <div className="grow" />
       {children}
-      {panel && (
-        <button className="tb" aria-pressed={panelOpen} aria-label={panel.label} title={panel.hint} onClick={() => useStore.setState({ panelOpen: !panelOpen })}>
-          <Panel />
-        </button>
-      )}
+      {kind && <PaneToggles kind={kind} />}
       <span className="tsep" />
       <MoreMenu />
     </header>

@@ -1,6 +1,6 @@
 # 跨类型交互一致性：哪些概念被六种类型各写了一遍，怎么收拢
 
-状态：**方案，分期实施中**（P1 已实施；§6 的产品取向按建议推进，随时可调）。读这份之前先读 [project-kinds.md](./project-kinds.md)（登记清单和跨类型功能矩阵）和 [kind-registry.md](./kind-registry.md)（按类型的穷尽表）；这份接着它们往交互层走。
+状态：**方案，分期实施中**（P1–P4 已实施；§6 的产品取向按建议推进，随时可调）。读这份之前先读 [project-kinds.md](./project-kinds.md)（登记清单和跨类型功能矩阵）和 [kind-registry.md](./kind-registry.md)（按类型的穷尽表）；这份接着它们往交互层走。
 
 ## 1. 问题
 
@@ -70,14 +70,14 @@
 
 ### 3.3 旁边的面板
 
-| 面板 | 打开状态记在 | 开关按钮 | 拖宽 |
+| 面板 | 打开状态（原） | 开关按钮（原） | 拖宽 |
 |---|---|---|---|
 | 检查器（画布、幻灯片、动效） | `store.panelOpen` | `TopBar` 的 `panel` 参数 | ✓ |
 | 数据来源、代码（看板） | `useDash.side` | 看板自己放 `BarButton` | ✓ |
 | 批注（文档） | `useDocs.rail` | 文档自己放 `BarButton` | ✓ |
 | 设计系统 | 没有侧面板 | — | — |
 
-三份状态、三套摆法。后果：Esc、记住上次是否打开、外部命令（`pick`、宿主消息）想"打开某个面板"，都得逐类型处理；`RunFeed` 点看板的文件要懂 `useDash.side`。
+三份状态、三套摆法。后果：Esc、记住上次是否打开、外部命令（`pick`、宿主消息）想"打开某个面板"，都得逐类型处理；`RunFeed` 点看板的文件要懂 `useDash.side`。现在（P4）只剩一个 `store.pane`，开关由 `TopBar` 按 `KIND_PANE_IDS` 统一画，见 §4.4。
 
 "整件作品的设置放哪"也分歧：画布是什么都没选时的检查器，幻灯片是页面面板，动效是 `MotionPanel`，文档是顶栏里的 `popmenu`，设计系统在令牌视图里，看板的主题是顶栏一个太阳/月亮按钮。
 
@@ -155,7 +155,7 @@
 
 ### 4.4 第三层：面板与"当前视图"的统一
 
-- **`SidePanes`**：每种类型声明自己有哪些侧面板（`{ id, label, icon, badge?, render }`），一个状态切片 `store.pane`（`null | id`）替代 `panelOpen` / `useDash.side` / `useDocs.rail`。`TopBar` 按声明画开关（同一位置同一顺序），Esc 关最上面一个，`pane` 记住上次（本机）。宽度仍是 `SideResizer`。外部命令"打开代码面板"有了统一的口。
+- **`SidePanes`**：每种类型声明自己有哪些侧面板（`{ id, label, icon, badge?, render }`），一个状态切片 `store.pane`（`null | id`，`panes.ts`）替代 `panelOpen` / `useDash.side` / `useDocs.rail`。`TopBar` 的 `PaneToggles` 按 `KIND_PANE_IDS` 画开关（同一位置同一顺序，角标由各面板自带），`pane` 按类型记住上次（本机，`dc.pane.<kind>`；旧的 `dc.panelOpen` 作回退）。同一时刻只开一个面板，所以看板的"来源"与"代码"互相替换；`openPane(id)` 是外部命令和文件定位的统一入口。Esc 不关面板（输入框里的 Esc 另有含义）。宽度仍是 `SideResizer`。外部命令"打开代码面板"有了统一的口。
 - **作品设置的家**：见 §6-2，先定产品取向，再决定是把画布空选检查器 / 页面面板 / `MotionPanel` / 文档设置 / 看板主题统一成"检查器里的'作品'一节"，还是各留各的。
 - **外观**：见 §6-3。
 - **当前视图**：设计系统的视图记在组件 `useState` 加 URL `?v=`，看板在 `useDash.mode`，文档有 `pop`。给 `KindItems` 旁加 `views`（可选），让 `pick`、宿主消息和 `RunFeed` 有统一的口，而不是 DsApp 的 `pick` 属性单独接。
@@ -170,7 +170,7 @@
 | **P1** 已实施 | 原语：`InlineRename`、`Segmented`、`RowMenu`、`imageExportItems`；文档标签页菜单换成 `RowMenu`（补键盘）。`Tabs` 和 `IssueRow` 留到用得上的那一期（P2 的行、P4 的面板页签）一起做，免得先造出没人用的部件 | 无 | 低 | 文档菜单可键盘操作，分段选择的样式合成一份 |
 | **P2** 已实施 | 条目菜单 `ItemMenuItems`（幻灯片、动效场景、文档标签页）和 `LOCATE`（取代各处 `onOpen`），见 §4.2；动效场景拖放换序留待后续 | P1 | 中（碰三个类型的列表与请求栏接线） | 文档得到"复制"，幻灯片得到键盘可达的上移 / 下移，三种菜单一致 |
 | **P3** 已实施 | 删除规矩（§4.3）：`offerUndo`，去掉 `confirm()` 与 `confirmBoards`；素材删除用 `askConfirm` | P2 | 中（撤销要对每种删除都成立：文件删除与索引修改要在同一次撤销里） | 删除后出现撤销 toast |
-| **P4** | `SidePanes`：状态合并、顶栏按声明画开关；看板和文档迁入 | P1 | 中 | 开关位置统一；记住上次 |
+| **P4** 已实施 | `SidePanes`：状态合并、顶栏按声明画开关；看板和文档迁入 | P1 | 中 | 开关位置统一；记住上次 |
 | **P5** | 作品设置的家、外观的词与位置（**等 §6-2、§6-3**） | P4 | 视决定 | 视决定 |
 | **P6** | 快捷键表 + 可见清单；`views`（当前视图）统一出口 | P2 | 低 | 每种类型都能看到自己的快捷键 |
 | **P7** | 可选：放映 / 播放共用外壳（Esc、全屏、键位）；`imageExportItems` 之外的导出过程反馈统一 | — | 低价值 | 几乎无 |

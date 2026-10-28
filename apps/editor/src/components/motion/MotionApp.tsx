@@ -63,7 +63,7 @@ export function MotionApp() {
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
-  const panelOpen = useStore((s) => s.panelOpen);
+  const panelOpen = useStore((s) => s.pane === 'inspector');
   const barCollapsed = useStore((s) => s.barCollapsed);
   const barInColumn = useChat().left;
   const { t } = useTranslation();
@@ -261,7 +261,6 @@ export function MotionApp() {
             onRename={(v) => editMotion((r) => (r.title = v), t('motion.journal.title', { title: v }))}
           />
         }
-        panel={{ label: t('motion.bar.panel'), hint: t('motion.bar.panelHint') }}
       >
         {formats.length > 1 && (
           <div className="mseg" role="radiogroup" aria-label={t('motion.bar.formats')}>

@@ -130,8 +130,6 @@ export default {
     icons: '图标',
     slides: '幻灯片',
     present: '放映',
-    panel: '属性面板',
-    panelHint: '属性面板（⌘\\）',
     presentFromStart: '从头放映',
     presentFromCurrent: '从当前页放映',
     presentWithNotes: '放映并显示演讲者备注',

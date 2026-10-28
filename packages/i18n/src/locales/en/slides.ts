@@ -130,8 +130,6 @@ export default {
     icons: 'Icons',
     slides: 'Slides',
     present: 'Present',
-    panel: 'Properties panel',
-    panelHint: 'Properties panel (⌘\\)',
     presentFromStart: 'Present from the start',
     presentFromCurrent: 'Present from this slide',
     presentWithNotes: 'Present with speaker notes',

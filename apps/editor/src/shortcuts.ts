@@ -11,7 +11,7 @@ import {
   ungroupSelection,
   wrapSelection,
 } from './actions';
-import { redo, undo, useStore, type Tool } from './store';
+import { redo, togglePane, undo, useStore, type Tool } from './store';
 import { fitAll, zoomAt, zoomToSelection } from './components/canvas/view';
 import { addSlide, stepSlide } from './components/slides/slides';
 import { presentStep, startPresent, stopPresent } from './components/slides/Present';
@@ -56,7 +56,7 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
     else if (k === '=' || k === '+') zoomAt(1.25, s.viewport.w / 2, s.viewport.h / 2);
     else if (k === '-') zoomAt(0.8, s.viewport.w / 2, s.viewport.h / 2);
     else if (k === '0') useStore.setState({ view: { ...s.view, zoom: 1 } });
-    else if (k === '\\') useStore.setState({ panelOpen: !s.panelOpen });
+    else if (k === '\\') togglePane('inspector');
     else return false;
     return true;
   }

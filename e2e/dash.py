@@ -144,6 +144,7 @@ async def main():
 
         # --- code panel ------------------------------------------------------------------------------
         await pg.locator('.dashbar button[aria-label="代码"]').click()
+        check('the code pane replaces the sources pane (one side pane at a time)', await pg.locator('.dashbar button[data-pane=code]').get_attribute('aria-pressed') == 'true' and await pg.locator('.dashbar button[data-pane=sources]').get_attribute('aria-pressed') == 'false')
         ed = pg.locator('textarea.dashcode')
         await ed.fill(read(page).replace('<h1>Gateway usage</h1>', '<h1>Gateway usage overview</h1>'))
         await ed.press('Control+s')

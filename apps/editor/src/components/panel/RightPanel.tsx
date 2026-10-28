@@ -161,7 +161,7 @@ export function RightPanel() {
             {x.label}
           </button>
         ))}
-        <button className="ib x" aria-label={t('panel.closeLabel')} title={t('panel.closeTitle')} onClick={() => useStore.setState({ panelOpen: false })}>
+        <button className="ib x" aria-label={t('panel.closeLabel')} title={t('panel.closeTitle')} onClick={() => useStore.setState({ pane: null })}>
           <Close />
         </button>
       </div>

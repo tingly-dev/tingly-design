@@ -3,7 +3,7 @@ import { focusBoard } from './components/canvas/view';
 import { hasTab, openTab } from './components/docs/docs';
 import { motionLocator } from './components/motion/motion';
 import { useDash } from './components/dash/dash';
-import { canvasOf, slideIds, useStore } from './store';
+import { canvasOf, openPane, slideIds, useStore } from './store';
 
 /**
  * How a file that a run changed is shown in each kind's editor: the board on the canvas, the slide,
@@ -28,8 +28,8 @@ export const LOCATE: Record<ProjectKind, ((file: string) => boolean) | null> = {
   'design-system': null,
   dashboard: (file) => {
     const id = /^datasets\/(.+)\.json$/.exec(file)?.[1];
-    if (id) useDash.setState({ open: id, side: 'sources' });
-    else if (file === DASH_PAGE) useDash.setState({ side: 'code' });
+    if (id) (useDash.setState({ open: id }), openPane('sources'));
+    else if (file === DASH_PAGE) openPane('code');
     else return false;
     return true;
   },

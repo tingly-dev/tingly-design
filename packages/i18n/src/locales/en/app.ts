@@ -102,8 +102,6 @@ export default {
     exitPlay: 'Exit play',
     play: 'Play',
     playHint: 'Play: buttons and links are clickable (Esc to exit)',
-    panel: 'Properties panel',
-    panelHint: 'Properties panel (⌘\\)',
     zoomButton: '{{zoom}}%, zoom',
     zoom: 'Zoom',
     zoomIn: 'Zoom in',

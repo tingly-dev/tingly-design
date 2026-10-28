@@ -27,7 +27,7 @@
 | 一组字段 | 个数 | 谁在读 | 结论 |
 |---|---|---|---|
 | 请求栏和对话：`fast`、`delegates`、`lastRun`、`runHidden`、`feeds`、`barCollapsed`、`barMode`、`historyOpen`、`turns`、`chatTab`、`chatNote`、`conversation`、`freshNext` | 13 | shared 29 个、src 8 个，各类型目录合计只有 3 个 | **几乎只被共用部件用，边界最干净** |
-| 画布舞台：`selection`、`tool`、`mode`、`panelOpen`、`panelTab`、`inspect`、`counts`、`layerHover`、`page`、`focused`、`editingNote`、`menu`、`view`、`viewport`、`jqDraft` | 15 | canvas 27、src 17、shared 12、panel 8，另外 slides 6、motion 4、docs 4、dash 3 | **各类型都在用**：幻灯片和动效共用画布的选中和舞台模型 |
+| 画布舞台：`selection`、`tool`、`mode`、`pane`、`panelTab`、`inspect`、`counts`、`layerHover`、`page`、`focused`、`editingNote`、`menu`、`view`、`viewport`、`jqDraft` | 15 | canvas 27、src 17、shared 12、panel 8，另外 slides 6、motion 4、docs 4、dash 3 | **各类型都在用**：幻灯片和动效共用画布的选中和舞台模型 |
 | 项目与编辑：`project`、`kind`、`loaded`、`files`、`drafts`、`journal`、`connected`、`assetRev`、`undo`、`redo`、`health`、`runtimeErrors` | 12 | 到处都有 | 这是核心，留在原处 |
 | 幻灯片：`slide`、`present` | 2 | slides 只有 10 个文件，其余几乎没有 | 属于类型自己的 |
 | 动效：`motionView` | 1 | motion 3、panel 2 | 同上 |

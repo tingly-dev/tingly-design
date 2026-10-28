@@ -18,7 +18,7 @@ import {
   type DocThread,
   markdownToTab,
 } from '@dc/core';
-import { deleteFile, display, edit, enqueueResult, toast, useStore } from '../../store';
+import { deleteFile, display, edit, enqueueResult, openPane, toast, useStore } from '../../store';
 import { replaceUrl } from '../../host';
 import { joinPath } from '@dc/import';
 import { keepPicked } from '../../importer';
@@ -27,10 +27,9 @@ import { currentLanguage, t } from '../../i18n';
 import { offerUndo, putFiles } from '../../undoRemove';
 import { readPref } from '../../local';
 
-/** A doc in the editor: which tab is open, the comment rail, and writing tabs back block by block. */
+/** A doc in the editor: which tab is open, the comment column (the store's `pane`), and writing tabs back block by block. */
 interface DocsState {
   tab: string | null;
-  rail: boolean;
   /** the thread lit in the rail and in the text */
   thread: string | null;
   /** a comment being written on a selection */
@@ -41,7 +40,6 @@ interface DocsState {
 
 export const useDocs = create<DocsState>(() => ({
   tab: null,
-  rail: true,
   thread: null,
   draft: null,
   settings: false,
@@ -223,7 +221,8 @@ export function addThread(tab: string, anchor: { quote: string; prefix: string; 
   editComments((c) => {
     c.threads.push({ id, tab, ...anchor, comments: [{ id: id + '-1', author: author(), text, at: new Date().toISOString() }] });
   }, 'comment added');
-  useDocs.setState({ thread: id, draft: null, rail: true });
+  useDocs.setState({ thread: id, draft: null });
+  openPane('comments');
   return id;
 }
 

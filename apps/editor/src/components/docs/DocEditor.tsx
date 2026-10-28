@@ -11,7 +11,7 @@ import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
 import { docsUserMessage, quoteAt, tabFile } from '@dc/core';
 import { api } from '../../api';
-import { display, toast, useStore } from '../../store';
+import { display, openPane, toast, useStore } from '../../store';
 import { dateLocale, saveTab, useComments, useDocs, threadsOf } from './docs';
 import { useTranslation } from 'react-i18next';
 import { t as tModule } from '../../i18n';
@@ -211,7 +211,7 @@ export function DocEditor({ tab }: { tab: string }) {
             }
           }
           const id = el.closest?.('[data-thread]')?.getAttribute('data-thread');
-          if (id) useDocs.setState({ thread: id, rail: true });
+          if (id) (useDocs.setState({ thread: id }), openPane('comments'));
           return false;
         },
       },
@@ -315,7 +315,8 @@ export function DocEditor({ tab }: { tab: string }) {
     const from = t.offsetAt(e.state.selection.from);
     const to = t.offsetAt(e.state.selection.to);
     if (to <= from) return;
-    useDocs.setState({ draft: quoteAt(t.text, from, to), rail: true, thread: null });
+    useDocs.setState({ draft: quoteAt(t.text, from, to), thread: null });
+    openPane('comments');
   };
 
   const runSpark = async (request: string) => {
