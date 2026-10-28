@@ -178,9 +178,16 @@ export function installShortcuts(): () => void {
       if (!e.defaultPrevented && !files) handleKey('v', true, false);
     });
   };
+  // leaving full screen by the browser's own Esc also ends a canvas's play mode, as it ends a presentation
+  const onFullscreen = () => {
+    const s = useStore.getState();
+    if (!document.fullscreenElement && s.mode === 'play' && !s.present) useStore.setState({ mode: 'edit' });
+  };
+  document.addEventListener('fullscreenchange', onFullscreen);
   window.addEventListener('keydown', onKey);
   window.addEventListener('paste', onPaste);
   return () => {
+    document.removeEventListener('fullscreenchange', onFullscreen);
     window.removeEventListener('keydown', onKey);
     window.removeEventListener('paste', onPaste);
     clearTimeout(waiting);

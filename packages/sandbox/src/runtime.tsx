@@ -955,8 +955,10 @@ document.addEventListener(
       return;
     }
     const nav = /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|PageUp|PageDown|Home|End| |f|F)$/.test(e.key);
-    if (!inEdit() && e.key !== 'Escape' && !(current.slide && nav)) return;
-    if (!inEdit() && nav) e.preventDefault();
+    // playing an artboard, F still reaches the editor (full screen), as it does in a presentation
+    const playFull = !current.slide && current.mode === 'play' && (e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey;
+    if (!inEdit() && e.key !== 'Escape' && !(current.slide && nav) && !playFull) return;
+    if (!inEdit() && nav && !playFull) e.preventDefault();
     const t = e.target as HTMLElement;
     if (!inEdit() && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (inEdit() && !(e.metaKey || e.ctrlKey) ) e.preventDefault();
