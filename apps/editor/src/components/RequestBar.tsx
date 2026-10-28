@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { locate } from '../locate';
+import { locator } from '../locate';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { Attachment } from '@dc/core';
@@ -108,12 +108,13 @@ export function RequestBar({
   };
   // the column's record puts a request back in the box and shows a file through this bar
   const { bridge } = chat;
-  const onOpen = (f: string) => void locate(f);
+  const kind = useStore((s) => s.kind);
+  const onOpen = locator(kind);
   const latest = useRef({ reuse, onOpen });
   latest.current = { reuse, onOpen };
   useEffect(() => {
     if (!chat.left) return;
-    bridge.current = { onOpen: (f) => latest.current.onOpen(f), onReuse: (p) => latest.current.reuse(p) };
+    bridge.current = { onOpen: (f) => latest.current.onOpen?.(f), onReuse: (p) => latest.current.reuse(p) };
     return () => {
       bridge.current = {};
     };

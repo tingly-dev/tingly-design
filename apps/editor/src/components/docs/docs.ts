@@ -72,6 +72,11 @@ export function useCurrentTab(): string | null {
   return want && order.some((t) => t.id === want) ? want : (order[0]?.id ?? null);
 }
 
+/** Whether the document has this tab. */
+export function hasTab(id: string): boolean {
+  return parseDoc(display(useStore.getState(), DOC_INDEX)).tabs.some((x) => x.id === id);
+}
+
 export function openTab(id: string): void {
   useDocs.setState({ tab: id, thread: null, draft: null });
   const url = new URL(location.href);
@@ -122,7 +127,7 @@ export function addTab(title: string, parent?: string, markdown?: string): strin
   return id;
 }
 
-/** A copy of a tab's text right after the tab (and its subtabs): the same tab level, a new file. */
+/** A copy of one tab's text, placed right after the tab and its subtabs, at the same level. The subtabs themselves are not copied. */
 export function duplicateTab(id: string): string | null {
   const st = useStore.getState();
   const d = parseDoc(display(st, DOC_INDEX));

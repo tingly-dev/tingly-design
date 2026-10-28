@@ -122,9 +122,10 @@ export function Strip() {
           {groups.map((g, gi) => (
             <div key={g.key || gi} className="sgroup">
               <SectionHead k={g.key} description={g.description} />
-              {g.ids.map((id) => (
-                <Thumb key={id} id={id} index={n++} last={n === ids.length} />
-              ))}
+              {g.ids.map((id) => {
+                const index = n++;
+                return <Thumb key={id} id={id} index={index} last={index === ids.length - 1} />;
+              })}
             </div>
           ))}
           <div

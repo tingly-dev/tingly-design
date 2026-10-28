@@ -210,9 +210,10 @@ export function MotionApp() {
     return !!w;
   };
   useEffect(() => {
-    motionLocator.current = (f) => locate.current(f);
+    const mine = (f: string) => locate.current(f);
+    motionLocator.current = mine;
     return () => {
-      motionLocator.current = null;
+      if (motionLocator.current === mine) motionLocator.current = null;
     };
   }, []);
   useEffect(() => {

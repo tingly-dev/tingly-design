@@ -49,7 +49,7 @@ import { History, LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
-function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
+function TabRow({ id, title, sub, current, first, last }: { id: string; title: string; sub: boolean; current: boolean; first: boolean; last: boolean }) {
   const { t } = useTranslation();
   const [renaming, setRenaming] = useState(false);
   return (
@@ -67,8 +67,8 @@ function TabRow({ id, title, sub, current }: { id: string; title: string; sub: b
             close={close}
             adds={!sub && <MenuItem label={t('docs.tab.addSub')} onSelect={() => (close(), addTab(t('docs.tab.newSubTitle'), id))} />}
             onDuplicate={() => duplicateTab(id)}
-            onEarlier={() => moveTab(id, -1)}
-            onLater={() => moveTab(id, 1)}
+            onEarlier={first ? null : () => moveTab(id, -1)}
+            onLater={last ? null : () => moveTab(id, 1)}
             onRename={() => setRenaming(true)}
             onDelete={() => {
               if (confirm(sub ? t('docs.tab.confirmDeleteSub', { title }) : t('docs.tab.confirmDelete', { title }))) void deleteTab(id);
@@ -348,9 +348,10 @@ export function DocsApp() {
           <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
           <h3>{t('docs.app.tabs')}</h3>
           <ul>
-            {order.map((x) => (
-              <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
-            ))}
+            {order.map((x) => {
+              const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
+              return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
+            })}
           </ul>
           <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
             {t('docs.app.addTab')}
