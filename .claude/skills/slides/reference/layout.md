@@ -56,7 +56,7 @@ A `<div>` is invisible unless it has background, border or box-shadow. So you ca
 
 Use `display:grid; grid-template-columns:repeat(3, 1fr); gap:32px`. This fills children into cells in row-major order. Use `grid-column:span 2` to widen one cell.
 
-That is the whole grid vocabulary. SKILL.md's subset lists the supported CSS: tracks of `px`, `fr`, `auto`, or `repeat(N, …)`, and one `gap`. No `minmax()`, `auto-fill`, named areas, or line numbers.
+That is the whole grid vocabulary. SKILL.md's subset lists the supported CSS: tracks of `px`, `fr`, `auto`, or `repeat(N, …)`, and `gap` (row gap, column gap). No `minmax()`, `auto-fill`, named areas, or line numbers.
 
 Use grid for KPI tiles, photo grids, feature matrices, and anything a flex row cannot keep square. Add `aspect-ratio:1` (or `4/3`) to the tiles. Row heights follow the content unless you set `grid-template-rows`. A table is usually better than a grid of text cells when the content is tabular.
 
