@@ -536,6 +536,10 @@ function scheduleReport(): void {
   }, 250);
 }
 
+// a tab or a chart the reader opens draws without new data: look again once the page has been quiet for a moment
+// (a running d3 transition mutates the page until it ends, so it is never measured half way)
+new MutationObserver(() => scheduleReport()).observe(root, { childList: true, subtree: true, attributes: true, characterData: true });
+
 /** Enough of a calc's or loader's result for Sources to show. */
 function trim(s: DataState): DataState {
   if (s.rows.length <= 1000) return s;

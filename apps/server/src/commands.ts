@@ -382,7 +382,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     if (l.element !== undefined) {
       // what a dashboard drew wrong: the element, the dataset it shows, the text concerned, and how many more like it
       const more = l.more ?? 0;
-      problems.push({ level: 'warning', file, code: 'layout', rule: more && l.rule !== 'empty' ? `${l.rule}More` : l.rule, params: { where: l.source ? `${l.element} (${l.source})` : l.element, text: l.text ?? '', other: l.other ?? '', more } });
+      problems.push({ level: 'warning', file, code: 'layout', rule: more ? `${l.rule}More` : l.rule, params: { where: l.source ? `${l.element} (${l.source})` : l.element, text: l.text ?? '', other: l.other ?? '', more } });
       continue;
     }
     if (l.rule !== 'contrast') {

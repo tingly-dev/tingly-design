@@ -31,7 +31,7 @@ export const DRAWN_CHECK = String.raw`function (root) {
   const per = {};
   const add = (f) => {
     // a chart with a bad scale repeats itself: the first few name it, the rest are a count
-    const key = f.rule + '|' + f.element;
+    const key = f.rule + '|' + f.element + '|' + (f.source || '');
     if (per[key]) { per[key].more = (per[key].more || 0) + 1; return; }
     if (found.length >= 30) return;
     per[key] = f;
@@ -48,15 +48,24 @@ export const DRAWN_CHECK = String.raw`function (root) {
     const s = el.closest && el.closest('[data-source]');
     return s ? (s.getAttribute('data-source') || undefined) : undefined;
   };
+  // what a reader can see: not display:none, hidden or fully transparent here or in any ancestor (an inactive tab, a hidden tooltip)
+  const seen = (el) => {
+    if (typeof el.checkVisibility === 'function') return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+    for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+    }
+    return true;
+  };
   const shown = (el) => {
-    const cs = getComputedStyle(el);
-    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+    if (!seen(el)) return false;
     const r = el.getBoundingClientRect();
     return r.width >= 1 && r.height >= 1;
   };
   const text = (s) => (s || '').trim().replace(/\s+/g, ' ');
   const slice = (s, i) => text(s.slice(Math.max(0, i - 12), i + 20));
-  const BAD = /(^|[^A-Za-z0-9_])(NaN|-?Infinity|undefined)(?![A-Za-z0-9_])/;
+  // prose may say "undefined" (a variable, a behaviour): only a whole text of it, or one set against a unit (undefined%, $undefined), is a value that did not work out
+  const BAD = /(^|[^A-Za-z0-9_])(NaN|-?Infinity)(?![A-Za-z0-9_])|^\s*(undefined)\s*$|[$€£¥%]\s?(undefined)(?![A-Za-z0-9_])|(?<![A-Za-z0-9_])(undefined)\s?[%‰]/;
 
   // a number that came out as NaN, Infinity or undefined: in the text, or in a drawing attribute (a bar's width, a path's d)
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -64,15 +73,13 @@ export const DRAWN_CHECK = String.raw`function (root) {
     const el = n.parentElement;
     if (!el || /^(script|style|noscript|title)$/i.test(el.tagName)) continue;
     const m = BAD.exec(n.nodeValue || '');
-    if (m && shown(el)) add({ rule: 'nan', element: describe(el), source: sourceOf(el), text: slice(n.nodeValue, m.index + m[1].length) });
+    if (m && shown(el)) add({ rule: 'nan', element: describe(el), source: sourceOf(el), text: slice(n.nodeValue, m.index + (m[1] || '').length) });
   }
-  for (const el of Array.from(root.querySelectorAll('svg *'))) {
-    for (const a of Array.from(el.attributes)) {
-      if (/NaN|Infinity/.test(a.value) && /^(d|x|y|x1|x2|y1|y2|cx|cy|r|rx|ry|width|height|points|transform|viewBox)$/.test(a.name)) {
-        if (shown(el.ownerSVGElement || el)) add({ rule: 'nan', element: describe(el), source: sourceOf(el), text: a.name + '="' + a.value.slice(0, 30) + '"' });
-        break;
-      }
-    }
+  const ATTRS = ['d', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'width', 'height', 'points', 'transform', 'viewBox'];
+  const bad = ATTRS.flatMap((a) => ['NaN', 'Infinity'].map((v) => 'svg [' + a + '*="' + v + '"]')).join(',');
+  for (const el of Array.from(root.querySelectorAll(bad))) {
+    const a = ATTRS.find((n) => /NaN|Infinity/.test(el.getAttribute(n) || ''));
+    if (a && seen(el)) add({ rule: 'nan', element: describe(el), source: sourceOf(el), text: a + '="' + el.getAttribute(a).slice(0, 30) + '"' });
   }
 
   // an axis tick or its line is not a mark: a chart with only axes drew nothing
@@ -90,16 +97,21 @@ export const DRAWN_CHECK = String.raw`function (root) {
   for (const el of Array.from(root.querySelectorAll('[data-source]'))) {
     if (el.hasAttribute('data-field') || el.hasAttribute('data-row') || el.hasAttribute('data-where')) continue;
     if (el.hasAttribute('data-dash-source-state')) continue;
-    const cs = getComputedStyle(el);
-    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    if (!seen(el)) continue;
     const tag = el.tagName.toLowerCase();
     const svgs = tag === 'svg' ? [el] : Array.from(el.querySelectorAll('svg'));
-    const big = svgs.filter((s) => { const b = s.getBoundingClientRect(); return b.width >= 40 || b.height >= 40 || !shown(s); });
+    const big = svgs.filter((s) => { const b = s.getBoundingClientRect(); return b.width >= 40 || b.height >= 40; });
+    // something painted by CSS alone: a bar made of a div with a width and a background
+    const painted = (e) => {
+      const c = getComputedStyle(e);
+      const v = c.backgroundColor.match(/[\d.]+/g) || [];
+      return c.backgroundImage !== 'none' || (v.length > 3 ? Number(v[3]) : 1) > 0 || parseFloat(c.borderTopWidth) > 0;
+    };
     let empty = false;
     if (tag === 'table') empty = !el.querySelectorAll('tbody tr, :scope > tr').length;
     else if (big.length) empty = !big.some((s) => Array.from(s.querySelectorAll('*')).some(isMark));
-    else if (!el.querySelector('canvas, img, video, table, svg') && !text(el.textContent)) empty = true;
-    else if (el.querySelector('.dash-skeleton') && !big.length) empty = true;
+    else if (el.querySelector('.dash-skeleton')) empty = true;
+    else if (!el.querySelector('canvas, img, video, table, svg') && !text(el.textContent)) empty = ![el, ...Array.from(el.querySelectorAll('*'))].some((e) => shown(e) && painted(e));
     if (empty) add({ rule: 'empty', element: describe(el), source: el.getAttribute('data-source') || undefined });
   }
 
@@ -114,14 +126,15 @@ export const DRAWN_CHECK = String.raw`function (root) {
   for (const svg of Array.from(root.querySelectorAll('svg'))) {
     if (!shown(svg)) continue;
     const sr = svg.getBoundingClientRect();
+    // a label of another svg nested in this one is judged there; a long list is a heat map and no one reads each
+    const own = Array.from(svg.querySelectorAll('text')).filter((t) => t.closest('svg') === svg);
+    if (own.length > 400) continue;
     const labels = [];
-    for (const t of Array.from(svg.querySelectorAll('text'))) {
+    for (const t of own) {
       const s = text(t.textContent);
       if (!s || !shown(t)) continue;
       labels.push({ s, r: t.getBoundingClientRect() });
     }
-    // a label of another svg nested in this one is judged there; a long list is a heat map and no one reads each
-    if (labels.length > 400) continue;
     const cut = getComputedStyle(svg).overflow !== 'visible';
     let clipped = 0;
     let firstClip = null;

@@ -143,6 +143,7 @@ Options:
     nan: '{{where}} shows a number that did not work out: “{{text}}”; a value reached the chart or figure as text, a missing field or an empty list',
     nanMore: '{{where}} shows a number that did not work out: “{{text}}” (and {{more}} more like it); a value reached the chart or figure as text, a missing field or an empty list',
     empty: '{{where}} drew nothing: no marks, no rows; the data may be empty or the script returned before drawing',
+    emptyMore: '{{where}} drew nothing: no marks, no rows (and {{more}} more like it); the data may be empty or the script returned before drawing',
     labelOverlap: 'labels in {{where}} lie on top of each other: “{{text}}” and “{{other}}”; thin the ticks, shorten or rotate the labels',
     labelOverlapMore: 'labels in {{where}} lie on top of each other: “{{text}}” and “{{other}}” (and {{more}} more pairs); thin the ticks, shorten or rotate the labels',
     labelClipped: 'a label in {{where}} is cut off by the edge of its chart: “{{text}}”; widen the margin',

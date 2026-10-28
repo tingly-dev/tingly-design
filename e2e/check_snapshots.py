@@ -76,6 +76,10 @@ try:
 <div id="bars" data-source="team"><svg id="b" width="400" height="120"></svg></div>
 <div id="empty" data-source="none"><svg id="e" width="400" height="120"><g class="tick"><line x1="0" x2="400" y1="100" y2="100" stroke="#999"/></g><path class="domain" d="M0,100H400" stroke="#999"/></svg></div>
 <svg id="over" width="400" height="60"><text x="10" y="30" font-size="14">January sales</text><text x="60" y="30" font-size="14">February sales</text></svg>
+<div style="display:none"><div id="tab2" data-source="team"><svg width="300" height="100"></svg></div></div>
+<div id="css" data-source="team" style="width:63%;height:8px;background:#36c"></div>
+<p>An unset variable is undefined in JavaScript.</p>
+<svg id="tip" width="400" height="60"><text x="10" y="30" font-size="14">Tick one</text><g style="opacity:0"><text x="10" y="30" font-size="14">Hidden tooltip</text></g></svg>
 <svg id="cut" width="200" height="60"><text x="120" y="30" font-size="14">A label that is too long</text></svg>
 </div>
 <script>
@@ -98,6 +102,7 @@ dash.onData(() => {
     check('labels over each other are reported', 'labelOverlap' in dgot and 'sales' in dgot['labelOverlap']['params']['text'], json.dumps(list(dgot)))
     check('a label cut off by its chart is reported', 'labelClipped' in dgot and '#cut' in dgot['labelClipped']['params']['where'], json.dumps(list(dgot)))
     check('the chart that did draw is not called empty', len([p for p in d['problems'] if p.get('rule') == 'empty']) == 1)
+    check('a chart in a hidden tab, a CSS bar, the word undefined in prose and a hidden tooltip are not reported', not any(x in json.dumps(p) for p in d['problems'] if p['code'] == 'layout' for x in ('#tab2', '#css', 'unset variable', 'Hidden tooltip', '#tip')), json.dumps(dgot)[:500])
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
