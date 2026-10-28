@@ -15,7 +15,7 @@
 | `docs` | 文档 | `doc.json` | `tabs/<id>.md` | `components/docs/` | `docs` | `design-guide` |
 | `motion` | 动效 | `motion.json` | `scenes/<id>.html` | `components/motion/`（编辑舞台和播放器叠放） | `motion` | `design-motion` |
 
-motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./motion-editing.md)；舞台上点选、改字、缩放和改尺寸已经能做，关键帧还没做；导出视频在编辑器里已能做（[export.md](./export.md)）。
+motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./motion-editing.md)；舞台上点选、改字、缩放和改尺寸已经能做，时间轴的元素时间条、拖动和关键帧（`data-keys` 轨道、菱形、播放头写入）也能做了；导出视频在编辑器里已能做（[export.md](./export.md)）。
 
 ## 2. 一种类型要在哪些地方登记
 
@@ -104,7 +104,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 
 不是缺陷单，是现在的取舍或欠账，动手前先确认是否仍然成立。
 
-- motion 在编辑器里还不能新建、复制、删除、排序场景，没有时间条和关键帧，也不能装入设计系统；剩下的分期见 [motion-editing.md](./motion-editing.md) §5。
+- motion 的场景新建 / 复制 / 删除 / 排序、元素时间条和关键帧已在编辑器里（[motion-editing.md](./motion-editing.md) §5、§8）；还不能装入设计系统，时间轴不能缩放，拖动场景块换序仍是右键菜单（剩下的分期见 [motion-editing.md](./motion-editing.md) §5、§7）。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
 - 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。

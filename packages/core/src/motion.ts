@@ -316,6 +316,29 @@ function presetShown(preset: MotionPreset): Record<string, string> {
   return shown;
 }
 
+/** The duration and easing a bare preset parses to: what a written value may leave out. */
+export function animDefaults(preset: MotionPreset, dir: 'in' | 'out'): { duration: number; easing: string } {
+  const spec = parseAnim(preset, dir);
+  if (spec === null || 'error' in spec) return { duration: DEFAULT_ANIM_MS, easing: EASINGS.linear };
+  return { duration: spec.duration, easing: spec.easing };
+}
+
+/** The named curve for a CSS easing, or the easing itself (cubic-bezier(…) round-trips). */
+export function easingTokenOf(easing: string): string {
+  for (const [token, css] of Object.entries(EASINGS)) if (css === easing) return token;
+  return easing;
+}
+
+/** Back to the attribute: `rise 500ms @0.2s ease-out`, leaving out what the preset defaults to. */
+export function formatAnim(spec: AnimSpec, dir: 'in' | 'out'): string {
+  const d = animDefaults(spec.preset, dir);
+  let out = spec.preset;
+  if (spec.duration !== d.duration) out += ` ${formatTime(spec.duration)}`;
+  if (spec.start != null) out += ` @${formatTime(spec.start)}`;
+  if (spec.easing !== d.easing) out += ` ${easingTokenOf(spec.easing)}`;
+  return out;
+}
+
 // ------------------------------------------------------------------ keyframes
 
 export const KEY_PROPS = ['x', 'y', 'scale', 'rotate', 'opacity'] as const;
@@ -376,6 +399,108 @@ function keyValue(prop: KeyProp, v: number): Record<string, string> {
     default:
       return { opacity: String(v) };
   }
+}
+
+/** The value a track shows at `t`: the keys around it, interpolated (easing ignored; a drag preview, not the render). */
+export function trackValueAt(keys: Key[], t: number): number {
+  if (t <= keys[0].t) return keys[0].v;
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i].t) {
+      const p = (t - keys[i - 1].t) / Math.max(1, keys[i].t - keys[i - 1].t);
+      return keys[i - 1].v + (keys[i].v - keys[i - 1].v) * p;
+    }
+  }
+  return keys[keys.length - 1].v;
+}
+
+/** Back to the attribute: `x: 0@0 120@2s ease-in-out; scale: 1@2s 1.2@3s`. */
+export function formatKeys(tracks: KeyTrack[]): string {
+  return tracks
+    .map((tr) => {
+      const keys = tr.keys.map((k, i) => {
+        let tok = `${k.v}@${formatTime(k.t)}`;
+        if (i > 0 && k.easing && k.easing !== 'linear') tok += ` ${easingTokenOf(k.easing)}`;
+        return tok;
+      });
+      return `${tr.prop}: ${keys.join(' ')}`;
+    })
+    .join('; ');
+}
+
+/** Half a frame: a playhead this close to a key writes that key, not a new one. */
+export const halfFrameMs = (fps: number) => 500 / Math.max(1, fps);
+
+/**
+ * `tracks` with the key for `prop` set — replaced when one stands within `tol`
+ * of `t`, inserted between its neighbours otherwise. Times round to 10 ms.
+ */
+export function withKeyAt(tracks: KeyTrack[], prop: KeyProp, t: number, v: number, tol: number): KeyTrack[] {
+  const at = Math.max(0, Math.round(t / 10) * 10);
+  const track = tracks.find((x) => x.prop === prop);
+  const keys = track ? track.keys.slice() : [];
+  const near = keys.findIndex((k) => Math.abs(k.t - at) <= tol);
+  if (near >= 0) keys[near] = { ...keys[near], v };
+  else {
+    keys.push({ t: at, v });
+    keys.sort((a, b) => a.t - b.t);
+  }
+  const next: KeyTrack = { prop, keys };
+  return track ? tracks.map((x) => (x === track ? next : x)) : [...tracks, next];
+}
+
+/** Key `i` of `prop`'s track moved to `t`, held between its neighbours. */
+export function withKeyTime(tracks: KeyTrack[], prop: KeyProp, i: number, t: number): KeyTrack[] {
+  const at = Math.max(0, Math.round(t / 10) * 10);
+  return tracks.map((tr) => {
+    if (tr.prop !== prop) return tr;
+    const keys = tr.keys.slice();
+    const lo = i > 0 ? keys[i - 1].t + 10 : 0;
+    const hi = i < keys.length - 1 ? keys[i + 1].t - 10 : Infinity;
+    keys[i] = { ...keys[i], t: Math.min(hi, Math.max(lo, at)) };
+    return { ...tr, keys };
+  });
+}
+
+/** A track to start at the playhead: the value the element has now, held from 0, then the played value at `t`. */
+export function newTrack(prop: KeyProp, t: number, v0: number, v1: number): KeyTrack {
+  return { prop, keys: [{ t: 0, v: v0 }, { t: Math.max(100, Math.round(t / 10) * 10), v: v1 }] };
+}
+
+/**
+ * Style edits to a property that has a keyframe track are edits of the key at
+ * the playhead, not of the style (`.design/motion-editing.md` §3.4): they come
+ * back as one `data-keys` write per element. Untracked properties pass through.
+ */
+export function keysForEdits(ops: HumanOp[], doc: DcDoc, t: number, tol: number): HumanOp[] {
+  const pending = new Map<number, KeyTrack[]>();
+  const out: HumanOp[] = [];
+  const hold = (tid: number, prop: KeyProp, v: number): boolean => {
+    const el = doc.elements[tid];
+    if (!el) return false;
+    const parsed = parseKeys(attr(el, 'data-keys'));
+    if ('error' in parsed || !parsed.some((tr) => tr.prop === prop)) return false;
+    const tracks = withKeyAt(pending.get(tid) ?? parsed, prop, t, v, tol);
+    pending.set(tid, tracks);
+    return true;
+  };
+  for (const op of ops) {
+    if (op.kind === 'style') {
+      if (op.value != null && (KEY_PROPS as readonly string[]).includes(op.prop) && hold(op.tid, op.prop as KeyProp, Number(op.value))) continue;
+      out.push(op);
+    } else if (op.kind === 'styles') {
+      const set: Record<string, string | null> = {};
+      let split = false;
+      for (const [prop, value] of Object.entries(op.set)) {
+        if (value != null && (KEY_PROPS as readonly string[]).includes(prop) && hold(op.tid, prop as KeyProp, Number(value))) split = true;
+        else set[prop] = value;
+      }
+      if (split) {
+        if (Object.keys(set).length) out.push({ kind: 'styles', tid: op.tid, set });
+      } else out.push(op);
+    } else out.push(op);
+  }
+  for (const [tid, tracks] of pending) out.push({ kind: 'attr', tid, name: 'data-keys', value: formatKeys(tracks) });
+  return out;
 }
 
 // ------------------------------------------------------------------ plans

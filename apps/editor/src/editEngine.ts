@@ -7,6 +7,10 @@ import {
   setListItemField,
   setPropDefault,
   editsForFormat,
+  keysForEdits,
+  halfFrameMs,
+  parseMotion,
+  MOTION_FILE,
   sceneIdOf,
   rebaseSwap,
   parseCanvas,
@@ -150,7 +154,12 @@ export function editElement(file: string, ops: HumanOp[], actor: Actor = 'human'
   const cur = display(get(), file);
   if (cur === undefined) return false;
   const view = get().motionView;
-  if (view && view.format !== view.primary && sceneIdOf(file)) ops = editsForFormat(ops, parsed(cur), view.format);
+  if (view && sceneIdOf(file)) {
+    // an edit to a property with a keyframe track is the key at the playhead, not the style (`.design/motion-editing.md` §3.4)
+    const fps = parseMotion(display(get(), MOTION_FILE) ?? '').fps;
+    ops = keysForEdits(ops, parsed(cur), view.landed ? 0 : view.at, halfFrameMs(fps));
+    if (view.format !== view.primary) ops = editsForFormat(ops, parsed(cur), view.format);
+  }
   let first: ReturnType<typeof applyHumanOps>;
   try {
     first = applyHumanOps(cur, ops, inertDocument());

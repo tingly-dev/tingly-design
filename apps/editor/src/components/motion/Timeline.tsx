@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { snapSceneMs, type MotionJson, type motionTimeline } from '@dc/core';
+import { sceneFile, snapSceneMs, type MotionJson, type motionTimeline } from '@dc/core';
 import { addCover, addScene, deleteScene, duplicateScene, moveScene, removeCover, setCoverAt, setSceneDuration } from './motion';
+import { LaneLabels, LaneRows, useLanes, type BarDraft } from './ElementLanes';
 import { Menu, MenuItem } from '../Menu';
 import { notesOf } from '../slides/slides';
 import { PauseFilled, Picture, PlayFilled } from '../icons';
@@ -37,6 +38,8 @@ export function Timeline(p: {
   current: Clip | undefined;
   stageAt: number;
   stageLanded: boolean;
+  /** the size on screen: whose overrides the lane edits write to */
+  format: string;
   play: () => void;
   pause: () => void;
   seek: (ms: number) => void;
@@ -135,6 +138,21 @@ export function Timeline(p: {
   const commitLength = (text: string) => {
     const v = Number(text.trim().replace(/s$/, ''));
     if (current && Number.isFinite(v) && v > 0) setSceneDuration(current.id, snapSceneMs(v * 1000 * rate, 1));
+  };
+
+  // the element rows under the scene blocks: the animated elements of the scene under the playhead
+  const elementLanes = useLanes(motion, p.format, !cover && current ? current.id : null);
+  const [openLane, setOpenLane] = useState<number | null>(null);
+  const [barDraft, setBarDraft] = useState<BarDraft | null>(null);
+  const [keyDraft, setKeyDraft] = useState<{ tid: number; prop: string; index: number; t: number } | null>(null);
+  // the playhead within the scene, in authored ms
+  const playAt = current ? Math.max(0, Math.min(current.duration, time * rate - current.start)) : 0;
+  const seekScene = (ms: number) => current && seek((current.start + Math.max(0, Math.min(current.duration, ms))) / rate);
+  // the label column has no scrollbar of its own: it follows the rows
+  const labelScroll = useRef<HTMLDivElement>(null);
+  const rowsScroll = useRef<HTMLDivElement>(null);
+  const syncLabels = () => {
+    if (labelScroll.current && rowsScroll.current) labelScroll.current.scrollTop = rowsScroll.current.scrollTop;
   };
 
   return (
@@ -240,6 +258,11 @@ export function Timeline(p: {
               </button>
             )}
           </div>
+          {elementLanes.length > 0 && (
+            <div className="mlanescroll" ref={labelScroll}>
+              <LaneLabels lanes={elementLanes} open={openLane} setOpen={setOpenLane} />
+            </div>
+          )}
         </div>
         <div className="maxis" ref={lanesRef}>
           <div className="mruler">
@@ -296,6 +319,28 @@ export function Timeline(p: {
               );
             })}
           </div>
+          {elementLanes.length > 0 && current && (
+            <div className="mlanescroll rows" ref={rowsScroll} onScroll={syncLabels}>
+            <LaneRows
+              motion={motion}
+              lanes={elementLanes}
+              file={sceneFile(current.id)}
+              sceneStart={current.start}
+              sceneDur={current.duration}
+              axisMs={axisMs}
+              perMs={lanes.w / Math.max(1, axisMs)}
+              playAt={playAt}
+              open={openLane}
+              setOpen={setOpenLane}
+              draft={barDraft}
+              keyDraft={keyDraft}
+              onDrag={setBarDraft}
+              onKeyDrag={setKeyDraft}
+              axisRect={() => lanesRef.current?.getBoundingClientRect() ?? null}
+              seekScene={seekScene}
+            />
+            </div>
+          )}
           {menu && (
             <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label={t('motion.stage.sceneMenu')}>
               <MenuItem label={t('motion.stage.sceneAddAfter')} onSelect={() => (setMenu(null), afterAdd(addScene(menu.id)))} />

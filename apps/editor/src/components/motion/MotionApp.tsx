@@ -363,6 +363,7 @@ export function MotionApp() {
           motion={motion}
           scenes={scenes}
           timeline={timeline}
+          format={fmt}
           axisMs={axisMs}
           axis={axis}
           rate={rate}
