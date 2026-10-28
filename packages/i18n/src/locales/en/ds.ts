@@ -83,6 +83,7 @@ export default {
     label: 'Design system',
     listTab: 'List',
     nameLabel: 'Design system name',
+    nothingToSave: 'Nothing on screen to save.',
     renameHint: 'Double-click to rename',
     theme: 'Theme',
   },

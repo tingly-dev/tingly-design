@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { InlineRename } from '../InlineRename';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
 import { elementSource, roleOf, rootElement, sandboxDoc, retypeKind, setPropDefault, tweakTextBinding, type BoardEntry, type FromRuntime, type ToRuntime } from '@dc/core';
@@ -353,20 +354,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     >
       <div className="strip" style={{ transform: `scale(${inv})`, width: w * zoom }}>
         {renaming ? (
-          <input
-            autoFocus
-            defaultValue={entry.title ?? ''}
-            aria-label={t('canvas.board.nameLabel')}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === 'Enter') e.currentTarget.blur();
-              if (e.key === 'Escape') setRenaming(false);
-            }}
-            onBlur={(e) => {
-              setRenaming(false);
-              if (e.currentTarget.value !== (entry.title ?? '')) updateBoard(file, { title: e.currentTarget.value.trim() || undefined }, 'renamed');
-            }}
-          />
+          <InlineRename allowEmpty value={entry.title ?? ''} label={t('canvas.board.nameLabel')} onCommit={(v) => updateBoard(file, { title: v || undefined }, 'renamed')} onDone={() => setRenaming(false)} />
         ) : (
           <span
             className="t"

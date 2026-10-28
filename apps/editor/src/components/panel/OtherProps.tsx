@@ -8,7 +8,8 @@ import { deleteBoard, display, edit, useStore } from '../../store';
 import { TEXT_COLORS, sizeOf } from '../canvas/Item';
 import { frames } from '../canvas/Board';
 import { PauseFilled, PlayFilled } from '../icons';
-import { ColorField, Field, Row, Seg, Select, px, toLength } from './fields';
+import { ColorField, Field, Row, Select, px, toLength } from './fields';
+import { Segmented } from '../Segmented';
 
 // ---------------------------------------------------------------- artboard
 
@@ -215,7 +216,7 @@ export function ItemProps({ id, note }: { id: string; note: NoteEntry }) {
         <div className="sec">
           <h3>{note.kind === 'title1' ? t('panel.item.title') : t('panel.item.note')}</h3>
           <Row label={t('panel.field.fontSize')}>
-            <Seg
+            <Segmented
               value={(Object.entries(NOTE_SIZES).find(([, s]) => s === sizeOf(note))?.[0] ?? '') as 's'}
               label={t('panel.field.fontSize')}
               options={(Object.keys(NOTE_SIZES) as (keyof typeof NOTE_SIZES)[]).map((k) => ({ value: k, label: k.toUpperCase(), title: `${NOTE_SIZES[k]}px` }))}
