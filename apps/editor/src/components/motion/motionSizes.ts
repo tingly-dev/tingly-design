@@ -14,8 +14,8 @@ export interface MotionSizes {
   mine: Size[];
 }
 
-export const sameSize = (a: Size | null, b: Size | null) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
-export const isPreset = (s: Size) => BOARD_SIZES.some((p) => sameSize(p.size as unknown as Size, s));
+export const sameSize = (a: Readonly<Size> | null, b: Readonly<Size> | null) => !!a && !!b && a[0] === b[0] && a[1] === b[1];
+export const isPreset = (s: Readonly<Size>) => BOARD_SIZES.some((p) => sameSize(p.size as unknown as Size, s));
 
 export function readSizes(): MotionSizes {
   try {

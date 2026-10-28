@@ -298,6 +298,53 @@
 }
 
 
+/* the person's own sizes: a chip applies the size, the × beside it forgets it (SizeRows, every kind) */
+.mine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+
+.mine-size {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+
+.msz {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  background: var(--panel);
+  font: 11px var(--mono);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+
+.msz:hover {
+  border-color: var(--line-3, var(--line-2));
+  background: var(--panel-2);
+}
+
+
+.msz[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  color: var(--ink);
+}
+
+
+.mine-size .ib {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+
 .inp .unit {
   padding-right: 8px;
   color: var(--faint);
