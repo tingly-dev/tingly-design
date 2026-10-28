@@ -131,7 +131,7 @@ export function rawUrl(path: string): string {
 }
 
 export const IMAGE_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
-export const FONT_RE = /\.(woff2?|ttf|otf)$/i;
+export const FONT_RE = /\.(woff2?|ttf|otf|ttc)$/i;
 
 // ---------------------------------------------------------------- markdown
 

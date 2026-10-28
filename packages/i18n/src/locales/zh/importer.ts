@@ -20,7 +20,7 @@ export default {
     image: '图片（PNG、JPG、GIF、WebP）',
     markdown: 'Markdown（.md）',
     data: '数据（CSV、TSV、JSON）',
-    font: '字体（WOFF2、WOFF、TTF、OTF）',
+    font: '字体（WOFF2、WOFF、TTF、OTF、TTC）',
     pptx: 'PowerPoint（.pptx）',
   },
   here: {

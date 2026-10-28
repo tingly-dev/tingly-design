@@ -35,6 +35,8 @@ import {
   DS_TOKENS,
   DS_TOKENS_CSS,
   compileTokensCss,
+  consumingGuide,
+  withConsumingGuide,
   isDsTextFile,
   namespaceOf,
   newDsIndex,
@@ -298,6 +300,7 @@ export const ASSET_TYPES: Record<string, string> = {
   woff: 'font/woff',
   ttf: 'font/ttf',
   otf: 'font/otf',
+  ttc: 'font/collection',
 };
 
 /** The media type a project's binary file is served with. */
@@ -522,20 +525,38 @@ export async function readAsset(name: string, rel: string): Promise<Buffer | nul
   }
 }
 
+type Written = { content: string; version: string };
+
 /**
  * tokens.css is generated from tokens.json (never written by hand): rebuilt
  * whenever tokens.json changes, from the editor, Claude Code or a terminal.
- * Returns the new content when it changed.
+ * Returns each generated file's new content when it changed.
  */
-export async function regenTokensCss(name: string): Promise<{ content: string; version: string } | null> {
+export async function regenTokensCss(name: string): Promise<{ css: Written | null; readme: Written | null } | null> {
   const tokens = await readOne(name, DS_TOKENS);
   if (!tokens) return null;
   const index = await readOne(name, DS_INDEX);
   const t = resolveTokens(tokens.content);
   const css = compileTokensCss(t, { title: index ? parseDsIndex(index.content).title : t.name });
   const cur = await readOne(name, DS_TOKENS_CSS);
-  if (cur?.content === css) return null;
-  return { content: css, version: await writeAtomic(name, DS_TOKENS_CSS, css) };
+  const wroteCss = cur?.content === css ? null : { content: css, version: await writeAtomic(name, DS_TOKENS_CSS, css) };
+  // the README's "Consuming this system" appendix follows the tokens the same way (a system without a README gets none)
+  const wroteReadme = await regenGuide(name, t);
+  return { css: wroteCss, readme: wroteReadme };
+}
+
+/** The README's appendix for `t`; the file is read again just before it is written so a brand-book edit made meanwhile is kept. */
+async function regenGuide(name: string, t: ReturnType<typeof resolveTokens>): Promise<Written | null> {
+  const guide = consumingGuide(t);
+  for (let tries = 0; tries < 3; tries++) {
+    const cur = await readOne(name, DS_README);
+    if (!cur) return null;
+    const next = withConsumingGuide(cur.content, guide);
+    if (next === cur.content) return null;
+    if ((await readOne(name, DS_README))?.version !== cur.version) continue;
+    return { content: next, version: await writeAtomic(name, DS_README, next) };
+  }
+  return null;
 }
 
 /** Binary files of a project (images, fonts), for the asset views. */

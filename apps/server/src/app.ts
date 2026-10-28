@@ -213,7 +213,12 @@ app.patch('/api/projects/:p', async (c) => {
   return c.json({ ok: true, groups: await readGroups() });
 });
 
-app.get('/api/projects/:p/files', async (c) => c.json({ files: await readProject(c.req.param('p')) }));
+app.get('/api/projects/:p/files', async (c) => {
+  const p = c.req.param('p');
+  // a system made before the README's usage section existed gets it when it is opened
+  await afterTokens(p, 'human');
+  return c.json({ files: await readProject(p) });
+});
 
 app.put('/api/projects/:p/file', async (c) => {
   const p = c.req.param('p');

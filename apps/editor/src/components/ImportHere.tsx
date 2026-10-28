@@ -30,7 +30,7 @@ const MATERIAL: Record<Material, { ext: RegExp; accept: string }> = {
   image: { ext: /\.(png|jpe?g|gif|webp)$/i, accept: 'image/png,image/jpeg,image/gif,image/webp' },
   markdown: { ext: /\.(md|markdown|txt)$/i, accept: '.md,.markdown,.txt' },
   data: { ext: /\.(csv|tsv|tab|json)$/i, accept: '.csv,.tsv,.tab,.json' },
-  font: { ext: /\.(woff2?|ttf|otf)$/i, accept: '.woff2,.woff,.ttf,.otf' },
+  font: { ext: /\.(woff2?|ttf|otf|ttc)$/i, accept: '.woff2,.woff,.ttf,.otf,.ttc' },
   pptx: { ext: /\.pptx$/i, accept: '.pptx' },
 };
 

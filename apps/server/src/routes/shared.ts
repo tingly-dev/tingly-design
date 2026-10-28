@@ -1,4 +1,4 @@
-import { DS_TOKENS_CSS, type Actor } from '@dc/core';
+import { DS_README, DS_TOKENS_CSS, type Actor } from '@dc/core';
 import { claudeAvailable } from '../delegate';
 import { publish, record } from '../hub';
 import { HttpError, kindOf, projectDir, readOne, regenTokensCss, writeAtomic } from '../store';
@@ -13,8 +13,9 @@ export function claudeCliReady(): boolean {
 /** tokens.json changed in a design system: rebuild tokens.css and tell every editor. */
 export async function afterTokens(p: string, actor: Actor): Promise<void> {
   if ((await kindOf(projectDir(p))) !== 'design-system') return;
-  const css = await regenTokensCss(p);
-  if (css) publish(p, { type: 'file', path: DS_TOKENS_CSS, content: css.content, version: css.version, actor });
+  const regen = await regenTokensCss(p);
+  if (regen?.css) publish(p, { type: 'file', path: DS_TOKENS_CSS, content: regen.css.content, version: regen.css.version, actor });
+  if (regen?.readme) publish(p, { type: 'file', path: DS_README, content: regen.readme.content, version: regen.readme.version, actor });
 }
 
 /** Read a JSON index, change it, write it back as one versioned edit everyone sees. */

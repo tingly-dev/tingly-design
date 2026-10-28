@@ -14,13 +14,13 @@ A design system is a folder under `projects/<name>/`, laid out as the original D
 | `design-system.json` | the index: `{"v":3,"layout":"files","createdOnFiles":{…},"title","namespace","libraries":[],"sections":{},"groups":[…],"assetGroups":{…},"blobs":{},"docs":{"readme":"project/README.md","sections":[]},"lastChange":{…}}`. `title` is the system's name; `namespace` the global `components/bundle.js` assigns. Keep every key you are not changing. |
 | `tokens.json` | the tokens (grammar below). JSON, two-space indentation. |
 | `tokens.css` | **generated** from tokens.json by the editor whenever tokens.json changes — never write it. |
-| `README.md`, other `*.md` | the brand book; other top-level `*.md` files are further sections. |
+| `README.md`, other `*.md` | the brand book; other top-level `*.md` files are further sections. The end of `README.md` is the generated appendix "Consuming this system" between `<!-- consuming-this-system:begin -->` and `…:end` (how to use the tokens: stylesheet and where it goes, themes, each colour's variable and fallback, ramps, families, the type styles with italic and letter spacing, spacing, radius, shadow). The editor rewrites it with `tokens.css` whenever tokens.json changes; never write inside the markers, write the brand book above them, and read the appendix before building with the system. |
 | `components/<Comp>/README.md` | guidelines; the first sentence is the summary. `<Comp>` is an ASCII identifier. |
 | `components/<Comp>/preview.html` | a live preview (contract below). `components/Cover/preview.html` is the cover above the brand book. |
 | `components/bundle.js` | ONE classic script assigning `window.<namespace>`; line 1 `/* @ds-bundle: {"format":4,"namespace":"…","components":[{"name":"…"}]} */` orders the components. No `import`, no network, no literal `</script`. |
 | `components/bundle.css`, `components/index.d.ts` | the stylesheet (loaded after tokens.css) and the props as types. |
 | `assets/<Group>/<file>` | logos, icons, images; `assets/<Group>/README.md` says what each is (and names a single-ink mark's ink). |
-| `fonts/<file>` | font files, listed by `tokens.json` `type.fonts[].file`. |
+| `fonts/<file>` | font files (`woff2`, `woff`, `ttf`, `otf`, `ttc`), listed by `tokens.json` `type.fonts[].file`. A `.ttc` (a font collection) is kept as a file and listed like any other, but browsers do not load a collection through `@font-face`: say so, and prefer a woff2 of the face the page needs. |
 
 Files people attached to a request are kept in `uploads/`; read them as material. Nothing in the system may point at `uploads/`: copy a logo or picture it uses into `assets/<Group>/` and a font into `fonts/` (listed in `tokens.json`), and reference that copy.
 

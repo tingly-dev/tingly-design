@@ -33,7 +33,7 @@ export async function renderCapabilities(): Promise<RenderCapabilities> {
   return { chrome: findChrome() !== null, ffmpeg: await hasFfmpeg() };
 }
 
-const MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
+const MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf', ttc: 'font/collection' };
 
 /** The page is drawn from a string, so files a scene points at (uploads/…) go in as data: URLs. */
 function inlineFiles(html: string, dir: string): string {
