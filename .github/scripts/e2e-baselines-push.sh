@@ -17,7 +17,7 @@ else
   git worktree add -q --detach "$WORK"
   git -C "$WORK" checkout -q --orphan "$BRANCH"
 fi
-git -C "$WORK" rm -rq --ignore-unmatch .
+git -C "$WORK" rm -rqf --ignore-unmatch .
 git -C "$WORK" clean -fdxq
 cp "$NEW"/*.png "$WORK"/
 git -C "$WORK" add -A
