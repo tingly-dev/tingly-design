@@ -102,12 +102,9 @@ export default {
     addSlide: '+ New slide',
     menu: {
       label: 'Slide',
-      addAfter: 'New slide after this one',
-      duplicate: 'Duplicate this slide',
       unskip: 'Stop skipping',
       skip: 'Skip when presenting',
       startSection: 'Start a new section here',
-      delete: 'Delete this slide',
     },
   },
   section: {

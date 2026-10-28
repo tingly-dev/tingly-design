@@ -14,14 +14,11 @@ export function AskClaude({
   placeholder,
   file,
   context,
-  onOpen,
 }: {
   placeholder?: string;
   file?: string;
   /** what the person is looking at, told to Claude Code before the request */
   context?: () => string;
-  /** show a file the run changed */
-  onOpen?: (file: string) => void;
 }) {
   const { t } = useTranslation();
   const health = useStore((s) => s.health);
@@ -43,7 +40,6 @@ export function AskClaude({
       busyRun={active ? { kind: 'delegate', id: active.id } : null}
       busyText={t('prompt.bar.busyClaude')}
       onSend={(req, files) => delegateToClaude(file, null, req, files, { context: context?.() || undefined })}
-      onOpen={onOpen}
     />
   );
 }

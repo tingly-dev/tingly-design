@@ -177,7 +177,7 @@ async def main():
         ok = await wait_for(lambda: deck()['order'][0] == 'slide-9')
         check('dragging a thumbnail reorders the deck', ok, str(deck()['order']))
         await pg.locator('.thumb[data-slide="slide-9"]').click(button='right')
-        await pg.get_by_role('menuitem', name='删除这一页').click()
+        await pg.get_by_role('menuitem', name='删除').click()
         ok = await wait_for(lambda: 'slide-9' not in deck()['order'] and not os.path.exists(os.path.join(DECK, 'slides/slide-9.html')))
         check('deleting a slide removes its file and its place', ok)
         check('sections survive add/move/delete', len(deck()['sections']) == 4 and deck()['sections']['s1']['start'] == 'cover', json.dumps(deck()['sections']))

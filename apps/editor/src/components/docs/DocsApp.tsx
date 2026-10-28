@@ -1,3 +1,4 @@
+import { ItemMenuItems } from '../ItemMenu';
 import { MenuItem } from '../Menu';
 import { RowMenu } from '../RowMenu';
 import { InlineRename } from '../InlineRename';
@@ -30,7 +31,7 @@ import DOMPurify from 'dompurify';
 import { docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api } from '../../api';
 import { display, isSaving, useStore } from '../../store';
-import { addTab, deleteTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
+import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { htmlToPng } from '../../imageExport';
 import type { Editor } from '@tiptap/core';
 import { Versions } from './Versions';
@@ -48,7 +49,7 @@ import { History, LayoutCols, Message } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
-function TabRow({ id, title, sub, current }: { id: string; title: string; sub: boolean; current: boolean }) {
+function TabRow({ id, title, sub, current, first, last }: { id: string; title: string; sub: boolean; current: boolean; first: boolean; last: boolean }) {
   const { t } = useTranslation();
   const [renaming, setRenaming] = useState(false);
   return (
@@ -62,21 +63,17 @@ function TabRow({ id, title, sub, current }: { id: string; title: string; sub: b
       )}
       <RowMenu label={t('docs.tab.actions', { title })}>
         {(close) => (
-          <>
-            {!sub && <MenuItem label={t('docs.tab.addSub')} onSelect={() => (close(), addTab(t('docs.tab.newSubTitle'), id))} />}
-            <MenuItem label={t('docs.tab.moveUp')} onSelect={() => (close(), moveTab(id, -1))} />
-            <MenuItem label={t('docs.tab.moveDown')} onSelect={() => (close(), moveTab(id, 1))} />
-            <MenuItem label={t('docs.tab.rename')} onSelect={() => (close(), setRenaming(true))} />
-            <hr />
-            <MenuItem
-              label={t('common.delete')}
-              danger
-              onSelect={() => {
-                close();
-                if (confirm(sub ? t('docs.tab.confirmDeleteSub', { title }) : t('docs.tab.confirmDelete', { title }))) void deleteTab(id);
-              }}
-            />
-          </>
+          <ItemMenuItems
+            close={close}
+            adds={!sub && <MenuItem label={t('docs.tab.addSub')} onSelect={() => (close(), addTab(t('docs.tab.newSubTitle'), id))} />}
+            onDuplicate={() => duplicateTab(id)}
+            onEarlier={first ? null : () => moveTab(id, -1)}
+            onLater={last ? null : () => moveTab(id, 1)}
+            onRename={() => setRenaming(true)}
+            onDelete={() => {
+              if (confirm(sub ? t('docs.tab.confirmDeleteSub', { title }) : t('docs.tab.confirmDelete', { title }))) void deleteTab(id);
+            }}
+          />
         )}
       </RowMenu>
     </li>
@@ -351,9 +348,10 @@ export function DocsApp() {
           <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
           <h3>{t('docs.app.tabs')}</h3>
           <ul>
-            {order.map((x) => (
-              <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} />
-            ))}
+            {order.map((x) => {
+              const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
+              return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
+            })}
           </ul>
           <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
             {t('docs.app.addTab')}
@@ -368,10 +366,6 @@ export function DocsApp() {
         </div>
         <AskClaude
           file={tab ? tabFile(tab) : undefined}
-          onOpen={(f) => {
-            const id = /^tabs\/(.+)\.md$/.exec(f)?.[1];
-            if (id && order.some((x) => x.id === id)) openTab(id);
-          }}
           placeholder={t('docs.app.askPlaceholder')}
           context={() => {
             const e = docEditor.current;

@@ -29,6 +29,14 @@ export default {
   stop: 'Stop',
   undo: 'Undo',
   untitled: 'Untitled',
+  item: {
+    addAfter: 'Add after',
+    duplicate: 'Duplicate',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    moveEarlier: 'Move earlier',
+    moveLater: 'Move later',
+  },
   topbar: {
     more: 'More',
     rename: 'Double-click to rename',

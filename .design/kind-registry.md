@@ -53,7 +53,7 @@
 
 ## 5. 实施状态
 
-已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`、`commands.ts` 的 `KIND_CLI`（`new --size` 能带什么、`export --as` 的格式、`--pick` 填哪个选项、`--fast` 可不可用、`check --snapshots` 怎么画和怎么认文件、导出要点哪些菜单项）；editor 的 `KIND_APP`、`PREVIEW`，以及新建对话框的 `KIND_NEW`（`launcher/newKinds.tsx`：每种类型的选择器、选项行、起始尺寸、是否还没选好、新建后要做什么；对话框持有六种类型的全部状态，这样切换类型再切回来，选择还在）。
+已转成表：core 的 `OUTLINE`、`CHECK`、`CARD`；server 的 `STARTER`、`DELEGATE`、`FAST_PROMPT`、`commands.ts` 的 `KIND_CLI`（`new --size` 能带什么、`export --as` 的格式、`--pick` 填哪个选项、`--fast` 可不可用、`check --snapshots` 怎么画和怎么认文件、导出要点哪些菜单项）；editor 的 `KIND_APP`、`PREVIEW`、`LOCATE`（`locate.ts`：运行改过的文件在这种类型里怎么显示，设计系统是 `null`，见 [cross-kind-consistency.md](./cross-kind-consistency.md)），以及新建对话框的 `KIND_NEW`（`launcher/newKinds.tsx`：每种类型的选择器、选项行、起始尺寸、是否还没选好、新建后要做什么；对话框持有六种类型的全部状态，这样切换类型再切回来，选择还在）。
 
 没有转的：`commands.ts` 的 `wizardGiven` 只问画布和动效的尺寸，这是新建向导的取舍，不是类型表的缺口。
 

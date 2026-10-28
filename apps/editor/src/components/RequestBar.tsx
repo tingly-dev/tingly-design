@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { locator } from '../locate';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { Attachment } from '@dc/core';
@@ -34,7 +35,6 @@ export function RequestBar({
   busyRun,
   busyText,
   onSend,
-  onOpen,
 }: {
   /** the bar's class, which carries its look and where it sits in the kind's layout */
   variant: 'prompt' | 'dsask';
@@ -55,8 +55,6 @@ export function RequestBar({
   busyText: string;
   /** send the request with its kept attachments; false puts the text back (it could not start) */
   onSend: (request: string, files: Attachment[]) => Promise<boolean>;
-  /** show a file a run changed */
-  onOpen?: (file: string) => void;
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
@@ -110,6 +108,8 @@ export function RequestBar({
   };
   // the column's record puts a request back in the box and shows a file through this bar
   const { bridge } = chat;
+  const kind = useStore((s) => s.kind);
+  const onOpen = locator(kind);
   const latest = useRef({ reuse, onOpen });
   latest.current = { reuse, onOpen };
   useEffect(() => {
