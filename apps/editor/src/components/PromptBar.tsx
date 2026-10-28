@@ -1,3 +1,4 @@
+import { Segmented } from './Segmented';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { elementLabel, attr, type Attachment } from '@dc/core';
@@ -131,18 +132,15 @@ export function PromptBar({ onOpen }: { onOpen?: (file: string) => void } = {}) 
       }
       picker={
         <>
-          <div className="seg" role="group" aria-label={t('prompt.bar.who')}>
-            {(
-              [
-                ['ai', t('prompt.bar.fastAi')],
-                ['claude', 'Claude Code'],
-              ] as const
-            ).map(([k, l]) => (
-              <button key={k} aria-pressed={target === k} onClick={() => setTarget(k)}>
-                {l}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label={t('prompt.bar.who')}
+            value={target}
+            onChange={setTarget}
+            options={[
+              { value: 'ai', label: t('prompt.bar.fastAi') },
+              { value: 'claude', label: 'Claude Code' },
+            ]}
+          />
           {why && (
             <button className="tb setup" onClick={() => useStore.setState({ aiSettingsOpen: true })}>
               {t('prompt.bar.setUp')}

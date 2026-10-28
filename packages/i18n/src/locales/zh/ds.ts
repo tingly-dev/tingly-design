@@ -46,6 +46,7 @@ export default {
     label: '设计系统',
     listTab: '列表',
     nameLabel: '设计系统名称',
+    nothingToSave: '画面上没有可保存的内容。',
     renameHint: '双击改名',
     theme: '主题',
   },
