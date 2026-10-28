@@ -16,6 +16,7 @@ export * from './slidesMarkdown';
 export * from './docMarkdown';
 export * from './slideArt';
 export * from './designSystem';
+export * from './dsGuide';
 export * from './dash';
 export * from './docs';
 export * from './launcher';

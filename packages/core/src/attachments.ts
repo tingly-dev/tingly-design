@@ -101,7 +101,7 @@ export function isUploadPath(rel: string): boolean {
 }
 
 /** Fonts and other files a kept folder may hold beside what can be attached (a page's own fonts, icons). */
-const KEPT_EXTRA = new Set(['woff', 'woff2', 'ttf', 'otf', 'avif', 'ico']);
+const KEPT_EXTRA = new Set(['woff', 'woff2', 'ttf', 'otf', 'ttc', 'avif', 'ico']);
 const KEPT_SEGMENT = /^[\p{L}\p{N}_][\p{L}\p{N}_. ()+-]{0,120}$/u;
 
 /** `name` made into a file name a kept folder keeps (see `isKeptPath`): other characters become `-`; `fallback` when nothing is left. */

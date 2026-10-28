@@ -23,7 +23,7 @@ export default {
     image: 'Images (PNG, JPG, GIF, WebP)',
     markdown: 'Markdown (.md)',
     data: 'Data (CSV, TSV, JSON)',
-    font: 'Fonts (WOFF2, WOFF, TTF, OTF)',
+    font: 'Fonts (WOFF2, WOFF, TTF, OTF, TTC)',
     pptx: 'PowerPoint (.pptx)',
   },
   here: {
