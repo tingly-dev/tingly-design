@@ -37,7 +37,7 @@ import {
   type KeyProp,
 } from '@dc/core';
 import { display, editElement, parsed, recordChange, toast, useStore } from '../../store';
-import { addFormat, editMotion, setSpeed, motionOf, overridesOf, removeFormat, setFormatSize, setKeys, setTiming, timingOf } from './motion';
+import { addFormat, editMotion, setSpeed, motionOf, removeFormat, setFormatSize, setKeys, setTiming, timingOf } from './motion';
 import { useLanes } from './ElementLanes';
 import { ColorField, Field, Row, Select } from '../panel/fields';
 import { SizePicker } from './SizePicker';
@@ -284,10 +284,7 @@ export function MotionProps() {
                 className="ib"
                 aria-label={t('motion.motionProps.removeLabel', { name })}
                 title={t('motion.motionProps.removeHint')}
-                onClick={() => {
-                  const n = overridesOf(name);
-                  if (confirm(n ? t('motion.motionProps.confirmRemoveOverrides', { name, count: n }) : t('motion.motionProps.confirmRemove', { name }))) removeFormat(name);
-                }}
+                onClick={() => removeFormat(name)}
               >
                 ×
               </button>

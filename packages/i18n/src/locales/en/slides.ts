@@ -217,6 +217,7 @@ export default {
     slideDuplicated: 'slide duplicated from {{id}}',
     slideAdded: 'slide {{id}} added',
     slideRemoved: 'slide {{id}} removed',
+    slideRestored: 'slide {{id}} restored',
     slideMoved: 'slide {{id}} moved',
     sectionAdded: 'section added at {{id}}',
     sectionRenamed: 'section {{key}} renamed',

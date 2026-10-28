@@ -99,6 +99,15 @@ async def main():
         await expect(pg.locator('.mscene')).to_have_count(2)
         await pg.wait_for_timeout(1500)
         check('Delete takes the scene out and removes its file', order() == ['title', 'scene-2'] and not os.path.exists(os.path.join(REPO, 'projects/zz-motion/scenes/title-copy.html')))
+        # nothing asked: the toast's Undo brings the scene back to its place with its file
+        await pg.locator('.toast-act').click()
+        await expect(pg.locator('.mscene')).to_have_count(3)
+        await pg.wait_for_timeout(1500)
+        check('Undo in the toast brings a deleted scene back', order() == ['title', 'scene-2', 'title-copy'] and os.path.exists(os.path.join(REPO, 'projects/zz-motion/scenes/title-copy.html')), str(order()))
+        await pg.locator('.mscene', has_text='title-copy').click(button='right')
+        await pg.get_by_role('menuitem', name='删除').click()
+        await expect(pg.locator('.mscene')).to_have_count(2)
+        await pg.wait_for_timeout(1500)
 
         # the last size is the next default; a custom one is kept in the person's own
         await pg.goto(BASE + '/')
@@ -402,7 +411,6 @@ async def main():
         await pg.locator('input[aria-label="square 宽"]').press('Enter')
         await pg.wait_for_timeout(500)
         check('a size is edited by hand', '1200' in read('motion.json'))
-        pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('button[aria-label="删除尺寸 square"]').click()
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(0)
         await pg.wait_for_timeout(1500)
@@ -413,7 +421,6 @@ async def main():
         await pg.wait_for_timeout(1500)
         check('Undo in the toast brings the size back', '"square"' in read('motion.json'))
         check('the main size has no delete button', await pg.locator('button[aria-label^="删除尺寸"]').count() == len(json.loads(read('motion.json'))['formats']) - 1 and await pg.locator('button[aria-label="删除尺寸 wide"]').count() == 0)
-        pg.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
         await pg.locator('button[aria-label="删除尺寸 square"]').click()
         await expect(pg.locator('.mseg button', has_text='square')).to_have_count(0)
         await pg.wait_for_timeout(500)

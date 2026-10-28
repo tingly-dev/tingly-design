@@ -24,6 +24,7 @@ import { joinPath } from '@dc/import';
 import { keepPicked } from '../../importer';
 import { filesOf, type ImportTarget } from '../ImportHere';
 import { currentLanguage, t } from '../../i18n';
+import { offerUndo, putFiles } from '../../undoRemove';
 import { readPref } from '../../local';
 
 /** A doc in the editor: which tab is open, the comment rail, and writing tabs back block by block. */
@@ -154,14 +155,29 @@ export function renameTab(id: string, title: string): void {
 }
 
 export async function deleteTab(id: string): Promise<void> {
-  const d = parseDoc(display(useStore.getState(), DOC_INDEX));
+  const st = useStore.getState();
+  const d = parseDoc(display(st, DOC_INDEX));
   if (d.tabs.filter((t) => !t.parent).length <= 1 && !d.tabs.find((t) => t.id === id)?.parent) return void toast(t('docs.tab.needOne'), 'error');
-  const gone = [id, ...d.tabs.filter((t) => t.parent === id).map((t) => t.id)];
+  const entries = d.tabs.filter((t) => t.id === id || t.parent === id);
+  const gone = entries.map((t) => t.id);
+  const at = d.tabs.findIndex((t) => t.id === id);
+  const sources = Object.fromEntries(gone.map((g) => [tabFile(g), display(st, tabFile(g))] as const));
+  const title = entries[0]?.title ?? id;
   editDoc((x) => {
     x.tabs = x.tabs.filter((t) => !gone.includes(t.id));
   }, `tab ${id} removed`);
   if (gone.includes(currentTab() ?? '')) useDocs.setState({ tab: null });
-  for (const t of gone) await deleteFile(tabFile(t));
+  const removed = await Promise.all(gone.map((g) => deleteFile(tabFile(g))));
+  const files = Object.fromEntries(Object.entries(sources).filter((e): e is [string, string] => e[1] !== undefined));
+  if (removed.includes(false) || !Object.keys(files).length) return;
+  offerUndo(title, async () => {
+    await putFiles(files);
+    editDoc((x) => {
+      const have = x.tabs.filter((t) => !gone.includes(t.id));
+      x.tabs = [...have.slice(0, at), ...entries, ...have.slice(at)];
+    }, `tab ${id} restored`);
+    openTab(id);
+  });
 }
 
 /** Move a tab one place up or down among its siblings (its subtabs go with it). */
@@ -228,9 +244,21 @@ export function setResolved(thread: string, resolved: boolean): void {
 }
 
 export function deleteThread(thread: string): void {
+  let gone: DocThread | undefined;
+  let at = -1;
   editComments((c) => {
-    c.threads = c.threads.filter((t) => t.id !== thread);
+    at = c.threads.findIndex((x) => x.id === thread);
+    gone = c.threads[at];
+    c.threads = c.threads.filter((x) => x.id !== thread);
   }, 'comment deleted');
+  const was = gone as DocThread | undefined;
+  if (!was) return;
+  const text = was.comments[0]?.text ?? '';
+  offerUndo(text.length > 30 ? text.slice(0, 30) + '…' : text, () =>
+    editComments((c) => {
+      if (!c.threads.some((x) => x.id === thread)) c.threads.splice(Math.min(at, c.threads.length), 0, was);
+    }, 'comment restored'),
+  );
 }
 
 export function author(): string {

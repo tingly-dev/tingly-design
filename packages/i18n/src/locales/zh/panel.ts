@@ -148,7 +148,6 @@ export default {
     fill: '网页：全屏时铺满窗口',
     duplicate: '复制画板',
     delete: '删除画板',
-    deleteConfirm: '删除画板 {{file}}？文件也会被删除（可以用 git 找回）。',
     file: '文件：{{file}}',
   },
   embed: {

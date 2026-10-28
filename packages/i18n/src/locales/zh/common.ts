@@ -32,6 +32,8 @@ export default {
   stop: '停止',
   undo: '撤销',
   item: {
+    cannotUndo: '删除后无法撤销。',
+    removed: '已删除“{{name}}”',
     addAfter: '在后面添加',
     duplicate: '复制',
     moveUp: '上移',

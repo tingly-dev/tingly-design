@@ -17,30 +17,34 @@ import { MotionApp } from './components/motion/MotionApp';
 import { Launcher } from './components/launcher/Launcher';
 import { ChatShell } from './components/ChatPanel';
 import { serverDefault } from './theme';
+import { ConfirmHost } from './components/ConfirmDialog';
 import { announceReady } from './host';
 import { serverLanguage, t } from './i18n';
 
 function Toasts() {
   const toasts = useStore((s) => s.toasts);
   return (
-    <div className="toasts" role="status" aria-live="polite">
-      {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`}>
-          {t.text}
-          {t.action && (
-            <button
-              className="toast-act"
-              onClick={() => {
-                t.action!.run();
-                useStore.setState((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) }));
-              }}
-            >
-              {t.action.label}
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
+    <>
+      <ConfirmHost />
+      <div className="toasts" role="status" aria-live="polite">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast ${t.kind}`}>
+            {t.text}
+            {t.action && (
+              <button
+                className="toast-act"
+                onClick={() => {
+                  t.action!.run();
+                  useStore.setState((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) }));
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

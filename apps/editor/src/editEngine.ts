@@ -1,5 +1,6 @@
 // The edit engine: every change to a file goes through `edit` (optimistic result, queue, save against the server's version, replay on a
 // conflict), with the typed edits (elements, text, canvas) and undo / redo built on it. State lives in `store.ts`.
+import { offerUndo, putFiles } from './undoRemove';
 import {
   applyHumanOps,
   planRetype,
@@ -24,7 +25,7 @@ import {
 } from '@dc/core';
 import { api } from './api';
 import { t } from './i18n';
-import { display, editDeck, parsed, toast, useStore, type FileEntry, type Pending, type State } from './store';
+import { canvasOf, display, editDeck, parsed, toast, useStore, type FileEntry, type Pending, type State } from './store';
 
 // the store and this file import each other: nothing here may touch `useStore` while the modules load
 const get = () => useStore.getState();
@@ -284,35 +285,46 @@ export async function savedUpTo(file: string): Promise<void> {
   for (let i = 0; i < 50 && (get().files[file]?.pending.length ?? 0) > 0; i++) await new Promise((r) => setTimeout(r, 100));
 }
 
-export async function deleteFile(file: string): Promise<void> {
+/** True when the file is gone (or was never saved); false when it stayed because someone saved it in between. */
+export async function deleteFile(file: string): Promise<boolean> {
   const project = get().project;
-  if (!project) return;
+  if (!project) return false;
   await savedUpTo(file);
   const v = get().files[file]?.server?.version;
   if (v) {
     const r = await api.remove(project, file, v);
-    if ('conflict' in r) return toast(t('app.save.deleteConflict', { file }), 'error');
+    if ('conflict' in r) {
+      toast(t('app.save.deleteConflict', { file }), 'error');
+      return false;
+    }
   }
   set((s) => {
     const files = { ...s.files };
     delete files[file];
     return { files };
   });
+  return true;
 }
 
 export async function deleteBoard(file: string): Promise<void> {
   const project = get().project;
   if (!project) return;
+  const c0 = canvasOf(get());
+  const entry = c0.boards[file] && structuredClone(c0.boards[file]);
+  const at = c0.order.indexOf(file);
+  const source = display(get(), file);
   editCanvas((c) => {
     delete c.boards[file];
     c.order = c.order.filter((f) => f !== file);
   }, `artboard ${file} removed`, false);
   set({ selection: null });
   // wait for any queued edits of the file itself, then delete it
-  await savedUpTo(file);
-  const v = get().files[file]?.server?.version;
-  if (v) {
-    const r = await api.remove(project, file, v);
-    if ('conflict' in r) toast(t('app.save.deleteConflict', { file }), 'error');
-  }
+  if (!(await deleteFile(file)) || !entry || source === undefined) return;
+  offerUndo(entry.title || file.replace(/\.dc\.html$/, ''), async () => {
+    await putFiles({ [file]: source });
+    editCanvas((c) => {
+      c.boards[file] = entry;
+      if (!c.order.includes(file)) c.order.splice(at < 0 ? c.order.length : Math.min(at, c.order.length), 0, file);
+    }, `artboard ${file} restored`, false);
+  });
 }

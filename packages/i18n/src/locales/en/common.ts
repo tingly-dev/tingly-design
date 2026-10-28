@@ -30,6 +30,8 @@ export default {
   undo: 'Undo',
   untitled: 'Untitled',
   item: {
+    cannotUndo: 'This cannot be undone.',
+    removed: 'Deleted “{{name}}”',
     addAfter: 'Add after',
     duplicate: 'Duplicate',
     moveUp: 'Move up',

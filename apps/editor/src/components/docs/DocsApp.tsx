@@ -70,9 +70,7 @@ function TabRow({ id, title, sub, current, first, last }: { id: string; title: s
             onEarlier={first ? null : () => moveTab(id, -1)}
             onLater={last ? null : () => moveTab(id, 1)}
             onRename={() => setRenaming(true)}
-            onDelete={() => {
-              if (confirm(sub ? t('docs.tab.confirmDeleteSub', { title }) : t('docs.tab.confirmDelete', { title }))) void deleteTab(id);
-            }}
+            onDelete={() => void deleteTab(id)}
           />
         )}
       </RowMenu>

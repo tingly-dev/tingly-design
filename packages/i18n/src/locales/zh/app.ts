@@ -48,10 +48,6 @@ export default {
     newTitle: '新画板',
     copyTitle: '{{title}} 副本',
   },
-  confirm: {
-    deleteSlide: '删除这一页（{{slide}}）？文件也会被删除（可以用 git 找回）。',
-    deleteBoard: '删除画板 {{file}}？文件也会被删除（可以用 git 找回）。',
-  },
   page: {
     name: '第 {{n}} 页',
   },

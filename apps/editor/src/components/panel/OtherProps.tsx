@@ -46,7 +46,7 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
           <button className="btn" onClick={() => duplicateBoard(file)}>
             {t('panel.board.duplicate')}
           </button>
-          <button className="btn danger" onClick={() => confirm(t('panel.board.deleteConfirm', { file })) && void deleteBoard(file)}>
+          <button className="btn danger" onClick={() => void deleteBoard(file)}>
             {t('panel.board.delete')}
           </button>
         </div>
