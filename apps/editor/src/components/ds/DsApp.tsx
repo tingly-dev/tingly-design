@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DS_COVER, DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
 import { display, edit, toast, useStore } from '../../store';
-import { useDsView, type DsViewId, dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
+import { dsViewFromUrl, useDsView, type DsViewId, dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
 import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle } from '../TopBar';
 import { PreviewAs } from '../PreviewAs';
@@ -165,6 +165,8 @@ export function DsApp() {
   const index = useDsIndex();
   const view = useDsView((s) => s.view);
   const setView = (v: View) => useDsView.setState({ view: v });
+  // a design system opens on the page its address names, not the one the last one was left on
+  useEffect(() => useDsView.setState({ view: dsViewFromUrl() }), []);
   // previews open in the system's dark theme when the editor itself is dark
   const [theme, setTheme] = useState(() => (currentTheme()?.theme.scheme === 'dark' && t.themes.find((x) => /dark|night|\u6697|\u6df1/i.test(`${x.id} ${x.name}`))?.id) || t.themes[0].id);
   useEffect(() => {
