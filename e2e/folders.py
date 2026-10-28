@@ -162,7 +162,6 @@ async def main():
             await pg.locator('.lnewbtn').click()
             await pg.locator('.menu [data-new="design"] [role=menuitem], .menu [data-new="design"] button').first.click()
             nd = pg.locator('.ldialog')
-            await nd.locator('.where .linkish').click()
             await nd.locator('.folder .input').fill(busy)
             await expect(nd.locator('.problem.on')).to_be_visible()
             check(f'[{tag}] a folder with other files in it is refused', await nd.locator('button[type=submit]').is_disabled())

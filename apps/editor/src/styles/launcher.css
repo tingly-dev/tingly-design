@@ -836,17 +836,6 @@
 }
 
 
-.ldialog .where .path {
-  font: 12px var(--mono);
-  color: var(--faint);
-}
-
-
-.ldialog .where .folder {
-  flex: 1;
-}
-
-
 .kopt {
   display: inline-flex;
   align-items: center;
@@ -899,17 +888,23 @@
 }
 
 
-.ldialog .folder .input:focus-visible {
-  box-shadow: none;
+/* the folder field: a name keeps the project in projects/, a full path puts it there — so it reads
+   as an ordinary field of the dialog, not a detail behind a link (the path option in the open) */
+.ldialog .folder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding-right: 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--panel);
 }
 
 
-.ldialog .folder {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line-2);
-  border-radius: var(--r);
-  overflow: hidden;
+.ldialog .folder:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 
