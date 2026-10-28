@@ -163,7 +163,7 @@ async def main():
         await pg.locator('button[data-preview]').wait_for()
         before = await pg.locator('.app.ds').get_attribute('data-theme')
         await pg.locator('button[data-preview]').click()
-        await pg.locator('[role=menuitemcheckbox][aria-checked=false]').first.click()
+        await pg.locator('[role=menu] [role=menuitemcheckbox][aria-checked=false]').first.click()
         after = await pg.locator('.app.ds').get_attribute('data-theme')
         check('the top bar\'s Preview as menu switches the system\'s theme', before != after, f'{before} {after}')
 

@@ -11,6 +11,8 @@ import { Menu, MenuItem } from './Menu';
 export function PreviewAs({ icon, options, value, onChange }: { icon: ReactNode; options: { id: string; label: string }[]; value: string; onChange: (id: string) => void }) {
   const { t } = useTranslation();
   const btn = useRef<HTMLButtonElement>(null);
+  // the menu closes itself on a press outside it, the button included: remember it was open then, so the click that follows does not open it again
+  const wasOpen = useRef(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const name = options.find((o) => o.id === value)?.label ?? value;
   const label = t('common.preview.current', { name });
@@ -24,7 +26,9 @@ export function PreviewAs({ icon, options, value, onChange }: { icon: ReactNode;
         aria-label={label}
         title={label}
         data-preview=""
+        onPointerDown={() => (wasOpen.current = !!pos)}
         onClick={() => {
+          if (wasOpen.current) return void (wasOpen.current = false);
           const r = btn.current!.getBoundingClientRect();
           setPos(pos ? null : { x: r.right, y: r.bottom + 8 });
         }}
