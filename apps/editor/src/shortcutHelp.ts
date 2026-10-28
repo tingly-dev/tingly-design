@@ -75,6 +75,7 @@ export const KIND_SHORTCUTS: Record<ProjectKind, Shortcut[]> = {
     { id: 'group', keys: '⌘G / ⇧⌘G' },
     { id: 'clipboard', keys: '⌘C ⌘X ⌘V' },
     { id: 'order', keys: '[ ]' },
+    { id: 'presentFull', keys: 'F' },
     { id: 'deselect', keys: 'Esc', top: true },
     PANE,
   ],

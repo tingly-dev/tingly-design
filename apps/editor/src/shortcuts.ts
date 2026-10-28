@@ -68,7 +68,10 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
   }
   if (key === 'Escape') {
     if (s.menu) useStore.setState({ menu: null });
-    else if (s.mode === 'play') useStore.setState({ mode: 'edit' });
+    else if (s.mode === 'play') {
+      useStore.setState({ mode: 'edit' });
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    }
     else if (s.tool !== 'select') useStore.setState({ tool: 'select' });
     else useStore.setState({ selection: null, editingNote: null });
     return true;
@@ -79,6 +82,11 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
   }
   if (key === 'Enter' && !shift && s.mode === 'edit') {
     selectFirstChild();
+    return true;
+  }
+  // playing a canvas: F fills the screen, as it does in a presentation
+  if (s.mode === 'play' && !meta && !shift && k === 'f') {
+    toggleFullscreen();
     return true;
   }
   if (s.mode === 'play') return false;
@@ -96,6 +104,12 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
   return true;
 }
 
+/** Fills the screen with the editor's page, or gives it back: the same key in a presentation and in a canvas's play mode. */
+function toggleFullscreen(): void {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
+}
+
 /** Keys that mean something else in a deck: paging, presenting. */
 function slideKey(key: string, meta: boolean, shift: boolean): boolean {
   const s = useStore.getState();
@@ -103,10 +117,8 @@ function slideKey(key: string, meta: boolean, shift: boolean): boolean {
     if (key === 'Escape') stopPresent();
     else if (/^(ArrowRight|ArrowDown|PageDown| |Enter)$/.test(key)) presentStep(1);
     else if (/^(ArrowLeft|ArrowUp|PageUp|Backspace)$/.test(key)) presentStep(-1);
-    else if (key === 'f' || key === 'F') {
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      else document.documentElement.requestFullscreen?.().catch(() => {});
-    } else if (key === 'n' || key === 'N') useStore.setState({ present: { ...s.present, notes: !s.present.notes } });
+    else if (key === 'f' || key === 'F') toggleFullscreen();
+    else if (key === 'n' || key === 'N') useStore.setState({ present: { ...s.present, notes: !s.present.notes } });
     return true;
   }
   if (key === 'F5' || (meta && key === 'Enter')) {

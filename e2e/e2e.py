@@ -16,6 +16,16 @@ def diff(path='projects/box-console/Main.dc.html'):
     return subprocess.run(['git', 'diff', '--unified=0', '--', path], cwd=REPO, capture_output=True, text=True).stdout
 def restore(): subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=REPO); subprocess.run(['git', 'clean', '-fdq', '--', 'projects/box-console'], cwd=REPO)
 
+async def wait_async(pred, timeout=5.0):
+    t = time.time()
+    while time.time() - t < timeout:
+        try:
+            if await pred(): return True
+        except Exception: pass
+        await asyncio.sleep(0.1)
+    return False
+
+
 async def wait_for(pred, timeout=5.0):
     t = time.time()
     while time.time() - t < timeout:
@@ -286,7 +296,13 @@ async def main():
             await expect(pricing.locator('text=OpenAI Responses')).to_be_visible(timeout=2000); ok = True
         except Exception: ok = False
         check('play mode runs artboard logic', ok)
+        await pg.evaluate('document.activeElement && document.activeElement.blur()')
+        await pg.keyboard.press('f')
+        ok = await wait_async(lambda: pg.evaluate('!!document.fullscreenElement'))
+        check('F fills the screen while playing a canvas, as in a presentation', ok)
         await pg.keyboard.press('Escape')
+        ok = await wait_async(lambda: pg.evaluate('!document.fullscreenElement && !document.querySelector(\'[data-mode=play]\')'))
+        check('Esc leaves the full screen and play mode together', ok)
 
         # deleting an artboard asks nothing; the toast's Undo brings it back with its file
         glow = os.path.join(REPO, 'projects/box-console/Glow.dc.html')
