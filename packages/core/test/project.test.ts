@@ -206,3 +206,26 @@ describe('mergeChange', () => {
     expect(describeChange({ type: 'tokens', edits: ['color brand'] })).toContain('color brand');
   });
 });
+
+describe('theme changes', () => {
+  it('offers the rest to Claude only when colours are left behind', () => {
+    expect(followUpFor({ type: 'theme', namespace: 'tingly', title: 'Tingly', theme: 'dark', stay: 1 })).toBeNull();
+    expect(followUpFor({ type: 'theme', namespace: 'tingly', title: null, theme: 'original', stay: 9 })).toBeNull();
+    const offer = followUpFor({ type: 'theme', namespace: 'tingly', title: 'Tingly', theme: 'dark', stay: 5 });
+    expect(offer?.reason.id).toBe('theme');
+    expect(offer?.prompt).toContain('ds/tingly/tokens.json');
+    expect(offer?.prompt).toContain('5 other colours are');
+  });
+  it('is one change per scope and says what happened', () => {
+    const a = { type: 'theme', namespace: 'x', title: 'X', theme: 'dark', stay: 4 } as const;
+    expect(changeScope(a)).toBe('theme:');
+    expect(changeScope({ ...a, file: 'slides/a.html' })).toBe('theme:slides/a.html');
+    expect(mergeChange(a, { ...a, theme: 'light' })).toMatchObject({ theme: 'light' });
+    expect(describeChange(a)).toContain('switched to the "dark" theme');
+    expect(describeChange({ ...a, title: null })).toContain('original look');
+  });
+  it('is reported with the project settings', () => {
+    expect(settingsProject('design', { 'canvas.json': JSON.stringify({ theme: { system: 'tingly', theme: 'dark', base: { colors: {}, fonts: {} } } }) })).toMatchObject({ theme: { system: 'tingly', theme: 'dark' } });
+    expect(settingsProject('slides', { 'deck.json': '{}' }).theme).toBeUndefined();
+  });
+});

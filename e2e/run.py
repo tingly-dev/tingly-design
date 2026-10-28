@@ -30,7 +30,7 @@ IMAGES_PORT = MOCK_PORT + 1  # the OpenAI-style images mock (image_gen)
 
 # suite -> group. A group is what has to be running before the suite starts.
 SUITES = {
-    'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev', 'tweak_text': 'dev', 'template_values': 'dev',
+    'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev', 'tweak_text': 'dev', 'template_values': 'dev', 'theme_switch': 'dev',
     'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
     'export_menu': 'dev', 'export_image': 'dev', 'export': 'dev', 'pptx': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev',
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',

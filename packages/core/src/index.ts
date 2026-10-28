@@ -40,3 +40,4 @@ export * from './transcript';
 export * from './claudeDesign';
 export * from './motionFx';
 export * from './pptx';
+export * from './theme';

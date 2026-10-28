@@ -263,6 +263,16 @@ export function redo(): void {
   }
 }
 
+/** True while the last step of undo is this group's, so undoing it is undoing exactly that action. */
+export function isLastGroup(group: number): boolean {
+  return get().undo.at(-1)?.group === group;
+}
+
+/** Forget a group's steps (its action was taken back another way). */
+export function dropGroup(group: number): void {
+  set((s) => ({ undo: s.undo.filter((u) => u.group !== group), redo: s.redo.filter((u) => u.group !== group) }));
+}
+
 /** Undo of a whole appended batch: the deck drops exactly these ids (a targeted edit, so later
  * slides anyone else added stay), and the batch's files go away once their queued edits saved. */
 function batchRemove(batch: { ids: string[]; sources: Record<string, string> }): void {

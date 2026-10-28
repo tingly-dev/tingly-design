@@ -38,6 +38,7 @@ The editor (`pnpm dev`, http://localhost:5173/?p=<name>) watches these files. An
 - `notes` can also hold pictures: `{ "kind": "image", "x", "y", "w", "h", "src": "uploads/photo-1a2b3c4d.png", "alt" }`, the path relative to the folder.
 - A `boards` entry with `imported` (`from`, `source`, `original`, `at`) came from an imported page or SVG; `original` is that file, kept under `uploads/`. Keep the key.
 - `boards` and `notes` entries take `hidden: true` (not drawn) and `locked: true` (can't be moved or edited on the canvas); they are the layers panel's eye and lock. Keep them.
+- `theme` (`{system, theme, base}`) is kept by the editor's Theme tab: the design system's theme the canvas was last switched to, and `base` the page, text and accent colours it had before (so the Original look can come back). Colours in the artboards stay plain values (`#f7f7f4`, never `var()`); when you restyle colours, use the values of the installed system's tokens (`ds/<name>/tokens.json`). Keep the key, don't edit `base`.
 - Keep every key you are not changing. To add an artboard, write its file and add a `boards` entry and an `order` slot.
 
 Files people brought in (attachments, imported pages and pictures) live under `uploads/`. An artboard shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; don't move or rename them.
