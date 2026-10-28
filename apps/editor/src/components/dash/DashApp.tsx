@@ -250,11 +250,6 @@ export function DashApp() {
         <PageFrame />
         <AskClaude
           file={DASH_PAGE}
-          onOpen={(f) => {
-            const id = /^datasets\/(.+)\.json$/.exec(f)?.[1];
-            if (id) useDash.setState({ open: id, side: 'sources' });
-            else if (f === DASH_PAGE) useDash.setState({ side: 'code' });
-          }}
           placeholder={t('dash.ask.placeholder')}
           context={() => {
             const { pick, open } = useDash.getState();

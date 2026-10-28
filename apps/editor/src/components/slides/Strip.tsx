@@ -5,13 +5,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deckSize, checkSlide, sectionsOf, slideFile } from '@dc/core';
 import { deckOf, display, parsed, useDeck, useSlideIds, useStore } from '../../store';
-import { addSection, addSlide, deleteSlide, duplicateSlide, goToSlide, isHidden, moveSlide, removeSection, renameSection, slideTitle, toggleHidden } from './slides';
+import { addSection, addSlide, deleteSlide, duplicateSlide, goToSlide, isHidden, moveSlide, removeSection, renameSection, shiftSlide, slideTitle, toggleHidden } from './slides';
 import { SlideFrame } from './SlideFrame';
+import { ItemMenuItems } from '../ItemMenu';
 import { Menu, MenuItem } from '../Menu';
 
 const THUMB_W = 176;
 
-function Thumb({ id, index }: { id: string; index: number }) {
+function Thumb({ id, index, last }: { id: string; index: number; last: boolean }) {
   const width = useStore((s) => deckSize(deckOf(s))[0]);
   const current = useStore((s) => s.slide === id);
   const source = useStore((s) => display(s, slideFile(id)));
@@ -67,12 +68,20 @@ function Thumb({ id, index }: { id: string; index: number }) {
       </div>
       {menu && (
         <Menu x={menu.x} y={menu.y} onClose={() => setMenu(null)} label={t('slides.strip.menu.label')}>
-          <MenuItem label={t('slides.strip.menu.addAfter')} onSelect={() => (setMenu(null), addSlide(id))} />
-          <MenuItem label={t('slides.strip.menu.duplicate')} onSelect={() => (setMenu(null), duplicateSlide(id))} />
-          <MenuItem label={hidden ? t('slides.strip.menu.unskip') : t('slides.strip.menu.skip')} onSelect={() => (setMenu(null), toggleHidden(id))} />
-          <MenuItem label={t('slides.strip.menu.startSection')} onSelect={() => (setMenu(null), addSection(id))} />
-          <hr />
-          <MenuItem label={t('slides.strip.menu.delete')} danger onSelect={() => (setMenu(null), void deleteSlide(id))} />
+          <ItemMenuItems
+            close={() => setMenu(null)}
+            onAdd={() => addSlide(id)}
+            onDuplicate={() => duplicateSlide(id)}
+            onEarlier={index > 0 ? () => shiftSlide(id, -1) : null}
+            onLater={last ? null : () => shiftSlide(id, 1)}
+            extra={
+              <>
+                <MenuItem label={hidden ? t('slides.strip.menu.unskip') : t('slides.strip.menu.skip')} onSelect={() => (setMenu(null), toggleHidden(id))} />
+                <MenuItem label={t('slides.strip.menu.startSection')} onSelect={() => (setMenu(null), addSection(id))} />
+              </>
+            }
+            onDelete={() => void deleteSlide(id)}
+          />
         </Menu>
       )}
     </div>
@@ -114,7 +123,7 @@ export function Strip() {
             <div key={g.key || gi} className="sgroup">
               <SectionHead k={g.key} description={g.description} />
               {g.ids.map((id) => (
-                <Thumb key={id} id={id} index={n++} />
+                <Thumb key={id} id={id} index={n++} last={n === ids.length} />
               ))}
             </div>
           ))}

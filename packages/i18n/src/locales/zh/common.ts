@@ -31,6 +31,14 @@ export default {
   send: '发送',
   stop: '停止',
   undo: '撤销',
+  item: {
+    addAfter: '在后面添加',
+    duplicate: '复制',
+    moveUp: '上移',
+    moveDown: '下移',
+    moveEarlier: '前移',
+    moveLater: '后移',
+  },
   topbar: {
     more: '更多',
     rename: '双击改名',

@@ -122,6 +122,25 @@ export function addTab(title: string, parent?: string, markdown?: string): strin
   return id;
 }
 
+/** A copy of a tab's text right after the tab (and its subtabs): the same tab level, a new file. */
+export function duplicateTab(id: string): string | null {
+  const st = useStore.getState();
+  const d = parseDoc(display(st, DOC_INDEX));
+  const from = d.tabs.find((x) => x.id === id);
+  const text = display(st, tabFile(id));
+  if (!from || text === undefined) return null;
+  const title = t('docs.tab.copyTitle', { title: from.title });
+  const copy = uniqueTabId(d, /^[\x20-\x7e]+$/.test(title) ? title : 'tab');
+  edit(tabFile(copy), () => text, { actor: 'human', summary: `tab ${copy} added`, undoable: false });
+  editDoc((x) => {
+    let at = x.tabs.findIndex((y) => y.id === id);
+    if (!from.parent) while (at + 1 < x.tabs.length && x.tabs[at + 1].parent === id) at++;
+    x.tabs.splice(at + 1, 0, from.parent ? { id: copy, title, parent: from.parent } : { id: copy, title });
+  }, `tab ${title} added`);
+  openTab(copy);
+  return copy;
+}
+
 export function renameTab(id: string, title: string): void {
   editDoc((d) => {
     const t = d.tabs.find((x) => x.id === id);

@@ -102,12 +102,9 @@ export default {
     addSlide: '+ 新建幻灯片',
     menu: {
       label: '幻灯片',
-      addAfter: '在后面新建一页',
-      duplicate: '复制这一页',
       unskip: '取消跳过',
       skip: '放映时跳过',
       startSection: '从这一页开始新的一节',
-      delete: '删除这一页',
     },
   },
   section: {
