@@ -83,6 +83,8 @@ export interface AiConfig {
   fastModel: { value: string; source: AiSource };
   claudeModel: { value: string; source: AiSource };
   claudeRoute: { value: 'shared' | 'login'; source: AiSource };
+  claudeProfile: { value: string; source: AiSource };
+  claudeBaseUrl: string;
   image: {
     baseUrl: { value: string; source: AiSource };
     model: { value: string; source: AiSource };
@@ -102,6 +104,8 @@ export interface AiDraft {
   clearKey?: boolean;
   fastModel: string;
   claudeModel: string;
+  /** a Tingly Box Claude Code profile (name or id); blank is Box's main Claude Code routing */
+  claudeProfile?: string;
   /** left out until the person chooses: the default follows whether there is a key */
   claudeRoute?: 'shared' | 'login';
   /** an OpenAI-compatible image address; blank follows the connection */

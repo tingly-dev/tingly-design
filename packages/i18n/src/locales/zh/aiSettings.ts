@@ -38,6 +38,10 @@ export default {
   claudeDefault: 'Claude Code 默认',
   cliOk: '已找到 claude 命令。',
   cliMissing: '本机找不到 claude 命令，无法委托。',
+  profile: '配置档',
+  profileMain: '主 Claude Code 路由',
+  profileNote: '留空即用你在 Tingly Box 里给 claude 配的那一套；也可以填其中某个 Claude Code 配置档的名称或 ID（例如 p1）。',
+  badProfile: '配置档名称只能用字母、数字、- 和 _。',
   sharedNeedsKey: '请在上面填写密钥，或改用 Claude Code 自己的登录。',
   saved: 'AI 设置已保存',
 };

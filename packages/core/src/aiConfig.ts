@@ -19,6 +19,10 @@
 /** Where Tingly Box listens by default, and the path of its Anthropic-compatible gateway. */
 export const TINGLY_BOX_URL = 'http://localhost:12580';
 export const TINGLY_BOX_ANTHROPIC = `${TINGLY_BOX_URL}/tingly/anthropic`;
+/** Where Box serves Claude Code: `<box>/tingly/claude_code`, or `…/claude_code:<profile>` for one of its profiles. */
+export const TINGLY_BOX_CLAUDE_CODE = `${TINGLY_BOX_URL}/tingly/claude_code`;
+/** The model name Claude Code asks Box for: the default slot of its Claude Code routing. */
+export const TINGLY_BOX_CLAUDE_MODEL = 'cc';
 /** The model name Tingly Box routes by its rules; the person picks the real upstream model there. */
 export const TINGLY_BOX_MODEL = 'tingly';
 export const ANTHROPIC_FAST_MODEL = 'claude-haiku-5-5';
@@ -38,6 +42,8 @@ export interface AiSaved {
   fastModel?: string;
   claudeModel?: string;
   claudeRoute?: ClaudeRoute;
+  /** a Tingly Box Claude Code profile (its name or id); empty is Box's main Claude Code routing */
+  claudeProfile?: string;
   /** an OpenAI-compatible image address; empty follows the connection */
   imageBaseUrl?: string;
   /** a key for the image address; empty uses the connection's */
@@ -53,6 +59,7 @@ export interface AiEnv {
   key?: string;
   fastModel?: string;
   claudeModel?: string;
+  claudeProfile?: string;
   imageBaseUrl?: string;
   imageKey?: string;
   imageModel?: string;
@@ -73,6 +80,10 @@ export interface AiResolved {
   fastModel: AiField<string>;
   claudeModel: AiField<string>;
   claudeRoute: AiField<ClaudeRoute>;
+  /** the Tingly Box Claude Code profile; empty is Box's main Claude Code routing (only used with Tingly Box) */
+  claudeProfile: AiField<string>;
+  /** where `claude` is pointed: the connection, or with Tingly Box its Claude Code routing (and profile) */
+  claudeBaseUrl: string;
   image: AiImage;
 }
 
@@ -99,6 +110,15 @@ export function presetOf(baseUrl: string): AiPreset {
   return baseUrl.replace(/^http:\/\/127\.0\.0\.1:/, 'http://localhost:') === TINGLY_BOX_ANTHROPIC ? 'tingly-box' : 'custom';
 }
 
+/** A profile is addressed in the URL, so it is a plain token: letters, digits, `-` and `_` (Box's own rule). */
+export const validProfile = (s: string): boolean => !s || /^[A-Za-z0-9_-]+$/.test(s);
+
+/** Tingly Box's Claude Code address for a connection on Box: same host, `/tingly/claude_code[:profile]`. */
+export function boxClaudeUrl(baseUrl: string, profile: string): string {
+  const root = baseUrl.replace(/\/tingly\/anthropic$/, '');
+  return `${root}/tingly/claude_code${profile ? ':' + profile : ''}`;
+}
+
 export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
   const pick = (e: string, s: string, d: string): AiField<string> =>
     e ? { value: e, source: 'env' } : s ? { value: s, source: 'saved' } : { value: d, source: 'default' };
@@ -110,7 +130,8 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
   const key = { set: Boolean(keyEnv || keySaved), source: keyEnv ? ('env' as const) : keySaved ? ('saved' as const) : ('none' as const) };
   const fastModel = pick(clean(env.fastModel), clean(saved.fastModel), box ? TINGLY_BOX_MODEL : ANTHROPIC_FAST_MODEL);
   // empty means Claude Code's own default model
-  const claudeModel = pick(clean(env.claudeModel), clean(saved.claudeModel), box ? TINGLY_BOX_MODEL : '');
+  const claudeModel = pick(clean(env.claudeModel), clean(saved.claudeModel), box ? TINGLY_BOX_CLAUDE_MODEL : '');
+  const claudeProfile = pick(box && validProfile(clean(env.claudeProfile)) ? clean(env.claudeProfile) : '', box && validProfile(clean(saved.claudeProfile)) ? clean(saved.claudeProfile) : '', '');
   const route: AiField<ClaudeRoute> =
     saved.claudeRoute === 'login' || saved.claudeRoute === 'shared'
       ? { value: saved.claudeRoute, source: 'saved' }
@@ -134,7 +155,8 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
       ? { value: false, source: 'saved' }
       : { value: true, source: 'default' };
   const image: AiImage = { baseUrl: imgUrl, model: imgModel, key: imgKey, ready, enabled, active: ready && enabled.value };
-  return { preset, baseUrl, key, fastModel, claudeModel, claudeRoute: route, image };
+  const claudeBaseUrl = box ? boxClaudeUrl(baseUrl.value, claudeProfile.value) : baseUrl.value;
+  return { preset, baseUrl, key, fastModel, claudeModel, claudeRoute: route, claudeProfile, claudeBaseUrl, image };
 }
 
 /** Whether an image address is Tingly Box's gateway (its model alias is the default there). */
@@ -162,6 +184,7 @@ export function sanitizeSaved(input: unknown): AiSaved {
   if (clean(o.apiKey)) out.apiKey = clean(o.apiKey);
   if (clean(o.fastModel)) out.fastModel = clean(o.fastModel);
   if (clean(o.claudeModel)) out.claudeModel = clean(o.claudeModel);
+  if (clean(o.claudeProfile) && validProfile(clean(o.claudeProfile))) out.claudeProfile = clean(o.claudeProfile);
   const imgUrl = cleanUrl(o.imageBaseUrl);
   if (imgUrl) out.imageBaseUrl = imgUrl;
   if (clean(o.imageKey)) out.imageKey = clean(o.imageKey);

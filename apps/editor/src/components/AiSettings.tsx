@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, resolveAi, validBaseUrl } from '@dc/core';
+import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, resolveAi, validBaseUrl, validProfile } from '@dc/core';
 import { api, type AiConfig, type AiDraft, type AiSource } from '../api';
 import { toast, useStore } from '../store';
 import { External } from './icons';
@@ -36,6 +36,7 @@ function AiSettings() {
   const [key, setKey] = useState('');
   const [fastModel, setFastModel] = useState('');
   const [claudeModel, setClaudeModel] = useState('');
+  const [profile, setProfile] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageKey, setImageKey] = useState('');
   const [imageModel, setImageModel] = useState('');
@@ -54,6 +55,7 @@ function AiSettings() {
         setCustom(c.preset === 'custom' ? c.baseUrl.value : '');
         setFastModel(c.fastModel.source === 'saved' ? c.fastModel.value : '');
         setClaudeModel(c.claudeModel.source === 'saved' ? c.claudeModel.value : '');
+        setProfile(c.claudeProfile.source === 'saved' ? c.claudeProfile.value : '');
         setImageUrl(c.image.baseUrl.source === 'saved' ? c.image.baseUrl.value : '');
         setImageModel(c.image.model.source === 'saved' ? c.image.model.value : '');
         setImageOn(c.image.enabled.value);
@@ -73,6 +75,10 @@ function AiSettings() {
   const problem = !validBaseUrl(baseUrl) || (preset === 'custom' && !urlLocked && !baseUrl) ? t('aiSettings.badUrl') : '';
   // what the empty model fields would mean with this connection
   const dflt = resolveAi({}, { baseUrl });
+  // a Tingly Box Claude Code profile is part of the address Claude Code is given, so it is typed as a plain name
+  const profileLocked = cfg.claudeProfile.source === 'env';
+  const profileProblem = preset === 'tingly-box' && !profileLocked && !validProfile(profile.trim()) ? t('aiSettings.badProfile') : '';
+  const claudeAddr = resolveAi({}, { baseUrl, claudeProfile: profileLocked ? cfg.claudeProfile.value : profile.trim() }).claudeBaseUrl;
   const hasKey = keyLocked || cfg.key.set || key.trim() !== '';
   const route = chosen ?? (hasKey ? 'shared' : 'login');
   // the image address follows the connection when it can (Tingly Box); otherwise it is typed
@@ -95,6 +101,7 @@ function AiSettings() {
     ...(key.trim() ? { apiKey: key.trim() } : {}),
     fastModel: fastModel.trim(),
     claudeModel: claudeModel.trim(),
+    ...(preset === 'tingly-box' && !profileLocked ? { claudeProfile: profile.trim() } : {}),
     ...(chosen ? { claudeRoute: chosen } : {}),
   });
 
@@ -110,7 +117,7 @@ function AiSettings() {
     setBusy(false);
   };
   const save = async () => {
-    if (problem || imgProblem || busy) return;
+    if (problem || imgProblem || profileProblem || busy) return;
     setBusy(true);
     try {
       await api.saveAiConfig(draft());
@@ -280,6 +287,26 @@ function AiSettings() {
             </button>
           ))}
         </div>
+        {route === 'shared' && preset === 'tingly-box' && (
+          <>
+            <label className="field">
+              <span>{t('aiSettings.profile')}</span>
+              <input
+                className="input mono"
+                disabled={profileLocked}
+                placeholder={t('aiSettings.profileMain')}
+                value={profileLocked ? cfg.claudeProfile.value : profile}
+                onChange={(e) => setProfile(e.target.value)}
+                aria-label={t('aiSettings.profile')}
+              />
+              <Locked source={cfg.claudeProfile.source} />
+            </label>
+            {profileProblem ? <p className="status bad">{profileProblem}</p> : <p className="note">{t('aiSettings.profileNote')}</p>}
+            <p className="status" data-claude-address>
+              <code className="addr">{claudeAddr}</code>
+            </p>
+          </>
+        )}
         {route === 'shared' && (
           <label className="field">
             <span>{t('aiSettings.model')}</span>
@@ -302,7 +329,7 @@ function AiSettings() {
         <button type="button" className="btn" onClick={close}>
           {t('common.cancel')}
         </button>
-        <button type="submit" className="btn primary" disabled={busy || !!problem || !!imgProblem}>
+        <button type="submit" className="btn primary" disabled={busy || !!problem || !!imgProblem || !!profileProblem}>
           {t('common.save')}
         </button>
       </footer>

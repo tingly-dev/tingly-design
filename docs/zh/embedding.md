@@ -46,6 +46,7 @@ pnpm bundle        # 先构建，再写出 dist/tingly-design/
 | `DC_LINKS` | 设为 `0` 时所有项目都只在 `DC_PROJECTS` 里。否则可以在启动页打开这台机器上任意位置的项目文件夹，或在那里新建；这些文件夹记在 `DC_PROJECTS/.links.json`，留在原处。 |
 | `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` | 宿主的模型网关和它的令牌。快速 AI 直接调它；「交给 Claude Code」用同样的环境运行 `claude`，所以两者都经过宿主。 |
 | `DC_FAST_MODEL`、`DC_DELEGATE_MODEL` | 网关认识的模型名。 |
+| `DC_CLAUDE_PROFILE` | Tingly Box 的 Claude Code 配置档（名称或 ID），走网关的 `claude_code` 路由；只对 Tingly Box 有效。 |
 | `DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY`、`DC_IMAGE_ENABLED` | 可选：OpenAI 风格的图片网关（`<base>/images/generations`、`<base>/images/edits`）、它的模型名和密钥。Tingly Box 的是 `http://localhost:12580/tingly/imagegen/v1`。不设时，连接是 Tingly Box 就跟着它走；密钥只在 Tingly Box 或与连接同一主机时默认用 `ANTHROPIC_AUTH_TOKEN`。 `DC_IMAGE_ENABLED=0` 对所有项目关闭图像生成，设置原样保留。|
 | `DC_LOG_LEVEL`、`DC_LOG_FORMAT` | 服务端日志：`error`、`warn`、`info`（默认）、`debug` 或 `silent`；`json` 表示 stderr 每行一个对象。见[开发](./development.md#服务端日志)。 |
 | `DC_CONFIG` | 编辑器“AI 模型设置”保存到哪个文件（默认是 `DC_PROJECTS` 旁边的 `.tingly-design/ai.json`；没设 `DC_PROJECTS` 时是 `~/.tingly-design/ai.json`）。宿主在上面设的值优先于它，设置对话框里那一项显示为“由宿主设定”，不可改。 |

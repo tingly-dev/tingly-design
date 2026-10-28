@@ -17,6 +17,7 @@ const env = (): AiEnv => ({
   key: process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
   fastModel: process.env.DC_FAST_MODEL,
   claudeModel: process.env.DC_DELEGATE_MODEL,
+  claudeProfile: process.env.DC_CLAUDE_PROFILE,
   imageBaseUrl: process.env.DC_IMAGE_BASE_URL,
   imageKey: process.env.DC_IMAGE_API_KEY,
   imageModel: process.env.DC_IMAGE_MODEL,
@@ -88,10 +89,10 @@ export function claudeLaunch(): { env: Record<string, string>; model: string } {
   const model = named || shared ? r.claudeModel.value : '';
   if (!shared) return { env: {}, model };
   const out: Record<string, string> = {};
-  if (r.baseUrl.value) out.ANTHROPIC_BASE_URL = r.baseUrl.value;
+  if (r.claudeBaseUrl) out.ANTHROPIC_BASE_URL = r.claudeBaseUrl;
   const key = keyOf();
   // the default endpoint takes an API key; a gateway takes the token header. A host's own variables are already in the environment.
-  if (key && r.key.source !== 'env') out[r.baseUrl.value ? 'ANTHROPIC_AUTH_TOKEN' : 'ANTHROPIC_API_KEY'] = key;
+  if (key && r.key.source !== 'env') out[r.claudeBaseUrl ? 'ANTHROPIC_AUTH_TOKEN' : 'ANTHROPIC_API_KEY'] = key;
   return { env: out, model };
 }
 
