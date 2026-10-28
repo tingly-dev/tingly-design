@@ -90,7 +90,6 @@ export default {
     addFont: '添加字体',
     fontsHint: '最多 4 种。在元素的 font-family 里写字体名即可使用。',
     shortcuts: '快捷键',
-    shortcutList: '↑↓ / PageUp PageDown 切换幻灯片（未选中元素时）· ⌘D 复制 · ⌫ 删除 · ⇧↵ 选中上一级 · ↵ 选中下一级 · ⌘Z 撤销 · F5 放映',
   },
   strip: {
     label: '幻灯片',

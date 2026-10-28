@@ -188,7 +188,6 @@ export default {
     sizeTaken: '这个作品已经有这个尺寸了。',
     formatsHint: '所有尺寸共用场景、文字和时间。新尺寸先按版式自己适配，再切到它把不合适的地方单独调。',
     shortcuts: '快捷键',
-    shortcutList: '空格 播放 / 暂停 · ← → 前后一帧（⇧ 一秒）· ⌫ 删除 · ⌘D 复制 · ⇧↵ 选中上一级 · ⌘Z 撤销 · Esc 取消选择',
   },
   toast: {
     formatRemoved: '已删除尺寸 {{name}}。',

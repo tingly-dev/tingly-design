@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ShortcutLine } from '../Shortcuts';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
@@ -318,9 +319,7 @@ export function MotionProps() {
         {t('motion.motionProps.formatsHint')}
       </p>
       <h3>{t('motion.motionProps.shortcuts')}</h3>
-      <p className="hint" style={{ margin: 0 }}>
-        {t('motion.motionProps.shortcutList')}
-      </p>
+      <ShortcutLine kind="motion" />
     </div>
   );
 }

@@ -41,6 +41,10 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
     // canvas tools mean nothing on a scene
     if (!meta && !shift && TOOL_KEYS[k]) return true;
   }
+  if (key === '?') {
+    useStore.setState({ shortcutsOpen: !s.shortcutsOpen });
+    return true;
+  }
   if (s.focused) {
     if (key === 'Escape') useStore.setState({ focused: null });
     return key === 'Escape';

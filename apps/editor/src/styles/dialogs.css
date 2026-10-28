@@ -332,3 +332,55 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+
+.shortcutsdlg {
+  width: min(520px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+}
+
+
+.shortcutsdlg h3 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+
+.keyrows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.keyrows > div {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line, rgba(127, 127, 127, 0.18));
+}
+
+
+.keyrows dt {
+  margin: 0;
+}
+
+
+.keyrows dd {
+  margin: 0;
+}
+
+
+.keyrows kbd {
+  font: inherit;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.12));
+  white-space: nowrap;
+}

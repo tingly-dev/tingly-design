@@ -139,6 +139,8 @@ export interface State extends AgentState {
   editingNote: string | null;
   menu: { x: number; y: number } | null;
   journalOpen: boolean;
+  /** the "Keyboard shortcuts" dialog */
+  shortcutsOpen: boolean;
   view: { x: number; y: number; zoom: number };
   viewport: { w: number; h: number };
   runtimeErrors: Record<string, string | null>;
@@ -176,6 +178,7 @@ export const useStore = create<State>(() => ({
   editingNote: null,
   menu: null,
   journalOpen: false,
+  shortcutsOpen: false,
   view: { x: 80, y: 120, zoom: 0.5 },
   viewport: { w: 1000, h: 700 },
   runtimeErrors: {},

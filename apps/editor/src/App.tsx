@@ -18,6 +18,7 @@ import { Launcher } from './components/launcher/Launcher';
 import { ChatShell } from './components/ChatPanel';
 import { serverDefault } from './theme';
 import { ConfirmHost } from './components/ConfirmDialog';
+import { ShortcutsHost } from './components/Shortcuts';
 import { announceReady } from './host';
 import { serverLanguage, t } from './i18n';
 
@@ -26,6 +27,7 @@ function Toasts() {
   return (
     <>
       <ConfirmHost />
+      <ShortcutsHost />
       <div className="toasts" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.kind}`}>

@@ -1,7 +1,7 @@
 import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ISSUES_URL, REPO_URL } from '../links';
-import { Bug, Check, External, More, Star } from './icons';
+import { Bug, Check, External, Keyboard, More, Star } from './icons';
 import { useStore } from '../store';
 import { Menu, MenuItem } from './Menu';
 import { PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode } from '../theme';
@@ -85,6 +85,7 @@ function MoreMenu() {
       </button>
       {pos && (
         <Menu x={pos.x} y={pos.y} align="right" label={t('common.topbar.more')} onClose={close}>
+          <MenuItem icon={<Keyboard />} label={t('common.shortcut.title')} keys="?" onSelect={() => (useStore.setState({ shortcutsOpen: true }), close())} />
           {link(ISSUES_URL, <Bug />, t('launcher.links.report'), 'report')}
           {link(REPO_URL, <Star />, t('launcher.links.star'), 'star')}
           <hr />
