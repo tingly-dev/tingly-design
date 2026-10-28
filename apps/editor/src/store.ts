@@ -291,7 +291,7 @@ export async function openProject(name: string): Promise<void> {
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, conversation: s.conversation ?? conversation, turns }));
+  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');

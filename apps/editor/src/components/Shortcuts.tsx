@@ -42,7 +42,7 @@ export function ShortcutLine({ kind }: { kind: ProjectKind }) {
   return (
     <p className="hint" style={{ margin: 0 }}>
       {KIND_SHORTCUTS[kind]
-        .slice(0, 6)
+        .filter((r) => r.top)
         .map((r) => `${r.keys} ${t(`common.shortcut.${r.id}`)}`)
         .join(' · ')}{' '}
       · {t('common.shortcut.hint')}
