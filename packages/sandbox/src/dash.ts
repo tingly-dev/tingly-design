@@ -12,6 +12,7 @@ import * as d3 from 'd3';
 import {
   EMPTY_STATE,
   checkMark,
+  drawnCheck,
   isCellMark,
   markOf,
   resolveMark,
@@ -497,6 +498,19 @@ function checkTable(table: HTMLTableElement, source: string, t: Table | null, ou
   }
 }
 
+/** The page has its data and is not redrawing: what it shows now is what a reader sees. */
+function settled(): boolean {
+  return !loadingSince && !root.querySelector('[data-dash-source-state=loading], [data-dash-source-state=refreshing]');
+}
+
+function safeDrawn() {
+  try {
+    return drawnCheck(root);
+  } catch {
+    return [];
+  }
+}
+
 let reportTimer = 0;
 let lastReport = '';
 function scheduleReport(): void {
@@ -506,6 +520,7 @@ function scheduleReport(): void {
       read: [...read],
       marked: [...marked],
       marks: marksOut,
+      drawn: settled() ? safeDrawn() : [],
       flagged,
       errors: [...errors.values()],
       calcs: [...calcs.values()].map((c) => c.info),

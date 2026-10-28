@@ -141,6 +141,13 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     boxOutside: '有个盒子越过边缘被裁掉了：“{{text}}”',
     boxOverflow: '有个盒子比装它的行或网格还宽，把旁边的挤开了：“{{text}}”',
     squeezed: '文字被挤进只有几个字宽的一列（断成 {{lines}} 行）：“{{text}}”',
+    nan: '{{where}} 里有个数没算出来：“{{text}}”；多半是字段缺失、值成了文本或列表是空的',
+    nanMore: '{{where}} 里有个数没算出来：“{{text}}”（还有 {{more}} 处同样的）；多半是字段缺失、值成了文本或列表是空的',
+    empty: '{{where}} 什么也没画：没有图形，也没有行；数据可能是空的，或脚本在画之前就返回了',
+    labelOverlap: '{{where}} 里的标签叠在一起：“{{text}}”和“{{other}}”；少画几个刻度，或把标签缩短、旋转',
+    labelOverlapMore: '{{where}} 里的标签叠在一起：“{{text}}”和“{{other}}”（还有 {{more}} 对）；少画几个刻度，或把标签缩短、旋转',
+    labelClipped: '{{where}} 里有个标签被图的边缘裁掉了：“{{text}}”；把边距留宽一些',
+    labelClippedMore: '{{where}} 里有个标签被图的边缘裁掉了：“{{text}}”（还有 {{more}} 个）；把边距留宽一些',
   },
   canvasRules: {
     'order-unknown': 'order 里的 {{file}} 不是画板',

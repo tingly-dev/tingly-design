@@ -11,9 +11,11 @@
  * text has no one colour to compare with.
  */
 
-export type LayoutRule = 'clipped' | 'outside' | 'contrast' | 'blank' | 'gap' | 'boxOutside' | 'boxOverflow' | 'squeezed';
+import { DRAWN_CHECK, type DrawnFinding, type DrawnRule } from '@dc/core';
 
-export interface LayoutFinding {
+export type LayoutRule = 'clipped' | 'outside' | 'contrast' | 'blank' | 'gap' | 'boxOutside' | 'boxOverflow' | 'squeezed' | DrawnRule;
+
+export interface LayoutFinding extends Partial<Omit<DrawnFinding, 'rule'>> {
   rule: LayoutRule;
   /** the start of the text concerned */
   text?: string;
@@ -137,6 +139,8 @@ const PROBE = String.raw`function (fixed, page) {
       if (c < (large ? 3 : 4.5)) found.push({ rule: 'contrast', text, ratio: Math.floor(c * 10) / 10 });
     }
   }
+  // what the page drew wrong: NaN, an empty chart, labels over each other or cut off (core's drawnCheck.ts)
+  try { found.push(...(${DRAWN_CHECK})(document.body)); } catch (e) {}
   if (!drawn) found.push({ rule: 'blank' });
   else if (fixed && page) {
     // between two things drawn, and below the last one: a band this tall in a board that reads top to bottom is

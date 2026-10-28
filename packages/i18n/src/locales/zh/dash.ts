@@ -123,6 +123,13 @@ export default {
     rejectionIn: '页面代码有未处理的 Promise 失败（{{file}}）：{{error}}',
     error: '页面代码出错了：{{error}}',
     errorIn: '页面代码出错了（{{file}}）：{{error}}',
+    drawn: {
+      nan: '里有个数没算出来：“{{text}}”',
+      empty: '什么也没画：没有图形，也没有行',
+      labelOverlap: '里有标签叠在一起：“{{text}}”和“{{other}}”',
+      labelClipped: '里有个标签被图的边缘裁掉了：“{{text}}”',
+      more: '（还有 {{count}} 处）',
+    },
     row: '第 {{row}} 行',
     reason: '：{{reason}}',
     mismatch: '：页面显示 {{shown}}，数据里是 {{inData}}',

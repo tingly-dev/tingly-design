@@ -129,6 +129,13 @@ export default {
     rejectionIn: 'Page code has an unhandled Promise rejection ({{file}}): {{error}}',
     error: 'Page code failed: {{error}}',
     errorIn: 'Page code failed ({{file}}): {{error}}',
+    drawn: {
+      nan: 'shows a number that did not work out: “{{text}}”',
+      empty: 'drew nothing: no marks, no rows',
+      labelOverlap: 'has labels on top of each other: “{{text}}” and “{{other}}”',
+      labelClipped: 'has a label cut off by the edge of its chart: “{{text}}”',
+      more: ' (and {{count}} more)',
+    },
     row: 'row {{row}}',
     reason: ': {{reason}}',
     mismatch: ': the page shows {{shown}}, the data has {{inData}}',

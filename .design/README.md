@@ -49,6 +49,7 @@
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [claude-design-format.md](./claude-design-format.md) | 和原版 Claude Design 互相搬作品：包就是原版的文件布局（`project/…`，看板是存储文档），导入并进“导入项目”不选类型，导出挨着“整个项目”；图片和数据怎么对应、哪些类型没有 | 已实施（编辑器、启动页、命令行）；Docs 往返、查询数据集的数据是没做的 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
+| [drawn-check.md](./drawn-check.md) | 看板画出来的样子自查：`NaN`、空图表、标签重叠或被裁；同一段探针既在打开的页面里写进 `.runs.json` 的 `drawn`，也在 `check --snapshots` 里报成版面警告 | 已实施 |
 | [canvas-check.md](./canvas-check.md) | 画布检查器：`checkCanvas` 把 `dc-canvas` 技能里写错了不报错的规则做成纯文本检查，返回规则 id 和参数，措辞留给命令行 / 编辑器 | 核心函数和 `check` 命令已实施；编辑器提示是方案 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |

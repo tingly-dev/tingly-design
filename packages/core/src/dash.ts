@@ -11,6 +11,8 @@
  *                        databases a query reads
  */
 
+import type { DrawnFinding } from './drawnCheck';
+
 export const DASH_INDEX = 'dash.json';
 export const DASH_PAGE = 'files/index.html';
 /** The latest report from an open page: what failed, threw or is mis-marked (not tracked). */
@@ -665,6 +667,8 @@ export interface DashReport {
   /** datasets and calcs some mark names */
   marked: string[];
   marks: MarkProblem[];
+  /** what the page drew that looks wrong: NaN, an empty chart, labels over each other or cut off */
+  drawn: DrawnFinding[];
   flagged: number;
   errors: PageError[];
   calcs: CalcInfo[];

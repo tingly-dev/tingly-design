@@ -343,7 +343,7 @@ function Problems() {
   const datasets = useDatasets();
   const failed = Object.entries(states).filter(([, s]) => s.status === 'error' || s.status === 'connect' || s.status === 'missing');
   const broken = datasets.filter((d) => d.error);
-  if (!report?.marks.length && !report?.errors.length && !failed.length && !broken.length) return null;
+  if (!report?.marks.length && !report?.drawn?.length && !report?.errors.length && !failed.length && !broken.length) return null;
   return (
     <section className="sproblems" aria-label={t('dash.problems.title')}>
       <h3>{t('dash.problems.title')}</h3>
@@ -373,6 +373,13 @@ function Problems() {
             {m.field ? ` · ${m.field}` : ''}
             {m.where ? ` · ${safeDecode(m.where)}` : m.row !== undefined ? ` · ${t('dash.problems.row', { row: m.row })}` : ''}
             {m.reason ? t('dash.problems.reason', { reason: m.reason }) : t('dash.problems.mismatch', { shown: m.shown, inData: m.inData })}
+          </li>
+        ))}
+        {report?.drawn?.map((d, i) => (
+          <li key={'d' + i} className="warn">
+            <code>{d.element}</code>
+            {d.source ? ` (${d.source})` : ''} {t(`dash.problems.drawn.${d.rule}`, { text: d.text, other: d.other })}
+            {d.more ? t('dash.problems.drawn.more', { count: d.more }) : ''}
           </li>
         ))}
         {report && report.flagged > report.marks.length && <li className="warn">{t('dash.problems.moreMarks', { count: report.flagged - report.marks.length })}</li>}

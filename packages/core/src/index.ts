@@ -17,6 +17,7 @@ export * from './docMarkdown';
 export * from './slideArt';
 export * from './designSystem';
 export * from './dash';
+export * from './drawnCheck';
 export * from './docs';
 export * from './launcher';
 export * from './attachments';
