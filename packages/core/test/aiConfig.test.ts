@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_CLAUDE_CODE, TINGLY_BOX_IMAGEGEN, boxClaudeUrl, resolveAi, sanitizeSaved, validBaseUrl } from '../src/aiConfig';
+import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, boxClaudeUrl, resolveAi, sanitizeSaved, validBaseUrl } from '../src/aiConfig';
 
 describe('resolveAi', () => {
   it('defaults to Anthropic with the small model and no key', () => {
@@ -16,7 +16,7 @@ describe('resolveAi', () => {
     expect(r.baseUrl.value).toBe(TINGLY_BOX_ANTHROPIC);
     expect(r.fastModel.value).toBe('tingly');
     expect(r.claudeModel.value).toBe('cc');
-    expect(r.claudeBaseUrl).toBe(TINGLY_BOX_CLAUDE_CODE);
+    expect(r.claudeBaseUrl).toBe('http://localhost:12580/tingly/claude_code');
     expect(r.claudeRoute).toEqual({ value: 'shared', source: 'default' });
   });
   it('lets the environment win over what was saved, field by field', () => {
@@ -37,13 +37,15 @@ describe('resolveAi Tingly Box Claude Code profile', () => {
   it('points Claude Code at a profile of Box, on the same host', () => {
     const r = resolveAi({}, { ...box, claudeProfile: 'p1' });
     expect(r.claudeProfile).toEqual({ value: 'p1', source: 'saved' });
-    expect(r.claudeBaseUrl).toBe(`${TINGLY_BOX_CLAUDE_CODE}:p1`);
+    expect(r.claudeBaseUrl).toBe('http://localhost:12580/tingly/claude_code:p1');
     expect(r.baseUrl.value).toBe(TINGLY_BOX_ANTHROPIC);
     expect(boxClaudeUrl('http://box.lan:9/tingly/anthropic', 'work')).toBe('http://box.lan:9/tingly/claude_code:work');
   });
-  it('lets the host win, and ignores a profile name that cannot be a URL token', () => {
-    expect(resolveAi({ claudeProfile: 'p2' }, { ...box, claudeProfile: 'p1' }).claudeProfile).toEqual({ value: 'p2', source: 'env' });
-    expect(resolveAi({}, { ...box, claudeProfile: 'a/b' }).claudeBaseUrl).toBe(TINGLY_BOX_CLAUDE_CODE);
+  it('leaves an address the host fixed alone, and ignores a profile name that cannot be a URL token', () => {
+    const host = resolveAi({ baseUrl: TINGLY_BOX_ANTHROPIC }, { claudeProfile: 'p1' });
+    expect(host.claudeBaseUrl).toBe(TINGLY_BOX_ANTHROPIC);
+    expect(host.claudeModel.value).toBe('tingly');
+    expect(resolveAi({}, { ...box, claudeProfile: 'a/b' }).claudeBaseUrl).toBe('http://localhost:12580/tingly/claude_code');
     expect(sanitizeSaved({ claudeProfile: 'a b' }).claudeProfile).toBeUndefined();
   });
   it('is only for Tingly Box: other connections keep their own address', () => {

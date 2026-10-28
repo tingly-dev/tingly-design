@@ -55,7 +55,7 @@ function AiSettings() {
         setCustom(c.preset === 'custom' ? c.baseUrl.value : '');
         setFastModel(c.fastModel.source === 'saved' ? c.fastModel.value : '');
         setClaudeModel(c.claudeModel.source === 'saved' ? c.claudeModel.value : '');
-        setProfile(c.claudeProfile.source === 'saved' ? c.claudeProfile.value : '');
+        setProfile(c.claudeProfile.value);
         setImageUrl(c.image.baseUrl.source === 'saved' ? c.image.baseUrl.value : '');
         setImageModel(c.image.model.source === 'saved' ? c.image.model.value : '');
         setImageOn(c.image.enabled.value);
@@ -75,12 +75,13 @@ function AiSettings() {
   const problem = !validBaseUrl(baseUrl) || (preset === 'custom' && !urlLocked && !baseUrl) ? t('aiSettings.badUrl') : '';
   // what the empty model fields would mean with this connection
   const dflt = resolveAi({}, { baseUrl });
-  // a Tingly Box Claude Code profile is part of the address Claude Code is given, so it is typed as a plain name
-  const profileLocked = cfg.claudeProfile.source === 'env';
-  const profileProblem = preset === 'tingly-box' && !profileLocked && !validProfile(profile.trim()) ? t('aiSettings.badProfile') : '';
-  const claudeAddr = resolveAi({}, { baseUrl, claudeProfile: profileLocked ? cfg.claudeProfile.value : profile.trim() }).claudeBaseUrl;
   const hasKey = keyLocked || cfg.key.set || key.trim() !== '';
   const route = chosen ?? (hasKey ? 'shared' : 'login');
+  // a Tingly Box Claude Code profile is part of the address Claude Code is given, so it is typed as a plain name
+  // (an address the host fixed is left as it is, so the field is not offered then)
+  const profileShown = preset === 'tingly-box' && !urlLocked;
+  const profileProblem = profileShown && route === 'shared' && !validProfile(profile.trim()) ? t('aiSettings.badProfile') : '';
+  const claudeAddr = resolveAi({}, { baseUrl, claudeProfile: profile.trim() }).claudeBaseUrl;
   // the image address follows the connection when it can (Tingly Box); otherwise it is typed
   const imgUrlLocked = cfg.image.baseUrl.source === 'env';
   const followsBox = preset === 'tingly-box' && !imgUrlLocked;
@@ -101,7 +102,7 @@ function AiSettings() {
     ...(key.trim() ? { apiKey: key.trim() } : {}),
     fastModel: fastModel.trim(),
     claudeModel: claudeModel.trim(),
-    ...(preset === 'tingly-box' && !profileLocked ? { claudeProfile: profile.trim() } : {}),
+    claudeProfile: profile.trim(),
     ...(chosen ? { claudeRoute: chosen } : {}),
   });
 
@@ -287,19 +288,17 @@ function AiSettings() {
             </button>
           ))}
         </div>
-        {route === 'shared' && preset === 'tingly-box' && (
+        {route === 'shared' && profileShown && (
           <>
             <label className="field">
               <span>{t('aiSettings.profile')}</span>
               <input
                 className="input mono"
-                disabled={profileLocked}
                 placeholder={t('aiSettings.profileMain')}
-                value={profileLocked ? cfg.claudeProfile.value : profile}
+                value={profile}
                 onChange={(e) => setProfile(e.target.value)}
                 aria-label={t('aiSettings.profile')}
               />
-              <Locked source={cfg.claudeProfile.source} />
             </label>
             {profileProblem ? <p className="status bad">{profileProblem}</p> : <p className="note">{t('aiSettings.profileNote')}</p>}
             <p className="status" data-claude-address>

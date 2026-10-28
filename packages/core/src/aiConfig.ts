@@ -20,7 +20,7 @@
 export const TINGLY_BOX_URL = 'http://localhost:12580';
 export const TINGLY_BOX_ANTHROPIC = `${TINGLY_BOX_URL}/tingly/anthropic`;
 /** Where Box serves Claude Code: `<box>/tingly/claude_code`, or `…/claude_code:<profile>` for one of its profiles. */
-export const TINGLY_BOX_CLAUDE_CODE = `${TINGLY_BOX_URL}/tingly/claude_code`;
+const CLAUDE_CODE_PATH = '/tingly/claude_code';
 /** The model name Claude Code asks Box for: the default slot of its Claude Code routing. */
 export const TINGLY_BOX_CLAUDE_MODEL = 'cc';
 /** The model name Tingly Box routes by its rules; the person picks the real upstream model there. */
@@ -59,7 +59,6 @@ export interface AiEnv {
   key?: string;
   fastModel?: string;
   claudeModel?: string;
-  claudeProfile?: string;
   imageBaseUrl?: string;
   imageKey?: string;
   imageModel?: string;
@@ -80,7 +79,7 @@ export interface AiResolved {
   fastModel: AiField<string>;
   claudeModel: AiField<string>;
   claudeRoute: AiField<ClaudeRoute>;
-  /** the Tingly Box Claude Code profile; empty is Box's main Claude Code routing (only used with Tingly Box) */
+  /** the Tingly Box Claude Code profile; empty is Box's main Claude Code routing (only with Tingly Box at an address the host did not fix) */
   claudeProfile: AiField<string>;
   /** where `claude` is pointed: the connection, or with Tingly Box its Claude Code routing (and profile) */
   claudeBaseUrl: string;
@@ -116,7 +115,7 @@ export const validProfile = (s: string): boolean => !s || /^[A-Za-z0-9_-]+$/.tes
 /** Tingly Box's Claude Code address for a connection on Box: same host, `/tingly/claude_code[:profile]`. */
 export function boxClaudeUrl(baseUrl: string, profile: string): string {
   const root = baseUrl.replace(/\/tingly\/anthropic$/, '');
-  return `${root}/tingly/claude_code${profile ? ':' + profile : ''}`;
+  return `${root}${CLAUDE_CODE_PATH}${profile ? ':' + profile : ''}`;
 }
 
 export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
@@ -130,8 +129,10 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
   const key = { set: Boolean(keyEnv || keySaved), source: keyEnv ? ('env' as const) : keySaved ? ('saved' as const) : ('none' as const) };
   const fastModel = pick(clean(env.fastModel), clean(saved.fastModel), box ? TINGLY_BOX_MODEL : ANTHROPIC_FAST_MODEL);
   // empty means Claude Code's own default model
-  const claudeModel = pick(clean(env.claudeModel), clean(saved.claudeModel), box ? TINGLY_BOX_CLAUDE_MODEL : '');
-  const claudeProfile = pick(box && validProfile(clean(env.claudeProfile)) ? clean(env.claudeProfile) : '', box && validProfile(clean(saved.claudeProfile)) ? clean(saved.claudeProfile) : '', '');
+  // Claude Code goes through Box's claude_code routing unless the host fixed the address itself (then it is left as the host set it)
+  const viaBoxClaude = box && baseUrl.source !== 'env';
+  const claudeModel = pick(clean(env.claudeModel), clean(saved.claudeModel), viaBoxClaude ? TINGLY_BOX_CLAUDE_MODEL : box ? TINGLY_BOX_MODEL : '');
+  const claudeProfile = pick('', viaBoxClaude && validProfile(clean(saved.claudeProfile)) ? clean(saved.claudeProfile) : '', '');
   const route: AiField<ClaudeRoute> =
     saved.claudeRoute === 'login' || saved.claudeRoute === 'shared'
       ? { value: saved.claudeRoute, source: 'saved' }
@@ -155,7 +156,7 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
       ? { value: false, source: 'saved' }
       : { value: true, source: 'default' };
   const image: AiImage = { baseUrl: imgUrl, model: imgModel, key: imgKey, ready, enabled, active: ready && enabled.value };
-  const claudeBaseUrl = box ? boxClaudeUrl(baseUrl.value, claudeProfile.value) : baseUrl.value;
+  const claudeBaseUrl = viaBoxClaude ? boxClaudeUrl(baseUrl.value, claudeProfile.value) : baseUrl.value;
   return { preset, baseUrl, key, fastModel, claudeModel, claudeRoute: route, claudeProfile, claudeBaseUrl, image };
 }
 

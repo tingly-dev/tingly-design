@@ -17,7 +17,6 @@ const env = (): AiEnv => ({
   key: process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
   fastModel: process.env.DC_FAST_MODEL,
   claudeModel: process.env.DC_DELEGATE_MODEL,
-  claudeProfile: process.env.DC_CLAUDE_PROFILE,
   imageBaseUrl: process.env.DC_IMAGE_BASE_URL,
   imageKey: process.env.DC_IMAGE_API_KEY,
   imageModel: process.env.DC_IMAGE_MODEL,

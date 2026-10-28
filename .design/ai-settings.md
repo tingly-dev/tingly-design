@@ -45,7 +45,7 @@ Tingly Box 给 Claude Code 单独的一套路由（场景 `claude_code`）：规
 - 选了 Tingly Box 且 Claude Code 用共享连接时，`claude` 拿到的地址是 Box 的 `claude_code` 路由，而不是快速 AI 用的 `anthropic` 路由。快速 AI 要的是"一个名字、一次回答"，Claude Code 要的是人给它配好的那套档位，所以同一个连接下两个用途走两条路由。
 - 配置档是一个可选的文本框，空着就是主路由；不做下拉，也不加模式开关。原因：列出 Box 的配置档要用 Box 的管理令牌（`/api/v1/scenario/claude_code/profiles`），而这里只有模型令牌；让设置对话框去要第二个令牌，比让人敲一个名字更重。名字只接受字母、数字、`-`、`_`（Box 自己的别名规则，它也是 URL 的一部分），ID 形如 `p1` 同样可用。
 - 对话框在输入框下面直接写出 `claude` 实际会拿到的完整地址，人能看到填了配置档之后变成了什么。
-- 配置档只对 Tingly Box 有意义：连接是 Anthropic 或其他地址时不显示，也不会写进地址。宿主可以用环境变量 `DC_CLAUDE_PROFILE` 固定它（界面只读，同其它由宿主设定的值）。
+- 配置档只对 Tingly Box 有意义：连接是 Anthropic 或其他地址时不显示，也不会写进地址。宿主已经用 `ANTHROPIC_BASE_URL` 固定了地址时，我们不改它（宿主要走某个配置档，就把地址写成 `…/tingly/claude_code:<名称>`），这时配置档输入框不出现，模型名默认也仍是 `tingly`。配置档只在 Claude Code 用共享连接时显示和校验；换到别的连接再存，已填的名字会保留。
 
 没验证的：这一块对着 Box 的源码（路由、配置档别名解析、默认模型名）实现，没有对着运行中的 Box 做过端到端的真实请求；`e2e/ai_settings.py` 检查的是对话框和写入的地址。
 
