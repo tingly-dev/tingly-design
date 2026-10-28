@@ -137,67 +137,69 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
     }
   };
   return (
-    <Dialog label={t('launcher.new.title')} onClose={onClose} onSubmit={() => void submit()}>
-      <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
-        {KINDS.map((k) => (
-          <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind} data-kind={k.kind} className={`kopt t-${k.tone}`} onClick={() => setKind(k.kind)}>
-            <KindIcon kind={k.kind} size={16} />
-            <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
-          </button>
-        ))}
-      </div>
-      <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
-      <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
-      {here.Fields && <here.Fields key={kind} s={state} />}
-      {(here.Options || offerGit) && (
-        <div className="nopts" data-options={kind}>
-          <span className="nopt-h">{t('launcher.new.options')}</span>
-          {here.Options && <here.Options s={state} />}
-          {offerGit && (
-            <label className="nopt nopt-check" data-git="">
-              <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} />
-              <span>{t('launcher.new.git')}</span>
-              <span className="hint">{t('launcher.new.gitHint')}</span>
-            </label>
+    <>
+      <Dialog label={t('launcher.new.title')} onClose={onClose} onSubmit={() => void submit()}>
+        <div className="kinds" role="radiogroup" aria-label={t('launcher.new.kind')}>
+          {KINDS.map((k) => (
+            <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind} data-kind={k.kind} className={`kopt t-${k.tone}`} onClick={() => setKind(k.kind)}>
+              <KindIcon kind={k.kind} size={16} />
+              <span className="name">{t(`launcher.kind.${k.kind}.name`)}</span>
+            </button>
+          ))}
+        </div>
+        <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
+        <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {here.Fields && <here.Fields key={kind} s={state} />}
+        {(here.Options || offerGit) && (
+          <div className="nopts" data-options={kind}>
+            <span className="nopt-h">{t('launcher.new.options')}</span>
+            {here.Options && <here.Options s={state} />}
+            {offerGit && (
+              <label className="nopt nopt-check" data-git="">
+                <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} />
+                <span>{t('launcher.new.git')}</span>
+                <span className="hint">{t('launcher.new.gitHint')}</span>
+              </label>
+            )}
+          </div>
+        )}
+        <div className="where">
+          <span className="folder">
+            {!path && !full && <span className="pre">projects/</span>}
+            <input
+              className="input"
+              aria-label={t('launcher.new.folder')}
+              placeholder={t('launcher.new.folderPlaceholder')}
+              value={value}
+              onChange={(e) => setFolder(e.target.value.trim() || null)}
+              spellCheck={false}
+            />
+          </span>
+          {linksOn && (
+            <button type="button" className="btn sm" data-browse="" onClick={() => setPicking(true)}>
+              {t('launcher.folder.browse')}
+            </button>
           )}
         </div>
-      )}
-      <div className="where">
-        <span className="folder">
-          {!path && !full && <span className="pre">projects/</span>}
-          <input
-            className="input"
-            aria-label={t('launcher.new.folder')}
-            placeholder={t('launcher.new.folderPlaceholder')}
-            value={value}
-            onChange={(e) => setFolder(e.target.value.trim() || null)}
-            spellCheck={false}
-          />
-        </span>
         {linksOn && (
-          <button type="button" className="btn sm" data-browse="" onClick={() => setPicking(true)}>
-            {t('launcher.folder.browse')}
-          </button>
+          <div className="where-hint" data-where={path ? 'path' : 'name'}>
+            {path && info && info !== 'checking' && !('error' in info) && info.state === 'free' ? t('launcher.new.pathFree', { path: info.path }) : t('launcher.new.folderHint')}
+          </div>
         )}
-      </div>
-      {linksOn && (
-        <div className="where-hint" data-where={path ? 'path' : 'name'}>
-          {path && info && info !== 'checking' && !('error' in info) && info.state === 'free' ? t('launcher.new.pathFree', { path: info.path }) : t('launcher.new.folderHint')}
+        <div className={`problem${problem ? ' on' : ''}`} role="alert">
+          {problem}
         </div>
-      )}
-      <div className={`problem${problem ? ' on' : ''}`} role="alert">
-        {problem}
-      </div>
-      <footer>
-        <button type="button" className="btn" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-        <button className="btn primary" type="submit" disabled={!name || !!problem || waiting || busy || sizeBad}>
-          {t(`launcher.kind.${kind}.create`)}
-        </button>
-      </footer>
+        <footer>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn primary" type="submit" disabled={!name || !!problem || waiting || busy || sizeBad}>
+            {t(`launcher.kind.${kind}.create`)}
+          </button>
+        </footer>
+      </Dialog>
       {picking && <FolderPicker start={path ?? (full ? projectsPath : '')} onClose={() => setPicking(false)} onPick={(p) => void picked(p)} />}
-    </Dialog>
+    </>
   );
 }
 
@@ -244,27 +246,29 @@ export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => voi
                 ? t('launcher.folder.noProject', { path: info.path })
                 : t('launcher.new.pathFile', { path: info.path });
   return (
-    <Dialog label={t('launcher.folder.title')} className="lopen" onClose={onClose} onSubmit={() => void submit()}>
-      <p className="kblurb">{t('launcher.folder.blurb')}</p>
-      <div className="where">
-        <input autoFocus className="input mono" aria-label={t('launcher.folder.label')} placeholder={t('launcher.folder.placeholder')} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
-        <button type="button" className="btn sm" data-browse="" onClick={() => setPicking(true)}>
-          {t('launcher.folder.browse')}
-        </button>
-      </div>
+    <>
+      <Dialog label={t('launcher.folder.title')} className="lopen" onClose={onClose} onSubmit={() => void submit()}>
+        <p className="kblurb">{t('launcher.folder.blurb')}</p>
+        <div className="where">
+          <input autoFocus className="input mono" aria-label={t('launcher.folder.label')} placeholder={t('launcher.folder.placeholder')} value={path} onChange={(e) => setPath(e.target.value)} spellCheck={false} />
+          <button type="button" className="btn sm" data-browse="" onClick={() => setPicking(true)}>
+            {t('launcher.folder.browse')}
+          </button>
+        </div>
+        <div className={`folder-state${ready ? ` s-${info.state}` : ''}`} role="status" data-state={ready ? info.state : undefined}>
+          {ready && info.state === 'project' && <KindIcon kind={info.kind!} size={14} />}
+          <span>{status}</span>
+        </div>
+        <footer>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn primary" type="submit" disabled={!ready || busy || (info.state !== 'project' && info.state !== 'free')}>
+            {ready && info.state === 'free' ? t('launcher.folder.createHere') : t('launcher.folder.open')}
+          </button>
+        </footer>
+      </Dialog>
       {picking && <FolderPicker start={usable ? typed : ''} onClose={() => setPicking(false)} onPick={(p) => { setPath(p); setPicking(false); }} />}
-      <div className={`folder-state${ready ? ` s-${info.state}` : ''}`} role="status" data-state={ready ? info.state : undefined}>
-        {ready && info.state === 'project' && <KindIcon kind={info.kind!} size={14} />}
-        <span>{status}</span>
-      </div>
-      <footer>
-        <button type="button" className="btn" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-        <button className="btn primary" type="submit" disabled={!ready || busy || (info.state !== 'project' && info.state !== 'free')}>
-          {ready && info.state === 'free' ? t('launcher.folder.createHere') : t('launcher.folder.open')}
-        </button>
-      </footer>
-    </Dialog>
+    </>
   );
 }
