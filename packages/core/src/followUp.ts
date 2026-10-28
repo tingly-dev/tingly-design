@@ -17,13 +17,18 @@ export type ConfigChange =
   /** A design system was installed (or updated) in a canvas or deck: `namespace` is its folder under `ds/`. */
   | { type: 'designSystem'; namespace: string; title: string }
   /** A design system's tokens were edited; `edits` are the editor's own summaries of what, oldest first. */
-  | { type: 'tokens'; edits: string[] };
+  | { type: 'tokens'; edits: string[] }
+  /** A whole canvas or deck (or one slide: `file`) was switched to a theme of an installed design system, or back to its original look (`title` null). `stay` colours were not the system's and were left. */
+  | { type: 'theme'; namespace: string; title: string | null; theme: string; stay: number; file?: string };
 
 /** An offer: `reason` is a key the editor turns into a sentence, `prompt` the request for Claude Code. */
 export interface FollowUp {
-  reason: { id: 'size' | 'format' | 'designSystem' | 'tokens' };
+  reason: { id: 'size' | 'format' | 'designSystem' | 'tokens' | 'theme' };
   prompt: string;
 }
+
+/** How many colours a theme switch has to leave behind before Claude Code is offered the rest. */
+const THEME_STAY_MIN = 3;
 
 const FOLLOW_UP: { [T in ConfigChange['type']]: (c: Extract<ConfigChange, { type: T }>) => FollowUp | null } = {
   size(c) {
@@ -49,6 +54,14 @@ const FOLLOW_UP: { [T in ConfigChange['type']]: (c: Extract<ConfigChange, { type
     return {
       reason: { id: 'designSystem' },
       prompt: `The design system "${c.title}" (ds/${c.namespace}/) was just installed in this project. Restyle the existing content to use its colours, type and components where they fit, so the work looks like it belongs to that system. Keep the copy, the structure and the layout.`,
+    };
+  },
+  theme(c) {
+    // back to the original look, or only a stray colour or two left (white on an accent): not worth a request
+    if (c.title === null || c.stay < THEME_STAY_MIN) return null;
+    return {
+      reason: { id: 'theme' },
+      prompt: `${c.file ? `${c.file} was` : 'This project was'} just switched to the "${c.theme}" theme of the design system "${c.title}" (ds/${c.namespace}/tokens.json): the colours that were its tokens, the page background, the text colour and the accent now use it, and ${c.stay} other colour${c.stay === 1 ? ' is' : 's are'} still the old ones. Restyle what is left so the work reads in that theme too: use the theme's tokens for surfaces, text, lines and accents (written as their values, not var()), and check text still has enough contrast on what it sits on. Keep the copy, the structure and the layout.`,
     };
   },
   tokens() {
@@ -78,6 +91,8 @@ export function changeScope(c: ConfigChange): string {
       return `designSystem:${c.namespace}`;
     case 'tokens':
       return 'tokens';
+    case 'theme':
+      return `theme:${c.file ?? ''}`;
     case 'speed':
       return 'speed';
   }
@@ -129,6 +144,8 @@ export function describeChange(c: ConfigChange): string {
   const px = (s: Size) => `${s[0]}×${s[1]}`;
   // names come from the project's files: quoted, so an odd one stays a name
   if (c.type === 'designSystem') return `The design system ${JSON.stringify(c.title)} was installed (ds/${c.namespace}/).`;
+  if (c.type === 'theme')
+    return `${c.file ? `Slide ${JSON.stringify(c.file)}` : 'The whole project'} was ${c.title === null ? 'put back to its original look' : `switched to the ${JSON.stringify(c.theme)} theme of the design system ${JSON.stringify(c.title)} (ds/${c.namespace}/)`}; colours that were not the system's were left as they were.`;
   if (c.type === 'tokens') return `Design tokens were edited: ${c.edits.map((e) => JSON.stringify(e)).join(', ')}.`;
   if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
   if (c.type === 'speed') return `The motion piece's playback speed (speed in motion.json) was changed from ${c.from}× to ${c.to}×; the timing written in the scene files is unchanged.`;

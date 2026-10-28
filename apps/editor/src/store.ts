@@ -34,7 +34,7 @@ import { headlessRun } from './headless';
 import { readPref, writePref } from './local';
 import { deleteFile, edit } from './editEngine';
 
-export { deleteBoard, deleteFile, edit, editCanvas, editElement, enqueueResult, inertDocument, isSaving, newUndoGroup, redo, retypeText, undo } from './editEngine';
+export { deleteBoard, deleteFile, dropGroup, edit, editCanvas, editElement, enqueueResult, inertDocument, isLastGroup, isSaving, newUndoGroup, redo, retypeText, undo } from './editEngine';
 
 /**
  * Editor state. Each file has the last version the server confirmed and a
@@ -124,7 +124,7 @@ export interface State extends AgentState {
   mode: Mode;
   /** the side pane open in the right column (inspector, data sources, code, comments), or none; see panes.ts */
   pane: PaneId | null;
-  panelTab: 'props' | 'code' | 'tweaks';
+  panelTab: 'props' | 'code' | 'tweaks' | 'theme';
   /** what the runtime measured about the selected element */
   inspect: Inspect | null;
   /** rendered instances per tid, per artboard (for "Repeating group · N items") */

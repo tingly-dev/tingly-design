@@ -16,6 +16,7 @@ import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
+import { ThemeTab } from './ThemeTab';
 import { JQueryBox } from './JQueryBox';
 import { TemplateValues } from './TemplateValues';
 import { AnimRow, FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
@@ -23,12 +24,14 @@ import { AnimRow, FormatNote, MotionLayers, MotionProps, SceneProps } from '../m
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
 export function RightPanel() {
   const { t } = useTranslation();
-  const tab = useStore((s) => s.panelTab);
+  const rawTab = useStore((s) => s.panelTab);
   const sel = useStore((s) => s.selection);
   const canvas = useCanvas();
   const slides = useStore((s) => s.kind === 'slides');
   const motion = useStore((s) => s.kind === 'motion');
   const isCanvas = useStore((s) => s.kind === 'design');
+  // the Theme tab is the canvas's and the deck's; a motion piece opened after one falls back to Properties
+  const tab = rawTab === 'theme' && !(slides || isCanvas) ? 'props' : rawTab;
   // with nothing selected, the Code tab of a deck or a motion piece shows the slide or scene on stage
   const onStage = useStore((s) =>
     s.kind === 'slides' && s.slide ? `slides/${s.slide}.html` : s.kind === 'motion' && s.motionView?.scene ? `scenes/${s.motionView.scene}.html` : null,
@@ -44,7 +47,10 @@ export function RightPanel() {
   const handle = el ? (attr(el, 'id') ? `#${attr(el, 'id')}` : `#dc${el.tid}`) : undefined;
 
   let body: React.ReactElement;
-  if (motion) {
+  // the theme is the whole work's, not the selection's: it shows whatever is selected
+  if (tab === 'theme' && (slides || isCanvas)) {
+    body = <ThemeTab />;
+  } else if (motion) {
     if (file && tab === 'code') {
       body = (
         <>
@@ -150,6 +156,7 @@ export function RightPanel() {
     { id: 'props', label: t('panel.tabs.props') },
     { id: 'code', label: t('panel.tabs.code') },
     ...(slides || motion ? [] : [{ id: 'tweaks' as const, label: t('panel.tabs.tweaks') }]),
+    ...(slides || isCanvas ? [{ id: 'theme' as const, label: t('panel.tabs.theme') }] : []),
   ];
   return (
     <aside className="panel" aria-label={t('panel.label')}>
@@ -164,7 +171,7 @@ export function RightPanel() {
           <Close />
         </button>
       </div>
-      {motion ? <MotionLayers /> : <LayerTree />}
+      {motion ? <MotionLayers /> : tab === 'theme' ? null : <LayerTree />}
       <div className="pbody">
         <LockNotice />
         <fieldset className="pset" disabled={locked}>

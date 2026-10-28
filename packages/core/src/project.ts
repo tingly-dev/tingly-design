@@ -10,6 +10,7 @@ import { checkCanvas } from './canvasCheck';
 import { DASH_INDEX, DASH_PAGE, datasetIdOf, parseDash, parseDataset } from './dash';
 import { DECK_FILE, deckOrder, deckSize, parseDeck, slideFile, type ProjectKind } from './deck';
 import { DS_INDEX, DS_TOKENS, parseDsIndex, resolveTokens } from './designSystem';
+import { themeRecordOf } from './theme';
 import { DOC_INDEX, parseDoc, tabFile, tabOrder, wordCount } from './docs';
 import { INDEX_FILE } from './launcher';
 import { MOTION_FILE, motionTimeline, parseMotion, sceneFile, sceneTiming, checkScene } from './motion';
@@ -152,6 +153,8 @@ export function outlineProject(kind: ProjectKind, files: ProjectFiles): ProjectO
 export interface ProjectSettings {
   /** Canvas, slides: the design systems installed in the project, by namespace. */
   designSystems?: string[];
+  /** Canvas, slides: the theme the project was last switched to (system namespace and theme id), when it was. */
+  theme?: { system: string; theme: string };
   /** Slides: the page size. */
   size?: [number, number];
   /** Canvas: each board's size. */
@@ -175,6 +178,11 @@ export interface ProjectSettings {
 
 const namespacesOf = (list: unknown): string[] => (Array.isArray(list) ? list : []).flatMap((r) => (isObject(r) && typeof r.namespace === 'string' ? [r.namespace] : []));
 
+const themeSetting = (index: Record<string, unknown>): Pick<ProjectSettings, 'theme'> => {
+  const r = themeRecordOf(index);
+  return r ? { theme: { system: r.system, theme: r.theme } } : {};
+};
+
 /** A long list of names is cut here: the files hold the rest, and the same line goes into every request. */
 const NAMES_MAX = 40;
 
@@ -183,11 +191,11 @@ const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFi
   design(index) {
     const c = parseCanvas(index);
     const order = [...c.order.filter((f) => c.boards[f]), ...Object.keys(c.boards).filter((f) => !c.order.includes(f))];
-    return { designSystems: namespacesOf(c.designSystems), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
+    return { designSystems: namespacesOf(c.designSystems), ...themeSetting(c), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
   },
   slides(index) {
     const d = parseDeck(index);
-    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems) };
+    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems), ...themeSetting(d) };
   },
   motion(index) {
     const m = parseMotion(index);
