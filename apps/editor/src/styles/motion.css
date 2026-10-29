@@ -975,24 +975,33 @@
 }
 
 
-/* many animated elements: the rows scroll inside a capped strip (labels follow
-   from the cover's column), so the stage keeps its room */
+/* the rows scroll inside a strip of one height (BandResizer drags it; labels follow
+   from the cover's column), so the stage keeps its room and nothing jumps between scenes */
 
 
 .mlanescroll {
-  max-height: 176px;
+  height: var(--h-motionlanes, 132px);
   overflow-y: hidden;
 }
 
 
+/* the rows' scrollbar sits in a gutter just outside the axis, so the bars stay on the ruler's scale whether or not it shows */
 .mlanescroll.rows {
   overflow-y: auto;
-  scrollbar-width: none;
+  scrollbar-gutter: stable;
+  width: calc(100% + 8px);
+  margin-right: -8px;
 }
 
 
 .mlanescroll.rows::-webkit-scrollbar {
-  display: none;
+  width: 8px;
+}
+
+
+.mlanescroll.rows::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
 }
 
 
@@ -1260,11 +1269,6 @@
    stage and the timeline do not jump when the playhead moves to a scene with more or fewer */
 .mlanes {
   position: relative;
-}
-
-.mlanescroll {
-  height: var(--h-motionlanes, 132px);
-  max-height: none;
 }
 
 .mlanesempty {

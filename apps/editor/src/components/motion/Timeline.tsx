@@ -337,28 +337,28 @@ export function Timeline(p: {
           </div>
           {lanesOpen && (
             <div className="mlanescroll rows" ref={rowsScroll} onScroll={syncLabels}>
-            {current && elementLanes.length > 0 ? (
-            <LaneRows
-              motion={motion}
-              lanes={elementLanes}
-              file={sceneFile(current.id)}
-              sceneStart={current.start}
-              sceneDur={current.duration}
-              axisMs={axisMs}
-              perMs={lanes.w / Math.max(1, axisMs)}
-              playAt={playAt}
-              open={openLane}
-              setOpen={setOpenLane}
-              draft={barDraft}
-              keyDraft={keyDraft}
-              onDrag={setBarDraft}
-              onKeyDrag={setKeyDraft}
-              axisRect={() => lanesRef.current?.getBoundingClientRect() ?? null}
-              seekScene={seekScene}
-            />
-            ) : (
-              <p className="mlanesempty">{t('motion.lanes.empty')}</p>
-            )}
+              {current && elementLanes.length > 0 ? (
+                <LaneRows
+                  motion={motion}
+                  lanes={elementLanes}
+                  file={sceneFile(current.id)}
+                  sceneStart={current.start}
+                  sceneDur={current.duration}
+                  axisMs={axisMs}
+                  perMs={lanes.w / Math.max(1, axisMs)}
+                  playAt={playAt}
+                  open={openLane}
+                  setOpen={setOpenLane}
+                  draft={barDraft}
+                  keyDraft={keyDraft}
+                  onDrag={setBarDraft}
+                  onKeyDrag={setKeyDraft}
+                  axisRect={() => lanesRef.current?.getBoundingClientRect() ?? null}
+                  seekScene={seekScene}
+                />
+              ) : (
+                <p className="mlanesempty">{t('motion.lanes.empty')}</p>
+              )}
             </div>
           )}
           {menu && (
