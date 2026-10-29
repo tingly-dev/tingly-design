@@ -216,7 +216,9 @@
   border-radius: 4px;
   background: var(--accent);
   color: var(--on-accent);
-  font: 500 12px/18px inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
   white-space: nowrap;
   pointer-events: none;
   transform-origin: bottom center;

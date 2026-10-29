@@ -149,6 +149,12 @@ export function LeftBar() {
     const r = b?.getBoundingClientRect();
     return { x: r?.left ?? 0, y: (r?.bottom ?? 0) + 8 };
   };
+  // the sizes the menu offers, each once: the selected board's, the common ones, then the person's own
+  const sizes: { size: Size; label?: string }[] = [];
+  const offer = (size: Size, label?: string) => sizes.some((o) => o.size[0] === size[0] && o.size[1] === size[1]) || sizes.push({ size, label });
+  if (selected) offer([selected.w, selected.h], t('app.tool.frameSame', { title: selected.title || t('app.tool.frame') }));
+  for (const id of QUICK_BOARDS) offer(BOARD_SIZES.find((b) => b.id === id)!.size, t(`canvas.boardSize.${id}`));
+  if (menu === 'frame') for (const m of readSizes().mine) offer(m);
   return (
     <div className="bar left" role="toolbar" aria-label={t('app.tool.bar')}>
       <button ref={pagesBtn} className="tb text" aria-haspopup="menu" aria-label={t('app.pages.button', { name: pageName })} onClick={() => setMenu('pages')}>
@@ -174,7 +180,7 @@ export function LeftBar() {
         aria-haspopup="menu"
         aria-label={t('app.tool.frame')}
         title={t('app.tool.withKeys', { label: t('app.tool.frame'), keys: 'A' })}
-        onClick={() => setMenu('frame')}
+        onClick={() => (tool === 'frame' ? useStore.setState({ tool: 'select' }) : setMenu('frame'))}
       >
         <Frame />
         <span className="caret">
@@ -215,12 +221,8 @@ export function LeftBar() {
           />
           <hr />
           <div className="head">{t('app.tool.frameAdd')}</div>
-          {selected && <BoardSizeItem size={[selected.w, selected.h]} label={t('app.tool.frameSame', { title: selected.title ?? '' })} onDone={() => setMenu(null)} />}
-          {QUICK_BOARDS.map((id) => (
-            <BoardSizeItem key={id} size={BOARD_SIZES.find((b) => b.id === id)!.size} label={t(`canvas.boardSize.${id}`)} onDone={() => setMenu(null)} />
-          ))}
-          {readSizes().mine.map((m) => (
-            <BoardSizeItem key={m.join('x')} size={m} onDone={() => setMenu(null)} />
+          {sizes.map((o) => (
+            <BoardSizeItem key={o.size.join('x')} size={o.size} label={o.label} onDone={() => setMenu(null)} />
           ))}
         </Menu>
       )}

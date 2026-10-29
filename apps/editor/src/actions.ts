@@ -304,7 +304,11 @@ export function addBoard(rect?: { x: number; y: number; w: number; h: number }, 
  * quick path, where the person picks a size instead of drawing one.
  */
 export function addBoardOfSize(size: readonly [number, number]): string {
-  const file = addBoard({ ...nextBoardPosition(canvasOf(get()), size[0]), w: size[0], h: size[1] });
+  const c = canvasOf(get());
+  const page = get().page || c.pages[0]?.id;
+  // beside what is on this page, not past boards that live on another one
+  const here = { ...c, boards: Object.fromEntries(Object.entries(c.boards).filter(([, b]) => !page || !c.pages.length || (b.page ?? c.pages[0]?.id) === page)) };
+  const file = addBoard({ ...nextBoardPosition(here, size[0]), w: size[0], h: size[1] });
   set({ tool: 'select' });
   setTimeout(() => focusBoard(file), 30);
   return file;

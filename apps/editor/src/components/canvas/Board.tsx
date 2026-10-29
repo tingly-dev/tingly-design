@@ -19,6 +19,9 @@ import { copyImage, dataUrlBlob } from '../../imageExport';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
+/** What an artboard may be stretched to (a side, in px). */
+const MIN_SIDE = 40;
+const MAX_SIDE = 8000;
 const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
 /** Live artboard frames, so the panel, menus and export can talk to them. */
@@ -319,7 +322,10 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         }
         // Shift on a corner keeps the artboard's shape: the height follows the width
         if (ev.shiftKey && kind.length === 2) {
-          const dh = Math.round(((entry.w + last.w) * entry.h) / entry.w) - entry.h;
+          const nw = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + last.w));
+          const dh = Math.min(MAX_SIDE, Math.max(MIN_SIDE, Math.round((nw * entry.h) / entry.w))) - entry.h;
+          last.w = nw - entry.w;
+          last.x = kind.includes('w') ? entry.w - nw : 0;
           last.h = dh;
           last.y = kind.includes('n') ? -dh : 0;
         }
@@ -337,8 +343,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         {
           x: entry.x + last.x,
           y: entry.y + last.y,
-          w: Math.min(8000, Math.max(40, entry.w + last.w)),
-          h: Math.min(8000, Math.max(40, entry.h + last.h)),
+          w: Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + last.w)),
+          h: Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.h + last.h)),
         },
         kind === 'move' ? 'moved' : 'resized',
       );
@@ -349,8 +355,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
 
   const x = entry.x + (drag?.x ?? 0);
   const y = entry.y + (drag?.y ?? 0);
-  const w = Math.max(40, entry.w + (drag?.w ?? 0));
-  const h = Math.max(40, entry.h + (drag?.h ?? 0));
+  const w = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + (drag?.w ?? 0)));
+  const h = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.h + (drag?.h ?? 0)));
   const inv = 1 / zoom;
   const title = entry.title || file.replace(/\.dc\.html$/, '');
 
