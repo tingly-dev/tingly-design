@@ -11,7 +11,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'out') + '/'
 CHROME = os.environ.get('DC_CHROME')
-COPY = 'uploads/box-console-Glow/Glow.dc.html'
+COPY = 'uploads/tingly-box-console-canvas-Glow/Glow.dc.html'
 
 results = []
 def check(name, ok, extra=''):
@@ -134,19 +134,19 @@ async def main():
             # --- presenting: the moving artboard loops ---------------------------------------------------
             await pg.keyboard.press('Escape')
             # --- motion: onto the scene under the playhead, seeked with it -------------------------------
-            await pg.goto(base + '/?p=design-motion')
+            await pg.goto(base + '/?p=tingly-design-motion')
             await pg.wait_for_timeout(2000)
             await pg.locator('.mscene', has_text='kind-slides').click()
             await pg.wait_for_timeout(500)
             item = await pick_glow(pg)
             await item.click()
             check('motion: importing says so', await toast(pg, '导入到场景 kind-slides'))
-            scene = lambda: read('design-motion', 'scenes', 'kind-slides.html')
+            scene = lambda: read('tingly-design-motion', 'scenes', 'kind-slides.html')
             ok = await wait_for(lambda: f'src="{COPY}"' in scene())
             check('motion: the artboard goes onto the scene under the playhead', ok)
             embed = re.search(r'<x-embed[^>]*>', scene()).group(0)
             check('…seeked with the playhead (data-seek), full frame', 'data-seek' in embed and 'width:1920px;height:1080px' in embed, embed)
-            check('motion: motion.json records where it came from', any(r['path'] == COPY for r in json.loads(read('design-motion', 'motion.json')).get('imports', [])))
+            check('motion: motion.json records where it came from', any(r['path'] == COPY for r in json.loads(read('tingly-design-motion', 'motion.json')).get('imports', [])))
             fr = await board_drawn(pg)
             check('motion: the stage draws it', fr is not None)
             if fr:

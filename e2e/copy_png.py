@@ -62,7 +62,7 @@ async def run(p, locale, theme):
     await b.close()
 
 # kind → project: each one's Import / Export menu copies what its PNG item saves
-KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
+KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'tingly-design-motion'}
 
 async def menus(p):
     b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))

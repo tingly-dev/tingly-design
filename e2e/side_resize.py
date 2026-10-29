@@ -24,7 +24,7 @@ COLUMNS = [
     ('tingly-design-guide-doc', 'doctabs', '.doctabs', 'end', None),
     ('tingly-design-guide-doc', 'docrail', '.crail', 'start', 'comments'),
     ('tingly-box-usage-dashboard', 'dashside', '.dashside', 'start', None),
-    ('design-motion', 'inspector', '.panel', 'start', None),
+    ('tingly-design-motion', 'inspector', '.panel', 'start', None),
 ]
 
 async def main():

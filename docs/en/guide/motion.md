@@ -2,7 +2,7 @@
 
 # Motion
 
-Choose "动效" (motion) when creating a project, then pick its size from the same categories a canvas and a deck use (Screen, Slides, Posts and video, WeChat, Chinese platforms, Global platforms, Web ads, Print, More ratios: 16:9 for YouTube and PPT, 9:16 for Douyin and Reels, 1:1, 4:5, 3:4, 4:3 and more) or any width and height. The next piece starts in the size you used last, and your own sizes are kept next to the presets. The sample [`?p=design-motion`](http://localhost:5173/?p=design-motion) is a 36 s promo for Tingly Design in 16:9 and 9:16 from the same scenes, with its own cover.
+Choose "动效" (motion) when creating a project, then pick its size from the same categories a canvas and a deck use (Screen, Slides, Posts and video, WeChat, Chinese platforms, Global platforms, Web ads, Print, More ratios: 16:9 for YouTube and PPT, 9:16 for Douyin and Reels, 1:1, 4:5, 3:4, 4:3 and more) or any width and height. The next piece starts in the size you used last, and your own sizes are kept next to the presets. The sample [`?p=tingly-design-motion`](http://localhost:5173/?p=tingly-design-motion) is a 36 s promo for Tingly Design in 16:9 and 9:16 from the same scenes, with its own cover.
 
 ![Motion editor: the cover on the stage, the timeline and scene strip below, formats and speed in the top bar](../../images/motion.png)
 

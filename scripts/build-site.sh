@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Assemble the GitHub Pages site into $1 (default _site): the static page in
-# site/, the README screenshots (docs/images/readme), and the design-motion promo rendered
+# site/, the README screenshots (docs/images/readme), and the tingly-design-motion promo rendered
 # from the project (needs the sandbox build, Chromium and ffmpeg).
 set -euo pipefail
 
@@ -19,6 +19,6 @@ if [[ -z "${DC_CHROME:-}" && -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
   export DC_CHROME
 fi
 
-(cd "$root" && pnpm -s tingly-design export projects/design-motion --as mp4 --format wide,tall --out "$out/media")
+(cd "$root" && pnpm -s tingly-design export projects/tingly-design-motion --as mp4 --format wide,tall --out "$out/media")
 
 ls "$out/media"

@@ -17,7 +17,7 @@
   <img src="docs/images/readme/hero.gif" alt="Describe a landing page, retype a headline by hand, then ask the AI for more: all in the same design" width="800">
 </p>
 
-<p align="center"><sub>Made with Tingly Design itself: <a href="projects/design-motion"><code>projects/design-motion</code></a>, a motion project, rendered by the app's own exporter.</sub></p>
+<p align="center"><sub>Made with Tingly Design itself: <a href="projects/tingly-design-motion"><code>projects/tingly-design-motion</code></a>, a motion project, rendered by the app's own exporter.</sub></p>
 
 ## One design, three ways to edit it
 
@@ -96,7 +96,7 @@ Six sample projects introduce our own two projects, **Tingly Design** (this repo
 | [**Design system**](docs/en/guide/design-system.md) | [`?p=tingly-design-system`](http://localhost:5173/?p=tingly-design-system) | The Tingly brand: light and dark themes, Instrument Serif and Inter, a six-step type scale, four components and the marks | `design-system.json` + `tokens.json` + `components/` |
 | [**Dashboard**](docs/en/guide/dashboard.md) | [`?p=tingly-box-usage-dashboard`](http://localhost:5173/?p=tingly-box-usage-dashboard) | A team's Tingly Box gateway usage for Q3 (demo data): two live SQLite queries, a CSV, a JSON file and a provider filter | `dash.json` + `datasets/` + `files/index.html` + `data/` |
 | [**Docs**](docs/en/guide/docs.md) | [`?p=tingly-design-guide-doc`](http://localhost:5173/?p=tingly-design-guide-doc) | The Tingly Design handbook: four tabs, a project-kinds table, a setup checklist, a code block and comments | `doc.json` + `tabs/<id>.md` + `comments.json` |
-| [**Motion**](docs/en/guide/motion.md) | [`?p=design-motion`](http://localhost:5173/?p=design-motion) | A 36 s promo for Tingly Design: an idea becomes a design, a person retypes a line, the AI carries on, then every kind in turn; 16:9 and 9:16 from the same scenes, with its own cover | `motion.json` + `scenes/<id>.html` |
+| [**Motion**](docs/en/guide/motion.md) | [`?p=tingly-design-motion`](http://localhost:5173/?p=tingly-design-motion) | A 36 s promo for Tingly Design: an idea becomes a design, a person retypes a line, the AI carries on, then every kind in turn; 16:9 and 9:16 from the same scenes, with its own cover | `motion.json` + `scenes/<id>.html` |
 
 A design system can be installed into a canvas or a deck; after that, colour fields and the text-style menu offer its tokens.
 

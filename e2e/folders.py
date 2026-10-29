@@ -9,7 +9,7 @@ SHOTS = os.environ.get('DC_SHOTS')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 TMP = '/tmp/dc-folders-e2e'
-SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'design-motion': 'motion'}
+SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'tingly-design-motion': 'motion'}
 
 results = []
 def check(name, ok, extra=''):
@@ -57,7 +57,7 @@ async def main():
     twin = os.path.join(TMP, 'work', 'twin', 'my tingly-box-console-canvas')
     shutil.copytree(os.path.join(TMP, 'work', 'my tingly-box-console-canvas'), twin, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
     st, other = call('POST', '/api/links', {'path': twin})
-    check('a folder with the same name as a linked one gets a name of its own', st == 200 and other.get('name') not in (None, named['design']) and other['name'].startswith('my-box-console-'), str(other))
+    check('a folder with the same name as a linked one gets a name of its own', st == 200 and other.get('name') not in (None, named['design']) and other['name'].startswith('my-tingly-box-console-canvas-'), str(other))
     st, r = call('GET', '/api/resolve/' + named['design'])
     check('a current name resolves to itself', r.get('name') == named['design'], str(r))
     st, r = call('GET', '/api/resolve/tingly-box-console-canvas')
@@ -113,7 +113,7 @@ async def main():
 
             # --- open a folder ----------------------------------------------------------------
             target = os.path.join(TMP, f'brand-motion-{lang[:2]}')
-            shutil.copytree(os.path.join(REPO, 'projects', 'design-motion'), target, ignore=shutil.ignore_patterns('.journal.jsonl', 'renders'))
+            shutil.copytree(os.path.join(REPO, 'projects', 'tingly-design-motion'), target, ignore=shutil.ignore_patterns('.journal.jsonl', 'renders'))
             await pg.locator('.lnewbtn').click()
             news = await pg.locator('.menu [data-new]').evaluate_all('cs => cs.map(c => c.dataset.new)')
             check(f'[{tag}] the New project menu ends with open a folder', news[-1] == 'folder', str(news))

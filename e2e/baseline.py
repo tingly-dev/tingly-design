@@ -19,12 +19,12 @@ NEW = os.path.join(HERE, 'out', 'baselines-new')
 RECORD = os.environ.get('DC_RECORD') == '1'
 BRANCH = 'e2e-baselines'
 SCREENS = {'launcher': '', 'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design-system': 'tingly-design-system',
-           'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
+           'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'tingly-design-motion'}
 # the same kinds with the request bar moved into the conversation column on the left
 LEFT = {f'{k}-left': v for k, v in SCREENS.items() if v}
 LOOKS = [('light', 'en'), ('dark', 'en'), ('light', 'zh'), ('dark', 'zh')]
 # open states of the editor's chrome, not only the first screen: project, then how to reach the state
-STATES = {'canvas-theme-tab': ('box-console', 'theme'), 'canvas-shortcuts': ('box-console', 'shortcuts')}
+STATES = {'canvas-theme-tab': ('tingly-box-console-canvas', 'theme'), 'canvas-shortcuts': ('tingly-box-console-canvas', 'shortcuts')}
 # a pixel differs when a channel moves by more than this; a picture differs when more than this share of pixels do
 PIXEL, SHARE = 24, 0.002
 

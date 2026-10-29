@@ -9,7 +9,7 @@ SHOTS = os.environ.get('DC_SHOTS')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 TMP = os.path.realpath('/tmp/dc-git-e2e')
-SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'design-motion': 'motion'}
+SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'tingly-design-motion': 'motion'}
 
 results = []
 def check(name, ok, extra=''):

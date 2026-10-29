@@ -7,13 +7,13 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCENE = os.path.join(REPO, 'projects/design-motion/scenes/kind-slides.html')
+SCENE = os.path.join(REPO, 'projects/tingly-design-motion/scenes/kind-slides.html')
 CHROME = os.environ.get('DC_CHROME')
 src = lambda: open(SCENE, encoding='utf-8').read()
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
-    subprocess.run(['git', 'checkout', '--', 'projects/design-motion'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-motion'], cwd=REPO)
     open(OUT + 'mock.log', 'w').close()
     ok = True
     async with async_playwright() as p:
@@ -21,7 +21,7 @@ async def main():
         pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 1000})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + '/?p=design-motion')
+        await pg.goto(BASE + '/?p=tingly-design-motion')
         await pg.locator('.mscene', has_text='kind-slides').click()
         h2 = pg.frame_locator('.medit iframe').locator('section#kind-slides h2')
         await h2.click()
@@ -47,7 +47,7 @@ async def main():
             print(('PASS ' if good else 'FAIL ') + name)
             ok = ok and good
         await b.close()
-    subprocess.run(['git', 'checkout', '--', 'projects/design-motion'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-motion'], cwd=REPO)
     if not ok: raise SystemExit(1)
 
 asyncio.run(main())
