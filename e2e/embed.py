@@ -189,8 +189,16 @@ async def main():
         gone = False
     check('with DC_EXIT_WITH_STDIN=1 it exits when the host closes stdin', gone)
 
+    # a folder seeded before a sample was renamed keeps the person's copy under the new name, and its group follows
+    os.rename(os.path.join(projects, 'tingly-design-motion'), os.path.join(projects, 'design-motion'))
+    gpath = os.path.join(projects, '.groups.json')
+    g = json.load(open(gpath, encoding='utf-8'))
+    g['design-motion'] = g.pop('tingly-design-motion')
+    json.dump(g, open(gpath, 'w', encoding='utf-8'))
     proc2, _ = launch(projects)
     check('an existing projects folder is never reseeded', open(overview).read().count('- [x] Run `pnpm install`') == 1)
+    check('a sample seeded under its old name moves to the new one', os.path.isdir(os.path.join(projects, 'tingly-design-motion')) and not os.path.exists(os.path.join(projects, 'design-motion')))
+    check('…and its launcher group follows', json.load(open(gpath, encoding='utf-8')) == {n: 'tingly-design' for n in samples}, open(gpath).read())
     proc2.terminate()
     try:
         proc2.wait(5)

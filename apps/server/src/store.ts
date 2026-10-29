@@ -402,7 +402,10 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
  */
 export async function seedSamples(): Promise<boolean> {
   if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return false;
-  if (await stat(PROJECTS_DIR).catch(() => null)) return false;
+  if (await stat(PROJECTS_DIR).catch(() => null)) {
+    await renameSamples();
+    return false;
+  }
   if (!(await stat(SAMPLES_DIR).catch(() => null))) return false;
   // whatever a person's machine keeps beside a project (journal, run reports, Claude Code's
   // conversation, the transcript: every dotfile) belongs to whoever used the samples before
@@ -412,6 +415,47 @@ export async function seedSamples(): Promise<boolean> {
   const samples = (await readdir(SAMPLES_DIR, { withFileTypes: true })).filter((e) => e.isDirectory() && isProjectName(e.name));
   await writeFile(join(PROJECTS_DIR, GROUPS_FILE), JSON.stringify(Object.fromEntries(samples.map((e) => [e.name, SAMPLES_GROUP])), null, 2) + '\n', 'utf8');
   return true;
+}
+
+/**
+ * Samples that were renamed, old folder name to new. A projects folder seeded before the rename keeps the
+ * person's copy (with their edits and history) under the new name, and its launcher group follows; a folder
+ * that already has the new name is left alone, so nothing of theirs is overwritten.
+ */
+const RENAMED_SAMPLES: Record<string, string> = {
+  'box-console': 'tingly-box-console-canvas',
+  'box-usage': 'tingly-box-usage-dashboard',
+  'design-guide': 'tingly-design-guide-doc',
+  'design-motion': 'tingly-design-motion',
+  'harness-motion': 'tingly-design-harness-motion',
+  'motion-effects': 'tingly-design-shader-effects-motion',
+  'tingly-design-ui': 'tingly-design-ui-canvas',
+  'tingly-ds': 'tingly-design-system',
+  'tingly-intro': 'tingly-design-intro-slides',
+};
+
+async function renameSamples(): Promise<void> {
+  const moved: [string, string][] = [];
+  for (const [old, next] of Object.entries(RENAMED_SAMPLES)) {
+    const from = join(PROJECTS_DIR, old);
+    const to = join(PROJECTS_DIR, next);
+    if (links.has(old) || !(await stat(from).catch(() => null))?.isDirectory() || (await stat(to).catch(() => null))) continue;
+    try {
+      await rename(from, to);
+      moved.push([old, next]);
+    } catch {
+      // in use or read-only: the old name keeps working as it was
+    }
+  }
+  if (!moved.length) return;
+  try {
+    const file = join(PROJECTS_DIR, GROUPS_FILE);
+    const raw = JSON.parse(await readFile(file, 'utf8')) as Record<string, unknown>;
+    for (const [old, next] of moved) if (old in raw) raw[next] = raw[old], delete raw[old];
+    await writeFile(file, JSON.stringify(raw, null, 2) + '\n', 'utf8');
+  } catch {
+    // no groups file: nothing to follow
+  }
 }
 
 const GROUPS_FILE = '.groups.json';
