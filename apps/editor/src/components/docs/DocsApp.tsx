@@ -40,9 +40,10 @@ import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { CommentsRail } from './Comments';
 import { FileMenu, imageExportItems, type ExportItem } from '../FileMenu';
-import { FilePdf, FileText } from '../icons';
+import { CopyPicture, FilePdf, FileText, FileWord } from '../icons';
 import { t as tNow } from '../../i18n';
-import { saveDocMarkdown } from './markdownExport';
+import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';
+import { saveDocWord } from './wordExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 import { History, LayoutCols } from '../icons';
@@ -225,6 +226,13 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => savePdf(`${name}.pdf`, { html: docHtml(d), paper: 'a4', print: () => void printWindow(docHtml(d), true) }),
     },
     {
+      id: 'docx',
+      label: tNow('common.transfer.label.word'),
+      hint: tNow('common.transfer.hint.docWord'),
+      icon: <FileWord />,
+      run: () => saveDocWord(name),
+    },
+    {
       id: 'mdAll',
       label: tNow('common.transfer.label.markdown'),
       hint: tNow('common.transfer.hint.docMdWhole'),
@@ -239,6 +247,14 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       icon: <FileText />,
       disabled: !tab,
       run: () => saveDocMarkdown(name, tab!),
+    },
+    {
+      id: 'copy-md',
+      label: tNow('common.transfer.label.copyMarkdownTab'),
+      hint: tNow('common.transfer.hint.docCopyMd'),
+      icon: <CopyPicture />,
+      disabled: !tab,
+      run: () => copyDocMarkdown(name, tab!),
     },
     { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
     ...imageExportItems({ hint: tNow('common.transfer.hint.docTab'), name: `${name}.png`, disabled: !tab, rule: true, make: () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }) }),

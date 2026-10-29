@@ -140,6 +140,10 @@ export default {
     me: 'Me',
   },
   export: {
+    copied: 'Copied as Markdown',
+    copyFallback: 'Your browser would not let the page copy, so the Markdown was downloaded instead',
+    missingWord_one: '{{count}} picture could not be put in the Word file and was left as its description.',
+    missingWord_other: '{{count}} pictures could not be put in the Word file and were left as their descriptions.',
     missing_one: '{{count}} picture could not be read and was left out of the .zip.',
     missing_other: '{{count}} pictures could not be read and were left out of the .zip.',
   },

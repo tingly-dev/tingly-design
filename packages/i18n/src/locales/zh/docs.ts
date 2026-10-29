@@ -142,6 +142,9 @@ export default {
     me: '我',
   },
   export: {
+    copied: '已复制为 Markdown',
+    copyFallback: '浏览器不让页面写剪贴板，已改为下载 Markdown',
+    missingWord_other: '有 {{count}} 张图片放不进 Word 文件，留成了它的说明文字。',
     missing_other: '有 {{count}} 张图片读不到，没有放进 .zip。',
   },
   import: {

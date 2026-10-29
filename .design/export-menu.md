@@ -26,7 +26,7 @@
 | 幻灯片 | PDF；PowerPoint（.pptx）；PNG（这一页）；PNG 多张（每一页）；HTML；Markdown；演讲者备注 | PPTX 为整份可见 deck，能原生则原生，其余逐元素图片化，见 §3.2；Markdown 见 §3.1 |
 | 设计系统 | PNG（屏幕上的这个视图） | 没有适合分页的内容，不做 PDF |
 | 看板 | PNG（页面现在的样子） | 页面在沙箱框架里，PDF 没做（页面是动态的，分页没有意义） |
-| 文档 | PDF；Markdown（当前标签页、整篇）；HTML；PNG（当前标签页） | PDF 按 A4 排版；整篇和当前标签页各一项，名称分开写（“Markdown”“Markdown（当前标签页）”），不靠悬停说明区分；Markdown 见 [docs-markdown.md](./docs-markdown.md)（有图片时是带图片的 .zip） |
+| 文档 | PDF；Word 文档（整篇）；Markdown（当前标签页、整篇）；复制为 Markdown（当前标签页）；HTML；PNG（当前标签页） | PDF 按 A4 排版；整篇和当前标签页各一项，名称分开写（“Markdown”“Markdown（当前标签页）”），不靠悬停说明区分；Markdown 见 [docs-markdown.md](./docs-markdown.md)（有图片时是带图片的 .zip）；Word 见 [docs-docx.md](./docs-docx.md)；“复制为 Markdown”和复制为 PNG 一样是编辑器里的动作，不进命令行 |
 | 动效 | 视频…（打开选项对话框）；GIF…（同一个对话框，格式已选 GIF）；PNG（播放头所在的帧） | GIF 单独占一项：只在"更多选项"里的格式，用户找不到，会以为不支持 |
 
 ### 3.1 幻灯片的 Markdown：写成文档，不是缩小的幻灯片

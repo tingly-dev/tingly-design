@@ -107,6 +107,28 @@ async def main():
         outside = re.sub(r'```.*?```', '', md, flags=re.S)
         check('docs: …and no tab keeps a second top-level heading', len(re.findall(r'^# ', outside, flags=re.M)) == 1)
 
+        # --- Word: the whole doc as a .docx ----------------------------------------------------------
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        async with pg.expect_download(timeout=30000) as dl:
+            await pg.get_by_role('menuitem', name=re.compile('^Word document')).click()
+        d = await dl.value
+        path = OUT + d.suggested_filename
+        await d.save_as(path)
+        check('docs: the whole doc saves as a .docx', d.suggested_filename.endswith('.docx'), d.suggested_filename)
+        with zipfile.ZipFile(path) as z:
+            names = z.namelist()
+            body = z.read('word/document.xml').decode('utf-8')
+        check('docs: …a Word package with the doc title as a heading and its tables', 'word/document.xml' in names and '<w:pStyle w:val="Heading1"/>' in body and body.count('<w:tbl>') >= 3, str(names))
+        check('docs: …and the architecture picture drawn to a PNG inside it', any(n.startswith('word/media/') and n.endswith('.png') for n in names), str(names))
+
+        # --- copy as Markdown: the tab on the clipboard ----------------------------------------------
+        await ctx.grant_permissions(['clipboard-read', 'clipboard-write'])
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        await pg.get_by_role('menuitem', name=re.compile('^Copy as Markdown')).click()
+        await pg.wait_for_timeout(500)
+        clip = await pg.evaluate('navigator.clipboard.readText()')
+        check('docs: Copy as Markdown puts the open tab on the clipboard, headed by its title', clip.startswith('# ') and len(clip) > 200, clip[:120])
+
         # --- no Chrome on the server: the print window ------------------------------------------------
         await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))
         await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')

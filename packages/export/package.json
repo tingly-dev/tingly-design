@@ -13,7 +13,8 @@
     "./snap": "./src/frameSnap.ts",
     "./frames": "./src/frames.ts",
     "./pptx": "./src/pptx.ts",
-    "./pptx-dom": "./src/pptxDom.ts"
+    "./pptx-dom": "./src/pptxDom.ts",
+    "./docx": "./src/docx.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -23,6 +24,7 @@
     "fflate": "0.8.3",
     "gifenc": "^1.0.3",
     "html-to-image": "^1.11.13",
+    "marked": "14.1.4",
     "mediabunny": "^1.61.4",
     "pptxgenjs": "4.0.1"
   },
