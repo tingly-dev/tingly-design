@@ -4,7 +4,9 @@
   <img src="docs/images/readme/cover.png" alt="Tingly Design" width="640">
 </p>
 
-<h3 align="center">An open-source design tool where people and AI edit the same files.</h3>
+<h3 align="center">AI drafts. You decide.</h3>
+
+<p align="center"><sub>The open-source AI design studio.</sub></p>
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
