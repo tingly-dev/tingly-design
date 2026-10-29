@@ -128,6 +128,8 @@ function follow(file: string, slice: string | null, fallback: number): number {
 }
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
+type Edge = 'n' | 'e' | 's' | 'w';
+const EDGES: Edge[] = ['n', 'e', 's', 'w'];
 
 export const BoardView = memo(function BoardView({ file, entry }: { file: string; entry: BoardEntry }) {
   const { t } = useTranslation();
@@ -288,7 +290,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     if (ready) post(file, { dc: 'hover', tid: hover });
   }, [ready, hover, file]);
 
-  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner) => {
+  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner | Edge) => {
     if (e.button !== 0 || mode === 'play') return;
     e.preventDefault();
     e.stopPropagation();
@@ -314,6 +316,12 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         if (kind.includes('n')) {
           last.y = dy;
           last.h = -dy;
+        }
+        // Shift on a corner keeps the artboard's shape: the height follows the width
+        if (ev.shiftKey && kind.length === 2) {
+          const dh = Math.round(((entry.w + last.w) * entry.h) / entry.w) - entry.h;
+          last.h = dh;
+          last.y = kind.includes('n') ? -dh : 0;
         }
       }
       setDrag(last);
@@ -390,6 +398,26 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         <iframe ref={frame} title={title} sandbox="allow-scripts allow-popups" srcDoc={srcdoc} />
       </div>
       {boardSelected && <div className="outline" />}
+      {drag && (drag.w !== 0 || drag.h !== 0) && (
+        <div className="size-badge" style={{ transform: `scale(${inv})`, marginBottom: 34 * inv }}>
+          {Math.round(w)} × {Math.round(h)}
+        </div>
+      )}
+      {boardSelected &&
+        mode === 'edit' &&
+        !entry.locked &&
+        EDGES.map((c) => (
+          <div
+            key={c}
+            className={`edge ${c}`}
+            style={{
+              [c === 'n' || c === 's' ? 'height' : 'width']: 10 * inv,
+              [c === 'n' ? 'top' : c === 's' ? 'bottom' : c === 'w' ? 'left' : 'right']: -5 * inv,
+              cursor: c === 'n' || c === 's' ? 'ns-resize' : 'ew-resize',
+            }}
+            onPointerDown={(e) => startDrag(e, c)}
+          />
+        ))}
       {boardSelected &&
         mode === 'edit' &&
         !entry.locked &&

@@ -1,8 +1,10 @@
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { addPage, renamePage } from '../../actions';
+import { BOARD_SIZES, type Size } from '@dc/core';
+import { addBoardOfSize, addPage, renamePage } from '../../actions';
 import { editCanvas, useCanvas, useStore, type Tool } from '../../store';
+import { readSizes } from '../motion/motionSizes';
 import { fitAll, zoomAt, zoomToSelection, setView } from './view';
 import { Menu, MenuItem } from '../Menu';
 import {
@@ -26,6 +28,9 @@ import { canvasExportItems } from './Board';
 import { canvasImport } from './canvasImport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 
+/** The sizes the artboard menu offers by name: the common screen, phone, 16:9 and square (every other is in the panel's list). */
+const QUICK_BOARDS = ['desktop', 'iphone15', 'wide', 'square'] as const;
+
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },
   { tool: 'oval', keys: 'O', icon: <Oval /> },
@@ -46,6 +51,18 @@ function ToolButton({ tool, label, keys, children }: { tool: Tool; label: string
     >
       {children}
     </button>
+  );
+}
+
+function BoardSizeItem({ size, label, onDone }: { size: Size; label?: string; onDone: () => void }) {
+  return (
+    <MenuItem
+      label={label ? `${label} ${size[0]} × ${size[1]}` : `${size[0]} × ${size[1]}`}
+      onSelect={() => {
+        addBoardOfSize(size);
+        onDone();
+      }}
+    />
   );
 }
 
@@ -121,9 +138,11 @@ export function LeftBar() {
   const canvas = useCanvas();
   const page = useStore((s) => s.page);
   const tool = useStore((s) => s.tool);
-  const [menu, setMenu] = useState<null | 'pages' | 'shapes'>(null);
+  const [menu, setMenu] = useState<null | 'pages' | 'shapes' | 'frame'>(null);
   const pagesBtn = useRef<HTMLButtonElement>(null);
   const shapesBtn = useRef<HTMLButtonElement>(null);
+  const frameBtn = useRef<HTMLButtonElement>(null);
+  const selected = useStore((s) => (s.selection?.kind === 'board' || s.selection?.kind === 'el' ? canvas.boards[s.selection.file] : undefined));
   const pageName = canvas.pages.find((p) => p.id === (page || canvas.pages[0]?.id))?.name ?? t('app.page.name', { n: 1 });
   const shape = SHAPES.find((s) => s.tool === tool);
   const at = (b: HTMLButtonElement | null) => {
@@ -148,9 +167,20 @@ export function LeftBar() {
       <ToolButton tool="text" label={t('app.tool.text')} keys="T">
         <TextT />
       </ToolButton>
-      <ToolButton tool="frame" label={t('app.tool.frame')} keys="A">
+      <button
+        ref={frameBtn}
+        className="tb"
+        aria-pressed={tool === 'frame'}
+        aria-haspopup="menu"
+        aria-label={t('app.tool.frame')}
+        title={t('app.tool.withKeys', { label: t('app.tool.frame'), keys: 'A' })}
+        onClick={() => setMenu('frame')}
+      >
         <Frame />
-      </ToolButton>
+        <span className="caret">
+          <Caret />
+        </span>
+      </button>
       <ToolButton tool="note" label={t('app.tool.note')} keys="N">
         <Note />
       </ToolButton>
@@ -172,6 +202,28 @@ export function LeftBar() {
         </span>
       </button>
       {menu === 'pages' && <PagesMenu {...at(pagesBtn.current)} onClose={() => setMenu(null)} />}
+      {menu === 'frame' && (
+        <Menu {...at(frameBtn.current)} onClose={() => setMenu(null)} label={t('app.tool.frame')}>
+          <MenuItem
+            label={t('app.tool.frameDraw')}
+            keys="A"
+            icon={<Frame />}
+            onSelect={() => {
+              useStore.setState({ tool: 'frame', mode: 'edit' });
+              setMenu(null);
+            }}
+          />
+          <hr />
+          <div className="head">{t('app.tool.frameAdd')}</div>
+          {selected && <BoardSizeItem size={[selected.w, selected.h]} label={t('app.tool.frameSame', { title: selected.title ?? '' })} onDone={() => setMenu(null)} />}
+          {QUICK_BOARDS.map((id) => (
+            <BoardSizeItem key={id} size={BOARD_SIZES.find((b) => b.id === id)!.size} label={t(`canvas.boardSize.${id}`)} onDone={() => setMenu(null)} />
+          ))}
+          {readSizes().mine.map((m) => (
+            <BoardSizeItem key={m.join('x')} size={m} onDone={() => setMenu(null)} />
+          ))}
+        </Menu>
+      )}
       {menu === 'shapes' && (
         <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label={t('app.tool.shapes')}>
           {SHAPES.map((s) => (

@@ -299,6 +299,17 @@ export function addBoard(rect?: { x: number; y: number; w: number; h: number }, 
   return file;
 }
 
+/**
+ * A new artboard of a given size, next to the others on this page, selected and in view: the toolbar menu's
+ * quick path, where the person picks a size instead of drawing one.
+ */
+export function addBoardOfSize(size: readonly [number, number]): string {
+  const file = addBoard({ ...nextBoardPosition(canvasOf(get()), size[0]), w: size[0], h: size[1] });
+  set({ tool: 'select' });
+  setTimeout(() => focusBoard(file), 30);
+  return file;
+}
+
 export function duplicateBoard(file: string): void {
   const s = get();
   const c = canvasOf(s);
