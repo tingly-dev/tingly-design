@@ -218,6 +218,8 @@ async def main():
         await pg.mouse.move(box['x'] + box['width'], box['y'] + box['height'] / 2)
         await pg.mouse.down(); await pg.mouse.move(box['x'] + box['width'] + 40, box['y'] + box['height'] / 2, steps=5); await pg.mouse.up()
         check('an artboard resizes from its edge', await wait_for(lambda: canvas()['boards'][placed]['w'] > 1440 and canvas()['boards'][placed]['h'] == 900))
+        await pg.keyboard.press('Delete')
+        check('the placed artboard can be removed again', await wait_for(lambda: placed not in canvas()['boards']))
 
         # text tool inside an artboard
         await pg.keyboard.press('Escape')
