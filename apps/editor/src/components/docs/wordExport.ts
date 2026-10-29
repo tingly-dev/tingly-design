@@ -13,9 +13,12 @@ async function svgToPng(svg: Uint8Array): Promise<{ bytes: Uint8Array; width: nu
   try {
     const img = new Image();
     img.src = url;
-    await img.decode();
-    const width = img.naturalWidth || 800;
-    const height = img.naturalHeight || 600;
+    await new Promise((ok, no) => ((img.onload = ok), (img.onerror = no)));
+    // an SVG with only a viewBox has no size of its own to the browser: take it from the markup
+    const text = new TextDecoder().decode(svg.subarray(0, 4096));
+    const box = /viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(text);
+    const width = img.naturalWidth || Number(box?.[1]) || 800;
+    const height = img.naturalHeight || Number(box?.[2]) || 600;
     const canvas = document.createElement('canvas');
     canvas.width = width * 2;
     canvas.height = height * 2;

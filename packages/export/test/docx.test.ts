@@ -66,6 +66,20 @@ describe('markdownToDocx', () => {
     expect(strFromU8(files['[Content_Types].xml']!)).toContain('Extension="png"');
   });
 
+  it('keeps entities in code as written and turns the ones in text into characters', () => {
+    const { doc } = read('&copy; 2025&nbsp;x &#169; &#x41;\n\n```html\n&lt;div&gt; a &amp;&amp; b\n```\n');
+    expect(doc).toContain('© 2025\u00a0x © A');
+    expect(doc).toContain('&amp;lt;div&amp;gt; a &amp;amp;&amp;amp; b');
+  });
+
+  it('indents a list inside a quote from its own level, and sizes table columns by their content', () => {
+    const { doc } = read('> - one\n>   - two\n\n| a | long column here with words |\n|---|---|\n| 1 | and its long content in the cell |\n');
+    expect(doc).toContain('<w:ind w:left="1080" w:hanging="360"/>');
+    expect(doc).toContain('<w:ind w:left="1800" w:hanging="360"/>');
+    const grid = [...doc.matchAll(/<w:gridCol w:w="(\d+)"\/>/g)].map((m) => Number(m[1]));
+    expect(grid[1]! > grid[0]! * 2).toBe(true);
+  });
+
   it('keeps a script from breaking out of the XML', () => {
     const { doc } = read('x \u0001 <script>"a"</script> y');
     expect(doc).not.toContain('\u0001');

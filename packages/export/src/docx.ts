@@ -49,9 +49,15 @@ function esc(s: string): string {
   return s.replace(BAD_XML, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** `marked` hands text back with HTML entities escaped; Word wants the characters. */
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0', copy: '©', reg: '®', trade: '™', hellip: '…', mdash: '—', ndash: '–', lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', times: '×', middot: '·', bull: '•' };
+
+/** `marked` hands text and code spans back with HTML entities in them (the ones it escaped and the ones the writer typed); Word wants the characters. */
 function unescapeHtml(s: string): string {
-  return s.replace(/&(amp|lt|gt|quot|#39|#x27);/g, (_m, e: string) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'" })[e]!);
+  return s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec?: string, hexa?: string, name?: string) => {
+    if (name) return NAMED[name.toLowerCase()] ?? m;
+    const code = dec ? Number(dec) : parseInt(hexa!, 16);
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+  });
 }
 
 function hex(color: string | undefined): string | null {
@@ -232,8 +238,10 @@ class Builder {
     if (o.keepNext) x += '<w:keepNext/>';
     if (o.num) x += `<w:numPr><w:ilvl w:val="${o.num.level}"/><w:numId w:val="${o.num.id}"/></w:numPr>`;
     if (o.after !== undefined) x += `<w:spacing w:before="0" w:after="${o.after}"/>`;
-    const left = (o.left ?? 0) + (o.quote ? 360 * o.quote : 0);
-    if (left || o.hanging) x += `<w:ind w:left="${left}"${o.hanging ? ` w:hanging="${o.hanging}"` : ''}/>`;
+    // a list line in a quote is indented from its level's own place, which direct indent would otherwise replace
+    const left = o.num && o.quote ? 720 * (o.num.level + 1) + 360 * o.quote : (o.left ?? 0) + (o.quote ? 360 * o.quote : 0);
+    const hanging = o.num && o.quote ? 360 : o.hanging;
+    if (left || hanging) x += `<w:ind w:left="${left}"${hanging ? ` w:hanging="${hanging}"` : ''}/>`;
     return `<w:p>${x ? `<w:pPr>${x}</w:pPr>` : ''}${runs}</w:p>`;
   }
 
@@ -259,7 +267,7 @@ class Builder {
           x += this.blocks((t as Tokens.Blockquote).tokens, { quote: (c.quote ?? 0) + 1, left: c.left });
           break;
         case 'code': {
-          const lines = unescapeHtml((t as Tokens.Code).text).split(/\r?\n/);
+          const lines = (t as Tokens.Code).text.split(/\r?\n/);
           x += lines.map((l, n) => this.p(run(l, {}), { style: 'CodeBlock', left: c.left, after: n === lines.length - 1 ? 160 : undefined })).join('');
           break;
         }
@@ -302,19 +310,22 @@ class Builder {
 
   private table(t: Tokens.Table): string {
     const cols = Math.max(1, t.header.length);
-    const w = Math.floor(TEXT_WIDTH / cols);
+    // a column's share follows how much its longest cell says (kept between a sliver and most of the page), so a short column does not take what a long one needs
+    const weight = Array.from({ length: cols }, (_v, n) => Math.min(40, Math.max(12, ...[t.header[n], ...t.rows.map((r) => r[n])].map((c) => (c?.text.length ?? 0)))));
+    const total = weight.reduce((a, b) => a + b, 0);
+    const widths = weight.map((x) => Math.floor((TEXT_WIDTH * x) / total));
     const border = (n: string) => `<w:${n} w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>`;
-    const cell = (c: Tokens.TableCell, head: boolean, align: string | null) => {
+    const cell = (c: Tokens.TableCell, head: boolean, align: string | null, w: number) => {
       const jc = align === 'center' ? 'center' : align === 'right' ? 'right' : '';
       const para = `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/>${jc ? `<w:jc w:val="${jc}"/>` : ''}</w:pPr>${this.inline(c.tokens, head ? { b: true } : {})}</w:p>`;
       return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${head ? '<w:shd w:val="clear" w:color="auto" w:fill="F2F2EF"/>' : ''}</w:tcPr>${para}</w:tc>`;
     };
     const row = (cells: Tokens.TableCell[], head: boolean) =>
-      `<w:tr>${head ? '<w:trPr><w:cantSplit/><w:tblHeader/></w:trPr>' : '<w:trPr><w:cantSplit/></w:trPr>'}${Array.from({ length: cols }, (_v, n) => cell(cells[n] ?? { text: '', tokens: [], header: head, align: null }, head, t.align[n] ?? null)).join('')}</w:tr>`;
+      `<w:tr>${head ? '<w:trPr><w:cantSplit/><w:tblHeader/></w:trPr>' : '<w:trPr><w:cantSplit/></w:trPr>'}${Array.from({ length: cols }, (_v, n) => cell(cells[n] ?? { text: '', tokens: [], header: head, align: null }, head, t.align[n] ?? null, widths[n]!)).join('')}</w:tr>`;
     return (
-      `<w:tbl><w:tblPr><w:tblW w:w="${w * cols}" w:type="dxa"/><w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('')}</w:tblBorders>` +
+      `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('')}</w:tblBorders>` +
       '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr>' +
-      `<w:tblGrid>${Array.from({ length: cols }, () => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` +
+      `<w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` +
       row(t.header, true) +
       t.rows.map((r) => row(r, false)).join('') +
       '</w:tbl>' +
