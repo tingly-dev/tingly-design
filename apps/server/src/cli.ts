@@ -277,14 +277,14 @@ async function machine(): Promise<number> {
   const ai = aiResolved();
   const fast = fastReady(ai);
   const running = await editor();
-  if (opts.json) return print({ version: layout.VERSION, projects: layout.PROJECTS_DIR, chrome, ffmpeg, claude, fastModel: fast ? ai.fastModel.value : null, editor: running ? { url: running.editor, pid: running.pid, version: running.version } : null }), 0;
+  if (opts.json) return print({ version: layout.VERSION, projects: layout.PROJECTS_DIR, chrome, ffmpeg, claude, fastModel: fast ? ai.fast.model.value : null, editor: running ? { url: running.editor, pid: running.pid, version: running.version } : null }), 0;
   const line = (ok: boolean, text: string) => console.log(`${ok ? '✓' : '✗'} ${text}`);
   console.log(t('cli.machine.title', { version: layout.VERSION }));
   console.log(`  ${t('cli.machine.projects', { dir: layout.PROJECTS_DIR })}`);
   line(!!chrome, chrome ? t('cli.machine.chrome', { path: chrome }) : t('cli.machine.noChrome'));
   line(ffmpeg, t(ffmpeg ? 'cli.machine.ffmpeg' : 'cli.machine.noFfmpeg'));
   line(claude, t(claude ? 'cli.machine.claude' : 'cli.machine.noClaude'));
-  line(fast, fast ? t('cli.machine.fast', { model: ai.fastModel.value }) : t('cli.machine.noFast'));
+  line(fast, fast ? t('cli.machine.fast', { model: ai.fast.model.value }) : t('cli.machine.noFast'));
   console.log(`  ${running ? t('cli.machine.running', { url: running.editor, pid: running.pid }) : t('cli.machine.notRunning')}`);
   return 0;
 }

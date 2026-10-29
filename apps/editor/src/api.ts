@@ -1,4 +1,4 @@
-import type { Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -88,47 +88,15 @@ export interface Health {
   lang?: string;
 }
 
-export type AiSource = 'env' | 'saved' | 'default';
+/** GET /api/ai-config: what is in force and where each value came from (the keys themselves stay on the server). */
+export type AiConfig = AiResolved & { claudeCli: boolean; box: { reachable: boolean } };
 
-/** GET /api/ai-config: what is in force and where each value came from (the key itself stays on the server). */
-export interface AiConfig {
-  preset: 'tingly-box' | 'anthropic' | 'custom';
-  baseUrl: { value: string; source: AiSource };
-  key: { set: boolean; source: AiSource | 'none' };
-  fastModel: { value: string; source: AiSource };
-  claudeModel: { value: string; source: AiSource };
-  claudeRoute: { value: 'shared' | 'login'; source: AiSource };
-  claudeProfile: { value: string; source: AiSource };
-  claudeBaseUrl: string;
-  image: {
-    baseUrl: { value: string; source: AiSource };
-    model: { value: string; source: AiSource };
-    key: { set: boolean; source: AiSource | 'connection' | 'none' };
-    ready: boolean;
-    enabled: { value: boolean; source: AiSource };
-    active: boolean;
-  };
-  claudeCli: boolean;
-  box: { reachable: boolean };
-}
-
-/** What the dialog saves; a blank field falls back to its default. */
-export interface AiDraft {
-  baseUrl: string;
-  apiKey?: string;
-  clearKey?: boolean;
-  fastModel: string;
-  claudeModel: string;
-  /** a Tingly Box Claude Code profile (name or id); blank is Box's main Claude Code routing */
-  claudeProfile?: string;
-  /** left out until the person chooses: the default follows whether there is a key */
-  claudeRoute?: 'shared' | 'login';
-  /** an OpenAI-compatible image address; blank follows the connection */
-  imageBaseUrl?: string;
-  imageKey?: string;
-  imageModel?: string;
-  /** false switches image generation off for every project; left out means on */
-  imageEnabled?: boolean;
+/** What the dialog saves: a blank field falls back to its default; a key left out is kept as saved. */
+export interface AiDraft extends AiSaved {
+  /** hand one card's Tingly Box token to another at save: {claude: 'fast'} */
+  keyFrom?: KeyFrom;
+  /** forget everything saved, keys too */
+  reset?: boolean;
 }
 
 /** GET /api/projects/:p/image-gen: why Claude Code is, or is not, offered the picture tool here. */

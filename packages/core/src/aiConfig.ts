@@ -1,19 +1,19 @@
 /**
- * Which model answers what. Two jobs use a model, and both are configured in one place:
+ * Which model answers what. Three jobs use a model, and each is its own card in one dialog:
  *
- *  - fast AI, the in-page model that rewrites a passage (the Anthropic SDK in the server);
- *  - Claude Code, which the server starts for bigger work (`claude -p`).
+ *  - Claude Code, which the server starts for bigger work (`claude -p`): through its own sign-in on this
+ *    machine (`local`), through Tingly Box's `claude_code` routing (`box`), or through any address (`custom`);
+ *  - ImageGen, an OpenAI-style `/images/generations` and `/images/edits` address that Claude Code may call;
+ *  - fast AI, the in-page model that rewrites a passage (the Anthropic SDK in the server).
  *
- * They share one connection (base URL and key), because that is how people have it: one gateway, often
- * Tingly Box, or one Anthropic account. Each job has its own model name. Claude Code may instead use
- * its own sign-in (`login`), which leaves its environment alone.
+ * Every card carries its own connection (address, key, model): nothing is shared between them, so a change in
+ * one cannot move another. Tingly Box is the suggested choice in each, and one token can be handed from a card
+ * to another when it is saved (`KeyFrom`, in the server), not linked.
  *
  * Every value comes from the environment (a host that embeds the editor sets it, and it wins), then
  * from what the person saved in the settings dialog, then from a default. The resolution is pure, so
  * the server and the tests share it; the server owns the file and the secrets (apps/server/src/aiconfig.ts).
- * Image generation is a third job (OpenAI-style `/images/generations` and `/images/edits`). It follows the
- * connection when it can (Tingly Box serves an image gateway of its own), has its own model name, and may
- * have its own address and key; Anthropic has no image endpoint, so there it stays off until one is given.
+ * A file saved by the older dialog (one shared connection) is read through `migrateSaved`.
  */
 
 /** Where Tingly Box listens by default, and the path of its Anthropic-compatible gateway. */
@@ -33,25 +33,38 @@ export const OPENAI_IMAGE_MODEL = 'gpt-image-1';
 
 export type AiSource = 'env' | 'saved' | 'default';
 export type AiPreset = 'tingly-box' | 'anthropic' | 'custom';
-export type ClaudeRoute = 'shared' | 'login';
+export type ClaudeMode = 'local' | 'box' | 'custom';
+export type AiCard = 'fast' | 'claude' | 'image';
 
 /** What the person saved. Empty fields fall back to the default. */
 export interface AiSaved {
-  baseUrl?: string;
-  apiKey?: string;
+  fastBaseUrl?: string;
+  fastKey?: string;
   fastModel?: string;
-  claudeModel?: string;
-  claudeRoute?: ClaudeRoute;
-  /** a Tingly Box Claude Code profile (its name or id); empty is Box's main Claude Code routing */
+  /** how Claude Code runs; left out until chosen: the host's key makes it `custom`, else `local` */
+  claudeMode?: ClaudeMode;
+  /** `box`: the Tingly Box token, the model name on Box's Claude Code routing, and an optional profile (its name or id; empty is the main routing) */
+  claudeBoxKey?: string;
+  claudeBoxModel?: string;
   claudeProfile?: string;
-  /** an OpenAI-compatible image address; empty follows the connection */
+  /** `custom`: an Anthropic-compatible address (empty is Anthropic's own), its key and model */
+  claudeBaseUrl?: string;
+  claudeKey?: string;
+  claudeModel?: string;
+  /** an OpenAI-compatible image address, its key and model */
   imageBaseUrl?: string;
-  /** a key for the image address; empty uses the connection's */
   imageKey?: string;
   imageModel?: string;
   /** the switch for image generation; only `false` is kept, on is the default */
   imageEnabled?: boolean;
 }
+
+/** The saved fields that hold a secret: the server keeps them when a save does not carry a new one. */
+export const KEY_FIELDS = ['fastKey', 'claudeBoxKey', 'claudeKey', 'imageKey'] as const;
+/** Where each card keeps a Tingly Box token: the one a card can hand to another. */
+export const BOX_KEY_FIELD: Record<AiCard, 'fastKey' | 'claudeBoxKey' | 'imageKey'> = { fast: 'fastKey', claude: 'claudeBoxKey', image: 'imageKey' };
+/** `{claude: 'fast'}`: save the fast card's token as Claude Code's Box token too. */
+export type KeyFrom = Partial<Record<AiCard, AiCard>>;
 
 /** What the process environment gives (a host's gateway, say). */
 export interface AiEnv {
@@ -70,28 +83,38 @@ export interface AiField<T> {
   value: T;
   source: AiSource;
 }
+export type AiKey = { set: boolean; source: AiSource | 'none' };
 
 export interface AiResolved {
-  preset: AiPreset;
-  baseUrl: AiField<string>;
-  /** whether a key is set; the key itself never leaves the server */
-  key: { set: boolean; source: AiSource | 'none' };
-  fastModel: AiField<string>;
-  claudeModel: AiField<string>;
-  claudeRoute: AiField<ClaudeRoute>;
-  /** the Tingly Box Claude Code profile; empty is Box's main Claude Code routing (only with Tingly Box at an address the host did not fix) */
-  claudeProfile: AiField<string>;
-  /** where `claude` is pointed: the connection, or with Tingly Box its Claude Code routing (and profile) */
-  claudeBaseUrl: string;
+  fast: {
+    preset: AiPreset;
+    baseUrl: AiField<string>;
+    /** whether a key is set; the key itself never leaves the server */
+    key: AiKey;
+    model: AiField<string>;
+    ready: boolean;
+  };
+  claude: {
+    mode: AiField<ClaudeMode>;
+    box: { key: AiKey; model: AiField<string>; profile: AiField<string> };
+    custom: { baseUrl: AiField<string>; key: AiKey; model: AiField<string> };
+    /** the model `claude` is given: the active mode's; empty is Claude Code's own default */
+    model: AiField<string>;
+    /** where `claude` is pointed; empty for the sign-in of this machine, or Anthropic's own address */
+    launchUrl: string;
+    /** nothing is missing: the sign-in needs nothing, the other two need a key */
+    ready: boolean;
+  };
   image: AiImage;
 }
 
 export interface AiImage {
-  /** empty while there is no image endpoint (Anthropic, or an address nobody gave) */
+  /** which address the person picked; null while nothing is saved */
+  preset: 'tingly-box' | 'custom' | null;
+  /** empty while there is no image endpoint (nobody gave an address) */
   baseUrl: AiField<string>;
   model: AiField<string>;
-  /** `connection` when it borrows the connection's key; the key itself never leaves the server */
-  key: { set: boolean; source: AiSource | 'connection' | 'none' };
+  key: AiKey;
   /** the address, a key and a model are all there */
   ready: boolean;
   /** the switch; on unless someone turned it off (the environment wins over the saved choice) */
@@ -121,33 +144,55 @@ export function boxClaudeUrl(baseUrl: string, profile: string): string {
 export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
   const pick = (e: string, s: string, d: string): AiField<string> =>
     e ? { value: e, source: 'env' } : s ? { value: s, source: 'saved' } : { value: d, source: 'default' };
-  const baseUrl = pick(cleanUrl(env.baseUrl), cleanUrl(saved.baseUrl), '');
-  const preset = presetOf(baseUrl.value);
-  const box = preset === 'tingly-box';
-  const keyEnv = clean(env.key);
-  const keySaved = clean(saved.apiKey);
-  const key = { set: Boolean(keyEnv || keySaved), source: keyEnv ? ('env' as const) : keySaved ? ('saved' as const) : ('none' as const) };
-  const fastModel = pick(clean(env.fastModel), clean(saved.fastModel), box ? TINGLY_BOX_MODEL : ANTHROPIC_FAST_MODEL);
-  // empty means Claude Code's own default model
-  // Claude Code goes through Box's claude_code routing unless the host fixed the address itself (then it is left as the host set it)
-  const viaBoxClaude = box && baseUrl.source !== 'env';
-  const claudeModel = pick(clean(env.claudeModel), clean(saved.claudeModel), viaBoxClaude ? TINGLY_BOX_CLAUDE_MODEL : box ? TINGLY_BOX_MODEL : '');
-  const claudeProfile = pick('', viaBoxClaude && validProfile(clean(saved.claudeProfile)) ? clean(saved.claudeProfile) : '', '');
-  const route: AiField<ClaudeRoute> =
-    saved.claudeRoute === 'login' || saved.claudeRoute === 'shared'
-      ? { value: saved.claudeRoute, source: 'saved' }
-      : { value: key.set ? 'shared' : 'login', source: 'default' };
-  const imgUrl = pick(cleanUrl(env.imageBaseUrl), cleanUrl(saved.imageBaseUrl), box ? TINGLY_BOX_IMAGEGEN : '');
-  const imgModel = pick(clean(env.imageModel), clean(saved.imageModel), presetOfImage(imgUrl.value) === 'tingly-box' ? TINGLY_BOX_MODEL : OPENAI_IMAGE_MODEL);
-  const imgKeyEnv = clean(env.imageKey);
-  const imgKeySaved = clean(saved.imageKey);
-  const imgKey: AiImage['key'] = imgKeyEnv
-    ? { set: true, source: 'env' }
-    : imgKeySaved
-      ? { set: true, source: 'saved' }
-      : key.set && (presetOfImage(imgUrl.value) === 'tingly-box' || sameOrigin(imgUrl.value, baseUrl.value))
-        ? { set: true, source: 'connection' }
-        : { set: false, source: 'none' };
+  const keyOf = (e: string, s: string): AiKey => (e ? { set: true, source: 'env' } : s ? { set: true, source: 'saved' } : { set: false, source: 'none' });
+  const envKey = clean(env.key);
+
+  // fast AI
+  const fastUrl = pick(cleanUrl(env.baseUrl), cleanUrl(saved.fastBaseUrl), '');
+  const fastPreset = presetOf(fastUrl.value);
+  const fastKey = keyOf(envKey, clean(saved.fastKey));
+  const fast: AiResolved['fast'] = {
+    preset: fastPreset,
+    baseUrl: fastUrl,
+    key: fastKey,
+    model: pick(clean(env.fastModel), clean(saved.fastModel), fastPreset === 'tingly-box' ? TINGLY_BOX_MODEL : ANTHROPIC_FAST_MODEL),
+    ready: fastKey.set,
+  };
+
+  // Claude Code: an address the host fixed is a custom one, left as the host set it
+  const envUrl = cleanUrl(env.baseUrl);
+  const mode: AiField<ClaudeMode> = envUrl
+    ? { value: 'custom', source: 'env' }
+    : saved.claudeMode === 'local' || saved.claudeMode === 'box' || saved.claudeMode === 'custom'
+      ? { value: saved.claudeMode, source: 'saved' }
+      : { value: envKey ? 'custom' : 'local', source: 'default' };
+  const envModel = clean(env.claudeModel);
+  const profile = pick('', validProfile(clean(saved.claudeProfile)) ? clean(saved.claudeProfile) : '', '');
+  const box = { key: keyOf('', clean(saved.claudeBoxKey)), model: pick(envModel, clean(saved.claudeBoxModel), TINGLY_BOX_CLAUDE_MODEL), profile };
+  const customUrl = pick(envUrl, cleanUrl(saved.claudeBaseUrl), '');
+  const custom = {
+    baseUrl: customUrl,
+    key: keyOf(envKey, clean(saved.claudeKey)),
+    model: pick(envModel, clean(saved.claudeModel), presetOf(customUrl.value) === 'tingly-box' ? TINGLY_BOX_MODEL : ''),
+  };
+  const active = mode.value === 'box' ? box : mode.value === 'custom' ? custom : null;
+  const claude: AiResolved['claude'] = {
+    mode,
+    box,
+    custom,
+    model: active ? active.model : envModel ? { value: envModel, source: 'env' } : { value: '', source: 'default' },
+    launchUrl: mode.value === 'box' ? boxClaudeUrl(TINGLY_BOX_URL, profile.value) : mode.value === 'custom' ? customUrl.value : '',
+    ready: active ? active.key.set : true,
+  };
+
+  // image generation. A host that fixed its gateway as Tingly Box (`ANTHROPIC_BASE_URL`, one token) gets Box's image address
+  // with that token, as it always did; every other address and key is the card's own.
+  const hostBox = presetOf(envUrl) === 'tingly-box' && Boolean(envKey);
+  const imgUrl = pick(cleanUrl(env.imageBaseUrl), cleanUrl(saved.imageBaseUrl), hostBox ? TINGLY_BOX_IMAGEGEN : '');
+  const imgBox = presetOfImage(imgUrl.value) === 'tingly-box';
+  const imgModel = pick(clean(env.imageModel), clean(saved.imageModel), imgBox ? TINGLY_BOX_MODEL : OPENAI_IMAGE_MODEL);
+  const imgKey = keyOf(clean(env.imageKey), clean(saved.imageKey));
+  if (!imgKey.set && hostBox && imgBox) Object.assign(imgKey, { set: true, source: 'env' });
   const ready = Boolean(imgUrl.value && imgKey.set && imgModel.value);
   const envOff = /^(0|false|off|no)$/i.test(clean(env.imageEnabled));
   const enabled: AiField<boolean> = envOff
@@ -155,13 +200,15 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
     : saved.imageEnabled === false
       ? { value: false, source: 'saved' }
       : { value: true, source: 'default' };
-  const image: AiImage = { baseUrl: imgUrl, model: imgModel, key: imgKey, ready, enabled, active: ready && enabled.value };
-  const claudeBaseUrl = viaBoxClaude ? boxClaudeUrl(baseUrl.value, claudeProfile.value) : baseUrl.value;
-  return { preset, baseUrl, key, fastModel, claudeModel, claudeRoute: route, claudeProfile, claudeBaseUrl, image };
+  const image: AiImage = { preset: imgUrl.value ? (imgBox ? 'tingly-box' : 'custom') : null, baseUrl: imgUrl, model: imgModel, key: imgKey, ready, enabled, active: ready && enabled.value };
+  return { fast, claude, image };
 }
 
-/** Whether an image address is Tingly Box's gateway (its model alias is the default there). */
-/** Whether two addresses are the same host: the connection's key goes only where the connection already goes. */
+function presetOfImage(url: string): AiPreset {
+  return url.replace(/^http:\/\/127\.0\.0\.1:/, 'http://localhost:') === TINGLY_BOX_IMAGEGEN ? 'tingly-box' : 'custom';
+}
+
+/** Whether two addresses are the same host. */
 function sameOrigin(a: string, b: string): boolean {
   try {
     return new URL(a).origin === new URL(b).origin;
@@ -169,29 +216,63 @@ function sameOrigin(a: string, b: string): boolean {
     return false;
   }
 }
-function presetOfImage(url: string): AiPreset {
-  return url.replace(/^http:\/\/127\.0\.0\.1:/, 'http://localhost:') === TINGLY_BOX_IMAGEGEN ? 'tingly-box' : 'custom';
-}
 
 /** Fast AI works once there is a key; Tingly Box and Anthropic both need one. */
-export const fastReady = (r: AiResolved): boolean => r.key.set;
+export const fastReady = (r: AiResolved): boolean => r.fast.ready;
 
 /** Keep only the fields the settings dialog may write, trimmed. */
 export function sanitizeSaved(input: unknown): AiSaved {
   const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   const out: AiSaved = {};
-  const url = cleanUrl(o.baseUrl);
-  if (url) out.baseUrl = url;
-  if (clean(o.apiKey)) out.apiKey = clean(o.apiKey);
-  if (clean(o.fastModel)) out.fastModel = clean(o.fastModel);
-  if (clean(o.claudeModel)) out.claudeModel = clean(o.claudeModel);
+  const text = (k: 'fastKey' | 'fastModel' | 'claudeBoxKey' | 'claudeBoxModel' | 'claudeKey' | 'claudeModel' | 'imageKey' | 'imageModel') => {
+    if (clean(o[k])) out[k] = clean(o[k]);
+  };
+  const url = (k: 'fastBaseUrl' | 'claudeBaseUrl' | 'imageBaseUrl') => {
+    if (cleanUrl(o[k])) out[k] = cleanUrl(o[k]);
+  };
+  url('fastBaseUrl');
+  url('claudeBaseUrl');
+  url('imageBaseUrl');
+  for (const k of ['fastKey', 'fastModel', 'claudeBoxKey', 'claudeBoxModel', 'claudeKey', 'claudeModel', 'imageKey', 'imageModel'] as const) text(k);
   if (clean(o.claudeProfile) && validProfile(clean(o.claudeProfile))) out.claudeProfile = clean(o.claudeProfile);
-  const imgUrl = cleanUrl(o.imageBaseUrl);
-  if (imgUrl) out.imageBaseUrl = imgUrl;
-  if (clean(o.imageKey)) out.imageKey = clean(o.imageKey);
-  if (clean(o.imageModel)) out.imageModel = clean(o.imageModel);
   if (o.imageEnabled === false) out.imageEnabled = false;
-  if (o.claudeRoute === 'login' || o.claudeRoute === 'shared') out.claudeRoute = o.claudeRoute;
+  if (o.claudeMode === 'local' || o.claudeMode === 'box' || o.claudeMode === 'custom') out.claudeMode = o.claudeMode;
+  return out;
+}
+
+/**
+ * Read a saved file in either shape. The first dialog kept one shared connection (`baseUrl`, `apiKey`) and a
+ * choice of Claude Code's route (`claudeRoute`); each card gets its own copy of what it used, so nothing the
+ * person had saved is lost and everything keeps working as it did.
+ */
+export function migrateSaved(input: unknown): AiSaved {
+  const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const out = sanitizeSaved(o);
+  if (!('baseUrl' in o || 'apiKey' in o || 'claudeRoute' in o)) return out;
+  const base = cleanUrl(o.baseUrl);
+  const key = clean(o.apiKey);
+  const onBox = presetOf(base) === 'tingly-box';
+  if (base) out.fastBaseUrl = base;
+  if (key) out.fastKey = key;
+  // `claudeModel` meant the model of whichever route was used; it now belongs to the tab that used it
+  const model = clean(o.claudeModel);
+  delete out.claudeModel;
+  const shared = o.claudeRoute === 'shared' || (o.claudeRoute !== 'login' && Boolean(key));
+  if (!shared) out.claudeMode = 'local';
+  else if (onBox) {
+    out.claudeMode = 'box';
+    if (key) out.claudeBoxKey = key;
+    if (model) out.claudeBoxModel = model;
+  } else {
+    out.claudeMode = 'custom';
+    if (base) out.claudeBaseUrl = base;
+    if (key) out.claudeKey = key;
+    if (model) out.claudeModel = model;
+  }
+  // the image address used to follow the connection, and borrowed its key from it
+  let img = out.imageBaseUrl ?? '';
+  if (!img && onBox) out.imageBaseUrl = img = TINGLY_BOX_IMAGEGEN;
+  if (key && !out.imageKey && img && (presetOfImage(img) === 'tingly-box' || sameOrigin(img, base))) out.imageKey = key;
   return out;
 }
 

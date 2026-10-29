@@ -56,7 +56,7 @@ app.get('/api/health', async (c) => {
   return c.json({
     ok: true,
     fastEdit: fastReady(aiResolved()),
-    fastModel: aiResolved().fastModel.value,
+    fastModel: aiResolved().fast.model.value,
     imageGen: aiResolved().image.active,
     claudeCli: claudeCliReady(),
     projectsDir: fromRoot(PROJECTS_DIR),

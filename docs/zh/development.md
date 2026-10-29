@@ -39,7 +39,7 @@ pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
 | `python3 e2e/ds.py` | 设计系统：封面与品牌手册、改颜色/改名带别名/增删、文字与圆角、组件预览、上传资源、外部改坏后的提示、新建、装进幻灯片后选 token 与文字样式、移除（22 项） |
 | `python3 e2e/dash.py` | 看板：查询/CSV/JSON 加载、标注核对、筛选与点行筛选、数据模式、改查询（拒绝写入）、停止与恢复自动刷新、外部改数据文件与页面、失败状态、`.runs.json`、代码面板、新建（25 项） |
 | `python3 e2e/docs.py` | 文档：标签页与大纲、浏览不写盘、打字/勾待办/改单元格都只改一行、`/` 菜单、格式菜单、外部改动实时进来且不被覆盖、评论（回复/解决/新建）、标签页增删改、版式、AI 改写（有模拟模型时）、导出 HTML、新建（25 项） |
-| `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的 ImageGen 一块（Anthropic 没有、跟着 Tingly Box 的地址、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
+| `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的 ImageGen 卡（Tingly Box 的地址加自己的令牌、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
 | `python3 e2e/export_menu.py` | 共用的导入 / 导出菜单：每种类型的栏里都有，列出这种类型收什么、能存什么；幻灯片和文档一键存成 PDF（真的 PDF，页数对）、服务端没有 Chrome 时回到打印窗口、状态条（28 项检查） |
 | `python3 e2e/pptx.py` | 通过真实启动页与幻灯片菜单测试 PowerPoint 交换：picker/drop/API 导入，保留原件/报告/媒体/备注，编辑并重开，失败原子性与重名，整份原生对象导出与不支持内容的诊断；英文/中文、浅色/深色截图；只使用本套件创建的项目 |
 | `python3 e2e/archive.py` | 整个项目导出成 .zip：每种类型导入 / 导出菜单最后的两项；整个项目带改动记录、并排带上设计系统和清单，仅文件两样都不带，都不带本机状态；从启动页“新建”菜单导入、重名换名（没变的设计系统不重复导入）；启动页卡片的导出；没有项目的 zip 会说明原因；英文浅色和中文深色（23 项检查） |
@@ -67,7 +67,7 @@ pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
 | `python3 e2e/import_here.py` | 往打开的项目里导入，先跑 `pnpm build`；它自己在示例项目的副本上启动服务端：每种类型的导入按钮、拖到任何地方、粘贴，网页文件夹变成画布上已有内容旁边的新画板（原文件留在 `uploads/`），粘贴 SVG，图片放到画布和幻灯片上，带图片的 Markdown 变成文档标签页，CSV 变成看板数据集，字体和 SVG 进设计系统，拒收，动效不收（29 项） |
 | `python3 e2e/check_snapshots.py` | `check --snapshots` 查版面，先 `pnpm build`；在自己的项目文件夹上跑命令行：示例幻灯片的副本里放一行超出页面边缘的字、一行被框裁掉的字、一行淡色说明和一页空白，每样都报警告，原样的示例幻灯片一条也不报，每页照样画出来（7 项） |
 | `python3 e2e/baseline.py` | 截图基线：要先 `pnpm dev`；启动页和每种类型的示例，以及请求栏挪到左侧对话列后的同一批示例，明暗 × 中英，外加画布的 Theme 标签和快捷键对话框打开时的两种状态（60 张，1440×900），每张和 `e2e-baselines` 分支上的那张比；超过 0.2% 的像素变了就算失败，截图和差异图留在 `e2e/out/baseline/`；`DC_RECORD=1` 把新截图写到 `e2e/out/baselines-new/`，`DC_BASELINES=<文件夹>` 改成和一个文件夹比 |
-| `python3 e2e/ai_settings.py` | AI 模型设置：要先用没有 `ANTHROPIC_*` 变量、`DC_CONFIG` 指向临时文件的环境跑 `pnpm dev`，再跑 `python3 e2e/mock_anthropic.py`；请求栏的提示、从启动页和项目里打开对话框、Tingly Box / 自定义地址、拒绝不合法地址、经模拟模型测试、保存后不回传密钥、Claude Code 用自己登录的选项 |
+| `python3 e2e/ai_settings.py` | AI 模型设置：要先用没有 `ANTHROPIC_*` 变量、`DC_CONFIG` 指向临时文件的环境跑 `pnpm dev`，再跑 `python3 e2e/mock_anthropic.py`；请求栏的提示、从启动页和项目里打开对话框、三张卡的顺序（Claude Code、ImageGen、快速 AI）和 Claude Code 的本地 / Tingly Box / 自定义标签、Box 配置档、把令牌交给另外两张卡、拒绝不合法地址、经模拟模型测试、保存后不回传任何密钥、改一张卡不动另外两张 |
 | `python3 e2e/conversation.py` | 项目保存的 Claude Code 对话：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`，由一个冒充 `claude` 的脚本记录每次调用：第一条请求开一段对话、服务端把会话号存在项目文件夹里，下一条接着说，`fresh` 开新的，显式给的会话优先，Claude Code 已不认识的会话自动改开新对话（11 项）|
 | `python3 e2e/follow_up.py` | 手动改了设置之后的提议：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`；幻灯片尺寸小改不出提议，改成形状差很多时请求栏上方出现“重新排版”提议且不自动运行，“改写请求”把准备好的请求放进输入框，“忽略”收起，改回原样不出提议，装入设计系统会提议换成这套风格，接受则把它连同改了什么、项目设置一起交给 Claude Code（15 项）|
 | `python3 e2e/fast.py` | 快速 AI：流式执行、报错撤销、重试、回写 |
