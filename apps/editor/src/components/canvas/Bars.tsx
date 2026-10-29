@@ -25,6 +25,7 @@ import {
 import { InlineRename } from '../InlineRename';
 import { FileMenu } from '../FileMenu';
 import { canvasExportItems } from './Board';
+import { useDirectPdf } from '../../pdfExport';
 import { canvasImport } from './canvasImport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 
@@ -114,6 +115,7 @@ export function CanvasTopBar() {
   const { t } = useTranslation();
   const canvas = useCanvas();
   const mode = useStore((s) => s.mode);
+  const direct = useDirectPdf();
   return (
     <TopBar
       title={<ProjectTitle value={canvas.title} label={t('panel.canvas.nameLabel')} hint={t('common.topbar.rename')} onRename={(v) => editCanvas((c) => (c.title = v), `title → ${v}`)} />}
@@ -128,7 +130,7 @@ export function CanvasTopBar() {
           useStore.setState({ mode: mode === 'play' ? 'edit' : 'play', tool: 'select', menu: null });
         }}
       />
-      <FileMenu claudeDesign target={canvasImport} label={t('app.importTarget')} items={canvasExportItems} />
+      <FileMenu claudeDesign target={canvasImport} label={t('app.importTarget')} items={() => canvasExportItems(direct)} />
     </TopBar>
   );
 }

@@ -3,7 +3,7 @@ export { encodeVideo, NoEncoderError, type VideoOptions, type VideoResult } from
 export { encodeGif, type GifOptions } from './gif';
 export { FrameRasterizer, type Frame, type FrameOptions } from './frames';
 export { answerSnaps, snapFrame, snapFrames } from './frameSnap';
-export { rasterize, canvasPng, fontCss, type RasterOptions } from './rasterize';
+export { rasterize, canvasPng, fontCss, inlineFontLinks, type RasterOptions } from './rasterize';
 export { mixAudio, type AudioClip } from './audio';
 export { download } from './download';
 export { Clock, type ExportReport, type StageTime } from './timing';

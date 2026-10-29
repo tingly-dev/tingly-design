@@ -34,7 +34,8 @@ export async function printPdf(o: { html: string; origin: string; paper: Paper; 
     await loaded;
     // web fonts and pictures that load late would print as their fallbacks
     await s('Runtime.evaluate', {
-      expression: `Promise.all([document.fonts.ready, ...[...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r }))]).then(() => new Promise(r => setTimeout(r, 200)))`,
+      // a page that holds its parts in frames (a canvas: one frame per artboard) has fonts and pictures in them too
+      expression: `(() => { const docs = [document, ...[...document.querySelectorAll('iframe')].map(f => { try { return f.contentDocument } catch { return null } }).filter(Boolean)]; return Promise.all(docs.flatMap(d => [d.fonts ? d.fonts.ready : 0, ...[...d.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r }))])).then(() => new Promise(r => setTimeout(r, 200))) })()`,
       awaitPromise: true,
     });
     const paper = o.paper === 'a4' ? { paperWidth: 8.27, paperHeight: 11.69, marginTop: 0.6, marginBottom: 0.6, marginLeft: 0.6, marginRight: 0.6 } : { preferCSSPageSize: true };

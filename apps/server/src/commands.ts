@@ -52,7 +52,7 @@ const pngOnly = async (): Promise<PageJob[]> => [{ item: 'png' }];
 /** What the command line and MCP do differently per kind: one entry per kind, so a kind added later fails to compile until it says. */
 const KIND_CLI: Record<Kind, KindCli> = {
   design: {
-    formats: ['png'],
+    formats: ['pdf', 'png'],
     size: true,
     fast: true,
     pick: 'board',
@@ -64,7 +64,9 @@ const KIND_CLI: Record<Kind, KindCli> = {
       for (const [file, b] of Object.entries(c.boards)) out.set(b.title ?? file, file);
       return out;
     },
-    async jobs(p, _as, o, one, every) {
+    async jobs(p, as, o, one, every) {
+      // one PDF holds the artboards on the open page, so nothing is shown first
+      if (as === 'pdf') return [{ item: 'pdf' }];
       const c = parseCanvas(await readIn(p, 'canvas.json'));
       const board = one(o.board);
       const boards = board ? [board] : c.order.filter((f) => c.boards[f] && !c.boards[f].hidden);
@@ -463,6 +465,7 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   if (as === 'zip') return exportZip(p, o);
   if (as === 'claude-design') return exportClaudeDesign(ctx, p, o);
   if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip', ...(hasClaudeDesign(p.kind) ? ['claude-design'] : [])].join(', ') }));
+  if (p.kind === 'design' && as === 'pdf' && o.board) throw new CommandError(t('cli.pdfBoard'));
   if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);

@@ -141,6 +141,7 @@ export default {
       projectFiles: '不含改动记录和设计系统',
       claudeDesign: '原版 Claude 类型的文件，交给 Claude Code 发布 · 可以从首页再导入',
       boardOne: '选中的画板',
+      boardsPdf: '这一页的每个画板，每个一页，按各自的尺寸',
       boardEvery: '这一页的每个画板，各存一个文件',
       boardSource: '画板的 .dc.html 文件',
       slidesPdf: '每页幻灯片占一页',
