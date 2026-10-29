@@ -6,8 +6,12 @@ import { LaneLabels, LaneRows, useLanes, type BarDraft } from './ElementLanes';
 import { ItemMenuItems } from '../ItemMenu';
 import { Menu } from '../Menu';
 import { notesOf } from '../slides/slides';
-import { PauseFilled, Picture, PlayFilled } from '../icons';
+import { Chevron, PauseFilled, Picture, PlayFilled } from '../icons';
 import { useElementSize } from '../../hooks';
+import { BandResizer } from '../BandResizer';
+import { readPref, writePref } from '../../local';
+
+const LANES_KEY = 'dc.motionLanes';
 
 export const secs = (ms: number) => (ms / 1000).toFixed(1);
 
@@ -144,6 +148,12 @@ export function Timeline(p: {
   // the element rows under the scene blocks: the animated elements of the scene under the playhead
   const elementLanes = useLanes(motion, p.format, !cover && current ? current.id : null);
   const [openLane, setOpenLane] = useState<number | null>(null);
+  // most pieces never need the rows, so they start folded; the choice stays with this browser
+  const [lanesOpen, setLanesOpen] = useState(() => readPref(LANES_KEY) === 'open');
+  const toggleLanes = () => {
+    writePref(LANES_KEY, lanesOpen ? 'closed' : 'open');
+    setLanesOpen(!lanesOpen);
+  };
   const [barDraft, setBarDraft] = useState<BarDraft | null>(null);
   const [keyDraft, setKeyDraft] = useState<{ tid: number; prop: string; index: number; t: number } | null>(null);
   // the playhead within the scene, in authored ms
@@ -190,6 +200,10 @@ export function Timeline(p: {
         <button className="btn ghost sm" onClick={() => afterAdd(addScene(!cover && current ? current.id : null))} title={t('motion.stage.sceneAddHint')}>
           {t('motion.stage.sceneAdd')}
         </button>
+        <button className="btn ghost sm mlanestoggle" aria-expanded={lanesOpen} onClick={toggleLanes} title={lanesOpen ? t('motion.lanes.hideHint') : t('motion.lanes.showHint')}>
+          <Chevron open={lanesOpen} />
+          {t('motion.lanes.toggle', { count: elementLanes.length })}
+        </button>
         {!cover && current && !onCoverFrame && (
           <button className="btn ghost sm mcoverset" onClick={() => (pause(), setCoverAt(time * rate))} title={t('motion.stage.coverFrameHint')}>
             <Picture />
@@ -209,6 +223,7 @@ export function Timeline(p: {
         </span>
       </div>
       <div className="mlanes">
+        {lanesOpen && <BandResizer id="motionlanes" name={t('motion.lanes.name')} />}
         <div className="mcoverslot">
           <div className="mcoverhead">{t('motion.stage.coverAxis')}</div>
           <div className="mcovertrack">
@@ -259,7 +274,7 @@ export function Timeline(p: {
               </button>
             )}
           </div>
-          {elementLanes.length > 0 && (
+          {lanesOpen && (
             <div className="mlanescroll" ref={labelScroll}>
               <LaneLabels lanes={elementLanes} open={openLane} setOpen={setOpenLane} />
             </div>
@@ -320,8 +335,9 @@ export function Timeline(p: {
               );
             })}
           </div>
-          {elementLanes.length > 0 && current && (
+          {lanesOpen && (
             <div className="mlanescroll rows" ref={rowsScroll} onScroll={syncLabels}>
+            {current && elementLanes.length > 0 ? (
             <LaneRows
               motion={motion}
               lanes={elementLanes}
@@ -340,6 +356,9 @@ export function Timeline(p: {
               axisRect={() => lanesRef.current?.getBoundingClientRect() ?? null}
               seekScene={seekScene}
             />
+            ) : (
+              <p className="mlanesempty">{t('motion.lanes.empty')}</p>
+            )}
             </div>
           )}
           {menu && (

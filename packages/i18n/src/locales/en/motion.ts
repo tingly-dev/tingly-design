@@ -65,6 +65,13 @@ export default {
     embeds: 'An embed in these scenes did not hand over its picture, so it is blank in this video: {{scenes}}. Chrome or Edge with ffmpeg draws it exactly; tingly-design export <piece> --as mp4 on a machine that has them',
     failed: 'The video could not be made: {{message}}',
   },
+  lanes: {
+    toggle: 'Elements {{count}}',
+    hideHint: 'Fold the element rows',
+    showHint: 'Show a row for every animated element in this scene',
+    empty: 'No animated elements in this scene.',
+    name: 'the element rows',
+  },
   stage: {
     noScenes: 'There are no scenes in motion.json’s order yet.',
     playerTitle: 'Motion',

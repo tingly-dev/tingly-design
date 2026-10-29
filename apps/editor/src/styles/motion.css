@@ -1249,3 +1249,69 @@
   font-size: 11px;
   color: var(--muted);
 }
+
+
+/* the fold for the element rows sits in the timeline's top row */
+.mlanestoggle {
+  gap: 4px;
+}
+
+/* the element rows keep one height whatever the scene holds (BandResizer drags it), so the
+   stage and the timeline do not jump when the playhead moves to a scene with more or fewer */
+.mlanes {
+  position: relative;
+}
+
+.mlanescroll {
+  height: var(--h-motionlanes, 132px);
+  max-height: none;
+}
+
+.mlanesempty {
+  margin: 0;
+  padding: 8px 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.band-resizer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 9px;
+  z-index: 6;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.band-resizer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.band-resizer:hover::after,
+.band-resizer:focus-visible::after,
+body.resizing-band .band-resizer::after {
+  opacity: 0.8;
+}
+
+.band-resizer:focus-visible {
+  outline: none;
+}
+
+body.resizing-band {
+  cursor: row-resize;
+  user-select: none;
+}
+
+body.resizing-band iframe {
+  pointer-events: none;
+}
