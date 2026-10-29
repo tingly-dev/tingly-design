@@ -45,8 +45,12 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
     drag.current = null;
     document.body.classList.remove('resizing-band');
     // a click without a move, or a cancelled drag, keeps (or gives back) the height it began with
-    if (keep && d.moved) keepBandHeight(id, d.h + (e.clientY - d.y));
-    else setHeight(restoreBandHeight(id));
+    if (keep && d.moved) {
+      // what is saved is what is shown: paint the final height, not only the last move's
+      const h = dragBandHeight(id, d.h + (e.clientY - d.y));
+      keepBandHeight(id, h);
+      setHeight(h);
+    } else setHeight(restoreBandHeight(id));
   };
   const key = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;

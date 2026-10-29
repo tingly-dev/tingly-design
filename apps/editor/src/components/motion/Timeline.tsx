@@ -165,7 +165,8 @@ export function Timeline(p: {
   // the rows' scrollbar sits in a gutter outside the axis, as wide as this browser draws it
   useLayoutEffect(() => {
     const el = rowsScroll.current;
-    if (el) el.style.setProperty('--sbw', `${el.offsetWidth - el.clientWidth}px`);
+    // a hidden or unmeasured strip keeps the CSS fallback
+    if (el && el.clientWidth > 0) el.style.setProperty('--sbw', `${el.offsetWidth - el.clientWidth}px`);
   }, [lanesOpen, elementLanes.length]);
   const syncLabels = () => {
     if (labelScroll.current && rowsScroll.current) labelScroll.current.scrollTop = rowsScroll.current.scrollTop;
