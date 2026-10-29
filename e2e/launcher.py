@@ -6,7 +6,7 @@ BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
-SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'design-motion': 'motion'}
+SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'tingly-design-motion': 'motion'}
 MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-sales', 'zz-cli-wechat', 'zz-cli-wxh', 'zz-cli-bad', 'zz-look', 'zz-cli-look', 'zz-cli-badlook', 'zz-builtin-canvas', 'zz-builtin-slides']
 
 def cleanup():
@@ -65,10 +65,10 @@ async def main():
         await expect(pg.locator('.lcard[data-project="tingly-box-usage-dashboard"] .lp-dash li').first).to_have_text('September provider budgets')
         await expect(pg.locator('.lcard[data-project="tingly-design-guide-doc"] .lp-doc li').nth(2)).to_have_attribute('style', 'padding-left: 10px;')
         check('dashboard and doc cards show datasets and the tab outline', True)
-        poster = pg.frame_locator('.lcard[data-project="design-motion"] .mframe iframe')
+        poster = pg.frame_locator('.lcard[data-project="tingly-design-motion"] .mframe iframe')
         await expect(poster.locator('section#poster')).to_be_visible()
         check('the motion card stands on its cover with its length and sizes',
-              '1920×1080' in await pg.locator('.lcard[data-project="design-motion"] .lp-mmeta').inner_text())
+              '1920×1080' in await pg.locator('.lcard[data-project="tingly-design-motion"] .lp-mmeta').inner_text())
         await pg.screenshot(path=OUT + 'launcher.png', full_page=True)
 
         # --- filter, search, keyboard -------------------------------------------------------
@@ -88,12 +88,12 @@ async def main():
         await pg.locator('input[aria-label="搜索项目"]').fill('tingly-box-usage-dashboard')
         await pg.keyboard.press('Enter')
         await pg.wait_for_url('**/?p=tingly-box-usage-dashboard')
-        await expect(pg.locator('.dashtitle')).to_have_text('Tingly Box usage · Q3 2026')
+        await expect(pg.locator('.dashtitle')).to_have_text('Tingly Box Usage Dashboard')
         check('Enter opens the first match', True)
 
         await pg.goto(BASE + '/')
         await pg.locator('.lcard[data-project]').first.wait_for()
-        await expect(pg.locator('.lcontinue')).to_contain_text('Tingly Box usage')
+        await expect(pg.locator('.lcontinue')).to_contain_text('Tingly Box Usage')
         check('the last project opened is offered to continue', await pg.locator('.lcard[data-project="tingly-box-usage-dashboard"] .recent').count() == 1)
         first = pg.locator('.lall .lcard[data-project]').first
         check('…and sorts first', await first.get_attribute('data-project') == 'tingly-box-usage-dashboard')

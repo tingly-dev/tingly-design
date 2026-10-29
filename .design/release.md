@@ -69,7 +69,7 @@ release 的 build 一步在根 `package.json` 没有 `license` 时直接失败�
 
 主页是 `site/` 里的一页静态 HTML（中英双语，随浏览器语言切换），`.github/workflows/pages.yml` 在 main 上构建并部署；PR 上只构建不部署，渲染坏了在合并前就能看到。
 
-主页上的宣传视频是 `projects/design-motion` 这个示例本身，由 `scripts/build-site.sh` 调用 `tingly-design export`（[cli.md](./cli.md)）在 CI 里渲染出 16:9 和 9:16 两版加封面，不提交进仓库。没选直接拷贝一份 mp4，因为那份会和示例项目脱节：示例改了，主页还是旧片子；仓库里也会多出几 MB 的二进制，每次重渲染都是一次新的 blob。代价是 CI 要装 Chromium 和 ffmpeg，渲染约一两分钟；只在 `site/`、该示例、sandbox 运行时、`render.ts` 或命令行变化时才触发。
+主页上的宣传视频是 `projects/tingly-design-motion` 这个示例本身，由 `scripts/build-site.sh` 调用 `tingly-design export`（[cli.md](./cli.md)）在 CI 里渲染出 16:9 和 9:16 两版加封面，不提交进仓库。没选直接拷贝一份 mp4，因为那份会和示例项目脱节：示例改了，主页还是旧片子；仓库里也会多出几 MB 的二进制，每次重渲染都是一次新的 blob。代价是 CI 要装 Chromium 和 ffmpeg，渲染约一两分钟；只在 `site/`、该示例、sandbox 运行时、`render.ts` 或命令行变化时才触发。
 
 六种类型的截图和分享封面用 README 的素材 `docs/images/readme/`（中英文各一套，页面按语言切换），同样构建时拷入。部署用官方的 `upload-pages-artifact` + `deploy-pages`，不用 gh-pages 分支，所以仓库里没有构建产物分支。第一次部署前要有人在仓库设置里把 Pages 的来源选成 GitHub Actions（见 Settings → Pages）。
 

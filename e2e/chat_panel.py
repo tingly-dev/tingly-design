@@ -202,7 +202,7 @@ async def main():
             await pg.evaluate("localStorage.setItem('dc.barMode', 'left')")
 
             # every kind: the same column; the kinds with a list of their own keep it as the first tab
-            for proj, kind, tab in [('tingly-design-intro-slides', 'slides', '页面'), ('tingly-design-system', 'design-system', '列表'), ('tingly-design-guide-doc', 'docs', '标签页'), ('tingly-box-usage-dashboard', 'dashboard', None), ('design-motion', 'motion', None)]:
+            for proj, kind, tab in [('tingly-design-intro-slides', 'slides', '页面'), ('tingly-design-system', 'design-system', '列表'), ('tingly-design-guide-doc', 'docs', '标签页'), ('tingly-box-usage-dashboard', 'dashboard', None), ('tingly-design-motion', 'motion', None)]:
                 await pg.goto(f'{base}/?p={proj}')
                 await pg.wait_for_selector('.chat-panel', timeout=10000)
                 await pg.wait_for_timeout(500)
@@ -236,7 +236,7 @@ async def main():
             # the position menu works from the bottom bar of every kind: it opens inside the window (the bar is
             # centred with a transform, which must not move the menu), and left and bottom both take effect
             await pg.set_viewport_size({'width': 1440, 'height': 800})
-            for proj, kind in [('tingly-box-console-canvas', 'design'), ('tingly-design-intro-slides', 'slides'), ('tingly-design-system', 'design-system'), ('tingly-design-guide-doc', 'docs'), ('tingly-box-usage-dashboard', 'dashboard'), ('design-motion', 'motion')]:
+            for proj, kind in [('tingly-box-console-canvas', 'design'), ('tingly-design-intro-slides', 'slides'), ('tingly-design-system', 'design-system'), ('tingly-design-guide-doc', 'docs'), ('tingly-box-usage-dashboard', 'dashboard'), ('tingly-design-motion', 'motion')]:
                 await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
                 await pg.goto(f'{base}/?p={proj}')
                 await pg.wait_for_selector('.board, .app', timeout=10000)

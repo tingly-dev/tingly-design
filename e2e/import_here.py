@@ -249,14 +249,14 @@ async def main():
             check('design system: the SVG is an asset in assets/Other', os.path.exists(P('tingly-design-system', 'assets', 'Other', 'mark.svg')))
 
             # --- motion: a picture onto the scene under the playhead, entering there --------------------
-            await pg.goto(base + '/?p=design-motion')
+            await pg.goto(base + '/?p=tingly-design-motion')
             await pg.wait_for_timeout(2500)
             check('motion: an import / export button in the top bar', await pg.locator('button[aria-label="导入 / 导出"]').count() == 1)
             await pg.locator('.mscene', has_text='kind-slides').click()
             await pg.wait_for_timeout(500)
             await drop(pg, [('still.png', None, 'image/png')])
             check('motion: a dropped picture says so', await toast(pg, '已放上 still.png'))
-            scene = lambda: read('design-motion', 'scenes', 'kind-slides.html')
+            scene = lambda: read('tingly-design-motion', 'scenes', 'kind-slides.html')
             ok = await wait_for(lambda: 'src="uploads/still-' in scene())
             check('motion: …onto the scene under the playhead, kept in uploads/', ok)
             check('…entering at the playhead (the scene start)', 'data-in="fade 300ms @0s"' in scene(), scene()[-400:])

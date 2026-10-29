@@ -38,7 +38,7 @@ def restore():
         if os.path.isdir(os.path.join(PROJECTS, name)): shutil.rmtree(os.path.join(PROJECTS, name))
 
 KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard'}
-NO = {'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
+NO = {'docs': 'tingly-design-guide-doc', 'motion': 'tingly-design-motion'}
 
 PNG = bytes.fromhex('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63fcffff3f0300090402b6c4a6f60000000049454e44ae426082')
 ID = 'a1' * 16
@@ -115,9 +115,9 @@ async def main():
             async with pg.expect_download() as dl:
                 await pg.get_by_role('menuitem', name='Claude Design package (.zip)').click()
             d = await dl.value
-            check('saved under the project name', d.suggested_filename == 'tingly-intro-claude-design.zip', d.suggested_filename)
+            check('saved under the project name', d.suggested_filename == 'tingly-design-intro-slides-claude-design.zip', d.suggested_filename)
             await pg.wait_for_timeout(500)
-            check('a toast says it was saved', await pg.get_by_text('Saved tingly-intro-claude-design.zip', exact=False).count() >= 1)
+            check('a toast says it was saved', await pg.get_by_text('Saved tingly-design-intro-slides-claude-design.zip', exact=False).count() >= 1)
 
             # --- opening one made the way Claude Code leaves an original canvas ------------------------------
             await pg.goto(f'{BASE}/')

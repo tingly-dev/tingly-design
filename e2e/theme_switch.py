@@ -79,7 +79,7 @@ async def main():
     write_canvas(CANVAS, {'Main.dc.html': THEMED, 'Other.dc.html': THEMED2})
     write_canvas(PLAIN, {'Main.dc.html': ORIGINAL})
     write_canvas(EMPTY, {'Main.dc.html': ORIGINAL})
-    shutil.copytree(path('tingly-intro'), path(DECK))
+    shutil.copytree(path('tingly-design-intro-slides'), path(DECK))
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
@@ -88,9 +88,9 @@ async def main():
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(BASE + '/')
-            install(CANVAS, **{'from': 'tingly-ds'})
-            install(PLAIN, **{'from': 'tingly-ds'})
-            install(DECK, **{'from': 'tingly-ds'})
+            install(CANVAS, **{'from': 'tingly-design-system'})
+            install(PLAIN, **{'from': 'tingly-design-system'})
+            install(DECK, **{'from': 'tingly-design-system'})
 
             # ---- a canvas that already uses the system's colours
             await open_theme(pg, CANVAS)

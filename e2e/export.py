@@ -32,10 +32,10 @@ async def main():
     open(EMBED + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;padding:96px"><x-embed style="display:block;width:600px;height:300px"><div style="background:#ee3333;width:100%;height:100%"></div></x-embed></section>')
     # an artboard imported from a canvas (tingly-box-console-canvas's Glow, moving), behind a title
     os.makedirs(BOARD + '/scenes')
-    os.makedirs(BOARD + '/uploads/box-console-Glow')
-    subprocess.run(['cp', os.path.join(REPO, 'projects/tingly-box-console-canvas/Glow.dc.html'), BOARD + '/uploads/box-console-Glow/'])
+    os.makedirs(BOARD + '/uploads/tingly-box-console-canvas-Glow')
+    subprocess.run(['cp', os.path.join(REPO, 'projects/tingly-box-console-canvas/Glow.dc.html'), BOARD + '/uploads/tingly-box-console-canvas-Glow/'])
     open(BOARD + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-board', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['glow'], 'audio': [], 'faces': {}}))
-    open(BOARD + '/scenes/glow.html', 'w').write('<section id="glow" data-duration="2s" style="background:#0b1020;color:#fff;font-family:Arial,sans-serif;padding:96px"><x-embed src="uploads/box-console-Glow/Glow.dc.html" style="position:absolute;left:0px;top:0px;width:1280px;height:720px"></x-embed><h1 style="position:relative;font-size:80px">Glow</h1></section>')
+    open(BOARD + '/scenes/glow.html', 'w').write('<section id="glow" data-duration="2s" style="background:#0b1020;color:#fff;font-family:Arial,sans-serif;padding:96px"><x-embed src="uploads/tingly-box-console-canvas-Glow/Glow.dc.html" style="position:absolute;left:0px;top:0px;width:1280px;height:720px"></x-embed><h1 style="position:relative;font-size:80px">Glow</h1></section>')
     open(PIECE + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export', 'formats': {'wide': {'size': [1920, 1080]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
     open(PIECE + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;color:#f4f1ea;font-family:Arial,sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:32px"><h1 data-in="rise 500ms" style="font-size:112px;font-weight:800">Export</h1><p data-in="fade 500ms" style="font-size:40px;color:#a9a59c">Made in the tab</p></section>')
     async with async_playwright() as p:

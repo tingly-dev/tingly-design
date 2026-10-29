@@ -32,7 +32,7 @@ KINDS = {
     'design system': ('tingly-design-system', ['PNG image', 'Copy as PNG']),
     'dashboard': ('tingly-box-usage-dashboard', ['PNG image', 'Copy as PNG']),
     'docs': ('tingly-design-guide-doc', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image', 'Copy as PNG']),
-    'motion': ('design-motion', ['Video…', 'GIF…', 'PNG image', 'Copy as PNG']),
+    'motion': ('tingly-design-motion', ['Video…', 'GIF…', 'PNG image', 'Copy as PNG']),
 }
 
 async def main():
@@ -103,7 +103,7 @@ async def main():
         await d.save_as(path)
         md = markdown_of(path)
         check('docs: the whole doc saves as Markdown (a .zip when it has pictures)', d.suggested_filename.endswith(('.md', '.zip')), d.suggested_filename)
-        check('docs: …headed by the doc title, with each tab a section under it', md.startswith('# Tingly Design handbook\n') and md.count('\n## ') >= 3 and '\n---\n' not in md, md[:200])
+        check('docs: …headed by the doc title, with each tab a section under it', md.startswith('# Tingly Design Handbook Doc\n') and md.count('\n## ') >= 3 and '\n---\n' not in md, md[:200])
         outside = re.sub(r'```.*?```', '', md, flags=re.S)
         check('docs: …and no tab keeps a second top-level heading', len(re.findall(r'^# ', outside, flags=re.M)) == 1)
 

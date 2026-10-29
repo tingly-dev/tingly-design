@@ -156,13 +156,13 @@ async def main():
         restore()
 
         # --- motion ------------------------------------------------------------------
-        await pg.goto(BASE + '/?p=design-motion')
+        await pg.goto(BASE + '/?p=tingly-design-motion')
         await pg.wait_for_timeout(2000)
         await pg.locator('.mscene', has_text='kind-slides').click()
         await pg.wait_for_timeout(800)
         mframe = pg.frame_locator('.medit iframe')
         await mframe.locator('h2').first.wait_for()
-        await element_switches(pg, 'motion', '.medit iframe', mframe, 'h2', 'design-motion/scenes/kind-slides.html')
+        await element_switches(pg, 'motion', '.medit iframe', mframe, 'h2', 'tingly-design-motion/scenes/kind-slides.html')
         restore()
 
         await b.close()

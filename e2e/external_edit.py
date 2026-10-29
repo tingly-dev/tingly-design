@@ -16,7 +16,7 @@ CASES = {
     'design-system': ('tingly-design-system', 'README.md', 'Tingly Design System', 'Tingly Design System outside'),
     'dashboard': ('tingly-box-usage-dashboard', 'files/index.html', 'Gateway usage', 'Gateway usage outside'),
     'docs': ('tingly-design-guide-doc', 'tabs/overview.md', 'Tingly Design handbook', 'Tingly Design handbook outside'),
-    'motion': ('design-motion', 'scenes/cover.html', 'Tingly Design', 'Tingly Design outside'),
+    'motion': ('tingly-design-motion', 'scenes/cover.html', 'Tingly Design', 'Tingly Design outside'),
 }
 
 results = []

@@ -305,7 +305,7 @@ async def main():
         check('Esc leaves the full screen and play mode together', ok)
 
         # deleting an artboard asks nothing; the toast's Undo brings it back with its file
-        glow = os.path.join(REPO, 'projects/box-console/Glow.dc.html')
+        glow = os.path.join(REPO, 'projects/tingly-box-console-canvas/Glow.dc.html')
         await pg.locator('.layers .lr[data-key="Glow.dc.html"]').click()
         await pg.keyboard.press('Delete')
         ok = await wait_for(lambda: 'Glow.dc.html' not in canvas()['boards'] and not os.path.exists(glow))

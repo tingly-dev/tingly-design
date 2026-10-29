@@ -17,7 +17,7 @@
   <img src="docs/images/readme/hero.gif" alt="描述一个落地页，手动改一行标题，再让 AI 继续改：全在同一份设计里" width="800">
 </p>
 
-<p align="center"><sub>这段动画就是用 Tingly Design 做的：<a href="projects/design-motion"><code>projects/design-motion</code></a> 是一个动效项目，由应用自带的导出渲染。</sub></p>
+<p align="center"><sub>这段动画就是用 Tingly Design 做的：<a href="projects/tingly-design-motion"><code>projects/tingly-design-motion</code></a> 是一个动效项目，由应用自带的导出渲染。</sub></p>
 
 ## 一份设计，三种改法
 
@@ -96,7 +96,7 @@ claude mcp add tingly-design -- npx -y tingly-design mcp  # 然后对它说：�
 | [**设计系统**](docs/zh/guide/design-system.md) | [`?p=tingly-design-system`](http://localhost:5173/?p=tingly-design-system) | Tingly 品牌：亮暗两套主题、Instrument Serif 和 Inter、六级字号、四个组件和标志 | `design-system.json` + `tokens.json` + `components/` |
 | [**看板**](docs/zh/guide/dashboard.md) | [`?p=tingly-box-usage-dashboard`](http://localhost:5173/?p=tingly-box-usage-dashboard) | 一个团队三季度经 Tingly Box 网关的用量（演示数据）：两条 SQLite 实时查询、一份 CSV、一份 JSON、按服务商筛选 | `dash.json` + `datasets/` + `files/index.html` + `data/` |
 | [**文档**](docs/zh/guide/docs.md) | [`?p=tingly-design-guide-doc`](http://localhost:5173/?p=tingly-design-guide-doc) | Tingly Design 使用手册：四个标签页、项目类型表、上手清单、代码块和评论 | `doc.json` + `tabs/<id>.md` + `comments.json` |
-| [**动效**](docs/zh/guide/motion.md) | [`?p=design-motion`](http://localhost:5173/?p=design-motion) | 36 秒的 Tingly Design 宣传片：一个想法变成设计，人改一行字，AI 接着改，再逐一列出各种类型；同一套场景出 16:9 和 9:16，带独立封面 | `motion.json` + `scenes/<id>.html` |
+| [**动效**](docs/zh/guide/motion.md) | [`?p=tingly-design-motion`](http://localhost:5173/?p=tingly-design-motion) | 36 秒的 Tingly Design 宣传片：一个想法变成设计，人改一行字，AI 接着改，再逐一列出各种类型；同一套场景出 16:9 和 9:16，带独立封面 | `motion.json` + `scenes/<id>.html` |
 
 设计系统可以装入画布或幻灯片，装入后颜色和文字样式菜单里就能直接选它的 token。
 

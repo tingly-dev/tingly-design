@@ -9,7 +9,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 
-SAMPLE = 'projects/design-motion'
+SAMPLE = 'projects/tingly-design-motion'
 def restore():
     for n in ('zz-motion', 'zz-motion-2'): subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
     subprocess.run(['git', 'checkout', '--', SAMPLE], cwd=REPO)
@@ -132,8 +132,8 @@ async def main():
 
 
         # --- the sample opens on its cover --------------------------------------------------------
-        await pg.goto(BASE + '/?p=design-motion')
-        await expect(pg.locator('.dashtitle')).to_have_text('Tingly Design')
+        await pg.goto(BASE + '/?p=tingly-design-motion')
+        await expect(pg.locator('.dashtitle')).to_have_text('Tingly Design Motion')
         stage = pg.frame_locator('.medit iframe')
         await expect(stage.locator('section#poster')).to_be_visible()
         await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
@@ -331,7 +331,7 @@ async def main():
         await pg.screenshot(path=OUT + 'motion-lanes.png')
         # the stage checks below assume the sample's own timing: put it back and reload
         subprocess.run(['git', 'checkout', '--', SAMPLE], cwd=REPO)
-        await pg.goto(BASE + '/?p=design-motion')
+        await pg.goto(BASE + '/?p=tingly-design-motion')
         await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
 
         # --- editing on the stage --------------------------------------------------------------------
@@ -444,7 +444,7 @@ async def main():
 
         # --- formats and speed --------------------------------------------------------------------------
         await pg.locator('.mseg button', has_text='tall').click()
-        await expect(pg).to_have_url(BASE + '/?p=design-motion&f=tall')
+        await expect(pg).to_have_url(BASE + '/?p=tingly-design-motion&f=tall')
         box = await pg.locator('.medit .sframe').bounding_box()
         check('the tall format plays standing up', box and box['height'] > box['width'], str(box))
         # the speed is the piece's own, saved in motion.json: a preset in the bar or any value in the panel
@@ -474,7 +474,7 @@ async def main():
         await pg.screenshot(path=OUT + 'motion-tall.png')
 
         # --- notes: on the piece and on a scene ---------------------------------------------------------
-        await pg.goto(BASE + '/?p=design-motion')
+        await pg.goto(BASE + '/?p=tingly-design-motion')
         await expect(pg.locator('.mtime')).to_contain_text(re.compile(r'/ \d+\.\d'))
         await pg.locator('.mscene').nth(1).click()
         await pg.locator('[data-notes-toggle]').click()

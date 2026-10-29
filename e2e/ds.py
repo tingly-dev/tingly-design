@@ -159,7 +159,7 @@ async def main():
         check('a new system starts small and clean', await pg.locator('.navi.warn').count() == 0 and os.path.exists(os.path.join(REPO, 'projects/zz-ds/tokens.css')))
 
         # --- preview as ---------------------------------------------------------------------------
-        await pg.goto(BASE + '/?p=tingly-ds')
+        await pg.goto(BASE + '/?p=tingly-design-system')
         await pg.locator('button[data-preview]').wait_for()
         before = await pg.locator('.app.ds').get_attribute('data-theme')
         await pg.locator('button[data-preview]').click()

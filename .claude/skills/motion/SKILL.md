@@ -12,7 +12,7 @@ A motion piece is a folder under `projects/<name>/`:
 - `motion.json` — title, formats and their sizes, fps, speed, scene order and cover.
 - `scenes/<id>.html` — one file per scene: exactly one `<section id="<id>" …>`, written in the same closed HTML/CSS subset as a slide (see `.claude/skills/slides/SKILL.md`), sized to the format instead of a fixed 1920×1080.
 
-The editor (`pnpm dev`, http://localhost:5173/?p=<name>) plays the piece and reloads within a second of a change. People may edit these files too, so **read a file right before you change it** and change only what was asked. `projects/design-motion` is a full example (a 36 s promo in 16:9 and 9:16 with a cover). The design notes are in `.design/motion.md`.
+The editor (`pnpm dev`, http://localhost:5173/?p=<name>) plays the piece and reloads within a second of a change. People may edit these files too, so **read a file right before you change it** and change only what was asked. `projects/tingly-design-motion` is a full example (a 36 s promo in 16:9 and 9:16 with a cover). The design notes are in `.design/motion.md`.
 
 A new piece starts from a plain light title scene (and cover) holding only the title. That is a blank start, not the person's chosen look: pick the look from their request or the design system, don't copy the starter.
 

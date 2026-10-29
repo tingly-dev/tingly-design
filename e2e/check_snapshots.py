@@ -63,10 +63,10 @@ try:
     check('each slide is still drawn', len(r['snapshots']) == len(deck['order']), str(r.get('snapshots'))[:300])
     # a dashboard: a number that came out as NaN, a chart with nothing in it, labels over each other or cut off
     dclean = os.path.join(projects, 'zz-dash-clean')
-    shutil.copytree(os.path.join(REPO, 'projects', 'box-usage'), dclean, ignore=keep)
+    shutil.copytree(os.path.join(REPO, 'projects', 'tingly-box-usage-dashboard'), dclean, ignore=keep)
     dbad = os.path.join(projects, 'zz-dash-bad')
     os.makedirs(os.path.join(dbad, 'datasets')); os.makedirs(os.path.join(dbad, 'data')); os.makedirs(os.path.join(dbad, 'files'))
-    shutil.copy(os.path.join(REPO, 'projects/box-usage/data/team.csv'), os.path.join(dbad, 'data/team.csv'))
+    shutil.copy(os.path.join(REPO, 'projects/tingly-box-usage-dashboard/data/team.csv'), os.path.join(dbad, 'data/team.csv'))
     open(os.path.join(dbad, 'data/none.csv'), 'w').write('member,requests\n')
     json.dump({'title': 'Bad', 'params': {}}, open(os.path.join(dbad, 'dash.json'), 'w'))
     for id_, f in (('team', 'team.csv'), ('none', 'none.csv')):

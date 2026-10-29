@@ -191,7 +191,7 @@ async def main():
 
             # every kind gets the same feed
             for proj, kind, unit in [('tingly-design-intro-slides', 'slides', 'slides/'), ('tingly-design-system', 'design-system', 'README.md'), ('tingly-box-usage-dashboard', 'dashboard', 'files/index.html'),
-                                     ('tingly-design-guide-doc', 'docs', 'tabs/'), ('design-motion', 'motion', 'scenes/')]:
+                                     ('tingly-design-guide-doc', 'docs', 'tabs/'), ('tingly-design-motion', 'motion', 'scenes/')]:
                 await pg.goto(f'{base}/?p={proj}')
                 await box.wait_for(timeout=10000)
                 await pg.wait_for_timeout(800)

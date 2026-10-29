@@ -1,7 +1,7 @@
 name: Pages
 
-# The homepage (site/) with the design-motion promo rendered here from
-# projects/design-motion, so the video is always the one the sample project
+# The homepage (site/) with the tingly-design-motion promo rendered here from
+# projects/tingly-design-motion, so the video is always the one the sample project
 # produces and is never committed. Pushes to main deploy it; pull requests only
 # build it, so a broken render shows up before merge.
 
@@ -10,7 +10,7 @@ on:
     branches: [main]
     paths:
       - site/**
-      - projects/design-motion/**
+      - projects/tingly-design-motion/**
       - packages/sandbox/**
       - apps/server/src/render.ts
       - apps/server/src/cli.ts
@@ -20,7 +20,7 @@ on:
   pull_request:
     paths:
       - site/**
-      - projects/design-motion/**
+      - projects/tingly-design-motion/**
       - packages/sandbox/**
       - apps/server/src/render.ts
       - apps/server/src/cli.ts

@@ -20,8 +20,8 @@ def check(name, ok, extra=''):
 def calls(): return [json.loads(l) for l in open(LOG)] if os.path.exists(LOG) else []
 def started(): return [c for c in calls() if c['ev'] == 'start']
 def restore():
-    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
 
 async def main():
     os.makedirs(OUT, exist_ok=True)
@@ -31,7 +31,7 @@ async def main():
         pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 900})
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + '/?p=tingly-intro&s=box')
+        await pg.goto(BASE + '/?p=tingly-design-intro-slides&s=box')
         await pg.wait_for_selector('.thumb')
         await pg.wait_for_timeout(800)
         w, h = pg.locator('input[aria-label="宽"]').first, pg.locator('input[aria-label="高"]').first

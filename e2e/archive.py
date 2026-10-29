@@ -22,7 +22,7 @@ def api(path, body=None, method=None):
     with urllib.request.urlopen(req) as r:
         return json.loads(r.read())
 
-KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
+KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'tingly-design-motion'}
 
 PROJECTS = os.path.join(REPO, 'projects')
 THERE = set(os.listdir(PROJECTS))  # what was there before; anything new is a project this suite imported
@@ -94,18 +94,18 @@ async def main():
         async with pg.expect_file_chooser() as fc:
             await item.click()
         await (await fc.value).set_files(saved['Whole project (.zip)'])
-        await pg.wait_for_url(re.compile(r'\?p=tingly-intro-2'), timeout=10000)
-        check('import: opens the project under a free name', 'p=tingly-intro-2' in pg.url, pg.url)
+        await pg.wait_for_url(re.compile(r'\?p=tingly-design-intro-slides-2'), timeout=10000)
+        check('import: opens the project under a free name', 'p=tingly-design-intro-slides-2' in pg.url, pg.url)
         await pg.wait_for_timeout(2500)
         await pg.screenshot(path=OUT + 'imported-en-light.png')
         after = {p['name'] for p in api('/api/projects')}
-        check('import: the unchanged system is not duplicated', after - before == {'tingly-intro-2'}, after - before)
-        check('import: slides came along', len(api('/api/projects/tingly-intro-2/files')['files']) >= 9)
+        check('import: the unchanged system is not duplicated', after - before == {'tingly-design-intro-slides-2'}, after - before)
+        check('import: slides came along', len(api('/api/projects/tingly-design-intro-slides-2/files')['files']) >= 9)
 
         # --- the launcher card's ⋯ -------------------------------------------------------------------
         await pg.goto(f'{BASE}/')
         await pg.wait_for_timeout(2000)
-        more = pg.locator('button[data-more="tingly-intro-2"]').first
+        more = pg.locator('button[data-more="tingly-design-intro-slides-2"]').first
         await more.scroll_into_view_if_needed()
         if await more.count():
             await more.click()
@@ -138,8 +138,8 @@ async def main():
             await surface.dispatch_event('drop', {'dataTransfer': transfer})
 
         await drop_file('dropped-package.zip', open(saved['Project files only (.zip)'], 'rb').read(), 'application/zip')
-        await pg.wait_for_url(re.compile(r'\?p=tingly-intro-'), timeout=10000)
-        check('drop: a project .zip opens as a new project', 'p=tingly-intro-' in pg.url, pg.url)
+        await pg.wait_for_url(re.compile(r'\?p=tingly-design-intro-slides-'), timeout=10000)
+        check('drop: a project .zip opens as a new project', 'p=tingly-design-intro-slides-' in pg.url, pg.url)
         csv = b'month,calls\nJul,1200\nAug,1350\nSep,990\n'
         await drop_file('zz-calls.csv', csv, 'text/csv')
         await pg.wait_for_url(re.compile(r'\?p=zz-calls'), timeout=10000)
