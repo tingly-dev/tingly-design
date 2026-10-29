@@ -870,7 +870,28 @@
 
 
 .ccomment {
+  position: relative;
   margin: 6px 0;
+}
+
+
+.cthread.on .cmeta {
+  padding-right: 28px;
+}
+
+
+.creact-add {
+  position: absolute;
+  top: -3px;
+  right: 0;
+  color: var(--muted);
+}
+
+
+.creact-pick {
+  flex-basis: 100%;
+  display: flex;
+  gap: 2px;
 }
 
 
@@ -888,6 +909,52 @@
   white-space: pre-wrap;
   font-size: 13.5px;
   line-height: 1.55;
+}
+
+
+.creacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+
+.creact {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+
+.creact:hover {
+  border-color: var(--line-2);
+}
+
+
+.creact.mine {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+
+.creact.pick {
+  border-color: transparent;
+  padding: 1px 4px;
+  font-size: 15px;
+}
+
+
+.creact.pick:hover {
+  background: var(--accent-soft);
 }
 
 

@@ -62,6 +62,7 @@ import {
   IconPlayerPlay,
   IconPlayerPlayFilled,
   IconPlayerStopFilled,
+  IconMoodPlus,
   IconPlus,
   IconPointer,
   IconRectangle,
@@ -143,6 +144,7 @@ export const DockBottom = tabler(IconLayoutBottombar, 14);
 export const Expand = tabler(IconArrowsMaximize, 14);
 export const Download = tabler(IconDownload, 14);
 export const Plus = tabler(IconPlus, 14);
+export const AddReaction = tabler(IconMoodPlus, 15);
 export const Minus = tabler(IconMinus, 14);
 export const Close = tabler(IconX, 14);
 export const Home = tabler(IconHome);
