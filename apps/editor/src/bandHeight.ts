@@ -45,6 +45,12 @@ export function keepBandHeight(id: BandId, px: number): void {
   writePref(key(id), String(clamp(id, px)));
 }
 
+/** Put back what is saved (or the band's own height when nothing is), after a drag that was not kept. */
+export function restoreBandHeight(id: BandId): number {
+  paint(id, readPref(key(id)) ? bandHeight(id) : null);
+  return bandHeight(id);
+}
+
 /** Back to the band's own height. */
 export function resetBandHeight(id: BandId): void {
   writePref(key(id), '');

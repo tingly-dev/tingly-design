@@ -246,6 +246,8 @@ async def main():
         await pg.wait_for_timeout(400)
         check('the open rows keep one height from scene to scene', abs(tl_h - await pg.evaluate("document.querySelector('.mtimeline').getBoundingClientRect().height")) < 1)
         bb = await pg.locator('.band-resizer').bounding_box()
+        await pg.mouse.click(bb['x'] + 200, bb['y'] + 4)
+        check('a click on the edge saves nothing and paints nothing', await pg.evaluate("document.documentElement.style.getPropertyValue('--h-motionlanes') === '' && !localStorage.getItem('dc.h.motionlanes')"))
         await pg.mouse.move(bb['x'] + 200, bb['y'] + 4)
         await pg.mouse.down()
         await pg.mouse.move(bb['x'] + 200, bb['y'] + 64, steps=4)

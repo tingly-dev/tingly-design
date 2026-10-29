@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sceneFile, snapSceneMs, type MotionJson, type motionTimeline } from '@dc/core';
 import { addCover, addScene, deleteScene, duplicateScene, moveScene, removeCover, setCoverAt, setSceneDuration } from './motion';
@@ -162,6 +162,11 @@ export function Timeline(p: {
   // the label column has no scrollbar of its own: it follows the rows
   const labelScroll = useRef<HTMLDivElement>(null);
   const rowsScroll = useRef<HTMLDivElement>(null);
+  // the rows' scrollbar sits in a gutter outside the axis, as wide as this browser draws it
+  useLayoutEffect(() => {
+    const el = rowsScroll.current;
+    if (el) el.style.setProperty('--sbw', `${el.offsetWidth - el.clientWidth}px`);
+  }, [lanesOpen, elementLanes.length]);
   const syncLabels = () => {
     if (labelScroll.current && rowsScroll.current) labelScroll.current.scrollTop = rowsScroll.current.scrollTop;
   };

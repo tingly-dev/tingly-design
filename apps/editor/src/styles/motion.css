@@ -989,8 +989,8 @@
 .mlanescroll.rows {
   overflow-y: auto;
   scrollbar-gutter: stable;
-  width: calc(100% + 8px);
-  margin-right: -8px;
+  width: calc(100% + var(--sbw, 8px));
+  margin-right: calc(-1 * var(--sbw, 8px));
 }
 
 
