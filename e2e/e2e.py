@@ -5,16 +5,16 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEMO = os.path.join(REPO, 'projects/box-console')
+DEMO = os.path.join(REPO, 'projects/tingly-box-console-canvas')
 MAIN = os.path.join(DEMO, 'Main.dc.html')
 CANVAS = os.path.join(DEMO, 'canvas.json')
 CHROME = os.environ.get('DC_CHROME')  # a Chromium to use instead of Playwright's own
 
 def src(path=MAIN): return open(path, encoding='utf-8').read()
 def canvas(): return json.loads(src(CANVAS))
-def diff(path='projects/box-console/Main.dc.html'):
+def diff(path='projects/tingly-box-console-canvas/Main.dc.html'):
     return subprocess.run(['git', 'diff', '--unified=0', '--', path], cwd=REPO, capture_output=True, text=True).stdout
-def restore(): subprocess.run(['git', 'checkout', '--', 'projects/box-console'], cwd=REPO); subprocess.run(['git', 'clean', '-fdq', '--', 'projects/box-console'], cwd=REPO)
+def restore(): subprocess.run(['git', 'checkout', '--', 'projects/tingly-box-console-canvas'], cwd=REPO); subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-box-console-canvas'], cwd=REPO)
 
 async def wait_async(pred, timeout=5.0):
     t = time.time()
@@ -61,7 +61,7 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.wait_for_timeout(2500)
         main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
         target = pg.locator('.prompt .target')
@@ -266,7 +266,7 @@ async def main():
         restore()
         await pg.reload(); await pg.wait_for_timeout(2500)
         pg2 = await ctx.new_page()
-        await pg2.goto(BASE + '/?p=box-console'); await pg2.wait_for_timeout(2500)
+        await pg2.goto(BASE + '/?p=tingly-box-console-canvas'); await pg2.wait_for_timeout(2500)
         main2 = pg2.frame_locator('[data-board="Main.dc.html"] iframe')
         await main.locator('h1').click()
         await main2.locator('button', has_text='Discard').click()

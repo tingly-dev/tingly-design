@@ -36,7 +36,7 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         # nothing saved, no key: the prompt bar says so and opens the dialog
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.wait_for_timeout(2000)
         await pg.locator('.prompt .seg button', has_text='Fast AI').click()
         await expect(pg.locator('.prompt .setup')).to_be_visible()
@@ -86,7 +86,7 @@ async def main():
         check(json.load(urllib.request.urlopen(BASE + '/api/health'))['fastEdit'] is True, 'health: fast AI is ready')
         check(cfg['claudeRoute']['value'] == 'shared', 'Claude Code defaults to the shared connection once there is a key')
         # from inside a project
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.wait_for_timeout(2000)
         await pg.locator('.pmenu button[aria-haspopup=menu]').click()
         await pg.get_by_role('menuitem', name='AI model settings').click()

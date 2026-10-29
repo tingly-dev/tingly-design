@@ -94,12 +94,12 @@ async def main():
             pg.on('pageerror', lambda e: errs.append(str(e)))
             feed = pg.locator('.runfeed')
             box = pg.locator('textarea[aria-label="请求"]')
-            await pg.goto(f'{base}/?p=box-console')
+            await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
 
             # the fast model: the request stays in view, the run ends with what to do next
-            pristine = read('box-console', 'Main.dc.html')
+            pristine = read('tingly-box-console-canvas', 'Main.dc.html')
             await box.fill('把标题改成紫色')
             await box.press('Enter')
             await expect(feed.locator('.run-ask')).to_have_text('把标题改成紫色')
@@ -107,7 +107,7 @@ async def main():
             await expect(feed).to_contain_text('已保存', timeout=15000)
             check('a finished fast run says how long it took', '用时' in await feed.inner_text())
             check('a retried run counts only the kept statements', '5 条语句' in await feed.inner_text(), await feed.inner_text())
-            saved = lambda: read('box-console', 'Main.dc.html') != pristine
+            saved = lambda: read('tingly-box-console-canvas', 'Main.dc.html') != pristine
             for _ in range(50):
                 if saved(): break
                 await pg.wait_for_timeout(100)
@@ -126,7 +126,7 @@ async def main():
 
             # Claude Code: steps in plain words, elapsed time, a busy bar that keeps what was typed
             await pg.get_by_role('button', name='Claude Code', exact=True).click()
-            original = {f: read('box-console', f) for f in os.listdir(os.path.join(projects, 'box-console')) if f.endswith('.dc.html')}
+            original = {f: read('tingly-box-console-canvas', f) for f in os.listdir(os.path.join(projects, 'tingly-box-console-canvas')) if f.endswith('.dc.html')}
             await box.fill('把标题改短')
             await box.press('Enter')
             await expect(feed.locator('.run-ask')).to_have_text('把标题改短')
@@ -158,7 +158,7 @@ async def main():
             await feed.get_by_role('button', name='撤销这次改动').click()
             await expect(feed).to_contain_text('已撤销', timeout=5000)
             await pg.wait_for_timeout(1500)
-            check('undoing the run puts the files back', read('box-console', changed[0]) == original[changed[0]])
+            check('undoing the run puts the files back', read('tingly-box-console-canvas', changed[0]) == original[changed[0]])
             await feed.get_by_role('button', name='收起').click()
             check('the feed can be closed', await feed.count() == 0)
 
@@ -178,7 +178,7 @@ async def main():
             await feed.locator('.run-link').click()
             await expect(feed.locator('.run-step', has_text='搜索')).to_have_count(1, timeout=8000)
             pg2 = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
-            await pg2.goto(f'{base}/?p=box-console')
+            await pg2.goto(f'{base}/?p=tingly-box-console-canvas')
             await expect(pg2.locator('.runfeed .run-ask')).to_have_text('SLOW 改标题', timeout=8000)
             await pg2.locator('.runfeed .run-link').click()
             check('an editor opened mid-run sees the steps so far', await pg2.locator('.runfeed .run-step').count() >= 3)
@@ -186,12 +186,12 @@ async def main():
             await pg.locator('.prompt .send.stop').click()
             await expect(feed).to_contain_text('已停止', timeout=8000)
             check('a stopped run says so', await pg.locator('.prompt .send:not(.stop)').count() == 1)
-            st = delete(f'{base}/api/projects/box-console/delegate/nope')
+            st = delete(f'{base}/api/projects/tingly-box-console-canvas/delegate/nope')
             check('stopping a run that is not running is refused', st == 404, st)
 
             # every kind gets the same feed
-            for proj, kind, unit in [('tingly-intro', 'slides', 'slides/'), ('tingly-ds', 'design-system', 'README.md'), ('box-usage', 'dashboard', 'files/index.html'),
-                                     ('design-guide', 'docs', 'tabs/'), ('design-motion', 'motion', 'scenes/')]:
+            for proj, kind, unit in [('tingly-design-intro-slides', 'slides', 'slides/'), ('tingly-design-system', 'design-system', 'README.md'), ('tingly-box-usage-dashboard', 'dashboard', 'files/index.html'),
+                                     ('tingly-design-guide-doc', 'docs', 'tabs/'), ('design-motion', 'motion', 'scenes/')]:
                 await pg.goto(f'{base}/?p={proj}')
                 await box.wait_for(timeout=10000)
                 await pg.wait_for_timeout(800)

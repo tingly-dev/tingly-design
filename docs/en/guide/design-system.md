@@ -2,7 +2,7 @@
 
 # Design system
 
-The sample [`?p=tingly-ds`](http://localhost:5173/?p=tingly-ds) is the Tingly design system: the colours (light and dark), typefaces, type sizes, spacing and components the console mockups, the deck and the dashboard share, taken from the Tingly Box homepage and web UI.
+The sample [`?p=tingly-design-system`](http://localhost:5173/?p=tingly-design-system) is the Tingly design system: the colours (light and dark), typefaces, type sizes, spacing and components the console mockups, the deck and the dashboard share, taken from the Tingly Box homepage and web UI.
 
 | Overview: cover and brand book | Colours: usage and contrast |
 |---|---|

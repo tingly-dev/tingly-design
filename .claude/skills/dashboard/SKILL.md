@@ -19,7 +19,7 @@ A dashboard is a page you write over **datasets** the editor loads, checks and r
 
 Files people attached to a request are kept in `uploads/`; read them as material. The page and datasets read files only from `data/` and never from `uploads/`: to use an attached CSV, TSV, JSON or SQLite file, copy it into `data/` and point a dataset at the copy.
 
-Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/box-usage` is a full example (demo data).
+Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/tingly-box-usage-dashboard` is a full example (demo data).
 
 ## Datasets
 

@@ -2,7 +2,7 @@
 
 # Dashboard
 
-The sample [`?p=box-usage`](http://localhost:5173/?p=box-usage) is a team's Tingly Box gateway usage for Q3 (generated demo data): requests, tokens, cache hit rate, cost by provider, budgets and per-member usage, built from two live SQLite queries, a CSV and a JSON file, four calculations and a provider filter.
+The sample [`?p=tingly-box-usage-dashboard`](http://localhost:5173/?p=tingly-box-usage-dashboard) is a team's Tingly Box gateway usage for Q3 (generated demo data): requests, tokens, cache hit rate, cost by provider, budgets and per-member usage, built from two live SQLite queries, a CSV and a JSON file, four calculations and a provider filter.
 
 ![Dashboard in data mode: a table cell clicked, its source open on the right](../../images/dashboard.png)
 

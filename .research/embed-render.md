@@ -75,7 +75,7 @@
 
 ## 5. 实测：真实作品上的保真度和每帧耗时
 
-脚本 `.research/embed-render/bench-snap.mjs`（帧里的栅格化由 `rasterizer-entry.ts` 打包 `@dc/export` 的 `FrameRasterizer`，压缩后 7 KB）。作品是 `projects/motion-effects` 的三个着色器场景，前面加一个场景嵌入 `box-console` 的会动画板 `Glow.dc.html`（`$time` 循环 8 s），1920×1080，4 个场景、每个场景取 6 个时刻。同一台机器、同一个 Chromium（无 GPU，WebGL 走 SwiftShader），每个时刻画三遍：
+脚本 `.research/embed-render/bench-snap.mjs`（帧里的栅格化由 `rasterizer-entry.ts` 打包 `@dc/export` 的 `FrameRasterizer`，压缩后 7 KB）。作品是 `projects/tingly-design-shader-effects-motion` 的三个着色器场景，前面加一个场景嵌入 `tingly-box-console-canvas` 的会动画板 `Glow.dc.html`（`$time` 循环 8 s），1920×1080，4 个场景、每个场景取 6 个时刻。同一台机器、同一个 Chromium（无 GPU，WebGL 走 SwiftShader），每个时刻画三遍：
 
 - **服务端**：seek 后整页截屏，和 `apps/server/src/render.ts` 一样；作为对照。
 - **snap**：每个 embed 帧拍自己交出来，父页面放到帧的位置，再按今天的浏览器路线整页栅格化。

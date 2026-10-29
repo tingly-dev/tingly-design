@@ -77,8 +77,8 @@ From the host:
 
 | Message | Does |
 |---|---|
-| `{ type: 'tingly-design:open', project: 'box-console' }` | Opens a project; `project: null` goes back to the launcher. |
-| `{ type: 'tingly-design:open', search: '?p=tingly-intro&s=box' }` | Restores a full address the host mirrored (see `location` below). |
+| `{ type: 'tingly-design:open', project: 'tingly-box-console-canvas' }` | Opens a project; `project: null` goes back to the launcher. |
+| `{ type: 'tingly-design:open', search: '?p=tingly-design-intro-slides&s=box' }` | Restores a full address the host mirrored (see `location` below). |
 | `{ type: 'tingly-design:set-theme', theme }` | Applies a theme until the page reloads; `theme` is a preset name, tokens or a Tingly Box palette ([Themes](theming.md)). |
 | `{ type: 'tingly-design:set-language', language: 'zh' }` | Switches the UI language until the page reloads; tags such as `zh-CN` or `en-US` work, unknown languages are ignored. `?lang=zh` on the framed address does the same at load. |
 
@@ -91,7 +91,7 @@ From the editor:
 | `{ type: 'tingly-design:theme-changed', theme: { id, mode, scheme, name } }` | Any theme change, including the person's own pick. |
 | `{ type: 'tingly-design:language-changed', language }` | Any language change, including the person's pick in the appearance menu. |
 
-A host that keeps `search` in its own URL (`/design?p=tingly-intro&s=box`) gives people working back buttons, reloads and links: on load, frame `<prefix>/` + that search.
+A host that keeps `search` in its own URL (`/design?p=tingly-design-intro-slides&s=box`) gives people working back buttons, reloads and links: on load, frame `<prefix>/` + that search.
 
 Opening a project is a page load inside the frame, so a `ready` follows every `open`.
 

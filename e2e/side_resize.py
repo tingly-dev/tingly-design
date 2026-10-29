@@ -17,13 +17,13 @@ def check(name, ok, extra=''):
 
 # project, the column's id, the column's selector, the side its edge is on, what has to be open first
 COLUMNS = [
-    ('box-console', 'inspector', '.panel', 'start', None),
-    ('tingly-intro', 'strip', '.strip', 'end', None),
-    ('tingly-intro', 'inspector', '.panel', 'start', None),
-    ('tingly-ds', 'dsnav', '.dsnav', 'end', None),
-    ('design-guide', 'doctabs', '.doctabs', 'end', None),
-    ('design-guide', 'docrail', '.crail', 'start', 'comments'),
-    ('box-usage', 'dashside', '.dashside', 'start', None),
+    ('tingly-box-console-canvas', 'inspector', '.panel', 'start', None),
+    ('tingly-design-intro-slides', 'strip', '.strip', 'end', None),
+    ('tingly-design-intro-slides', 'inspector', '.panel', 'start', None),
+    ('tingly-design-system', 'dsnav', '.dsnav', 'end', None),
+    ('tingly-design-guide-doc', 'doctabs', '.doctabs', 'end', None),
+    ('tingly-design-guide-doc', 'docrail', '.crail', 'start', 'comments'),
+    ('tingly-box-usage-dashboard', 'dashside', '.dashside', 'start', None),
     ('design-motion', 'inspector', '.panel', 'start', None),
 ]
 

@@ -77,8 +77,8 @@ Claude Code 在包的文件夹里运行，从那里找到格式说明；项目�
 
 | 消息 | 作用 |
 |---|---|
-| `{ type: 'tingly-design:open', project: 'box-console' }` | 打开一个项目；`project: null` 回到启动页。 |
-| `{ type: 'tingly-design:open', search: '?p=tingly-intro&s=box' }` | 还原宿主记下的完整地址（见下面的 `location`）。 |
+| `{ type: 'tingly-design:open', project: 'tingly-box-console-canvas' }` | 打开一个项目；`project: null` 回到启动页。 |
+| `{ type: 'tingly-design:open', search: '?p=tingly-design-intro-slides&s=box' }` | 还原宿主记下的完整地址（见下面的 `location`）。 |
 | `{ type: 'tingly-design:set-theme', theme }` | 应用一个主题直到页面刷新；`theme` 是预设名、令牌或 Tingly Box 的调色板（见[主题](theming.md)）。 |
 | `{ type: 'tingly-design:set-language', language: 'zh' }` | 切换界面语言直到页面刷新；认 `zh-CN`、`en-US` 这类标签，不认识的语言忽略。也可以在嵌入地址上带 `?lang=zh`。 |
 
@@ -91,7 +91,7 @@ Claude Code 在包的文件夹里运行，从那里找到格式说明；项目�
 | `{ type: 'tingly-design:theme-changed', theme: { id, mode, scheme, name } }` | 任何主题变化，包括用户自己挑的。 |
 | `{ type: 'tingly-design:language-changed', language }` | 任何语言变化，包括用户在外观菜单里选的。 |
 
-宿主把 `search` 记进自己的地址（`/design?p=tingly-intro&s=box`），返回键、刷新和分享链接就都能用：加载时嵌入 `<前缀>/` 加上这段 search 即可。
+宿主把 `search` 记进自己的地址（`/design?p=tingly-design-intro-slides&s=box`），返回键、刷新和分享链接就都能用：加载时嵌入 `<前缀>/` 加上这段 search 即可。
 
 打开项目是 iframe 里的一次页面加载，所以每个 `open` 之后都会来一条 `ready`。
 

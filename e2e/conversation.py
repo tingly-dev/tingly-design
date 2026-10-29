@@ -8,7 +8,7 @@ import os, json, time, urllib.request, urllib.error
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG = os.environ.get('FAKE_CLAUDE_LOG', '/tmp/fake-claude.log')
-PROJECT = 'box-console'
+PROJECT = 'tingly-box-console-canvas'
 FILE = os.path.join(REPO, 'projects', PROJECT, '.claude-session.json')
 LOST = '00000000-0000-4000-8000-000000000000'
 MINE = '11111111-2222-4333-8444-555555555555'

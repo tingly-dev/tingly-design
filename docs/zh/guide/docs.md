@@ -2,7 +2,7 @@
 
 # 文档
 
-示例 [`?p=design-guide`](http://localhost:5173/?p=design-guide) 是 Tingly Design 使用手册：四个标签页（一个子页）、项目类型表、上手清单、引用、代码块和两条评论。
+示例 [`?p=tingly-design-guide-doc`](http://localhost:5173/?p=tingly-design-guide-doc) 是 Tingly Design 使用手册：四个标签页（一个子页）、项目类型表、上手清单、引用、代码块和两条评论。
 
 ![文档：选中文字时的格式与 AI 改写菜单，右侧是评论](../../images/docs.png)
 

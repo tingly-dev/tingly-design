@@ -117,7 +117,7 @@ How it gets fast for the user:
 |---|---|---|
 | Design system format | `DESIGN.md` prose + `tokens.css` + `manifest.json`; tokens are a derived/guarded view | structured `tokens.json` (colour themes, type, spacing, radius, shadow) is the source; `tokens.css` generated; README, components with live previews, assets (`.claude/skills/design-system`) |
 | Editing | by agent or by hand in files | token editor, contrast, live previews, two-way |
-| Catalog | 151 | **1 sample** (`tingly-ds`) |
+| Catalog | 151 | **1 sample** (`tingly-design-system`) |
 | Getting a brand in | import from folder / GitHub / shadcn, or write `DESIGN.md` | author in the editor or ask Claude; import from HTML/SVG exists (`import-external-material.md`), not "extract a brand" |
 | Who can use it | every skill/template | installed into canvas and slides only; motion, dashboard, docs are ✗ (`project-kinds.md` matrix) |
 | Themes | = design system | colour themes inside a design system; editor theme is separate (`theming.md`) |

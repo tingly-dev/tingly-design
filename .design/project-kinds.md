@@ -8,11 +8,11 @@
 
 | 类型（`ProjectKind`） | 中文名 | 索引文件 | 内容单元 | 编辑器 | Claude Code 技能 | 示例项目 |
 |---|---|---|---|---|---|--- |
-| `design` | 画布 | `canvas.json` | `*.dc.html` 画板 | `App.tsx` + `components/` | `dc-canvas` | `box-console` |
-| `slides` | 幻灯片 | `deck.json` | `slides/<id>.html` | `components/slides/` | `slides` | `tingly-intro` |
-| `design-system` | 设计系统 | `design-system.json` | `tokens.json`、`components/`、`assets/`、`fonts/` | `components/ds/` | `design-system` | `tingly-ds` |
-| `dashboard` | 看板 | `dash.json` | `datasets/<id>.json` + `files/index.html` | `components/dash/` | `dashboard` | `box-usage` |
-| `docs` | 文档 | `doc.json` | `tabs/<id>.md` | `components/docs/` | `docs` | `design-guide` |
+| `design` | 画布 | `canvas.json` | `*.dc.html` 画板 | `App.tsx` + `components/` | `dc-canvas` | `tingly-box-console-canvas` |
+| `slides` | 幻灯片 | `deck.json` | `slides/<id>.html` | `components/slides/` | `slides` | `tingly-design-intro-slides` |
+| `design-system` | 设计系统 | `design-system.json` | `tokens.json`、`components/`、`assets/`、`fonts/` | `components/ds/` | `design-system` | `tingly-design-system` |
+| `dashboard` | 看板 | `dash.json` | `datasets/<id>.json` + `files/index.html` | `components/dash/` | `dashboard` | `tingly-box-usage-dashboard` |
+| `docs` | 文档 | `doc.json` | `tabs/<id>.md` | `components/docs/` | `docs` | `tingly-design-guide-doc` |
 | `motion` | 动效 | `motion.json` | `scenes/<id>.html` | `components/motion/`（编辑舞台和播放器叠放） | `motion` | `design-motion` |
 
 motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./motion-editing.md)；舞台上点选、改字、缩放和改尺寸已经能做，时间轴的元素时间条、拖动和关键帧（`data-keys` 轨道、菱形、播放头写入）也能做了；导出视频在编辑器里已能做（[export.md](./export.md)）。

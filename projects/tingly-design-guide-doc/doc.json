@@ -1,0 +1,32 @@
+{
+  "title": "Tingly Design Handbook Doc",
+  "tabs": [
+    {
+      "id": "overview",
+      "title": "Overview"
+    },
+    {
+      "id": "workflow",
+      "title": "Workflow"
+    },
+    {
+      "id": "write-back",
+      "title": "Write-back and sync",
+      "parent": "workflow"
+    },
+    {
+      "id": "kinds",
+      "title": "Project kinds"
+    },
+    {
+      "id": "architecture",
+      "title": "Architecture"
+    }
+  ],
+  "settings": {
+    "headingFont": "sans",
+    "bodyFont": "sans",
+    "width": "default",
+    "lang": "en"
+  }
+}

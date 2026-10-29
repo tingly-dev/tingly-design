@@ -88,10 +88,10 @@ async def main():
             pg.on('pageerror', lambda e: errs.append(str(e)))
 
             # --- slides: the import menu offers projects; the picker lists canvases' artboards -------
-            await pg.goto(base + '/?p=tingly-intro')
+            await pg.goto(base + '/?p=tingly-design-intro-slides')
             await pg.wait_for_timeout(2000)
-            slide_id = json.loads(read('tingly-intro', 'deck.json'))['order'][0]
-            slide = lambda: read('tingly-intro', 'slides', f'{slide_id}.html')
+            slide_id = json.loads(read('tingly-design-intro-slides', 'deck.json'))['order'][0]
+            slide = lambda: read('tingly-design-intro-slides', 'slides', f'{slide_id}.html')
             item = await pick_glow(pg)
             check('slides: the picker marks an artboard that moves', await item.locator('.badge', has_text='会动').count() == 1)
             check('…and puts moving artboards first', await pg.locator('.bpick-group').first.locator('.bpick-item').first.get_attribute('data-pick') == 'Glow.dc.html')
@@ -104,15 +104,15 @@ async def main():
             check('slides: the artboard goes onto the open slide by src', ok, slide()[:600])
             check('…first, so it sits behind everything', slide().split('>', 1)[1].lstrip().startswith(f'<x-embed src="{COPY}"'), slide()[:300])
             check('…full slide', 'left:0px;top:0px;width:1920px;height:1080px' in slide())
-            check('slides: the copy is kept under uploads/', os.path.exists(P('tingly-intro', COPY)))
-            imports = json.loads(read('tingly-intro', 'deck.json')).get('imports', [])
-            check('slides: deck.json records where it came from', any(r['path'] == COPY and r['from'] == 'projects/box-console' and r['board'] == 'Glow.dc.html' for r in imports), imports)
+            check('slides: the copy is kept under uploads/', os.path.exists(P('tingly-design-intro-slides', COPY)))
+            imports = json.loads(read('tingly-design-intro-slides', 'deck.json')).get('imports', [])
+            check('slides: deck.json records where it came from', any(r['path'] == COPY and r['from'] == 'projects/tingly-box-console-canvas' and r['board'] == 'Glow.dc.html' for r in imports), imports)
             check('slides: the stage draws it with the artboard runtime', await board_drawn(pg) is not None)
 
             # --- the panel: where it came from, and its options as this embed sets them ---------------
             panel = pg.locator('.bembed')
             await expect(panel).to_be_visible()
-            check('panel: says where the artboard came from', await panel.locator('.hint', has_text='来自 box-console 的 Glow').count() == 1)
+            check('panel: says where the artboard came from', await panel.locator('.hint', has_text='来自 tingly-box-console-canvas 的 Glow').count() == 1)
             await panel.locator('.swatches button[aria-label="#7c3aed"]').click()
             ok = await wait_for(lambda: '"accent":"#7c3aed"' in slide().replace('&quot;', '"'))
             check('panel: a tweak is written to the embed’s data-props', ok, slide()[:400])
@@ -123,13 +123,13 @@ async def main():
             check('panel: 还原 drops what the embed set', ok)
 
             # --- update from the original: the canvas changes, the copy follows -----------------------
-            glow = P('box-console', 'Glow.dc.html')
+            glow = P('tingly-box-console-canvas', 'Glow.dc.html')
             text = open(glow).read()
             open(glow, 'w').write(text.replace('<title>Glow backdrop</title>', '<title>Glow backdrop v2</title>'))
             await pg.wait_for_timeout(500)
             await panel.locator('button', has_text='从原画板更新').click()
             check('panel: updating says so', await toast(pg, '已从画布更新'))
-            check('…and the copy is the canvas’s artboard again', await wait_for(lambda: 'Glow backdrop v2' in read('tingly-intro', COPY)))
+            check('…and the copy is the canvas’s artboard again', await wait_for(lambda: 'Glow backdrop v2' in read('tingly-design-intro-slides', COPY)))
 
             # --- presenting: the moving artboard loops ---------------------------------------------------
             await pg.keyboard.press('Escape')
@@ -166,7 +166,7 @@ async def main():
             check('motion: the player draws it too', await board_drawn(pg, player=True) is not None)
 
             # --- canvas: look at a moving artboard at any moment ---------------------------------------
-            await pg.goto(base + '/?p=box-console')
+            await pg.goto(base + '/?p=tingly-box-console-canvas')
             await pg.wait_for_timeout(2500)
             await pg.locator('[data-board="Glow.dc.html"] .strip').first.click()
             await pg.locator('[role=tab]', has_text='微调').click()
@@ -176,7 +176,7 @@ async def main():
             await row.fill('6000')
             await pg.wait_for_timeout(500)
             await pg.screenshot(path=OUT + 'import-board-canvas.png')
-            check('…and the file keeps its still', 'Glow backdrop' in read('box-console', 'Glow.dc.html'))
+            check('…and the file keeps its still', 'Glow backdrop' in read('tingly-box-console-canvas', 'Glow.dc.html'))
 
             check('no page errors', not errs, errs)
             await b.close()

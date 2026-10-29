@@ -24,7 +24,7 @@ async def run(p, locale, theme):
     b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
     ctx = await b.new_context(locale=locale, viewport={'width': 1440, 'height': 900}, accept_downloads=True, permissions=['clipboard-read', 'clipboard-write'])
     pg = await ctx.new_page()
-    await pg.goto(f'{BASE}/?p=box-console&theme={theme}')
+    await pg.goto(f'{BASE}/?p=tingly-box-console-canvas&theme={theme}')
     await pg.wait_for_timeout(2500)
     main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
     tag = f'{locale}-{theme}'
@@ -62,7 +62,7 @@ async def run(p, locale, theme):
     await b.close()
 
 # kind → project: each one's Import / Export menu copies what its PNG item saves
-KINDS = {'canvas': 'box-console', 'slides': 'tingly-intro', 'design system': 'tingly-ds', 'dashboard': 'box-usage', 'docs': 'design-guide', 'motion': 'design-motion'}
+KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
 
 async def menus(p):
     b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
@@ -85,7 +85,7 @@ async def fallback(p):
     ctx = await b.new_context(locale='en-US', viewport={'width': 1440, 'height': 900}, accept_downloads=True)
     await ctx.add_init_script('delete window.ClipboardItem')
     pg = await ctx.new_page()
-    await pg.goto(f'{BASE}/?p=box-console')
+    await pg.goto(f'{BASE}/?p=tingly-box-console-canvas')
     await pg.wait_for_timeout(2500)
     await pg.locator('[data-board="Main.dc.html"] .strip').click()
     await pg.keyboard.press('Shift+2')

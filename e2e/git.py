@@ -9,7 +9,7 @@ SHOTS = os.environ.get('DC_SHOTS')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 TMP = os.path.realpath('/tmp/dc-git-e2e')
-SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
+SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'design-motion': 'motion'}
 
 results = []
 def check(name, ok, extra=''):
@@ -58,13 +58,13 @@ async def main():
     if SHOTS: os.makedirs(SHOTS, exist_ok=True)
     cleanup()
     os.makedirs(TMP)
-    loose = copy('design-guide', os.path.join(TMP, 'notes'))
+    loose = copy('tingly-design-guide-doc', os.path.join(TMP, 'notes'))
     code = os.path.join(TMP, 'code')
     os.makedirs(code)
     git(code, 'init', '-q', '-b', 'main')
     open(os.path.join(code, 'README.md'), 'w').write('code\n')
     git(code, 'add', '.'); git(code, 'commit', '-q', '-m', 'start')
-    inside = copy('box-console', os.path.join(code, 'design'))
+    inside = copy('tingly-box-console-canvas', os.path.join(code, 'design'))
     open(os.path.join(code, 'README.md'), 'a').write('work in progress\n')
 
     st, g = call('GET', f'/api/projects/{loose}/git')

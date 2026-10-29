@@ -9,7 +9,7 @@ SHOTS = os.environ.get('DC_SHOTS')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 TMP = '/tmp/dc-folders-e2e'
-SAMPLES = {'box-console': 'design', 'tingly-intro': 'slides', 'tingly-ds': 'design-system', 'box-usage': 'dashboard', 'design-guide': 'docs', 'design-motion': 'motion'}
+SAMPLES = {'tingly-box-console-canvas': 'design', 'tingly-design-intro-slides': 'slides', 'tingly-design-system': 'design-system', 'tingly-box-usage-dashboard': 'dashboard', 'tingly-design-guide-doc': 'docs', 'design-motion': 'motion'}
 
 results = []
 def check(name, ok, extra=''):
@@ -51,21 +51,21 @@ async def main():
         st, r = call('POST', '/api/links', {'path': dst})
         named[kind] = r.get('name')
         check(f'a {kind} folder elsewhere is linked under a name made from its path', st == 200 and re.fullmatch(f'my-{sample}-[0-9a-f]{{6}}', r.get('name', '')) is not None, str(r))
-    st, again = call('POST', '/api/links', {'path': os.path.join(TMP, 'work', 'my box-console') + '/'})
+    st, again = call('POST', '/api/links', {'path': os.path.join(TMP, 'work', 'my tingly-box-console-canvas') + '/'})
     check('linking the same folder again gives the same name', again.get('name') == named['design'], str(again))
     # two folders with the same name are two projects, each named from its own path
-    twin = os.path.join(TMP, 'work', 'twin', 'my box-console')
-    shutil.copytree(os.path.join(TMP, 'work', 'my box-console'), twin, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
+    twin = os.path.join(TMP, 'work', 'twin', 'my tingly-box-console-canvas')
+    shutil.copytree(os.path.join(TMP, 'work', 'my tingly-box-console-canvas'), twin, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
     st, other = call('POST', '/api/links', {'path': twin})
     check('a folder with the same name as a linked one gets a name of its own', st == 200 and other.get('name') not in (None, named['design']) and other['name'].startswith('my-box-console-'), str(other))
     st, r = call('GET', '/api/resolve/' + named['design'])
     check('a current name resolves to itself', r.get('name') == named['design'], str(r))
-    st, r = call('GET', '/api/resolve/box-console')
-    check('a name in the projects folder resolves to itself', r.get('name') == 'box-console', str(r))
+    st, r = call('GET', '/api/resolve/tingly-box-console-canvas')
+    check('a name in the projects folder resolves to itself', r.get('name') == 'tingly-box-console-canvas', str(r))
     st, cards = call('GET', '/api/projects')
     by = {c['name']: c for c in cards}
     check('linked projects are listed with their kind and their folder', all(by.get(n, {}).get('kind') == k and by[n].get('path', '').startswith(TMP) for k, n in named.items()))
-    check('projects in the projects folder carry no path', by['box-console'].get('path') is None)
+    check('projects in the projects folder carry no path', by['tingly-box-console-canvas'].get('path') is None)
     st, r = call('POST', '/api/links', {'path': TMP})
     check('a folder with no project is refused', st == 404 and r.get('code') == 'noProjectInFolder', str(r))
     st, r = call('POST', '/api/links', {'path': 'work/site'})
@@ -77,9 +77,9 @@ async def main():
     tab = next(f for f in files['files'] if f.startswith('tabs/'))
     cur = files['files'][tab]
     st, r = call('PUT', f'/api/projects/{n}/file?path={tab}', {'content': cur['content'] + '\nWritten from the editor.\n', 'baseVersion': cur['version']})
-    on_disk = open(os.path.join(TMP, 'work', 'my design-guide', tab)).read()
+    on_disk = open(os.path.join(TMP, 'work', 'my tingly-design-guide-doc', tab)).read()
     check('a write through the server lands in the linked folder', st == 200 and on_disk.endswith('Written from the editor.\n'), str(r))
-    with open(os.path.join(TMP, 'work', 'my design-guide', tab), 'a') as f: f.write('Typed in a terminal.\n')
+    with open(os.path.join(TMP, 'work', 'my tingly-design-guide-doc', tab), 'a') as f: f.write('Typed in a terminal.\n')
     seen = False
     for _ in range(30):
         await asyncio.sleep(0.2)
@@ -105,7 +105,7 @@ async def main():
                 await pg.goto(BASE + '/')
                 await pg.locator('.lcard[data-project]').first.wait_for()
             card = pg.locator(f'.lcard[data-project="{named["design"]}"] .lpath')
-            await expect(card).to_contain_text('/tmp/dc-folders-e2e/work/my box-console')
+            await expect(card).to_contain_text('/tmp/dc-folders-e2e/work/my tingly-box-console-canvas')
             check(f'[{tag}] a linked card shows its real folder', True)
             await pg.locator(f'.lcard[data-project="{named["design"]}"]').scroll_into_view_if_needed()
             await pg.wait_for_timeout(2500)
@@ -193,11 +193,11 @@ async def main():
                 await pg.locator(f'[data-more="{name}"]').click()
                 await pg.locator('.menu').get_by_text('从列表移除').click()
                 await expect(pg.locator(f'.lcard[data-project="{name}"]')).to_have_count(0)
-                check('remove from list takes the card away and keeps the folder', name not in links() and os.path.exists(os.path.join(TMP, 'work', 'my box-usage', 'dash.json')))
+                check('remove from list takes the card away and keeps the folder', name not in links() and os.path.exists(os.path.join(TMP, 'work', 'my tingly-box-usage-dashboard', 'dash.json')))
                 await pg.locator('.toast button, .toasts button').first.click()
                 await expect(pg.locator(f'.lcard[data-project="{name}"]')).to_have_count(1)
                 check('undo lists it again', name in links())
-                await pg.locator(f'[data-more="box-console"]').click()
+                await pg.locator(f'[data-more="tingly-box-console-canvas"]').click()
                 check('a project in the projects folder has no remove from list', await pg.locator('.menu').get_by_text('从列表移除').count() == 0)
                 await pg.keyboard.press('Escape')
             check(f'[{tag}] no page errors', not errs, str(errs[:3]))
@@ -209,7 +209,7 @@ async def main():
     mig = os.path.join(TMP, 'migrate')
     pdir, here = os.path.join(mig, 'projects'), os.path.join(mig, 'site')
     os.makedirs(pdir)
-    shutil.copytree(os.path.join(REPO, 'projects', 'box-console'), here, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
+    shutil.copytree(os.path.join(REPO, 'projects', 'tingly-box-console-canvas'), here, ignore=shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders'))
     json.dump({'old-site': here}, open(os.path.join(pdir, '.links.json'), 'w'))
     def cli(*args):
         return subprocess.run(['pnpm', '-s', 'tingly-design', '--projects', pdir, *args], cwd=REPO, capture_output=True, text=True, env={**os.environ, 'DC_PROJECTS': pdir})

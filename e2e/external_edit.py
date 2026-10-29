@@ -11,11 +11,11 @@ CHROME = os.environ.get('DC_CHROME')
 
 # kind -> (sample project, file, text on screen at first, what the edit turns it into)
 CASES = {
-    'design': ('box-console', 'Flow.dc.html', 'Translated', 'Translated by hand'),
-    'slides': ('tingly-intro', 'slides/cover.html', 'Meet Tingly', 'Met Tingly outside'),
-    'design-system': ('tingly-ds', 'README.md', 'Tingly Design System', 'Tingly Design System outside'),
-    'dashboard': ('box-usage', 'files/index.html', 'Gateway usage', 'Gateway usage outside'),
-    'docs': ('design-guide', 'tabs/overview.md', 'Tingly Design handbook', 'Tingly Design handbook outside'),
+    'design': ('tingly-box-console-canvas', 'Flow.dc.html', 'Translated', 'Translated by hand'),
+    'slides': ('tingly-design-intro-slides', 'slides/cover.html', 'Meet Tingly', 'Met Tingly outside'),
+    'design-system': ('tingly-design-system', 'README.md', 'Tingly Design System', 'Tingly Design System outside'),
+    'dashboard': ('tingly-box-usage-dashboard', 'files/index.html', 'Gateway usage', 'Gateway usage outside'),
+    'docs': ('tingly-design-guide-doc', 'tabs/overview.md', 'Tingly Design handbook', 'Tingly Design handbook outside'),
     'motion': ('design-motion', 'scenes/cover.html', 'Tingly Design', 'Tingly Design outside'),
 }
 
@@ -39,8 +39,8 @@ async def shown(pg, text, timeout=8.0):
 
 # kind -> (sample project, file, text after which the picture goes in)
 PICTURES = {
-    'design': ('box-console', 'Flow.dc.html', '<x-dc>\n'),
-    'slides': ('tingly-intro', 'slides/cover.html', '>\n'),
+    'design': ('tingly-box-console-canvas', 'Flow.dc.html', '<x-dc>\n'),
+    'slides': ('tingly-design-intro-slides', 'slides/cover.html', '>\n'),
 }
 SVG = lambda color: f'<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="{color}"/></svg>'
 

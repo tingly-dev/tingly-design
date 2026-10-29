@@ -22,21 +22,21 @@ def api(path, body=None, method=None):
     with urllib.request.urlopen(req) as r:
         return json.loads(r.read())
 
-KINDS = {'canvas': 'box-console', 'slides': 'tingly-intro', 'design system': 'tingly-ds', 'dashboard': 'box-usage', 'docs': 'design-guide', 'motion': 'design-motion'}
+KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
 
 PROJECTS = os.path.join(REPO, 'projects')
 THERE = set(os.listdir(PROJECTS))  # what was there before; anything new is a project this suite imported
 
 def restore():
     """The deck as committed, without the design system this suite installs, and no project it imported."""
-    subprocess.run(['git', 'checkout', '--', 'projects/tingly-intro'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-intro'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-design-intro-slides'], cwd=REPO)
     for name in set(os.listdir(PROJECTS)) - THERE:
         if os.path.isdir(os.path.join(PROJECTS, name)): shutil.rmtree(os.path.join(PROJECTS, name))
 
 async def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    api('/api/projects/tingly-intro/design-systems', {'from': 'tingly-ds'}, 'POST')
+    api('/api/projects/tingly-design-intro-slides/design-systems', {'from': 'tingly-design-system'}, 'POST')
     before = {p['name'] for p in api('/api/projects')}
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
@@ -59,7 +59,7 @@ async def main():
             await pg.keyboard.press('Escape')
 
         # --- whole project and files only -----------------------------------------------------------
-        await pg.goto(f'{BASE}/?p=tingly-intro')
+        await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
         await pg.wait_for_timeout(3000)
         saved = {}
         for label in ('Whole project (.zip)', 'Project files only (.zip)'):
@@ -73,16 +73,16 @@ async def main():
             names = zipfile.ZipFile(path).namelist()
             if label.startswith('Whole'):
                 man = json.loads(zipfile.ZipFile(path).read('tingly-design.json'))
-                check('whole: named after the project', d.suggested_filename == 'tingly-intro.zip', d.suggested_filename)
-                check('whole: a manifest naming the project and its system', man['project'] == 'tingly-intro' and man['kind'] == 'slides' and man['systems'] == ['tingly-ds'], man)
-                check('whole: the change log goes in', 'tingly-intro/.journal.jsonl' in names)
-                check('whole: the design system beside it', 'tingly-ds/design-system.json' in names and 'tingly-ds/tokens.json' in names)
+                check('whole: named after the project', d.suggested_filename == 'tingly-design-intro-slides.zip', d.suggested_filename)
+                check('whole: a manifest naming the project and its system', man['project'] == 'tingly-design-intro-slides' and man['kind'] == 'slides' and man['systems'] == ['tingly-design-system'], man)
+                check('whole: the change log goes in', 'tingly-design-intro-slides/.journal.jsonl' in names)
+                check('whole: the design system beside it', 'tingly-design-system/design-system.json' in names and 'tingly-design-system/tokens.json' in names)
             else:
-                check('files only: no change log, no system', not any(n.endswith('.journal.jsonl') for n in names) and not any(n.startswith('tingly-ds/') for n in names), names)
-                check('files only: the installed tokens stay (the deck draws with them)', any(n.startswith('tingly-intro/ds/') for n in names), names)
+                check('files only: no change log, no system', not any(n.endswith('.journal.jsonl') for n in names) and not any(n.startswith('tingly-design-system/') for n in names), names)
+                check('files only: the installed tokens stay (the deck draws with them)', any(n.startswith('tingly-design-intro-slides/ds/') for n in names), names)
             check(f'{label}: no local state', not any(re.search(r'(^|/)(\.git|renders|\.runs\.json)', n) for n in names), names)
         await pg.wait_for_timeout(500)
-        check('a toast says it was saved', await pg.get_by_text('Saved tingly-intro', exact=False).count() >= 1)
+        check('a toast says it was saved', await pg.get_by_text('Saved tingly-design-intro-slides', exact=False).count() >= 1)
 
         # --- import from the launcher ---------------------------------------------------------------
         await pg.goto(f'{BASE}/')
@@ -169,7 +169,7 @@ async def main():
         # --- Chinese, dark ---------------------------------------------------------------------------
         zh = await b.new_context(locale='zh-CN', color_scheme='dark', viewport={'width': 1440, 'height': 900})
         zp = await zh.new_page()
-        await zp.goto(f'{BASE}/?p=tingly-intro')
+        await zp.goto(f'{BASE}/?p=tingly-design-intro-slides')
         await zp.wait_for_timeout(3000)
         await zp.locator('button[aria-label="导入 / 导出"]').first.click()
         menu = zp.get_by_role('menu', name='导入 / 导出')

@@ -110,9 +110,9 @@ async def main():
             for d in (folder, notes): open(os.path.join(d, 'img', 'dot.png'), 'wb').write(bytes(png))
 
             # --- canvas: a page folder becomes artboards beside what is there ------------------------
-            await pg.goto(base + '/?p=box-console')
+            await pg.goto(base + '/?p=tingly-box-console-canvas')
             await pg.wait_for_timeout(2500)
-            before = json.loads(read('box-console', 'canvas.json'))
+            before = json.loads(read('tingly-box-console-canvas', 'canvas.json'))
             right = max(bd['x'] + bd['w'] for bd in before['boards'].values())
             btn = pg.locator('.topbar button[aria-label="导入 / 导出"]')
             check('canvas: one import / export button in the top bar', await btn.count() == 1)
@@ -123,30 +123,30 @@ async def main():
                 await pg.locator('.menu .mi', has_text='导入文件夹').click()
             await (await fc.value).set_files(folder)
             check('canvas: importing a folder says so', await toast(pg, '已导入 index.html'))
-            ok = await wait_for(lambda: 'SpringLaunch.dc.html' in json.loads(read('box-console', 'canvas.json'))['boards'])
-            after = json.loads(read('box-console', 'canvas.json'))
+            ok = await wait_for(lambda: 'SpringLaunch.dc.html' in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['boards'])
+            after = json.loads(read('tingly-box-console-canvas', 'canvas.json'))
             check('canvas: the page became an artboard named after it', ok, list(after['boards']))
             nb = after['boards'].get('SpringLaunch.dc.html', {})
             check('…to the right of everything already there', nb.get('x', 0) > right and nb.get('imported', {}).get('from') == 'html', nb)
             check('…and nothing already there moved', all(after['boards'][f] == bd for f, bd in before['boards'].items()))
-            kept = [os.path.relpath(os.path.join(r, f), P('box-console')) for r, _, fs in os.walk(P('box-console', 'uploads')) for f in fs]
+            kept = [os.path.relpath(os.path.join(r, f), P('tingly-box-console-canvas')) for r, _, fs in os.walk(P('tingly-box-console-canvas', 'uploads')) for f in fs]
             check('canvas: the folder is kept in uploads/ with its tree', any(k.endswith('/css/site.css') for k in kept) and any(k.endswith('/img/dot.png') for k in kept), kept)
-            src = read('box-console', 'SpringLaunch.dc.html')
+            src = read('tingly-box-console-canvas', 'SpringLaunch.dc.html')
             check('…and the artboard points at the kept picture', '/img/dot.png' in src and 'uploads/' in src and '#b4441c' in src)
             await pg.wait_for_timeout(800)
             await pg.screenshot(path=OUT + 'import-here-canvas.png')
 
             # pasted SVG markup: one more artboard
             await paste_text(pg, SVG)
-            ok = await wait_for(lambda: any(f.startswith('Imported') or f.startswith('Pasted') or 'Badge' in read('box-console', f) for f in json.loads(read('box-console', 'canvas.json'))['boards'] if f not in after['boards']))
+            ok = await wait_for(lambda: any(f.startswith('Imported') or f.startswith('Pasted') or 'Badge' in read('tingly-box-console-canvas', f) for f in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['boards'] if f not in after['boards']))
             check('canvas: pasting SVG adds an artboard', ok)
 
             # the real ⌘V: the system clipboard's SVG reaches the import, not the in-app clipboard
-            boards = set(json.loads(read('box-console', 'canvas.json'))['boards'])
+            boards = set(json.loads(read('tingly-box-console-canvas', 'canvas.json'))['boards'])
             await pg.evaluate("(t) => navigator.clipboard.writeText(t)", SVG.replace('Badge', 'Stamp'))
             await pg.mouse.click(1300, 820)
             await pg.keyboard.press('ControlOrMeta+V')
-            ok = await wait_for(lambda: any('Stamp' in read('box-console', f) for f in json.loads(read('box-console', 'canvas.json'))['boards'] if f not in boards))
+            ok = await wait_for(lambda: any('Stamp' in read('tingly-box-console-canvas', f) for f in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['boards'] if f not in boards))
             check('canvas: ⌘V with SVG on the clipboard adds an artboard', ok)
 
             # a file dragged over an artboard is not swallowed by its frame
@@ -161,14 +161,14 @@ async def main():
             shown = await drop(pg, [('photo.png', None, 'image/png')], at=(600, 400))
             check('canvas: dragging files shows where they will go', shown)
             check('canvas: a dropped picture says so', await toast(pg, '已放上 photo.png'))
-            ok = await wait_for(lambda: any(n.get('kind') == 'image' for n in json.loads(read('box-console', 'canvas.json'))['notes'].values()))
-            img = next((n for n in json.loads(read('box-console', 'canvas.json'))['notes'].values() if n.get('kind') == 'image'), {})
+            ok = await wait_for(lambda: any(n.get('kind') == 'image' for n in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['notes'].values()))
+            img = next((n for n in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['notes'].values() if n.get('kind') == 'image'), {})
             check('…as an image item kept in uploads/', ok and img.get('src', '').startswith('uploads/photo-'), img)
             loaded = await pg.wait_for_function("() => [...document.querySelectorAll('img')].some((i) => i.src.includes('/raw/uploads/photo-') && i.naturalWidth > 0)", timeout=8000)
             check('…and it shows on the canvas', bool(loaded))
 
             # ⌘C ⌘V of the picture still uses the in-app clipboard: nothing to import, so the item is copied
-            count = lambda: sum(1 for n in json.loads(read('box-console', 'canvas.json'))['notes'].values() if n.get('kind') == 'image')
+            count = lambda: sum(1 for n in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['notes'].values() if n.get('kind') == 'image')
             n0 = count()
             await pg.keyboard.press('ControlOrMeta+C')
             await pg.wait_for_timeout(300)
@@ -180,29 +180,29 @@ async def main():
             check('canvas: Markdown is refused with what it takes', await toast(pg, '这里能导入的是'))
 
             # --- slides: a picture onto the open slide ---------------------------------------------
-            await pg.goto(base + '/?p=tingly-intro')
+            await pg.goto(base + '/?p=tingly-design-intro-slides')
             await pg.wait_for_timeout(2500)
-            deck = json.loads(read('tingly-intro', 'deck.json'))
+            deck = json.loads(read('tingly-design-intro-slides', 'deck.json'))
             first = deck['order'][0]
             await drop(pg, [('chart.png', None, 'image/png')])
             check('slides: a dropped picture says so', await toast(pg, '已放上 chart.png'))
-            ok = await wait_for(lambda: 'src="uploads/chart-' in read('tingly-intro', 'slides', f'{first}.html'))
+            ok = await wait_for(lambda: 'src="uploads/chart-' in read('tingly-design-intro-slides', 'slides', f'{first}.html'))
             check('slides: …onto the open slide, kept in uploads/', ok)
 
             # --- docs: a Markdown folder becomes a tab, its picture kept ------------------------------
-            await pg.goto(base + '/?p=design-guide')
+            await pg.goto(base + '/?p=tingly-design-guide-doc')
             await pg.wait_for_timeout(2500)
-            tabs = len(json.loads(read('design-guide', 'doc.json'))['tabs'])
+            tabs = len(json.loads(read('tingly-design-guide-doc', 'doc.json'))['tabs'])
             await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
             async with pg.expect_file_chooser() as fc:
                 await pg.locator('.menu .mi', has_text='导入文件夹').click()
             await (await fc.value).set_files(notes)
             check('docs: importing Markdown says so', await toast(pg, '已把 notes.md 加成新的标签页'))
-            doc = json.loads(read('design-guide', 'doc.json'))
-            ok = await wait_for(lambda: len(json.loads(read('design-guide', 'doc.json'))['tabs']) == tabs + 1)
-            doc = json.loads(read('design-guide', 'doc.json'))
+            doc = json.loads(read('tingly-design-guide-doc', 'doc.json'))
+            ok = await wait_for(lambda: len(json.loads(read('tingly-design-guide-doc', 'doc.json'))['tabs']) == tabs + 1)
+            doc = json.loads(read('tingly-design-guide-doc', 'doc.json'))
             check('docs: …a new tab titled by its heading', ok and doc['tabs'][-1]['title'] == 'Field notes', doc['tabs'][-1])
-            tab = read('design-guide', 'tabs', doc['tabs'][-1]['id'] + '.md') if ok else ''
+            tab = read('tingly-design-guide-doc', 'tabs', doc['tabs'][-1]['id'] + '.md') if ok else ''
             check('docs: …its picture kept in uploads/ and linked from the tab', '](../uploads/field-notes-' in tab and '/img/dot.png)' in tab, repr(tab))
             await expect(pg.locator('.docbody h1')).to_have_text('Field notes')
             loaded = await pg.wait_for_function("() => [...document.querySelectorAll('.docbody img')].some((i) => i.naturalWidth > 0)", timeout=8000)
@@ -214,39 +214,39 @@ async def main():
             with zipfile.ZipFile(zpath, 'w') as z:
                 z.writestr('memo.md', '# Memo\n\nA <mark>marked</mark> word.\n\n![dot](assets/dot.png)\n')
                 z.write(os.path.join(notes, 'img', 'dot.png'), 'assets/dot.png')
-            tabs = len(json.loads(read('design-guide', 'doc.json'))['tabs'])
+            tabs = len(json.loads(read('tingly-design-guide-doc', 'doc.json'))['tabs'])
             await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
             async with pg.expect_file_chooser() as fc:
                 await pg.locator('.menu .mi', has_text='导入 Markdown').click()
             await (await fc.value).set_files(zpath)
-            ok = await wait_for(lambda: len(json.loads(read('design-guide', 'doc.json'))['tabs']) == tabs + 1)
-            doc = json.loads(read('design-guide', 'doc.json'))
-            tab = read('design-guide', 'tabs', doc['tabs'][-1]['id'] + '.md') if ok else ''
+            ok = await wait_for(lambda: len(json.loads(read('tingly-design-guide-doc', 'doc.json'))['tabs']) == tabs + 1)
+            doc = json.loads(read('tingly-design-guide-doc', 'doc.json'))
+            tab = read('tingly-design-guide-doc', 'tabs', doc['tabs'][-1]['id'] + '.md') if ok else ''
             check('docs: a .zip of Markdown and its picture becomes a tab', ok and doc['tabs'][-1]['title'] == 'Memo', doc['tabs'][-1])
             check('docs: …<mark> read as the editor highlight, the picture kept in uploads/', '==marked==' in tab and '](../uploads/memo-' in tab, repr(tab))
 
             # --- dashboard: a CSV becomes a dataset, opened in Sources ---------------------------------
-            await pg.goto(base + '/?p=box-usage')
+            await pg.goto(base + '/?p=tingly-box-usage-dashboard')
             await pg.wait_for_timeout(2500)
             await drop(pg, [('signups.csv', CSV, 'text/csv')])
             check('dashboard: a dropped CSV says so', await toast(pg, '加成数据集 signups'))
-            ok = await wait_for(lambda: os.path.exists(P('box-usage', 'datasets', 'signups.json')))
-            ds = json.loads(read('box-usage', 'datasets', 'signups.json')) if ok else {}
+            ok = await wait_for(lambda: os.path.exists(P('tingly-box-usage-dashboard', 'datasets', 'signups.json')))
+            ds = json.loads(read('tingly-box-usage-dashboard', 'datasets', 'signups.json')) if ok else {}
             check('dashboard: …a dataset reading data/signups.csv', ds.get('source') == {'kind': 'file', 'url': 'data/signups.csv', 'name': 'signups.csv', 'format': 'csv'}, ds)
-            check('dashboard: …the file is in data/', os.path.exists(P('box-usage', 'data', 'signups.csv')))
+            check('dashboard: …the file is in data/', os.path.exists(P('tingly-box-usage-dashboard', 'data', 'signups.csv')))
             await pg.wait_for_timeout(1000)
             await pg.screenshot(path=OUT + 'import-here-dash.png')
             await drop(pg, [('broken.json', '{"just": "a value"}', 'application/json')])
             check('dashboard: JSON that is not a table is refused', await toast(pg, '读不出表格'))
 
             # --- design system: a font and a picture into its own files -------------------------------
-            await pg.goto(base + '/?p=tingly-ds')
+            await pg.goto(base + '/?p=tingly-design-system')
             await pg.wait_for_timeout(2500)
             await drop(pg, [('Brand-Bold.woff2', 'wOF2fake', 'font/woff2'), ('mark.svg', SVG, 'image/svg+xml')])
             check('design system: says what it added', await toast(pg, '已加入 1 个字体、1 个素材'))
-            ok = await wait_for(lambda: 'fonts/Brand-Bold.woff2' in read('tingly-ds', 'tokens.json'))
+            ok = await wait_for(lambda: 'fonts/Brand-Bold.woff2' in read('tingly-design-system', 'tokens.json'))
             check('design system: the font is registered in tokens.json', ok)
-            check('design system: the SVG is an asset in assets/Other', os.path.exists(P('tingly-ds', 'assets', 'Other', 'mark.svg')))
+            check('design system: the SVG is an asset in assets/Other', os.path.exists(P('tingly-design-system', 'assets', 'Other', 'mark.svg')))
 
             # --- motion: a picture onto the scene under the playhead, entering there --------------------
             await pg.goto(base + '/?p=design-motion')

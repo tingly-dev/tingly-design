@@ -2,7 +2,7 @@
 
 Status: **research**. Nothing here is decided and no code changed. When a step lands, what it settles (a shared primitive, a folder rule) moves into `.design/` and `CLAUDE.md`.
 
-Scope: `apps/editor/src` at the time of writing (≈19 000 lines of TS/TSX, one 6 542-line `styles.css`). Inputs: line counts, greps for repeated patterns, the six kinds' `*App.tsx`, and the yellow "Open" boxes on the boards of `projects/tingly-design-ui`.
+Scope: `apps/editor/src` at the time of writing (≈19 000 lines of TS/TSX, one 6 542-line `styles.css`). Inputs: line counts, greps for repeated patterns, the six kinds' `*App.tsx`, and the yellow "Open" boxes on the boards of `projects/tingly-design-ui-canvas`.
 
 ## 1. What is in good shape
 

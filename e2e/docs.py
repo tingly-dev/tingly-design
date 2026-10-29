@@ -7,7 +7,7 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DOC = os.path.join(REPO, 'projects/design-guide')
+DOC = os.path.join(REPO, 'projects/tingly-design-guide-doc')
 CHROME = os.environ.get('DC_CHROME')
 
 def read(path): return open(path, encoding='utf-8').read()
@@ -15,12 +15,12 @@ def write(path, text): open(path, 'w', encoding='utf-8').write(text)
 def tab(id): return read(os.path.join(DOC, f'tabs/{id}.md'))
 def index(): return json.loads(read(os.path.join(DOC, 'doc.json')))
 def threads(): return json.loads(read(os.path.join(DOC, 'comments.json')))['threads']
-def diff(path='projects/design-guide'):
+def diff(path='projects/tingly-design-guide-doc'):
     out = subprocess.run(['git', 'diff', '--unified=0', '--', path], cwd=REPO, capture_output=True, text=True).stdout
     return [l for l in out.splitlines() if l[:1] in '+-' and l[:3] not in ('+++', '---')]
 def restore():
-    subprocess.run(['git', 'checkout', '--', 'projects/design-guide'], cwd=REPO)
-    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/design-guide'], cwd=REPO)
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-guide-doc'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-design-guide-doc'], cwd=REPO)
     subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects/zz-doc')])
 
 async def wait_for(pred, timeout=6.0):
@@ -51,7 +51,7 @@ async def main():
         body = pg.locator('.docbody')
 
         # --- reading ----------------------------------------------------------------
-        await pg.goto(BASE + '/?p=design-guide')
+        await pg.goto(BASE + '/?p=tingly-design-guide-doc')
         await expect(body.locator('h1')).to_have_text('Tingly Design handbook')
         await expect(pg.locator('.tabrow')).to_have_count(5)
         check('tabs, subtabs and the outline', await pg.locator('.tabrow.sub').count() == 1 and await pg.locator('.outline button').count() == 4)
@@ -233,7 +233,7 @@ async def main():
             await pg.locator('.sparkpanel button', has_text='替换').click()
             ok = await wait_for(lambda: 'which edits them directly.（已改写）' in tab('kinds'))
             check('AI rewrite replaces the passage', ok, tab('kinds')[-400:])
-            check('…and only that block changed', len(diff('projects/design-guide/tabs/kinds.md')) == 2, '\n'.join(diff('projects/design-guide/tabs/kinds.md')))
+            check('…and only that block changed', len(diff('projects/tingly-design-guide-doc/tabs/kinds.md')) == 2, '\n'.join(diff('projects/tingly-design-guide-doc/tabs/kinds.md')))
         else:
             print('SKIP AI rewrite (no ANTHROPIC_API_KEY on the server)')
 

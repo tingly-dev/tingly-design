@@ -2,7 +2,7 @@
 
 # Docs
 
-The sample [`?p=design-guide`](http://localhost:5173/?p=design-guide) is the Tingly Design handbook: four tabs (one nested), a project-kinds table, a setup checklist, a quote, a code block and two comment threads.
+The sample [`?p=tingly-design-guide-doc`](http://localhost:5173/?p=tingly-design-guide-doc) is the Tingly Design handbook: four tabs (one nested), a project-kinds table, a setup checklist, a quote, a code block and two comment threads.
 
 ![Docs: the format and AI rewrite menu on a selection, comments on the right](../../images/docs.png)
 

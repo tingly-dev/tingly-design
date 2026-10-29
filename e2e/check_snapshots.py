@@ -21,9 +21,9 @@ try:
     projects = os.path.join(tmp, 'projects')
     os.makedirs(projects)
     keep = shutil.ignore_patterns('.journal.jsonl', '.runs.json', 'renders')
-    shutil.copytree(os.path.join(REPO, 'projects', 'tingly-intro'), os.path.join(projects, 'zz-clean'), ignore=keep)
+    shutil.copytree(os.path.join(REPO, 'projects', 'tingly-design-intro-slides'), os.path.join(projects, 'zz-clean'), ignore=keep)
     bad = os.path.join(projects, 'zz-layout')
-    shutil.copytree(os.path.join(REPO, 'projects', 'tingly-intro'), bad, ignore=keep)
+    shutil.copytree(os.path.join(REPO, 'projects', 'tingly-design-intro-slides'), bad, ignore=keep)
     box = os.path.join(bad, 'slides', 'box.html')  # a plain background, so contrast can be judged
     s = open(box, encoding='utf-8').read()
     i = s.rindex('</section>')

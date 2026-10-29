@@ -6,15 +6,15 @@ from playwright.async_api import async_playwright, expect
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out') + '/'
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DS = os.path.join(REPO, 'projects/tingly-ds')
-DECK = os.path.join(REPO, 'projects/tingly-intro')
+DS = os.path.join(REPO, 'projects/tingly-design-system')
+DECK = os.path.join(REPO, 'projects/tingly-design-intro-slides')
 CHROME = os.environ.get('DC_CHROME')
 
 def read(path): return open(path, encoding='utf-8').read()
 def tokens(): return json.loads(read(os.path.join(DS, 'tokens.json')))
 def color(name): return next((t for t in tokens()['color']['tokens'] if t['name'] == name), None)
 def restore():
-    for p in ('projects/tingly-ds', 'projects/tingly-intro'):
+    for p in ('projects/tingly-design-system', 'projects/tingly-design-intro-slides'):
         subprocess.run(['git', 'checkout', '--', p], cwd=REPO)
         subprocess.run(['git', 'clean', '-fdq', '--', p], cwd=REPO)
     subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects/zz-ds')])
@@ -52,7 +52,7 @@ async def main():
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
 
         # --- overview -------------------------------------------------------------
-        await pg.goto(BASE + '/?p=tingly-ds&v=overview')
+        await pg.goto(BASE + '/?p=tingly-design-system&v=overview')
         await expect(pg.locator('.topbar h1.dashtitle')).to_have_text('Tingly Design System')
         await expect(pg.locator('.md h1').first).to_have_text('Tingly Design System')
         await expect(pg.locator('.glance .specimen')).to_be_visible()
@@ -79,7 +79,7 @@ async def main():
         await val.press('Enter')
         ok = await wait_for(lambda: color('warning')['value']['light'] == '#c2410c' and '--warning: #c2410c;' in read(os.path.join(DS, 'tokens.css')))
         check('editing a colour writes tokens.json, and tokens.css is rebuilt', ok)
-        diff = subprocess.run(['git', 'diff', '--unified=0', '--', 'projects/tingly-ds/tokens.json'], cwd=REPO, capture_output=True, text=True).stdout
+        diff = subprocess.run(['git', 'diff', '--unified=0', '--', 'projects/tingly-design-system/tokens.json'], cwd=REPO, capture_output=True, text=True).stdout
         changed = [l for l in diff.splitlines() if l[:1] in '+-' and l[:3] not in ('+++', '---')]
         check('…as data: only the line that changed', len(changed) == 2 and all('c2410c' in l or 'b45309' in l for l in changed), '\n'.join(changed[:6]))
         await pg.locator('.dsrow[data-token="brand"] .dshead').click()
@@ -169,10 +169,10 @@ async def main():
 
         # --- installing into the deck -----------------------------------------------------
         restore()
-        await pg.goto(BASE + '/?p=tingly-intro&s=box')
+        await pg.goto(BASE + '/?p=tingly-design-intro-slides&s=box')
         await pg.frame_locator('.sframe.f-stage iframe').locator('section#box').wait_for()
         await pg.keyboard.press('Escape')
-        await pg.locator('select[aria-label="选择设计系统"]').select_option('tingly-ds')
+        await pg.locator('select[aria-label="选择设计系统"]').select_option('tingly-design-system')
         await pg.locator('.dsinst, button:has-text("装入")').last.click()
         deck = lambda: json.loads(read(os.path.join(DECK, 'deck.json')))
         ok = await wait_for(lambda: any(r['namespace'] == 'tingly' for r in deck()['designSystems']) and os.path.exists(os.path.join(DECK, 'ds/tingly/tokens.json')))
@@ -212,12 +212,12 @@ async def main():
             asked.set()
             await asyncio.sleep(1.5)
             await route.continue_()
-        await pg.route('**/api/projects/tingly-intro/files', slow)
+        await pg.route('**/api/projects/tingly-design-intro-slides/files', slow)
         await pg.reload()
         await asyncio.wait_for(asked.wait(), 10)
         await pg.locator('.project-loading').wait_for()
         check('while a deck loads, no canvas editor stands in for it', await pg.locator('.panel').count() == 0)
-        await pg.unroute('**/api/projects/tingly-intro/files', slow)
+        await pg.unroute('**/api/projects/tingly-design-intro-slides/files', slow)
         await pg.locator('.panel').wait_for()
         await pg.keyboard.press('Escape')
         builtins = pg.locator('.panel .dsbuiltins')

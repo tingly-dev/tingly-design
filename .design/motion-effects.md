@@ -1,6 +1,6 @@
 # Motion effects: shader layers in a motion piece
 
-Status: **已实施** (the contract, the WebGL2 runtime, sixteen built-in presets behind `data-fx` with shared values that reshape them with a CSS stand-in when WebGL2 is off, and a sample, `projects/motion-effects/`); checker errors for hand-written GLSL and a preset picker in the editor are open (§6). The engines weighed, and the measurements behind the choice, are in `.research/motion-effects.md`.
+Status: **已实施** (the contract, the WebGL2 runtime, sixteen built-in presets behind `data-fx` with shared values that reshape them with a CSS stand-in when WebGL2 is off, and a sample, `projects/tingly-design-shader-effects-motion/`); checker errors for hand-written GLSL and a preset picker in the editor are open (§6). The engines weighed, and the measurements behind the choice, are in `.research/motion-effects.md`.
 
 The effects layer of the motion kind (`.design/motion.md`): what an effect is, how it stays frame-exact in export, which engine draws it, and what makes an effect worth having on screen.
 

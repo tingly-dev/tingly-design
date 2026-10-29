@@ -100,7 +100,7 @@ The first version should replace what this repository already does by hand, so w
 | Today | With the CLI |
 |---|---|
 | `scripts/build-site.sh` (Pages) and `scripts/readme-assets.sh`: `node scripts/motion-render.mjs design-motion …` plus finding Playwright's Chrome | `tingly-design export design-motion --as mp4 --format wide,tall` |
-| PR screenshots of the editor's own design canvas, taken by hand per PR | `tingly-design export tingly-design-ui --as png --board <board>` |
+| PR screenshots of the editor's own design canvas, taken by hand per PR | `tingly-design export tingly-design-ui-canvas --as png --board <board>` |
 | The format skills telling Claude Code to run `scripts/dash-query.mjs`, `pnpm dc-import` | `tingly-design list <dash> --json`, `tingly-design import` |
 | A delegated Claude Code run with no way to look at its result | the skills end with `tingly-design check <project>` and `export --as png` |
 | The issue sweep and threads checking a change by starting `pnpm dev` | `tingly-design check`, `export`, `history` |

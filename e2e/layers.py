@@ -82,14 +82,14 @@ async def main():
         pg.on('console', lambda m: m.type == 'error' and 'ERR_TUNNEL' not in m.text and '409 (Conflict)' not in m.text and errs.append(m.text))
 
         # --- canvas ------------------------------------------------------------------
-        await pg.goto(BASE + '/?p=box-console')
+        await pg.goto(BASE + '/?p=tingly-box-console-canvas')
         await pg.wait_for_timeout(2500)
         main = pg.frame_locator('[data-board="Main.dc.html"] iframe')
-        await element_switches(pg, 'canvas', '[data-board="Main.dc.html"] iframe', main, 'h1', 'box-console/Main.dc.html')
+        await element_switches(pg, 'canvas', '[data-board="Main.dc.html"] iframe', main, 'h1', 'tingly-box-console-canvas/Main.dc.html')
         board = pg.locator('.layers .lr[data-key="Main.dc.html"]')
         await board.hover()
         await board.locator('.sw[aria-label="Hide"]').click()
-        ok = await wait_for(lambda: json.loads(read('box-console/canvas.json'))['boards']['Main.dc.html'].get('hidden') is True)
+        ok = await wait_for(lambda: json.loads(read('tingly-box-console-canvas/canvas.json'))['boards']['Main.dc.html'].get('hidden') is True)
         await expect(pg.locator('[data-board="Main.dc.html"]')).to_have_count(0)
         check('canvas: an artboard row hides the artboard (hidden in canvas.json)', ok)
         await board.hover()
@@ -97,7 +97,7 @@ async def main():
         await expect(pg.locator('[data-board="Main.dc.html"]')).to_have_count(1)
         await board.hover()
         await board.locator('.sw[aria-label="Lock"]').click()
-        ok = await wait_for(lambda: json.loads(read('box-console/canvas.json'))['boards']['Main.dc.html'].get('locked') is True)
+        ok = await wait_for(lambda: json.loads(read('tingly-box-console-canvas/canvas.json'))['boards']['Main.dc.html'].get('locked') is True)
         check('canvas: an artboard row locks the artboard (locked in canvas.json)', ok)
         await pg.wait_for_timeout(300)
         x0 = (await pg.locator('[data-board="Main.dc.html"]').bounding_box())['x']
@@ -116,14 +116,14 @@ async def main():
         check('canvas: a locked artboard says so in the panel and its fields are off', await pg.locator('fieldset.pset').evaluate('e => e.disabled'))
         await pg.keyboard.press('Delete')
         await pg.wait_for_timeout(300)
-        check('canvas: Delete leaves a locked artboard alone', 'Main.dc.html' in json.loads(read('box-console/canvas.json'))['boards'])
+        check('canvas: Delete leaves a locked artboard alone', 'Main.dc.html' in json.loads(read('tingly-box-console-canvas/canvas.json'))['boards'])
         await pg.locator('.locknote button').click()
-        ok = await wait_for(lambda: json.loads(read('box-console/canvas.json'))['boards']['Main.dc.html'].get('locked') is None)
+        ok = await wait_for(lambda: json.loads(read('tingly-box-console-canvas/canvas.json'))['boards']['Main.dc.html'].get('locked') is None)
         await expect(pg.locator('.locknote')).to_have_count(0)
         check('canvas: the notice\'s Unlock takes the lock off and frees the fields', ok and not await pg.locator('fieldset.pset').evaluate('e => e.disabled'))
 
         # several layers at once, and Alt on an eye
-        file = 'box-console/Main.dc.html'
+        file = 'tingly-box-console-canvas/Main.dc.html'
         rows = pg.locator('.layers .lr[data-key^="Main.dc.html#"]')
         if not await rows.count(): await pg.locator('.layers .lr[data-key="Main.dc.html"] .tw').click()
         await rows.nth(0).click()
@@ -147,11 +147,11 @@ async def main():
         restore()
 
         # --- slides ------------------------------------------------------------------
-        await pg.goto(BASE + '/?p=tingly-intro&s=box')
+        await pg.goto(BASE + '/?p=tingly-design-intro-slides&s=box')
         stage = pg.frame_locator('.sframe.f-stage iframe')
         await stage.locator('section#box').wait_for()
         await pg.wait_for_timeout(400)
-        await element_switches(pg, 'slides', '.sframe.f-stage iframe', stage, 'h2', 'tingly-intro/slides/box.html')
+        await element_switches(pg, 'slides', '.sframe.f-stage iframe', stage, 'h2', 'tingly-design-intro-slides/slides/box.html')
         check('slides: the slide itself has no hide or lock row (skipping is its own switch)', await pg.locator('.layers .lr').first.locator('.sw').count() == 0)
         restore()
 

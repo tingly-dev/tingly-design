@@ -30,10 +30,10 @@ async def main():
     os.makedirs(EMBED + '/scenes')
     open(EMBED + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-embed', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))
     open(EMBED + '/scenes/title.html', 'w').write('<section id="title" data-duration="2s" style="background:#14161c;padding:96px"><x-embed style="display:block;width:600px;height:300px"><div style="background:#ee3333;width:100%;height:100%"></div></x-embed></section>')
-    # an artboard imported from a canvas (box-console's Glow, moving), behind a title
+    # an artboard imported from a canvas (tingly-box-console-canvas's Glow, moving), behind a title
     os.makedirs(BOARD + '/scenes')
     os.makedirs(BOARD + '/uploads/box-console-Glow')
-    subprocess.run(['cp', os.path.join(REPO, 'projects/box-console/Glow.dc.html'), BOARD + '/uploads/box-console-Glow/'])
+    subprocess.run(['cp', os.path.join(REPO, 'projects/tingly-box-console-canvas/Glow.dc.html'), BOARD + '/uploads/box-console-Glow/'])
     open(BOARD + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export-board', 'formats': {'wide': {'size': [1280, 720]}}, 'fps': 30, 'order': ['glow'], 'audio': [], 'faces': {}}))
     open(BOARD + '/scenes/glow.html', 'w').write('<section id="glow" data-duration="2s" style="background:#0b1020;color:#fff;font-family:Arial,sans-serif;padding:96px"><x-embed src="uploads/box-console-Glow/Glow.dc.html" style="position:absolute;left:0px;top:0px;width:1280px;height:720px"></x-embed><h1 style="position:relative;font-size:80px">Glow</h1></section>')
     open(PIECE + '/motion.json', 'w').write(json.dumps({'v': 1, 'title': 'zz-export', 'formats': {'wide': {'size': [1920, 1080]}}, 'fps': 30, 'order': ['title'], 'audio': [], 'faces': {}}))

@@ -1,6 +1,6 @@
 # 请求栏的外形：一张卡，三行
 
-状态：**已实施**。请求栏（`RequestBar`，画布、幻灯片、动效的 `PromptBar` 和其余类型的 `AskClaude` 共用）原来把八样东西挤在一条窄带里：目标、Fast AI / Claude Code 切换、历史、位置、折叠、回形针、输入框、发送，选项行再挂在下面。人看到的是一排大小不一、对不齐的控件，哪个是这次请求的设置、哪个是整个栏的工具，分不出来。本篇是它的取舍，位置和对话列见 agent-panel.md、chat-panel.md，图像生成见 image-generation.md。画板是 `projects/tingly-design-ui` 的 Composer。
+状态：**已实施**。请求栏（`RequestBar`，画布、幻灯片、动效的 `PromptBar` 和其余类型的 `AskClaude` 共用）原来把八样东西挤在一条窄带里：目标、Fast AI / Claude Code 切换、历史、位置、折叠、回形针、输入框、发送，选项行再挂在下面。人看到的是一排大小不一、对不齐的控件，哪个是这次请求的设置、哪个是整个栏的工具，分不出来。本篇是它的取舍，位置和对话列见 agent-panel.md、chat-panel.md，图像生成见 image-generation.md。画板是 `projects/tingly-design-ui-canvas` 的 Composer。
 
 ## 1. 决定的形状
 

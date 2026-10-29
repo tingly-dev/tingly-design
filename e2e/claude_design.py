@@ -37,8 +37,8 @@ def restore():
     for name in set(os.listdir(PROJECTS)) - THERE:
         if os.path.isdir(os.path.join(PROJECTS, name)): shutil.rmtree(os.path.join(PROJECTS, name))
 
-KINDS = {'canvas': 'box-console', 'slides': 'tingly-intro', 'design system': 'tingly-ds', 'dashboard': 'box-usage'}
-NO = {'docs': 'design-guide', 'motion': 'design-motion'}
+KINDS = {'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design system': 'tingly-design-system', 'dashboard': 'tingly-box-usage-dashboard'}
+NO = {'docs': 'tingly-design-guide-doc', 'motion': 'design-motion'}
 
 PNG = bytes.fromhex('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63fcffff3f0300090402b6c4a6f60000000049454e44ae426082')
 ID = 'a1' * 16
@@ -57,15 +57,15 @@ async def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     try:
         # --- the files, through the API ---------------------------------------------------------------
-        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/box-console/claude-design')))
+        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/tingly-box-console-canvas/claude-design')))
         names = z.namelist()
         check('canvas: the index and boards sit under project/', 'project/canvas.json' in names and 'project/Main.dc.html' in names, names)
         check('canvas: a README for Claude Code beside project/', 'README.md' in names and b'create a Design artifact' in z.read('README.md'))
-        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/tingly-intro/claude-design')))
+        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/tingly-design-intro-slides/claude-design')))
         check('slides: deck.json and slides/ under project/', 'project/deck.json' in z.namelist() and any(n.startswith('project/slides/') for n in z.namelist()))
-        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/tingly-ds/claude-design')))
+        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/tingly-design-system/claude-design')))
         check('design system: project/design-system.json and tokens.json', 'project/design-system.json' in z.namelist() and 'project/tokens.json' in z.namelist())
-        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/box-usage/claude-design')))
+        z = zipfile.ZipFile(io.BytesIO(get('/api/projects/tingly-box-usage-dashboard/claude-design')))
         names = z.namelist()
         check('dashboard: the store documents', 'dash/meta.json' in names and any(n.startswith('datasets/') for n in names) and 'files/index.html' in names, names)
         check('dashboard: attached data under blobs/, no local database', any(n.startswith('blobs/') for n in names) and not any(n.endswith('.db') for n in names), names)
@@ -109,7 +109,7 @@ async def main():
                 await pg.keyboard.press('Escape')
 
             # --- saving one ----------------------------------------------------------------------------
-            await pg.goto(f'{BASE}/?p=tingly-intro')
+            await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
             await pg.wait_for_timeout(3000)
             await pg.locator('button[aria-label="Import / Export"]').first.click()
             async with pg.expect_download() as dl:
@@ -167,7 +167,7 @@ async def main():
             # --- Chinese, dark ---------------------------------------------------------------------------------
             zh = await b.new_context(locale='zh-CN', color_scheme='dark', viewport={'width': 1440, 'height': 900})
             zp = await zh.new_page()
-            await zp.goto(f'{BASE}/?p=box-console')
+            await zp.goto(f'{BASE}/?p=tingly-box-console-canvas')
             await zp.wait_for_timeout(3000)
             await zp.locator('button[aria-label="导入 / 导出"]').first.click()
             menu = zp.get_by_role('menu', name='导入 / 导出')

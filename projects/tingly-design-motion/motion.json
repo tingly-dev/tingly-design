@@ -1,0 +1,62 @@
+{
+  "v": 1,
+  "title": "Tingly Design Motion",
+  "formats": {
+    "wide": {
+      "size": [
+        1920,
+        1080
+      ]
+    },
+    "tall": {
+      "size": [
+        1080,
+        1920
+      ]
+    },
+    "s390x844": {
+      "size": [
+        390,
+        844
+      ]
+    },
+    "upright": {
+      "size": [
+        1080,
+        1440
+      ]
+    }
+  },
+  "fps": 30,
+  "order": [
+    "cover",
+    "idea",
+    "edit",
+    "more",
+    "kind-canvas",
+    "kind-slides",
+    "kind-system",
+    "kind-dash",
+    "kind-docs",
+    "kind-motion",
+    "all",
+    "outro"
+  ],
+  "audio": [],
+  "faces": {
+    "instrument-serif": {
+      "family": "Instrument Serif",
+      "href": "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+    },
+    "inter": {
+      "family": "Inter",
+      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap"
+    },
+    "jetbrains-mono": {
+      "family": "JetBrains Mono",
+      "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap"
+    }
+  },
+  "cover": "poster",
+  "speed": 1.5
+}

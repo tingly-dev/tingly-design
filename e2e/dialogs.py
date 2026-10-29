@@ -48,7 +48,7 @@ async def ai_settings(pg, lang):
     return btn
 
 async def commit(pg, lang):
-    await pg.goto(BASE + f'/?p=box-console&lang={lang}')
+    await pg.goto(BASE + f'/?p=tingly-box-console-canvas&lang={lang}')
     await pg.locator('header.topbar').wait_for(timeout=15000)
     await pg.locator('.syncchip').click()
     btn = pg.locator('[data-commit]')
@@ -67,7 +67,7 @@ async def export_video(pg, lang):
     return io
 
 async def board_picker(pg, lang):
-    await pg.goto(BASE + f'/?p=tingly-intro&lang={lang}')
+    await pg.goto(BASE + f'/?p=tingly-design-intro-slides&lang={lang}')
     await pg.locator('header.topbar').wait_for(timeout=15000)
     io = pg.locator(f'button[aria-label="{L[lang]["io"]}"]').first
     await io.click()
