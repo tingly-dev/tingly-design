@@ -6,6 +6,7 @@ import { useStore } from './store';
 import { initLanguage } from './i18n';
 import { initTheme } from './theme';
 import { applySideWidths } from './sideWidth';
+import { applyBandHeights } from './bandHeight';
 import { listenToHost } from './host';
 import './headless';
 import './styles.css';
@@ -13,6 +14,7 @@ import './styles.css';
 initLanguage();
 initTheme();
 applySideWidths();
+applyBandHeights();
 listenToHost();
 
 // handy in devtools and for the end-to-end tests

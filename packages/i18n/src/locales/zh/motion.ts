@@ -67,6 +67,13 @@ export default {
     embeds: '这些场景里有嵌入内容没交出画面，在这条视频里是空白：{{scenes}}。Chrome 或 Edge 加 ffmpeg 能准确画出它；在有的机器上用 tingly-design export <作品> --as mp4',
     failed: '视频没能生成：{{message}}',
   },
+  lanes: {
+    toggle: '元素 {{count}}',
+    hideHint: '收起元素行',
+    showHint: '展开本场景每个有动画的元素行',
+    empty: '这个场景里没有带动画的元素。',
+    name: '元素行',
+  },
   stage: {
     noScenes: 'motion.json 的 order 里还没有场景。',
     playerTitle: '动效',

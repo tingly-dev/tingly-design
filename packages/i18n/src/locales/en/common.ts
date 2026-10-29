@@ -14,6 +14,8 @@ export default {
   loading: 'Loading…',
   resizeSide: 'Resize {{name}}',
   resizeSideHint: 'Drag to resize, double-click to reset',
+  resizeBand: 'Resize {{name}}',
+  resizeBandHint: 'Drag to change the height, double-click to reset',
   more: 'More',
   none: 'None',
   ok: 'OK',
