@@ -54,6 +54,7 @@
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |
 | [project-theme.md](./project-theme.md) | 画布和幻灯片的主题：右侧面板的“主题”页签，点一张卡把整个作品换成设计系统的某个主题；按角色换颜色（幻灯片连字体），“原样”和 Undo 回去，范围（所有页 / 这一页），对比度，为什么不是 `var()` | 已实施（画布、幻灯片）；§7 位置、画布字体、命令行未定 |
+| [canvas-artboards.md](./canvas-artboards.md) | 画布新建与调整画板：能力早就有，问题是找不到；画板工具旁的尺寸菜单、拖动时的宽高读数、四边手柄，为什么不再加一个“新建画板”按钮 | 已实施；Shift 等比和 Alt 中心缩放未定 |
 | [canvas-template-values.md](./canvas-template-values.md) | 画布的模板值：什么都没选时，右侧面板按画板列出整个画布的 `data-props` 值，集中看、集中改；为什么不加页签、不放进图层树 | 已实施；同名值联动和脚本里未声明的值未定 |
 | [canvas-fast-edit.md](./canvas-fast-edit.md) | 画布上的快速 AI：提示词里让它用 flex / grid 排版而不是像素偏移；一次回复里把部件复制到另一块画板（`board(file)`、其他画板的句柄前缀、只能复制不能搬、没点名的写法被拒），一次撤销退回整次回复；整块画板的复制仍交给 Claude Code | 已实施；仅画布 |
 | [export.md](./export.md) | 导出：独立的 `@dc/export` 包、动效视频与取帧路线、速度度量；其他格式的现行入口链接到专门契约 | 动效视频已实施；PNG/PDF/共用菜单见对应笔记，受限 PPTX 接入已实施，验证范围见 slides-pptx；未做项单列；调研在 `.research/export.md` |

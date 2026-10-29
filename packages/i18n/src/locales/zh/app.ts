@@ -82,6 +82,8 @@ export default {
     note: '便签',
     draw: '画笔',
     shapes: '形状和线条',
+    frameSize: '画板尺寸',
+    frameFree: '任意尺寸（单击：1200 × 760）',
   },
   shape: {
     rect: '矩形',

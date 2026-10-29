@@ -1,6 +1,10 @@
 export default {
   /** the named artboard sizes (BOARD_SIZES in @dc/core): a name, and where each is used */
   /** the groups the named sizes are listed under */
+  frameHint: {
+    free: 'Drag to draw an artboard of any size, or click to place one',
+    sized: 'Click to place a {{w}} × {{h}} artboard, or drag to draw any size',
+  },
   boardGroup: {
     wechat: 'WeChat',
     cn: 'Chinese platforms',

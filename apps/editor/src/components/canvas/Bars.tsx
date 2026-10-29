@@ -2,7 +2,9 @@ import type React from 'react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addPage, renamePage } from '../../actions';
+import { BOARD_SIZES } from '@dc/core';
 import { editCanvas, useCanvas, useStore, type Tool } from '../../store';
+import { readSizes, sameSize, type Size } from '../motion/motionSizes';
 import { fitAll, zoomAt, zoomToSelection, setView } from './view';
 import { Menu, MenuItem } from '../Menu';
 import {
@@ -46,6 +48,32 @@ function ToolButton({ tool, label, keys, children }: { tool: Tool; label: string
     >
       {children}
     </button>
+  );
+}
+
+const FRAME_GROUPS = ['screen', 'slides'];
+
+/** The artboard tool's size menu: what a click places (drag still draws any size); the same presets and "your sizes" as the Size panel. */
+function FrameSizeMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void }) {
+  const { t } = useTranslation();
+  const frameSize = useStore((s) => s.frameSize);
+  const pick = (size: Size | null) => {
+    useStore.setState({ tool: 'frame', frameSize: size, mode: 'edit' });
+    onClose();
+  };
+  const row = (size: Size, label: string) => (
+    <MenuItem key={label + size.join('x')} label={`${label} ${size[0]} × ${size[1]}`} checked={sameSize(frameSize, size)} onSelect={() => pick(size)} />
+  );
+  const mine = readSizes().mine;
+  return (
+    <Menu x={x} y={y} onClose={onClose} label={t('app.tool.frameSize')}>
+      <div className="head">{t('app.tool.frameSize')}</div>
+      <MenuItem label={t('app.tool.frameFree')} checked={!frameSize} onSelect={() => pick(null)} />
+      <hr />
+      {BOARD_SIZES.filter((s) => FRAME_GROUPS.includes(s.group) && s.id !== 'artboard').map((s) => row(s.size as unknown as Size, t(`canvas.boardSize.${s.id}`)))}
+      {mine.length > 0 && <hr />}
+      {mine.map((s) => row(s, t('panel.size.mine')))}
+    </Menu>
   );
 }
 
@@ -121,9 +149,10 @@ export function LeftBar() {
   const canvas = useCanvas();
   const page = useStore((s) => s.page);
   const tool = useStore((s) => s.tool);
-  const [menu, setMenu] = useState<null | 'pages' | 'shapes'>(null);
+  const [menu, setMenu] = useState<null | 'pages' | 'shapes' | 'frame'>(null);
   const pagesBtn = useRef<HTMLButtonElement>(null);
   const shapesBtn = useRef<HTMLButtonElement>(null);
+  const frameBtn = useRef<HTMLButtonElement>(null);
   const pageName = canvas.pages.find((p) => p.id === (page || canvas.pages[0]?.id))?.name ?? t('app.page.name', { n: 1 });
   const shape = SHAPES.find((s) => s.tool === tool);
   const at = (b: HTMLButtonElement | null) => {
@@ -151,6 +180,11 @@ export function LeftBar() {
       <ToolButton tool="frame" label={t('app.tool.frame')} keys="A">
         <Frame />
       </ToolButton>
+      <button ref={frameBtn} className="tb frame-size" aria-haspopup="menu" aria-label={t('app.tool.frameSize')} title={t('app.tool.frameSize')} onClick={() => setMenu('frame')}>
+        <span className="caret">
+          <Caret />
+        </span>
+      </button>
       <ToolButton tool="note" label={t('app.tool.note')} keys="N">
         <Note />
       </ToolButton>
@@ -171,6 +205,7 @@ export function LeftBar() {
           <Caret />
         </span>
       </button>
+      {menu === 'frame' && <FrameSizeMenu {...at(frameBtn.current)} onClose={() => setMenu(null)} />}
       {menu === 'pages' && <PagesMenu {...at(pagesBtn.current)} onClose={() => setMenu(null)} />}
       {menu === 'shapes' && (
         <Menu {...at(shapesBtn.current)} onClose={() => setMenu(null)} label={t('app.tool.shapes')}>

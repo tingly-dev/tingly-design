@@ -26,6 +26,7 @@ export function Canvas() {
   const canvas = useCanvas();
   const view = useStore((s) => s.view);
   const tool = useStore((s) => s.tool);
+  const frameSize = useStore((s) => s.frameSize);
   const page = useStore((s) => s.page);
   const [panning, setPanning] = useState(false);
   const [space, setSpace] = useState(false);
@@ -163,14 +164,14 @@ export function Canvas() {
       return;
     }
     const tiny = Math.abs(d.x1 - d.x0) < 6 && Math.abs(d.y1 - d.y0) < 6;
-    const def = d.tool === 'frame' ? [1200, 760] : d.tool === 'rect' ? [200, 120] : [120, 120];
+    const def = d.tool === 'frame' ? (useStore.getState().frameSize ?? [1200, 760]) : d.tool === 'rect' ? [200, 120] : [120, 120];
     const x = tiny ? d.x0 : Math.min(d.x0, d.x1);
     const y = tiny ? d.y0 : Math.min(d.y0, d.y1);
     const w = tiny ? def[0] : Math.abs(d.x1 - d.x0);
     const h = tiny ? def[1] : Math.abs(d.y1 - d.y0);
     if (d.tool === 'frame') {
       addBoard({ x, y, w: Math.max(80, w), h: Math.max(80, h) });
-      useStore.setState({ tool: 'select' });
+      useStore.setState({ tool: 'select', frameSize: null });
       return;
     }
     addNote({
@@ -228,7 +229,11 @@ export function Canvas() {
               borderWidth: 1 / z,
               borderRadius: draft.tool === 'oval' ? '50%' : 0,
             }}
-          />
+          >
+            <span className="size-tip" style={{ transform: `scale(${1 / z})` }}>
+              {Math.round(Math.abs(draft.x1 - draft.x0))} × {Math.round(Math.abs(draft.y1 - draft.y0))}
+            </span>
+          </div>
         )}
         {(draft?.kind === 'line' || draft?.kind === 'pen') && (
           <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }} width="1" height="1">
@@ -240,6 +245,7 @@ export function Canvas() {
           </svg>
         )}
       </div>
+      {tool === 'frame' && <div className="tool-hint">{frameSize ? t('canvas.frameHint.sized', { w: frameSize[0], h: frameSize[1] }) : t('canvas.frameHint.free')}</div>}
     </div>
   );
 }

@@ -204,6 +204,21 @@ async def main():
         newb = next((f for f in canvas()['boards'] if f.startswith('Board')), '')
         check('artboard tool creates a board file', ok and os.path.exists(os.path.join(DEMO, newb)))
 
+        # a size picked beside the tool: a click places that size; an edge drags the size
+        n_boards = len(canvas()['boards'])
+        await pg.keyboard.press('Escape')
+        await pg.locator('button[aria-label="画板尺寸"]').click()
+        await pg.get_by_role('menu').get_by_text('1440 × 900').click()
+        x, y = await empty_point(pg)
+        await pg.mouse.click(x, y)
+        check('artboard size menu: a click places the chosen size',
+              await wait_for(lambda: len(canvas()['boards']) == n_boards + 1 and any((b['w'], b['h']) == (1440, 900) for b in canvas()['boards'].values())))
+        placed = next(f for f, b in canvas()['boards'].items() if (b['w'], b['h']) == (1440, 900))
+        box = await pg.locator(f'[data-board="{placed}"]').bounding_box()
+        await pg.mouse.move(box['x'] + box['width'], box['y'] + box['height'] / 2)
+        await pg.mouse.down(); await pg.mouse.move(box['x'] + box['width'] + 40, box['y'] + box['height'] / 2, steps=5); await pg.mouse.up()
+        check('an artboard resizes from its edge', await wait_for(lambda: canvas()['boards'][placed]['w'] > 1440 and canvas()['boards'][placed]['h'] == 900))
+
         # text tool inside an artboard
         await pg.keyboard.press('Escape')
         await pg.locator('button[aria-label="适应全部"]').count()

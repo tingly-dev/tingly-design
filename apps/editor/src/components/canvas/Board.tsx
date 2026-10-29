@@ -128,6 +128,7 @@ function follow(file: string, slice: string | null, fallback: number): number {
 }
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
+type Edge = 'n' | 'e' | 's' | 'w';
 
 export const BoardView = memo(function BoardView({ file, entry }: { file: string; entry: BoardEntry }) {
   const { t } = useTranslation();
@@ -288,7 +289,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     if (ready) post(file, { dc: 'hover', tid: hover });
   }, [ready, hover, file]);
 
-  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner) => {
+  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner | Edge) => {
     if (e.button !== 0 || mode === 'play') return;
     e.preventDefault();
     e.stopPropagation();
@@ -410,6 +411,22 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
             onPointerDown={(e) => startDrag(e, c)}
           />
         ))}
+      {boardSelected &&
+        mode === 'edit' &&
+        !entry.locked &&
+        (['n', 'e', 's', 'w'] as Edge[]).map((s) => (
+          <div
+            key={s}
+            className={`edge ${s}`}
+            style={{ ['--hit' as string]: `${8 * inv}px`, cursor: s === 'n' || s === 's' ? 'ns-resize' : 'ew-resize' }}
+            onPointerDown={(e) => startDrag(e, s)}
+          />
+        ))}
+      {drag && (drag.w !== 0 || drag.h !== 0) && (
+        <span className="size-tip" style={{ transform: `scale(${inv})` }}>
+          {Math.round(w)} × {Math.round(h)}
+        </span>
+      )}
       {exportMenu && (
         <Menu x={exportMenu.x} y={exportMenu.y} align="right" label={t('canvas.export.title')} onClose={() => setExportMenu(null)}>
           <MenuItem label="PNG" onSelect={() => (setExportMenu(null), void exportBoard(file, 'png1'))} />

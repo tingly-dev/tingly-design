@@ -121,6 +121,8 @@ export interface State extends AgentState {
   journal: JournalEntry[];
   selection: Selection;
   tool: Tool;
+  /** the size the artboard tool places on a click (null: 1200 × 760); a drag still draws any size; cleared once an artboard is made */
+  frameSize: [number, number] | null;
   mode: Mode;
   /** the side pane open in the right column (inspector, data sources, code, comments), or none; see panes.ts */
   pane: PaneId | null;
@@ -167,6 +169,7 @@ export const useStore = create<State>(() => ({
   journal: [],
   selection: null,
   tool: 'select',
+  frameSize: null,
   mode: 'edit',
   pane: null,
   panelTab: 'props',

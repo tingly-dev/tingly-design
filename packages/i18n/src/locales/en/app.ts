@@ -83,6 +83,8 @@ export default {
     note: 'Sticky note',
     draw: 'Pen',
     shapes: 'Shapes and lines',
+    frameSize: 'Artboard size',
+    frameFree: 'Draw any size (click: 1200 × 760)',
   },
   shape: {
     rect: 'Rectangle',

@@ -4,6 +4,10 @@ import type { Locale } from '../../types';
 export default {
   /** the named artboard sizes (BOARD_SIZES in @dc/core): a name, and where each is used */
   /** the groups the named sizes are listed under */
+  frameHint: {
+    free: '拖动绘制任意尺寸的画板，或单击直接放置',
+    sized: '单击放置 {{w}} × {{h}} 的画板，或拖动绘制任意尺寸',
+  },
   boardGroup: {
     wechat: '微信',
     cn: '国内平台',

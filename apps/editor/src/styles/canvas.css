@@ -285,3 +285,80 @@
   border: 1px solid var(--hairline);
 }
 
+
+
+/* size readout while an artboard is drawn or resized, and the artboard tool's hint */
+.size-tip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  transform-origin: 100% 0;
+  translate: 0 calc(100% + 6px);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.board .edge {
+  position: absolute;
+  z-index: 0;
+}
+
+.board .edge.n,
+.board .edge.s {
+  left: 0;
+  right: 0;
+  height: var(--hit);
+}
+
+.board .edge.n {
+  top: calc(var(--hit) / -2);
+}
+
+.board .edge.s {
+  bottom: calc(var(--hit) / -2);
+}
+
+.board .edge.e,
+.board .edge.w {
+  top: 0;
+  bottom: 0;
+  width: var(--hit);
+}
+
+.board .edge.e {
+  right: calc(var(--hit) / -2);
+}
+
+.board .edge.w {
+  left: calc(var(--hit) / -2);
+}
+
+.board .handle {
+  z-index: 1;
+}
+
+.canvas .tool-hint {
+  position: absolute;
+  left: 372px;
+  top: 62px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.bar.left .tb.frame-size {
+  width: 16px;
+  min-width: 0;
+  padding: 0;
+  margin-left: -6px;
+}
