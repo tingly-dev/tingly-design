@@ -142,3 +142,25 @@ export async function fontCss(sources: (string | { family: string; url: string }
   }
   return out.join('\n');
 }
+
+/**
+ * A page for a machine that may have no network: every `<link rel="stylesheet">` to a hosted sheet is
+ * replaced by a `<style>` of its faces inlined by `fontCss`, cut to the characters in `text`. Run where
+ * the fonts are reachable or cached (the editor's browser), so the server's Chrome that prints the page
+ * needs nothing from the network. A sheet that cannot be fetched stays a link, as it was.
+ */
+export async function inlineFontLinks(html: string, text: string, css: (href: string, text: string) => Promise<string> = (h, t) => fontCss([h], t)): Promise<string> {
+  const out: string[] = [];
+  let at = 0;
+  for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = m[0];
+    const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
+    const url = (href?.[1] ?? href?.[2] ?? '').replace(/&amp;/g, '&');
+    if (!/\brel\s*=\s*["']?stylesheet/i.test(tag) || !/^https?:\/\//i.test(url)) continue;
+    const faces = await css(url, text).catch(() => '');
+    if (!faces) continue;
+    out.push(html.slice(at, m.index!), `<style>${faces.replace(/<\/(style)/gi, '<\\/$1')}</style>`);
+    at = m.index! + tag.length;
+  }
+  return out.length ? out.join('') + html.slice(at) : html;
+}

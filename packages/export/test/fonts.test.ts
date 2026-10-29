@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fontCss } from '../src/rasterize';
+import { fontCss, inlineFontLinks } from '../src/rasterize';
 
 const SHEET = `
 /* latin */
@@ -81,5 +81,24 @@ describe('fontCss', () => {
     const css = await fontCss([{ family: 'My "Face"', url: 'https://fonts.example/my.woff2' }], 'a');
     expect(css).toContain('font-family:"My Face"');
     expect(css).toContain('base64,AQID');
+  });
+});
+
+describe('inlineFontLinks', () => {
+  it('turns a hosted stylesheet link into inline faces and leaves other links alone', async () => {
+    network();
+    const html = '<head><link rel="stylesheet" href="https://fonts.example/css2?x.css"><link rel="icon" href="https://fonts.example/i.png"><link rel="stylesheet" href="/local.css"></head>';
+    const out = await inlineFontLinks(html, 'Hello');
+    expect(out).toContain('<style>@font-face');
+    expect(out).toContain('data:font/woff2;base64,AQID');
+    expect(out).not.toContain('fonts.example/css2');
+    expect(out).toContain('<link rel="icon"');
+    expect(out).toContain('href="/local.css"');
+  });
+
+  it('keeps the link when the sheet cannot be fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    const html = '<link rel="stylesheet" href="https://fonts.example/css2?x.css">';
+    expect(await inlineFontLinks(html, 'a')).toBe(html);
   });
 });

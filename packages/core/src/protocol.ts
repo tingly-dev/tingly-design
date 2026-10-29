@@ -39,6 +39,8 @@ export type ToRuntime =
   | { dc: 'hover'; tid: number | null }
   | { dc: 'mode'; mode: Mode }
   | { dc: 'export'; id: string; scale: number; tid?: number }
+  /** the artboard as drawn, as a standalone page (the canvas's PDF) */
+  | { dc: 'snapshot'; id: string }
   /** start retyping an element's text in place */
   | { dc: 'edit'; tid: number }
   /** presenting a slide: show its builds up to this step */
@@ -71,6 +73,7 @@ export type FromRuntime =
   /** the selected element resized by its handles: declarations to set (null removes one) */
   | { dc: 'resize'; tid: number; set: Record<string, string | null> }
   | { dc: 'exported'; id: string; dataUrl?: string; error?: string }
+  | { dc: 'snapshotted'; id: string; html?: string; size?: [number, number]; error?: string }
   | { dc: 'hover'; tid: number | null }
   /** retyped text; `from` and `item` (the row of the nearest <sc-for>) let text with holes find what changed */
   | { dc: 'text'; tid: number; text: string; from?: string; item?: number | null }

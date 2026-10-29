@@ -52,7 +52,7 @@ const pngOnly = async (): Promise<PageJob[]> => [{ item: 'png' }];
 /** What the command line and MCP do differently per kind: one entry per kind, so a kind added later fails to compile until it says. */
 const KIND_CLI: Record<Kind, KindCli> = {
   design: {
-    formats: ['png'],
+    formats: ['pdf', 'png'],
     size: true,
     fast: true,
     pick: 'board',
@@ -64,7 +64,9 @@ const KIND_CLI: Record<Kind, KindCli> = {
       for (const [file, b] of Object.entries(c.boards)) out.set(b.title ?? file, file);
       return out;
     },
-    async jobs(p, _as, o, one, every) {
+    async jobs(p, as, o, one, every) {
+      // one PDF holds the artboards on the open page, so nothing is shown first
+      if (as === 'pdf') return [{ item: 'pdf' }];
       const c = parseCanvas(await readIn(p, 'canvas.json'));
       const board = one(o.board);
       const boards = board ? [board] : c.order.filter((f) => c.boards[f] && !c.boards[f].hidden);
