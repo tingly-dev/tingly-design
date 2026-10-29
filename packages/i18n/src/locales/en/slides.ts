@@ -145,7 +145,7 @@ export default {
     line: 'Line',
   },
   stage: {
-    notesPlaceholder: 'Speaker notes (only shown in the presenter notes window)',
+    notesPlaceholder: 'Speaker notes (only shown in the notes panel while presenting)',
     notesLabel: 'Speaker notes',
     errors_one: '{{count}} thing outside the slide format',
     errors_other: '{{count}} things outside the slide format',
