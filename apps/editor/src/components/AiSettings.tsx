@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, boxClaudeUrl, TINGLY_BOX_URL, resolveAi, validBaseUrl, validProfile, type AiCard, type AiSource, type ClaudeMode, type KeyFrom } from '@dc/core';
+import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, TINGLY_BOX_URL, boxClaudeUrl, cleanUrl, resolveAi, validBaseUrl, validProfile, type AiCard, type AiSource, type ClaudeMode, type KeyFrom } from '@dc/core';
 import { api, type AiConfig, type AiDraft } from '../api';
 import { toast, useStore } from '../store';
 import { External } from './icons';
@@ -196,6 +196,12 @@ function AiSettings() {
   const imgProblem = !validBaseUrl(imgUrl) ? t('aiSettings.badUrl') : '';
   const imgDefault = resolveAi({}, { imageBaseUrl: imgUrl }).image.model.value;
 
+  // a saved key belongs to the address it was saved for (the server drops it when the address changes)
+  const savedAt = (field: { value: string; source: AiSource }) => (field.source === 'saved' ? cleanUrl(field.value) : '');
+  const fastKeySaved = cfg.fast.key.source === 'saved' && (fastUrlLocked || savedAt(cfg.fast.baseUrl) === cleanUrl(fastUrl));
+  const customKeySaved = cfg.claude.custom.key.source === 'saved' && (customLocked || savedAt(cfg.claude.custom.baseUrl) === cleanUrl(customUrl));
+  const imgKeySaved = cfg.image.key.source === 'saved' && (imgUrlLocked || savedAt(cfg.image.baseUrl) === cleanUrl(imgUrl));
+
   // ---- tokens: which cards hold a Tingly Box token (typed here, or saved for the address they have saved)
   const savedBox = (card: AiCard) => (card === 'fast' ? cfg.fast.preset === 'tingly-box' && cfg.fast.key.source === 'saved' : card === 'claude' ? cfg.claude.box.key.set : cfg.image.preset === 'tingly-box' && cfg.image.key.source === 'saved');
   const typed = (card: AiCard) => (card === 'fast' ? fastPreset === 'tingly-box' && fastKey.trim() !== '' : card === 'claude' ? mode === 'box' && boxKey.trim() !== '' : imgPreset === 'tingly-box' && imgKey.trim() !== '');
@@ -212,10 +218,12 @@ function AiSettings() {
   };
   const taking = (card: AiCard, active: boolean): boolean => active && takes(card, keyFrom[card]);
 
-  const fastHasKey = fastKeyLocked || cfg.fast.key.source === 'saved' || fastKey.trim() !== '' || taking('fast', fastPreset === 'tingly-box');
+  const fastHasKey = fastKeyLocked || fastKeySaved || fastKey.trim() !== '' || taking('fast', fastPreset === 'tingly-box');
   const boxHasKey = cfg.claude.box.key.set || boxKey.trim() !== '' || taking('claude', true);
-  const customHasKey = customKeyLocked || cfg.claude.custom.key.set || customKey.trim() !== '';
-  const imgHasKey = imgKeyLocked || cfg.image.key.source === 'saved' || imgKey.trim() !== '' || taking('image', imgPreset === 'tingly-box');
+  const customHasKey = customKeyLocked || customKeySaved || customKey.trim() !== '';
+  const imgHasKey = imgKeyLocked || imgKeySaved || imgKey.trim() !== '' || taking('image', imgPreset === 'tingly-box');
+  // an ImageGen card nobody has touched writes nothing: Tingly Box is only what it offers, not a choice made
+  const imgPristine = !cfg.image.preset && imgPreset === 'tingly-box' && !imgKey.trim() && !imgModel.trim() && !keyFrom.image;
   const imgReady = Boolean(imgUrl) && imgHasKey && !imgProblem;
 
   const draft = (): AiDraft => ({
@@ -229,7 +237,7 @@ function AiSettings() {
     claudeBaseUrl: customLocked ? '' : customUrl.trim(),
     ...(customKey.trim() ? { claudeKey: customKey.trim() } : {}),
     claudeModel: customModel.trim(),
-    imageBaseUrl: imgUrlLocked ? '' : imgUrl,
+    imageBaseUrl: imgUrlLocked || imgPristine ? '' : imgUrl,
     ...(imgKey.trim() ? { imageKey: imgKey.trim() } : {}),
     imageModel: imgModel.trim(),
     ...(imgOn || imgOnLocked ? {} : { imageEnabled: false }),
@@ -275,7 +283,7 @@ function AiSettings() {
       : (mode === 'box' ? boxHasKey : customHasKey)
         ? { ok: true, text: t('aiSettings.state.ready') }
         : { ok: false, text: t(mode === 'box' ? 'aiSettings.state.needsToken' : 'aiSettings.state.needsKey') };
-  const imageState = !imgReady ? { ok: false, text: t(!imgUrl ? 'aiSettings.state.needsAddress' : imgPreset === 'tingly-box' ? 'aiSettings.state.needsToken' : 'aiSettings.state.needsKey') } : (imgOnLocked ? cfg.image.enabled.value : imgOn) ? { ok: true, text: t('aiSettings.state.ready') } : { ok: false, text: t('aiSettings.state.off') };
+  const imageState = !imgReady ? { ok: false, text: t(!imgUrl || imgProblem ? 'aiSettings.state.needsAddress' : imgPreset === 'tingly-box' ? 'aiSettings.state.needsToken' : 'aiSettings.state.needsKey') } : (imgOnLocked ? cfg.image.enabled.value : imgOn) ? { ok: true, text: t('aiSettings.state.ready') } : { ok: false, text: t('aiSettings.state.off') };
   const fastState = fastProblem ? { ok: false, text: t('aiSettings.state.needsAddress') } : fastHasKey ? { ok: true, text: t('aiSettings.state.ready') } : { ok: false, text: t(fastPreset === 'tingly-box' ? 'aiSettings.state.needsToken' : 'aiSettings.state.needsKey') };
 
   return (
@@ -363,7 +371,7 @@ function AiSettings() {
               label={t('aiSettings.key')}
               value={customKey}
               onChange={setCustomKey}
-              placeholder={cfg.claude.custom.key.set ? t('aiSettings.keyKept') : 'sk-ant-…'}
+              placeholder={customKeySaved || customKeyLocked ? t('aiSettings.keyKept') : 'sk-ant-…'}
               locked={customKeyLocked}
               source={cfg.claude.custom.key.source}
               aria={t('aiSettings.claude') + ' ' + t('aiSettings.key')}
@@ -414,11 +422,11 @@ function AiSettings() {
           label={imgPreset === 'tingly-box' ? t('aiSettings.token') : t('aiSettings.key')}
           value={imgKey}
           onChange={setImgKey}
-          placeholder={cfg.image.key.source === 'saved' ? t('aiSettings.keyKept') : imgPreset === 'tingly-box' ? t('aiSettings.keyBox') : 'sk-…'}
+          placeholder={imgKeySaved ? t('aiSettings.keyKept') : imgPreset === 'tingly-box' ? t('aiSettings.keyBox') : 'sk-…'}
           locked={imgKeyLocked}
           source={cfg.image.key.source}
           aria={t('aiSettings.imageKeyLabel')}
-          reuse={imgPreset === 'tingly-box' ? reuseFor('image', imgKey, cfg.image.key.source === 'saved' && cfg.image.preset === 'tingly-box') : undefined}
+          reuse={imgPreset === 'tingly-box' ? reuseFor('image', imgKey, imgKeySaved) : undefined}
         />
         <label className="field">
           <span>{t('aiSettings.model')}</span>
@@ -471,11 +479,11 @@ function AiSettings() {
           label={fastPreset === 'tingly-box' ? t('aiSettings.token') : t('aiSettings.key')}
           value={fastKey}
           onChange={setFastKey}
-          placeholder={cfg.fast.key.set ? t('aiSettings.keyKept') : fastPreset === 'tingly-box' ? t('aiSettings.keyBox') : 'sk-ant-…'}
+          placeholder={fastKeySaved ? t('aiSettings.keyKept') : fastPreset === 'tingly-box' ? t('aiSettings.keyBox') : 'sk-ant-…'}
           locked={fastKeyLocked}
           source={cfg.fast.key.source}
           aria={t('aiSettings.fast') + ' ' + t('aiSettings.key')}
-          reuse={fastPreset === 'tingly-box' ? reuseFor('fast', fastKey, cfg.fast.key.source === 'saved' && cfg.fast.preset === 'tingly-box') : undefined}
+          reuse={fastPreset === 'tingly-box' ? reuseFor('fast', fastKey, fastKeySaved) : undefined}
         />
         <label className="field">
           <span>{t('aiSettings.model')}</span>

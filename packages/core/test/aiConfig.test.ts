@@ -101,6 +101,11 @@ describe('resolveAi image generation', () => {
     expect(resolveAi({ imageEnabled: '0' }, base).image.enabled).toEqual({ value: false, source: 'env' });
     expect(resolveAi({ imageEnabled: '1' }, { ...base, imageEnabled: false }).image.enabled.value).toBe(false);
   });
+  it('keeps a host-fixed Tingly Box gateway working: Box’s image address with the host’s token', () => {
+    const r = resolveAi({ baseUrl: TINGLY_BOX_ANTHROPIC, key: 'host' }, {}).image;
+    expect(r).toMatchObject({ preset: 'tingly-box', ready: true, active: true, key: { set: true, source: 'env' } });
+    expect(resolveAi({ baseUrl: 'https://gw.example', key: 'host' }, {}).image.ready).toBe(false);
+  });
   it('lets DC_IMAGE_* from the host win, field by field', () => {
     const r = resolveAi({ imageBaseUrl: 'https://img.example/v1', imageModel: 'm' }, { imageBaseUrl: TINGLY_BOX_IMAGEGEN, imageKey: 'k', imageModel: 'x' }).image;
     expect(r.baseUrl.source).toBe('env');

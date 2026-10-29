@@ -112,6 +112,13 @@ async def main():
         await pg.locator('[role=dialog] [data-mode=local]').click()
         await expect(pg.locator('[role=dialog] [data-card=claude] input')).to_have_count(0)
         await shot(pg, '3-project-claude-local.png')
+        # a key stays with the address it was saved for: another address does not inherit it
+        await pg.locator('[role=dialog] [data-card=fast] [data-preset=anthropic]').click()
+        await expect(pg.locator('[role=dialog] [data-card=fast] [data-state]')).to_have_attribute('data-state', 'missing')
+        await pg.locator('[role=dialog]').get_by_role('button', name='Save').click()
+        await expect(pg.locator('[role=dialog]')).to_have_count(0)
+        cfg = json.load(urllib.request.urlopen(BASE + '/api/ai-config'))
+        check(cfg['fast']['key']['set'] is False, 'a saved key is not sent to another address')
         await pg.keyboard.press('Escape')
         check(not errs, f'no page errors {errs}')
         await b.close()

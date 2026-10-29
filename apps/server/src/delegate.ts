@@ -258,7 +258,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
 
   // one attempt; a resume Claude Code no longer has is retried once as a new conversation
   const attempt = (resumeId: string | undefined) => {
-    const child = spawn('claude', resumeId ? [...args, '--resume', resumeId] : args, { cwd: ROOT, env: { ...process.env, ...launch.env, DC_PROJECTS: PROJECTS_DIR, DC_PROJECT_ARG: 'name' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn('claude', resumeId ? [...args, '--resume', resumeId] : args, { cwd: ROOT, env: { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !launch.unset.includes(k))), ...launch.env, DC_PROJECTS: PROJECTS_DIR, DC_PROJECT_ARG: 'name' }, stdio: ['ignore', 'pipe', 'pipe'] });
     children.set(id, {
       project,
       child,

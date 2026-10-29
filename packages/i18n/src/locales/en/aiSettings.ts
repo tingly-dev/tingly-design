@@ -45,7 +45,6 @@ export default {
   needKey: 'Add a key to test it.',
   image: 'ImageGen',
   imageNote: 'Claude Code makes a picture when your request needs one, and keeps it with your other pictures. Needs an OpenAI-style images address.',
-  imageBoxNote: 'Tingly Box serves an image address of its own.',
   imageAddress: 'ImageGen address',
   imageKeyLabel: 'ImageGen key',
   imageModelLabel: 'ImageGen model',

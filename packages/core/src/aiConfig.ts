@@ -185,11 +185,14 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
     ready: active ? active.key.set : true,
   };
 
-  // image generation
-  const imgUrl = pick(cleanUrl(env.imageBaseUrl), cleanUrl(saved.imageBaseUrl), '');
+  // image generation. A host that fixed its gateway as Tingly Box (`ANTHROPIC_BASE_URL`, one token) gets Box's image address
+  // with that token, as it always did; every other address and key is the card's own.
+  const hostBox = presetOf(envUrl) === 'tingly-box' && Boolean(envKey);
+  const imgUrl = pick(cleanUrl(env.imageBaseUrl), cleanUrl(saved.imageBaseUrl), hostBox ? TINGLY_BOX_IMAGEGEN : '');
   const imgBox = presetOfImage(imgUrl.value) === 'tingly-box';
   const imgModel = pick(clean(env.imageModel), clean(saved.imageModel), imgBox ? TINGLY_BOX_MODEL : OPENAI_IMAGE_MODEL);
   const imgKey = keyOf(clean(env.imageKey), clean(saved.imageKey));
+  if (!imgKey.set && hostBox && imgBox) Object.assign(imgKey, { set: true, source: 'env' });
   const ready = Boolean(imgUrl.value && imgKey.set && imgModel.value);
   const envOff = /^(0|false|off|no)$/i.test(clean(env.imageEnabled));
   const enabled: AiField<boolean> = envOff

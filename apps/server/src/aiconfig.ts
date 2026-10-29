@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { BOX_KEY_FIELD, KEY_FIELDS, TINGLY_BOX_URL, migrateSaved, resolveAi, sanitizeSaved, type AiEnv, type AiResolved, type AiSaved, type KeyFrom } from '@dc/core';
+import { BOX_KEY_FIELD, KEY_FIELDS, TINGLY_BOX_URL, cleanUrl, migrateSaved, resolveAi, sanitizeSaved, type AiEnv, type AiResolved, type AiSaved, type KeyFrom } from '@dc/core';
 import { CONFIG_FILE } from './layout';
 
 /**
@@ -37,14 +37,23 @@ async function loadSaved(): Promise<AiSaved> {
 }
 await loadSaved();
 
+type KeyField = (typeof KEY_FIELDS)[number];
+/** The address each saved key was given for (the Tingly Box token has Box's own, fixed). */
+const KEY_ADDRESS: Record<KeyField, 'fastBaseUrl' | 'claudeBaseUrl' | 'imageBaseUrl' | null> = { fastKey: 'fastBaseUrl', claudeBoxKey: null, claudeKey: 'claudeBaseUrl', imageKey: 'imageBaseUrl' };
+/** A saved key stays only while its card still points at the address it was saved for: another address gets no key it was not given for. */
+const keptKey = (f: KeyField, next: AiSaved): string => {
+  const a = KEY_ADDRESS[f];
+  return saved?.[f] && (!a || cleanUrl(saved[a]) === cleanUrl(next[a])) ? saved[f]! : '';
+};
+
 /** A draft is the dialog's whole state (a blank field is a default), so only the keys it does not carry come from the saved file. */
 export const aiResolved = (draft?: AiSaved): AiResolved =>
-  resolveAi(env(), draft ? { ...Object.fromEntries(KEY_FIELDS.filter((f) => saved?.[f]).map((f) => [f, saved![f]])), ...draft } : { ...saved });
+  resolveAi(env(), draft ? { ...Object.fromEntries(KEY_FIELDS.filter((f) => keptKey(f, draft)).map((f) => [f, keptKey(f, draft)])), ...draft } : { ...saved });
 
 /** A draft with the tokens its `keyFrom` hands over: a card takes another card's token (typed in the dialog, or already saved). */
 export function withKeyFrom(draft: AiSaved, keyFrom: KeyFrom = {}): AiSaved {
   const out = { ...draft };
-  const held = (f: (typeof KEY_FIELDS)[number]) => draft[f] || saved?.[f] || '';
+  const held = (f: KeyField) => draft[f] || saved?.[f] || '';
   for (const [to, from] of Object.entries(keyFrom) as [keyof KeyFrom, NonNullable<KeyFrom[keyof KeyFrom]>][]) {
     if (to === from || !BOX_KEY_FIELD[to] || !BOX_KEY_FIELD[from]) continue;
     const key = held(BOX_KEY_FIELD[from]);
@@ -55,13 +64,13 @@ export function withKeyFrom(draft: AiSaved, keyFrom: KeyFrom = {}): AiSaved {
 
 /** The host's key stands in for the fast card's and a custom Claude Code address's, as `ANTHROPIC_*` always did. */
 const hostKey = (): string => (env().key ?? '').trim();
-const secret = (field: (typeof KEY_FIELDS)[number], draft?: AiSaved): string => draft?.[field] || saved?.[field] || '';
+const secret = (field: KeyField, draft?: AiSaved): string => (draft ? draft[field] || keptKey(field, draft) : saved?.[field]) || '';
 const fastKeyOf = (draft?: AiSaved): string => hostKey() || secret('fastKey', draft);
 
 /** `reset` forgets every saved value, tokens too; otherwise a token the save does not carry is kept (the dialog never reads one back). */
 export async function saveAi(next: AiSaved, opts: { reset?: boolean; keyFrom?: KeyFrom } = {}): Promise<void> {
   const clean = sanitizeSaved(withKeyFrom(next, opts.keyFrom));
-  if (!opts.reset) for (const f of KEY_FIELDS) if (!clean[f] && saved?.[f]) clean[f] = saved[f];
+  if (!opts.reset) for (const f of KEY_FIELDS) if (!clean[f] && keptKey(f, clean)) clean[f] = keptKey(f, clean);
   saved = clean;
   await mkdir(dirname(FILE), { recursive: true });
   // the keys are in it: only the owner reads it
@@ -75,7 +84,8 @@ export async function saveAi(next: AiSaved, opts: { reset?: boolean; keyFrom?: K
 export function imageEndpoint(draft?: AiSaved): { baseUrl: string; key: string; model: string } | null {
   const r = aiResolved(draft).image;
   if (!r.active) return null;
-  const key = (env().imageKey ?? '').trim() || secret('imageKey', draft);
+  // a host that fixed Tingly Box as its gateway lends that one token to Box's image address
+  const key = (env().imageKey ?? '').trim() || secret('imageKey', draft) || (r.key.source === 'env' ? hostKey() : '');
   return { baseUrl: r.baseUrl.value, key, model: r.model.value };
 }
 
@@ -96,17 +106,21 @@ export function fastClient(draft?: AiSaved): Anthropic | null {
 }
 
 /** What `claude` is started with, by the tab chosen: its own sign-in leaves the environment alone, the others point it at an address with a key. */
-export function claudeLaunch(): { env: Record<string, string>; model: string } {
+export function claudeLaunch(): { env: Record<string, string>; unset: string[]; model: string } {
   const c = aiResolved().claude;
   // a model the host named is passed on even to the sign-in; the tabs' own defaults only make sense through their connection
   const model = c.mode.value === 'local' ? (c.model.source === 'env' ? c.model.value : '') : c.model.value;
-  if (c.mode.value === 'local') return { env: {}, model };
+  // the sign-in is the claude command's own: a key or address in this server's environment must not take its place
+  if (c.mode.value === 'local') return { env: {}, unset: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'], model };
   const out: Record<string, string> = {};
   if (c.launchUrl) out.ANTHROPIC_BASE_URL = c.launchUrl;
   const key = c.mode.value === 'box' ? secret('claudeBoxKey') : c.custom.key.source === 'env' ? '' : secret('claudeKey');
   // the default endpoint takes an API key; a gateway takes the token header. A host's own variables are already in the environment.
   if (key) out[c.launchUrl ? 'ANTHROPIC_AUTH_TOKEN' : 'ANTHROPIC_API_KEY'] = key;
-  return { env: out, model };
+  // what the tab does not set is not left to the environment either: its own token, not a host's key meant for another address
+  const own = c.mode.value === 'box' || (c.mode.source !== 'env' && c.custom.key.source !== 'env');
+  const unset = own ? ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'].filter((k) => !(k in out)) : [];
+  return { env: out, unset, model };
 }
 
 export async function boxReachable(): Promise<boolean> {

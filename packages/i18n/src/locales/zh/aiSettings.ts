@@ -45,7 +45,6 @@ export default {
   needKey: '填了密钥才能测试。',
   image: 'ImageGen',
   imageNote: '请求需要图片时，Claude Code 会生成一张，和你带进来的图片放在一起。需要一个 OpenAI 风格的 images 地址。',
-  imageBoxNote: 'Tingly Box 自带图片地址。',
   imageAddress: 'ImageGen 地址',
   imageKeyLabel: 'ImageGen 密钥',
   imageModelLabel: 'ImageGen 模型',

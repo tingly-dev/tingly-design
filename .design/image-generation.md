@@ -50,7 +50,9 @@
 | Tingly Box | `http://localhost:12580/tingly/imagegen/v1`，界面只读 | `tingly`（由它的规则决定实际模型） | 自己的令牌（可以在保存时取用另一张 Tingly Box 卡的，见 ai-settings.md §2） |
 | 其他地址 | 人自己填一个 OpenAI 兼容的地址（如 `https://api.openai.com/v1`） | `gpt-image-1` | 自己的密钥 |
 
-Anthropic 没有图片接口，所以这张卡没有 Anthropic 这一项；没存过地址时卡显示 Tingly Box 选中、缺令牌。
+Anthropic 没有图片接口，所以这张卡没有 Anthropic 这一项；没存过地址时卡显示 Tingly Box 选中、缺令牌，这时保存不会写入地址（人没选过，就不替人选）。
+
+唯一的例外是宿主：宿主用 `ANTHROPIC_BASE_URL` 把网关固定成 Tingly Box 时，图片沿用 Box 的图片地址和宿主的那个令牌（和这套设置出现之前一样），不要求宿主再设 `DC_IMAGE_*`。
 
 "准备好"（`image.ready`）= 有地址、有密钥、有模型名。没准备好时：路由回 501 和一句指向设置的话，Claude Code 没有这个脚本，`/api/health` 的 `imageGen` 为 `false`。关着（见上面的开关）时路由回 403，`imageGen` 同样为 `false`。
 
