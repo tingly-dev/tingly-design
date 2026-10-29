@@ -136,6 +136,7 @@ export default {
     commentAs: 'Commenting as {{name}}',
     write: 'Write a comment',
     empty: 'Select some text, then click “Comment”.',
+    react: 'Add a reaction',
     me: 'Me',
   },
   export: {

@@ -404,6 +404,22 @@ export interface DocComment {
   author: string;
   text: string;
   at: string;
+  /** emoji → the authors who reacted with it, in the order they did */
+  reactions?: Record<string, string[]>;
+}
+
+/** The reactions a comment offers: a fixed few, so a reaction means the same thing to every reader and to Claude. */
+export const DOC_REACTIONS = ['👍', '✅', '❤️', '🎉', '😄', '👀'] as const;
+
+/** Toggles `who`'s reaction on a comment: added when they had not reacted with it, taken back when they had. */
+export function toggleReaction(c: DocComment, emoji: string, who: string): void {
+  const have = c.reactions?.[emoji] ?? [];
+  const next = have.includes(who) ? have.filter((x) => x !== who) : [...have, who];
+  const all = { ...c.reactions };
+  if (next.length) all[emoji] = next;
+  else delete all[emoji];
+  if (Object.keys(all).length) c.reactions = all;
+  else delete c.reactions;
 }
 
 export interface DocThread {
@@ -435,7 +451,10 @@ export function parseComments(text: string | undefined): DocComments {
     if (!t || typeof t.id !== 'string' || typeof t.tab !== 'string' || typeof t.quote !== 'string') continue;
     const comments = (Array.isArray(t.comments) ? (t.comments as Record<string, unknown>[]) : [])
       .filter((c) => c && typeof c.text === 'string')
-      .map((c, n) => ({ id: typeof c.id === 'string' ? c.id : `${t.id}-${n}`, author: typeof c.author === 'string' ? c.author : '?', text: c.text as string, at: typeof c.at === 'string' ? c.at : '' }));
+      .map((c, n): DocComment => {
+        const reactions = parseReactions(c.reactions);
+        return { id: typeof c.id === 'string' ? c.id : `${t.id}-${n}`, author: typeof c.author === 'string' ? c.author : '?', text: c.text as string, at: typeof c.at === 'string' ? c.at : '', ...(reactions ? { reactions } : {}) };
+      });
     threads.push({
       id: t.id,
       tab: t.tab,
@@ -447,6 +466,16 @@ export function parseComments(text: string | undefined): DocComments {
     });
   }
   return { ...raw, threads };
+}
+
+function parseReactions(raw: unknown): Record<string, string[]> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Record<string, string[]> = {};
+  for (const [emoji, who] of Object.entries(raw)) {
+    const names = Array.isArray(who) ? [...new Set(who.filter((x): x is string => typeof x === 'string' && !!x))] : [];
+    if (names.length) out[emoji] = names;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 export function stringifyComments(c: DocComments): string {

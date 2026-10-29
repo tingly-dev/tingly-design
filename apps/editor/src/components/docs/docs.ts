@@ -9,6 +9,7 @@ import {
   parseDoc,
   rebaseBlocks,
   stringifyComments,
+  toggleReaction,
   stringifyDoc,
   tabFile,
   tabOrder,
@@ -231,6 +232,14 @@ export function reply(thread: string, text: string): void {
     const t = c.threads.find((x) => x.id === thread);
     t?.comments.push({ id: thread + '-' + (t.comments.length + 1) + Math.random().toString(36).slice(2, 4), author: author(), text, at: new Date().toISOString() });
   }, 'comment replied');
+}
+
+/** Toggles my reaction on one comment of a thread. */
+export function react(thread: string, comment: string, emoji: string): void {
+  editComments((c) => {
+    const m = c.threads.find((x) => x.id === thread)?.comments.find((x) => x.id === comment);
+    if (m) toggleReaction(m, emoji, author());
+  }, 'comment reaction');
 }
 
 export function setResolved(thread: string, resolved: boolean): void {

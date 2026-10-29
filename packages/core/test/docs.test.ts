@@ -14,7 +14,10 @@ import {
   quoteAt,
   rebaseBlocks,
   splitBlocks,
+  stringifyComments,
   tabOrder,
+  toggleReaction,
+  type DocComment,
   uniqueTabId,
   wordCount,
 } from '../src';
@@ -122,6 +125,27 @@ describe('reading', () => {
     expect(findQuote(text, { quote: 'dog' })).toBeNull();
     const c = parseComments('{"threads":[{"id":"t1","tab":"a","quote":"x","comments":[{"author":"me","text":"hi"}]},{"id":2}]}');
     expect(c.threads).toEqual([{ id: 't1', tab: 'a', quote: 'x', comments: [{ id: 't1-0', author: 'me', text: 'hi', at: '' }] }]);
+  });
+});
+
+describe('reactions on comments', () => {
+  it('toggles one author in and out, and drops an empty emoji', () => {
+    const c: DocComment = { id: 'c', author: 'a', text: 'hi', at: '' };
+    toggleReaction(c, '👍', 'Me');
+    toggleReaction(c, '👍', 'Claude');
+    expect(c.reactions).toEqual({ '👍': ['Me', 'Claude'] });
+    toggleReaction(c, '👍', 'Me');
+    expect(c.reactions).toEqual({ '👍': ['Claude'] });
+    toggleReaction(c, '👍', 'Claude');
+    expect(c.reactions).toBeUndefined();
+  });
+
+  it('survives a round trip and ignores what is not a reaction', () => {
+    const src = '{"threads":[{"id":"t","tab":"a","quote":"x","comments":[{"id":"c","author":"me","text":"hi","at":"","reactions":{"👍":["Me","Me",1],"✅":[],"x":"no"}},{"id":"d","author":"me","text":"yo","at":"","reactions":[1]}]}]}';
+    const c = parseComments(src);
+    expect(c.threads[0].comments[0].reactions).toEqual({ '👍': ['Me'] });
+    expect(c.threads[0].comments[1].reactions).toBeUndefined();
+    expect(parseComments(stringifyComments(c))).toEqual(c);
   });
 });
 

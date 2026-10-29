@@ -138,6 +138,7 @@ export default {
     commentAs: '以 {{name}} 的身份评论',
     write: '写评论',
     empty: '选中一段文字，点“评论”。',
+    react: '添加表情回应',
     me: '我',
   },
   export: {
