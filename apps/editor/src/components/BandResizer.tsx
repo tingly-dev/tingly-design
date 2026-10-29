@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BANDS, bandHeight, dragBandHeight, keepBandHeight, resetBandHeight, type BandId } from '../bandHeight';
+import { BANDS, bandHeight, dragBandHeight, keepBandHeight, resetBandHeight, restoreBandHeight, type BandId } from '../bandHeight';
+
+const DRAG_SLOP = 3;
 
 /**
  * The bottom edge of a band the person drags to make it taller or shorter (arrow keys do the
@@ -11,18 +13,29 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
   const { t } = useTranslation();
   const drag = useRef<{ y: number; h: number; moved: boolean } | null>(null);
   const [height, setHeight] = useState(() => bandHeight(id));
-  // a drag cut short by the band closing must not leave the page in its dragging state
-  useEffect(() => () => document.body.classList.remove('resizing-band'), []);
+  // a drag cut short by the band closing must not leave the page dragging or the band painted unsaved
+  useEffect(
+    () => () => {
+      if (!drag.current) return;
+      document.body.classList.remove('resizing-band');
+      restoreBandHeight(id);
+    },
+    [id],
+  );
 
   const down = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { y: e.clientY, h: height, moved: false };
+    const h = bandHeight(id);
+    setHeight(h);
+    drag.current = { y: e.clientY, h, moved: false };
     document.body.classList.add('resizing-band');
   };
   const move = (e: PointerEvent<HTMLDivElement>) => {
     if (!drag.current) return;
+    // a few px of jitter in a click is not a drag
+    if (!drag.current.moved && Math.abs(e.clientY - drag.current.y) < DRAG_SLOP) return;
     drag.current.moved = true;
     setHeight(dragBandHeight(id, drag.current.h + (e.clientY - drag.current.y)));
   };
@@ -32,15 +45,19 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
     drag.current = null;
     document.body.classList.remove('resizing-band');
     // a click without a move, or a cancelled drag, keeps (or gives back) the height it began with
-    if (keep && d.moved) keepBandHeight(id, d.h + (e.clientY - d.y));
-    else setHeight(dragBandHeight(id, d.h));
+    if (keep && d.moved) {
+      // what is saved is what is shown: paint the final height, not only the last move's
+      const h = dragBandHeight(id, d.h + (e.clientY - d.y));
+      keepBandHeight(id, h);
+      setHeight(h);
+    } else setHeight(restoreBandHeight(id));
   };
   const key = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
     e.stopPropagation();
     const step = e.shiftKey ? 48 : 16;
-    const h = dragBandHeight(id, height + (e.key === 'ArrowDown' ? step : -step));
+    const h = dragBandHeight(id, bandHeight(id) + (e.key === 'ArrowDown' ? step : -step));
     keepBandHeight(id, h);
     setHeight(h);
   };
@@ -60,6 +77,7 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
       onPointerMove={move}
       onPointerUp={(e) => end(true, e)}
       onPointerCancel={(e) => end(false, e)}
+      onLostPointerCapture={(e) => end(false, e)}
       onKeyDown={key}
       onDoubleClick={() => {
         resetBandHeight(id);
