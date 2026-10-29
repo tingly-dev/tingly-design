@@ -189,6 +189,28 @@ export async function inspectFolder(input: string): Promise<{ path: string; stat
   return { path, state: entries.length ? 'busy' : 'free', ...inRepo };
 }
 
+/** The folders inside a folder, for the launcher's folder picker; a path that does not exist falls back to its nearest existing parent. */
+export async function browseFolder(input: string): Promise<{ path: string; abs: string; parent: string | null; sep: string; dirs: { name: string; kind?: ProjectKind }[]; more: boolean }> {
+  if (input.trim() && !folderPath(input)) throw new HttpError(400, 'badFolderPath', { path: input });
+  let abs = folderPath(input) ?? homedir();
+  while (!(await stat(abs).catch(() => null))?.isDirectory()) {
+    const up = dirname(abs);
+    if (up === abs) break;
+    abs = up;
+  }
+  const LIMIT = 500;
+  const found: string[] = [];
+  for (const e of await readdir(abs, { withFileTypes: true }).catch(() => [])) {
+    if (e.name.startsWith('.')) continue;
+    // a link to a folder counts as a folder
+    if (e.isDirectory() || (e.isSymbolicLink() && (await stat(join(abs, e.name)).catch(() => null))?.isDirectory())) found.push(e.name);
+  }
+  found.sort((a, b) => a.localeCompare(b));
+  const dirs = await Promise.all(found.slice(0, LIMIT).map(async (name) => ({ name, kind: (await kindOf(join(abs, name))) ?? undefined })));
+  const up = dirname(abs);
+  return { path: showPath(abs), abs, parent: up === abs ? null : up, sep, dirs, more: found.length > LIMIT };
+}
+
 /** The project name a folder already answers to: a folder in the projects folder, or one already linked. */
 export function nameOfFolder(abs: string): string | undefined {
   for (const [name, dir] of links) if (dir === abs) return name;

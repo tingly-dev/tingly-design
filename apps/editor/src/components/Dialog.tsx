@@ -53,6 +53,9 @@ export function Dialog({
     const key = (e: KeyboardEvent) => {
       const el = box.current;
       if (!el) return;
+      // over another dialog (a picker opened from a form) only the one on top hears the keys
+      const dialogs = document.querySelectorAll('[role=dialog]');
+      if (dialogs[dialogs.length - 1] !== el) return;
       if (e.key === 'Escape') {
         // a menu open over the dialog takes its own Esc first
         if (document.querySelector('[role=menu]')) return;

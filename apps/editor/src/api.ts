@@ -40,6 +40,19 @@ export interface GitState {
   folder: string;
 }
 
+export interface BrowseResult {
+  /** the folder shown (`~/…` under the home folder) */
+  path: string;
+  /** the same folder, absolute, to go on from */
+  abs: string;
+  /** the folder above, null at the root */
+  parent: string | null;
+  sep: string;
+  dirs: { name: string; kind?: ProjectKind }[];
+  /** more folders than the list holds */
+  more: boolean;
+}
+
 export interface FolderInfo {
   /** the folder as the server read it, `~/…` under the home folder */
   path: string;
@@ -59,6 +72,8 @@ export interface Health {
   imageGen?: boolean;
   claudeCli: boolean;
   projectsDir: string;
+  /** the projects folder as a full path (`~/…` under the home folder) */
+  projectsPath?: string;
   /** whether the projects folder is inside a git repository */
   projectsInRepo?: boolean;
   /** false when the host keeps every project in its own projects folder (DC_LINKS=0): no opening folders elsewhere */
@@ -162,6 +177,8 @@ export const api = {
       .then((r) => ({ name: r.name ?? (typeof where === 'string' ? where : ''), gitError: r.gitError })),
   /** what is at a folder anywhere on disk: a project, a free (missing or empty) folder, other files, or a file */
   folder: (path: string) => call(at(`api/folder?path=${enc(path)}`)).then((r) => json<FolderInfo>(r)),
+  /** the folders inside a folder; a missing path gives its nearest existing parent, an empty one the home folder */
+  browse: (path: string) => call(at(`api/browse?path=${enc(path)}`)).then((r) => json<BrowseResult>(r)),
   /** open a project folder that lives anywhere; the name it is listed under comes back */
   link: (path: string) =>
     call(at('api/links'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<{ name: string }>(r)),
