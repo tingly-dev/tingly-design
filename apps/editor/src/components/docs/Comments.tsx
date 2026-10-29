@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { DOC_REACTIONS, tabFile, type DocComment, type DocThread } from '@dc/core';
 import { AddReaction } from '../icons';
 import { delegateToClaude } from '../../fastedit';
-import { addThread, author, dateLocale, deleteThread, react, reply, setResolved, threadsOf, useComments, useCurrentTab, useDocs } from './docs';
+import { addThread, author, dateLocale, deleteThread, ME, react, reactor, reply, setResolved, threadsOf, useComments, useCurrentTab, useDocs } from './docs';
 import { useTranslation } from 'react-i18next';
 
 function when(at: string): string {
@@ -54,7 +54,8 @@ function Composer({ placeholder, onSend, autoFocus, onCancel }: { placeholder: s
 function Reactions({ thread, c, open }: { thread: string; c: DocComment; open: boolean }) {
   const { t: tr } = useTranslation();
   const [picking, setPicking] = useState(false);
-  const me = author();
+  const me = reactor();
+  const picker = picking && open;
   const chips = Object.entries(c.reactions ?? {});
   return (
     <>
@@ -63,13 +64,13 @@ function Reactions({ thread, c, open }: { thread: string; c: DocComment; open: b
           <AddReaction />
         </button>
       )}
-      {(chips.length > 0 || picking) && (
+      {(chips.length > 0 || picker) && (
         <div className="creacts">
           {chips.map(([emoji, who]) => (
             <button
               key={emoji}
               className={`creact${who.includes(me) ? ' mine' : ''}`}
-              title={who.join(', ')}
+              title={who.map((x) => (x === ME ? tr('docs.comments.me') : x)).join(', ')}
               aria-pressed={who.includes(me)}
               onClick={(e) => {
                 e.stopPropagation();
@@ -79,14 +80,15 @@ function Reactions({ thread, c, open }: { thread: string; c: DocComment; open: b
               <span aria-hidden="true">{emoji}</span> {who.length}
             </button>
           ))}
-          {picking && (
+          {picker && (
             <div className="creact-pick">
               {DOC_REACTIONS.map((emoji) => (
                 <button
                   key={emoji}
                   className="creact pick"
                   aria-label={emoji}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     react(thread, c.id, emoji);
                     setPicking(false);
                   }}

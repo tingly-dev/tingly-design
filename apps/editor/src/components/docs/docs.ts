@@ -238,7 +238,7 @@ export function reply(thread: string, text: string): void {
 export function react(thread: string, comment: string, emoji: string): void {
   editComments((c) => {
     const m = c.threads.find((x) => x.id === thread)?.comments.find((x) => x.id === comment);
-    if (m) toggleReaction(m, emoji, author());
+    if (m) toggleReaction(m, emoji, reactor());
   }, 'comment reaction');
 }
 
@@ -267,6 +267,12 @@ export function deleteThread(thread: string): void {
       if (!c.threads.some((x) => x.id === thread)) c.threads.splice(Math.min(at, c.threads.length), 0, was);
     }, 'comment restored'),
   );
+}
+
+/** Who a reaction is kept under: the saved name, or a fixed `me` that reads the same in every UI language. */
+export const ME = 'me';
+export function reactor(): string {
+  return readPref('dc.author') || ME;
 }
 
 export function author(): string {

@@ -408,7 +408,7 @@ export interface DocComment {
   reactions?: Record<string, string[]>;
 }
 
-/** The reactions a comment offers: a fixed few, so a reaction means the same thing to every reader and to Claude. */
+/** The reactions the editor offers: a fixed few, so a reaction means the same thing to every reader and to Claude (a file may hold others, and they are shown). */
 export const DOC_REACTIONS = ['👍', '✅', '❤️', '🎉', '😄', '👀'] as const;
 
 /** Toggles `who`'s reaction on a comment: added when they had not reacted with it, taken back when they had. */

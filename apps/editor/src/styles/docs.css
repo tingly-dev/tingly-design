@@ -875,6 +875,11 @@
 }
 
 
+.cthread.on .cmeta {
+  padding-right: 28px;
+}
+
+
 .creact-add {
   position: absolute;
   top: -3px;
