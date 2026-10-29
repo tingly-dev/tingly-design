@@ -64,6 +64,7 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
+import { logInfo, logWarn } from './log';
 import { repoOf } from './git';
 import type { ErrorKey, Language, TFunction } from '@dc/i18n';
 import { translator } from '@dc/i18n';
@@ -412,6 +413,77 @@ export async function seedSamples(): Promise<boolean> {
   const samples = (await readdir(SAMPLES_DIR, { withFileTypes: true })).filter((e) => e.isDirectory() && isProjectName(e.name));
   await writeFile(join(PROJECTS_DIR, GROUPS_FILE), JSON.stringify(Object.fromEntries(samples.map((e) => [e.name, SAMPLES_GROUP])), null, 2) + '\n', 'utf8');
   return true;
+}
+
+/**
+ * Samples that were renamed, old folder name to new. A projects folder seeded before the rename keeps the
+ * person's copy (with their edits and history) under the new name, and its launcher group follows. Only a
+ * folder that still looks like the old sample moves (same kind, and it shares files with the new sample, so a
+ * person's own project that happens to use one of these names stays as it is), a folder already holding the
+ * new name is left alone, and so is a linked project. The server does it once at start, not every command.
+ */
+const RENAMED_SAMPLES: Record<string, string> = {
+  'box-console': 'tingly-box-console-canvas',
+  'box-usage': 'tingly-box-usage-dashboard',
+  'design-guide': 'tingly-design-guide-doc',
+  'design-motion': 'tingly-design-motion',
+  'harness-motion': 'tingly-design-harness-motion',
+  'motion-effects': 'tingly-design-shader-effects-motion',
+  'tingly-design-ui': 'tingly-design-ui-canvas',
+  'tingly-ds': 'tingly-design-system',
+  'tingly-intro': 'tingly-design-intro-slides',
+};
+
+async function isOldSample(from: string, sample: string): Promise<boolean> {
+  const kind = await kindOf(sample);
+  if (!kind || kind !== (await kindOf(from))) return false;
+  const [mine, theirs] = [[], []] as [string[], string[]];
+  await walk(from, from, mine);
+  await walk(sample, sample, theirs);
+  // the project's own index file is named the same in every project of a kind, so it proves nothing
+  return mine.some((f) => theirs.includes(f) && !/^[^/]+\.json$/.test(f));
+}
+
+export async function renameSamples(): Promise<void> {
+  if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return;
+  const moved: [string, string][] = [];
+  for (const [old, next] of Object.entries(RENAMED_SAMPLES)) {
+    const from = join(PROJECTS_DIR, old);
+    const to = join(PROJECTS_DIR, next);
+    if (links.has(old) || !(await stat(from).catch(() => null))?.isDirectory() || (await stat(to).catch(() => null))) continue;
+    if (!(await isOldSample(from, join(SAMPLES_DIR, next)))) continue;
+    try {
+      await rename(from, to);
+      moved.push([old, next]);
+      logInfo('samples.renamed', { from: old, to: next });
+    } catch (err) {
+      logWarn('samples.rename_failed', { from: old, to: next, error: String(err) });
+    }
+  }
+  if (!moved.length) return;
+  groupsWrite = groupsWrite.then(async () => {
+    const all = await readGroupsRaw();
+    let changed = false;
+    for (const [old, next] of moved) {
+      if (!(old in all)) continue;
+      if (!(next in all)) all[next] = all[old];
+      delete all[old];
+      changed = true;
+    }
+    if (!changed) return;
+    const tmp = join(PROJECTS_DIR, `${GROUPS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(all, null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, GROUPS_FILE));
+  }).catch((err) => logWarn('samples.groups_failed', { error: String(err) }));
+  await groupsWrite;
+}
+
+async function readGroupsRaw(): Promise<Record<string, unknown>> {
+  try {
+    return JSON.parse(await readFile(join(PROJECTS_DIR, GROUPS_FILE), 'utf8')) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
 
 const GROUPS_FILE = '.groups.json';
