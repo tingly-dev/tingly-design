@@ -1,5 +1,4 @@
-"""Image generation: the dialog's ImageGen section (follows Tingly Box, off with Anthropic, an OpenAI-style address with its
-own key), then the server's /images route through the mock (python3 e2e/mock_images.py): a picture made and kept in uploads/, one
+"""Image generation: the dialog's ImageGen card (Tingly Box's address with a token, an OpenAI-style address with its own key), then the server's /images route through the mock (python3 e2e/mock_images.py): a picture made and kept in uploads/, one
 edited, the gateway's refusal passed on, a path outside uploads/ refused, the key never read back.
 `pnpm e2e image_gen` starts what it needs; by hand: `pnpm dev` with NO ANTHROPIC_* / DC_IMAGE_* in its environment, DC_CONFIG=<a temp file>, python3 e2e/mock_anthropic.py and python3 e2e/mock_images.py <log> (8790 and 8791):
 python3 e2e/image_gen.py  (DC_CHROME=/path/to/chrome; SHOTS=<dir> to keep screenshots; DC_MOCK_LOG=<log> to check what the mock received)"""
@@ -35,7 +34,7 @@ async def open_dialog(pg):
     await expect(dlg).to_be_visible()
     return dlg
 async def main():
-    call('/api/ai-config', {'clearKey': True, 'clearImageKey': True}, 'PUT')
+    call('/api/ai-config', {'reset': True}, 'PUT')
     call(f'/api/projects/{PROJECT}/image-gen', {'enabled': True}, 'PUT')  # a run that stopped early may have left it off
     check(call('/api/health')[1]['imageGen'] is False, 'health: image generation is off before it is set up')
     check(call(f'/api/projects/{PROJECT}/images', {'prompt': 'a fox'})[0] == 501, 'asking for a picture before setup is refused')
@@ -46,25 +45,23 @@ async def main():
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         dlg = await open_dialog(pg)
-        # Anthropic has no image address: the section says so and asks for nothing else
-        await dlg.locator('[data-preset=anthropic]').click()
-        await expect(dlg.locator('[data-image-none]')).to_be_visible()
-        await dlg.locator('input[type=password]').first.fill('test-key')
-        await dlg.locator('[data-image-section]').scroll_into_view_if_needed()
-        await shot(pg, '1-anthropic-no-endpoint.png')
-        # Tingly Box: the address follows the connection
-        await dlg.locator('[data-preset=tingly-box]').click()
-        await expect(dlg.locator('[data-image-address]')).to_have_text('http://localhost:12580/tingly/imagegen/v1')
-        await expect(dlg.locator('[data-image-state]')).to_have_attribute('data-image-state', 'ready')
+        card = dlg.locator('[data-card=image]')
+        # nothing saved: the card offers Tingly Box's address and says what is missing
+        await expect(card.locator('[data-image-address]')).to_have_text('http://localhost:12580/tingly/imagegen/v1')
+        await expect(card.locator('[data-state]')).to_have_attribute('data-state', 'missing')
         await expect(dlg.get_by_label('ImageGen Model')).to_have_attribute('placeholder', 'tingly')
-        await shot(pg, '2-tingly-box-follows.png')
+        await shot(pg, '1-needs-token.png')
+        # a token makes it ready, and the other cards are not touched
+        await dlg.get_by_label('ImageGen key').fill('test-key')
+        await expect(card.locator('[data-image-state]')).to_have_attribute('data-image-state', 'ready')
+        await expect(dlg.locator('[data-card=fast] [data-state]')).to_have_attribute('data-state', 'missing')
+        await shot(pg, '2-tingly-box-ready.png')
         # another address: an OpenAI-style one, with its own key and model
-        await dlg.locator('[data-preset=custom]').click()
-        await dlg.locator('input[placeholder="https://"]').fill(MOCK_URL)
+        await dlg.locator('[data-image-preset=custom]').click()
         await dlg.get_by_label('ImageGen Address').fill('ftp://nope')
-        await expect(dlg.locator('[data-image-section] .status.bad')).to_contain_text('http://')
+        await expect(card.locator('.status.bad')).to_contain_text('http://')
         await dlg.get_by_label('ImageGen Address').fill(IMAGES_URL + '/v1')
-        await dlg.get_by_label('ImageGen Key').fill('sk-image')
+        await dlg.get_by_label('ImageGen key').fill('sk-image')
         await expect(dlg.get_by_label('ImageGen Model')).to_have_attribute('placeholder', 'gpt-image-1')
         await dlg.get_by_label('ImageGen Model').fill('gpt-image-test')
         await shot(pg, '3-openai-address.png')
@@ -121,11 +118,12 @@ async def main():
         check(call(f'/api/projects/{PROJECT}/image-gen')[1]['on'] is True, 'turned back on')
         # the global switch keeps the address and key
         dlg = await open_dialog(pg)
+        card = dlg.locator('[data-card=image]')
         sw = dlg.locator('[data-image-switch] input')
         await expect(sw).to_be_checked()
         await sw.uncheck()
         await expect(dlg.locator('[data-image-state]')).to_have_attribute('data-image-state', 'paused')
-        await dlg.locator('[data-image-section]').scroll_into_view_if_needed()
+        await card.scroll_into_view_if_needed()
         await shot(pg, '7-global-off.png')
         await dlg.get_by_role('button', name='Save').click()
         await expect(dlg).to_have_count(0)
@@ -148,7 +146,7 @@ async def main():
         await pg2.locator('button[aria-label="AI 模型设置"]').click()
         d2 = pg2.locator('[role=dialog]')
         await expect(d2.get_by_label('ImageGen 地址')).to_be_visible()
-        await d2.locator('[data-image-section]').scroll_into_view_if_needed()
+        await d2.locator('[data-card=image]').scroll_into_view_if_needed()
         await shot(pg2, '4-zh-dark.png')
         await pg2.goto(f'{BASE}/?p={PROJECT}')
         await pg2.get_by_role('button', name='Claude Code', exact=True).click()

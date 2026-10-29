@@ -30,7 +30,7 @@ Human operations (`applyHumanOps`), fast AI jQuery (`FastEditSession`) and repla
 
 ## 3. Fast AI writes edit operations, not new files
 
-Which model answers, and through which gateway, is set in **AI model settings** (see `.design/ai-settings.md`): one connection shared by fast AI and Claude Code, a model name for each, Tingly Box suggested. Environment variables a host sets win over what is saved there.
+Which model answers, and through which gateway, is set in **AI model settings** (see `.design/ai-settings.md`): three cards, one each for Claude Code (its own sign-in, Tingly Box or a custom address), ImageGen and fast AI, each with its own address, key and model, Tingly Box suggested in every one. Environment variables a host sets win over what is saved there.
 
 The model's context is, in order: an overview of the canvas, the artboard you are looking at, the target artboard's markup with handles, the journal, the element you are pointing at, and your words. Its reply can only be jQuery statements, one per line:
 

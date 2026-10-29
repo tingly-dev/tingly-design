@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { TINGLY_BOX_URL, fastReady, resolveAi, sanitizeSaved, type AiEnv, type AiResolved, type AiSaved } from '@dc/core';
+import { BOX_KEY_FIELD, KEY_FIELDS, TINGLY_BOX_URL, migrateSaved, resolveAi, sanitizeSaved, type AiEnv, type AiResolved, type AiSaved, type KeyFrom } from '@dc/core';
 import { CONFIG_FILE } from './layout';
 
 /**
@@ -28,7 +28,8 @@ let saved: AiSaved | null = null;
 async function loadSaved(): Promise<AiSaved> {
   if (saved) return saved;
   try {
-    saved = sanitizeSaved(JSON.parse(await readFile(FILE, 'utf8')));
+    // a file the first dialog wrote (one shared connection) is read as three cards; it is rewritten on the next save
+    saved = migrateSaved(JSON.parse(await readFile(FILE, 'utf8')));
   } catch {
     saved = {};
   }
@@ -36,18 +37,34 @@ async function loadSaved(): Promise<AiSaved> {
 }
 await loadSaved();
 
-export const aiResolved = (draft?: AiSaved): AiResolved => resolveAi(env(), { ...saved, ...draft });
+/** A draft is the dialog's whole state (a blank field is a default), so only the keys it does not carry come from the saved file. */
+export const aiResolved = (draft?: AiSaved): AiResolved =>
+  resolveAi(env(), draft ? { ...Object.fromEntries(KEY_FIELDS.filter((f) => saved?.[f]).map((f) => [f, saved![f]])), ...draft } : { ...saved });
 
-/** The key in force: the environment's, else the saved one (or a draft's, to test before saving). */
-const keyOf = (draft?: AiSaved): string => (env().key ?? '').trim() || (draft?.apiKey ?? saved?.apiKey ?? '').trim();
+/** A draft with the tokens its `keyFrom` hands over: a card takes another card's token (typed in the dialog, or already saved). */
+export function withKeyFrom(draft: AiSaved, keyFrom: KeyFrom = {}): AiSaved {
+  const out = { ...draft };
+  const held = (f: (typeof KEY_FIELDS)[number]) => draft[f] || saved?.[f] || '';
+  for (const [to, from] of Object.entries(keyFrom) as [keyof KeyFrom, NonNullable<KeyFrom[keyof KeyFrom]>][]) {
+    if (to === from || !BOX_KEY_FIELD[to] || !BOX_KEY_FIELD[from]) continue;
+    const key = held(BOX_KEY_FIELD[from]);
+    if (key) out[BOX_KEY_FIELD[to]] = key;
+  }
+  return out;
+}
 
-export async function saveAi(next: AiSaved, keep: { key: boolean; imageKey?: boolean }): Promise<void> {
-  const clean = sanitizeSaved(next);
-  if (keep.key && saved?.apiKey && !clean.apiKey) clean.apiKey = saved.apiKey;
-  if (keep.imageKey && saved?.imageKey && !clean.imageKey) clean.imageKey = saved.imageKey;
+/** The host's key stands in for the fast card's and a custom Claude Code address's, as `ANTHROPIC_*` always did. */
+const hostKey = (): string => (env().key ?? '').trim();
+const secret = (field: (typeof KEY_FIELDS)[number], draft?: AiSaved): string => draft?.[field] || saved?.[field] || '';
+const fastKeyOf = (draft?: AiSaved): string => hostKey() || secret('fastKey', draft);
+
+/** `reset` forgets every saved value, tokens too; otherwise a token the save does not carry is kept (the dialog never reads one back). */
+export async function saveAi(next: AiSaved, opts: { reset?: boolean; keyFrom?: KeyFrom } = {}): Promise<void> {
+  const clean = sanitizeSaved(withKeyFrom(next, opts.keyFrom));
+  if (!opts.reset) for (const f of KEY_FIELDS) if (!clean[f] && saved?.[f]) clean[f] = saved[f];
   saved = clean;
   await mkdir(dirname(FILE), { recursive: true });
-  // the key is in it: only the owner reads it
+  // the keys are in it: only the owner reads it
   const tmp = `${FILE}.${process.pid}.tmp`;
   await writeFile(tmp, JSON.stringify(clean, null, 2) + '\n', { mode: 0o600 });
   await rename(tmp, FILE);
@@ -58,8 +75,7 @@ export async function saveAi(next: AiSaved, keep: { key: boolean; imageKey?: boo
 export function imageEndpoint(draft?: AiSaved): { baseUrl: string; key: string; model: string } | null {
   const r = aiResolved(draft).image;
   if (!r.active) return null;
-  const e = env();
-  const key = (e.imageKey ?? '').trim() || (draft?.imageKey ?? saved?.imageKey ?? '').trim() || (r.key.source === 'connection' ? keyOf(draft) : '');
+  const key = (env().imageKey ?? '').trim() || secret('imageKey', draft);
   return { baseUrl: r.baseUrl.value, key, model: r.model.value };
 }
 
@@ -67,9 +83,9 @@ let client: { sig: string; sdk: Anthropic } | null = null;
 
 /** The Anthropic client for fast AI, or null while there is no key. Rebuilt when the settings change. */
 export function fastClient(draft?: AiSaved): Anthropic | null {
-  const r = aiResolved(draft);
-  if (!fastReady(r)) return null;
-  const key = keyOf(draft);
+  const r = aiResolved(draft).fast;
+  if (!r.ready) return null;
+  const key = fastKeyOf(draft);
   const fromEnv = r.key.source === 'env';
   const sig = JSON.stringify([r.baseUrl.value, fromEnv ? '' : key]);
   if (!draft && client?.sig === sig) return client.sdk;
@@ -79,19 +95,17 @@ export function fastClient(draft?: AiSaved): Anthropic | null {
   return sdk;
 }
 
-/** What `claude` is started with: the shared connection when the settings say so, else its own sign-in. */
+/** What `claude` is started with, by the tab chosen: its own sign-in leaves the environment alone, the others point it at an address with a key. */
 export function claudeLaunch(): { env: Record<string, string>; model: string } {
-  const r = aiResolved();
-  // a model the person or the host named is passed on; the alias default only makes sense through the shared connection
-  const named = r.claudeModel.source !== 'default';
-  const shared = r.claudeRoute.value === 'shared';
-  const model = named || shared ? r.claudeModel.value : '';
-  if (!shared) return { env: {}, model };
+  const c = aiResolved().claude;
+  // a model the host named is passed on even to the sign-in; the tabs' own defaults only make sense through their connection
+  const model = c.mode.value === 'local' ? (c.model.source === 'env' ? c.model.value : '') : c.model.value;
+  if (c.mode.value === 'local') return { env: {}, model };
   const out: Record<string, string> = {};
-  if (r.claudeBaseUrl) out.ANTHROPIC_BASE_URL = r.claudeBaseUrl;
-  const key = keyOf();
+  if (c.launchUrl) out.ANTHROPIC_BASE_URL = c.launchUrl;
+  const key = c.mode.value === 'box' ? secret('claudeBoxKey') : c.custom.key.source === 'env' ? '' : secret('claudeKey');
   // the default endpoint takes an API key; a gateway takes the token header. A host's own variables are already in the environment.
-  if (key && r.key.source !== 'env') out[r.claudeBaseUrl ? 'ANTHROPIC_AUTH_TOKEN' : 'ANTHROPIC_API_KEY'] = key;
+  if (key) out[c.launchUrl ? 'ANTHROPIC_AUTH_TOKEN' : 'ANTHROPIC_API_KEY'] = key;
   return { env: out, model };
 }
 
@@ -110,7 +124,7 @@ export async function testFast(draft?: AiSaved): Promise<{ ok: boolean; ms: numb
   const t0 = Date.now();
   if (!sdk) return { ok: false, ms: 0, error: 'noKey' };
   try {
-    await sdk.messages.create({ model: aiResolved(draft).fastModel.value, max_tokens: 8, messages: [{ role: 'user', content: 'ping' }] }, { timeout: 15000, maxRetries: 0 });
+    await sdk.messages.create({ model: aiResolved(draft).fast.model.value, max_tokens: 8, messages: [{ role: 'user', content: 'ping' }] }, { timeout: 15000, maxRetries: 0 });
     return { ok: true, ms: Date.now() - t0 };
   } catch (e) {
     return { ok: false, ms: Date.now() - t0, error: (e as Error).message };

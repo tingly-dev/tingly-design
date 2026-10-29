@@ -39,21 +39,22 @@
 
 不接的类型：**看板**只读 `data/`；**设计系统**的图片放它自己的 `assets/`，不用 `uploads/`，delegate 在这两种类型里不给这个工具。
 
-## 4. 配置：第三个用途，挂在同一个连接上
+## 4. 配置：自己的一张卡
 
-沿用 [ai-settings.md](./ai-settings.md) 的规则：每一项"环境变量 > 已保存 > 默认"逐项比较，解析是 `packages/core/src/aiConfig.ts` 的纯函数 `resolveAi`，结果里多一个 `image`。
+沿用 [ai-settings.md](./ai-settings.md) 的规则：每一项"环境变量 > 已保存 > 默认"逐项比较，解析是 `packages/core/src/aiConfig.ts` 的纯函数 `resolveAi`，结果里的 `image`。
 
-和前两个用途不一样的地方：**连接地址不能直接沿用**。连接是 Anthropic 兼容的入口（Tingly Box 是 `/tingly/anthropic`），图片走的是 OpenAI 兼容的 `/v1/images/*`，路径和协议都不同。所以图片有自己的地址，默认跟着连接走：
+图片是对话框里自己的一张卡，**不再借别处的连接**。图片走的是 OpenAI 兼容的 `/v1/images/*`，和 Claude Code、快速 AI 用的 Anthropic 兼容入口路径和协议都不同，原来"默认跟着连接走"要靠一串条件（连接是 Box 才跟、同一主机才借密钥）才说得通，人读不懂。现在卡里自己选：
 
-| 连接 | 图片地址 | 模型默认 | 密钥 |
+| 选择 | 图片地址 | 模型默认 | 密钥 |
 |---|---|---|---|
-| Tingly Box | 自动是 `http://localhost:12580/tingly/imagegen/v1`，界面只读 | `tingly`（由它的规则决定实际模型） | 连接的 |
-| Anthropic | **没有**（Anthropic 没有图片接口）：这一块说明原因，图像生成保持关闭 | — | — |
-| 其他地址 | 人自己填一个 OpenAI 兼容的地址（如 `https://api.openai.com/v1`） | `gpt-image-1` | 只有地址和连接同一个主机时才借用连接的密钥，否则要单独填（不把一家的密钥发给另一家） |
+| Tingly Box | `http://localhost:12580/tingly/imagegen/v1`，界面只读 | `tingly`（由它的规则决定实际模型） | 自己的令牌（可以在保存时取用另一张 Tingly Box 卡的，见 ai-settings.md §2） |
+| 其他地址 | 人自己填一个 OpenAI 兼容的地址（如 `https://api.openai.com/v1`） | `gpt-image-1` | 自己的密钥 |
+
+Anthropic 没有图片接口，所以这张卡没有 Anthropic 这一项；没存过地址时卡显示 Tingly Box 选中、缺令牌。
 
 "准备好"（`image.ready`）= 有地址、有密钥、有模型名。没准备好时：路由回 501 和一句指向设置的话，Claude Code 没有这个脚本，`/api/health` 的 `imageGen` 为 `false`。关着（见上面的开关）时路由回 403，`imageGen` 同样为 `false`。
 
-环境变量是宿主的覆盖：`DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY`（不设就用连接的密钥），加上 `DC_IMAGE_ENABLED=0`（关掉）。宿主设了的值在对话框里显示为"由宿主设定"，只读。单独的图片密钥和连接的密钥一样，只存在服务端的文件里，接口只回"设了没有"和来源（`saved` / `env` / `connection`）。
+环境变量是宿主的覆盖：`DC_IMAGE_BASE_URL`、`DC_IMAGE_MODEL`、`DC_IMAGE_API_KEY`，加上 `DC_IMAGE_ENABLED=0`（关掉）。宿主设了的值在对话框里显示为"由宿主设定"，只读。单独的图片密钥和连接的密钥一样，只存在服务端的文件里，接口只回"设了没有"和来源（`saved` / `env`）。
 
 ## 5. 改图
 
