@@ -65,7 +65,7 @@ $('#dc12').next().children().first().repeat(3)
 packages/core       格式解析、DOM 副本、最小补丁回写、人工操作、jQuery 执行会话、语句切分、提示词；
                     幻灯片的 deck.json、子集检查、形状/图标/连线绘制；设计系统的 tokens 语法与 tokens.css；
                     看板的数据集、CSV 解析、SQL 检查与参数绑定、标注核对；文档的按块合并与重放、评论定位；启动页卡片、36 个设计系统风格、项目压缩包与 Claude Design 格式、PowerPoint 导入
-packages/export     在浏览器里导出、不装东西：DOM 画成图、帧编成 MP4 或 WebM 和 GIF、混音、内联网页字体、原生对象的 PowerPoint，以及各浏览器能写什么（.design/export.md）
+packages/export     在浏览器里导出、不装东西：DOM 画成图、帧编成 MP4 或 WebM 和 GIF、混音、内联网页字体、原生对象的 PowerPoint、由 Markdown 生成的 Word（.docx），以及各浏览器能写什么（.design/export.md）
 packages/i18n       界面文字的英文和中文（locales/<语言>/<区域>.ts）、语言匹配、服务端和导入器用的翻译函数（.design/i18n.md）
 packages/sandbox    画板运行时（模板 → React、选中、就地改字）、看板运行时（dash API + d3）和 AI 执行器，esbuild 打成 IIFE
 apps/server         Hono：文件读写与版本、SSE、journal、文件监听、快速 AI 流式代理、委托 claude CLI（一个项目一份对话）、用本机的 Chrome 和 ffmpeg 精确渲染动效、一键 PDF、git 提交、项目 .zip 导入导出、图像生成、看板的数据连接器；`tingly-design` 命令（cli.ts、commands.ts）和同一份命令作为 MCP 工具（mcp.ts）

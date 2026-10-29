@@ -94,7 +94,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     },
   },
   docs: {
-    formats: ['pdf', 'html', 'md', 'png'],
+    formats: ['pdf', 'docx', 'html', 'md', 'png'],
     size: false,
     fast: false,
     pick: 'tab',

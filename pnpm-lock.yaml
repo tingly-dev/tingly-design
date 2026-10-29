@@ -191,6 +191,9 @@ importers:
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
+      marked:
+        specifier: 14.1.4
+        version: 14.1.4
       mediabunny:
         specifier: ^1.61.4
         version: 1.61.4
