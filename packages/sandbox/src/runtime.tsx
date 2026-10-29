@@ -1020,6 +1020,12 @@ function snapshot(id: string) {
     const r = node.getBoundingClientRect();
     const copy = document.documentElement.cloneNode(true) as HTMLElement;
     copy.querySelectorAll('script, meta[http-equiv], [aria-hidden="true"][style*="2147483647"]').forEach((n) => n.remove());
+    // a text being retyped right now is drawn with its editing outline: print it as it will be
+    copy.querySelectorAll<HTMLElement>('[contenteditable]').forEach((n) => {
+      n.removeAttribute('contenteditable');
+      n.style.outline = '';
+      n.style.outlineOffset = '';
+    });
     post({ dc: 'snapshotted', id, html: `<!doctype html>${copy.outerHTML}`, size: [Math.ceil(r.width), Math.ceil(r.height)] });
   } catch (err) {
     post({ dc: 'snapshotted', id, error: exportError(err) });

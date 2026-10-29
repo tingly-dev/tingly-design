@@ -85,20 +85,28 @@ describe('fontCss', () => {
 });
 
 describe('inlineFontLinks', () => {
-  it('turns a hosted stylesheet link into inline faces and leaves other links alone', async () => {
+  const GOOGLE_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter&amp;display=swap">';
+
+  it('replaces a Google Fonts link by its inline faces and leaves other links alone', async () => {
     network();
-    const html = '<head><link rel="stylesheet" href="https://fonts.example/css2?x.css"><link rel="icon" href="https://fonts.example/i.png"><link rel="stylesheet" href="/local.css"></head>';
-    const out = await inlineFontLinks(html, 'Hello');
+    const html = `<head>${GOOGLE_LINK}<link rel="icon" href="https://fonts.example/i.png"><link rel="stylesheet" href="/local.css"></head>`;
+    const out = await inlineFontLinks(html, 'Hello', (_h, text) => fontCss(['https://fonts.example/css2?x.css'], text));
     expect(out).toContain('<style>@font-face');
     expect(out).toContain('data:font/woff2;base64,AQID');
-    expect(out).not.toContain('fonts.example/css2');
+    expect(out).not.toContain('fonts.googleapis.com');
     expect(out).toContain('<link rel="icon"');
     expect(out).toContain('href="/local.css"');
   });
 
+  it('keeps another hosted sheet, whose rules are more than faces, and adds its faces after it', async () => {
+    network();
+    const link = '<link rel="stylesheet" href="https://fonts.example/css2?x.css">';
+    const out = await inlineFontLinks(`<head>${link}</head>`, 'Hello');
+    expect(out).toContain(link + '<style>@font-face');
+  });
+
   it('keeps the link when the sheet cannot be fetched', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
-    const html = '<link rel="stylesheet" href="https://fonts.example/css2?x.css">';
-    expect(await inlineFontLinks(html, 'a')).toBe(html);
+    expect(await inlineFontLinks(GOOGLE_LINK, 'a')).toBe(GOOGLE_LINK);
   });
 });

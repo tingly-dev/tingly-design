@@ -465,6 +465,7 @@ export async function exportProject(ctx: Ctx, p: Project, o: ExportOptions): Pro
   if (as === 'zip') return exportZip(p, o);
   if (as === 'claude-design') return exportClaudeDesign(ctx, p, o);
   if (!FORMATS[p.kind].includes(as)) throw new CommandError(t('cli.exportAs', { as: o.as, kind: t(`cli.kind.${p.kind}`), formats: [...FORMATS[p.kind], 'zip', ...(hasClaudeDesign(p.kind) ? ['claude-design'] : [])].join(', ') }));
+  if (p.kind === 'design' && as === 'pdf' && o.board) throw new CommandError(t('cli.pdfBoard'));
   if (p.kind === 'motion') return as === 'html' ? exportPlayer(ctx, p, o) : exportMotion(ctx, p, as as 'mp4' | 'gif' | 'png', o);
   const dir = o.out ? resolve(expandHome(o.out)) : resolve(p.dir, 'renders');
   return runPage(ctx, p, await pageJobs(p, as, o), dir, o.onOpening);

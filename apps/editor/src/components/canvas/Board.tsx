@@ -49,8 +49,14 @@ export function exportPng(file: string, scale = 2, tid?: number): Promise<string
   });
 }
 
+/** Waits until the artboard's frame has said it is ready (`pickBoard` does the same), so a message to it is heard. */
+async function frameReady(file: string): Promise<void> {
+  for (const until = Date.now() + 20_000; !readyFrames.has(file) && Date.now() < until; ) await new Promise((ok) => setTimeout(ok, 50));
+}
+
 /** An artboard as it is drawn now: a standalone page and its size. */
-function snapshotBoard(file: string): Promise<{ html: string; size: [number, number] }> {
+async function snapshotBoard(file: string): Promise<{ html: string; size: [number, number] }> {
+  await frameReady(file);
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => (snapshots.delete(id), reject(new Error(tr('canvas.export.timeout')))), 20000);
@@ -72,13 +78,19 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
  * script that opens the print dialog, for a machine with no Chrome.
  */
 async function canvasPdfHtml(files: string[], title: string, print = false): Promise<string> {
+  // each artboard is asked and has its fonts fetched side by side; the pages keep the artboards' order
+  const shots = await Promise.all(
+    files.map(async (file) => {
+      const { html, size } = await snapshotBoard(file);
+      return { html: await withWebFonts(html), size };
+    }),
+  );
   const pages: string[] = [];
   const rules: string[] = [];
-  for (const [i, file] of files.entries()) {
-    const { html, size } = await snapshotBoard(file);
+  for (const [i, { html, size }] of shots.entries()) {
     const [w, h] = size;
     rules.push(`@page b${i}{size:${w}px ${h}px;margin:0}.b${i}{page:b${i};width:${w}px;height:${h}px}`);
-    pages.push(`<div class="pg b${i}"><iframe sandbox="allow-same-origin" scrolling="no" width="${w}" height="${h}" srcdoc="${esc(await withWebFonts(html))}"></iframe></div>`);
+    pages.push(`<div class="pg b${i}"><iframe sandbox="allow-same-origin" scrolling="no" width="${w}" height="${h}" srcdoc="${esc(html)}"></iframe></div>`);
   }
   const auto = print ? '<script>addEventListener("load",function(){setTimeout(function(){print()},1200)})</script>' : '';
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/[<&]/g, '')}</title><style>html,body{margin:0;background:#fff}.pg{overflow:hidden;break-after:page}.pg:last-child{break-after:auto}iframe{display:block;border:0}${rules.join('')}</style></head><body>${pages.join('')}${auto}</body></html>`;
@@ -90,8 +102,9 @@ async function exportCanvasPdf(files: string[]): Promise<void> {
   const name = (c.title || 'canvas').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'canvas';
   try {
     await savePdf(`${name}.pdf`, {
-      html: await canvasPdfHtml(files, name),
+      html: () => canvasPdfHtml(files, name),
       paper: 'page',
+      fonts: false,
       print: async () => void printWindow(await canvasPdfHtml(files, name, true)),
     });
   } catch (e) {

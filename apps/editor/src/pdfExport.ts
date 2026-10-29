@@ -36,15 +36,21 @@ export const pdfHint = (what: string, direct: boolean | null) => (direct === fal
  * here, by the browser that is showing the work (online, or with them in its cache), and sent along.
  */
 export function withWebFonts(html: string): Promise<string> {
-  const text = new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '';
-  return inlineFontLinks(html, text.slice(0, 4000));
+  const body = new DOMParser().parseFromString(html, 'text/html').body;
+  body.querySelectorAll('style, script').forEach((n) => n.remove());
+  // every character the page sets, once each: that is what `fontCss` cuts the faces to
+  return inlineFontLinks(html, body.textContent ?? '');
 }
 
-/** Make the PDF and save it as `name`; `print` is the way out on a machine with no Chrome (it gets a page with no auto-print script). */
-export async function savePdf(name: string, o: { html: string; paper: 'page' | 'a4'; print: () => void | Promise<void> }): Promise<void> {
+/**
+ * Make the PDF and save it as `name`; `print` is the way out on a machine with no Chrome (it gets a page with no auto-print script).
+ * `html` may be built on demand, so a machine with no Chrome does not build a page it will not use; a page that already carries its fonts (`fonts: false`) is sent as it is.
+ */
+export async function savePdf(name: string, o: { html: string | (() => Promise<string>); paper: 'page' | 'a4'; print: () => void | Promise<void>; fonts?: boolean }): Promise<void> {
   if (!(await hasChrome())) return o.print();
   try {
-    download(name, await api.renderPdf(await withWebFonts(o.html), o.paper));
+    const html = typeof o.html === 'string' ? o.html : await o.html();
+    download(name, await api.renderPdf(o.fonts === false ? html : await withWebFonts(html), o.paper));
     toast(t('common.transfer.saved', { name }));
   } catch (e) {
     toast(t('common.transfer.pdfFailed', { message: (e as Error).message }), 'error');

@@ -144,10 +144,12 @@ export async function fontCss(sources: (string | { family: string; url: string }
 }
 
 /**
- * A page for a machine that may have no network: every `<link rel="stylesheet">` to a hosted sheet is
- * replaced by a `<style>` of its faces inlined by `fontCss`, cut to the characters in `text`. Run where
- * the fonts are reachable or cached (the editor's browser), so the server's Chrome that prints the page
- * needs nothing from the network. A sheet that cannot be fetched stays a link, as it was.
+ * A page for a machine that may have no network: every `<link rel="stylesheet">` to a hosted sheet gets
+ * its faces written into the page, inlined by `fontCss` and cut to the characters in `text`. A Google
+ * Fonts sheet holds nothing but faces, so its link is replaced; any other sheet keeps its link (its
+ * other rules stay) with the faces added after it. Run where the fonts are reachable or cached (the
+ * editor's browser), so the server's Chrome that prints the page needs nothing from the network. A
+ * sheet that cannot be fetched stays a link, as it was.
  */
 export async function inlineFontLinks(html: string, text: string, css: (href: string, text: string) => Promise<string> = (h, t) => fontCss([h], t)): Promise<string> {
   const out: string[] = [];
@@ -159,7 +161,8 @@ export async function inlineFontLinks(html: string, text: string, css: (href: st
     if (!/\brel\s*=\s*["']?stylesheet/i.test(tag) || !/^https?:\/\//i.test(url)) continue;
     const faces = await css(url, text).catch(() => '');
     if (!faces) continue;
-    out.push(html.slice(at, m.index!), `<style>${faces.replace(/<\/(style)/gi, '<\\/$1')}</style>`);
+    const style = `<style>${faces.replace(/<\/(style)/gi, '<\\/$1')}</style>`;
+    out.push(html.slice(at, m.index!), GOOGLE.test(url) ? style : tag + style);
     at = m.index! + tag.length;
   }
   return out.length ? out.join('') + html.slice(at) : html;

@@ -79,7 +79,7 @@ async def main():
             if label == 'canvas':
                 # a page per artboard, each as large as its artboard rather than one paper size
                 boxes = {tuple(float(x) for x in m.split()[2:]) for m in (b.decode() for b in re.findall(rb'/MediaBox\s*\[([^\]]+)\]', open(path, 'rb').read()))}
-                check('canvas: …each page the size of its artboard', len(boxes) >= 1 and (595.0, 842.0) not in boxes, sorted(boxes))
+                check('canvas: …each page the size of its artboard', len(boxes) >= 3 and (595.0, 842.0) not in boxes, sorted(boxes))
 
         # --- Markdown: the deck as a document ---------------------------------------------------------
         await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
