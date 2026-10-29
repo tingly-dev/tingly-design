@@ -193,7 +193,7 @@ async def main():
     os.rename(os.path.join(projects, 'tingly-design-motion'), os.path.join(projects, 'design-motion'))
     gpath = os.path.join(projects, '.groups.json')
     g = json.load(open(gpath, encoding='utf-8'))
-    g['design-motion'] = g.pop('tingly-design-motion')
+    g['design-motion'] = g.pop('tingly-design-motion', 'tingly-design')
     json.dump(g, open(gpath, 'w', encoding='utf-8'))
     proc2, _ = launch(projects)
     check('an existing projects folder is never reseeded', open(overview).read().count('- [x] Run `pnpm install`') == 1)

@@ -16,7 +16,7 @@ import { lineDiffSummary, publish, record } from './hub';
 import { BASE_PATH, BUNDLED, PROJECTS_DIR, PROTOCOL, VERSION } from './layout';
 import { logError, logInfo } from './log';
 import { announce, retire, serving } from './running';
-import { assetRel, isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, seedSamples, versionOf } from './store';
+import { assetRel, isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, renameSamples, seedSamples, versionOf } from './store';
 
 export interface ServerOptions {
   port: number;
@@ -36,6 +36,7 @@ export interface RunningServer {
 
 export async function startServer(o: ServerOptions): Promise<RunningServer> {
   if (await seedSamples()) logInfo('samples.copied', { dir: PROJECTS_DIR });
+  else await renameSamples();
 
   const fetch: typeof app.fetch = BASE_PATH
     ? (req, ...rest) => {

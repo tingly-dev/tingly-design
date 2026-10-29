@@ -64,6 +64,7 @@ import {
   type ProjectKind,
 } from '@dc/core';
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
+import { logInfo, logWarn } from './log';
 import { repoOf } from './git';
 import type { ErrorKey, Language, TFunction } from '@dc/i18n';
 import { translator } from '@dc/i18n';
@@ -402,10 +403,7 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
  */
 export async function seedSamples(): Promise<boolean> {
   if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return false;
-  if (await stat(PROJECTS_DIR).catch(() => null)) {
-    await renameSamples();
-    return false;
-  }
+  if (await stat(PROJECTS_DIR).catch(() => null)) return false;
   if (!(await stat(SAMPLES_DIR).catch(() => null))) return false;
   // whatever a person's machine keeps beside a project (journal, run reports, Claude Code's
   // conversation, the transcript: every dotfile) belongs to whoever used the samples before
@@ -419,8 +417,10 @@ export async function seedSamples(): Promise<boolean> {
 
 /**
  * Samples that were renamed, old folder name to new. A projects folder seeded before the rename keeps the
- * person's copy (with their edits and history) under the new name, and its launcher group follows; a folder
- * that already has the new name is left alone, so nothing of theirs is overwritten.
+ * person's copy (with their edits and history) under the new name, and its launcher group follows. Only a
+ * folder that still looks like the old sample moves (same kind, and it shares files with the new sample, so a
+ * person's own project that happens to use one of these names stays as it is), a folder already holding the
+ * new name is left alone, and so is a linked project. The server does it once at start, not every command.
  */
 const RENAMED_SAMPLES: Record<string, string> = {
   'box-console': 'tingly-box-console-canvas',
@@ -434,27 +434,55 @@ const RENAMED_SAMPLES: Record<string, string> = {
   'tingly-intro': 'tingly-design-intro-slides',
 };
 
-async function renameSamples(): Promise<void> {
+async function isOldSample(from: string, sample: string): Promise<boolean> {
+  const kind = await kindOf(sample);
+  if (!kind || kind !== (await kindOf(from))) return false;
+  const [mine, theirs] = [[], []] as [string[], string[]];
+  await walk(from, from, mine);
+  await walk(sample, sample, theirs);
+  // the project's own index file is named the same in every project of a kind, so it proves nothing
+  return mine.some((f) => theirs.includes(f) && !/^[^/]+\.json$/.test(f));
+}
+
+export async function renameSamples(): Promise<void> {
+  if (process.env.DC_SAMPLES === '0' || SAMPLES_DIR === PROJECTS_DIR) return;
   const moved: [string, string][] = [];
   for (const [old, next] of Object.entries(RENAMED_SAMPLES)) {
     const from = join(PROJECTS_DIR, old);
     const to = join(PROJECTS_DIR, next);
     if (links.has(old) || !(await stat(from).catch(() => null))?.isDirectory() || (await stat(to).catch(() => null))) continue;
+    if (!(await isOldSample(from, join(SAMPLES_DIR, next)))) continue;
     try {
       await rename(from, to);
       moved.push([old, next]);
-    } catch {
-      // in use or read-only: the old name keeps working as it was
+      logInfo('samples.renamed', { from: old, to: next });
+    } catch (err) {
+      logWarn('samples.rename_failed', { from: old, to: next, error: String(err) });
     }
   }
   if (!moved.length) return;
+  groupsWrite = groupsWrite.then(async () => {
+    const all = await readGroupsRaw();
+    let changed = false;
+    for (const [old, next] of moved) {
+      if (!(old in all)) continue;
+      if (!(next in all)) all[next] = all[old];
+      delete all[old];
+      changed = true;
+    }
+    if (!changed) return;
+    const tmp = join(PROJECTS_DIR, `${GROUPS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(all, null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, GROUPS_FILE));
+  }).catch((err) => logWarn('samples.groups_failed', { error: String(err) }));
+  await groupsWrite;
+}
+
+async function readGroupsRaw(): Promise<Record<string, unknown>> {
   try {
-    const file = join(PROJECTS_DIR, GROUPS_FILE);
-    const raw = JSON.parse(await readFile(file, 'utf8')) as Record<string, unknown>;
-    for (const [old, next] of moved) if (old in raw) raw[next] = raw[old], delete raw[old];
-    await writeFile(file, JSON.stringify(raw, null, 2) + '\n', 'utf8');
+    return JSON.parse(await readFile(join(PROJECTS_DIR, GROUPS_FILE), 'utf8')) as Record<string, unknown>;
   } catch {
-    // no groups file: nothing to follow
+    return {};
   }
 }
 
