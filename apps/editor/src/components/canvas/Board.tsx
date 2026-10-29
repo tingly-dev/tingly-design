@@ -19,6 +19,9 @@ import { copyImage, dataUrlBlob } from '../../imageExport';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
+/** What an artboard may be stretched to (a side, in px). */
+const MIN_SIDE = 40;
+const MAX_SIDE = 8000;
 const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
 /** Live artboard frames, so the panel, menus and export can talk to them. */
@@ -128,6 +131,8 @@ function follow(file: string, slice: string | null, fallback: number): number {
 }
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
+type Edge = 'n' | 'e' | 's' | 'w';
+const EDGES: Edge[] = ['n', 'e', 's', 'w'];
 
 export const BoardView = memo(function BoardView({ file, entry }: { file: string; entry: BoardEntry }) {
   const { t } = useTranslation();
@@ -288,7 +293,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     if (ready) post(file, { dc: 'hover', tid: hover });
   }, [ready, hover, file]);
 
-  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner) => {
+  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner | Edge) => {
     if (e.button !== 0 || mode === 'play') return;
     e.preventDefault();
     e.stopPropagation();
@@ -315,6 +320,15 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           last.y = dy;
           last.h = -dy;
         }
+        // Shift on a corner keeps the artboard's shape: the height follows the width
+        if (ev.shiftKey && kind.length === 2) {
+          const nw = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + last.w));
+          const dh = Math.min(MAX_SIDE, Math.max(MIN_SIDE, Math.round((nw * entry.h) / entry.w))) - entry.h;
+          last.w = nw - entry.w;
+          last.x = kind.includes('w') ? entry.w - nw : 0;
+          last.h = dh;
+          last.y = kind.includes('n') ? -dh : 0;
+        }
       }
       setDrag(last);
     };
@@ -329,8 +343,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         {
           x: entry.x + last.x,
           y: entry.y + last.y,
-          w: Math.min(8000, Math.max(40, entry.w + last.w)),
-          h: Math.min(8000, Math.max(40, entry.h + last.h)),
+          w: Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + last.w)),
+          h: Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.h + last.h)),
         },
         kind === 'move' ? 'moved' : 'resized',
       );
@@ -341,8 +355,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
 
   const x = entry.x + (drag?.x ?? 0);
   const y = entry.y + (drag?.y ?? 0);
-  const w = Math.max(40, entry.w + (drag?.w ?? 0));
-  const h = Math.max(40, entry.h + (drag?.h ?? 0));
+  const w = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + (drag?.w ?? 0)));
+  const h = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.h + (drag?.h ?? 0)));
   const inv = 1 / zoom;
   const title = entry.title || file.replace(/\.dc\.html$/, '');
 
@@ -390,6 +404,26 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         <iframe ref={frame} title={title} sandbox="allow-scripts allow-popups" srcDoc={srcdoc} />
       </div>
       {boardSelected && <div className="outline" />}
+      {drag && (drag.w !== 0 || drag.h !== 0) && (
+        <div className="size-badge" style={{ transform: `scale(${inv})`, marginBottom: 34 * inv }}>
+          {Math.round(w)} × {Math.round(h)}
+        </div>
+      )}
+      {boardSelected &&
+        mode === 'edit' &&
+        !entry.locked &&
+        EDGES.map((c) => (
+          <div
+            key={c}
+            className={`edge ${c}`}
+            style={{
+              [c === 'n' || c === 's' ? 'height' : 'width']: 10 * inv,
+              [c === 'n' ? 'top' : c === 's' ? 'bottom' : c === 'w' ? 'left' : 'right']: -5 * inv,
+              cursor: c === 'n' || c === 's' ? 'ns-resize' : 'ew-resize',
+            }}
+            onPointerDown={(e) => startDrag(e, c)}
+          />
+        ))}
       {boardSelected &&
         mode === 'edit' &&
         !entry.locked &&

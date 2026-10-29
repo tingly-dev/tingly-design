@@ -192,6 +192,38 @@
   transform-origin: center;
 }
 
+/* the sides of a selected artboard are handles too, so it can be stretched from any edge */
+.edge {
+  position: absolute;
+}
+.edge.n,
+.edge.s {
+  left: 0;
+  right: 0;
+}
+.edge.e,
+.edge.w {
+  top: 0;
+  bottom: 0;
+}
+
+/* the size while an artboard is being resized */
+.size-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform-origin: bottom center;
+  translate: -50% 0;
+}
 
 /* canvas items: notes, titles, shapes */
 
