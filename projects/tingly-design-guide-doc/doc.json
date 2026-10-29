@@ -24,7 +24,7 @@
     }
   ],
   "settings": {
-    "headingFont": "sans",
+    "headingFont": "serif",
     "bodyFont": "sans",
     "width": "default",
     "lang": "en"

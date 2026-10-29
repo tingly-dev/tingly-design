@@ -1006,6 +1006,32 @@ async function exportPng(id: string, scale: number, tid?: number) {
   }
 }
 
+/**
+ * The artboard as it is drawn now, as a page that stands alone: the document with the selection overlay,
+ * scripts and security policy taken out, and the size of the artboard's root. The canvas's PDF lays one of
+ * these on each page; what is already drawn needs no runtime.
+ */
+function snapshot(id: string) {
+  try {
+    const node = mount.querySelector('[data-dc-tid]') as HTMLElement | null;
+    if (!node) throw new Error('nothing to export');
+    const broken = [...node.querySelectorAll('img')].find((i) => i.complete && !i.naturalWidth && i.getAttribute('src'));
+    if (broken) throw new Error(`could not load the picture ${broken.getAttribute('src')!.slice(0, 120)}`);
+    const r = node.getBoundingClientRect();
+    const copy = document.documentElement.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('script, meta[http-equiv], [aria-hidden="true"][style*="2147483647"]').forEach((n) => n.remove());
+    // a text being retyped right now is drawn with its editing outline: print it as it will be
+    copy.querySelectorAll<HTMLElement>('[contenteditable]').forEach((n) => {
+      n.removeAttribute('contenteditable');
+      n.style.outline = '';
+      n.style.outlineOffset = '';
+    });
+    post({ dc: 'snapshotted', id, html: `<!doctype html>${copy.outerHTML}`, size: [Math.ceil(r.width), Math.ceil(r.height)] });
+  } catch (err) {
+    post({ dc: 'snapshotted', id, error: exportError(err) });
+  }
+}
+
 // --------------------------------------------------------------- messages
 
 function onMessage(m: ToRuntime) {
@@ -1049,6 +1075,8 @@ function onMessage(m: ToRuntime) {
     post({ dc: 'steps', total: showSteps(mount, m.step) });
   } else if (m.dc === 'export') {
     void exportPng(m.id, m.scale, m.tid);
+  } else if (m.dc === 'snapshot') {
+    snapshot(m.id);
   } else if (m.dc === 'edit') {
     // the element may only exist after the render that is on its way
     let tries = 0;

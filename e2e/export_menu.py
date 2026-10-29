@@ -27,7 +27,7 @@ def pages(path):
 
 # kind → (project, the exports it offers, by the name a person reads)
 KINDS = {
-    'canvas': ('tingly-box-console-canvas', ['PNG image', 'PNG image @2x', 'Copy as PNG', 'PNG images', 'Source file']),
+    'canvas': ('tingly-box-console-canvas', ['PDF', 'PNG image', 'PNG image @2x', 'Copy as PNG', 'PNG images', 'Source file']),
     'slides': ('tingly-design-intro-slides', ['PDF', 'PNG image', 'Copy as PNG', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
     'design system': ('tingly-design-system', ['PNG image', 'Copy as PNG']),
     'dashboard': ('tingly-box-usage-dashboard', ['PNG image', 'Copy as PNG']),
@@ -64,7 +64,7 @@ async def main():
                 check(f'{kind}: a status chip with the change history behind it', await chip.count() == 1 and await chip.get_attribute('data-state') == 'ok')
 
         # --- one-click PDF ---------------------------------------------------------------------------
-        for project, label, want in (('tingly-design-intro-slides', 'slides', 8), ('tingly-design-guide-doc', 'docs', 2)):
+        for project, label, want in (('tingly-design-intro-slides', 'slides', 8), ('tingly-design-guide-doc', 'docs', 2), ('tingly-box-console-canvas', 'canvas', 5)):
             await pg.goto(f'{BASE}/?p={project}')
             await pg.wait_for_timeout(3500)
             await pg.locator('button[aria-label="Import / Export"]').first.click()
@@ -75,7 +75,11 @@ async def main():
             await d.save_as(path)
             head = open(path, 'rb').read(5)
             check(f'{label}: PDF saves straight away', head == b'%PDF-' and d.suggested_filename.endswith('.pdf'), d.suggested_filename)
-            check(f'{label}: …with {"a page per slide" if label == "slides" else "its content"}', pages(path) >= want, pages(path))
+            check(f'{label}: …with {"a page per slide" if label == "slides" else "a page per artboard" if label == "canvas" else "its content"}', pages(path) >= want, pages(path))
+            if label == 'canvas':
+                # a page per artboard, each as large as its artboard rather than one paper size
+                boxes = {tuple(float(x) for x in m.split()[2:]) for m in (b.decode() for b in re.findall(rb'/MediaBox\s*\[([^\]]+)\]', open(path, 'rb').read()))}
+                check('canvas: …each page the size of its artboard', len(boxes) >= 3 and (595.0, 842.0) not in boxes, sorted(boxes))
 
         # --- Markdown: the deck as a document ---------------------------------------------------------
         await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
@@ -128,6 +132,25 @@ async def main():
         await pg.wait_for_timeout(500)
         clip = await pg.evaluate('navigator.clipboard.readText()')
         check('docs: Copy as Markdown puts the open tab on the clipboard, headed by its title', clip.startswith('# ') and len(clip) > 200, clip[:120])
+
+        # --- web fonts travel inside the page, so a server with no network still prints them --------------
+        face = "@font-face{font-family:'Source Serif 4';src:url(data:font/woff2;base64,AAEAAA==) format('woff2')}"
+        await pg.route('https://fonts.googleapis.com/**', lambda r: r.fulfill(body=face, content_type='text/css', headers={'access-control-allow-origin': '*'}))
+        await pg.goto(f'{BASE}/?p=tingly-design-guide-doc')
+        await pg.wait_for_timeout(3500)
+        await pg.get_by_role('button', name='Layout').first.click()
+        await pg.locator('.popmenu.settings').get_by_role('button', name='Serif', exact=True).first.click()
+        await pg.wait_for_timeout(1500)
+        await pg.keyboard.press('Escape')
+        await pg.mouse.move(800, 600)
+        await pg.wait_for_timeout(500)
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        async with pg.expect_request('**/api/pdf') as req:
+            await pg.get_by_role('menuitem', name=re.compile('^PDF')).click()
+        body = (await req.value).post_data or ''
+        check('docs: the serif face is inlined into the page sent to the server', '@font-face' in body and 'Source Serif 4' in body, ('googleapis' in body, 'serif' in body.lower(), len(body)))
+        check('docs: …and the hosted stylesheet link is gone', 'fonts.googleapis.com/css2' not in body)
+        await pg.unroute('https://fonts.googleapis.com/**')
 
         # --- no Chrome on the server: the print window ------------------------------------------------
         await pg.route('**/api/render', lambda r: r.fulfill(json={'chrome': False, 'ffmpeg': False}))

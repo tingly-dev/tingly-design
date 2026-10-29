@@ -181,6 +181,7 @@ Options:
     running: 'The editor is running at {{url}} (process {{pid}}); open and new go through it.',
     notRunning: 'The editor is not running on this projects folder; open starts it.',
   },
+  pdfBoard: 'A canvas PDF holds every board on the open page, so --board does not apply. Use --as png for one board.',
   exportAs: '--as {{as}} is not something a {{kind}} exports. Use {{formats}}.',
   needAs: 'Say what to export: tingly-design export {{project}} --as <format> (zip for any project; tingly-design --help lists each kind’s)',
   opening: 'Opening the editor in Chrome…',

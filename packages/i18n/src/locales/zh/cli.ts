@@ -182,6 +182,7 @@ open 和 new 交给它来做：不会再起一个服务，启动页上马上能�
     running: '编辑器正在 {{url}} 运行（进程 {{pid}}）；open 和 new 会交给它。',
     notRunning: '这个项目文件夹上没有运行中的编辑器；open 会启动一个。',
   },
+  pdfBoard: '画布的 PDF 包含打开的这一页的每个画板，不能用 --board。要单个画板请用 --as png。',
   exportAs: '{{kind}}不能导出 --as {{as}}，请用 {{formats}}。',
   needAs: '请说明导出什么：tingly-design export {{project}} --as <格式>（任何项目都可以用 zip；各类型的格式见 tingly-design --help）',
   opening: '正在 Chrome 里打开编辑器…',

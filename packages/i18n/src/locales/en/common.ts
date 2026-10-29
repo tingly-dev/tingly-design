@@ -141,6 +141,7 @@ export default {
       projectFiles: 'Without the change log or design systems',
       claudeDesign: 'The original Claude type’s files, for Claude Code to publish · import it again from the home page',
       boardOne: 'The selected artboard',
+      boardsPdf: 'Every artboard on this page, one PDF page each, at its own size',
       boardEvery: 'Every artboard on this page, one file each',
       boardSource: 'The artboard’s .dc.html file',
       slidesPdf: 'Every slide, one per page',

@@ -8,7 +8,7 @@ import { focusBoard, onPage } from './view';
 import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
 import { handleKey, leaveField } from '../../shortcuts';
-import { CopyPicture, Download, Expand, FileText, Picture } from '../icons';
+import { CopyPicture, Download, Expand, FilePdf, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
 import { SERVER } from '../../base';
@@ -16,9 +16,13 @@ import { api } from '../../api';
 import { t as tr, htmlLang } from '../../i18n';
 import { downloadUrl } from '../../local';
 import { copyImage, dataUrlBlob } from '../../imageExport';
+import { pdfHint, printWindow, savePdf, withWebFonts } from '../../pdfExport';
 
 const EMPTY: Record<string, string> = {};
 const SNAP = 8;
+/** What an artboard may be stretched to (a side, in px). */
+const MIN_SIDE = 40;
+const MAX_SIDE = 8000;
 const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
 /** Live artboard frames, so the panel, menus and export can talk to them. */
@@ -26,6 +30,7 @@ export const frames = new Map<string, HTMLIFrameElement>();
 /** Frames whose runtime has said it is ready, so a picture asked of them gets an answer. */
 const readyFrames = new Set<string>();
 const exports = new Map<string, (r: { dataUrl?: string; error?: string }) => void>();
+const snapshots = new Map<string, (r: { html?: string; size?: [number, number]; error?: string }) => void>();
 
 export function post(file: string, msg: ToRuntime): void {
   frames.get(file)?.contentWindow?.postMessage(msg, '*');
@@ -42,6 +47,69 @@ export function exportPng(file: string, scale = 2, tid?: number): Promise<string
     });
     post(file, { dc: 'export', id, scale, tid });
   });
+}
+
+/** Waits until the artboard's frame has said it is ready (`pickBoard` does the same), so a message to it is heard. */
+async function frameReady(file: string): Promise<void> {
+  for (const until = Date.now() + 20_000; !readyFrames.has(file) && Date.now() < until; ) await new Promise((ok) => setTimeout(ok, 50));
+}
+
+/** An artboard as it is drawn now: a standalone page and its size. */
+async function snapshotBoard(file: string): Promise<{ html: string; size: [number, number] }> {
+  await frameReady(file);
+  const id = Math.random().toString(36).slice(2);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => (snapshots.delete(id), reject(new Error(tr('canvas.export.timeout')))), 20000);
+    snapshots.set(id, (r) => {
+      clearTimeout(timer);
+      if (r.html && r.size) resolve({ html: r.html, size: r.size });
+      else reject(new Error(r.error ?? tr('canvas.export.failed')));
+    });
+    post(file, { dc: 'snapshot', id });
+  });
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
+/**
+ * Every artboard of the page as one PDF page of its own size, in page order. Each is a frame that holds
+ * the artboard exactly as it is drawn (its styles stay its own), so text stays text and shapes stay
+ * shapes; `@page` names a size per page, which the server's Chrome prints as it is. `print` adds the
+ * script that opens the print dialog, for a machine with no Chrome.
+ */
+async function canvasPdfHtml(files: string[], title: string, print = false): Promise<string> {
+  // each artboard is asked and has its fonts fetched side by side; the pages keep the artboards' order
+  const shots = await Promise.all(
+    files.map(async (file) => {
+      const { html, size } = await snapshotBoard(file);
+      return { html: await withWebFonts(html), size };
+    }),
+  );
+  const pages: string[] = [];
+  const rules: string[] = [];
+  for (const [i, { html, size }] of shots.entries()) {
+    const [w, h] = size;
+    rules.push(`@page b${i}{size:${w}px ${h}px;margin:0}.b${i}{page:b${i};width:${w}px;height:${h}px}`);
+    pages.push(`<div class="pg b${i}"><iframe sandbox="allow-same-origin" scrolling="no" width="${w}" height="${h}" srcdoc="${esc(html)}"></iframe></div>`);
+  }
+  const auto = print ? '<script>addEventListener("load",function(){setTimeout(function(){print()},1200)})</script>' : '';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/[<&]/g, '')}</title><style>html,body{margin:0;background:#fff}.pg{overflow:hidden;break-after:page}.pg:last-child{break-after:auto}iframe{display:block;border:0}${rules.join('')}</style></head><body>${pages.join('')}${auto}</body></html>`;
+}
+
+/** The PDF of the artboards on this page: saved by the server's Chrome, or the print window when there is none. */
+async function exportCanvasPdf(files: string[]): Promise<void> {
+  const c = canvasOf(useStore.getState());
+  const name = (c.title || 'canvas').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'canvas';
+  try {
+    await savePdf(`${name}.pdf`, {
+      html: () => canvasPdfHtml(files, name),
+      paper: 'page',
+      fonts: false,
+      print: async () => void printWindow(await canvasPdfHtml(files, name, true)),
+    });
+  } catch (e) {
+    toast((e as Error).message, 'error');
+  }
 }
 
 /**
@@ -74,16 +142,18 @@ export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source'
  * What the shared menu offers for a canvas: the selected artboard (or the only one on the page) as
  * a PNG at both sizes and as its source file, and every artboard on the page as PNG files.
  */
-export function canvasExportItems(): ExportItem[] {
+export function canvasExportItems(direct: boolean | null = null): ExportItem[] {
   const s = useStore.getState();
   const c = canvasOf(s);
   const onThisPage = c.order.filter((f) => c.boards[f] && onPage(c, c.boards[f].page, s.page) && !c.boards[f].hidden);
   const sel = s.selection;
   const one = sel && (sel.kind === 'board' || sel.kind === 'el') && c.boards[sel.file] ? sel.file : onThisPage.length === 1 ? onThisPage[0] : null;
   const items: ExportItem[] = [];
+  if (onThisPage.length)
+    items.push({ id: 'pdf', label: tr('common.transfer.label.pdf'), hint: pdfHint(tr('common.transfer.hint.boardsPdf'), direct), icon: <FilePdf />, run: () => exportCanvasPdf(onThisPage) });
   if (one) {
     items.push(
-      { id: 'png', label: tr('common.transfer.label.png'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, run: () => exportBoard(one, 'png1') },
+      { id: 'png', label: tr('common.transfer.label.png'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, rule: onThisPage.length > 0, run: () => exportBoard(one, 'png1') },
       { id: 'png2', label: tr('common.transfer.label.pngRetina'), hint: tr('common.transfer.hint.boardOne'), icon: <Picture />, run: () => exportBoard(one, 'png2') },
       { id: 'copy-png', label: tr('common.transfer.label.copyPng'), hint: tr('common.transfer.hint.boardOne'), icon: <CopyPicture />, run: () => copyPng(one) },
     );
@@ -128,6 +198,8 @@ function follow(file: string, slice: string | null, fallback: number): number {
 }
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
+type Edge = 'n' | 'e' | 's' | 'w';
+const EDGES: Edge[] = ['n', 'e', 's', 'w'];
 
 export const BoardView = memo(function BoardView({ file, entry }: { file: string; entry: BoardEntry }) {
   const { t } = useTranslation();
@@ -233,6 +305,10 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           exports.get(m.id)?.(m);
           exports.delete(m.id);
           break;
+        case 'snapshotted':
+          snapshots.get(m.id)?.(m);
+          snapshots.delete(m.id);
+          break;
         case 'wheel': {
           const r = frame.current.getBoundingClientRect();
           const canvasRect = document.querySelector('.canvas')!.getBoundingClientRect();
@@ -288,7 +364,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     if (ready) post(file, { dc: 'hover', tid: hover });
   }, [ready, hover, file]);
 
-  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner) => {
+  const startDrag = (e: React.PointerEvent, kind: 'move' | Corner | Edge) => {
     if (e.button !== 0 || mode === 'play') return;
     e.preventDefault();
     e.stopPropagation();
@@ -315,6 +391,15 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           last.y = dy;
           last.h = -dy;
         }
+        // Shift on a corner keeps the artboard's shape: the height follows the width
+        if (ev.shiftKey && kind.length === 2) {
+          const nw = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + last.w));
+          const dh = Math.min(MAX_SIDE, Math.max(MIN_SIDE, Math.round((nw * entry.h) / entry.w))) - entry.h;
+          last.w = nw - entry.w;
+          last.x = kind.includes('w') ? entry.w - nw : 0;
+          last.h = dh;
+          last.y = kind.includes('n') ? -dh : 0;
+        }
       }
       setDrag(last);
     };
@@ -329,8 +414,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         {
           x: entry.x + last.x,
           y: entry.y + last.y,
-          w: Math.min(8000, Math.max(40, entry.w + last.w)),
-          h: Math.min(8000, Math.max(40, entry.h + last.h)),
+          w: Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + last.w)),
+          h: Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.h + last.h)),
         },
         kind === 'move' ? 'moved' : 'resized',
       );
@@ -341,8 +426,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
 
   const x = entry.x + (drag?.x ?? 0);
   const y = entry.y + (drag?.y ?? 0);
-  const w = Math.max(40, entry.w + (drag?.w ?? 0));
-  const h = Math.max(40, entry.h + (drag?.h ?? 0));
+  const w = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.w + (drag?.w ?? 0)));
+  const h = Math.min(MAX_SIDE, Math.max(MIN_SIDE, entry.h + (drag?.h ?? 0)));
   const inv = 1 / zoom;
   const title = entry.title || file.replace(/\.dc\.html$/, '');
 
@@ -390,6 +475,26 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         <iframe ref={frame} title={title} sandbox="allow-scripts allow-popups" srcDoc={srcdoc} />
       </div>
       {boardSelected && <div className="outline" />}
+      {drag && (drag.w !== 0 || drag.h !== 0) && (
+        <div className="size-badge" style={{ transform: `scale(${inv})`, marginBottom: 34 * inv }}>
+          {Math.round(w)} × {Math.round(h)}
+        </div>
+      )}
+      {boardSelected &&
+        mode === 'edit' &&
+        !entry.locked &&
+        EDGES.map((c) => (
+          <div
+            key={c}
+            className={`edge ${c}`}
+            style={{
+              [c === 'n' || c === 's' ? 'height' : 'width']: 10 * inv,
+              [c === 'n' ? 'top' : c === 's' ? 'bottom' : c === 'w' ? 'left' : 'right']: -5 * inv,
+              cursor: c === 'n' || c === 's' ? 'ns-resize' : 'ew-resize',
+            }}
+            onPointerDown={(e) => startDrag(e, c)}
+          />
+        ))}
       {boardSelected &&
         mode === 'edit' &&
         !entry.locked &&
