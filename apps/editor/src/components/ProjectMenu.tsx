@@ -4,7 +4,8 @@ import type { ProjectCard } from '@dc/core';
 import { api } from '../api';
 import { at } from '../base';
 import { useStore } from '../store';
-import { Caret, Home, Plus, Sliders } from './icons';
+import { Caret, FolderOpen, Home, Plus, Sliders } from './icons';
+import { ReferencesDialog } from './References';
 import { Menu, MenuItem } from './Menu';
 import { open, readRecent } from './launcher/recent';
 import { KindIcon } from './launcher/kinds';
@@ -37,12 +38,15 @@ export function ProjectMenu() {
   const [list, setList] = useState<ProjectCard[] | null>(null);
   const [all, setAll] = useState<ProjectCard[]>([]);
   const [creating, setCreating] = useState(false);
+  const [referring, setReferring] = useState(false);
+  const [refCount, setRefCount] = useState(0);
   const btn = useRef<HTMLButtonElement>(null);
   const others = useMemo(() => nextUp(list ?? [], current), [list, current]);
   const toggle = () => {
     if (pos) return setPos(null);
     const r = btn.current?.getBoundingClientRect();
     setPos({ x: r?.left ?? 0, y: (r?.bottom ?? 0) + 8 });
+    if (current) api.references(current).then((r) => setRefCount(r.length), () => {});
     api.projects().then(
       (l) => {
         setList(l);
@@ -76,6 +80,16 @@ export function ProjectMenu() {
               setCreating(true);
             }}
           />
+          {current && (
+            <MenuItem
+              label={refCount ? t('launcher.refs.menuCount', { count: refCount }) : t('launcher.refs.menu')}
+              icon={<FolderOpen />}
+              onSelect={() => {
+                setPos(null);
+                setReferring(true);
+              }}
+            />
+          )}
           <hr />
           <MenuItem
             label={t('aiSettings.menu')}
@@ -87,6 +101,7 @@ export function ProjectMenu() {
           />
         </Menu>
       )}
+      {referring && current && <ReferencesDialog project={current} onClose={() => setReferring(false)} onCount={setRefCount} />}
       {creating && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} onClose={() => setCreating(false)} />}
     </span>
   );

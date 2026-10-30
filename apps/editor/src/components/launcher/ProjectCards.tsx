@@ -129,7 +129,7 @@ export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnl
           <MenuItem label={t('launcher.rename.menu')} icon={<Rename />} onSelect={() => setStep('rename')} />
           <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />
           <MenuItem label={t('launcher.archive.export')} icon={<FileZip />} onSelect={() => (onClose(), void saveProjectArchive(p.name, true))} />
-          {p.path && (
+          {p.path && !p.folderGroup && (
             <>
               <div className="msep" role="separator" />
               <MenuItem label={t('launcher.folder.unlink')} icon={<Unlink />} onSelect={() => (onUnlink(), onClose())} />
@@ -158,7 +158,7 @@ export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnl
             <MenuItem key={g} label={g} icon={<GroupFolder />} checked={g === p.group} onSelect={() => (onMove(g), onClose())} />
           ))}
           {typed && !exact && <MenuItem label={t('launcher.group.create', { name: typed })} icon={<GroupFolder />} onSelect={() => (onMove(typed), onClose())} />}
-          {p.group && <MenuItem label={t('launcher.group.remove')} onSelect={() => (onMove(''), onClose())} />}
+          {p.group && !p.folderGroup?.derived && <MenuItem label={t('launcher.group.remove')} onSelect={() => (onMove(''), onClose())} />}
         </>
       )}
     </Menu>

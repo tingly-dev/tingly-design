@@ -6,7 +6,7 @@ import { describeTool, isSessionId, parseConversation, resumeLost, sessionFor, t
 import type { Language } from '@dc/i18n';
 import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
-import { linkedProjects, projectDir } from './store';
+import { linkedProjects, projectDir, readRefs, projectsIn, type Reference } from './store';
 import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
 import { aiResolved, claudeLaunch } from './aiconfig';
@@ -168,14 +168,37 @@ const DELEGATE: Record<ProjectKind, { folder: string; viewing: string; system: s
   motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM, tools: [], images: true },
 };
 
+/**
+ * What a request tells Claude Code about the project's references, and what it is allowed to do with
+ * them: each folder is added to the folders it may read, and every project in them but the open one
+ * is closed to Edit and Write, so a reference is consulted and never changed (.design/folder-groups.md).
+ */
+export function referenceArgs(own: string, refs: Reference[]): { note: string; dirs: string[]; deny: string[] } {
+  const live = refs.filter((r) => r.state !== 'missing');
+  const lines = live.map((r) =>
+    r.state === 'project'
+      ? `- ${r.abs}/ (${DELEGATE[r.kind!].folder.toLowerCase()} project)`
+      : `- ${r.abs}/ (a folder of projects: ${(r.members ?? []).map((m) => `${m.name} (${DELEGATE[m.kind].folder.toLowerCase()})`).join(', ')})`,
+  );
+  const closed = live.flatMap((r) => (r.state === 'project' ? [r.abs] : projectsIn(r.abs).map((m) => m.dir))).filter((d) => d !== own);
+  return {
+    note: lines.length ? `Reference folders. Read them when the request points at them or they hold something this work should match; they belong to other work, so never edit, create or delete anything in them. A project's own README or index file says how it is laid out.\n${lines.join('\n')}` : '',
+    dirs: live.map((r) => r.abs).filter((d) => d !== own),
+    deny: closed.map((d) => `Edit(/${d}/**)`),
+  };
+}
+
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en', imageOn = false): string {
   const id = randomUUID().slice(0, 8);
-  const dir = fromRoot(projectDir(project));
+  const absProject = projectDir(project);
+  const dir = fromRoot(absProject);
   const profile = DELEGATE[kind];
   // a dashboard reads files only from data/ and a design system keeps its pictures in its own assets/: neither gets the tool
   const images = imageOn && profile.images;
+  const refs = referenceArgs(absProject, readRefs(project));
   const lines = [
     `${profile.folder} folder: ${dir}/`,
+    refs.note,
     req.file ? `The person is looking at the ${profile.viewing} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`
@@ -203,6 +226,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--append-system-prompt',
     `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}`,
   ];
+  if (refs.deny.length) args.push('--disallowedTools', refs.deny.join(','));
+  for (const d of refs.dirs) args.push('--add-dir', d);
   const launch = claudeLaunch();
   if (launch.model) args.push('--model', launch.model);
   // a host keeps the projects in its own data folder: let Claude Code edit there too

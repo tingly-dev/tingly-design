@@ -1632,3 +1632,26 @@
   height: 100%;
   background: transparent;
 }
+
+
+.lsection h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.lsection .gpath {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.ldialog .folder-state.s-group {
+  color: var(--ink);
+}

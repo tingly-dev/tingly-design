@@ -144,3 +144,7 @@ Check first: `tingly-design check <name> --name` lists every scene that falls ou
 ## Punctuation
 
 Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches.
+
+## Reference folders
+
+A request may list "Reference folders": other projects, or folders of projects, the person wants this work to consult (a design system to match, sibling decks). Read them, and take values from them (tokens, wording, structure) by copying the value into this project; never link to a file in them, and never edit, create or delete anything in them.
