@@ -1,15 +1,31 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BANDS, bandHeight, dragBandHeight, keepBandHeight, resetBandHeight, restoreBandHeight, type BandId } from '../bandHeight';
+import { BANDS, bandHeight, bandHeightSet, dragBandHeight, keepBandHeight, resetBandHeight, restoreBandHeight, type BandId } from '../bandHeight';
 
 const DRAG_SLOP = 3;
 
 /**
  * The bottom edge of a band the person drags to make it taller or shorter (arrow keys do the
  * same, a double click gives the band its own height back). The band that holds it is
- * `position: relative`; the edge sits on its bottom line.
+ * `position: relative`; the edge sits on its bottom line, or, for a band that grows upward
+ * (`edge="top"`, the request bar over the work), on its top line, where dragging up makes it taller.
+ * `measure` tells the height it has now while the person has set none (a band that sizes to its content).
  */
-export function BandResizer({ id, name }: { id: BandId; name: string }) {
+export function BandResizer({
+  id,
+  name,
+  edge = 'bottom',
+  measure,
+  onReset,
+}: {
+  id: BandId;
+  name: string;
+  edge?: 'top' | 'bottom';
+  measure?: () => number;
+  onReset?: () => void;
+}) {
+  const sign = edge === 'top' ? -1 : 1;
+  const current = () => (!bandHeightSet(id) && measure ? measure() : bandHeight(id));
   const { t } = useTranslation();
   const drag = useRef<{ y: number; h: number; moved: boolean } | null>(null);
   const [height, setHeight] = useState(() => bandHeight(id));
@@ -27,7 +43,7 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
     if (e.button !== 0) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    const h = bandHeight(id);
+    const h = current();
     setHeight(h);
     drag.current = { y: e.clientY, h, moved: false };
     document.body.classList.add('resizing-band');
@@ -37,7 +53,7 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
     // a few px of jitter in a click is not a drag
     if (!drag.current.moved && Math.abs(e.clientY - drag.current.y) < DRAG_SLOP) return;
     drag.current.moved = true;
-    setHeight(dragBandHeight(id, drag.current.h + (e.clientY - drag.current.y)));
+    setHeight(dragBandHeight(id, drag.current.h + sign * (e.clientY - drag.current.y)));
   };
   const end = (keep: boolean, e: PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
@@ -47,7 +63,7 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
     // a click without a move, or a cancelled drag, keeps (or gives back) the height it began with
     if (keep && d.moved) {
       // what is saved is what is shown: paint the final height, not only the last move's
-      const h = dragBandHeight(id, d.h + (e.clientY - d.y));
+      const h = dragBandHeight(id, d.h + sign * (e.clientY - d.y));
       keepBandHeight(id, h);
       setHeight(h);
     } else setHeight(restoreBandHeight(id));
@@ -57,14 +73,14 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
     e.preventDefault();
     e.stopPropagation();
     const step = e.shiftKey ? 48 : 16;
-    const h = dragBandHeight(id, bandHeight(id) + (e.key === 'ArrowDown' ? step : -step));
+    const h = dragBandHeight(id, current() + sign * (e.key === 'ArrowDown' ? step : -step));
     keepBandHeight(id, h);
     setHeight(h);
   };
 
   return (
     <div
-      className="band-resizer"
+      className={`band-resizer${edge === 'top' ? ' top' : ''}`}
       role="separator"
       aria-orientation="horizontal"
       aria-label={t('common.resizeBand', { name })}
@@ -82,6 +98,9 @@ export function BandResizer({ id, name }: { id: BandId; name: string }) {
       onDoubleClick={() => {
         resetBandHeight(id);
         setHeight(BANDS[id].def);
+        onReset?.();
+        // a band that sizes to its content has its real height once the page has laid it out again
+        if (measure) requestAnimationFrame(() => setHeight(measure()));
       }}
     />
   );

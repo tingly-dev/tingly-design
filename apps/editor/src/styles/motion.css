@@ -1289,6 +1289,11 @@
   touch-action: none;
 }
 
+.band-resizer.top {
+  top: -5px;
+  bottom: auto;
+}
+
 .band-resizer::after {
   content: '';
   position: absolute;

@@ -81,6 +81,30 @@ async def main():
                 check(f'{label}: a double click gives it back its own width', abs(await width() - w0) < 2, f'{await width()} vs {w0}')
                 # the work still has room: nothing was pushed out of the window
                 check(f'{label}: the page does not scroll sideways', await pg.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            # the request bar's input box has a top edge too: drag up makes it taller, the height is remembered
+            for proj in sorted({c[0] for c in COLUMNS}):
+                label = f'{proj} request bar'
+                await pg.goto(f'{base}/?p={proj}')
+                await pg.wait_for_selector('.topbar', timeout=10000)
+                await pg.wait_for_timeout(700)
+                ta = pg.locator('.prompt textarea, .dsask textarea').first
+                await ta.wait_for(state='visible', timeout=8000)
+                sep = pg.locator('.prompt .body [role=separator], .dsask .body [role=separator]').first
+                height = lambda: ta.evaluate('e => e.getBoundingClientRect().height')
+                h0 = await height()
+                bb = await sep.bounding_box()
+                x, y = bb['x'] + bb['width'] / 2, bb['y'] + bb['height'] / 2
+                await pg.mouse.move(x, y); await pg.mouse.down(); await pg.mouse.move(x, y - 90, steps=6); await pg.mouse.up()
+                h1 = await height()
+                check(f'{label}: dragging its top edge up makes the box taller', 70 < h1 - h0 < 110, f'{h0} -> {h1}')
+                await ta.fill('one line')
+                check(f'{label}: the box keeps the height whatever is typed', abs(await height() - h1) < 2, f'{await height()} vs {h1}')
+                await pg.reload(); await pg.wait_for_selector('.topbar'); await pg.wait_for_timeout(700)
+                check(f'{label}: the height is remembered', abs(await height() - h1) < 2, f'{await height()} vs {h1}')
+                await sep.focus(); await pg.keyboard.press('ArrowDown')
+                check(f'{label}: an arrow key shrinks it', await height() < h1)
+                await sep.dblclick()
+                check(f'{label}: a double click gives it back its growing height', abs(await height() - h0) < 2, f'{await height()} vs {h0}')
             check('no page errors', not errs, errs)
             await b.close()
     finally:

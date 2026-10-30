@@ -88,6 +88,7 @@
 
 .prompt .body,
 .dsask .body {
+  position: relative;
   display: flex;
   padding: 4px 14px 0;
 }
@@ -129,6 +130,15 @@
   background: transparent;
   font-size: 14.5px;
   line-height: 1.5;
+}
+
+
+/* a height the person dragged (BandResizer on the box's top edge) replaces growing with the text; the box scrolls inside */
+:root[data-h-request] :is(.prompt, .dsask) textarea:not(.code) {
+  field-sizing: fixed;
+  height: min(var(--h-request), 50vh) !important;
+  min-height: 0;
+  max-height: min(var(--h-request), 50vh);
 }
 
 

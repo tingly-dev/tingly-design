@@ -40,6 +40,7 @@
   "画板里模板文字和颜色的原地编辑": {"design": ["tweak_text"]},
   "对话记录": {"design": ["chat_panel"], "slides": ["chat_panel"], "design-system": ["chat_panel"], "dashboard": ["chat_panel"], "docs": ["chat_panel"], "motion": ["chat_panel"]},
   "边栏宽度可拖": {"design": ["side_resize"], "slides": ["side_resize"], "design-system": ["side_resize"], "dashboard": ["side_resize"], "docs": ["side_resize"], "motion": ["side_resize"]},
+  "请求栏输入框高度可拖": {"design": ["side_resize"], "slides": ["side_resize"], "design-system": ["side_resize"], "dashboard": ["side_resize"], "docs": ["side_resize"], "motion": ["side_resize"]},
   "AI 能查到的项目配置": {"design": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "slides": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "design-system": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "dashboard": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "docs": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "motion": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e"},
   "配置变化后的跟进提议": {"design": "core 单测覆盖提议规则；画板面板的接线与幻灯片共用 SizeRows 和 DsInstall，e2e 只在幻灯片里走一遍", "slides": ["follow_up"], "design-system": "core 单测覆盖 tokens 的提议与合并；e2e 暂未走设计系统里改 token", "motion": "core 单测覆盖新格式的提议规则；e2e 暂未走动效的“添加尺寸”"}
 }
