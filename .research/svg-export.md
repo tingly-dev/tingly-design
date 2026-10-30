@@ -78,9 +78,36 @@
 3. 用 Figma 或 Inkscape 打开一份，确认「可编辑」目标成立。
 这一步需要在本环境构建 fith，需 YZ 同意我安装并运行它。
 
-## 6. 未决
+## 6. fith 要不要先重构、再独立成库
 
-- 目标是「设计稿里可编辑」还是「浏览器能开即可」（决定 fith 的 outline 与否、是否值得做）。
-- 是否同意我安装并构建 fith 做 §5 的小实验。
-- 文字默认保留 `<text>`（可选中、文件小）还是转路径（任何地方一致）。
+YZ 的判断：目标是可编辑；fith 来自可信的合作伙伴、问题都能反馈，但项目本身复杂，可能要先大重构再当库用。以下按源码结构评估（`src` 约 6.4k 行，只读，没跑）。
+
+**已经对的地方（不用动）**
+- 分层清楚：`core/ir`（Scene 类型，是各层之间的契约）→ `core/capture`（读 DOM）→ `core/emit`（Scene → SVG，纯函数，只有 outline 用 opentype.js）→ `backends`（node / browser / extension）。`CaptureBackend` 接口把「在页内运行」和「截图」抽成可替换能力。
+- 页内捕获只用标准 DOM API，所以浏览器库和扩展共用同一份核心。
+- 有 60 多个测试、十几个 HTML 固件、bench 语料和像素对比脚本，重构有安全网。
+
+**真正的结构问题**
+1. **`captureScene` 是一个 2729 行的函数**：约 90 个闭包内的小函数（颜色/渐变/阴影/滤镜/裁剪/mask/背景层/文字/伪元素/原生控件/内联 SVG/图片/层叠上下文/字体收集）共享闭包状态（计数器、节点列表、unfurl 的暂存样式）。原因是 Node 后端用 `page.evaluate(captureScene)` 把函数序列化进页面，函数**不能 import 任何东西**。后果：单元无法单独测试，改一处要读整个闭包，约 50 处 `as any`，backlog 里的 P1 问题（stacking context、透明度合成、栅格与矢量重复绘制）都卡在这个大函数里。
+2. **包的边界不是库的边界**：`playwright` 是硬依赖，主入口（`htmlToSvg`）直接拉起 Node 后端；浏览器入口是子路径 `fitting-html/browser`，outline 又要调用方自带回调。库使用者想要的是「`captureElement(el) → svg` 无 Node、无 Playwright、可选 opentype」。
+3. **仍是 0.0.0、包名 `fitting-html` 与仓库名 `fith` 不一致，没有发布**；文档部分中文，不影响使用。
+
+**重构方案（分阶段，行为不变，靠现有固件和像素阈值把关）**
+1. 构建改为 esbuild 打成一个 IIFE，Node 后端注入这个 bundle（扩展已经在用 esbuild）。这一步之后 `capture/` 可以拆成多个 import 的模块，序列化限制消失。
+2. 把纯解析函数先搬出（颜色、渐变、阴影、滤镜、变换、背景层、mask 解析）：字符串进、数据出，不碰 DOM，可直接单元测试。
+3. 把闭包状态收进一个 `CaptureContext`，按职责拆 `paint/`（text、box、pseudo、native、svg、image）、`order/`（层叠上下文）、`fonts/`；`captureScene` 变成几十行的调度。
+4. 重做包出口：`fith`（emit，纯）、`fith/capture`（浏览器，零依赖）、`fith/outline`（opentype 为可选 peer）、`fith/node`（playwright 为可选 peer）。稳定 `captureElement(el, opts)` 与栅格回退钩子的签名。
+粗估是一个熟悉代码的人 2 到 3 周（这是我的估计，不是测量）；其中第 1 步最小、收益最大。
+
+**对我们的建议：不阻塞在重构上。**
+- 集成点只依赖浏览器入口的 `captureElement(el, { fontMode, rasterize })` 和 `emitSvg`，这两个就是重构后也会保留的稳定面。我们现在可以锁定一个 commit（或 vendor 一份构建产物）接上，重构发生在内部，不影响我们。
+- 我们这边的样例项目正好是它最好的测试集：我们把「哪类页面有问题」做成最小 HTML 复现反馈给他们（他们的贡献规则本来就要求固件+回归测试），也能反过来推动 stacking context、透明度合成这些 P1。
+- 在 Tingly Design 里把它放在 `@dc/export` 之外的独立包（如 `@dc/svg`，动态加载，不进主包），避免把 Playwright 一类依赖带进来；`depcheck` 规则要加一行。
+- 触发「必须先重构」的条件：实验（§5 的小实验）里在我们样例上矢量保真低于可接受，或者我们需要的钩子（框架交图、字体子集、失败报告）在大闭包里加不进去。到那时再把第 1 步（IIFE 构建）作为共同工作提出。
+
+## 7. 未决
+
+- 是否同意我安装并构建 fith 做 §5 的小实验（上一次被环境拦下，需要你放行）。
+- 文字默认保留 `<text>`（可选中、文件小）还是转路径（到处一致）。
 - 菜单项叫「SVG」，每类型放在 PNG 旁，是否认可。
+- 与合作伙伴的协作方式：我们出复现固件和反馈，还是我们直接提 PR（第 1 步的 IIFE 构建）。
