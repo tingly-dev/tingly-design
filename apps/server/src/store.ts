@@ -1,6 +1,6 @@
 import { keepReplaced } from './history';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -86,7 +86,15 @@ export function isProjectName(name: string): boolean {
 
 export function projectDir(name: string): string {
   if (!isProjectName(name)) throw new HttpError(400, 'badProjectName');
-  return links.get(name) ?? join(PROJECTS_DIR, name);
+  const known = links.get(name);
+  if (known) return known;
+  const inProjects = join(PROJECTS_DIR, name);
+  // a project made in an opened folder a moment ago is not in the list yet
+  if (folders.size && !existsSync(inProjects)) {
+    refreshMembers();
+    return links.get(name) ?? inProjects;
+  }
+  return inProjects;
 }
 
 // ---------------------------------------------------------------- projects kept elsewhere
@@ -174,7 +182,7 @@ export function showPath(abs: string): string {
 }
 
 /** What is at a folder: a project of some kind, nothing (free to create in), or something else. */
-export async function inspectFolder(input: string): Promise<{ path: string; state: 'project' | 'free' | 'busy' | 'file'; kind?: ProjectKind; name?: string; repo?: string }> {
+export async function inspectFolder(input: string): Promise<{ path: string; state: 'project' | 'group' | 'free' | 'busy' | 'file'; kind?: ProjectKind; name?: string; repo?: string; members?: { name: string; kind: ProjectKind }[]; group?: string }> {
   const abs = folderPath(input);
   if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
   const path = showPath(abs);
@@ -186,6 +194,8 @@ export async function inspectFolder(input: string): Promise<{ path: string; stat
   if (!st.isDirectory()) return { path, state: 'file' };
   const kind = await kindOf(abs);
   if (kind) return { path, state: 'project', kind, name: nameOfFolder(abs), ...inRepo };
+  const inside = projectsIn(abs);
+  if (inside.length) return { path, state: 'group', members: inside.slice(0, MEMBERS_SHOWN).map((m) => ({ name: m.folder, kind: m.kind })), ...(groupIdOf(abs) ? { group: groupIdOf(abs) } : {}), ...inRepo };
   const entries = (await readdir(abs).catch(() => [])).filter((e) => !e.startsWith('.'));
   return { path, state: entries.length ? 'busy' : 'free', ...inRepo };
 }
@@ -224,7 +234,7 @@ function saveLinks(): Promise<void> {
   const next = linksWrite.then(async () => {
     await mkdir(PROJECTS_DIR, { recursive: true });
     const tmp = join(PROJECTS_DIR, `${LINKS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
-    await writeFile(tmp, JSON.stringify({ ...Object.fromEntries(aliases), ...Object.fromEntries(links) }, null, 2) + '\n', 'utf8');
+    await writeFile(tmp, JSON.stringify({ ...Object.fromEntries(aliases), ...Object.fromEntries([...links].filter(([name]) => !memberNames.has(name))) }, null, 2) + '\n', 'utf8');
     await rename(tmp, join(PROJECTS_DIR, LINKS_FILE));
   });
   linksWrite = next.catch(() => {});
@@ -280,10 +290,218 @@ export async function unlinkProject(key: string): Promise<void> {
   const name = resolveKey(key);
   const dir = links.get(name);
   if (!dir) throw new HttpError(404, 'notLinked', { name: key });
+  if (memberNames.has(name)) throw new HttpError(409, 'inFolderGroup', { name: key });
   links.delete(name);
   for (const [old, d] of aliases) if (d === dir) aliases.delete(old);
   await saveLinks();
   for (const fn of linkListeners) fn(name, null);
+}
+
+
+// ---------------------------------------------------------------- directory groups
+
+/**
+ * A folder that holds projects side by side can be opened as a group (`.folders.json` beside
+ * `.links.json`, `{ id: absolute path }`): its project subfolders, one level down, are its members.
+ * Members are found by looking, never stored, so a project made in the folder (by hand, by Claude
+ * Code) appears without anyone registering it. They join `links` like any project kept elsewhere,
+ * under the same path-made name, and are told apart by `memberNames` so the links file never
+ * holds them. Closing a group forgets the folder, not a file in it (.design/folder-groups.md).
+ */
+const FOLDERS_FILE = '.folders.json';
+const MEMBERS_SHOWN = 200;
+const folders = new Map<string, string>();
+/** Projects that are in `links` only because a registered folder holds them, and the folder (its id) that does. */
+const memberNames = new Set<string>();
+const memberOf = new Map<string, string>();
+if (LINKS_ON) {
+  try {
+    const raw = JSON.parse(readFileSync(join(PROJECTS_DIR, FOLDERS_FILE), 'utf8')) as Record<string, unknown>;
+    for (const v of Object.values(raw)) if (typeof v === 'string' && isAbsolute(v)) folders.set(idFor(resolve(v)), resolve(v));
+  } catch {
+    // none opened yet
+  }
+  refreshMembers();
+}
+
+/** The projects directly inside a folder: their folder name, path and kind. Hidden folders and folders that are not projects are not listed. */
+export function projectsIn(abs: string): { folder: string; dir: string; kind: ProjectKind }[] {
+  const out: { folder: string; dir: string; kind: ProjectKind }[] = [];
+  let entries;
+  try {
+    entries = readdirSync(abs, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    if (e.name.startsWith('.') || !(e.isDirectory() || e.isSymbolicLink())) continue;
+    const dir = join(abs, e.name);
+    try {
+      if (!statSync(dir).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    const kind = kindOfSync(dir);
+    if (kind) out.push({ folder: e.name, dir, kind });
+  }
+  return out.sort((a, b) => a.folder.localeCompare(b.folder));
+}
+
+function groupIdOf(abs: string): string | undefined {
+  const id = idFor(abs);
+  return folders.has(id) ? id : undefined;
+}
+
+/** Looks at every opened folder again: new projects join, projects that left go. Called when the list is made and when a name is not known. */
+export function refreshMembers(): void {
+  const seen = new Set<string>();
+  const added: [string, string][] = [];
+  for (const [id, abs] of folders) {
+    for (const m of projectsIn(abs)) {
+      const name = idFor(m.dir);
+      // a project the person opened on its own, or that sits in the projects folder, stays what it was
+      if ((links.has(name) && !memberNames.has(name)) || dirname(m.dir) === PROJECTS_DIR) continue;
+      seen.add(name);
+      memberOf.set(name, id);
+      if (!links.has(name)) {
+        links.set(name, m.dir);
+        added.push([name, m.dir]);
+      }
+      memberNames.add(name);
+    }
+  }
+  for (const name of [...memberNames]) {
+    if (seen.has(name)) continue;
+    memberNames.delete(name);
+    memberOf.delete(name);
+    links.delete(name);
+  }
+  for (const [name, dir] of added) for (const fn of linkListeners) fn(name, dir);
+}
+
+let foldersWrite: Promise<unknown> = Promise.resolve();
+function saveFolders(): Promise<void> {
+  const next = foldersWrite.then(async () => {
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    const tmp = join(PROJECTS_DIR, `${FOLDERS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(Object.fromEntries(folders), null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, FOLDERS_FILE));
+  });
+  foldersWrite = next.catch(() => {});
+  return next;
+}
+
+export interface FolderGroup {
+  id: string;
+  /** the folder, `~/…` under the home folder */
+  path: string;
+  /** the names of the projects in it now */
+  members: string[];
+}
+
+/** Every opened folder with the projects it holds now. */
+export function folderGroups(): FolderGroup[] {
+  refreshMembers();
+  return [...folders].map(([id, abs]) => ({ id, path: showPath(abs), members: [...memberOf].filter(([, g]) => g === id).map(([name]) => name) }));
+}
+
+/** Opens a folder of projects as a group; the folder stays as it is. */
+export async function openFolderGroup(input: string): Promise<FolderGroup> {
+  if (!LINKS_ON) throw new HttpError(403, 'linksOff');
+  const abs = folderPath(input);
+  if (!abs) throw new HttpError(400, 'badFolderPath', { path: input });
+  if (abs === PROJECTS_DIR) throw new HttpError(409, 'folderIsProjectsFolder', { path: showPath(abs) });
+  const at = await inspectFolder(abs);
+  if (at.state === 'project') throw new HttpError(409, 'folderIsProject', { path: at.path });
+  if (at.state !== 'group') throw new HttpError(404, 'noProjectsInFolder', { path: at.path });
+  const id = idFor(abs);
+  if (!folders.has(id)) {
+    folders.set(id, abs);
+    await saveFolders();
+  }
+  refreshMembers();
+  return folderGroups().find((g) => g.id === id)!;
+}
+
+/** Takes an opened folder off the list. Its projects and files stay where they are. */
+export async function closeFolderGroup(id: string): Promise<void> {
+  if (!folders.delete(id)) throw new HttpError(404, 'notFolderGroup', { name: id });
+  await saveFolders();
+  refreshMembers();
+}
+
+/** The opened folder a project is a member of: its id and path. */
+export function folderGroupOf(name: string): { id: string; path: string } | undefined {
+  const id = memberOf.get(name);
+  const abs = id ? folders.get(id) : undefined;
+  return id && abs ? { id, path: showPath(abs) } : undefined;
+}
+
+// ---------------------------------------------------------------- references
+
+/**
+ * The other work a project may consult: projects and opened folders, by absolute path, in the
+ * project's own `.references.json` (local to this machine like `.image.json`, so it neither goes
+ * into a zip nor a commit). A request to Claude Code is given these folders to read, never to
+ * change (.design/folder-groups.md).
+ */
+const REFS_FILE = '.references.json';
+
+export interface Reference {
+  /** the folder, `~/…` under the home folder */
+  path: string;
+  abs: string;
+  /** a project, a folder of projects, or a folder that is gone */
+  state: 'project' | 'group' | 'missing';
+  kind?: ProjectKind;
+  /** the name a project is listed under, if it is */
+  name?: string;
+  /** the projects in a folder of projects, by folder name and kind */
+  members?: { name: string; kind: ProjectKind }[];
+}
+
+export function readRefs(project: string): Reference[] {
+  let paths: unknown[] = [];
+  try {
+    paths = (JSON.parse(readFileSync(join(projectDir(project), REFS_FILE), 'utf8')) as { paths?: unknown[] }).paths ?? [];
+  } catch {
+    // none yet
+  }
+  const own = projectDir(project);
+  const out: Reference[] = [];
+  for (const v of paths) {
+    if (typeof v !== 'string' || !isAbsolute(v)) continue;
+    const abs = resolve(v);
+    if (abs === own || out.some((r) => r.abs === abs)) continue;
+    out.push(describeRef(abs));
+  }
+  return out;
+}
+
+function describeRef(abs: string): Reference {
+  const path = showPath(abs);
+  if (!existsSync(abs)) return { path, abs, state: 'missing' };
+  const kind = kindOfSync(abs);
+  if (kind) return { path, abs, state: 'project', kind, ...(nameOfFolder(abs) ? { name: nameOfFolder(abs) } : {}) };
+  const inside = projectsIn(abs);
+  return inside.length ? { path, abs, state: 'group', members: inside.map((m) => ({ name: m.folder, kind: m.kind })) } : { path, abs, state: 'missing' };
+}
+
+/** Replaces a project's references. Each path must be a project or a folder of projects, and not the project itself. */
+export async function writeRefs(project: string, input: unknown[]): Promise<Reference[]> {
+  const own = projectDir(project);
+  if (!(await kindOf(own))) throw new HttpError(404, 'noProject', { name: project });
+  const abss: string[] = [];
+  for (const v of input) {
+    const abs = typeof v === 'string' ? folderPath(v) : null;
+    if (!abs) throw new HttpError(400, 'badFolderPath', { path: String(v) });
+    if (abs === own) throw new HttpError(400, 'refSelf');
+    const r = describeRef(abs);
+    if (r.state === 'missing') throw new HttpError(404, 'noProjectInFolder', { path: r.path });
+    if (!abss.includes(abs)) abss.push(abs);
+  }
+  await withLock(project, () => writeFile(join(own, REFS_FILE), JSON.stringify({ paths: abss }, null, 2) + '\n', 'utf8'));
+  return readRefs(project);
 }
 
 /**
@@ -355,8 +573,11 @@ export function assetRel(rel: string): string {
   return r;
 }
 
+/** The file that makes a folder a project, and the kind it makes it. */
+const INDEX_KINDS = [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [DOC_INDEX, 'docs'], [MOTION_FILE, 'motion'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const;
+
 export async function kindOf(dir: string): Promise<ProjectKind | null> {
-  for (const [file, kind] of [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [DOC_INDEX, 'docs'], [MOTION_FILE, 'motion'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const) {
+  for (const [file, kind] of INDEX_KINDS) {
     try {
       await stat(join(dir, file));
       return kind;
@@ -364,6 +585,12 @@ export async function kindOf(dir: string): Promise<ProjectKind | null> {
       // try the next
     }
   }
+  return null;
+}
+
+/** `kindOf` for the places that cannot wait: a request's folder lookup and the files of a reference. */
+export function kindOfSync(dir: string): ProjectKind | null {
+  for (const [file, kind] of INDEX_KINDS) if (existsSync(join(dir, file))) return kind;
   return null;
 }
 
@@ -521,7 +748,14 @@ export function setGroup(name: string, group: string): Promise<void> {
 
 export async function listProjects(): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
+  refreshMembers();
   const groups = await readGroups();
+  // the launcher group a person gave a project wins; without one a project in an opened folder is grouped by the folder
+  const groupOf = (name: string): Pick<ProjectCard, 'group' | 'folderGroup'> => {
+    const f = folderGroupOf(name);
+    if (groups[name]) return { group: groups[name], ...(f ? { folderGroup: { ...f, derived: false } } : {}) };
+    return f ? { group: basename(f.path), folderGroup: { ...f, derived: true } } : {};
+  };
   const out: ProjectCard[] = [];
   const found: { name: string; dir: string; path?: string }[] = [];
   for (const e of await readdir(PROJECTS_DIR, { withFileTypes: true })) {
@@ -544,7 +778,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), group: groups[e.name], ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), ...groupOf(e.name), ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
     } catch {
       // unreadable index
     }

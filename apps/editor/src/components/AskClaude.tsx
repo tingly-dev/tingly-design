@@ -3,6 +3,7 @@ import { delegateToClaude } from '../fastedit';
 import { useStore } from '../store';
 import { ContextChip } from './AgentBar';
 import { ImageToggle } from './ImageToggle';
+import { ReferencesChip } from './References';
 import { RequestBar } from './RequestBar';
 
 /**
@@ -32,7 +33,7 @@ export function AskClaude({
       options={
         <>
           <ContextChip target="claude" />
-          <ImageToggle />
+          <ReferencesChip /><ImageToggle />
         </>
       }
       placeholder={noCli ? t('prompt.bar.noClaudeCli') : (placeholder ?? t('prompt.askClaude.placeholder'))}

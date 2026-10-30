@@ -22,6 +22,7 @@
   "启动页卡片和预览": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},
   "启动页分组、列表视图、重命名": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},
   "项目放在别处": {"design": ["folders"], "slides": ["folders"], "design-system": ["folders"], "dashboard": ["folders"], "docs": ["folders"], "motion": ["folders"]},
+  "按目录分组、引用其他项目": {"design": ["folder_groups"], "slides": ["folder_groups"], "design-system": ["folder_groups"], "dashboard": ["folder_groups"], "docs": ["folder_groups"], "motion": ["folder_groups"]},
   "提交到 git": {"design": ["git"], "slides": ["git"], "design-system": ["git"], "dashboard": ["git"], "docs": ["git"], "motion": ["git"]},
   "装入设计系统": {"design": ["launcher"], "slides": ["ds"]},
   "主题": {"design": ["theme_switch"], "slides": ["theme_switch"]},

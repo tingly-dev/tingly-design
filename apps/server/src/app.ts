@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -141,6 +141,32 @@ app.post('/api/links', async (c) => {
   const name = await linkFolder(String(path ?? ''));
   logInfo('project.linked', { project: name, dir: projectDir(name) });
   return c.json({ name });
+});
+
+/** The folders opened as groups, with the projects each holds now (.design/folder-groups.md). */
+app.get('/api/folders', (c) => c.json({ folders: folderGroups() }));
+
+/** Open a folder of projects as a group; it joins the launcher with its projects. */
+app.post('/api/folders', async (c) => {
+  const { path } = await c.req.json<{ path?: unknown }>();
+  const group = await openFolderGroup(String(path ?? ''));
+  logInfo('folder.opened', { id: group.id, members: group.members.length });
+  return c.json(group);
+});
+
+/** Take an opened folder off the launcher; the folder and its projects stay as they are. */
+app.delete('/api/folders/:id', async (c) => {
+  await closeFolderGroup(c.req.param('id'));
+  return c.json({ ok: true });
+});
+
+/** The projects and folders a project may consult, as Claude Code is told them with each request. */
+app.get('/api/projects/:p/references', (c) => c.json({ references: readRefs(c.req.param('p')) }));
+
+app.put('/api/projects/:p/references', async (c) => {
+  const { paths } = await c.req.json<{ paths?: unknown }>();
+  if (!Array.isArray(paths)) throw new HttpError(400, 'badFolderPath', { path: '' });
+  return c.json({ references: await writeRefs(c.req.param('p'), paths) });
 });
 
 /** A whole project as one .zip (.design/project-archive.md): its files, and unless told otherwise its change log and the design systems it installed. */

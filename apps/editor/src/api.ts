@@ -53,11 +53,29 @@ export interface BrowseResult {
   more: boolean;
 }
 
+export interface FolderGroup {
+  id: string;
+  path: string;
+  members: string[];
+}
+
+export interface Reference {
+  path: string;
+  abs: string;
+  state: 'project' | 'group' | 'missing';
+  kind?: ProjectKind;
+  name?: string;
+  members?: { name: string; kind: ProjectKind }[];
+}
+
 export interface FolderInfo {
   /** the folder as the server read it, `~/…` under the home folder */
   path: string;
-  state: 'project' | 'free' | 'busy' | 'file';
+  state: 'project' | 'group' | 'free' | 'busy' | 'file';
   kind?: ProjectKind;
+  /** a folder of projects: the ones in it (the first few), and the id it is open under if it is */
+  members?: { name: string; kind: ProjectKind }[];
+  group?: string;
   /** the name it is already listed under, if any */
   name?: string;
   /** the repository a project here commits to, if the folder is in one */
@@ -150,6 +168,17 @@ export const api = {
   /** open a project folder that lives anywhere; the name it is listed under comes back */
   link: (path: string) =>
     call(at('api/links'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<{ name: string }>(r)),
+  /** open a folder of projects; they are listed together under the folder's name */
+  openFolder: (path: string) =>
+    call(at('api/folders'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path }) }).then((r) => json<FolderGroup>(r)),
+  /** the opened folders and the projects each holds now */
+  folders: () => call(at('api/folders')).then((r) => json<{ folders: FolderGroup[] }>(r)).then((r) => r.folders),
+  /** close an opened folder; its projects and files stay where they are */
+  closeFolder: (id: string) => call(at(`api/folders/${enc(id)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+  /** the projects and folders this project may consult */
+  references: (p: string) => call(at(`api/projects/${enc(p)}/references`)).then((r) => json<{ references: Reference[] }>(r)).then((r) => r.references),
+  setReferences: (p: string, paths: string[]) =>
+    call(at(`api/projects/${enc(p)}/references`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paths }) }).then((r) => json<{ references: Reference[] }>(r)).then((r) => r.references),
   /** take a linked project off the launcher; its folder stays as it is */
   unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
   /** the whole project as one .zip; `full: false` leaves out the change log and the design systems it installed */

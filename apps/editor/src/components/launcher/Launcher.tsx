@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconFileImport, IconPlus, IconSearch } from '@tabler/icons-react';
 import { type ProjectCard, type ProjectKind } from '@dc/core';
 import { api } from '../../api';
 import { toast, useStore } from '../../store';
-import { Chevron, FileZip, FolderOpen, GridLayout, ListLayout, Sliders } from '../icons';
+import { Chevron, FileZip, FolderOpen, GridLayout, ListLayout, Sliders, Unlink } from '../icons';
 import { chooseProjectArchive, importProjectFile, isProjectImportFile } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { Appearance, LanguageMenu } from '../Appearance';
@@ -73,12 +73,24 @@ export function Launcher() {
   const search = useRef<HTMLInputElement>(null);
   const recent = useMemo(readRecent, []);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     api.projects().then(setList, (e) => {
       setList([]);
       toast(e.message, 'error');
     });
   }, []);
+  useEffect(reload, [reload]);
+  // a folder of projects opened as a group is taken off again from its heading; the toast puts it back
+  const closeFolder = (id: string, path: string) => {
+    const folder = path.split('/').filter(Boolean).pop() ?? path;
+    api.closeFolder(id).then(
+      () => {
+        reload();
+        toast(t('launcher.folder.groupClosed', { folder }), 'info', { label: t('launcher.group.undo'), run: () => api.openFolder(path).then(reload, (e) => toast(e.message, 'error')) });
+      },
+      (e) => toast(e.message, 'error'),
+    );
+  };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const a = document.activeElement;
@@ -127,11 +139,14 @@ export function Launcher() {
   const groups = useMemo(() => [...new Set((list ?? []).map((p) => p.group).filter((g): g is string => !!g))].sort((a, b) => a.localeCompare(b)), [list]);
   // with groups, the list falls into one section per group (the most recent first, or by name), the loose ones last; a search flattens it
   const sections = useMemo(() => {
-    if (!groups.length || q.trim()) return [{ key: '', name: '', items: shown }];
+    type Section = { key: string; name: string; items: ProjectCard[]; folder?: { id: string; path: string } };
+    if (!groups.length || q.trim()) return [{ key: '', name: '', items: shown } as Section];
     const by = new Map<string, ProjectCard[]>();
     for (const p of shown) by.set(p.group ?? '', [...(by.get(p.group ?? '') ?? []), p]);
     const names = [...by.keys()].filter(Boolean);
-    return [...names.map((n) => ({ key: n, name: n, items: by.get(n)! })), ...(by.has('') ? [{ key: '', name: t('launcher.group.ungrouped'), items: by.get('')! }] : [])];
+    // a group that is an opened folder says so, and can be closed from its heading
+    const folderOf = (items: ProjectCard[]) => items.find((p) => p.folderGroup?.derived)?.folderGroup;
+    return [...names.map((n): Section => ({ key: n, name: n, items: by.get(n)!, folder: folderOf(by.get(n)!) })), ...(by.has('') ? [{ key: '', name: t('launcher.group.ungrouped'), items: by.get('')! } as Section] : [])];
   }, [shown, groups, q, t]);
   const flat = sections.length === 1 && !sections[0].name;
   const apply = (name: string, patch: { title?: string; group?: string }) => {
@@ -317,6 +332,15 @@ export function Launcher() {
                         <span className="gname">{sec.name}</span>
                         <span className="n">{sec.items.length}</span>
                       </button>
+                      {sec.folder && (
+                        <>
+                          <span className="gpath mono" title={sec.folder.path}>{sec.folder.path}</span>
+                          <button className="btn ghost sm gclose" onClick={() => closeFolder(sec.folder!.id, sec.folder!.path)}>
+                            <Unlink />
+                            {t('launcher.folder.groupClose')}
+                          </button>
+                        </>
+                      )}
                     </h3>
                   )}
                   {!shut && (
@@ -387,7 +411,7 @@ export function Launcher() {
       {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onUnlink={() => unlink(acted)} />}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} at={createAt} onClose={() => (setCreating(null), setCreateAt(undefined))} />}
-      {opening && <OpenFolderDialog onClose={() => setOpening(false)} onCreateHere={(path) => (setOpening(false), setCreateAt(path), setCreating('design'))} />}
+      {opening && <OpenFolderDialog onClose={() => setOpening(false)} onOpened={() => (setOpening(false), reload())} onCreateHere={(path) => (setOpening(false), setCreateAt(path), setCreating('design'))} />}
     </div>
   );
 }

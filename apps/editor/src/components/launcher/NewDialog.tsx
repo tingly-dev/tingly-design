@@ -215,7 +215,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
  * Opens a project folder that lives anywhere on disk. The folder stays where it is; the
  * launcher only remembers it. A folder with no project yet leads to New project, aimed there.
  */
-export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => void; onCreateHere: (path: string) => void }) {
+export function OpenFolderDialog({ onClose, onCreateHere, onOpened }: { onClose: () => void; onCreateHere: (path: string) => void; onOpened: () => void }) {
   const { t } = useTranslation();
   const [path, setPath] = useState('');
   const [busy, setBusy] = useState(false);
@@ -228,6 +228,17 @@ export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => voi
   const submit = async () => {
     if (!ready || busy) return;
     if (info.state === 'free') return onCreateHere(typed);
+    if (info.state === 'group') {
+      setBusy(true);
+      try {
+        await api.openFolder(typed);
+        onOpened();
+      } catch (e) {
+        setBusy(false);
+        toast((e as Error).message, 'error');
+      }
+      return;
+    }
     if (info.state !== 'project') return;
     setBusy(true);
     try {
@@ -249,7 +260,9 @@ export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => voi
             ? info.name
               ? t('launcher.folder.listed', { kind: t(`launcher.kind.${info.kind!}.name`), name: info.name })
               : t('launcher.folder.found', { kind: t(`launcher.kind.${info.kind!}.name`) })
-            : info.state === 'free'
+            : info.state === 'group'
+              ? t(info.group ? 'launcher.folder.groupListed' : 'launcher.folder.groupFound', { count: info.members!.length, names: info.members!.slice(0, 4).map((m) => m.name).join(', ') + (info.members!.length > 4 ? ', …' : ''), folder: info.path.split('/').filter(Boolean).pop() })
+              : info.state === 'free'
               ? t('launcher.folder.empty', { path: info.path })
               : info.state === 'busy'
                 ? t('launcher.folder.noProject', { path: info.path })
@@ -272,7 +285,7 @@ export function OpenFolderDialog({ onClose, onCreateHere }: { onClose: () => voi
           <button type="button" className="btn" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button className="btn primary" type="submit" disabled={!ready || busy || (info.state !== 'project' && info.state !== 'free')}>
+          <button className="btn primary" type="submit" disabled={!ready || busy || (info.state !== 'project' && info.state !== 'free' && !(info.state === 'group' && !info.group))}>
             {ready && info.state === 'free' ? t('launcher.folder.createHere') : t('launcher.folder.open')}
           </button>
         </footer>

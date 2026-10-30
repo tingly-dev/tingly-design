@@ -1,0 +1,96 @@
+/* the dialog that picks the other work Claude may read (components/References.tsx) */
+.refsdlg {
+  width: min(520px, calc(100vw - 32px));
+}
+
+
+.refsdlg ul + ul {
+  margin-top: 14px;
+}
+
+
+.refsdlg h3 {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+
+.refsdlg ul {
+  max-height: 200px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+
+.refsdlg .refrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+
+.refsdlg .refrow:hover {
+  background: var(--panel-2);
+}
+
+
+.refsdlg .refrow svg {
+  flex: none;
+  color: var(--muted);
+}
+
+
+.refsdlg .rname {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  font-weight: 500;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.refsdlg .rpath {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.refsdlg .refrow.gone .rpath {
+  color: var(--danger);
+}
+
+
+.refsdlg .refnote {
+  margin: 8px 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+
+.ctx-chip.refchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: none;
+}
+
+
+.ctx-chip.refchip.on {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--panel));
+  color: var(--accent-ink);
+}

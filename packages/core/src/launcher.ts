@@ -16,6 +16,8 @@ export interface ProjectCard {
   count: number;
   /** the group the person filed it under on the launcher, if any */
   group?: string;
+  /** the opened folder the project is in (its id and `~/…` path); `derived` when `group` is that folder's name and not one the person chose */
+  folderGroup?: { id: string; path: string; derived: boolean };
   /** where its folder is, when it lives outside the projects folder (`~/…` under the home folder) */
   path?: string;
   /** names earlier versions gave it, which sources recorded in other projects may still carry */
