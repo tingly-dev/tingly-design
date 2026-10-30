@@ -156,9 +156,8 @@ on top).
   etc.
 - **Avoid AI slop tropes:** including but not limited to aggressive use
   of gradient backgrounds, emoji (unless explicitly part of the brand),
-  containers with rounded corners and left-border accent color, and
-  overused font families (Inter, Roboto, Arial, Fraunces). Emoji in
-  content: only if the brand or design system uses them.
+  and containers with rounded corners and left-border accent color.
+  Emoji in content: only if the brand or design system uses them.
 - **Recreate from source, not from memory or screenshots.** When asked
   to recreate a UI or design whose source you can reach — a repo, a
   pasted file, an attached design system — read the real source and
