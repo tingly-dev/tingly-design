@@ -96,3 +96,23 @@ export function ReferencesDialog({ project, onClose, onCount }: { project: strin
     </Dialog>
   );
 }
+
+/** The request bar's way in: a chip beside the request's other options, with how many places Claude may read, so the dialog is found where Claude is addressed. */
+export function ReferencesChip() {
+  const { t } = useTranslation();
+  const project = new URLSearchParams(location.search).get('p');
+  const [count, setCount] = useState(0);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (project) api.references(project).then((r) => setCount(r.length), () => {});
+  }, [project]);
+  if (!project) return null;
+  return (
+    <>
+      <button className={`ctx-chip action refchip${count ? ' on' : ''}`} title={t('launcher.refs.title')} onClick={() => setOpen(true)}>
+        <FolderOpen size={12} /> {count ? t('launcher.refs.chipCount', { count }) : t('launcher.refs.chip')}
+      </button>
+      {open && <ReferencesDialog project={project} onClose={() => setOpen(false)} onCount={setCount} />}
+    </>
+  );
+}

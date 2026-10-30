@@ -7,6 +7,7 @@ import type { LastRun } from '../store/agent';
 import { delegateToClaude, runFastEdit } from '../fastedit';
 import { ContextChip } from './AgentBar';
 import { ImageToggle } from './ImageToggle';
+import { ReferencesChip } from './References';
 import { RequestBar } from './RequestBar';
 import { offerPrompt } from '../headless';
 
@@ -118,7 +119,12 @@ export function PromptBar() {
       options={
         <>
           <ContextChip target={target} />
-          {target === 'claude' && <ImageToggle />}
+          {target === 'claude' && (
+            <>
+              <ReferencesChip />
+              <ImageToggle />
+            </>
+          )}
         </>
       }
       picker={

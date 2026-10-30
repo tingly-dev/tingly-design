@@ -265,6 +265,8 @@ export default {
     unlinked: '已把“{{title}}”从列表移除，文件夹没有动。',
   },
   refs: {
+    chip: '引用',
+    chipCount: '引用 {{count}}',
     menu: '引用其他内容…',
     menuCount: '引用其他内容（{{count}}）',
     title: 'Claude 可以参考的其他内容',

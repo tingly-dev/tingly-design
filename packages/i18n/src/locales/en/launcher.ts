@@ -273,6 +273,8 @@ export default {
     unlinked: 'Removed “{{title}}” from the list. Its folder is untouched.',
   },
   refs: {
+    chip: 'Reference',
+    chipCount: 'References {{count}}',
     menu: 'Other work to consult…',
     menuCount: 'Other work to consult ({{count}})',
     title: 'Other work Claude can read',
