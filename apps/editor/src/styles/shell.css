@@ -172,6 +172,12 @@
 }
 
 
+/* a long list of choices scrolls inside the menu instead of running off the screen */
+.menu .menu-scroll {
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;

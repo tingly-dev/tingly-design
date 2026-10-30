@@ -81,7 +81,6 @@ export default {
     text: 'Text',
     frame: 'Artboard',
     frameDraw: 'Draw an artboard',
-    frameAdd: 'Add an artboard',
     frameSame: 'Same size as {{title}}',
     note: 'Sticky note',
     draw: 'Pen',

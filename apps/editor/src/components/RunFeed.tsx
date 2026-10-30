@@ -329,12 +329,12 @@ function editAsJQuery(file: string | undefined, code: string) {
   });
 }
 
-/** Grow a one-line textarea with what is typed, up to its CSS max-height. */
-export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, value: string) {
+/** Grow a one-line textarea with what is typed, up to its CSS max-height (`again` measures it anew). */
+export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, value: string, again = 0) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-  }, [ref, value]);
+  }, [ref, value, again]);
 }

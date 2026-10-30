@@ -1,7 +1,7 @@
 import type React from 'react';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BOARD_SIZES, type Size } from '@dc/core';
+import { BOARD_GROUPS, BOARD_SIZES, type Size } from '@dc/core';
 import { addBoardOfSize, addPage, renamePage } from '../../actions';
 import { editCanvas, useCanvas, useStore, type Tool } from '../../store';
 import { readSizes } from '../motion/motionSizes';
@@ -28,9 +28,6 @@ import { canvasExportItems } from './Board';
 import { useDirectPdf } from '../../pdfExport';
 import { canvasImport } from './canvasImport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-
-/** The sizes the artboard menu offers by name: the common screen, phone, 16:9 and square (every other is in the panel's list). */
-const QUICK_BOARDS = ['desktop', 'iphone15', 'wide', 'square'] as const;
 
 const SHAPES: { tool: 'rect' | 'oval' | 'arrow' | 'line'; keys: string; icon: React.ReactElement }[] = [
   { tool: 'rect', keys: 'R', icon: <Rect /> },
@@ -151,11 +148,10 @@ export function LeftBar() {
     const r = b?.getBoundingClientRect();
     return { x: r?.left ?? 0, y: (r?.bottom ?? 0) + 8 };
   };
-  // the sizes the menu offers, each once: the selected board's, the common ones, then the person's own
+  // the sizes at the top of the menu, each once: the selected board's, then the person's own; the named presets follow, grouped as everywhere else
   const sizes: { size: Size; label?: string }[] = [];
   const offer = (size: Size, label?: string) => sizes.some((o) => o.size[0] === size[0] && o.size[1] === size[1]) || sizes.push({ size, label });
   if (selected) offer([selected.w, selected.h], t('app.tool.frameSame', { title: selected.title || t('app.tool.frame') }));
-  for (const id of QUICK_BOARDS) offer(BOARD_SIZES.find((b) => b.id === id)!.size, t(`canvas.boardSize.${id}`));
   if (menu === 'frame') for (const m of readSizes().mine) offer(m);
   return (
     <div className="bar left" role="toolbar" aria-label={t('app.tool.bar')}>
@@ -222,10 +218,19 @@ export function LeftBar() {
             }}
           />
           <hr />
-          <div className="head">{t('app.tool.frameAdd')}</div>
-          {sizes.map((o) => (
-            <BoardSizeItem key={o.size.join('x')} size={o.size} label={o.label} onDone={() => setMenu(null)} />
-          ))}
+          <div className="menu-scroll">
+            {sizes.map((o) => (
+              <BoardSizeItem key={o.size.join('x')} size={o.size} label={o.label} onDone={() => setMenu(null)} />
+            ))}
+            {BOARD_GROUPS.map((g) => (
+              <Fragment key={g}>
+                <div className="head">{t(`canvas.boardGroup.${g}`)}</div>
+                {BOARD_SIZES.filter((b) => b.group === g).map((b) => (
+                  <BoardSizeItem key={b.id} size={b.size} label={t(`canvas.boardSize.${b.id}`)} onDone={() => setMenu(null)} />
+                ))}
+              </Fragment>
+            ))}
+          </div>
         </Menu>
       )}
       {menu === 'shapes' && (
