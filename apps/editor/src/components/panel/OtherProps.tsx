@@ -64,13 +64,13 @@ export function TweakField({ file, name, spec }: { file: string; name: string; s
 }
 
 /** One tweak's control, by its editor: an artboard's own default, or what an embed of it sets. */
-export function TweakControl({ name, spec, value: v, onSet: setV }: { name: string; spec: PropSpec; value: unknown; onSet: (value: unknown) => void }) {
+export function TweakControl({ name, label, spec, value: v, onSet: setV }: { name: string; label?: string; spec: PropSpec; value: unknown; onSet: (value: unknown) => void }) {
   const { t } = useTranslation();
   let control: React.ReactElement;
   // a list (or any object) is edited on the artboard, row by row; as a text field it would be written back as one string
   if (v !== null && typeof v === 'object')
     return (
-      <Row label={name}>
+      <Row label={label ?? name}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
           {Array.isArray(v) && <span>{t('panel.tweaks.list', { count: v.length })}</span>}
           <span className="hint">{t('panel.tweaks.listHint')}</span>
@@ -119,7 +119,7 @@ export function TweakControl({ name, spec, value: v, onSet: setV }: { name: stri
     default:
       control = <Field value={String(v ?? '')} label={name} numeric={false} onCommit={setV} />;
   }
-  return <Row label={name}>{control}</Row>;
+  return <Row label={label ?? name}>{control}</Row>;
 }
 
 export function Tweaks({ file, doc }: { file: string; doc: DcDoc }) {

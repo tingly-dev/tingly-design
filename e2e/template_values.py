@@ -1,4 +1,4 @@
-"""End-to-end checks for a canvas's template values: with nothing selected the right panel lists every artboard's data-props values grouped by artboard, edits write back to that artboard's default and undo, the group name selects the artboard, the groups fold, and a canvas with no values says how to declare one. Run with `pnpm dev` up: python3 e2e/template_values.py"""
+"""End-to-end checks for a canvas's template values: with nothing selected the right panel lists every artboard's data-props values grouped by artboard, edits write back to that artboard's default and undo, the group name selects the artboard, the groups fold, an artboard's Tweaks links to them, a name shared by artboards is listed once and set for all in one undo step, and a canvas with no values says how to declare one. Run with `pnpm dev` up: python3 e2e/template_values.py"""
 import os, asyncio, json, shutil, time
 from playwright.async_api import async_playwright, expect
 
@@ -71,7 +71,7 @@ async def main():
             sec = pg.locator('.panel .tvals')
             await expect(sec.locator('h3')).to_have_text('Template values')
             check('nothing selected lists a section of template values', True)
-            groups = sec.locator('[role=group]')
+            groups = sec.locator('.tvgroup')
             check('one group per artboard that declares values, none for the plain one', await groups.count() == 2 and await sec.locator('[role=group][aria-label="Plain"]').count() == 0, await groups.count())
             check('groups follow the canvas order', await groups.nth(0).get_attribute('aria-label') == 'Cover' and await groups.nth(1).get_attribute('aria-label') == 'Poster')
             check('the count is in the header', 'values' in (await groups.nth(0).inner_text()) and '3' in (await groups.nth(0).inner_text()))
@@ -100,6 +100,25 @@ async def main():
             await pg.wait_for_timeout(500)
             check('the group name selects the artboard and shows its Tweaks', await pg.get_by_role('tab', name='Tweaks').get_attribute('aria-selected') == 'true' and await pg.locator('.panel .tvals').count() == 0)
             check('whose fields are the same', await pg.locator('.panel input[aria-label="heading"]').count() == 1)
+
+            # from an artboard's Tweaks the rest are one click away, and a shared name is set once for all
+            link = pg.locator('.panel .tvall')
+            check('an artboard\'s Tweaks points at the other artboards\' values', await link.count() == 1 and 'See the values of all artboards' in await link.inner_text())
+            await link.click()
+            await expect(pg.locator('.panel .tvals')).to_have_count(1)
+            check('the link goes to the whole canvas\'s values', True)
+            sec = pg.locator('.panel .tvals')
+            await sec.locator('.seg button').nth(1).click()
+            heading = sec.locator('[role=group][aria-label="heading"]')
+            check('by name lists a name once with every artboard that has it', await heading.count() == 1 and await heading.locator('input[aria-label="heading"]').count() == 3)
+            check('a shared name whose values differ says so', await heading.locator('.hint').count() == 1)
+            await heading.locator('.tvall-row input[aria-label="heading"]').fill('Everywhere')
+            await heading.locator('.tvall-row input[aria-label="heading"]').press('Enter')
+            check('Set all writes every artboard', await wait_for(lambda: '"heading":{"default":"Everywhere"}' in src('Cover.dc.html') and '"default":"Everywhere"' in src('Poster.dc.html')))
+            await pg.evaluate('document.activeElement && document.activeElement.blur()')
+            await pg.locator('body').press('Control+z')
+            check('and is one undo step', await wait_for(lambda: 'Everywhere' not in src('Cover.dc.html') and 'Everywhere' not in src('Poster.dc.html')))
+            await sec.locator('.seg button').nth(0).click()
 
             # past 30 values a filter appears and groups start folded
             await pg.keyboard.press('Escape')

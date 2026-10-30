@@ -882,6 +882,19 @@ textarea.code:focus {
   background: var(--hover);
 }
 
+/* a name's Set all, set apart from the per-artboard rows under it */
+.tvall-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tvall {
+  align-self: flex-start;
+}
+
 
 /* ------------------------------------------------------- side resizing */
 
