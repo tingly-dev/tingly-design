@@ -1,7 +1,7 @@
-import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ISSUES_URL, REPO_URL } from '../links';
-import { Bug, Check, External, Keyboard, More, Star } from './icons';
+import { Bug, Caret, Check, External, Keyboard, More, Star } from './icons';
 import { useStore } from '../store';
 import { Menu, MenuItem } from './Menu';
 import { PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode } from '../theme';
@@ -27,17 +27,23 @@ export function ProjectTitle({ value, label, hint, onRename }: { value: string; 
 
 /**
  * The one top bar of every editor, in the same place with the same ends: the way out of the project,
- * its name and whether it is saved on the left; what this kind of project does in the middle and to
+ * its name on the left; what this kind of project does in the middle and to
  * the right (`children`: view switches, import / export, panels); and at the far end the things that
  * belong to the product and not to the project, behind one "more" button: report an issue,
  * star the repository, the language and the look of the editor. Floating tool bars (canvas, slides)
  * keep only tools; nothing about the project lives anywhere else.
  */
 /** An icon button for the bar: grey like every other control in it, lit only while what it opens is open. The name is the tooltip. */
-export function BarButton({ icon, label, title, on, badge, onClick, ...rest }: { icon: ReactNode; label: string; title?: string; on?: boolean; badge?: ReactNode; onClick: () => void } & Record<`data-${string}`, string | undefined>) {
+export function BarButton({ icon, label, title, on, badge, menu, btnRef, onClick, ...rest }: { icon: ReactNode; label: string; title?: string; on?: boolean; badge?: ReactNode; menu?: boolean; btnRef?: Ref<HTMLButtonElement>; onClick: () => void } & Record<`data-${string}`, string | undefined>) {
+  // a button that opens a menu says so with a caret and `aria-expanded`; one that toggles something is `aria-pressed`
   return (
-    <button className="tb" aria-pressed={on} aria-label={label} title={title ?? label} onClick={onClick} {...rest}>
+    <button ref={btnRef} className="tb" {...(menu ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': !!on } : { 'aria-pressed': on })} aria-label={label} title={title ?? label} onClick={onClick} {...rest}>
       {icon}
+      {menu && (
+        <span className="caret">
+          <Caret />
+        </span>
+      )}
       {badge}
     </button>
   );
@@ -119,10 +125,10 @@ export function TopBar({ title, children }: { title: ReactNode; children?: React
     <header className="topbar dashbar" role="banner" aria-label={t('common.topbar.label')}>
       <ProjectMenu />
       {title}
-      <SyncStatus />
       <div className="grow" />
       {children}
       {kind && <PaneToggles kind={kind} />}
+      <SyncStatus />
       <span className="tsep" />
       <MoreMenu />
     </header>

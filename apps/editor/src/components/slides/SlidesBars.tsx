@@ -5,7 +5,7 @@ import { ICON_NAMES } from '@dc/core';
 import { editDeck, useDeck } from '../../store';
 import { INSERTS, insertOnSlide, uploadImage, slidesImport } from './slides';
 import { Menu, MenuItem } from '../Menu';
-import { TopBar, ProjectTitle } from '../TopBar';
+import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 import { Caret, Picture, Presentation, Shapes, TextT } from '../icons';
 import { slidesExportItems } from './exportDeck';
 import { FileMenu } from '../FileMenu';
@@ -99,12 +99,7 @@ export function SlidesTopBar() {
         />
       }
     >
-      <button ref={playBtn} className="tb" aria-haspopup="menu" aria-expanded={menu === 'play'} aria-label={t('slides.toolbar.present')} title={t('slides.toolbar.present')} onClick={() => setMenu('play')}>
-        <Presentation />
-        <span className="caret">
-          <Caret />
-        </span>
-      </button>
+      <BarButton btnRef={playBtn} icon={<Presentation />} label={t('slides.toolbar.present')} menu on={menu === 'play'} onClick={() => setMenu('play')} />
       <FileMenu claudeDesign target={slidesImport} label={t('slides.toolbar.importLabel')} items={slidesExportItems(direct)} />
       <PptxExportDialog />
       {menu === 'play' && (

@@ -46,7 +46,7 @@ import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';
 import { saveDocWord } from './wordExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { History, LayoutCols } from '../icons';
+import { LayoutCols, VersionsIcon } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
@@ -341,7 +341,7 @@ export function DocsApp() {
         </div>
         {tab && (
           <div className="popwrap">
-            <BarButton icon={<History />} label={t('docs.versions.button')} on={pop === 'versions'} data-versions="" onClick={() => setPop(pop === 'versions' ? null : 'versions')} />
+            <BarButton icon={<VersionsIcon />} label={t('docs.versions.button')} on={pop === 'versions'} data-versions="" onClick={() => setPop(pop === 'versions' ? null : 'versions')} />
             {pop === 'versions' && <Versions key={tab} tab={tab} onClose={() => setPop(null)} />}
           </div>
         )}
