@@ -261,7 +261,7 @@ export default {
     pickerEmpty: 'No folders in here.',
     pickerMore: 'Only the first folders are listed. Write the path to go further.',
     pickerLoading: 'Looking…',
-    groupFound: 'A folder of {{count}} projects: {{names}}. Open it to list them together under {{folder}}.',
+    groupFound: 'A folder of {{count}} projects ({{names}}). Open it to list them together under {{folder}}.',
     groupListed: 'A folder of {{count}} projects, already open.',
     groupClose: 'Close folder',
     groupClosed: 'Closed {{folder}}. Its projects and files are untouched.',

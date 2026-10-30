@@ -261,7 +261,7 @@ export function OpenFolderDialog({ onClose, onCreateHere, onOpened }: { onClose:
               ? t('launcher.folder.listed', { kind: t(`launcher.kind.${info.kind!}.name`), name: info.name })
               : t('launcher.folder.found', { kind: t(`launcher.kind.${info.kind!}.name`) })
             : info.state === 'group'
-              ? t(info.group ? 'launcher.folder.groupListed' : 'launcher.folder.groupFound', { count: info.members!.length, names: info.members!.slice(0, 4).map((m) => m.name).join(', ') + (info.members!.length > 4 ? ' …' : ''), folder: info.path.split('/').filter(Boolean).pop() })
+              ? t(info.group ? 'launcher.folder.groupListed' : 'launcher.folder.groupFound', { count: info.members!.length, names: info.members!.slice(0, 4).map((m) => m.name).join(', ') + (info.members!.length > 4 ? ', …' : ''), folder: info.path.split('/').filter(Boolean).pop() })
               : info.state === 'free'
               ? t('launcher.folder.empty', { path: info.path })
               : info.state === 'busy'

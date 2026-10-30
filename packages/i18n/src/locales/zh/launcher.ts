@@ -253,7 +253,7 @@ export default {
     pickerEmpty: '这里没有文件夹。',
     pickerMore: '只列出了前面的文件夹，要去更深的地方请直接写路径。',
     pickerLoading: '正在查看…',
-    groupFound: '这个文件夹里有 {{count}} 个项目：{{names}}。打开后它们会一起列在「{{folder}}」下。',
+    groupFound: '这个文件夹里有 {{count}} 个项目（{{names}}）。打开后它们会一起列在「{{folder}}」下。',
     groupListed: '这个文件夹里有 {{count}} 个项目，已经打开了。',
     groupClose: '关闭文件夹',
     groupClosed: '已关闭 {{folder}}，里面的项目和文件都没有动。',

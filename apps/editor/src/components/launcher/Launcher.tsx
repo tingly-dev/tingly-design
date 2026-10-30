@@ -335,8 +335,9 @@ export function Launcher() {
                       {sec.folder && (
                         <>
                           <span className="gpath mono" title={sec.folder.path}>{sec.folder.path}</span>
-                          <button className="ib sm" aria-label={t('launcher.folder.groupClose')} title={t('launcher.folder.groupClose')} onClick={() => closeFolder(sec.folder!.id, sec.folder!.path)}>
+                          <button className="btn ghost sm gclose" onClick={() => closeFolder(sec.folder!.id, sec.folder!.path)}>
                             <Unlink />
+                            {t('launcher.folder.groupClose')}
                           </button>
                         </>
                       )}
