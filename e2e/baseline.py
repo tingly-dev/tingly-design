@@ -62,7 +62,9 @@ COMPARE = """async ([a, b, pixel]) => {
   return { differ: n, total: p.data.length / 4, diff: c.toDataURL('image/png') };
 }"""
 
-STILL = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'
+# the launcher's "3 minutes ago" and the recency order both follow file times, which differ on every checkout and run
+STILL = ('*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'
+         '.lmeta>span:last-child:not(.kbadge),.c-when{visibility:hidden!important}')
 
 async def main():
     ref = None if RECORD else baselines()
@@ -85,6 +87,7 @@ async def main():
                 try: await pg.wait_for_load_state('networkidle', timeout=3000)
                 except Exception: pass
                 await pg.add_style_tag(content=STILL)
+                if not project and await pg.locator('.lsort').count(): await pg.select_option('.lsort', 'name')
                 await pg.wait_for_timeout(2500)
                 if left: check(f'{name}: the column is open with the work beside it', await pg.locator('.chat-panel').count() == 1)
                 if screen in STATES:
