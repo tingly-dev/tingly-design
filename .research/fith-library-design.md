@@ -1,6 +1,7 @@
 # fith 拆库设计报告
 
-状态：**方案**（待 YZ 确认后在 fith 仓库实施；此前不动代码）。依据：对 `YZYExp/fith`（包名 `fitting-html`，v0.0.0）源码、DESIGN.md、docs/development-backlog.md、bench-log.md 的阅读，**没有构建或运行**；行数、数量为静态统计。配套评估见 `svg-export.md`。
+状态：**实施中**（YZ 2026-10-30 同意在 fith 仓库按本方案叠加 PR 推进；PR 均未合并，等 YZ）。
+进度：阶段 0 和 A（#34）、B（#35）、C 和 D（#40–#43：跨文档、辅助模块、背景模块、`CaptureCtx` 与 walk/elements/box/text 四个模块，`captureScene` 2729→162 行）、E 的 `CaptureReport`（#44）、`rasterize` 带元素与原因和 `fonts` 由宿主提供（#45）、`idPrefix`（#46）已完成并有测试；每步 44 个固件的输出逐字节不变。未做：E 的包出口调整（Playwright 改可选依赖、子路径入口，有破坏性，等 YZ 确认）、`dom-raster.ts` 跨文档（fith#39）、Tingly Design 侧的适配层。过程中发现的问题：fith#36、#37、#39。依据：对 `YZYExp/fith`（包名 `fitting-html`，v0.0.0）源码、DESIGN.md、docs/development-backlog.md、bench-log.md 的阅读，**没有构建或运行**；行数、数量为静态统计。配套评估见 `svg-export.md`。
 
 ## 1. 目标
 
