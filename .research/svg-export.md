@@ -48,7 +48,7 @@
 | 保真 | 用 `check --snapshots` 思路：同一页 PNG 与 SVG 栅格化像素差 |
 | 失败方式 | 画不了时报错还是静默空白 |
 
-## 5. 候选库 fith（YZYExp/fith，包名 fitting-html）
+## 5. 候选库 fith（YZYExp/fith，包名 fith）
 
 只读了 README、DESIGN、docs/bench-log、backlog 和 `src` 结构；**没有安装、构建或运行**，下面的保真数字都是它自己文档里的，不是我们的实测。
 
@@ -58,7 +58,7 @@
 | 字体 | `embed`（`<text>` + 内联可读 `@font-face`）、`outline`（opentype.js 转路径，仅 Node 后端经 fontconfig；浏览器入口需调用方给 `outline` 回调）、`none`。正好对应 §2.2 的两种选择 |
 | 图片 | 内联 data URI；读不到的图（跨域）退回栅格 |
 | 画不了 | 栅格回退：iframe、video、WebGL、3D 变换、mask/clip-path、部分 filter/inset 阴影。浏览器库里栅格回退要调用方给 `rasterize(rect, scale)`，库自带一个 `dom-raster`（foreignObject，和我们现有 `rasterize` 同一思路）；不给就**省略**该区域 |
-| 运行环境 | 三种：Node（Playwright）、**浏览器库** `fitting-html/browser`（只用 DOM API，`captureElement` / `captureCurrentPage`）、Chrome 扩展。核心不依赖 Node |
+| 运行环境 | 三种：Node（Playwright）、**浏览器库** `fith/browser`（只用 DOM API，`captureElement` / `captureCurrentPage`）、Chrome 扩展。核心不依赖 Node |
 | 依赖与许可 | 运行时依赖只有 opentype.js（outline 用）和 playwright（仅 Node 后端）。**MPL-2.0**，与已在用的 Mediabunny 同类，可原样打包，须随 `THIRD_PARTY_LICENSES.txt` 声明；改它则那些文件需公开 |
 | 保真 | 自带 Chromium 像素对比与 bench 语料（真实站点、ECharts、MUI、antd 例子）；README 明说「矢量优先不等于逐像素」。已知未解：兄弟间 stacking context、父级透明度合成、栅格与矢量子节点重复绘制、复杂文字整形（连字、双向文字） |
 | 失败方式 | 栅格回退返回 null 就省略，不会报错；静默缺失，需要我们在结果里补提示 |
@@ -89,8 +89,8 @@ YZ 的判断：目标是可编辑；fith 来自可信的合作伙伴、问题都
 
 **真正的结构问题**
 1. **`captureScene` 是一个 2729 行的函数**：约 90 个闭包内的小函数（颜色/渐变/阴影/滤镜/裁剪/mask/背景层/文字/伪元素/原生控件/内联 SVG/图片/层叠上下文/字体收集）共享闭包状态（计数器、节点列表、unfurl 的暂存样式）。原因是 Node 后端用 `page.evaluate(captureScene)` 把函数序列化进页面，函数**不能 import 任何东西**。后果：单元无法单独测试，改一处要读整个闭包，约 50 处 `as any`，backlog 里的 P1 问题（stacking context、透明度合成、栅格与矢量重复绘制）都卡在这个大函数里。
-2. **包的边界不是库的边界**：`playwright` 是硬依赖，主入口（`htmlToSvg`）直接拉起 Node 后端；浏览器入口是子路径 `fitting-html/browser`，outline 又要调用方自带回调。库使用者想要的是「`captureElement(el) → svg` 无 Node、无 Playwright、可选 opentype」。
-3. **仍是 0.0.0、包名 `fitting-html` 与仓库名 `fith` 不一致，没有发布**；文档部分中文，不影响使用。
+2. **包的边界不是库的边界**：`playwright` 是硬依赖，主入口（`htmlToSvg`）直接拉起 Node 后端；浏览器入口是子路径 `fith/browser`，outline 又要调用方自带回调。库使用者想要的是「`captureElement(el) → svg` 无 Node、无 Playwright、可选 opentype」。
+3. **仍是 0.0.0、曾用包名 `fith` 与仓库名 `fith` 不一致，现已统一为 `fith`，没有发布**；文档部分中文，不影响使用。
 
 **重构方案（分阶段，行为不变，靠现有固件和像素阈值把关）**
 1. 构建改为 esbuild 打成一个 IIFE，Node 后端注入这个 bundle（扩展已经在用 esbuild）。这一步之后 `capture/` 可以拆成多个 import 的模块，序列化限制消失。

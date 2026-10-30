@@ -1,7 +1,7 @@
 # fith 拆库设计报告
 
 状态：**实施中**（YZ 2026-10-30 同意在 fith 仓库按本方案叠加 PR 推进；PR 均未合并，等 YZ）。
-进度：阶段 0 和 A（#34）、B（#35）、C 和 D（#40–#43：跨文档、辅助模块、背景模块、`CaptureCtx` 与 walk/elements/box/text 四个模块，`captureScene` 2729→162 行）、E 的 `CaptureReport`（#44）、`rasterize` 带元素与原因和 `fonts` 由宿主提供（#45）、`idPrefix`（#46）已完成并有测试；每步 44 个固件的输出逐字节不变。未做：E 的包出口调整（Playwright 改可选依赖、子路径入口，有破坏性，等 YZ 确认）、`dom-raster.ts` 跨文档（fith#39）、Tingly Design 侧的适配层。过程中发现的问题：fith#36、#37、#39。依据：对 `YZYExp/fith`（包名 `fitting-html`，v0.0.0）源码、DESIGN.md、docs/development-backlog.md、bench-log.md 的阅读，**没有构建或运行**；行数、数量为静态统计。配套评估见 `svg-export.md`。
+进度：阶段 0 和 A（#34）、B（#35）、C 和 D（#40–#43：跨文档、辅助模块、背景模块、`CaptureCtx` 与 walk/elements/box/text 四个模块，`captureScene` 2729→162 行）、E 的 `CaptureReport`（#44）、`rasterize` 带元素与原因和 `fonts` 由宿主提供（#45）、`idPrefix`（#46）已完成并有测试；每步 44 个固件的输出逐字节不变。未做：E 的包出口调整（Playwright 改可选依赖、子路径入口，有破坏性，等 YZ 确认）、`dom-raster.ts` 跨文档（fith#39）、Tingly Design 侧的适配层。过程中发现的问题：fith#36、#37、#39。依据：对 `YZYExp/fith`（包名 `fith`，v0.0.0）源码、DESIGN.md、docs/development-backlog.md、bench-log.md 的阅读，**没有构建或运行**；行数、数量为静态统计。配套评估见 `svg-export.md`。
 
 ## 1. 目标
 
@@ -21,7 +21,7 @@
 - 之所以是一个函数：Node 后端 `page.evaluate(captureScene, …)` 要把函数序列化进页面，函数不能 import。浏览器库和扩展是直接 import（扩展用 esbuild 打 IIFE），所以这条限制只来自 Node 注入这一条路。
 - 核心直接使用全局 `document`、`window`、`getComputedStyle`，所以只能捕获「当前页面」的元素；不能由编辑器页面去捕获另一个 iframe 里的元素。
 - 字体收集（`collectFonts`，约 100 行）在捕获函数内部，靠 `document.styleSheets` 和 `fetch`；沙箱框架无网络时取不到字体。
-- 包出口：`playwright` 是硬依赖；主入口是 Node 后端；浏览器入口为 `fitting-html/browser`；outline 要调用方传入回调；`opentype.js` 在 emit 里。
+- 包出口：`playwright` 是硬依赖；主入口是 Node 后端；浏览器入口为 `fith/browser`；outline 要调用方传入回调；`opentype.js` 在 emit 里。
 - 栅格回退：浏览器入口只收 `rasterize(rect, scale)`，拿不到元素本身；库自带 `dom-raster.ts`（foreignObject）作兜底；失败时区域被**静默省略**。
 - 已知保真缺口（backlog）：层叠上下文跨兄弟、父级透明度对重叠子节点的合成、栅格与矢量子节点重复绘制、复杂文字整形、SVG id 在多个克隆间冲突。
 
@@ -151,4 +151,4 @@ interface CaptureReport {
 1. 方案整体是否认可（尤其 §3 的目录和 §4 的 API 形状）。
 2. 在 fith 仓库做：我需要对该仓库的写权限（目前只读克隆，且没有加入本项目的可推送仓库），以及是否由我提 PR 还是先给合作伙伴看设计。
 3. 阶段顺序：是否先做 0 + A（最小、最安全）作为第一个 PR。
-4. 包名：保持 `fitting-html` 还是改为 `fith`（发布前决定）。
+4. 包名：已定为 `fith`（项目、npm 包、命令统一）。
