@@ -8,6 +8,7 @@ import {
   boardTime,
   boardTweaks,
   canvasTemplateValues,
+  valuesByName,
   boardsOf,
   checkSlide,
   coverFit,
@@ -63,6 +64,23 @@ describe('artboards imported into slides and scenes', () => {
       ['A.dc.html', 'Cover', [['heading', 'text'], ['dark', 'boolean']]],
     ]);
     expect(canvasTemplateValues(canvas, () => undefined)).toEqual([]);
+  });
+
+  it('regroups values by name across artboards that edit them the same way', () => {
+    const files: Record<string, string> = {
+      'A.dc.html': BOARD('{"accent":{"editor":"color","default":"#111"},"size":{"editor":"enum","options":["s","m"],"default":"s"}}'),
+      'B.dc.html': BOARD('{"accent":{"editor":"color","default":"#222"},"size":{"editor":"enum","options":["a","b"],"default":"a"}}'),
+      'C.dc.html': BOARD('{"accent":{"default":"red"}}'),
+    };
+    const canvas = { order: Object.keys(files), boards: Object.fromEntries(Object.keys(files).map((f) => [f, { x: 0, y: 0, w: 1, h: 1 }])) };
+    const got = valuesByName(canvasTemplateValues(canvas, (f) => files[f]));
+    // colours join; the text accent and the two different pick lists stay apart
+    expect(got.map((n) => [n.name, n.entries.map((e) => e.file)])).toEqual([
+      ['accent', ['A.dc.html', 'B.dc.html']],
+      ['size', ['A.dc.html']],
+      ['size', ['B.dc.html']],
+      ['accent', ['C.dc.html']],
+    ]);
   });
 
   it('collects the siblings an artboard mounts and the files it shows', () => {

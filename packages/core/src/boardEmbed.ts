@@ -107,6 +107,32 @@ export function canvasTemplateValues(canvas: Pick<CanvasJson, 'boards' | 'order'
   return out;
 }
 
+/** One value name across a canvas: the artboards that declare it the same way. */
+export interface NamedValues {
+  name: string;
+  /** the artboards (in canvas order) with their own spec of it */
+  entries: { file: string; title: string; spec: PropSpec }[];
+}
+
+/**
+ * The same values regrouped by name, for setting one across artboards: a name
+ * joins only artboards that edit it the same way (same editor; for a pick the same options;
+ * for a number the same range, step and unit), so a write never lands on a value of another kind. Names
+ * keep the order they first appear in.
+ */
+export function valuesByName(groups: BoardValues[]): NamedValues[] {
+  const out = new Map<string, NamedValues>();
+  for (const g of groups)
+    for (const [name, spec] of g.values) {
+      const numeric = spec.editor === 'int' || spec.editor === 'float' || spec.editor === 'range';
+      const key = JSON.stringify([name, spec.editor, spec.editor === 'enum' ? spec.options : null, numeric ? [spec.min, spec.max, spec.step, spec.unit] : null]);
+      const hit = out.get(key) ?? { name, entries: [] };
+      hit.entries.push({ file: g.file, title: g.title, spec });
+      out.set(key, hit);
+    }
+  return [...out.values()];
+}
+
 /** An embed's `data-props` as an object (an unreadable one is empty). */
 export function embedProps(value: string | undefined): Record<string, unknown> {
   if (!value) return {};

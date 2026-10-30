@@ -11,14 +11,14 @@ import { BoardEmbedProps, isBoardEmbedEl } from './BoardEmbedProps';
 import { LayerTree } from './LayerTree';
 import { LockNotice } from './LockNotice';
 import { lockOf } from '../../layerFlags';
-import { BoardProps, ItemProps, Tweaks } from './OtherProps';
+import { BoardProps, ItemProps } from './OtherProps';
 import { Field, Row } from './fields';
 import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
 import { ThemeTab } from './ThemeTab';
 import { JQueryBox } from './JQueryBox';
-import { TemplateValues } from './TemplateValues';
+import { TemplateValues, TweaksTab } from './TemplateValues';
 import { AnimRow, FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
@@ -108,10 +108,10 @@ export function RightPanel() {
           <JQueryBox file={file} handle={handle} />
         </>
       );
-    else if (tab === 'tweaks') body = <Tweaks file={file} doc={doc} />;
+    else if (tab === 'tweaks') body = <TweaksTab file={file} doc={doc} />;
     else body = <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />;
   } else if (sel?.kind === 'board' && file && canvas.boards[file]) {
-    if (tab === 'tweaks' && doc) body = <Tweaks file={file} doc={doc} />;
+    if (tab === 'tweaks' && doc) body = <TweaksTab file={file} doc={doc} />;
     else if (tab === 'code')
       body = (
         <>
@@ -138,15 +138,15 @@ export function RightPanel() {
           <Row label={t('panel.canvas.name')}>
             <Field value={canvas.title} numeric={false} onCommit={(v) => v.trim() && editCanvas((c) => (c.title = v.trim()), `title → ${v.trim()}`)} label={t('panel.canvas.nameLabel')} />
           </Row>
-          <p className="hint" style={{ margin: 0 }}>
-            {t('panel.canvas.howTo')}
-          </p>
         </div>
         {isCanvas && <TemplateValues />}
         <div className="sec">
           <DsInstall />
           <h3>{t('panel.canvas.shortcuts')}</h3>
           <ShortcutLine kind="design" />
+          <p className="hint" style={{ margin: 0 }}>
+            {t('panel.canvas.howTo')}
+          </p>
         </div>
       </>
     );
