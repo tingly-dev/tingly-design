@@ -208,7 +208,7 @@ async def main():
                     sent = lines(claude_log)[n]['prompt']
                     check('motion: where the playhead stopped is told to Claude Code but not echoed as the request', 'into scene' in sent and 'scene' not in await feed.locator('.run-ask').inner_text(), sent[:300])
             # the agent panel (motion is still open): history, new vs continued, fold, and no shifting
-            chip = pg.locator('.ctx-chip')
+            chip = pg.locator('.ctx-chip.continues')
             check('after a finished run the chip says the next request continues it', '接着：改一下标题' in await chip.inner_text(), await chip.inner_text())
             stage = pg.locator('.mstage')
             h0 = (await stage.bounding_box())['height']
@@ -231,8 +231,8 @@ async def main():
             await pg.locator('.bar-tools button').first.click()
             await box.fill('改一下标题')
             n = len(lines(claude_log))
-            await pg.locator('.ctx-chip').click()
-            check('the chip switches to a new conversation', '新对话' in await pg.locator('.ctx-chip').inner_text())
+            await pg.locator('.ctx-chip.continues').click()
+            check('the chip switches to a new conversation', '新对话' in await pg.locator('.ctx-chip.continues').inner_text())
             await box.press('Enter')
             await expect(feed).to_contain_text('Claude Code 完成', timeout=15000)
             check('a request marked as new starts a fresh session', lines(claude_log)[n]['resume'] is None, lines(claude_log)[n])
