@@ -1,22 +1,20 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  canvasTemplateValues,
-  setPropDefault,
-  valuesByName,
-  type DcDoc,
-} from "@dc/core";
+import { canvasTemplateValues, valuesByName, type DcDoc } from "@dc/core";
 import { newUndoGroup } from "../../editEngine";
-import { display, edit, useCanvas, useStore } from "../../store";
+import { display, useCanvas, useStore } from "../../store";
 import { focusBoard } from "../canvas/view";
 import { Chevron } from "../icons";
 import { Segmented } from "../Segmented";
-import { Tweaks, TweakControl, TweakField } from "./OtherProps";
+import { Tweaks, TweakControl, TweakField, setBoardTweak } from "./OtherProps";
 
 /** Past this many values the section grows a filter. */
 const FILTER_FROM = 30;
 /** With more values than this the groups start folded, so the section stays a list of artboards. */
 const OPEN_UP_TO = 12;
+
+/** The last grouping chosen: the section remounts whenever an artboard is selected and left. */
+let lastView: "board" | "name" = "board";
 
 /** The template values of the whole canvas, rebuilt only when sources change. */
 function useCanvasValues() {
@@ -79,14 +77,13 @@ export function TweaksTab({ file, doc }: { file: string; doc: DcDoc }) {
  */
 export function TemplateValues() {
   const { t } = useTranslation();
+  const canvas = useCanvas();
   const groups = useCanvasValues();
   const total = groups.reduce((n, g) => n + g.values.length, 0);
-  const shared = useMemo(
-    () => valuesByName(groups).filter((n) => n.entries.length > 1),
-    [groups],
-  );
-  const [view, setView] = useState<"board" | "name">("board");
-  const byName = view === "name" && shared.length > 0;
+  const allNames = useMemo(() => valuesByName(groups), [groups]);
+  const shared = allNames.some((n) => n.entries.length > 1);
+  const [view, setView] = useState(lastView);
+  const byName = view === "name" && shared;
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [q, setQ] = useState("");
   const query = total > FILTER_FROM ? q.trim().toLowerCase() : "";
@@ -103,7 +100,7 @@ export function TemplateValues() {
         : g.values,
     }))
     .filter((g) => g.values.length);
-  const names = valuesByName(groups).filter(
+  const names = allNames.filter(
     (n) => !query || n.name.toLowerCase().includes(query),
   );
 
@@ -148,10 +145,10 @@ export function TemplateValues() {
         </p>
       ) : (
         <>
-          {shared.length > 0 && (
+          {shared && (
             <Segmented
               value={view}
-              onChange={setView}
+              onChange={(v) => setView((lastView = v))}
               label={t("panel.templateValues.view")}
               options={[
                 { value: "board", label: t("panel.templateValues.byBoard") },
@@ -176,20 +173,21 @@ export function TemplateValues() {
           )}
           {byName
             ? names.map((n) => {
-                const key = JSON.stringify([n.name, n.entries[0].spec.editor, n.entries[0].spec.options]);
+                const key = `${n.name}\u0000${n.entries.map((e) => e.file).join("\u0000")}`;
                 const first = n.entries[0].spec;
                 const same = n.entries.every(
                   (e) => JSON.stringify(e.spec.default) === JSON.stringify(first.default),
                 );
-                const many = n.entries.length > 1;
+                // a list is edited on its artboard row by row, so there is nothing to set at once
+                const many =
+                  n.entries.length > 1 && typeof first.default !== "object";
                 const setAll = (v: unknown) => {
+                  if (typeof v === "number" && Number.isNaN(v)) return;
                   const group = newUndoGroup();
+                  // a locked artboard is left as it is, as its own Tweaks would
                   for (const e of n.entries)
-                    edit(e.file, (src) => setPropDefault(src, n.name, v).source, {
-                      actor: "human",
-                      summary: `tweak ${n.name} → ${JSON.stringify(v)}`,
-                      group,
-                    });
+                    if (!canvas.boards[e.file]?.locked)
+                      setBoardTweak(e.file, n.name, v, group);
                 };
                 return (
                   <div key={key} className="tvgroup" role="group" aria-label={n.name}>
@@ -202,7 +200,8 @@ export function TemplateValues() {
                               name={n.name}
                               label={t("panel.templateValues.setAll")}
                               spec={first}
-                              value={first.default}
+                              // differing values show blank, so picking the first one's still counts as a change
+                              value={same || typeof first.default === "boolean" ? first.default : ""}
                               onSet={setAll}
                             />
                             {!same && (
@@ -217,12 +216,7 @@ export function TemplateValues() {
                             label={e.title}
                             spec={e.spec}
                             value={e.spec.default}
-                            onSet={(v) =>
-                              edit(e.file, (src) => setPropDefault(src, n.name, v).source, {
-                                actor: "human",
-                                summary: `tweak ${n.name} → ${JSON.stringify(v)}`,
-                              })
-                            }
+                            onSet={(v) => setBoardTweak(e.file, n.name, v)}
                           />
                         ))}
                       </>

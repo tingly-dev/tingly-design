@@ -58,14 +58,21 @@ export function BoardProps({ file, entry }: { file: string; entry: BoardEntry })
 
 // ---------------------------------------------------------------- tweaks
 
+/** Write one artboard's default for a prop, as the person's own change (`group` makes several one undo step). */
+export function setBoardTweak(file: string, name: string, value: unknown, group?: number) {
+  edit(file, (src) => setPropDefault(src, name, value).source, { actor: 'human', summary: `tweak ${name} → ${JSON.stringify(value)}`, ...(group ? { group } : {}) });
+}
+
 export function TweakField({ file, name, spec }: { file: string; name: string; spec: PropSpec }) {
-  const setV = (value: unknown) => edit(file, (src) => setPropDefault(src, name, value).source, { actor: 'human', summary: `tweak ${name} → ${JSON.stringify(value)}` });
+  const setV = (value: unknown) => setBoardTweak(file, name, value);
   return <TweakControl name={name} spec={spec} value={spec.default} onSet={setV} />;
 }
 
 /** One tweak's control, by its editor: an artboard's own default, or what an embed of it sets. */
 export function TweakControl({ name, label, spec, value: v, onSet: setV }: { name: string; label?: string; spec: PropSpec; value: unknown; onSet: (value: unknown) => void }) {
   const { t } = useTranslation();
+  // the visible label may be an artboard's name; a screen reader still needs to hear which value
+  const aria = label ? `${name}, ${label}` : name;
   let control: React.ReactElement;
   // a list (or any object) is edited on the artboard, row by row; as a text field it would be written back as one string
   if (v !== null && typeof v === 'object')
@@ -88,13 +95,13 @@ export function TweakControl({ name, label, spec, value: v, onSet: setV }: { nam
               ))}
             </div>
           )}
-          <ColorField value={String(v ?? '')} onCommit={setV} label={name} allowNone={false} />
+          <ColorField value={String(v ?? '')} onCommit={setV} label={aria} allowNone={false} />
         </div>
       );
       break;
     case 'enum':
       control = (
-        <Select value={String(v)} options={(spec.options ?? []).map((o) => ({ value: String(o), label: String(o) }))} onChange={setV} label={name} />
+        <Select value={String(v)} options={(spec.options ?? []).map((o) => ({ value: String(o), label: String(o) }))} onChange={setV} label={aria} />
       );
       break;
     case 'boolean':
@@ -110,14 +117,14 @@ export function TweakControl({ name, label, spec, value: v, onSet: setV }: { nam
       control = (
         <>
           {spec.editor === 'range' && (
-            <input type="range" min={spec.min ?? 0} max={spec.max ?? 100} step={spec.step ?? 1} defaultValue={Number(v ?? 0)} key={String(v)} aria-label={name} onPointerUp={(e) => setV(Number(e.currentTarget.value))} style={{ flex: 1 }} />
+            <input type="range" min={spec.min ?? 0} max={spec.max ?? 100} step={spec.step ?? 1} defaultValue={Number(v ?? 0)} key={String(v)} aria-label={aria} onPointerUp={(e) => setV(Number(e.currentTarget.value))} style={{ flex: 1 }} />
           )}
-          <Field value={String(v ?? '')} label={name} unit={spec.unit} onCommit={(s) => setV(spec.editor === 'int' ? parseInt(s, 10) : parseFloat(s))} width={spec.editor === 'range' ? 72 : undefined} />
+          <Field value={String(v ?? '')} label={aria} unit={spec.unit} onCommit={(s) => setV(spec.editor === 'int' ? parseInt(s, 10) : parseFloat(s))} width={spec.editor === 'range' ? 72 : undefined} />
         </>
       );
       break;
     default:
-      control = <Field value={String(v ?? '')} label={name} numeric={false} onCommit={setV} />;
+      control = <Field value={String(v ?? '')} label={aria} numeric={false} onCommit={setV} />;
   }
   return <Row label={label ?? name}>{control}</Row>;
 }
