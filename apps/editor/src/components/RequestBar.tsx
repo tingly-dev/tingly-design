@@ -12,6 +12,7 @@ import { FollowUp } from './FollowUp';
 import { RunFeed, useAutoGrow } from './RunFeed';
 import { BarPill, BarTools, HistoryList, useBarKeys } from './AgentBar';
 import { useChat } from './ChatPanel';
+import { BandResizer } from './BandResizer';
 import { Send, Stop } from './icons';
 
 /**
@@ -65,7 +66,9 @@ export function RequestBar({
   const chat = useChat();
   const inColumn = chat.left && !!chat.composer;
   useBarKeys(box);
-  useAutoGrow(box, text);
+  // a height the person gave the box holds the text in a fixed box; giving it back measures the text again
+  const [regrow, setRegrow] = useState(0);
+  useAutoGrow(box, text, regrow);
 
   const busy = !!busyRun;
   const [blocked, setBlocked] = useState(false);
@@ -144,6 +147,7 @@ export function RequestBar({
       </div>
       <AttachTray items={attach.items} onRemove={attach.remove} />
       <div className="body">
+        <BandResizer id="request" name={t('prompt.bar.request')} edge="top" onReset={() => setRegrow((n) => n + 1)} measure={() => box.current?.offsetHeight ?? 44} />
         <textarea
           ref={box}
           rows={1}

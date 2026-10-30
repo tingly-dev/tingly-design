@@ -10,12 +10,17 @@ import { readPref, writePref } from './local';
 export const BANDS = {
   /** motion's element rows under the scene blocks */
   motionlanes: { def: 132, min: 44, max: 360 },
+  /** the request bar's input box; unset it grows with what is typed (up to its own limit), set it is this tall */
+  request: { def: 44, min: 44, max: 320 },
 } as const;
 
 export type BandId = keyof typeof BANDS;
 
 const key = (id: BandId) => `dc.h.${id}`;
 const clamp = (id: BandId, px: number) => Math.round(Math.min(BANDS[id].max, Math.max(BANDS[id].min, px)));
+
+/** Whether the person set this band's height (otherwise it keeps its own). */
+export const bandHeightSet = (id: BandId): boolean => !!readPref(key(id));
 
 /** The remembered height of a band, or its default. */
 export function bandHeight(id: BandId): number {
@@ -24,9 +29,15 @@ export function bandHeight(id: BandId): number {
 }
 
 function paint(id: BandId, px: number | null) {
-  const root = document.documentElement.style;
-  if (px === null) root.removeProperty(`--h-${id}`);
-  else root.setProperty(`--h-${id}`, `${px}px`);
+  const root = document.documentElement;
+  // `data-h-<id>` marks a height the person set, for a band whose CSS is otherwise content-sized
+  if (px === null) {
+    root.style.removeProperty(`--h-${id}`);
+    root.removeAttribute(`data-h-${id}`);
+  } else {
+    root.style.setProperty(`--h-${id}`, `${px}px`);
+    root.setAttribute(`data-h-${id}`, '');
+  }
 }
 
 /** Put every remembered height on the page; a band nobody resized keeps its own CSS. */
