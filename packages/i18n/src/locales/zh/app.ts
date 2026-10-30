@@ -80,7 +80,6 @@ export default {
     text: '文字',
     frame: '画板',
     frameDraw: '画一块画板',
-    frameAdd: '添加画板',
     frameSame: '与「{{title}}」同尺寸',
     note: '便签',
     draw: '画笔',
