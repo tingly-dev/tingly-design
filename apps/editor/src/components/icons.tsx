@@ -34,6 +34,7 @@ import {
   IconFrame,
   IconHandStop,
   IconHistory,
+  IconVersions,
   IconGif,
   IconInfoCircle,
   IconMovie,
@@ -140,6 +141,8 @@ export const Lock = tabler(IconLock, 14);
 export const Unlock = tabler(IconLockOpen, 14);
 export const Caret = () => <IconChevronDown size={12} stroke={2} aria-hidden="true" />;
 export const History = tabler(IconHistory, 14);
+/** A doc tab's saved versions; History is the change log of the whole project, so the two never share an icon. */
+export const VersionsIcon = tabler(IconVersions, 14);
 export const DockLeft = tabler(IconLayoutSidebar, 14);
 export const DockBottom = tabler(IconLayoutBottombar, 14);
 export const Expand = tabler(IconArrowsMaximize, 14);
