@@ -88,6 +88,13 @@ When done, reply with one short sentence saying what changed. Do not run builds,
 /** Shared by every kind: what the person reads gets the language's own punctuation. */
 const PUNCTUATION = `Text people read (on the page, in notes, titles and descriptions) uses its language's own punctuation: in English the curly apostrophe (’) and quotation marks (“ ” and ‘ ’), in Chinese full-width punctuation and the quotation marks the text already uses (“ ” or 「 」). Straight quotes only as code, HTML, CSS or JSON syntax, and for feet and inches.`;
 
+/**
+ * Shared by every kind, best effort: the editor shows each write as it lands, so
+ * a large change in steps is something the person can watch being built. Never
+ * at the cost of a broken intermediate state.
+ */
+const STEPWISE = `When a change is large, prefer landing it in several writes that each leave the work complete and showing — a section, a card, a part of the page at a time — so the person watching the editor sees it build up as you work, instead of one whole rewrite at the end. Parts that only make sense together (a rename, a restructure that would be broken halfway) stay in one write.`;
+
 /** Running Claude Code processes by run id, stopped with the server. */
 const children = new Map<string, { project: string; child: ReturnType<typeof spawn>; stop: () => void }>();
 export function stopDelegates(): void {
@@ -224,7 +231,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--allowedTools',
     ['Read,Edit,Write,Glob,Grep', ...profile.tools, images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
     '--append-system-prompt',
-    `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}`,
+    `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}\n${STEPWISE}`,
   ];
   if (refs.deny.length) args.push('--disallowedTools', refs.deny.join(','));
   for (const d of refs.dirs) args.push('--add-dir', d);
