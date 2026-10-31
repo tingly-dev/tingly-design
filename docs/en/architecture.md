@@ -42,7 +42,7 @@ $('#dc12').next().children().first().repeat(3)
 .text((i) => ['Plan', 'Build', 'Ship'][i])
 ```
 
-- **Streaming execution**: each line runs in the sandbox as soon as it is complete, and the artboard shows the draft (dashed outline) right away.
+- **Streaming execution**: each line runs in the sandbox as soon as it is complete, and the artboard shows the draft (dashed outline) right away. Every document update — a draft statement, a Claude Code file write, a hand edit — is reconciled onto the drawn DOM instead of remounting the artboard, so pictures, embeds and text stay put while the change lands (`.design/progressive-edit.md`).
 - **Retry on error**: if any line throws, the whole reply is undone and the model is told the error and asked again, up to two retries.
 - **Tools**: `log(x)` lets the model inspect an element's current state first; `askClaude()` hands the request to Claude Code unchanged.
 - **Attachments**: images, PDFs and text files pasted, dropped or picked into the prompt are kept in the project's `uploads/` (named by content, so a file sent twice is kept once), and go to the model as content blocks before your words, each labelled with its path (images scaled to 1568 px on the long side for the model; the kept file is the original). Claude Code gets the paths and reads them. Later requests can use them again, and a slide can show a kept image by its path (`uploads/…`), a doc tab by `../uploads/…`.

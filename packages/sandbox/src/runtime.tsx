@@ -148,7 +148,10 @@ function render() {
   // an artboard that declares $time draws from a time prop: the one its host sought, else what the editor set, else its still
   const spec = doc.slide ? null : timeSpec(doc.props);
   const props = spec ? { ...current.props, time: boardTime(spec, current.time ?? (current.props.time as number | undefined)) } : current.props;
-  const body = <DcComponent key={current.source} source={current.source} file={current.file} props={props} ctx={current.ctx()} />;
+  // no key on the component: a markup-only source change reconciles onto the drawn DOM (the
+  // template's class cache remounts by itself when the page's script changed), so progressive
+  // edits land element by element without the artboard — its pictures, embeds and text — flashing
+  const body = <DcComponent source={current.source} file={current.file} props={props} ctx={current.ctx()} />;
   const tree = (
     <Boundary key={renderKey} file={current.file}>
       {doc.slide ? <div className="dc-slide-host">{body}</div> : body}
