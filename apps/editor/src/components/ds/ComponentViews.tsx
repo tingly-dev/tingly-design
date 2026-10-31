@@ -32,14 +32,57 @@ export function Preview({ comp, html, t, index, theme, minHeight }: { comp: stri
     () => previewDoc({ html, comp, theme, tokens: t, title: index.title, bundleJs, bundleCss, libraries: index.libraries, libFiles, frameId: id }),
     [html, comp, theme, t, index.title, index.libraries, bundleJs, bundleCss, libFiles, id],
   );
+  // Two frames take turns: the one shown stays while the next document loads in
+  // a hidden twin, and the swap waits for the twin's load — a burst of writes to
+  // the bundle (Claude Code working on the system) never blanks the preview.
+  const [active, setActive] = useState(0);
+  const [docs, setDocs] = useState<{ 0: string | null; 1: string | null }>({ 0: doc, 1: null });
+  const [gen, setGen] = useState<[number, number]>([0, 0]);
+  const frames = [useRef<HTMLIFrameElement>(null), useRef<HTMLIFrameElement>(null)];
+  const activeRef = useRef(0);
+  activeRef.current = active;
+  useEffect(() => {
+    if (doc === docs[0] || doc === docs[1]) return;
+    const slot = active === 0 ? 1 : 0;
+    setDocs((d) => ({ ...d, [slot]: doc }));
+    setGen((g) => (slot === 0 ? [g[0] + 1, g[1]] : [g[0], g[1] + 1]));
+  }, [doc, active, docs]);
+  // the twin has loaded: it takes over, and the frame it replaces goes away until the next boot
+  const promote = (slot: 0 | 1) => {
+    setActive(slot);
+    setDocs((d) => ({ ...d, [slot === 0 ? 1 : 0]: null }));
+  };
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
-      if (e.data?.dsPreview === id && typeof e.data.height === 'number') setH(Math.min(4000, Math.max(marker.height ?? 40, e.data.height)));
+      // the twin also measures while it loads: only the frame on show moves the card's height
+      const fromShown = e.source === frames[activeRef.current]?.current?.contentWindow;
+      if (fromShown && e.data?.dsPreview === id && typeof e.data.height === 'number') setH(Math.min(4000, Math.max(marker.height ?? 40, e.data.height)));
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [id, marker.height]);
-  return <iframe className="dspreview" title={tr('ds.components.previewTitle', { comp })} sandbox="allow-scripts" srcDoc={doc} style={{ height: h }} />;
+  const title = tr('ds.components.previewTitle', { comp });
+  const frame = (slot: 0 | 1) => {
+    const src = docs[slot];
+    return src === null ? null : (
+      <iframe
+        key={`${slot}${gen[slot]}`}
+        ref={frames[slot]}
+        className={active === slot ? 'dspreview' : 'dspreview next'}
+        title={title}
+        sandbox="allow-scripts"
+        srcDoc={src}
+        style={{ height: h }}
+        onLoad={() => promote(slot)}
+      />
+    );
+  };
+  return (
+    <div className="dsframe">
+      {frame(0)}
+      {frame(1)}
+    </div>
+  );
 }
 
 function SourceEditor({ path, label }: { path: string; label: string }) {
