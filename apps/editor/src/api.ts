@@ -151,7 +151,8 @@ export const api = {
     call(at(`api/projects/${enc(p)}/image-gen`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled }) }).then((r) => json<ImageState>(r)),
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
-  projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),
+  /** the launcher's list, or with `archived` the projects filed out of it (each with its `archived` time) */
+  projects: (opts: { archived?: boolean } = {}) => call(at(`api/projects${opts.archived ? '?archived=1' : ''}`)).then((r) => json<ProjectCard[]>(r)),
   /** `where` is a folder name in the projects folder, or `{ path }` for a missing or empty folder anywhere; the project's name comes back */
   createProject: (where: string | { path: string }, title: string, kind: ProjectKind = 'design', size?: [number, number], opts: { git?: boolean; look?: string } = {}) =>
     call(at('api/projects'), {
@@ -196,8 +197,8 @@ export const api = {
   /** a project from a .zip, a Claude Design package or a Claude Docs .md; the name it was given (and the design systems or notes that came with it) come back */
   importArchive: (file: File) =>
     call(at(`api/archive?file=${enc(file.name)}`), { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }).then((r) => json<{ name: string; systems: string[]; claudeDesign?: ClaudeDesignKind | 'docs'; notes: ClaudeDesignNote[]; pptx?: { report: string; source: string; diagnostics: PptxDiagnostic[]; slides: PptxReport['slides'] } }>(r)),
-  /** rename a project's title and/or file it under a launcher group ('' takes it out of its group) */
-  patchProject: (p: string, patch: { title?: string; group?: string }) =>
+  /** rename a project's title, file it under a launcher group ('' takes it out of its group), or archive it (`archived: false` puts it back) */
+  patchProject: (p: string, patch: { title?: string; group?: string; archived?: boolean }) =>
     call(at(`api/projects/${enc(p)}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((r) => json<{ ok: true }>(r)),
   files: (p: string) => call(at(`api/projects/${enc(p)}/files`)).then((r) => json<{ files: Record<string, FileState> }>(r)),
   /** the earlier versions kept of a doc tab (newest first), and the text of one */

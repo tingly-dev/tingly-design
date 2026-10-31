@@ -9,7 +9,8 @@ Usage: tingly-design [command] [options]
   serve                            run the server only (for a host or a service)
   new <kind> <name or folder>      create a project: canvas, slides, design-system, dashboard, doc, motion
   new -i                           ask for the kind, title, folder and size (also: new with nothing, in a terminal)
-  list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets)
+  list [project]                   the projects, or what is in one (boards, slides, scenes, tabs, datasets);
+                                   --archived lists the archived ones instead
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
                                    claude-design: the original Claude type's files (canvas, slides, design system, dashboard);

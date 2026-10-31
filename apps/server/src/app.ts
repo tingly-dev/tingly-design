@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, readArchived, resolveKey, setArchived, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -81,7 +81,8 @@ app.use('/api/projects/:p/*', async (c, next) => {
   return c.redirect(url.toString(), 308);
 });
 
-app.get('/api/projects', async (c) => c.json(await listProjects()));
+/** The launcher's list; `?archived=1` hands back the archived projects instead (.design/launcher.md §3). */
+app.get('/api/projects', async (c) => c.json(await listProjects({ archived: c.req.query('archived') === '1' })));
 
 /** The name a project answers to now, for an address that carries one an older version gave it. */
 app.get('/api/resolve/:p', (c) => c.json({ name: resolveKey(c.req.param('p')) }));
@@ -222,12 +223,13 @@ app.delete('/api/links/:p', async (c) => {
   return c.json({ ok: true });
 });
 
-/** Rename a project's title and/or file it under a launcher group ('' takes it out of its group). The folder name stays. */
+/** Rename a project's title, file it under a launcher group ('' takes it out of its group), or archive it (`archived: false` puts it back). The folder name stays. */
 app.patch('/api/projects/:p', async (c) => {
   const p = c.req.param('p');
-  const body = await c.req.json<{ title?: unknown; group?: unknown }>();
+  const body = await c.req.json<{ title?: unknown; group?: unknown; archived?: unknown }>();
   const kind = await kindOf(projectDir(p));
   if (!kind) throw new HttpError(404, 'noProject', { name: p });
+  if (body.archived !== undefined && typeof body.archived !== 'boolean') throw new HttpError(400, 'badRequest', { detail: 'archived' });
   if (body.title !== undefined) {
     const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim() : '';
     if (!title) throw new HttpError(400, 'emptyTitle');
@@ -243,6 +245,10 @@ app.patch('/api/projects/:p', async (c) => {
     });
   }
   if (body.group !== undefined) await setGroup(p, cleanGroup(body.group));
+  if (body.archived !== undefined) {
+    await setArchived(p, body.archived);
+    logInfo(body.archived ? 'project.archived' : 'project.restored', { project: resolveKey(p) });
+  }
   return c.json({ ok: true, groups: await readGroups() });
 });
 

@@ -22,6 +22,8 @@ export interface ProjectCard {
   path?: string;
   /** names earlier versions gave it, which sources recorded in other projects may still carry */
   aliases?: string[];
+  /** the ISO time it was archived, on the cards `GET /api/projects?archived=1` hands back */
+  archived?: string;
   preview: ProjectPreview;
 }
 

@@ -437,6 +437,46 @@ export function folderGroupOf(name: string): { id: string; path: string } | unde
   return id && abs ? { id, path: showPath(abs) } : undefined;
 }
 
+// ---------------------------------------------------------------- archived projects
+
+/**
+ * A project the person filed out of the launcher is named in `.archived.json` beside the
+ * projects (`{ name: the ISO time it was archived }`), this machine's own state like
+ * `.groups.json`: the folder and its files stay exactly where they are, so the zip export,
+ * a commit and Claude Code all work as before. It only leaves `GET /api/projects` and joins
+ * `GET /api/projects?archived=1`, which hands the same cards back with `archived` set
+ * (.design/launcher.md §3).
+ */
+const ARCHIVED_FILE = '.archived.json';
+
+export async function readArchived(): Promise<Record<string, string>> {
+  try {
+    const raw = JSON.parse(await readFile(join(PROJECTS_DIR, ARCHIVED_FILE), 'utf8')) as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw)) if (isProjectName(k) && typeof v === 'string' && v) out[resolveKey(k)] = v;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+let archivedWrite: Promise<unknown> = Promise.resolve();
+/** Archives a project (`on`), or puts it back on the launcher (`off`). */
+export function setArchived(name: string, on: boolean): Promise<void> {
+  const next = archivedWrite.then(async () => {
+    const all = await readArchived();
+    const key = resolveKey(name);
+    if (on) all[key] ??= new Date().toISOString();
+    else delete all[key];
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    const tmp = join(PROJECTS_DIR, `${ARCHIVED_FILE}.tmp-${randomUUID().slice(0, 8)}`);
+    await writeFile(tmp, JSON.stringify(all, null, 2) + '\n', 'utf8');
+    await rename(tmp, join(PROJECTS_DIR, ARCHIVED_FILE));
+  });
+  archivedWrite = next.catch(() => {});
+  return next;
+}
+
 // ---------------------------------------------------------------- references
 
 /**
@@ -746,10 +786,12 @@ export function setGroup(name: string, group: string): Promise<void> {
   return next;
 }
 
-export async function listProjects(): Promise<ProjectCard[]> {
+/** Every project's card: the launcher's list (`archived` false, the default) or the archived ones with their `archived` time. */
+export async function listProjects(opts: { archived?: boolean } = {}): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
   refreshMembers();
   const groups = await readGroups();
+  const archived = await readArchived();
   // the launcher group a person gave a project wins; without one a project in an opened folder is grouped by the folder
   const groupOf = (name: string): Pick<ProjectCard, 'group' | 'folderGroup'> => {
     const f = folderGroupOf(name);
@@ -766,6 +808,8 @@ export async function listProjects(): Promise<ProjectCard[]> {
     const dir = e.dir;
     const kind = await kindOf(dir);
     if (!kind) continue;
+    const when = archived[e.name];
+    if (opts.archived ? !when : when) continue;
     try {
       const files: string[] = [];
       await walk(dir, dir, files);
@@ -778,12 +822,12 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), ...groupOf(e.name), ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), ...groupOf(e.name), ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}), ...(when ? { archived: when } : {}) });
     } catch {
       // unreadable index
     }
   }
-  return out.sort((a, b) => a.name.localeCompare(b.name));
+  return out.sort((a, b) => (opts.archived ? (b.archived ?? '').localeCompare(a.archived ?? '') || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)));
 }
 
 export async function readProject(name: string): Promise<Record<string, FileState>> {

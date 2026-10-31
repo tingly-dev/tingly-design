@@ -1,47 +1,677 @@
 {
-  "快速 AI": {"design": ["fast"], "slides": ["fast_slides"], "docs": ["docs"], "motion": ["fast_motion"]},
-  "交给 Claude Code": {"design": ["run_feed"], "slides": ["run_feed"], "design-system": ["run_feed"], "dashboard": ["run_feed"], "docs": ["run_feed"], "motion": ["run_feed"]},
-  "运行反馈": {"design": ["run_feed"], "slides": ["run_feed"], "design-system": ["run_feed"], "dashboard": ["run_feed"], "docs": ["run_feed"], "motion": ["run_feed"]},
-  "请求栏面板": {"design": ["chat_panel"], "slides": ["chat_panel"], "design-system": ["chat_panel"], "dashboard": ["chat_panel"], "docs": ["chat_panel"], "motion": ["chat_panel"]},
-  "Claude Code 对话": {"design": ["conversation"], "slides": ["conversation"], "design-system": ["conversation"], "dashboard": ["conversation"], "docs": ["conversation"], "motion": ["conversation"]},
-  "手写 jQuery": {"design": ["e2e"], "slides": ["slides"], "motion": "no e2e checks this kind yet"},
-  "附件": {"design": ["attach"], "slides": ["attach"], "design-system": "no e2e checks this kind yet", "dashboard": "no e2e checks this kind yet", "docs": ["attach"], "motion": "no e2e checks this kind yet"},
-  "版本、409 重放、协作": {"design": ["e2e"], "slides": "no e2e checks this kind yet", "design-system": ["ds"], "dashboard": ["dash"], "docs": ["docs"], "motion": "no e2e checks this kind yet"},
-  "外部改动自动刷新": {"design": ["external_edit"], "slides": ["external_edit"], "design-system": ["external_edit"], "dashboard": ["external_edit"], "docs": ["external_edit"], "motion": ["external_edit"]},
-  "日志": {"design": "no e2e checks this kind yet", "slides": "no e2e checks this kind yet", "design-system": "no e2e checks this kind yet", "dashboard": "no e2e checks this kind yet", "docs": "no e2e checks this kind yet", "motion": "no e2e checks this kind yet"},
-  "撤销自己的改动": {"design": ["e2e"], "slides": ["slides"], "design-system": "no e2e checks this kind yet", "motion": "no e2e checks this kind yet"},
-  "界面语言": {"design": ["i18n"], "slides": ["i18n"], "design-system": ["i18n"], "dashboard": ["i18n"], "docs": ["i18n"], "motion": ["i18n"]},
-  "编辑器主题": {"design": ["theme", "baseline"], "slides": ["baseline"], "design-system": ["baseline"], "dashboard": ["theme", "baseline"], "docs": ["theme", "baseline"], "motion": ["baseline"]},
-  "宿主消息": {"design": ["embed"], "slides": "embed checks host messages on one project", "design-system": "embed checks host messages on one project", "dashboard": "embed checks host messages on one project", "docs": "embed checks host messages on one project", "motion": "embed checks host messages on one project"},
-  "顶栏：项目名、同步状态和改动记录、导入 / 导出、\"更多\"": {"design": ["export_menu"], "slides": ["export_menu"], "design-system": ["export_menu"], "dashboard": ["export_menu"], "docs": ["export_menu"], "motion": ["export_menu"]},
-  "离开项目：回首页、切换、新建": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},
-  "新建时选起点": {"design-system": ["launcher"]},
-  "新建时选尺寸": {"design": ["launcher"], "slides": ["launcher"], "motion": ["motion", "launcher"]},
-  "AI 模型设置": {"design": ["ai_settings"], "slides": "a global setting; ai_settings opens it from one project", "design-system": "a global setting; ai_settings opens it from one project", "dashboard": "a global setting; ai_settings opens it from one project", "docs": "a global setting; ai_settings opens it from one project", "motion": "a global setting; ai_settings opens it from one project"},
-  "图像生成": {"design": ["image_gen"], "slides": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet", "docs": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet", "motion": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet"},
-  "启动页卡片和预览": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},
-  "启动页分组、列表视图、重命名": {"design": ["launcher"], "slides": ["launcher"], "design-system": ["launcher"], "dashboard": ["launcher"], "docs": ["launcher"], "motion": ["launcher"]},
-  "项目放在别处": {"design": ["folders"], "slides": ["folders"], "design-system": ["folders"], "dashboard": ["folders"], "docs": ["folders"], "motion": ["folders"]},
-  "按目录分组、引用其他项目": {"design": ["folder_groups"], "slides": ["folder_groups"], "design-system": ["folder_groups"], "dashboard": ["folder_groups"], "docs": ["folder_groups"], "motion": ["folder_groups"]},
-  "提交到 git": {"design": ["git"], "slides": ["git"], "design-system": ["git"], "dashboard": ["git"], "docs": ["git"], "motion": ["git"]},
-  "装入设计系统": {"design": ["launcher"], "slides": ["ds"]},
-  "主题": {"design": ["theme_switch"], "slides": ["theme_switch"]},
-  "导入 / 导出": {"design": ["export_menu", "copy_png"], "slides": ["export_menu", "export_image", "pptx", "copy_png"], "design-system": ["export_menu", "export_image", "copy_png"], "dashboard": ["export_menu", "export_image", "copy_png"], "docs": ["export_menu", "export_image", "copy_png"], "motion": ["export_menu", "export", "copy_png"]},
-  "命令行和 MCP": {"design": "the command line is checked by unit tests and by hand, not by e2e", "slides": ["pptx"], "design-system": "the command line is checked by unit tests and by hand, not by e2e", "dashboard": "the command line is checked by unit tests and by hand, not by e2e", "docs": "the command line is checked by unit tests and by hand, not by e2e", "motion": "the command line is checked by unit tests and by hand, not by e2e"},
-  "放映 / 播放": {"design": ["e2e"], "slides": ["slides"], "motion": ["motion"]},
-  "图层树": {"design": ["layers"], "slides": ["layers"], "motion": ["layers"]},
-  "整个项目导出 / 导入": {"design": ["archive"], "slides": ["archive"], "design-system": ["archive"], "dashboard": ["archive"], "docs": ["archive"], "motion": ["archive"]},
-  "和原版 Claude Design 互相搬作品": {"design": ["claude_design"], "slides": ["claude_design"], "design-system": ["claude_design"], "dashboard": ["claude_design"]},
-  "批注 / 备注": {"design": "no e2e checks this kind yet", "slides": ["slides"], "motion": ["motion"]},
-  "元素缩放手柄": {"design": "no e2e checks this kind yet", "slides": "no e2e checks this kind yet", "motion": ["motion"]},
-  "新建时导入": {"design": "no e2e checks this kind yet", "slides": ["pptx"], "dashboard": ["archive"], "docs": ["claude_design"]},
-  "往打开的项目里导入": {"design": ["import_here"], "slides": ["import_here"], "design-system": ["import_here"], "dashboard": ["import_here"], "docs": ["import_here"], "motion": ["import_here"]},
-  "从项目导入": {"slides": ["import_board"], "motion": ["import_board"]},
-  "画布的模板值": {"design": ["template_values"]},
-  "画板里模板文字和颜色的原地编辑": {"design": ["tweak_text"]},
-  "对话记录": {"design": ["chat_panel"], "slides": ["chat_panel"], "design-system": ["chat_panel"], "dashboard": ["chat_panel"], "docs": ["chat_panel"], "motion": ["chat_panel"]},
-  "边栏宽度可拖": {"design": ["side_resize"], "slides": ["side_resize"], "design-system": ["side_resize"], "dashboard": ["side_resize"], "docs": ["side_resize"], "motion": ["side_resize"]},
-  "请求栏输入框高度可拖": {"design": ["side_resize"], "slides": ["side_resize"], "design-system": ["side_resize"], "dashboard": ["side_resize"], "docs": ["side_resize"], "motion": ["side_resize"]},
-  "AI 能查到的项目配置": {"design": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "slides": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "design-system": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "dashboard": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "docs": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e", "motion": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e"},
-  "配置变化后的跟进提议": {"design": "core 单测覆盖提议规则；画板面板的接线与幻灯片共用 SizeRows 和 DsInstall，e2e 只在幻灯片里走一遍", "slides": ["follow_up"], "design-system": "core 单测覆盖 tokens 的提议与合并；e2e 暂未走设计系统里改 token", "motion": "core 单测覆盖新格式的提议规则；e2e 暂未走动效的“添加尺寸”"}
+  "快速 AI": {
+    "design": [
+      "fast"
+    ],
+    "slides": [
+      "fast_slides"
+    ],
+    "docs": [
+      "docs"
+    ],
+    "motion": [
+      "fast_motion"
+    ]
+  },
+  "交给 Claude Code": {
+    "design": [
+      "run_feed"
+    ],
+    "slides": [
+      "run_feed"
+    ],
+    "design-system": [
+      "run_feed"
+    ],
+    "dashboard": [
+      "run_feed"
+    ],
+    "docs": [
+      "run_feed"
+    ],
+    "motion": [
+      "run_feed"
+    ]
+  },
+  "运行反馈": {
+    "design": [
+      "run_feed"
+    ],
+    "slides": [
+      "run_feed"
+    ],
+    "design-system": [
+      "run_feed"
+    ],
+    "dashboard": [
+      "run_feed"
+    ],
+    "docs": [
+      "run_feed"
+    ],
+    "motion": [
+      "run_feed"
+    ]
+  },
+  "请求栏面板": {
+    "design": [
+      "chat_panel"
+    ],
+    "slides": [
+      "chat_panel"
+    ],
+    "design-system": [
+      "chat_panel"
+    ],
+    "dashboard": [
+      "chat_panel"
+    ],
+    "docs": [
+      "chat_panel"
+    ],
+    "motion": [
+      "chat_panel"
+    ]
+  },
+  "Claude Code 对话": {
+    "design": [
+      "conversation"
+    ],
+    "slides": [
+      "conversation"
+    ],
+    "design-system": [
+      "conversation"
+    ],
+    "dashboard": [
+      "conversation"
+    ],
+    "docs": [
+      "conversation"
+    ],
+    "motion": [
+      "conversation"
+    ]
+  },
+  "手写 jQuery": {
+    "design": [
+      "e2e"
+    ],
+    "slides": [
+      "slides"
+    ],
+    "motion": "no e2e checks this kind yet"
+  },
+  "附件": {
+    "design": [
+      "attach"
+    ],
+    "slides": [
+      "attach"
+    ],
+    "design-system": "no e2e checks this kind yet",
+    "dashboard": "no e2e checks this kind yet",
+    "docs": [
+      "attach"
+    ],
+    "motion": "no e2e checks this kind yet"
+  },
+  "版本、409 重放、协作": {
+    "design": [
+      "e2e"
+    ],
+    "slides": "no e2e checks this kind yet",
+    "design-system": [
+      "ds"
+    ],
+    "dashboard": [
+      "dash"
+    ],
+    "docs": [
+      "docs"
+    ],
+    "motion": "no e2e checks this kind yet"
+  },
+  "外部改动自动刷新": {
+    "design": [
+      "external_edit"
+    ],
+    "slides": [
+      "external_edit"
+    ],
+    "design-system": [
+      "external_edit"
+    ],
+    "dashboard": [
+      "external_edit"
+    ],
+    "docs": [
+      "external_edit"
+    ],
+    "motion": [
+      "external_edit"
+    ]
+  },
+  "日志": {
+    "design": "no e2e checks this kind yet",
+    "slides": "no e2e checks this kind yet",
+    "design-system": "no e2e checks this kind yet",
+    "dashboard": "no e2e checks this kind yet",
+    "docs": "no e2e checks this kind yet",
+    "motion": "no e2e checks this kind yet"
+  },
+  "撤销自己的改动": {
+    "design": [
+      "e2e"
+    ],
+    "slides": [
+      "slides"
+    ],
+    "design-system": "no e2e checks this kind yet",
+    "motion": "no e2e checks this kind yet"
+  },
+  "界面语言": {
+    "design": [
+      "i18n"
+    ],
+    "slides": [
+      "i18n"
+    ],
+    "design-system": [
+      "i18n"
+    ],
+    "dashboard": [
+      "i18n"
+    ],
+    "docs": [
+      "i18n"
+    ],
+    "motion": [
+      "i18n"
+    ]
+  },
+  "编辑器主题": {
+    "design": [
+      "theme",
+      "baseline"
+    ],
+    "slides": [
+      "baseline"
+    ],
+    "design-system": [
+      "baseline"
+    ],
+    "dashboard": [
+      "theme",
+      "baseline"
+    ],
+    "docs": [
+      "theme",
+      "baseline"
+    ],
+    "motion": [
+      "baseline"
+    ]
+  },
+  "宿主消息": {
+    "design": [
+      "embed"
+    ],
+    "slides": "embed checks host messages on one project",
+    "design-system": "embed checks host messages on one project",
+    "dashboard": "embed checks host messages on one project",
+    "docs": "embed checks host messages on one project",
+    "motion": "embed checks host messages on one project"
+  },
+  "顶栏：项目名、同步状态和改动记录、导入 / 导出、\"更多\"": {
+    "design": [
+      "export_menu"
+    ],
+    "slides": [
+      "export_menu"
+    ],
+    "design-system": [
+      "export_menu"
+    ],
+    "dashboard": [
+      "export_menu"
+    ],
+    "docs": [
+      "export_menu"
+    ],
+    "motion": [
+      "export_menu"
+    ]
+  },
+  "离开项目：回首页、切换、新建": {
+    "design": [
+      "launcher"
+    ],
+    "slides": [
+      "launcher"
+    ],
+    "design-system": [
+      "launcher"
+    ],
+    "dashboard": [
+      "launcher"
+    ],
+    "docs": [
+      "launcher"
+    ],
+    "motion": [
+      "launcher"
+    ]
+  },
+  "新建时选起点": {
+    "design-system": [
+      "launcher"
+    ]
+  },
+  "新建时选尺寸": {
+    "design": [
+      "launcher"
+    ],
+    "slides": [
+      "launcher"
+    ],
+    "motion": [
+      "motion",
+      "launcher"
+    ]
+  },
+  "AI 模型设置": {
+    "design": [
+      "ai_settings"
+    ],
+    "slides": "a global setting; ai_settings opens it from one project",
+    "design-system": "a global setting; ai_settings opens it from one project",
+    "dashboard": "a global setting; ai_settings opens it from one project",
+    "docs": "a global setting; ai_settings opens it from one project",
+    "motion": "a global setting; ai_settings opens it from one project"
+  },
+  "图像生成": {
+    "design": [
+      "image_gen"
+    ],
+    "slides": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet",
+    "docs": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet",
+    "motion": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet"
+  },
+  "启动页卡片和预览": {
+    "design": [
+      "launcher"
+    ],
+    "slides": [
+      "launcher"
+    ],
+    "design-system": [
+      "launcher"
+    ],
+    "dashboard": [
+      "launcher"
+    ],
+    "docs": [
+      "launcher"
+    ],
+    "motion": [
+      "launcher"
+    ]
+  },
+  "启动页分组、列表视图、重命名": {
+    "design": [
+      "launcher"
+    ],
+    "slides": [
+      "launcher"
+    ],
+    "design-system": [
+      "launcher"
+    ],
+    "dashboard": [
+      "launcher"
+    ],
+    "docs": [
+      "launcher"
+    ],
+    "motion": [
+      "launcher"
+    ]
+  },
+  "启动页归档与恢复": {
+    "design": [
+      "launcher"
+    ],
+    "slides": [
+      "launcher"
+    ],
+    "design-system": [
+      "launcher"
+    ],
+    "dashboard": [
+      "launcher"
+    ],
+    "docs": [
+      "launcher"
+    ],
+    "motion": [
+      "launcher"
+    ]
+  },
+  "项目放在别处": {
+    "design": [
+      "folders"
+    ],
+    "slides": [
+      "folders"
+    ],
+    "design-system": [
+      "folders"
+    ],
+    "dashboard": [
+      "folders"
+    ],
+    "docs": [
+      "folders"
+    ],
+    "motion": [
+      "folders"
+    ]
+  },
+  "按目录分组、引用其他项目": {
+    "design": [
+      "folder_groups"
+    ],
+    "slides": [
+      "folder_groups"
+    ],
+    "design-system": [
+      "folder_groups"
+    ],
+    "dashboard": [
+      "folder_groups"
+    ],
+    "docs": [
+      "folder_groups"
+    ],
+    "motion": [
+      "folder_groups"
+    ]
+  },
+  "提交到 git": {
+    "design": [
+      "git"
+    ],
+    "slides": [
+      "git"
+    ],
+    "design-system": [
+      "git"
+    ],
+    "dashboard": [
+      "git"
+    ],
+    "docs": [
+      "git"
+    ],
+    "motion": [
+      "git"
+    ]
+  },
+  "装入设计系统": {
+    "design": [
+      "launcher"
+    ],
+    "slides": [
+      "ds"
+    ]
+  },
+  "主题": {
+    "design": [
+      "theme_switch"
+    ],
+    "slides": [
+      "theme_switch"
+    ]
+  },
+  "导入 / 导出": {
+    "design": [
+      "export_menu",
+      "copy_png"
+    ],
+    "slides": [
+      "export_menu",
+      "export_image",
+      "pptx",
+      "copy_png"
+    ],
+    "design-system": [
+      "export_menu",
+      "export_image",
+      "copy_png"
+    ],
+    "dashboard": [
+      "export_menu",
+      "export_image",
+      "copy_png"
+    ],
+    "docs": [
+      "export_menu",
+      "export_image",
+      "copy_png"
+    ],
+    "motion": [
+      "export_menu",
+      "export",
+      "copy_png"
+    ]
+  },
+  "命令行和 MCP": {
+    "design": "the command line is checked by unit tests and by hand, not by e2e",
+    "slides": [
+      "pptx"
+    ],
+    "design-system": "the command line is checked by unit tests and by hand, not by e2e",
+    "dashboard": "the command line is checked by unit tests and by hand, not by e2e",
+    "docs": "the command line is checked by unit tests and by hand, not by e2e",
+    "motion": "the command line is checked by unit tests and by hand, not by e2e"
+  },
+  "放映 / 播放": {
+    "design": [
+      "e2e"
+    ],
+    "slides": [
+      "slides"
+    ],
+    "motion": [
+      "motion"
+    ]
+  },
+  "图层树": {
+    "design": [
+      "layers"
+    ],
+    "slides": [
+      "layers"
+    ],
+    "motion": [
+      "layers"
+    ]
+  },
+  "整个项目导出 / 导入": {
+    "design": [
+      "archive"
+    ],
+    "slides": [
+      "archive"
+    ],
+    "design-system": [
+      "archive"
+    ],
+    "dashboard": [
+      "archive"
+    ],
+    "docs": [
+      "archive"
+    ],
+    "motion": [
+      "archive"
+    ]
+  },
+  "和原版 Claude Design 互相搬作品": {
+    "design": [
+      "claude_design"
+    ],
+    "slides": [
+      "claude_design"
+    ],
+    "design-system": [
+      "claude_design"
+    ],
+    "dashboard": [
+      "claude_design"
+    ]
+  },
+  "批注 / 备注": {
+    "design": "no e2e checks this kind yet",
+    "slides": [
+      "slides"
+    ],
+    "motion": [
+      "motion"
+    ]
+  },
+  "元素缩放手柄": {
+    "design": "no e2e checks this kind yet",
+    "slides": "no e2e checks this kind yet",
+    "motion": [
+      "motion"
+    ]
+  },
+  "新建时导入": {
+    "design": "no e2e checks this kind yet",
+    "slides": [
+      "pptx"
+    ],
+    "dashboard": [
+      "archive"
+    ],
+    "docs": [
+      "claude_design"
+    ]
+  },
+  "往打开的项目里导入": {
+    "design": [
+      "import_here"
+    ],
+    "slides": [
+      "import_here"
+    ],
+    "design-system": [
+      "import_here"
+    ],
+    "dashboard": [
+      "import_here"
+    ],
+    "docs": [
+      "import_here"
+    ],
+    "motion": [
+      "import_here"
+    ]
+  },
+  "从项目导入": {
+    "slides": [
+      "import_board"
+    ],
+    "motion": [
+      "import_board"
+    ]
+  },
+  "画布的模板值": {
+    "design": [
+      "template_values"
+    ]
+  },
+  "画板里模板文字和颜色的原地编辑": {
+    "design": [
+      "tweak_text"
+    ]
+  },
+  "对话记录": {
+    "design": [
+      "chat_panel"
+    ],
+    "slides": [
+      "chat_panel"
+    ],
+    "design-system": [
+      "chat_panel"
+    ],
+    "dashboard": [
+      "chat_panel"
+    ],
+    "docs": [
+      "chat_panel"
+    ],
+    "motion": [
+      "chat_panel"
+    ]
+  },
+  "边栏宽度可拖": {
+    "design": [
+      "side_resize"
+    ],
+    "slides": [
+      "side_resize"
+    ],
+    "design-system": [
+      "side_resize"
+    ],
+    "dashboard": [
+      "side_resize"
+    ],
+    "docs": [
+      "side_resize"
+    ],
+    "motion": [
+      "side_resize"
+    ]
+  },
+  "请求栏输入框高度可拖": {
+    "design": [
+      "side_resize"
+    ],
+    "slides": [
+      "side_resize"
+    ],
+    "design-system": [
+      "side_resize"
+    ],
+    "dashboard": [
+      "side_resize"
+    ],
+    "docs": [
+      "side_resize"
+    ],
+    "motion": [
+      "side_resize"
+    ]
+  },
+  "AI 能查到的项目配置": {
+    "design": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e",
+    "slides": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e",
+    "design-system": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e",
+    "dashboard": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e",
+    "docs": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e",
+    "motion": "core 单测 settingsProject 覆盖六种类型的示例项目；委托与 open 的接线靠类型检查，暂无 e2e"
+  },
+  "配置变化后的跟进提议": {
+    "design": "core 单测覆盖提议规则；画板面板的接线与幻灯片共用 SizeRows 和 DsInstall，e2e 只在幻灯片里走一遍",
+    "slides": [
+      "follow_up"
+    ],
+    "design-system": "core 单测覆盖 tokens 的提议与合并；e2e 暂未走设计系统里改 token",
+    "motion": "core 单测覆盖新格式的提议规则；e2e 暂未走动效的“添加尺寸”"
+  }
 }

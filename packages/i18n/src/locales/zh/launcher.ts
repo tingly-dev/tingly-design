@@ -230,6 +230,15 @@ export default {
     label: '项目标题',
     hint: '只改标题，文件夹名不变。',
   },
+  archived: {
+    tab: '归档',
+    empty: '还没有归档的项目。项目卡片的“⋯”菜单可以把项目收进这里：只从列表收起，文件夹和文件原样保留，随时“恢复”。',
+    menu: '归档',
+    restore: '恢复',
+    open: '打开',
+    done: '已归档“{{title}}”，文件原样保留，可在“归档”中找回。',
+    restored: '已恢复“{{title}}”。',
+  },
   folder: {
     menu: '打开文件夹…',
     title: '打开文件夹',

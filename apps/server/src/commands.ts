@@ -209,8 +209,9 @@ async function texts(dir: string): Promise<Record<string, string>> {
 
 // ---------------------------------------------------------------- list
 
-export async function projects() {
-  return (await listProjects()).map((c) => ({ name: c.name, kind: c.kind as Kind, title: c.title, ...(c.path ? { path: c.path } : {}), updatedAt: c.updatedAt }));
+/** The launcher's list, or with `archived` the projects filed out of it. */
+export async function projects(opts: { archived?: boolean } = {}) {
+  return (await listProjects({ archived: opts.archived })).map((c) => ({ name: c.name, kind: c.kind as Kind, title: c.title, ...(c.path ? { path: c.path } : {}), updatedAt: c.updatedAt }));
 }
 
 export async function outline(p: Project) {

@@ -238,6 +238,15 @@ export default {
     label: 'Project title',
     hint: 'Only the title changes; the folder keeps its name.',
   },
+  archived: {
+    tab: 'Archive',
+    empty: 'Nothing archived. A card’s ⋯ menu files a project out of the list into here; its folder and files stay as they are, and Restore puts it back.',
+    menu: 'Archive',
+    restore: 'Restore',
+    open: 'Open',
+    done: 'Archived “{{title}}”. Its files are untouched; find it under Archive.',
+    restored: 'Restored “{{title}}”.',
+  },
   folder: {
     menu: 'Open a folder…',
     title: 'Open a folder',

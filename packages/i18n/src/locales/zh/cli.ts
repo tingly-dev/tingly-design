@@ -11,7 +11,8 @@ export default {
   serve                            只运行服务（给宿主或常驻服务用）
   new <类型> <名字或文件夹>        新建项目：canvas、slides、design-system、dashboard、doc、motion
   new -i                           依次询问类型、标题、文件夹和尺寸（在终端里单打 new 也一样）
-  list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）
+  list [项目]                      列出项目，或一个项目里的内容（画板、幻灯片、场景、标签页、数据集）；
+                                   --archived 改列已归档的项目
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
                                    claude-design：原版 Claude 类型的文件（画布、幻灯片、设计系统、看板）；

@@ -60,7 +60,7 @@
 | [canvas-artboards.md](./canvas-artboards.md) | 画布里新建和调整画板：工具条的画板按钮开菜单（画一块 / 按具体尺寸添加 / 与选中同尺寸 / 我的尺寸），新画板放在右边并选中移入视野；画板四角四边都能拖，Shift 保持比例，拖动时显示尺寸；拖是调框、面板才换格式 | 已实施；仅画布 |
 | [canvas-fast-edit.md](./canvas-fast-edit.md) | 画布上的快速 AI：提示词里让它用 flex / grid 排版而不是像素偏移；一次回复里把部件复制到另一块画板（`board(file)`、其他画板的句柄前缀、只能复制不能搬、没点名的写法被拒），一次撤销退回整次回复；整块画板的复制仍交给 Claude Code | 已实施；仅画布 |
 | [export.md](./export.md) | 导出：独立的 `@dc/export` 包、动效视频与取帧路线、速度度量；其他格式的现行入口链接到专门契约 | 动效视频已实施；PNG/PDF/共用菜单见对应笔记，受限 PPTX 接入已实施，验证范围见 slides-pptx；未做项单列；调研在 `.research/export.md` |
-| [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图 | 已实施 |
+| [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图、归档与恢复 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [folder-groups.md](./folder-groups.md) | 按目录管理：打开一个装着项目的文件夹作为分组（`.folders.json`，成员看磁盘得到）、项目引用其他项目或文件夹，Claude Code 只读授权（`--add-dir` 加拒绝编辑的权限规则） | 已实施 |

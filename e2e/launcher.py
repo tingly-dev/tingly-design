@@ -11,11 +11,12 @@ MADE = ['zz-launch', 'zz-launch-deck', 'zz-grp-a', 'zz-grp-b', 'zz-phone', 'zz-s
 
 def cleanup():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(REPO, 'projects', n)])
-    gf = os.path.join(REPO, 'projects', '.groups.json')
-    if os.path.exists(gf):
-        kept = {k: v for k, v in json.load(open(gf, encoding='utf-8')).items() if k not in MADE}
-        if kept: json.dump(kept, open(gf, 'w', encoding='utf-8'))
-        else: os.remove(gf)
+    for f in ('.groups.json', '.archived.json'):
+        gf = os.path.join(REPO, 'projects', f)
+        if os.path.exists(gf):
+            kept = {k: v for k, v in json.load(open(gf, encoding='utf-8')).items() if k not in MADE}
+            if kept: json.dump(kept, open(gf, 'w', encoding='utf-8'))
+            else: os.remove(gf)
 
 results = []
 def check(name, ok, extra=''):
@@ -37,7 +38,7 @@ async def main():
 
         # --- every kind and every project ----------------------------------------------------
         tabs = await pg.locator('.ltabs [role=tab]').evaluate_all('ts => ts.map(t => t.dataset.tab)')
-        check('a tab for all and for each of the six kinds', tabs == ['all', 'design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'], str(tabs))
+        check('a tab for all, for each of the six kinds, and for Archive', tabs == ['all', 'design', 'slides', 'design-system', 'dashboard', 'docs', 'motion', 'archived'], str(tabs))
         listed = await pg.locator('.lcard[data-project]').evaluate_all('cs => Object.fromEntries(cs.map(c => [c.dataset.project, c.dataset.kind]))')
         check('every sample project is listed with its kind', all(listed.get(n) == k for n, k in SAMPLES.items()), json.dumps(listed))
         await pg.locator('.lnewbtn').click()
@@ -167,6 +168,57 @@ async def main():
         check('and the new title is what the launcher lists next time', True)
         await pg.locator('[data-view="grid"]').click()
         await pg.locator('.lcard[data-project]').first.wait_for()
+
+        # --- archive: file a project out of the list, find it under Archive, restore it ---------
+        await pg.locator('.ltabs [data-tab="archived"]').click()
+        await expect(pg.locator('.ltabs [data-tab="archived"] .n')).to_have_text('0')
+        await expect(pg.locator('.lbar h2')).to_have_text('归档')
+        await expect(pg.locator('.lhint')).to_contain_text('还没有归档的项目')
+        check('the Archive tab starts empty, with its own empty state and no new tile', await pg.locator('[data-new]').count() == 0)
+        await pg.locator('.ltabs [data-tab="all"]').click()
+        await pg.locator('.lcell:has([data-project="zz-grp-b"])').hover()
+        await pg.locator('[data-more="zz-grp-b"]').click()
+        await pg.get_by_role('menuitem', name='归档', exact=True).click()
+        await expect(pg.locator('.lcard[data-project="zz-grp-b"]')).to_have_count(0)
+        await expect(pg.locator('.ltabs [data-tab="archived"] .n')).to_have_text('1')
+        check('archiving takes the project off the list at once', True)
+        doc = json.load(open(os.path.join(REPO, 'projects/zz-grp-b/doc.json'), encoding='utf-8'))
+        reg = json.load(open(os.path.join(REPO, 'projects/.archived.json'), encoding='utf-8'))
+        check('only the list changes: the folder, its files and the group stay, the time is noted in projects/.archived.json',
+              doc['title'] == 'ZZ zz-grp-b' and os.path.isdir(os.path.join(REPO, 'projects/zz-grp-b')) and reg.get('zz-grp-b'))
+        await expect(pg.locator('.toast').last).to_contain_text('已归档')
+        await pg.locator('.toast-act').click()
+        await expect(pg.locator('.lcard[data-project="zz-grp-b"]')).to_have_count(1)
+        await expect(pg.locator('.ltabs [data-tab="archived"] .n')).to_have_text('0')
+        check('the toast puts it straight back', True)
+        await pg.locator('.lcell:has([data-project="zz-grp-b"])').hover()
+        await pg.locator('[data-more="zz-grp-b"]').click()
+        await pg.get_by_role('menuitem', name='归档', exact=True).click()
+        await expect(pg.locator('.lcard[data-project="zz-grp-b"]')).to_have_count(0)
+        await pg.locator('.ltabs [data-tab="archived"]').click()
+        card = pg.locator('.lcard[data-project="zz-grp-b"]')
+        await expect(card).to_be_visible()
+        check('the archived project is listed under Archive, with its kind and search working',
+              await pg.locator('.lcard[data-project]').count() == 1)
+        await pg.locator('input[aria-label="搜索项目"]').fill('nothing-like-this')
+        await expect(pg.locator('.lhint')).to_contain_text('没有找到')
+        await pg.locator('input[aria-label="搜索项目"]').fill('')
+        listed = await (await pg.request.get(BASE + '/api/projects')).json()
+        old = await (await pg.request.get(BASE + '/api/projects?archived=1')).json()
+        check('the API lists it under ?archived=1 only', [p['name'] for p in old] == ['zz-grp-b'] and all(p['name'] != 'zz-grp-b' for p in listed))
+        await card.hover()
+        await pg.locator('[data-more="zz-grp-b"]').click()
+        items = await pg.locator('.menu button.mi').all_inner_texts()
+        check('an archived card offers open, export and restore', items == ['打开', '导出（.zip）', '恢复'], str(items))
+        await pg.get_by_role('menuitem', name='恢复').click()
+        await expect(card).to_have_count(0)
+        await expect(pg.locator('.toast').last).to_contain_text('已恢复')
+        await pg.locator('.ltabs [data-tab="all"]').click()
+        await expect(pg.locator('.lsection[data-group="ZZ Team"] .lcard[data-project="zz-grp-b"]')).to_have_count(1)
+        check('restoring puts it back in its group on the normal list, and Archive is empty again',
+              await pg.locator('.ltabs [data-tab="archived"] .n').inner_text() == '0')
+        listed = subprocess.run(['pnpm', '-s', 'tingly-design', 'list', '--archived'], cwd=REPO, capture_output=True, text=True)
+        check('list --archived names nothing once it is back', 'zz-grp-b' not in (listed.stdout + listed.stderr), listed.stdout + listed.stderr)
 
         # --- new project dialog ---------------------------------------------------------------
         await pg.locator('.lnewbtn').click()
@@ -417,7 +469,7 @@ async def main():
             await pg.keyboard.press('Escape')
         await pg.goto(f'{BASE}/?p=tingly-box-console-canvas')
         await pg.locator('.pmenu button.tb').click()
-        await pg.wait_for_function("document.querySelectorAll('.menu button.mi').length > 3")
+        await pg.wait_for_function("document.querySelectorAll('.menu button.mi').length > 4")  # home + one other project + new + references + AI
         items = await pg.locator('.menu a.mi, .menu button.mi').all_inner_texts()
         check('the project menu lists other projects, new and the AI settings', len(items) >= 5 and not any('tingly-box-console-canvas' in i.lower() for i in items), str(items))
         await pg.locator('.menu button.mi').nth(1).click()

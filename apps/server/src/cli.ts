@@ -55,6 +55,7 @@ const { values: opts, positionals } = (() => {
         file: { type: 'string' },
         continue: { type: 'string' },
         new: { type: 'boolean' },
+        archived: { type: 'boolean' },
         interactive: { type: 'boolean', short: 'i' },
         global: { type: 'boolean' },
         name: { type: 'boolean', short: 'n' },
@@ -198,7 +199,7 @@ async function create(kind: string | undefined, target: string | undefined): Pro
 
 async function list(arg: string | undefined): Promise<void> {
   if (!arg) {
-    const cards = await cmd.projects();
+    const cards = await cmd.projects({ archived: opts.archived });
     if (opts.json) return print(cards);
     if (!cards.length) return void console.log(t('cli.listEmpty', { dir: layout.PROJECTS_DIR }));
     table(cards.map((c) => [c.name, t(`cli.kind.${c.kind}`), c.title, c.path ?? '']));

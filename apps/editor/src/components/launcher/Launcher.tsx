@@ -4,7 +4,7 @@ import { IconFileImport, IconPlus, IconSearch } from '@tabler/icons-react';
 import { type ProjectCard, type ProjectKind } from '@dc/core';
 import { api } from '../../api';
 import { toast, useStore } from '../../store';
-import { Chevron, FileZip, FolderOpen, GridLayout, ListLayout, Sliders, Unlink } from '../icons';
+import { Chevron, ArchiveBox, FileZip, FolderOpen, GridLayout, ListLayout, Sliders, Unlink } from '../icons';
 import { chooseProjectArchive, importProjectFile, isProjectImportFile } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { Appearance, LanguageMenu } from '../Appearance';
@@ -13,7 +13,7 @@ import { ImportDialog } from '../ImportDialog';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../../importer';
 import { readPref, writePref } from '../../local';
 import { NewDialog, OpenFolderDialog } from './NewDialog';
-import { Card, NewTile, ProjectActions, Row } from './ProjectCards';
+import { Card, NewTile, ProjectActions, Row, ArchivedActions } from './ProjectCards';
 import { KIND, KINDS, KindIcon } from './kinds';
 import { open, readRecent } from './recent';
 
@@ -57,7 +57,8 @@ function arrowNav(e: React.KeyboardEvent<HTMLElement>) {
 export function Launcher() {
   const { t } = useTranslation();
   const [list, setList] = useState<ProjectCard[] | null>(null);
-  const [tab, setTab] = useState<ProjectKind | 'all'>('all');
+  const [archived, setArchived] = useState<ProjectCard[] | null>(null);
+  const [tab, setTab] = useState<ProjectKind | 'all' | 'archived'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
   const [view, setView] = useState<'grid' | 'list'>(() => (readPref(VIEW_KEY) === 'list' ? 'list' : 'grid'));
@@ -78,6 +79,8 @@ export function Launcher() {
       setList([]);
       toast(e.message, 'error');
     });
+    // the Archive tab's list; a failure here leaves it empty, the main list's toast already said why
+    api.projects({ archived: true }).then(setArchived, () => setArchived([]));
   }, []);
   useEffect(reload, [reload]);
   // a folder of projects opened as a group is taken off again from its heading; the toast puts it back
@@ -116,38 +119,40 @@ export function Launcher() {
   }, [creating, importing]);
 
   const counts = useMemo(() => {
-    const c = { all: list?.length ?? 0 } as Record<ProjectKind | 'all', number>;
+    const c = { all: list?.length ?? 0, archived: archived?.length ?? 0 } as Record<ProjectKind | 'all' | 'archived', number>;
     for (const k of KINDS) c[k.kind] = list?.filter((p) => p.kind === k.kind).length ?? 0;
     return c;
-  }, [list]);
+  }, [list, archived]);
+  // the Archive tab looks at the archived projects, every other tab at the launcher's list
+  const source = tab === 'archived' ? archived : list;
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const rank = (p: ProjectCard) => {
       const i = recent.indexOf(p.name);
       return i < 0 ? Infinity : i;
     };
-    return (list ?? [])
-      .filter((p) => (tab === 'all' || p.kind === tab) && (!needle || p.title.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle) || (p.group ?? '').toLowerCase().includes(needle) || t(`launcher.kind.${p.kind}.name`).toLowerCase().includes(needle)))
+    return (source ?? [])
+      .filter((p) => (tab === 'all' || tab === 'archived' || p.kind === tab) && (!needle || p.title.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle) || (p.group ?? '').toLowerCase().includes(needle) || t(`launcher.kind.${p.kind}.name`).toLowerCase().includes(needle)))
       .sort((a, b) =>
         sort === 'name'
           ? (a.title || a.name).localeCompare(b.title || b.name)
           : rank(a) - rank(b) || (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '') || a.name.localeCompare(b.name),
       );
-  }, [list, tab, q, sort, recent, t]);
-  const taken = useMemo(() => new Set((list ?? []).map((p) => p.name)), [list]);
+  }, [source, tab, q, sort, recent, t]);
+  const taken = useMemo(() => new Set([...(list ?? []), ...(archived ?? [])].map((p) => p.name)), [list, archived]);
   const lastOpened = recent.find((n) => taken.has(n));
   const groups = useMemo(() => [...new Set((list ?? []).map((p) => p.group).filter((g): g is string => !!g))].sort((a, b) => a.localeCompare(b)), [list]);
-  // with groups, the list falls into one section per group (the most recent first, or by name), the loose ones last; a search flattens it
+  // with groups, the list falls into one section per group (the most recent first, or by name), the loose ones last; a search flattens it, and so does the Archive tab
   const sections = useMemo(() => {
     type Section = { key: string; name: string; items: ProjectCard[]; folder?: { id: string; path: string } };
-    if (!groups.length || q.trim()) return [{ key: '', name: '', items: shown } as Section];
+    if (tab === 'archived' || !groups.length || q.trim()) return [{ key: '', name: '', items: shown } as Section];
     const by = new Map<string, ProjectCard[]>();
     for (const p of shown) by.set(p.group ?? '', [...(by.get(p.group ?? '') ?? []), p]);
     const names = [...by.keys()].filter(Boolean);
     // a group that is an opened folder says so, and can be closed from its heading
     const folderOf = (items: ProjectCard[]) => items.find((p) => p.folderGroup?.derived)?.folderGroup;
     return [...names.map((n): Section => ({ key: n, name: n, items: by.get(n)!, folder: folderOf(by.get(n)!) })), ...(by.has('') ? [{ key: '', name: t('launcher.group.ungrouped'), items: by.get('')! } as Section] : [])];
-  }, [shown, groups, q, t]);
+  }, [shown, groups, q, tab, t]);
   const flat = sections.length === 1 && !sections[0].name;
   const apply = (name: string, patch: { title?: string; group?: string }) => {
     const before = list?.find((p) => p.name === name);
@@ -184,6 +189,27 @@ export function Launcher() {
       },
     );
   };
+  // filed out of the launcher (`on`), or put back from the Archive tab: only the list changes, the folder and its files stay as they are
+  const setArchivedTo = (p: ProjectCard, on: boolean) => {
+    const title = p.title || p.name;
+    if (on) setList((l) => l && l.filter((x) => x.name !== p.name));
+    else setArchived((l) => l && l.filter((x) => x.name !== p.name));
+    api.patchProject(p.name, { archived: on }).then(
+      () => {
+        reload();
+        if (on)
+          toast(t('launcher.archived.done', { title }), 'info', {
+            label: t('launcher.group.undo'),
+            run: () => setArchivedTo(p, false),
+          });
+        else toast(t('launcher.archived.restored', { title }), 'info');
+      },
+      (e: Error) => {
+        toast(e.message, 'error');
+        reload();
+      },
+    );
+  };
   const setViewTo = (v: 'grid' | 'list') => {
     setView(v);
     writePref(VIEW_KEY, v);
@@ -196,7 +222,7 @@ export function Launcher() {
       return n;
     });
   const onMore = (name: string, r: DOMRect) => setActing({ name, x: r.right, y: r.bottom + 4 });
-  const acted = acting ? list?.find((p) => p.name === acting.name) : undefined;
+  const acted = acting ? source?.find((p) => p.name === acting.name) : undefined;
 
   return (
     <div
@@ -252,17 +278,17 @@ export function Launcher() {
       </header>
 
       <nav className="ltabs" role="tablist" aria-label={t('launcher.tabs.label')}>
-        {(['all', ...KINDS.map((k) => k.kind)] as const).map((k) => (
-          <button key={k} role="tab" aria-selected={tab === k} data-tab={k} className={k === 'all' ? '' : `t-${KIND[k].tone}`} onClick={() => setTab(k)}>
-            {k !== 'all' && <KindIcon kind={k} size={14} />}
-            {k === 'all' ? t('launcher.tabs.all') : t(`launcher.kind.${k}.name`)}
+        {(['all', ...KINDS.map((k) => k.kind), 'archived'] as const).map((k) => (
+          <button key={k} role="tab" aria-selected={tab === k} data-tab={k} className={k === 'all' || k === 'archived' ? '' : `t-${KIND[k].tone}`} onClick={() => setTab(k)}>
+            {k === 'all' ? null : k === 'archived' ? <ArchiveBox /> : <KindIcon kind={k} size={14} />}
+            {k === 'all' ? t('launcher.tabs.all') : k === 'archived' ? t('launcher.archived.tab') : t(`launcher.kind.${k}.name`)}
             <span className="n">{counts[k]}</span>
           </button>
         ))}
       </nav>
 
       <main className="lmain" onKeyDown={arrowNav}>
-        {list === null && <div className="lhint">{t('launcher.loading')}</div>}
+        {source === null && <div className="lhint">{t('launcher.loading')}</div>}
         {list !== null && !q.trim() && lastOpened && (tab === 'all' || list.find((p) => p.name === lastOpened)?.kind === tab) && (
           <div className="lcontinue">
             <span>{t('launcher.continue')}</span>
@@ -271,10 +297,10 @@ export function Launcher() {
             </button>
           </div>
         )}
-        {list !== null && (
+        {source !== null && (
           <section className={`lall${flat && groups.length ? '' : ' lnogroup'}`} aria-label={t('launcher.projects')}>
             <div className="lbar">
-              <h2>{tab === 'all' ? t('launcher.allProjects') : t(`launcher.kind.${tab}.name`)}</h2>
+              <h2>{tab === 'all' ? t('launcher.allProjects') : tab === 'archived' ? t('launcher.archived.tab') : t(`launcher.kind.${tab}.name`)}</h2>
               <div className="ltools">
                 <label className="lsearch">
                   <IconSearch size={15} stroke={1.7} aria-hidden="true" />
@@ -322,7 +348,7 @@ export function Launcher() {
               const key = sec.key || (sec.name ? '\u0000' : '');
               const shut = !!sec.name && folded.has(key);
               const last = i === sections.length - 1;
-              const tile = tab !== 'all' && <NewTile kind={tab} onClick={() => setCreating(tab)} />;
+              const tile = tab !== 'all' && tab !== 'archived' && <NewTile kind={tab} onClick={() => setCreating(tab)} />;
               return (
                 <div key={key} className="lsection" data-group={sec.name || undefined}>
                   {sec.name && (
@@ -352,8 +378,8 @@ export function Launcher() {
                 </div>
               );
             })}
-            {view === 'list' && tab !== 'all' && <div className="lgrid ltail"><NewTile kind={tab} onClick={() => setCreating(tab)} /></div>}
-            {!shown.length && <div className="lhint">{q.trim() ? t('launcher.notFound', { q: q.trim() }) : tab === 'all' ? t('launcher.noProjects') : t(`launcher.kind.${tab}.empty`)}</div>}
+            {view === 'list' && tab !== 'all' && tab !== 'archived' && <div className="lgrid ltail"><NewTile kind={tab} onClick={() => setCreating(tab)} /></div>}
+            {!shown.length && <div className="lhint">{q.trim() ? t('launcher.notFound', { q: q.trim() }) : tab === 'all' ? t('launcher.noProjects') : tab === 'archived' ? t('launcher.archived.empty') : t(`launcher.kind.${tab}.empty`)}</div>}
           </section>
         )}
       </main>
@@ -408,7 +434,13 @@ export function Launcher() {
           )}
         </Menu>
       )}
-      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onUnlink={() => unlink(acted)} />}
+      {acting && acted && (
+        tab === 'archived' ? (
+          <ArchivedActions key={acting.name} p={acted} at={acting} onClose={() => setActing(null)} onRestore={() => setArchivedTo(acted, false)} />
+        ) : (
+          <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onArchive={() => setArchivedTo(acted, true)} onUnlink={() => unlink(acted)} />
+        )
+      )}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} at={createAt} onClose={() => (setCreating(null), setCreateAt(undefined))} />}
       {opening && <OpenFolderDialog onClose={() => setOpening(false)} onOpened={() => (setOpening(false), reload())} onCreateHere={(path) => (setOpening(false), setCreateAt(path), setCreating('design'))} />}
