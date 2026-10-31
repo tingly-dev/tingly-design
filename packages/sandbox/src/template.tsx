@@ -201,11 +201,18 @@ function renderNodes(nodes: DcNode[], scope: Scope, ctx: Ctx, docSrc: string, pa
 }
 
 const keyCache = new WeakMap<DcNode, string>();
-/** A sibling's stable identity: a short stamp of the source it was written as. */
+/**
+ * A sibling's stable identity: a stamp of its own opening tag (not its
+ * children), so a change deep inside a part — the usual step of a progressive
+ * edit — patches that part in place instead of remounting every ancestor
+ * above it. Identical opening tags (list rows, twin cards) carry an
+ * occurrence number and match positionally, which is right: they are
+ * interchangeable shells whose children reconcile by their own keys.
+ */
 function nodeKey(n: DcNode, docSrc: string): string {
   let k = keyCache.get(n);
   if (!k) {
-    const text = n.kind === 'el' ? docSrc.slice(n.range.start, n.range.end) : n.kind === 'text' ? n.text : '';
+    const text = n.kind === 'el' ? docSrc.slice(n.range.start, n.startTag.end) : n.kind === 'text' ? n.text : '';
     let h = 5381;
     for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
     k = (n.kind === 'el' ? 'e' : 't') + (h >>> 0).toString(36);
