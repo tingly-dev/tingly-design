@@ -184,12 +184,44 @@ function toProps(el: DcElement, scope: Scope, ctx: Ctx, key: React.Key): Record<
 /** Parents where whitespace-only text is not content (React warns about it there). */
 const NO_WS = new Set(['helmet', 'head', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup', 'select', 'svg', 'defs', 'g', 'marker']);
 
-function renderNodes(nodes: DcNode[], scope: Scope, ctx: Ctx, parent?: string): React.ReactNode[] {
+function renderNodes(nodes: DcNode[], scope: Scope, ctx: Ctx, docSrc: string, parent?: string): React.ReactNode[] {
   const strip = parent !== undefined && NO_WS.has(parent);
-  return nodes.map((n, i) => (strip && n.kind === 'text' && !n.text.trim() ? null : renderNode(n, scope, ctx, i, parent)));
+  // siblings are keyed by their own source text (with an occurrence number for equal twins), so a
+  // progressive edit that inserts or reorders parts moves the drawn DOM instead of rebuilding it:
+  // pictures, embeds and text the person is reading stay put while the new part appears
+  const seen = new Map<string, number>();
+  return nodes.map((n, i) => {
+    if (strip && n.kind === 'text' && !n.text.trim()) return null;
+    if (n.kind === 'comment') return null;
+    const base = nodeKey(n, docSrc);
+    const occ = seen.get(base) ?? 0;
+    seen.set(base, occ + 1);
+    return renderNode(n, scope, ctx, base + '#' + occ, docSrc, parent);
+  });
 }
 
-function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: string): React.ReactNode {
+const keyCache = new WeakMap<DcNode, string>();
+/**
+ * A sibling's stable identity: a stamp of its own opening tag (not its
+ * children), so a change deep inside a part — the usual step of a progressive
+ * edit — patches that part in place instead of remounting every ancestor
+ * above it. Identical opening tags (list rows, twin cards) carry an
+ * occurrence number and match positionally, which is right: they are
+ * interchangeable shells whose children reconcile by their own keys.
+ */
+function nodeKey(n: DcNode, docSrc: string): string {
+  let k = keyCache.get(n);
+  if (!k) {
+    const text = n.kind === 'el' ? docSrc.slice(n.range.start, n.startTag.end) : n.kind === 'text' ? n.text : '';
+    let h = 5381;
+    for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+    k = (n.kind === 'el' ? 'e' : 't') + (h >>> 0).toString(36);
+    keyCache.set(n, k);
+  }
+  return k;
+}
+
+function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, docSrc: string, parent?: string): React.ReactNode {
   if (n.kind === 'comment') return null;
   if (n.kind === 'text') {
     const v = interp(n.text, scope);
@@ -211,7 +243,7 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
       return (
         <React.Fragment key={key}>
           {arr.map((item, i) => (
-            <React.Fragment key={i}>{renderNodes(el.children, { ...scope, [as]: item, $index: i }, ctx, parent)}</React.Fragment>
+            <React.Fragment key={i}>{renderNodes(el.children, { ...scope, [as]: item, $index: i }, ctx, docSrc, parent)}</React.Fragment>
           ))}
         </React.Fragment>
       );
@@ -219,10 +251,10 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
     case 'sc-if': {
       const v = el.attrs.find((a) => a.name === 'value');
       const show = v ? interp(v.value, scope) : false;
-      return show ? <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment> : null;
+      return show ? <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, docSrc, parent)}</React.Fragment> : null;
     }
     case 'helmet':
-      return createPortal(<>{renderNodes(el.children, scope, { ...ctx, tagged: false }, 'helmet')}</>, document.head, String(key));
+      return createPortal(<>{renderNodes(el.children, scope, { ...ctx, tagged: false }, docSrc, 'helmet')}</>, document.head, String(key));
     case 'script':
       return null;
     case 'dc-import': {
@@ -297,7 +329,7 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
     }
   }
   if (el.tag.startsWith('sc-') || el.tag === 'x-import') {
-    return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, parent)}</React.Fragment>;
+    return <React.Fragment key={key}>{renderNodes(el.children, scope, ctx, docSrc, parent)}</React.Fragment>;
   }
   if (el.tag === 'style' && ctx.base) {
     const css = el.children.map((c) => (c.kind === 'text' ? String(interp(c.text, scope) ?? '') : '')).join('');
@@ -307,14 +339,14 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, parent?: 
   if (VOID_ELEMENTS.has(el.tag) && el.ns === 'html') return React.createElement(el.tag, props);
   if (el.tag === 'table' && el.children.some((c) => c.kind === 'el' && c.tag === 'tr')) {
     // rows written straight into <table> (the slide subset does): the DOM wants a tbody around them
-    return React.createElement('table', props, React.createElement('tbody', null, ...renderNodes(el.children, scope, ctx, 'tbody')));
+    return React.createElement('table', props, React.createElement('tbody', null, ...renderNodes(el.children, scope, ctx, docSrc, 'tbody')));
   }
   if (el.tag === 'textarea') {
     const text = el.children.map((c) => (c.kind === 'text' ? String(interp(c.text, scope) ?? '') : '')).join('');
     if (!('value' in props)) props.defaultValue = text;
     return React.createElement('textarea', props);
   }
-  return React.createElement(el.tag, props, ...renderNodes(el.children, scope, ctx, el.tag));
+  return React.createElement(el.tag, props, ...renderNodes(el.children, scope, ctx, docSrc, el.tag));
 }
 
 // -------------------------------------------------------------- components
@@ -333,9 +365,18 @@ export function docFor(source: string): DcDoc {
 type LogicClass = React.ComponentClass<Record<string, unknown>>;
 const classCache = new Map<string, LogicClass>();
 
+/**
+ * The component class for a source, cached by the page's *script*, not the
+ * whole source: a markup-only edit (every step of a progressive AI edit)
+ * reuses the class, so React reconciles the new markup onto the drawn DOM
+ * instead of unmounting the artboard. A changed script is a changed page
+ * program and gets a fresh class, which remounts — as before. The class's
+ * render reads the markup of the source it is handed (`__dcSource`).
+ */
 function compile(source: string, file: string): { cls: LogicClass; doc: DcDoc } {
   const doc = docFor(source);
-  const hit = classCache.get(file + '\0' + source);
+  const script = doc.script?.code ?? '';
+  const hit = classCache.get(file + '\0' + script);
   if (hit) return { cls: hit, doc };
 
   class DCLogic extends React.Component<Record<string, unknown>, Record<string, unknown>> {
@@ -350,7 +391,8 @@ function compile(source: string, file: string): { cls: LogicClass; doc: DcDoc } 
     render() {
       const ctx = (this.props.__ctx as Ctx) ?? host.ctx();
       const vals = this.renderVals() ?? {};
-      return <>{renderNodes(doc.children, vals, ctx)}</>;
+      const doc = docFor(this.props.__dcSource as string);
+      return <>{renderNodes(doc.children, vals, ctx, doc.source)}</>;
     }
   }
   let cls: LogicClass = DCLogic as unknown as LogicClass;
@@ -362,7 +404,8 @@ function compile(source: string, file: string): { cls: LogicClass; doc: DcDoc } 
     ) as (b: unknown, r: unknown) => LogicClass | null;
     cls = factory(DCLogic, React) ?? cls;
   }
-  classCache.set(file + '\0' + source, cls);
+  if (classCache.size > 128) classCache.clear();
+  classCache.set(file + '\0' + script, cls);
   return { cls, doc };
 }
 
@@ -405,5 +448,6 @@ export function DcComponent(p: { source: string; file: string; props: Record<str
     throw new Error('script: ' + (e as Error).message);
   }
   const Cls = compiled.cls;
-  return <Cls {...defaultsOf(compiled.doc)} {...p.props} __ctx={p.ctx} />;
+  // `__dcSource` is the markup the class's render draws (the current source, whatever instance is mounted)
+  return <Cls {...defaultsOf(compiled.doc)} {...p.props} __ctx={p.ctx} __dcSource={p.source} />;
 }
