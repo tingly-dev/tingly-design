@@ -49,11 +49,22 @@ function pageImage(scale = 2): Promise<Blob> {
   });
 }
 
-/** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
+/**
+ * The page, in its own sandboxed frame. Two frames take turns: the one on
+ * stage stays while the next page boots in a hidden twin (a fresh frame each
+ * time, so the page's scripts start clean), and the swap waits until the twin
+ * has mounted its page. A change Claude Code lands in several writes then
+ * appears in steps, and the page never goes blank while it happens.
+ */
 function PageFrame() {
   const { t } = useTranslation();
-  const ref = useRef<HTMLIFrameElement>(null);
   const pageKey = useDash((s) => s.pageKey);
+  // counts boots per slot: a slot's frame mounts fresh for each boot, and the slots alternate
+  const [gen, setGen] = useState<[number, number]>([0, 0]);
+  const [active, setActive] = useState(0);
+  // what the message router goes by: the slot on stage, and the slot a page is booting in (the first page boots where it stands)
+  const stage = useRef<{ active: 0 | 1; pending: 0 | 1 | null; swap: number }>({ active: 0, pending: 0, swap: 0 });
+  const frames = [useRef<HTMLIFrameElement>(null), useRef<HTMLIFrameElement>(null)];
   // the frame's own words (its error banner) follow <html lang>; a language change reloads the page
   const lang = htmlLang(currentLanguage());
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'dash', lang), [lang]);
@@ -61,35 +72,71 @@ function PageFrame() {
   const ids = useRef<string[]>([]);
   ids.current = datasets.map((d) => d.id);
 
+  // the page that booted takes the stage; what the old page reported is not what is drawn now
+  const adopt = (slot: 0 | 1) => {
+    const st = stage.current;
+    if (st.pending !== slot) return;
+    st.pending = null;
+    clearTimeout(st.swap);
+    st.active = slot;
+    setFrame(frames[slot].current?.contentWindow ?? null);
+    useDash.setState({ report: null, derived: {} });
+    setActive(slot);
+  };
+
+  const boot = (slot: 0 | 1) => {
+    const st = stage.current;
+    st.pending = slot;
+    clearTimeout(st.swap);
+    // a page that never finishes mounting (a script stopped early) still takes the stage after a wait
+    st.swap = window.setTimeout(() => adopt(slot), 5000);
+    setGen((g) => (slot === 0 ? [g[0] + 1, g[1]] : [g[0], g[1] + 1]));
+  };
+
+  // its files changed: the next page boots in the other slot; a boot still under way starts over with the newer files
+  const lastKey = useRef(pageKey);
+  useEffect(() => {
+    if (lastKey.current === pageKey) return;
+    lastKey.current = pageKey;
+    const st = stage.current;
+    boot(st.pending ?? (st.active === 0 ? 1 : 0));
+  }, [pageKey]);
+
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
-      const w = ref.current?.contentWindow;
-      if (!w || e.source !== w) return;
+      const w = e.source as Window | null;
+      const slot = w === frames[0].current?.contentWindow ? 0 : w === frames[1].current?.contentWindow ? 1 : -1;
+      if (slot < 0 || !w) return;
+      const st = stage.current;
       const m = e.data as FromDash;
       if (!m || typeof m !== 'object' || typeof m.dc !== 'string') return;
       const d = useDash.getState();
+      if (m.dc === 'ready') {
+        // the page still booting becomes the one we talk to (it is on its way to the stage):
+        // it asks for its data while mounting, before it declares, and the answers come back to it here
+        if (slot !== st.pending) return;
+        setFrame(w);
+        w.postMessage({ dc: 'dash-page', files: pageFiles(), datasets: ids.current, params: d.params, theme: d.theme, link: decodeURIComponent(location.hash.slice(1)), mode: d.mode }, '*');
+        return;
+      }
+      if (m.dc === 'dash-declared') {
+        // the page has mounted: now it takes the stage
+        if (slot !== st.pending) return;
+        adopt(slot);
+        useDash.setState({ loaders: m.loaders });
+        // a dataset loaded as plain rows before its page declared a loader: load it again
+        const now = useDash.getState();
+        for (const id of m.loaders) if (now.states[id] && !now.raw[id]) void load(id, true);
+        return;
+      }
+      // the page still booting asks for its data while it mounts: hear it too (the replies go to it — the frame we talk to is already the booting one)
+      if (m.dc === 'dash-want') {
+        want(m.ids);
+        return;
+      }
+      // everything else a page says counts only from the one on stage; the one still booting is not listened to
+      if (slot !== st.active) return;
       switch (m.dc) {
-        case 'ready':
-          setFrame(w);
-          postFrame({
-            dc: 'dash-page',
-            files: pageFiles(),
-            datasets: ids.current,
-            params: d.params,
-            theme: d.theme,
-            link: decodeURIComponent(location.hash.slice(1)),
-            mode: d.mode,
-          });
-          break;
-        case 'dash-declared': {
-          useDash.setState({ loaders: m.loaders });
-          // a dataset loaded as plain rows before its page declared a loader: load it again
-          for (const id of m.loaders) if (d.states[id] && !d.raw[id]) void load(id, true);
-          break;
-        }
-        case 'dash-want':
-          want(m.ids);
-          break;
         case 'dash-set-params':
           setParams(m.params);
           break;
@@ -120,10 +167,10 @@ function PageFrame() {
           openPane('sources');
           break;
         case 'dash-exported': {
-          const w = imageWaits.get(m.id);
+          const x = imageWaits.get(m.id);
           imageWaits.delete(m.id);
-          if (m.blob) w?.ok(m.blob);
-          else w?.fail(new Error(m.error ?? 'failed'));
+          if (m.blob) x?.ok(m.blob);
+          else x?.fail(new Error(m.error ?? 'failed'));
           break;
         }
         case 'key':
@@ -135,9 +182,21 @@ function PageFrame() {
     return () => removeEventListener('message', onMsg);
   }, [datasets]);
 
-  useEffect(() => () => setFrame(null), []);
+  useEffect(
+    () => () => {
+      clearTimeout(stage.current.swap);
+      setFrame(null);
+    },
+    [],
+  );
 
-  return <iframe key={pageKey} ref={ref} className="dashframe" title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />;
+  return (
+    <>
+      {/* the keys name the slot too: both slots can be on the same boot number */}
+      <iframe ref={frames[0]} key={`a${gen[0]}`} className={active === 0 ? 'dashframe' : 'dashframe-next'} title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />
+      {gen[1] > 0 && <iframe ref={frames[1]} key={`b${gen[1]}`} className={active === 1 ? 'dashframe' : 'dashframe-next'} title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />}
+    </>
+  );
 }
 
 /** Reload the page when its files change; reload datasets whose source changed. */
