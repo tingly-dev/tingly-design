@@ -25,6 +25,12 @@ export default {
     restored: '已恢复',
     failed: '读不到这个版本',
   },
+  deleted: {
+    button: '已删除的标签页',
+    menu: '已删除的标签页',
+    hint: '删除于 {{at}}。恢复时会连同文本一起放回。',
+    restored: '已恢复 {{name}}',
+  },
   tab: {
     nameLabel: '标签页名称',
     actions: '{{title}} 的操作',

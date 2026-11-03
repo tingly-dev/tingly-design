@@ -23,6 +23,12 @@ export default {
     restored: 'Restored',
     failed: 'Cannot read that version',
   },
+  deleted: {
+    button: 'Deleted tabs',
+    menu: 'Deleted tabs',
+    hint: 'Deleted {{at}}. Restoring puts it back with its text.',
+    restored: 'Restored {{name}}',
+  },
   tab: {
     nameLabel: 'Tab name',
     actions: 'Actions for {{title}}',

@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, DocTab } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -16,6 +16,15 @@ export interface PptxAppendPlan {
 
 /** A project folder, or an immutable built-in template; the two cannot collide. */
 export type DesignSystemChoice = string | { look: string };
+
+/** A tab a delete took out of a doc: the tab and its subtabs as the index held them, and where they sat. */
+export interface DeletedTabGroup {
+  id: string;
+  title: string;
+  at: string;
+  index: number;
+  tabs: DocTab[];
+}
 
 /** fetch, telling the server the language on screen: it answers errors and writes starter copy in it. */
 function call(url: string, init: RequestInit = {}): Promise<Response> {
@@ -204,6 +213,15 @@ export const api = {
   history: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history?path=${enc(path)}`)).then((r) => json<{ id: string; at: string }[]>(r)),
   keepVersion: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history?path=${enc(path)}`), { method: 'POST' }).then((r) => json<{ ok: true }>(r)),
   historyItem: (p: string, path: string, id: string) => call(at(`api/projects/${enc(p)}/history/item?path=${enc(path)}&id=${enc(id)}`)).then((r) => json<{ content: string }>(r)),
+  /** the tabs a delete took out of a doc, for the tabs panel's “Deleted tabs” menu */
+  historyDeleted: (p: string) => call(at(`api/projects/${enc(p)}/history/deleted`)).then((r) => json<DeletedTabGroup[]>(r)),
+  markTabDeleted: (p: string, path: string, meta: { index: number; tabs: DocTab[] }) =>
+    call(at(`api/projects/${enc(p)}/history/deleted?path=${enc(path)}`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(meta),
+    }).then((r) => json<{ ok: true }>(r)),
+  forgetDeletedTab: (p: string, path: string) => call(at(`api/projects/${enc(p)}/history/deleted?path=${enc(path)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
   journal: (p: string) => call(at(`api/projects/${enc(p)}/journal`)).then((r) => json<JournalEntry[]>(r)),
 
   /** Resolves with the new version, or with `{ conflict }` carrying the file as it is now. */

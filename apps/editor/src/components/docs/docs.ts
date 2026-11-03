@@ -16,10 +16,12 @@ import {
   uniqueTabId,
   type DocComments,
   type DocJson,
+  type DocTab,
   type DocThread,
   markdownToTab,
 } from '@dc/core';
 import { deleteFile, display, edit, enqueueResult, openPane, toast, useStore } from '../../store';
+import { api, type DeletedTabGroup } from '../../api';
 import { replaceUrl } from '../../host';
 import { joinPath } from '@dc/import';
 import { keepPicked } from '../../importer';
@@ -157,11 +159,14 @@ export async function deleteTab(id: string): Promise<void> {
   const st = useStore.getState();
   const d = parseDoc(display(st, DOC_INDEX));
   if (d.tabs.filter((t) => !t.parent).length <= 1 && !d.tabs.find((t) => t.id === id)?.parent) return void toast(t('docs.tab.needOne'), 'error');
-  const entries = d.tabs.filter((t) => t.id === id || t.parent === id);
+  const entries: DocTab[] = d.tabs.filter((t) => t.id === id || t.parent === id);
   const gone = entries.map((t) => t.id);
   const at = d.tabs.findIndex((t) => t.id === id);
   const sources = Object.fromEntries(gone.map((g) => [tabFile(g), display(st, tabFile(g))] as const));
   const title = entries[0]?.title ?? id;
+  const project = st.project!;
+  // the text each tab had is kept before its file goes, so the tabs panel can still bring it back later
+  await Promise.all(gone.filter((g) => sources[g]?.trim()).map((g) => api.keepVersion(project, tabFile(g)).catch(() => undefined)));
   editDoc((x) => {
     x.tabs = x.tabs.filter((t) => !gone.includes(t.id));
   }, `tab ${id} removed`);
@@ -169,14 +174,53 @@ export async function deleteTab(id: string): Promise<void> {
   const removed = await Promise.all(gone.map((g) => deleteFile(tabFile(g))));
   const files = Object.fromEntries(Object.entries(sources).filter((e): e is [string, string] => e[1] !== undefined));
   if (removed.includes(false) || !Object.keys(files).length) return;
-  offerUndo(title, async () => {
-    await putFiles(files);
-    editDoc((x) => {
-      const have = x.tabs.filter((t) => !gone.includes(t.id));
-      x.tabs = [...have.slice(0, at), ...entries, ...have.slice(at)];
-    }, `tab ${id} restored`);
-    openTab(id);
-  });
+  // what the index held is remembered too, so the tabs panel lists the tab with its name and its place
+  await api.markTabDeleted(project, tabFile(id), { index: at, tabs: entries }).catch(() => undefined);
+  offerUndo(title, () => restoreTabGroup(entries, at));
+}
+
+/**
+ * Put a deleted tab group back: each tab's newest kept snapshot becomes its file again (an empty tab
+ * comes back empty), and the entries take their old place. The toast's Undo and the tabs panel's
+ * “Deleted tabs” menu both come through here.
+ */
+async function restoreTabGroup(entries: DocTab[], at: number): Promise<void> {
+  const project = useStore.getState().project!;
+  // a parent that is gone itself does not come back as a dangling parent: its subtab tops out
+  const ids = new Set(entries.map((e) => e.id));
+  const have = parseDoc(display(useStore.getState(), DOC_INDEX));
+  const back = entries.map((e) => (!e.parent || ids.has(e.parent) || have.tabs.some((t) => t.id === e.parent) ? e : { id: e.id, title: e.title }));
+  const files: Record<string, string> = {};
+  for (const e of back) {
+    let text = '';
+    try {
+      const snaps = await api.history(project, tabFile(e.id));
+      if (snaps.length) text = (await api.historyItem(project, tabFile(e.id), snaps[0].id)).content;
+    } catch {
+      // no kept text: the tab comes back empty
+    }
+    files[tabFile(e.id)] = text;
+  }
+  await putFiles(files);
+  editDoc((x) => {
+    const rest = x.tabs.filter((t) => !ids.has(t.id));
+    const k = Math.max(0, Math.min(at, rest.length));
+    x.tabs = [...rest.slice(0, k), ...back, ...rest.slice(k)];
+  }, `tab ${entries[0].id} restored`);
+  openTab(entries[0].id);
+}
+
+/** The tabs panel's restore: one deleted tab (with its subtabs) back, then its delete marker is dropped. */
+export async function restoreDeletedTab(rec: DeletedTabGroup): Promise<void> {
+  const project = useStore.getState().project;
+  if (!project) return;
+  try {
+    await restoreTabGroup(rec.tabs, rec.index);
+    void api.forgetDeletedTab(project, tabFile(rec.id)).catch(() => undefined);
+    toast(t('docs.deleted.restored', { name: rec.title }), 'info');
+  } catch {
+    toast(t('common.item.restoreFailed', { name: rec.title }), 'error');
+  }
 }
 
 /** Move a tab one place up or down among its siblings (its subtabs go with it). */

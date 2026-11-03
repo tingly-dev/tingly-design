@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { HttpError, projectDir, readOne, safeRel } from '../store';
-import { listSnapshots, readSnapshot, snapshotBefore } from '../history';
+import { clearDeleted, listDeleted, listSnapshots, markDeleted, readSnapshot, snapshotBefore, type DeletedTab } from '../history';
 import { journal, subscribe } from '../hub';
 
 /** Version history of a file, the change journal and the live event stream every editor listens to. */
@@ -19,6 +19,20 @@ export function registerHistory(app: Hono): void {
     const text = await readSnapshot(c.req.param('p'), safeRel(c.req.query('path') ?? ''), c.req.query('id') ?? '');
     if (text === null) throw new HttpError(404, 'versionMissing');
     return c.json({ content: text });
+  });
+
+  /** Tabs a delete took out, for the tabs panel's “Deleted tabs” menu. */
+  app.get('/api/projects/:p/history/deleted', async (c) => c.json(await listDeleted(c.req.param('p'))));
+  /** Remember what a delete removed (called after the tab's files are gone; the text was kept first). */
+  app.post('/api/projects/:p/history/deleted', async (c) => {
+    const body = await c.req.json<{ index?: number; tabs?: DeletedTab['tabs'] }>();
+    await markDeleted(c.req.param('p'), safeRel(c.req.query('path') ?? ''), Number(body.index) || 0, body.tabs ?? []);
+    return c.json({ ok: true });
+  });
+  /** The tab is back; drop its delete marker. */
+  app.delete('/api/projects/:p/history/deleted', async (c) => {
+    await clearDeleted(c.req.param('p'), safeRel(c.req.query('path') ?? ''));
+    return c.json({ ok: true });
   });
 
   app.get('/api/projects/:p/journal', async (c) => c.json(await journal(c.req.param('p'))));
