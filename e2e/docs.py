@@ -265,9 +265,19 @@ async def main():
         await pg.keyboard.type(' \\frac{')
         await expect(body.locator('.richcode.rc-error .rc-msg')).to_be_visible(timeout=10000)
         check('a broken formula says so and keeps its source', await body.locator('.richcode[data-kind=math] pre').is_visible())
+        await pg.keyboard.press('ArrowDown')  # leave the formula block
+        await pg.keyboard.type('```csv')
+        await pg.keyboard.press('Enter')
+        await pg.keyboard.type('city,temp')
+        await pg.keyboard.press('Enter')
+        await pg.keyboard.type('Beijing,21')
+        tbl = body.locator('.richcode[data-kind=table] table')
+        await expect(tbl.locator('th', has_text='city')).to_have_count(1, timeout=10000)
+        await expect(tbl.locator('td', has_text='21')).to_have_count(1)
+        check('a csv fence draws a data table', await tbl.locator('tr').count() == 2)
         await pg.wait_for_timeout(800)
         md = read(os.path.join(DOC, 'tabs/architecture.md'))
-        check('the file keeps plain fences', '```mermaid' in md and '```latex' in md, md[-300:])
+        check('the file keeps plain fences', all(f in md for f in ('```mermaid', '```latex', '```csv')), md[-300:])
         await pg.screenshot(path=OUT + 'docs-code-blocks.png')
 
         # --- earlier versions ---------------------------------------------------------------------
