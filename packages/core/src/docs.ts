@@ -246,6 +246,37 @@ export function mergeBlocks(original: string, edited: string): string {
   return (e.blocks.length ? o.lead : '') + out.join('');
 }
 
+/** One block of a version compared with the current text (`diffBlocks`). */
+export interface BlockDiff {
+  kind: 'same' | 'old' | 'new';
+  /** the block's text, without the blank lines after it */
+  text: string;
+}
+
+/**
+ * An earlier version of a tab against the current text, in reading order, by
+ * the same block meaning write-back uses (`blockKey`, so two spellings of one
+ * block count as the same): `old` blocks the version had and the current text
+ * does not, `new` blocks the current text has and the version did not, `same`
+ * the blocks both have.
+ */
+export function diffBlocks(version: string, current: string): BlockDiff[] {
+  const v = splitBlocks(version);
+  const c = splitBlocks(current);
+  const pairs = lcs(v.blocks.map((b) => blockKey(b.text)), c.blocks.map((b) => blockKey(b.text)));
+  const out: BlockDiff[] = [];
+  let vi = 0;
+  let ci = 0;
+  for (const [i, j] of [...pairs, [v.blocks.length, c.blocks.length] as [number, number]]) {
+    while (vi < i) out.push({ kind: 'old', text: v.blocks[vi++].text });
+    while (ci < j) out.push({ kind: 'new', text: c.blocks[ci++].text });
+    if (i < v.blocks.length) out.push({ kind: 'same', text: v.blocks[i].text });
+    vi = i + 1;
+    ci = j + 1;
+  }
+  return out;
+}
+
 function tableCells(line: string): string[] {
   return line
     .trim()

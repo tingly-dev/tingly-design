@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockKey,
+  diffBlocks,
   docsViewContext,
   gridToCsv,
   findQuote,
@@ -91,6 +92,25 @@ describe('blocks', () => {
     expect(out).toBe('# 上手手册\n\n新的一段。\n\n欢迎！这份文档写给*新同事*。\n\n```sh\npnpm dev\n```\n');
     expect(mergeBlocks(SRC, '')).toBe('');
     expect(mergeBlocks('', '# A\n')).toBe('# A\n');
+  });
+
+  it('diffs a version against the current text block by block', () => {
+    const version = 'A\n\nB\n\nC\n\nD\n';
+    const current = 'A0\n\nB\n\nC\n\nE\n';
+    const out = diffBlocks(version, current);
+    expect(out).toEqual([
+      { kind: 'old', text: 'A' },
+      { kind: 'new', text: 'A0' },
+      { kind: 'same', text: 'B' },
+      { kind: 'same', text: 'C' },
+      { kind: 'old', text: 'D' },
+      { kind: 'new', text: 'E' },
+    ]);
+    // the same block in two spellings counts as the same, not a change
+    expect(diffBlocks('* 一\n* 二\n', '- 一\n- 二\n')).toEqual([{ kind: 'same', text: '* 一\n* 二' }]);
+    expect(diffBlocks('A\n\nB\n', 'A\n\nB\n').every((d) => d.kind === 'same')).toBe(true);
+    expect(diffBlocks('', 'A\n')).toEqual([{ kind: 'new', text: 'A' }]);
+    expect(diffBlocks('A\n', '')).toEqual([{ kind: 'old', text: 'A' }]);
   });
 
   it('rebases my block edit onto a newer text', () => {
