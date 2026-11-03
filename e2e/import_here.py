@@ -64,6 +64,17 @@ async def paste_text(pg, text):
       document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
     }""", text)
 
+async def empty_spot(pg):
+    """A stage point under nothing (no artboard, item, bar, panel or strip), so a click there only focuses the editor."""
+    boxes = await pg.evaluate("""() => [...document.querySelectorAll('[data-board], [data-item], .bar, .prompt, .panel, .strip')]
+        .map((e) => { const r = e.getBoundingClientRect(); return [r.left - 30, r.top - 30, r.right + 30, r.bottom + 30]; })""")
+    stage = await pg.locator('.stage').bounding_box()
+    for y in range(int(stage['y']) + 80, int(stage['y'] + stage['height']) - 120, 30):
+        for x in range(int(stage['x']) + 40, int(stage['x'] + stage['width']) - 60, 30):
+            if not any(a <= x <= c and b <= y <= d for a, b, c, d in boxes):
+                return x, y
+    raise RuntimeError('no empty spot on the stage')
+
 async def toast(pg, text, timeout=15000):
     try:
         await expect(pg.locator('.toast', has_text=text).first).to_be_visible(timeout=timeout)
@@ -144,7 +155,10 @@ async def main():
             # the real ⌘V: the system clipboard's SVG reaches the import, not the in-app clipboard
             boards = set(json.loads(read('tingly-box-console-canvas', 'canvas.json'))['boards'])
             await pg.evaluate("(t) => navigator.clipboard.writeText(t)", SVG.replace('Badge', 'Stamp'))
-            await pg.mouse.click(1300, 820)
+            # click an empty spot of the stage: a fixed point landed in the right panel's Tweaks
+            # (the imported board is selected here), where ⌘V belongs to the field, not the import
+            x, y = await empty_spot(pg)
+            await pg.mouse.click(x, y)
             await pg.keyboard.press('ControlOrMeta+V')
             ok = await wait_for(lambda: any('Stamp' in read('tingly-box-console-canvas', f) for f in json.loads(read('tingly-box-console-canvas', 'canvas.json'))['boards'] if f not in boards))
             check('canvas: ⌘V with SVG on the clipboard adds an artboard', ok)
