@@ -166,7 +166,7 @@ export async function deleteTab(id: string): Promise<void> {
   const title = entries[0]?.title ?? id;
   const project = st.project!;
   // the text each tab had is kept before its file goes, so the tabs panel can still bring it back later
-  await Promise.all(gone.filter((g) => sources[g]?.trim()).map((g) => api.keepVersion(project, tabFile(g)).catch(() => undefined)));
+  await Promise.all(gone.filter((g) => sources[tabFile(g)]?.trim()).map((g) => api.keepVersion(project, tabFile(g)).catch(() => undefined)));
   editDoc((x) => {
     x.tabs = x.tabs.filter((t) => !gone.includes(t.id));
   }, `tab ${id} removed`);
@@ -176,7 +176,11 @@ export async function deleteTab(id: string): Promise<void> {
   if (removed.includes(false) || !Object.keys(files).length) return;
   // what the index held is remembered too, so the tabs panel lists the tab with its name and its place
   await api.markTabDeleted(project, tabFile(id), { index: at, tabs: entries }).catch(() => undefined);
-  offerUndo(title, () => restoreTabGroup(entries, at));
+  offerUndo(title, async () => {
+    await restoreTabGroup(entries, at);
+    // the tab is back, so the delete marker goes the same way the panel's restore drops it
+    await api.forgetDeletedTab(project, tabFile(id)).catch(() => undefined);
+  });
 }
 
 /**
