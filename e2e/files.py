@@ -1,5 +1,5 @@
 """End-to-end checks for the canvas's files pane: the folder listed live, previews, copy path, put on canvas. Run with `pnpm dev` up: python3 e2e/files.py"""
-import os, base64, asyncio, subprocess, time
+import os, base64, inspect, asyncio, subprocess, time
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -19,7 +19,9 @@ async def wait_for(pred, timeout=8.0):
     t = time.time()
     while time.time() - t < timeout:
         try:
-            if pred(): return True
+            r = pred()
+            if inspect.isawaitable(r): r = await r
+            if r: return True
         except Exception: pass
         await asyncio.sleep(0.1)
     return False
@@ -52,24 +54,31 @@ async def main():
         check('canvas: dot files are never listed', 'journal' not in text and '.claude' not in text and '.transcript' not in text)
 
         # --- a file a tool just wrote shows up live ---------------------------------------
+        async def pane_has(s): return s in await pane.inner_text()
+        async def row_there(): return await row.count() >= 1
         write('tingly-box-console-canvas/notes.txt', 'hello from the terminal\n')
-        ok = await wait_for(lambda: 'notes.txt' in pane.inner_text())
+        ok = await wait_for(lambda: pane_has('notes.txt'))
         check('canvas: a file written beside the editor shows up live', ok)
 
         # --- preview: text, read only ------------------------------------------------------
         await pane.locator('.frow', has_text='notes.txt').locator('.fname').click()
         dialog = pg.locator('.ldialog.files-preview')
         await expect(dialog).to_be_visible()
-        ok = await wait_for(lambda: 'hello from the terminal' in (await dialog.locator('pre').inner_text()))
+        try:
+            await expect(dialog.locator('pre')).to_contain_text('hello from the terminal', timeout=8000)
+            ok = True
+        except AssertionError:
+            ok = False
         check('canvas: a text file previews read only', ok)
         await pg.keyboard.press('Escape')
         await expect(dialog).to_have_count(0)
 
         # --- an image in uploads/: thumbnail, menu, put on canvas ---------------------------
-        r = await ctx.request.post(f'{BASE}/api/projects/tingly-box-console-canvas/assets?name=dot.png&dir=uploads', data=PNG)
+        r = await ctx.request.post(f'{BASE}/api/projects/tingly-box-console-canvas/assets?name=poster.png&dir=uploads', data=PNG)
         check('canvas: upload for the pane worked', r.ok, str(r.status))
-        row = pane.locator('.frow', has_text='dot.png')
-        ok = await wait_for(lambda: row.count() >= 1)
+        up = (await r.json())['path']
+        row = pane.locator('.frow', has_text='poster-')
+        ok = await wait_for(lambda: row_there())
         check('canvas: an upload appears in the list', ok and await row.locator('.fthumb').count() == 1)
         await row.locator('.more').click()
         menu = pg.locator('[role=menu]')
@@ -77,10 +86,10 @@ async def main():
         check('canvas: an image row offers put on canvas', await menu.get_by_text('Put on canvas').count() == 1)
         await menu.get_by_text('Copy path').click()
         path = await pg.evaluate('navigator.clipboard.readText()')
-        check('canvas: copy path copies the folder-relative path', path.startswith('uploads/') and path.endswith('dot.png'), path)
+        check('canvas: copy path copies the folder-relative path', path == up, path)
         await row.locator('.more').click()
         await pg.locator('[role=menu]').get_by_text('Put on canvas').click()
-        ok = await wait_for(lambda: path in read('tingly-box-console-canvas/canvas.json') and '"kind": "image"' in read('tingly-box-console-canvas/canvas.json'))
+        ok = await wait_for(lambda: up in read('tingly-box-console-canvas/canvas.json') and '"kind": "image"' in read('tingly-box-console-canvas/canvas.json'))
         check('canvas: put on canvas adds the picture as a note by its folder path', ok)
 
         # --- the read-only entry route ------------------------------------------------------
