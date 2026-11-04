@@ -682,11 +682,6 @@
   "块角部操作栏": {
     "docs": [
       "block_bar"
-    ],
-    "design": "canvas elements keep the shared context menu (selection-image.md); no bar on purpose",
-    "slides": "elements keep the shared context menu; no bar on purpose",
-    "motion": "elements keep the shared context menu; no bar on purpose",
-    "design-system": "no self-contained blocks",
-    "dashboard": "widgets live in the sandbox frame with a pick model, not selection; open"
+    ]
   }
 }

@@ -9,7 +9,7 @@ import { copyImage, fileStem, nodeToPng, opaque, saveImage } from '../../imageEx
 import { download } from '../../local';
 import { t as tNow } from '../../i18n';
 import { docEditor } from './DocEditor';
-import { useDocIndex } from './docs';
+import { useDocIndex, useCurrentTab } from './docs';
 import { kindOfFence } from './richCode';
 
 /**
@@ -72,23 +72,26 @@ const SLUGS = { math: 'formula', table: 'table', diagram: 'diagram' } as const;
 function blockItems(e: Editor, block: ActiveBlock, stem: string): CornerItem[] {
   const kind = block.fence ? kindOfFence(block.fence.language)! : 'table';
   const base = `${stem}-${SLUGS[kind]}`;
+  const csvIcon = <IconFileTypeCsv size={16} stroke={1.7} aria-hidden="true" />;
   const items: CornerItem[] = [];
-  if (block.fence) {
-    const ext = block.fence.language.toLowerCase() === 'tsv' ? 'tsv' : 'csv';
-    // the fence's source is the data itself: hand it over as it stands
-    items.push({
-      id: 'csv',
-      label: tNow('docs.toolbar.tableCsv'),
-      icon: <IconFileTypeCsv size={16} stroke={1.7} aria-hidden="true" />,
-      run: () => download(`${base}.${ext}`, '\ufeff' + block.fence!.source, ext === 'tsv' ? 'text/tab-separated-values;charset=utf-8' : 'text/csv;charset=utf-8'),
-    });
-  } else {
-    items.push({
-      id: 'csv',
-      label: tNow('docs.toolbar.tableCsv'),
-      icon: <IconFileTypeCsv size={16} stroke={1.7} aria-hidden="true" />,
-      run: () => downloadTableCsv(e, `${base}.csv`),
-    });
+  if (kind === 'table') {
+    if (block.fence) {
+      const ext = block.fence.language.toLowerCase() === 'tsv' ? 'tsv' : 'csv';
+      // the fence's source is the data itself: hand it over as it stands
+      items.push({
+        id: 'csv',
+        label: tNow('docs.toolbar.tableCsv'),
+        icon: csvIcon,
+        run: () => download(`${base}.${ext}`, '\ufeff' + block.fence!.source, ext === 'tsv' ? 'text/tab-separated-values;charset=utf-8' : 'text/csv;charset=utf-8'),
+      });
+    } else {
+      items.push({
+        id: 'csv',
+        label: tNow('docs.toolbar.tableCsv'),
+        icon: csvIcon,
+        run: () => downloadTableCsv(e, `${base}.csv`),
+      });
+    }
   }
   const make = () => nodeToPng(block.png, { backgroundColor: opaque(getComputedStyle(block.png).backgroundColor, getComputedStyle(document.body).backgroundColor) });
   items.push({
@@ -110,6 +113,7 @@ export function BlockBar() {
   const { t } = useTranslation();
   const [, force] = useState(0);
   const title = useDocIndex().title;
+  const tab = useCurrentTab();
   useEffect(() => {
     const e = docEditor.current;
     if (!e) return;
@@ -119,6 +123,11 @@ export function BlockBar() {
       e.off('transaction', f);
     };
   });
+  // a tab switch swaps the editor after this render: one frame later look again, so the old tab's bar does not linger
+  useEffect(() => {
+    const id = requestAnimationFrame(() => force((n) => n + 1));
+    return () => cancelAnimationFrame(id);
+  }, [tab]);
   const e = docEditor.current;
   const block = e ? activeBlock(e) : null;
   const stem = fileStem(title, 'doc');

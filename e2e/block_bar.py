@@ -56,7 +56,7 @@ async def main():
             await bar.locator('button[aria-label="把这个表格下载为 CSV"]').click()
         d = await dl.value
         csv = read(await d.path())
-        check('the CSV downloads with the table in it', d.suggested_filename.endswith('.csv') and 'Dashboard' in csv and 'Project kinds' in csv, d.suggested_filename)
+        check('the CSV downloads with the table in it', d.suggested_filename.endswith('.csv') and 'Live data pages' in csv and 'dc-canvas' in csv, f"{d.suggested_filename} :: {csv[:120]!r}")
         await expect(bar).to_have_count(1)  # the click kept the cursor in the block
         async with pg.expect_download() as dl:
             await bar.locator('button[aria-label="保存为 PNG"]').click()
@@ -71,7 +71,7 @@ async def main():
         before = tab('overview')
         write(os.path.join(DOC, 'tabs/overview.md'), before.rstrip('\n') + "\n\n```csv\nname,qty\nNails,240\nScrews,80\n```\n")
         fence = body.locator('.richcode[data-kind=table]')
-        await expect(fence.locator('.rc-view td')).to_have_text('Nails', timeout=8000)
+        await expect(fence.locator('.rc-view td').first).to_have_text('Nails', timeout=8000)
         await fence.locator('.rc-view td').first.click()
         await expect(bar).to_have_count(1)
         check('a drawn csv fence gets the bar too', await bar.locator('button').count() == 3)
@@ -90,7 +90,7 @@ async def main():
         diagram = body.locator('.richcode[data-kind=diagram]')
         await expect(diagram.locator('.rc-view svg')).to_have_count(1, timeout=8000)
         await diagram.locator('.rc-view svg').first.click()
-        await expect(bar).to_have_count(1)
+        await expect(bar.locator('button')).to_have_count(2, timeout=8000)
         labels = [await bar.locator('button').nth(i).get_attribute('aria-label') for i in range(await bar.locator('button').count())]
         check('a diagram gets only the picture pair', labels == ['复制为 PNG', '保存为 PNG'], str(labels))
         async with pg.expect_download() as dl:
