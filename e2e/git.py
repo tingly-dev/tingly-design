@@ -83,6 +83,13 @@ async def main():
             pg.on('pageerror', lambda e: errs.append(str(e)))
             tag = f'{lang[:2]}-{scheme}'
             if lang == 'zh-CN':
+                # --- no repository: the stages tab says to commit first ----------------------------
+                await pg.goto(BASE + f'/?p={loose}')
+                await pg.locator('header.topbar').wait_for(timeout=15000)
+                await pg.locator('.syncchip').click()
+                await pg.locator('[data-jtab="stages"]').click()
+                await expect(pg.locator('[data-stages] .empty')).to_contain_text('阶段')
+                check('with no repository, the stages tab says to commit first', True)
                 # --- no repository: the first commit creates one, in one confirmation ------------
                 dlg = await open_commit(pg, loose)
                 await expect(dlg.locator('.commit-where')).to_contain_text(os.path.join(TMP, 'notes'))
@@ -102,6 +109,42 @@ async def main():
                 await dlg.locator('button[type=submit]').click()
                 await expect(dlg).to_have_count(0)
                 check('the next commit lands in the project\'s own repository', git(os.path.join(TMP, 'notes'), 'log', '-1', '--format=%s') == 'docs: a new line')
+
+            # --- jump back to a stage: the project's commits, forward-only, one toast Undo ---------
+            notes_dir = os.path.join(TMP, 'notes')
+            tabfile = os.path.join(notes_dir, 'tabs', next(f for f in os.listdir(os.path.join(notes_dir, 'tabs'))))
+            st, s = call('GET', f'/api/projects/{loose}/git/stages')
+            check(f'[{tag}] the stages endpoint lists the project\'s commits, newest first', s.get('repo') and len(s.get('stages', [])) == 2 and s['stages'][0]['message'] == 'docs: a new line', str(s))
+            st, r = call('POST', f'/api/projects/{loose}/git/restore', {'stage': 'deadbeef'})
+            check(f'[{tag}] a stage that is not a commit of the project is refused', st == 400, str(r))
+            open(tabfile, 'a').write('\nSecond change, not committed.\n')
+            before = open(tabfile).read()
+            await pg.goto(BASE + f'/?p={loose}')
+            await pg.locator('header.topbar').wait_for(timeout=15000)
+            await pg.locator('.syncchip').click()
+            await pg.locator('[data-jtab="stages"]').click()
+            rows = pg.locator('.sline')
+            await expect(rows).to_have_count(2)
+            await shot(pg, f'stage-list-{tag}')
+            await rows.last.locator('[data-jump]').click()
+            dlg = pg.locator('.ldialog.lcommit')
+            await expect(dlg.locator('.commit-where').last).not_to_contain_text('…')
+            await shot(pg, f'stage-jump-{tag}')
+            check(f'[{tag}] the jump dialog counts what it would change, from a real dry run', '1' in await dlg.locator('.commit-where').last.inner_text())
+            await dlg.locator('button[type=submit]').click()
+            await expect(dlg).to_have_count(0)
+            await expect(pg.locator('.toast-act')).to_be_visible()
+            restored = subprocess.run(['git', 'show', 'HEAD~1:./' + os.path.relpath(tabfile, notes_dir).replace(os.sep, '/')], cwd=notes_dir, capture_output=True, text=True).stdout
+            check(f'[{tag}] jumping back writes the stage\'s files over the project', open(tabfile).read() == restored and open(tabfile).read() != before)
+            st, j = call('GET', f'/api/projects/{loose}/journal')
+            last = (j if isinstance(j, list) else j.get('journal') or [{}])[-1]
+            check(f'[{tag}] the jump lands in the change log', last.get('summary', '').startswith('restored stage'), str(last))
+            await pg.locator('.toast-act').click()
+            for _ in range(20):
+                if open(tabfile).read() == before:
+                    break
+                await asyncio.sleep(0.25)
+            check(f'[{tag}] the toast\'s Undo writes the pre-jump work back', open(tabfile).read() == before)
 
             # --- inside someone's repository: say where, commit only the project -----------------
             dlg = await open_commit(pg, inside)
@@ -124,6 +167,8 @@ async def main():
                     await pg.locator('header.topbar').wait_for(timeout=15000)
                     await pg.locator('.syncchip').click()
                     check(f'the {kind} editor has commit in its change log', await pg.locator('[data-commit]').count() == 1)
+                    await pg.locator('[data-jtab="stages"]').click()
+                    check(f'the {kind} editor has the stages tab in its change log', await pg.locator('[data-stages]').count() == 1)
 
             # --- new project: optional repository from the start ---------------------------------
             await pg.goto(BASE + '/')

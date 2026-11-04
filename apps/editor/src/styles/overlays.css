@@ -8,7 +8,7 @@
   top: 60px;
   right: 12px;
   z-index: 40;
-  width: 360px;
+  width: 380px;
   max-height: calc(100% - 140px);
   display: flex;
   flex-direction: column;
@@ -25,6 +25,7 @@
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 
@@ -93,6 +94,47 @@
   margin-top: 3px;
   color: var(--muted);
   font-size: 12px;
+}
+
+
+/* stages: the commits the editor can jump back to (.design/project-stages.md) */
+
+.sline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sline .who {
+  flex: 1;
+  min-width: 0;
+}
+
+.sline .who b {
+  display: block;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.sline .meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sline .hash,
+.commit-where .hash {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.sline .btn {
+  flex: none;
 }
 
 

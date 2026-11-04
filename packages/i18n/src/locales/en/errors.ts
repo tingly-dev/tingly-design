@@ -69,6 +69,8 @@ export default {
   noClaudeCli: 'There is no claude CLI on this machine, so the work cannot be handed to Claude Code.',
   nothingToCommit: 'There are no changes to commit.',
   notGitRepo: 'The folder {{dir}} is not in a git repository, so there is nowhere to commit.',
+  badStage: 'That stage is not a commit of this project.',
+  delegateRunning: 'Claude Code is still running on this project. Wait for it to finish before jumping back to a stage.',
   rebaseConflict: 'This part was changed again afterwards, so it cannot be undone automatically.',
   serverUnreachable: 'Cannot reach the server. Check that pnpm dev is running.',
 };

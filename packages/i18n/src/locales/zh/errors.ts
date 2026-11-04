@@ -71,6 +71,8 @@ export default {
   noClaudeCli: '本机没有可用的 claude CLI，无法委托。',
   nothingToCommit: '没有需要提交的改动。',
   notGitRepo: '文件夹 {{dir}} 不在 git 仓库里，没有可提交的地方。',
+  badStage: '那个阶段不是这个项目的提交。',
+  delegateRunning: 'Claude Code 还在这个项目上运行，等它结束再跳回阶段。',
   rebaseConflict: '这段内容之后又被改过，没法自动撤销。',
   serverUnreachable: '连不上服务端，确认 pnpm dev 在运行。',
 } satisfies Locale<typeof en>;
