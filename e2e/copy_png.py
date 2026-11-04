@@ -3,7 +3,7 @@ clipboard as PNGs, Save as PNG downloads the element's picture as a file, a pict
 is copied and saved in its own bytes, every kind's Import / Export menu has the item and puts its picture
 there too, and a browser without an image clipboard gets the download instead.
 Run with `pnpm dev` up: python3 e2e/copy_png.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
-import os, asyncio, json, shutil
+import os, asyncio, json, shutil, struct, zlib
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -91,14 +91,21 @@ async def menus(p):
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOARD = os.path.join(REPO, 'projects/zz-export-board')
-# the same 1x1 PNG `export_image.py` puts in its board, byte for byte: what the original-image items must give back
-PNG1 = bytes.fromhex('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8cfc0f01f0005000201a5f645400000000049454e44ae426082')
+
+def png1x1():
+    """A sound 1x1 PNG (correct chunk lengths and CRCs — the clipboard's decoder is stricter than <img>'s)."""
+    def chunk(tag, data):
+        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data))
+    ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', 1, 1, 8, 6, 0, 0, 0))
+    idat = chunk(b'IDAT', zlib.compress(b'\x00\xff\x00\x00\xff', 9))
+    return b'\x89PNG\r\n\x1a\n' + ihdr + idat + chunk(b'IEND', b'')
 
 async def original(p):
     """A selected <img> hands back the file it points at: the same bytes on the clipboard and on disk."""
+    png = png1x1()
     shutil.rmtree(BOARD, ignore_errors=True)
     os.makedirs(BOARD + '/uploads')
-    open(BOARD + '/uploads/pic.png', 'wb').write(PNG1)
+    open(BOARD + '/uploads/pic.png', 'wb').write(png)
     open(BOARD + '/canvas.json', 'w').write(json.dumps({'v': 3, 'title': 'zz', 'launch': {'view': 'canvas'}, 'pages': [], 'boards': {'Main.dc.html': {'x': 0, 'y': 0, 'w': 400, 'h': 300, 'title': 'Main'}}}))
     open(BOARD + '/Main.dc.html', 'w').write('<!doctype html><html><head><meta charset="utf-8"><script src="./support.js"></script></head><body><x-dc><div style="width:400px;height:300px;background:#fff"><img src="uploads/pic.png" width="100"></div></x-dc></body></html>')
     b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
@@ -111,14 +118,21 @@ async def original(p):
     await img.click()
     await img.click(button='right')
     await expect(pg.locator('.menu .mi', has_text='Copy original image')).to_be_visible()
-    hexes = '''async () => { const [it] = await navigator.clipboard.read(); if (!it.types.includes('image/png')) return null;
-      const buf = await (await it.getType('image/png')).arrayBuffer(); return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join(''); }'''
     await pg.locator('.menu .mi', has_text='Copy original image').click()
+    # the browser may re-encode what it holds (Chromium decodes to a bitmap), so the picture must match pixel for pixel
+    pixels = '''async (src) => {
+      const decode = async (blob) => { const bm = await createImageBitmap(blob); const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; const g = c.getContext('2d'); g.drawImage(bm, 0, 0); return [...new Uint32Array(g.getImageData(0, 0, bm.width, bm.height).data)]; };
+      const [it] = await navigator.clipboard.read(); if (!it.types.includes('image/png')) return null;
+      const clip = await decode(await it.getType('image/png'));
+      const orig = await decode(await (await fetch(src)).blob());
+      return [clip, orig];
+    }'''
+    src = await img.evaluate('i => i.src')
     for _ in range(40):  # the clipboard may still hold the previous picture
-        got = await pg.evaluate(hexes)
-        if got == PNG1.hex(): break
+        got = await pg.evaluate(pixels, src)
+        if got and got[0] == got[1] and got[0]: break
         await pg.wait_for_timeout(250)
-    check('an img element: the clipboard holds the original file, byte for byte', got == PNG1.hex(), (len(got or ''), len(PNG1.hex())))
+    check('an img element: the clipboard holds the original picture, pixel for pixel', bool(got) and got[0] == got[1] and bool(got[0]), (len(got[0]) if got else None, len(got[1]) if got else None))
 
     await img.click(button='right')
     async with pg.expect_download(timeout=30000) as dl:
@@ -127,7 +141,7 @@ async def original(p):
     path = OUT + 'original-' + d.suggested_filename
     await d.save_as(path)
     check('an img element: Save original image downloads the file under its own name and bytes',
-          d.suggested_filename == 'pic.png' and open(path, 'rb').read() == PNG1, d.suggested_filename)
+          d.suggested_filename == 'pic.png' and open(path, 'rb').read() == png, d.suggested_filename)
     await b.close()
 
 async def fallback(p):
