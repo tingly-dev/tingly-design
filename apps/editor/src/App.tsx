@@ -7,6 +7,7 @@ import { installShortcuts } from './shortcuts';
 import { Canvas } from './components/canvas/Canvas';
 import { CanvasTopBar, LeftBar, RightBar } from './components/canvas/Bars';
 import { RightPanel } from './components/panel/RightPanel';
+import { FilesPane } from './components/canvas/FilesPane';
 import { PromptBar } from './components/PromptBar';
 import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './components/Overlays';
 import { SlidesApp } from './components/slides/SlidesApp';
@@ -135,7 +136,7 @@ function Project() {
 function CanvasApp() {
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
-  const panelOpen = useStore((s) => s.pane === 'inspector');
+  const pane = useStore((s) => s.pane);
   return (
     <>
       <CanvasTopBar />
@@ -147,7 +148,8 @@ function CanvasApp() {
           {mode === 'edit' && <PromptBar />}
           <JournalPopover />
         </main>
-        {panelOpen && mode === 'edit' && <RightPanel />}
+        {pane === 'inspector' && mode === 'edit' && <RightPanel />}
+        {pane === 'files' && mode === 'edit' && <FilesPane />}
         <ContextMenu />
         {mode === 'edit' && <NoteFormatBar />}
         <FocusView />

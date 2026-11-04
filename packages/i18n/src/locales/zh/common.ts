@@ -80,6 +80,8 @@ export default {
   pane: {
     inspector: '属性面板',
     inspectorHint: '属性面板（⌘\\）',
+    files: '文件',
+    filesHint: '项目文件夹里的文件',
   },
   item: {
     cannotUndo: '删除后无法撤销。',

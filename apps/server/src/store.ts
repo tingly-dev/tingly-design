@@ -853,6 +853,33 @@ export async function readAsset(name: string, rel: string): Promise<Buffer | nul
   }
 }
 
+/**
+ * A path the files pane may read (never write): any file of the folder that is
+ * not internal — no dot segment, no node_modules, nothing outside. The same
+ * line `listProjectEntries` lists on, so what is shown is what can be opened.
+ */
+export function entryRel(rel: string): string {
+  const parts = rel.replace(/\\/g, '/').split('/').filter(Boolean);
+  if (parts.length && (rel.includes('..') || parts.some((p) => p.startsWith('.') || p === 'node_modules'))) throw new HttpError(400, 'notProjectFile', { path: rel });
+  return parts.join('/');
+}
+
+/** The media type a listed file is served with: a picture or font as itself, a PDF as itself, the rest plain text (never as a page or a script). */
+export function entryType(rel: string): string {
+  const ext = rel.slice(rel.lastIndexOf('.') + 1).toLowerCase();
+  return ASSET_TYPES[ext] ?? uploadType(ext);
+}
+
+/** Read one file of the folder for the files pane's preview (read-only; writes go through /file and /assets). */
+export async function readEntry(name: string, rel: string): Promise<Buffer | null> {
+  try {
+    return await readFile(join(projectDir(name), entryRel(rel)));
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    return null;
+  }
+}
+
 type Written = { content: string; version: string };
 
 /**
@@ -919,6 +946,39 @@ export async function listAssets(name: string): Promise<{ path: string; size: nu
 
 export async function removeAsset(name: string, rel: string): Promise<void> {
   await rm(join(projectDir(name), assetRel(rel)), { force: true });
+}
+
+/**
+ * Every file of a project's folder, for the files pane: what a person brought in or a tool wrote,
+ * beside the editor's own files. The same line as the archive and git: dot files (the journal, the
+ * transcript, renders/, …) and node_modules are never listed. Paths only — content is served by /raw/.
+ */
+export async function listProjectEntries(name: string): Promise<{ path: string; size: number; mtime: number }[]> {
+  const dir = projectDir(name);
+  const out: { path: string; size: number; mtime: number }[] = [];
+  const visit = async (d: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+      const p = join(d, e.name);
+      if (e.isDirectory()) await visit(p);
+      else {
+        try {
+          const st = await stat(p);
+          out.push({ path: relative(dir, p).split(sep).join('/'), size: st.size, mtime: st.mtimeMs });
+        } catch {
+          // vanished between readdir and stat
+        }
+      }
+    }
+  };
+  await visit(dir);
+  return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 export async function removeFile(name: string, rel: string): Promise<void> {

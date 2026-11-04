@@ -147,13 +147,18 @@ function watchProjects() {
       const rel = relative(dir, abs);
       if (!rel || rel.startsWith('..') || isAbsolute(rel)) continue;
       const r = rel.split(sep).join('/');
-      return isTracked(r) || isAsset(r) ? { project, rel: r } : null;
+      return { project, rel: r };
     }
     const r = relative(PROJECTS_DIR, abs).split(sep);
     if (r.length < 2 || !isProjectName(r[0])) return null;
-    const rel = r.slice(1).join('/');
-    return isTracked(rel) || isAsset(rel) ? { project: r[0], rel } : null;
+    return { project: r[0], rel: r.slice(1).join('/') };
   }
+
+  /** A file of a project the editor does not track (a tool's data beside the project's own files): still not internal. */
+  const isPlainEntry = (rel: string) => {
+    const parts = rel.split('/');
+    return !!rel && !rel.includes('..') && !parts.some((p) => p.startsWith('.') || p === 'node_modules');
+  };
 
   const isAsset = (rel: string) => {
     try {
@@ -174,6 +179,11 @@ function watchProjects() {
     const at = split(abs);
     if (!at) return;
     const key = `${at.project}/${at.rel}`;
+    // a file the editor does not track: only the files pane lists it, so a bare re-list is enough
+    if (!isTracked(at.rel) && !isAsset(at.rel)) {
+      if (!initial && isPlainEntry(at.rel) && (event === 'add' || event === 'change' || event === 'unlink')) publish(at.project, { type: 'entries' });
+      return;
+    }
     // a dashboard's data file, or a picture or font, changed: pages re-read them
     if (!isTracked(at.rel)) {
       if (!initial && (event === 'add' || event === 'change' || event === 'unlink')) publish(at.project, { type: 'assets', path: at.rel });

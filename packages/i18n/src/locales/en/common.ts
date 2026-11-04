@@ -78,6 +78,8 @@ export default {
   pane: {
     inspector: 'Properties panel',
     inspectorHint: 'Properties panel (⌘\\)',
+    files: 'Files',
+    filesHint: 'Files of the project folder',
   },
   item: {
     cannotUndo: 'This cannot be undone.',

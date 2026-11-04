@@ -139,7 +139,8 @@ export type ServerEvent =
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
-  | { type: 'assets'; path?: string };
+  | { type: 'assets'; path?: string }
+  | { type: 'entries' };
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -255,6 +256,16 @@ export const api = {
     call(at(`api/projects/${enc(p)}/uploads?path=${enc(path)}`), { method: 'PUT', body: bytes as Uint8Array<ArrayBuffer> }).then((r) => json<{ path: string; size: number }>(r)),
 
   assets: (p: string) => call(at(`api/projects/${enc(p)}/assets`)).then((r) => json<{ path: string; size: number }[]>(r)),
+
+  /** The project folder's files for the files pane: dot files and node_modules are never listed. */
+  entries: (p: string) =>
+    call(at(`api/projects/${enc(p)}/entries`)).then((r) => json<{ entries: { path: string; size: number; mtime: number }[] }>(r)),
+
+  /** URL of one file of the folder, read-only (the files pane's preview, thumbnails and "open in new window"). */
+  entryUrl: (p: string, path: string) => `${SERVER}/api/projects/${enc(p)}/entry?path=${encodeURIComponent(path)}`,
+
+  /** One file of the folder, read-only, as bytes. */
+  entryBytes: (p: string, path: string) => call(at(`api/projects/${enc(p)}/entry?path=${enc(path)}`)).then((r) => r.arrayBuffer()),
 
   removeAsset: (p: string, path: string) =>
     call(at(`api/projects/${enc(p)}/assets?path=${enc(path)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),

@@ -334,6 +334,9 @@ function onEvent(e: ServerEvent): void {
     void import('./components/ds/ds').then((m) => m.assetsChanged());
     if (e.path && !isDataPath(e.path)) bumpAssetRev();
     if (get().kind === 'dashboard') void import('./components/dash/dash').then((m) => m.dataChanged(e.path));
+  } else if (e.type === 'entries') {
+    // a file the editor does not track (a tool's data beside the project's files): the files pane re-lists
+    bumpAssetRev();
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {

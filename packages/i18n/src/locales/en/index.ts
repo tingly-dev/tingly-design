@@ -7,6 +7,7 @@ import aiSettings from './aiSettings';
 import importer from './importer';
 import app from './app';
 import canvas from './canvas';
+import files from './files';
 import panel from './panel';
 import slides from './slides';
 import motion from './motion';
@@ -28,6 +29,7 @@ export default {
   importer,
   app,
   canvas,
+  files,
   panel,
   slides,
   motion,
