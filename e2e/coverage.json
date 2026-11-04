@@ -678,5 +678,10 @@
     "design": [
       "files"
     ]
+  },
+  "块角部操作栏": {
+    "docs": [
+      "block_bar"
+    ]
   }
 }

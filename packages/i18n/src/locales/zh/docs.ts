@@ -57,6 +57,11 @@ export default {
     deleteRow: '删除这一行',
     deleteCol: '删除这一列',
   },
+  blockbar: {
+    label: '块操作',
+    copyPng: '复制为 PNG',
+    savePng: '保存为 PNG',
+  },
   code: {
     empty: '还没有内容可画。',
     noRows: '没有可显示的行。',

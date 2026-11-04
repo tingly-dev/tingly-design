@@ -55,6 +55,11 @@ export default {
     deleteRow: 'Delete this row',
     deleteCol: 'Delete this column',
   },
+  blockbar: {
+    label: 'Block actions',
+    copyPng: 'Copy as PNG',
+    savePng: 'Save as PNG',
+  },
   code: {
     empty: 'Nothing to draw yet.',
     noRows: 'No rows to show.',

@@ -335,7 +335,7 @@ async def main():
         await pg.locator('.tabname', has_text='Overview').click()
         await body.locator('table td').first.click()
         async with pg.expect_download() as dl:
-            await pg.get_by_role('button', name='把这个表格下载为 CSV').click()
+            await pg.get_by_role('toolbar', name='格式').get_by_role('button', name='把这个表格下载为 CSV').click()
         csv = read(await (await dl.value).path())
         check('a table downloads as CSV with its header row', csv.lstrip('\ufeff').startswith('Kind,') and csv.count('\n') == 7, csv[:120])
 
