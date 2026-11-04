@@ -50,6 +50,7 @@
 | [docs-history.md](./docs-history.md) | 文档的历史版本：写盘前存下被覆盖的标签页文本（本机、不进 zip 和提交），列表、预览、恢复走普通编辑 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
 | [claude-design-format.md](./claude-design-format.md) | 和原版 Claude Design 互相搬作品：包就是原版的文件布局（`project/…`，看板是存储文档），导入并进“导入项目”不选类型，导出挨着“整个项目”；图片和数据怎么对应、哪些类型没有 | 已实施（编辑器、启动页、命令行）；Docs 往返、查询数据集的数据是没做的 |
+| [block-corner-bar.md](./block-corner-bar.md) | 块角部操作栏：光标所在的自足块（表格、csv 围栏、mermaid、公式）旁贴一条小栏，出口动作就地可取；防杂乱的规则（只在选中时出现、最多三个动作、只放出口动作、词汇不新造）和各类型怎么接 | 文档第一期已实施；其余类型未做 |
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [selection-image.md](./selection-image.md) | 选中的元素存为图片：共用右键菜单里加 Save as PNG（`dc:'export'` 的 `tid` 一条路），`<img>` 再给复制 / 保存原文件（`src` 加 rawBase 拿原字节，剪贴板只保证 PNG） | 已实施（画布、幻灯片、动效）；多选未定 |
 | [drawn-check.md](./drawn-check.md) | 看板画出来的样子自查：`NaN`、空图表、标签重叠或被裁；同一段探针既在打开的页面里写进 `.runs.json` 的 `drawn`，也在 `check --snapshots` 里报成版面警告 | 已实施 |

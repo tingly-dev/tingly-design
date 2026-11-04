@@ -39,6 +39,7 @@ pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
 | `python3 e2e/ds.py` | 设计系统：封面与品牌手册、改颜色/改名带别名/增删、文字与圆角、组件预览、上传资源、外部改坏后的提示、新建、装进幻灯片后选 token 与文字样式、移除（22 项） |
 | `python3 e2e/dash.py` | 看板：查询/CSV/JSON 加载、标注核对、筛选与点行筛选、数据模式、改查询（拒绝写入）、停止与恢复自动刷新、外部改数据文件与页面、失败状态、`.runs.json`、代码面板、新建（25 项） |
 | `python3 e2e/docs.py` | 文档：标签页与大纲、浏览不写盘、打字/勾待办/改单元格都只改一行、`/` 菜单、格式菜单、外部改动实时进来且不被覆盖、评论（回复/解决/新建）、标签页增删改、版式、AI 改写（有模拟模型时）、导出 HTML、新建（25 项） |
+| `python3 e2e/block_bar.py` | 光标所在块的角部操作栏：表格在块角拿到 CSV / 复制为 PNG / 保存为 PNG（与共用菜单同一套词）、csv 围栏把源文本当文件交出去、mermaid 图示存为 PNG、光标离开块栏就消失（.design/block-corner-bar.md）（10 项） |
 | `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的 ImageGen 卡（Tingly Box 的地址加自己的令牌、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
 | `python3 e2e/export_menu.py` | 共用的导入 / 导出菜单：每种类型的栏里都有，列出这种类型收什么、能存什么；幻灯片和文档一键存成 PDF（真的 PDF，页数对）、服务端没有 Chrome 时回到打印窗口、状态条（28 项检查） |
 | `python3 e2e/pptx.py` | 通过真实启动页与幻灯片菜单测试 PowerPoint 交换：picker/drop/API 导入，保留原件/报告/媒体/备注，编辑并重开，失败原子性与重名，整份原生对象导出与不支持内容的诊断；英文/中文、浅色/深色截图；只使用本套件创建的项目 |

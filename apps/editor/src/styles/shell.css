@@ -374,3 +374,18 @@
     opacity: 0;
   }
 }
+
+
+/* the corner bar on an active self-contained block (see .design/block-corner-bar.md);
+   the buttons are `ib sm`, the bar only says what the group looks like */
+.cbar {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--float-shadow);
+}

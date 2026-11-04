@@ -36,7 +36,7 @@ export async function nodeToPng(node: HTMLElement, o: { scale?: number; width?: 
 
 const clear = (c: string) => !c || c === 'transparent' || /^rgba\(.*,\s*0\)$/.test(c);
 /** The first of these colours that paints, else white: a page with no background still needs one in a picture. */
-const opaque = (...colors: string[]) => colors.find((c) => !clear(c)) ?? '#fff';
+export const opaque = (...colors: string[]) => colors.find((c) => !clear(c)) ?? '#fff';
 
 /** A page given as HTML, drawn in an off-screen frame of this width (the height is the page's own unless given). */
 export async function htmlToPng(html: string, o: { width: number; height?: number; scale?: number; backgroundColor?: string }): Promise<Blob> {

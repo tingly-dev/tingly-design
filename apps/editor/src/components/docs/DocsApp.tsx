@@ -28,16 +28,16 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docColorCss, docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docColorCss, docsViewContext, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { htmlToPng } from '../../imageExport';
-import type { Editor } from '@tiptap/core';
 import { Versions } from './Versions';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { DocEditor, docEditor, pickImage } from './DocEditor';
+import { BlockBar, downloadTableCsv } from './BlockBar';
 import { CommentsRail } from './Comments';
 import { FileMenu, imageExportItems, type ExportItem } from '../FileMenu';
 import { CopyPicture, FilePdf, FileText, FileWord } from '../icons';
@@ -230,25 +230,6 @@ function Toolbar() {
   );
 }
 
-/** The table the cursor is in, as a .csv file (UTF-8 with a mark so spreadsheets read Chinese right). */
-function downloadTableCsv(e: Editor): void {
-  const { $from } = e.state.selection;
-  for (let depth = $from.depth; depth > 0; depth--) {
-    const table = $from.node(depth);
-    if (table.type.name !== 'table') continue;
-    const grid: string[][] = [];
-    let hasHeader = false;
-    table.forEach((row, _o, r) => {
-      if (r === 0) hasHeader = row.firstChild?.type.name === 'tableHeader';
-      const cells: string[] = [];
-      row.forEach((cell) => cells.push(cell.textBetween(0, cell.content.size, '\n', '\n')));
-      grid.push(cells);
-    });
-    download('table.csv', '\ufeff' + gridToCsv(grid, hasHeader), 'text/csv;charset=utf-8');
-    return;
-  }
-}
-
 /** The doc as one page of HTML: every tab in order, images from the project. */
 function docHtml(d: DocJson, only?: string): string {
   const s = useStore.getState();
@@ -428,6 +409,7 @@ export function DocsApp() {
         <div className="docscroll">
           <div className="docpage">{tab && <DocEditor key={tab} tab={tab} />}</div>
         </div>
+        <BlockBar />
         <AskClaude
           file={tab ? tabFile(tab) : undefined}
           placeholder={t('docs.app.askPlaceholder')}
