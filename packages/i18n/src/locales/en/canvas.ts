@@ -176,6 +176,9 @@ export default {
   },
   menu: {
     copyPng: 'Copy as PNG',
+    savePng: 'Save as PNG',
+    copyImage: 'Copy original image',
+    saveImage: 'Save original image',
     cut: 'Cut',
     paste: 'Paste',
     duplicate: 'Duplicate',

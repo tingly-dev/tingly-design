@@ -15,7 +15,7 @@ import { SERVER } from '../../base';
 import { api } from '../../api';
 import { t as tr, htmlLang } from '../../i18n';
 import { downloadUrl } from '../../local';
-import { copyImage, dataUrlBlob } from '../../imageExport';
+import { copyImage, dataUrlBlob, saveImage } from '../../imageExport';
 import { pdfHint, printWindow, savePdf, withWebFonts } from '../../pdfExport';
 
 const EMPTY: Record<string, string> = {};
@@ -120,6 +120,12 @@ async function exportCanvasPdf(files: string[]): Promise<void> {
 export async function copyPng(file: string, tid?: number): Promise<void> {
   const stem = file.replace(/\.dc\.html$/, '');
   await copyImage(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, async () => dataUrlBlob(await exportPng(file, 2, tid)));
+}
+
+/** The same picture the copy gives, as a file: an artboard, or one element in it. */
+export async function savePng(file: string, tid?: number): Promise<void> {
+  const stem = file.replace(/\.dc\.html$/, '');
+  await saveImage(`${stem}${tid === undefined ? '' : `-${tid}`}@2x.png`, async () => dataUrlBlob(await exportPng(file, 2, tid)));
 }
 
 export async function exportBoard(file: string, kind: 'png1' | 'png2' | 'source') {

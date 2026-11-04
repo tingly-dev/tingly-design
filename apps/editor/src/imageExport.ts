@@ -67,6 +67,75 @@ export function dataUrlBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: /data:([^;]+)/.exec(head)?.[1] ?? 'image/png' });
 }
 
+// --------------------------------------------------------------- original image files
+
+/** Where a picture named in a file lives: an address of its own stands, anything else is project-root relative (`uploads/pic.png` against the raw file base). */
+export function originalImageUrl(src: string, base: string): string {
+  return /^(https?:|data:|blob:)/.test(src) ? src : base + src.replace(/^\//, '');
+}
+
+/** The last path piece, with its extension: the original file's own name. */
+const originalImageName = (src: string) => src.split(/[?#]/)[0].split('/').pop() || 'image';
+
+/** Fetch an element's original picture as it is on disk: its own bytes and type, nothing drawn again. */
+async function originalImageBlob(src: string, base: string): Promise<Blob> {
+  const r = await fetch(originalImageUrl(src, base));
+  if (!r.ok) throw new Error(String(r.status));
+  const blob = await r.blob();
+  if (!blob.size) throw new Error('empty');
+  return blob;
+}
+
+/** Save the original picture under its own name and extension. One toast either way, like `saveImage`. */
+export async function saveOriginalImage(src: string, base: string): Promise<void> {
+  const name = originalImageName(src);
+  try {
+    download(name, await originalImageBlob(src, base));
+    toast(t('common.image.saved', { name }));
+  } catch (e) {
+    toast(t('common.image.failed', { message: (e as Error).message }), 'error');
+  }
+}
+
+/**
+ * The one image type every browser holds on the clipboard is PNG; anything else it may refuse.
+ * Put the original bytes there when the browser takes them, else decode the same bytes and
+ * re-encode them as PNG (the pixels, not a rendering of the element); returns what landed.
+ */
+async function clipboardImageBlob(blob: Blob): Promise<'original' | 'png'> {
+  if (!navigator.clipboard || typeof ClipboardItem === 'undefined') throw new Error('no image clipboard');
+  const type = blob.type === 'image/png' || !blob.type ? 'image/png' : blob.type;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ [type]: blob })]);
+    return 'original';
+  } catch {
+    const bmp = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0);
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': await canvasPng(canvas) })]);
+    return 'png';
+  }
+}
+
+/** Copy the original picture to the clipboard (PNG when the browser refuses its format); a refused clipboard falls back to the download, and the toast says so. */
+export async function copyOriginalImage(src: string, base: string): Promise<void> {
+  try {
+    const blob = await originalImageBlob(src, base);
+    try {
+      const where = await clipboardImageBlob(blob);
+      toast(t(where === 'original' ? 'common.image.copiedOriginal' : 'common.image.copied'));
+    } catch {
+      download(originalImageName(src), blob);
+      toast(t('common.image.copyFallback'));
+    }
+  } catch (e) {
+    toast(t('common.image.failed', { message: (e as Error).message }), 'error');
+  }
+}
+
+
 /** Make the picture, save it, say so; a failure is one toast. Returns whether a file was saved. */
 export async function saveImage(name: string, make: () => Promise<Blob>): Promise<boolean> {
   try {

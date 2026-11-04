@@ -173,6 +173,7 @@ export default {
     failed: 'The picture could not be made: {{message}}',
     making: 'Making the picture…',
     copied: 'Copied as PNG',
+    copiedOriginal: 'Image copied',
     copyFallback: "Your browser can't copy pictures, so the PNG was downloaded instead",
     fileSlide: '{{name}}-slide-{{n}}.png',
   },

@@ -177,6 +177,9 @@ export default {
   },
   menu: {
     copyPng: '复制为 PNG',
+    savePng: '保存为 PNG',
+    copyImage: '复制原图片',
+    saveImage: '保存原图片',
     cut: '剪切',
     paste: '粘贴',
     duplicate: '创建副本',
