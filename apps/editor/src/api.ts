@@ -49,6 +49,29 @@ export interface GitState {
   folder: string;
 }
 
+/** One commit of the project's folder: a stage to jump back to (.design/project-stages.md). */
+export interface Stage {
+  id: string;
+  /** when the commit was made (ISO) */
+  at: string;
+  message: string;
+}
+
+/** A text file a jump back would change: what is on disk now, what the stage holds (null = written or removed). */
+export interface StageFile {
+  path: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface StagePlan {
+  /** true when this was only asked for the confirm dialog's numbers */
+  dry: boolean;
+  files: StageFile[];
+  /** binary asset changes (pictures, fonts): restored, but Undo does not cover them */
+  binary: number;
+}
+
 export interface BrowseResult {
   /** the folder shown (`~/…` under the home folder) */
   path: string;
@@ -372,6 +395,16 @@ export const api = {
     }).then((r) => r.json() as Promise<{ ok: boolean; output: string }>),
   /** where a commit of this project would land */
   git: (p: string) => call(at(`api/projects/${enc(p)}/git`)).then((r) => json<GitState>(r)),
+
+  /** the project's commits, newest first; empty when there is no repository (or no commit) yet */
+  stages: (p: string) => call(at(`api/projects/${enc(p)}/git/stages`)).then((r) => json<{ repo: boolean; stages: Stage[] }>(r)),
+  /** jump back: `dry` only reports the files the jump would change */
+  restoreStage: (p: string, stage: string, dry = false) =>
+    call(at(`api/projects/${enc(p)}/git/restore`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ stage, dry }),
+    }).then((r) => json<StagePlan>(r)),
 
   events(p: string, on: (e: ServerEvent) => void, onStatus: (s: 'open' | 'closed') => void): () => void {
     const es = new EventSource(at(`api/projects/${enc(p)}/events`));

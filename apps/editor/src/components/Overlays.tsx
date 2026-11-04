@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { NOTE_SIZES, attr, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
@@ -15,14 +15,16 @@ import {
   updateNote,
   wrapSelection,
 } from '../actions';
-import { api, type GitState } from '../api';
+import { api, type GitState, type Stage, type StagePlan } from '../api';
 import { canvasOf, display, toast, useCanvas, useStore } from '../store';
+import { restoreStage } from '../stageRestore';
 import { getClip } from '../clipboard';
 import { lockOf } from '../layerFlags';
 import { TEXT_COLORS, sizeOf } from './canvas/Item';
 import { copyPng, savePng } from './canvas/Board';
 import { copyOriginalImage, saveOriginalImage } from '../imageExport';
 import { Menu, MenuItem } from './Menu';
+import { Segmented } from './Segmented';
 import { Close } from './icons';
 import { SERVER } from '../base';
 import { currentLanguage, htmlLang } from '../i18n';
@@ -306,21 +308,105 @@ function CommitDialog({ project, onClose }: { project: string; onClose: () => vo
   );
 }
 
+/**
+ * Jumping back to a stage, said before it happens: the numbers come from the server's own dry run,
+ * so they are exactly what confirming will do (.design/project-stages.md). Forward-only: the jump
+ * is a new change, git history is untouched, and the toast's Undo takes the batch back.
+ */
+function StageDialog({ project, stage, onClose, onDone }: { project: string; stage: Stage; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [plan, setPlan] = useState<StagePlan | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    api.restoreStage(project, stage.id, true).then(
+      (p) => live && setPlan(p),
+      (e: Error) => (toast(e.message, 'error'), onClose()),
+    );
+    return () => {
+      live = false;
+    };
+  }, [project, stage, onClose]);
+  const writes = plan?.files.filter((f) => f.after !== null).length ?? 0;
+  const removes = plan?.files.filter((f) => f.after === null).length ?? 0;
+  const nothing = !!plan && plan.files.length === 0 && plan.binary === 0;
+  const submit = async () => {
+    if (!plan || busy || nothing) return;
+    setBusy(true);
+    await restoreStage(project, stage.id).catch((e: Error) => toast(e.message, 'error'));
+    onDone();
+    onClose();
+  };
+  return (
+    <Dialog label={t('canvas.journal.stageJumpTitle')} className="lcommit" onClose={onClose} onSubmit={() => void submit()}>
+      <div className="commit-where" role="status" data-state="stage">
+        <b>{stage.message}</b> <span className="hash">{stage.id}</span>
+      </div>
+      <div className="commit-where" role="status">
+        {!plan
+          ? t('canvas.journal.commitChecking')
+          : nothing
+            ? t('canvas.journal.stageNothing')
+            : (
+              <>
+                {writes > 0 && <div>{t('canvas.journal.stageWrites', { count: writes })}</div>}
+                {removes > 0 && <div>{t('canvas.journal.stageRemoves', { count: removes })}</div>}
+                {plan.binary > 0 && <div>{t('canvas.journal.stageBinary', { count: plan.binary })}</div>}
+              </>
+            )}
+      </div>
+      <footer>
+        <button type="button" className="btn" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button className="btn primary" type="submit" disabled={!plan || busy || nothing}>
+          {t('canvas.journal.stageJump')}
+        </button>
+      </footer>
+    </Dialog>
+  );
+}
+
 export function JournalPopover() {
   const { t } = useTranslation();
   const open = useStore((s) => s.journalOpen);
   const journal = useStore((s) => s.journal);
   const project = useStore((s) => s.project);
+  const [tab, setTab] = useState<'changes' | 'stages'>('changes');
+  const [stages, setStages] = useState<{ repo: boolean; list: Stage[] } | null>(null);
   const [committing, setCommitting] = useState(false);
+  const [stage, setStage] = useState<Stage | null>(null);
   const closeCommit = useMemo(() => () => setCommitting(false), []);
-  // the dialog outlives the popover: a click in it counts as outside the popover, which closes it
-  const dialog = committing && project && createPortal(<CommitDialog project={project} onClose={closeCommit} />, document.body);
+  const closeStage = useMemo(() => () => setStage(null), []);
+  const loadStages = useCallback(() => {
+    if (!project) return;
+    api
+      .stages(project)
+      .then((r) => setStages({ repo: r.repo, list: r.stages }), (e: Error) => toast(e.message, 'error'));
+  }, [project]);
+  useEffect(() => {
+    if (open && tab === 'stages') loadStages();
+  }, [open, tab, loadStages]);
+  // the dialogs outlive the popover: a click in them counts as outside the popover, which closes it
+  const dialog =
+    (committing && project && createPortal(<CommitDialog project={project} onClose={closeCommit} />, document.body)) ||
+    (stage && project && createPortal(<StageDialog project={project} stage={stage} onClose={closeStage} onDone={loadStages} />, document.body));
   if (!open) return dialog || null;
   return (
     <section className="journal-pop" aria-label={t('canvas.journal.title')}>
       {dialog}
       <header>
         {t('canvas.journal.title')}
+        <Segmented
+          value={tab}
+          data="jtab"
+          label={t('canvas.journal.title')}
+          options={[
+            { value: 'changes', label: t('canvas.journal.changeTab') },
+            { value: 'stages', label: t('canvas.journal.stageTab') },
+          ]}
+          onChange={setTab}
+        />
         <button className="btn" title={t('canvas.journal.commitHint')} data-commit="" onClick={() => setCommitting(true)}>
           {t('canvas.journal.commit')}
         </button>
@@ -334,24 +420,46 @@ export function JournalPopover() {
         <b>{t('canvas.journal.lineTitle')}</b> {t('canvas.journal.lineHelp')}
         <br />
         <b>{t('canvas.journal.commitTitle')}</b> {t('canvas.journal.commitHint')}
+        <br />
+        <b>{t('canvas.journal.stageTitle')}</b> {t('canvas.journal.stageHelp')}
       </p>
-      <div className="journal" aria-live="polite">
-        {!journal.length && <div className="empty">{t('canvas.journal.empty')}</div>}
-        {[...journal].reverse().map((j) => (
-          <div className="jline" key={j.id}>
-            <div className="bar2" style={{ background: `var(--actor-${j.actor})` }} />
-            <div>
+      {tab === 'stages' ? (
+        <div className="journal" aria-live="polite" data-stages="">
+          {(!stages || stages.list.length === 0) && <div className="empty">{stages === null ? t('canvas.journal.commitChecking') : t('canvas.journal.stageEmpty')}</div>}
+          {stages?.list.map((s) => (
+            <div className="sline" key={s.id}>
               <div className="who">
-                <b style={{ color: `var(--actor-${j.actor})` }}>{t(`app.actor.${j.actor}`)}</b>
-                <span>{j.file}</span>
-                <span style={{ marginLeft: 'auto' }}>{time(j.at)}</span>
+                <b>{s.message}</b>
+                <div className="meta">
+                  <span className="hash">{s.id}</span>
+                  <span>{time(s.at)}</span>
+                </div>
               </div>
-              <div className="what">{j.summary}</div>
-              {j.prompt && <div className="asked">“{j.prompt.length > 120 ? j.prompt.slice(0, 119) + '…' : j.prompt}”</div>}
+              <button className="btn sm" data-jump={s.id} onClick={() => setStage(s)}>
+                {t('canvas.journal.stageJump')}
+              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="journal" aria-live="polite">
+          {!journal.length && <div className="empty">{t('canvas.journal.empty')}</div>}
+          {[...journal].reverse().map((j) => (
+            <div className="jline" key={j.id}>
+              <div className="bar2" style={{ background: `var(--actor-${j.actor})` }} />
+              <div>
+                <div className="who">
+                  <b style={{ color: `var(--actor-${j.actor})` }}>{t(`app.actor.${j.actor}`)}</b>
+                  <span>{j.file}</span>
+                  <span style={{ marginLeft: 'auto' }}>{time(j.at)}</span>
+                </div>
+                <div className="what">{j.summary}</div>
+                {j.prompt && <div className="asked">“{j.prompt.length > 120 ? j.prompt.slice(0, 119) + '…' : j.prompt}”</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

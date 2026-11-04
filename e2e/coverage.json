@@ -398,6 +398,26 @@
       "git"
     ]
   },
+  "跳回早先的阶段": {
+    "design": [
+      "git"
+    ],
+    "slides": [
+      "git"
+    ],
+    "design-system": [
+      "git"
+    ],
+    "dashboard": [
+      "git"
+    ],
+    "docs": [
+      "git"
+    ],
+    "motion": [
+      "git"
+    ]
+  },
   "装入设计系统": {
     "design": [
       "launcher"
