@@ -15,7 +15,9 @@ export type HubEvent =
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
   /** images or fonts were added or removed (binary files carry no content in events) */
-  | { type: 'assets'; path?: string };
+  | { type: 'assets'; path?: string }
+  /** a file the editor does not track changed (a tool's data beside the project's own files): the files pane re-lists */
+  | { type: 'entries' };
 
 type Listener = (e: HubEvent) => void;
 const listeners = new Map<string, Set<Listener>>();

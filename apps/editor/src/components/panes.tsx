@@ -6,7 +6,7 @@ import { KIND_PANE_IDS, type PaneId } from '../panes';
 import { togglePane, useStore } from '../store';
 import { useDash } from './dash/dash';
 import { useComments, useCurrentTab } from './docs/docs';
-import { CodeI, Database, Message, Panel } from './icons';
+import { CodeI, Database, FilesI, Message, Panel } from './icons';
 import { BarButton } from './TopBar';
 
 /** How a pane is offered in the top bar: its icon, its names and the count it wears. */
@@ -35,6 +35,7 @@ function CommentsBadge() {
 
 const PANE_DEF: Record<PaneId, PaneDef> = {
   inspector: { icon: <Panel />, label: (t) => t('common.pane.inspector'), hint: (t) => t('common.pane.inspectorHint') },
+  files: { icon: <FilesI />, label: (t) => t('common.pane.files'), hint: (t) => t('common.pane.filesHint') },
   sources: { icon: <Database />, label: (t) => t('dash.sources.label'), Badge: SourcesBadge },
   code: { icon: <CodeI />, label: (t) => t('dash.bar.code') },
   comments: { icon: <Message />, label: (t) => t('docs.app.comments'), Badge: CommentsBadge },

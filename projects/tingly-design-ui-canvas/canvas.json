@@ -138,6 +138,13 @@
       "w": 1720,
       "h": 940,
       "title": "Canvas and deck theme"
+    },
+    "Files.dc.html": {
+      "x": 10800,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Canvas files pane"
     }
   },
   "order": [
@@ -153,6 +160,7 @@
     "TemplateValues.dc.html",
     "TemplateText.dc.html",
     "Theme.dc.html",
+    "Files.dc.html",
     "Slides.dc.html",
     "DesignSystem.dc.html",
     "Dashboard.dc.html",

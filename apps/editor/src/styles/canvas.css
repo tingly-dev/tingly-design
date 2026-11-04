@@ -317,3 +317,161 @@
   border: 1px solid var(--hairline);
 }
 
+
+/* ------------------------------------------------------------- files pane */
+
+/* The canvas's files pane: the project folder as it is on disk (.design/files-pane.md). */
+
+.filespane {
+  position: relative;
+  width: var(--w-files, var(--panel-w));
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.filespane .tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.filespane .ftitle {
+  flex: 1;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.filespane .fbody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 6px 12px;
+}
+
+.filespane .fdir {
+  padding: 10px 9px 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.filespane .frow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 2px 0 5px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.filespane .frow:hover {
+  background: var(--panel-2);
+}
+
+.filespane .fname {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.filespane .fname svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.filespane .fthumb {
+  flex: none;
+  width: 26px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.filespane .fnn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filespane .fsize {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.filespane .fempty {
+  padding: 16px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* the preview dialog opened from the list */
+
+.ldialog.files-preview {
+  width: min(720px, 92vw);
+}
+
+.files-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  margin: 0 auto;
+}
+
+.files-preview pre {
+  margin: 0;
+  max-height: 60vh;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.files-preview .fp-none {
+  padding: 24px 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.files-preview .fp-trunc {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.files-preview .fp-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--muted);
+}

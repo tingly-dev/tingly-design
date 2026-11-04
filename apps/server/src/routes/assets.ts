@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { createHash } from 'node:crypto';
 import { isKeptPath, isUploadPath, isDataPath } from '@dc/core';
-import { ASSET_TYPES, HttpError, assetType, listAssets, removeAsset, projectDir, assetRel, readAsset, writeAsset } from '../store';
+import { ASSET_TYPES, HttpError, assetType, entryRel, entryType, listAssets, listProjectEntries, readAsset, readEntry, removeAsset, projectDir, assetRel, writeAsset } from '../store';
 import { isPptxImportPath } from '@dc/core';
 import { publish } from '../hub';
 
@@ -10,6 +10,24 @@ const MAX_ASSET = 20 * 1024 * 1024;
 /** Project assets: uploaded files and pictures. */
 export function registerAssets(app: Hono): void {
   app.get('/api/projects/:p/assets', async (c) => c.json(await listAssets(c.req.param('p'))));
+
+  /** The project folder's files for the files pane: paths, sizes, modified times — content goes through /entry and /raw. */
+  app.get('/api/projects/:p/entries', async (c) => c.json({ entries: await listProjectEntries(c.req.param('p')) }));
+
+  /** Read one file of the folder (the files pane's preview and thumbnails). Read-only, never a page or a script; internal files (dot segments, node_modules) are refused. */
+  app.get('/api/projects/:p/entry', async (c) => {
+    const p = c.req.param('p');
+    const rel = entryRel(c.req.query('path') ?? '');
+    const bytes = await readEntry(p, rel);
+    if (!bytes) return c.json({ error: 'not found' }, 404);
+    return c.body(new Uint8Array(bytes), 200, {
+      'content-type': entryType(rel),
+      'cache-control': 'private, no-cache',
+      'x-content-type-options': 'nosniff',
+      // served directly it must not run scripts on this origin
+      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+    });
+  });
 
   app.delete('/api/projects/:p/assets', async (c) => {
     const p = c.req.param('p');

@@ -10,6 +10,8 @@ export const SIDES = {
   chat: { def: 340, min: 280, max: 560 },
   /** the right-hand panel of canvas, slides and motion */
   inspector: { def: 312, min: 260, max: 600 },
+  /** the canvas's files pane (the project folder's list) */
+  files: { def: 312, min: 260, max: 600 },
   /** the slide strip */
   strip: { def: 216, min: 150, max: 420 },
   /** a doc's tab list */

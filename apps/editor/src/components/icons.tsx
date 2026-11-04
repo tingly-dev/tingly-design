@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { IconFolder, IconFolderOpen, IconLayoutList, IconUnlink } from '@tabler/icons-react';
+import { IconFiles, IconFolder, IconFolderOpen, IconLayoutList, IconUnlink } from '@tabler/icons-react';
 import {
   IconAlignCenter,
   IconFileZip,
@@ -174,6 +174,7 @@ export const Check = tabler(IconCheck, 14);
 export const Rename = tabler(IconPencil, 14);
 export const GroupFolder = tabler(IconFolder, 14);
 export const FolderOpen = tabler(IconFolderOpen, 14);
+export const FilesI = tabler(IconFiles, 14);
 export const Unlink = tabler(IconUnlink, 14);
 export const ListLayout = tabler(IconLayoutList, 16);
 export const GridLayout = tabler(IconLayoutGrid, 16);

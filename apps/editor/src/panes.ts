@@ -2,16 +2,18 @@ import type { ProjectKind } from '@dc/core';
 import { readPref, writePref } from './local';
 
 /** The side panes a kind's editor can open in its right column: at most one at a time. */
-export type PaneId = 'inspector' | 'sources' | 'code' | 'comments';
+export type PaneId = 'inspector' | 'files' | 'sources' | 'code' | 'comments';
 
 /**
  * Which pane a kind opens with, and which it has at all (the first one is the kind's main pane, the
  * one the `\` key and the layout switch work on). A kind without a pane has no column and no button.
  * The state is one value in the store (`pane`), remembered per kind in this browser: what a person
  * closed stays closed. The buttons are drawn by `TopBar` from `components/panes.tsx`.
+ * `files` is canvas only on purpose (.design/files-pane.md): the list, preview and copy are
+ * kind-neutral, "put on canvas" is the canvas step.
  */
 export const KIND_PANE_IDS: Record<ProjectKind, PaneId[]> = {
-  design: ['inspector'],
+  design: ['inspector', 'files'],
   slides: ['inspector'],
   motion: ['inspector'],
   'design-system': [],
