@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { NOTE_SIZES, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
+import { NOTE_SIZES, attr, isShape, sandboxDoc, type FromRuntime, type ToRuntime } from '@dc/core';
 import {
   copySelection,
   cutSelection,
@@ -20,7 +20,8 @@ import { canvasOf, display, toast, useCanvas, useStore } from '../store';
 import { getClip } from '../clipboard';
 import { lockOf } from '../layerFlags';
 import { TEXT_COLORS, sizeOf } from './canvas/Item';
-import { copyPng } from './canvas/Board';
+import { copyPng, savePng } from './canvas/Board';
+import { copyOriginalImage, saveOriginalImage } from '../imageExport';
 import { Menu, MenuItem } from './Menu';
 import { Close } from './icons';
 import { SERVER } from '../base';
@@ -35,6 +36,7 @@ export function ContextMenu() {
   const { t } = useTranslation();
   const menu = useStore((s) => s.menu);
   const sel = useStore((s) => s.selection);
+  const project = useStore((s) => s.project);
   const lk = useStore((s) => !!lockOf(s));
   if (!menu || !sel) return null;
   const close = () => useStore.setState({ menu: null });
@@ -45,12 +47,22 @@ export function ContextMenu() {
   const el = sel.kind === 'el' ? selectedElement() : null;
   const isRoot = !!el && !el.el.parent;
   const hasKids = !!el?.el.children.some((c) => c.kind === 'el');
+  // a picture element carries its own file: an src with a hole in it is the template's business, not one picture
+  const pic = el && el.el.tag === 'img' && !attr(el.el, 'src')?.includes('{{') ? attr(el.el, 'src') : undefined;
+  const base = project ? api.rawBase(project) : '';
   const clip = getClip();
   return (
     <Menu x={menu.x} y={menu.y} onClose={close} label={t('common.edit')}>
       <MenuItem label={t('canvas.menu.cut')} keys={`${mod}X`} disabled={isRoot || lk || sel.kind === 'board'} onSelect={run(cutSelection)} />
       <MenuItem label={t('common.copy')} keys={`${mod}C`} disabled={sel.kind === 'board'} onSelect={run(copySelection)} />
       <MenuItem label={t('canvas.menu.copyPng')} disabled={sel.kind === 'note'} onSelect={run(() => sel.kind !== 'note' && void copyPng(sel.file, sel.kind === 'el' ? sel.tid : undefined))} />
+      <MenuItem label={t('canvas.menu.savePng')} disabled={sel.kind === 'note'} onSelect={run(() => sel.kind !== 'note' && void savePng(sel.file, sel.kind === 'el' ? sel.tid : undefined))} />
+      {pic && (
+        <>
+          <MenuItem label={t('canvas.menu.copyImage')} onSelect={run(() => void copyOriginalImage(pic, base))} />
+          <MenuItem label={t('canvas.menu.saveImage')} onSelect={run(() => void saveOriginalImage(pic, base))} />
+        </>
+      )}
       <MenuItem label={t('canvas.menu.paste')} keys={`${mod}V`} disabled={!clip || (lk && clip.kind === 'el')} onSelect={run(paste)} />
       <MenuItem label={t('canvas.menu.duplicate')} keys={`${mod}D`} disabled={isRoot} onSelect={run(duplicateSelection)} />
       <hr />

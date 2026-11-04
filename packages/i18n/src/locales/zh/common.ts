@@ -175,6 +175,7 @@ export default {
     failed: '没能生成图片：{{message}}',
     making: '正在生成图片…',
     copied: '已复制为 PNG',
+    copiedOriginal: '已复制原图片',
     copyFallback: '浏览器不支持复制图片，已改为下载 PNG',
     fileSlide: '{{name}}-第{{n}}页.png',
   },
