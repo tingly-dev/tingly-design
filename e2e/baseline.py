@@ -62,9 +62,13 @@ COMPARE = """async ([a, b, pixel]) => {
   return { differ: n, total: p.data.length / 4, diff: c.toDataURL('image/png') };
 }"""
 
-# the launcher's "3 minutes ago" and the recency order both follow file times, which differ on every checkout and run
+# the launcher's "3 minutes ago" and the recency order both follow file times, which differ on every checkout and run;
+# the card's own is taken out of the line (not only hidden), or a longer "2 hours ago" wraps the line and the card grows
 STILL = ('*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'
-         '.lmeta>span:last-child:not(.kbadge),.c-when{visibility:hidden!important}')
+         '.lmeta>span:last-child:not(.kbadge){display:none!important}.c-when{visibility:hidden!important}')
+# the conversation column keeps every turn of a project on the server, so what an earlier suite sent to a sample (the
+# fast AI suites do) would show in the picture; the column is drawn empty here and its turns are the chat_panel suite's
+NO_TURNS = '**/api/projects/*/transcript'
 
 async def main():
     ref = None if RECORD else baselines()
@@ -77,6 +81,7 @@ async def main():
             ctx = await b.new_context(viewport={'width': 1440, 'height': 900}, color_scheme=scheme, reduced_motion='reduce',
                                       locale='zh-CN' if lang == 'zh' else 'en-US')
             pg = await ctx.new_page()
+            await pg.route(NO_TURNS, lambda route: route.fulfill(json=[]) if route.request.method == 'GET' else route.continue_())
             for screen, project in {**SCREENS, **LEFT, **{k: v[0] for k, v in STATES.items()}}.items():
                 name = f'{screen}-{scheme}-{lang}.png'
                 left = screen in LEFT
