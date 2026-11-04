@@ -207,6 +207,7 @@ async def main():
         await pg.locator('.tabrow input').press('Enter')
         ok = await wait_for(lambda: index()['tabs'][-1]['title'] == 'Glossary')
         check('renaming a tab', ok)
+        shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)  # earlier runs leave copies behind (git clean keeps ignored files)
         await pg.locator('.tabrow.on .more').click()
         await pg.locator('.menu .mi', has_text='删除').click()
         ok = await wait_for(lambda: len(index()['tabs']) == 5 and not os.path.exists(os.path.join(DOC, 'tabs/tab.md')))
@@ -227,6 +228,31 @@ async def main():
         await pg.locator('.tabrow.on .more').click()
         await pg.locator('.menu .mi', has_text='删除').click()
         check('the copy can be deleted again', await wait_for(lambda: len(index()['tabs']) == 5))
+        # a delete keeps the tab's text and remembers it, so the tabs panel can bring it back (issue #267)
+        # the copy's marker write happens after the index edit lands: wait for it by content (the deleted
+        # Glossary wrote to the same path), then clear what earlier steps left
+        def copy_marker():
+            try:
+                return 'Overview 副本' in open(os.path.join(DOC, '.history', 'tabs__tab.md', '.deleted.json'), encoding='utf-8').read()
+            except OSError:
+                return False
+        ok = await wait_for(copy_marker)
+        shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)  # earlier runs leave copies behind (git clean keeps ignored files)
+        before_arch = tab('architecture')
+        await pg.locator('.tabrow', has_text='Architecture').locator('.more').click()
+        await pg.locator('.menu .mi', has_text='删除').click()
+        hist = os.path.join(DOC, '.history', 'tabs__architecture.md')
+        ok = await wait_for(lambda: len(index()['tabs']) == 4 and not os.path.exists(os.path.join(DOC, 'tabs/architecture.md')) and os.path.exists(os.path.join(hist, '.deleted.json')))
+        kept = [n for n in (os.listdir(hist) if os.path.isdir(hist) else []) if n.endswith('.md')]
+        check('a delete keeps the text and remembers the tab', ok and bool(kept), str(os.listdir(hist) if os.path.isdir(hist) else None))
+        await expect(pg.locator('.restoretab')).to_have_text('已删除的标签页', timeout=8000)
+        await pg.locator('.restoretab').click()
+        await pg.locator('.menu .mi', has_text='Architecture').first.click()
+        ok = await wait_for(lambda: len(index()['tabs']) == 5 and index()['tabs'][-1]['title'] == 'Architecture' and os.path.exists(os.path.join(DOC, 'tabs/architecture.md')) and tab('architecture') == before_arch)
+        check('restoring a deleted tab puts it back with its text, where it sat', ok, json.dumps(index()['tabs'], ensure_ascii=False))
+        ok = await wait_for(lambda: not os.path.exists(os.path.join(hist, '.deleted.json')))
+        await expect(pg.locator('.restoretab')).to_have_count(0, timeout=8000)
+        check('a restored tab leaves the deleted list', ok)
         await pg.locator('.dashbar button[aria-label="版式"]').click()
         await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
         ok = await wait_for(lambda: index()['settings']['width'] == 'wide')

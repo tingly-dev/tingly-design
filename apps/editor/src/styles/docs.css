@@ -225,6 +225,13 @@
 }
 
 
+/* the “Deleted tabs” menu button under the tab rows (only there while tabs are missing) */
+.restoretab {
+  margin: -8px 4px 14px;
+  align-self: flex-start;
+}
+
+
 .doctabs .outline {
   border-top: 1px solid var(--line);
   padding-top: 10px;

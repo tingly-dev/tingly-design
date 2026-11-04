@@ -1,11 +1,11 @@
 import { ItemMenuItems } from '../ItemMenu';
-import { MenuItem } from '../Menu';
+import { Menu, MenuItem } from '../Menu';
 import { RowMenu } from '../RowMenu';
 import { InlineRename } from '../InlineRename';
 import { Segmented } from '../Segmented';
 import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import {
   IconArrowBackUp,
   IconArrowForwardUp,
@@ -29,9 +29,9 @@ import {
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { docColorCss, docsViewContext, outlineOf, gridToCsv, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
-import { api } from '../../api';
+import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
-import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
+import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
 import { htmlToPng } from '../../imageExport';
 import type { Editor } from '@tiptap/core';
 import { Versions } from './Versions';
@@ -76,6 +76,65 @@ function TabRow({ id, title, sub, current, first, last }: { id: string; title: s
         )}
       </RowMenu>
     </li>
+  );
+}
+
+/** The tabs a delete took out, listed under the tab rows while there are any: one entry puts a tab, its subtabs and its text back where they sat. */
+function RestoreDeleted() {
+  const { t, i18n } = useTranslation();
+  const index = useDocIndex();
+  const project = useStore((s) => s.project);
+  const [gone, setGone] = useState<DeletedTabGroup[]>([]);
+  const btn = useRef<HTMLButtonElement>(null);
+  // the menu closes itself on a press outside it, the button included: remember it was open then, so the click that follows does not open it again
+  const wasOpen = useRef(false);
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const close = () => setAt(null);
+  useEffect(() => {
+    if (!project) return setGone([]);
+    let live = true;
+    const load = () => api.historyDeleted(project).then((l) => live && setGone(l), () => live && setGone([]));
+    load();
+    // a delete writes its marker just after the index changes; one more look makes sure the list catches it
+    const again = setTimeout(load, 1200);
+    return () => {
+      live = false;
+      clearTimeout(again);
+    };
+  }, [project, index]); // the index changes whenever tabs come or go, which is when this list can change
+  if (!gone.length) return null;
+  return (
+    <>
+      <button
+        ref={btn}
+        className="btn ghost sm restoretab"
+        aria-haspopup="menu"
+        aria-expanded={!!at}
+        onPointerDown={() => (wasOpen.current = !!at)}
+        onClick={() => {
+          if (wasOpen.current) return void (wasOpen.current = false);
+          const r = btn.current!.getBoundingClientRect();
+          setAt({ x: r.left, y: r.bottom + 4 });
+        }}
+      >
+        {t('docs.deleted.button')}
+      </button>
+      {at && (
+        <Menu x={at.x} y={at.y} label={t('docs.deleted.menu')} onClose={close}>
+          {gone.map((r) => (
+            <MenuItem
+              key={r.id}
+              label={r.title || r.id}
+              hint={t('docs.deleted.hint', { at: new Date(r.at).toLocaleString(i18n.language) })}
+              onSelect={() => {
+                close();
+                void restoreDeletedTab(r);
+              }}
+            />
+          ))}
+        </Menu>
+      )}
+    </>
   );
 }
 
@@ -360,6 +419,7 @@ export function DocsApp() {
           <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
             {t('docs.app.addTab')}
           </button>
+          <RestoreDeleted />
           {tab && <Outline tab={tab} />}
         </aside>
       </ListColumn>

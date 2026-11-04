@@ -6,6 +6,8 @@ import { projectDir, safeRel } from './store';
  * Earlier versions of a doc's tabs (.design/docs-history.md): before a write replaces `tabs/<id>.md`,
  * the text it replaces is kept under `.history/` (local to this machine, never in an archive or a
  * commit), at most one per minute per file and the newest few dozen. Reading never touches the file.
+ * A delete keeps the text it removes the same way, plus a `.deleted.json` marker so the tabs panel
+ * can list what was deleted and put it back.
  */
 
 const KEEP = 40;
@@ -13,6 +15,10 @@ const EVERY_MS = 60_000;
 
 const dirOf = (project: string, rel: string) => join(projectDir(project), '.history', rel.replace(/\//g, '__'));
 const watched = (rel: string) => /^tabs\/[^/]+\.md$/.test(rel);
+
+/** Tab ids come from `uniqueTabId` (a slug); anything else in `.history` is not taken at face value. */
+const ID_OK = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+const deletedFileOf = (project: string, rel: string) => join(dirOf(project, rel), '.deleted.json');
 
 export interface Snapshot {
   id: string;
@@ -77,4 +83,79 @@ export async function readSnapshot(project: string, rel: string, id: string): Pr
   } catch {
     return null;
   }
+}
+
+// --------------------------------------------------------------- deleted tabs
+
+/** What a delete took out: the tab and its subtabs as doc.json held them, and where they sat. */
+export interface DeletedTab {
+  id: string;
+  /** the tab's title when it was deleted */
+  title: string;
+  /** when the tab was deleted */
+  at: string;
+  /** where the tab sat among its siblings */
+  index: number;
+  tabs: { id: string; title: string; parent?: string }[];
+}
+
+const plainTabs = (tabs: unknown): DeletedTab['tabs'] =>
+  Array.isArray(tabs)
+    ? tabs
+        .filter((x): x is { id: string; title: string; parent?: string } => !!x && typeof x === 'object' && typeof (x as DeletedTab['tabs'][0]).id === 'string' && typeof (x as DeletedTab['tabs'][0]).title === 'string')
+        .map(({ id, title, parent }) => (typeof parent === 'string' ? { id, title, parent } : { id, title }))
+    : [];
+
+/**
+ * Remember what a delete removed, next to the text snapshots the delete kept: a `.deleted.json`
+ * marker in the tab's history folder, read back by `listDeleted` until the tab is restored (or its
+ * id is taken again, which the live-file check in `listDeleted` treats the same way).
+ */
+export async function markDeleted(project: string, rel: string, index: number, tabs: DeletedTab['tabs']): Promise<void> {
+  const norm = safeRel(rel);
+  const id = norm.slice('tabs/'.length, -'.md'.length);
+  if (!watched(norm) || !ID_OK.test(id)) return;
+  const kept = plainTabs(tabs);
+  if (!kept.length) return;
+  try {
+    await mkdir(dirOf(project, norm), { recursive: true });
+    await writeFile(deletedFileOf(project, norm), JSON.stringify({ at: new Date().toISOString(), index, tabs: kept }), 'utf8');
+  } catch {
+    // history is a convenience: a delete must never fail because of it
+  }
+}
+
+/** The tabs whose files are gone but whose history folder still holds a delete marker, newest deletion first. */
+export async function listDeleted(project: string): Promise<DeletedTab[]> {
+  try {
+    const root = join(projectDir(project), '.history');
+    const out: DeletedTab[] = [];
+    for (const dir of (await readdir(root)).filter((n) => /^tabs__.+\.md$/.test(n))) {
+      const id = dir.slice('tabs__'.length, -'.md'.length);
+      const rel = `tabs/${id}.md`;
+      if (!ID_OK.test(id)) continue;
+      const live = await readFile(join(projectDir(project), rel), 'utf8').then(
+        () => true,
+        () => false,
+      );
+      if (live) continue;
+      try {
+        const meta = JSON.parse(await readFile(join(root, dir, '.deleted.json'), 'utf8')) as Omit<DeletedTab, 'id'>;
+        const tabs = plainTabs(meta.tabs);
+        if (tabs.length) out.push({ id, title: tabs[0].title || id, at: String(meta.at ?? ''), index: Number(meta.index) || 0, tabs });
+      } catch {
+        // snapshots of a tab without a delete marker are history, not a deleted tab
+      }
+    }
+    return out.sort((a, b) => b.at.localeCompare(a.at));
+  } catch {
+    return [];
+  }
+}
+
+/** The tab is back: drop the delete marker, keep the text snapshots. */
+export async function clearDeleted(project: string, rel: string): Promise<void> {
+  const norm = safeRel(rel);
+  if (!watched(norm)) return;
+  await rm(deletedFileOf(project, norm), { force: true }).catch(() => undefined);
 }
