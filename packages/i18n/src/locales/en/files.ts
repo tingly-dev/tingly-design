@@ -6,6 +6,7 @@ export default {
   menu: {
     putOnCanvas: 'Put on canvas',
     openNew: 'Open in new window',
+    download: 'Download',
     copyPath: 'Copy path',
   },
   preview: {

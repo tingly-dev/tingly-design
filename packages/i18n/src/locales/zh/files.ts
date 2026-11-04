@@ -6,6 +6,7 @@ export default {
   menu: {
     putOnCanvas: '放到画布',
     openNew: '在新窗口打开',
+    download: '下载',
     copyPath: '复制路径',
   },
   preview: {

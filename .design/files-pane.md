@@ -42,7 +42,7 @@
 - `apps/server/src/store.ts` 的 `listProjectEntries(name)`：走项目文件夹，跳过点文件与 `node_modules`，回 `{ entries: { path, size, mtime }[] }`，按路径排序；`apps/server/src/routes/assets.ts` 挂 `GET /api/projects/:p/entries`。同一处还有只读的 `GET /api/projects/:p/entry?path=…`（`entryRel` 校验、`entryType` 定 media type），预览、缩略图和"新窗口打开"都走它——`/raw/` 只认 `assetRel` 的目录，够不着根目录里的散文件；只读，写还是走 `/file` 和 `/assets`。
 - 监听器（`serve.ts` 的 `onChange`）对编辑器不认识的文件（非 tracked、非 asset、无点段）发布空的 `entries` 事件，只说"文件夹变了"。
 - `apps/editor/src/panes.ts`：`PaneId` 加 `'files'`，只登记在 `KIND_PANE_IDS.design`；`components/panes.tsx` 的 `PANE_DEF` 加图标与名字（`common.pane.files`）。
-- `apps/editor/src/components/canvas/FilesPane.tsx`：列表（图标按类型、图片行带缩略图、名字 + 所在文件夹 + 大小）、行菜单（放到画布 / 复制路径 / 新窗口打开）、点行预览（共用 `Dialog`）、`SideResizer id="files"`（宽度记在本机，`sideWidth.ts` 的 `SIDES.files`）。
+- `apps/editor/src/components/canvas/FilesPane.tsx`：列表（图标按类型、图片行带缩略图、名字 + 所在文件夹 + 大小）、行菜单（放到画布 / 新窗口打开 / 下载 / 复制路径）、点行预览（共用 `Dialog`，底部也有下载和新窗口）、`SideResizer id="files"`（宽度记在本机，`sideWidth.ts` 的 `SIDES.files`）。下载走 `local.ts` 的 `download`（先把 `/entry` 读成 Blob，命令行的 `headless.ts` 能接住）。
 - 实时：订阅 store 的 `assetRev`，变化后重新拉 `entries`。
 - 词条在 i18n 的 `files` 区（en 与 zh 成对）；端到端套件 `e2e/files.py`。
 
@@ -50,5 +50,5 @@
 
 - 文本预览里直接编辑并写回（要过编辑引擎）。
 - 从面板拖文件到画板上的落点插入。
-- "在文件管理器里显示"（要服务端开系统调用，第一期没做）。
+- "在文件管理器里显示"（要服务端开系统调用，第一期没做；下载已做，拿在手上走的是浏览器）。
 - 其他类型接入（每个类型一个"插入"动作的表）。

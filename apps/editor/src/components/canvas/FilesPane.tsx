@@ -8,6 +8,7 @@ import { RowMenu } from '../RowMenu';
 import { MenuItem } from '../Menu';
 import { Dialog } from '../Dialog';
 import { Close, FilePdf, FileText, FileZip } from '../icons';
+import { download } from '../../local';
 import { toCanvas } from './view';
 
 /** A file of the project folder, as the files pane lists it. */
@@ -103,6 +104,11 @@ export function FilesPane() {
     toast(t('files.copied', { path: e.path }));
   };
 
+  const downloadEntry = async (e: Entry) => {
+    const buf = await api.entryBytes(useStore.getState().project!, e.path);
+    download(e.path.split('/').pop()!, new Blob([buf]));
+  };
+
   // one folder header above each group, in path order; the root's files come first, with no header
   let lastDir: string | null = null;
   const rows: React.ReactNode[] = [];
@@ -152,6 +158,13 @@ export function FilesPane() {
                 }}
               />
               <MenuItem
+                label={t('files.menu.download')}
+                onSelect={() => {
+                  close();
+                  void downloadEntry(e);
+                }}
+              />
+              <MenuItem
                 label={t('files.menu.copyPath')}
                 onSelect={() => {
                   close();
@@ -183,13 +196,13 @@ export function FilesPane() {
           rows
         )}
       </div>
-      {preview && <FilePreview project={project!} entry={preview} onPlace={() => void putOnCanvas(preview)} onClose={() => setPreview(null)} />}
+      {preview && <FilePreview project={project!} entry={preview} onPlace={() => void putOnCanvas(preview)} onDownload={() => void downloadEntry(preview)} onClose={() => setPreview(null)} />}
     </aside>
   );
 }
 
 /** A file opened from the list: pictures drawn, text read only, the rest pointed at a new window. */
-function FilePreview({ project, entry, onPlace, onClose }: { project: string; entry: Entry; onPlace: () => void; onClose: () => void }) {
+function FilePreview({ project, entry, onPlace, onDownload, onClose }: { project: string; entry: Entry; onPlace: () => void; onDownload: () => void; onClose: () => void }) {
   const { t } = useTranslation();
   const name = entry.path.split('/').pop()!;
   const kind = IMAGE_EXTS.includes(ext(entry.path)) ? 'image' : TEXT_EXTS.includes(ext(entry.path)) ? 'text' : 'other';
@@ -230,6 +243,9 @@ function FilePreview({ project, entry, onPlace, onClose }: { project: string; en
             {t('files.menu.putOnCanvas')}
           </button>
         )}
+        <button className="btn sm outline" onClick={onDownload}>
+          {t('files.menu.download')}
+        </button>
         <a className="btn sm outline" href={api.entryUrl(project, entry.path)} target="_blank" rel="noopener">
           {t('files.preview.openNew')}
         </a>

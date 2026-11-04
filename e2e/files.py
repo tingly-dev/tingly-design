@@ -84,7 +84,11 @@ async def main():
         menu = pg.locator('[role=menu]')
         await expect(menu).to_be_visible()
         check('canvas: an image row offers put on canvas', await menu.get_by_text('Put on canvas').count() == 1)
-        await menu.get_by_text('Copy path').click()
+        async with pg.expect_download() as dl:
+            await menu.get_by_text('Download').click()
+        check('canvas: download hands the person the file', (await dl.value).suggested_filename.endswith('.png'))
+        await row.locator('.more').click()
+        await pg.locator('[role=menu]').get_by_text('Copy path').click()
         path = await pg.evaluate('navigator.clipboard.readText()')
         check('canvas: copy path copies the folder-relative path', path == up, path)
         await row.locator('.more').click()
