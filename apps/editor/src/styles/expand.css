@@ -1,0 +1,184 @@
+/* Expanding an element to edit what it holds: the form (components/ContentForm.tsx), in a popover next to the element and in the Properties panel. .design/expand-to-edit.md */
+
+.cpop {
+  position: fixed;
+  z-index: 60;
+  width: 320px;
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-radius: var(--r-float);
+  box-shadow: var(--float-shadow);
+}
+
+.cpop header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cpop .cform {
+  overflow: auto;
+  padding: 10px 12px 12px;
+}
+
+.cform {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cform .hint {
+  margin: 0;
+}
+
+.cform .hint.ro {
+  color: var(--ink-2);
+}
+
+.cblock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cblock:not(.text) {
+  padding: 8px 10px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.cblock h4 {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.crow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crow > .lab {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.crun {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.crun:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.crun.ro,
+.cform .ro input {
+  color: var(--muted);
+  background: transparent;
+}
+
+.cpic {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cpic-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cpic-src {
+  flex: 1;
+  min-width: 0;
+}
+
+.cpic .thumb {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--panel) repeating-conic-gradient(var(--line) 0 25%, transparent 0 50%) 0 0 / 10px 10px;
+  box-shadow: 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.cpic .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cpicker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  max-height: 184px;
+  overflow: auto;
+}
+
+.cpicker .hint {
+  grid-column: 1 / -1;
+}
+
+.cpicker .tile {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.cpicker .tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cpicker .tile:hover {
+  border-color: var(--accent);
+}
+
+.cpicker .tile[aria-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.cpicker .tile.up {
+  grid-column: span 2;
+  aspect-ratio: auto;
+  padding: 0 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}

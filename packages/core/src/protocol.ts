@@ -77,8 +77,10 @@ export type FromRuntime =
   | { dc: 'hover'; tid: number | null }
   /** retyped text; `from` and `item` (the row of the nearest <sc-for>) let text with holes find what changed */
   | { dc: 'text'; tid: number; text: string; from?: string; item?: number | null }
-  /** a double-click on text that cannot be retyped here, and why (`why` is a RetypeError code) */
-  | { dc: 'noedit'; tid: number; why: 'data' | 'span' | 'nomatch' }
+  /** a double-click on text that cannot be retyped here, and why (a RetypeError code, or: the element holds nothing to edit by hand, or is locked) */
+  | { dc: 'noedit'; tid: number; why: 'data' | 'span' | 'nomatch' | 'nothing' | 'locked' }
+  /** a double-click on an element that is not text but holds things to edit (a picture, a link, a card): where it is drawn (frame pixels) and the text under the pointer, to focus the right field (`.design/expand-to-edit.md`) */
+  | { dc: 'expand'; tid: number; rect: { x: number; y: number; w: number; h: number }; near?: string }
   | { dc: 'wheel'; dx: number; dy: number; ctrl: boolean; x: number; y: number }
   | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean }
   | { dc: 'error'; message: string | null }

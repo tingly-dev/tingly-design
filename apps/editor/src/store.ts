@@ -138,6 +138,8 @@ export interface State extends AgentState {
   /** a note being retyped on the canvas */
   editingNote: string | null;
   menu: { x: number; y: number } | null;
+  /** the form for what the selected element holds (a picture's source, a link's address, a card's parts), opened by a double-click or Enter; see expand.ts */
+  expand: { file: string; tid: number; x: number; y: number; near?: string } | null;
   journalOpen: boolean;
   /** the "Keyboard shortcuts" dialog */
   shortcutsOpen: boolean;
@@ -177,6 +179,7 @@ export const useStore = create<State>(() => ({
   focused: null,
   editingNote: null,
   menu: null,
+  expand: null,
   journalOpen: false,
   shortcutsOpen: false,
   view: { x: 80, y: 120, zoom: 0.5 },

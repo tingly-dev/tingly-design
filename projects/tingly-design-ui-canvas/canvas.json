@@ -145,6 +145,13 @@
       "w": 1720,
       "h": 940,
       "title": "Canvas files pane"
+    },
+    "Expand.dc.html": {
+      "x": 12600,
+      "y": 4140,
+      "w": 1720,
+      "h": 940,
+      "title": "Expand to edit"
     }
   },
   "order": [
@@ -167,7 +174,8 @@
     "Doc.dc.html",
     "Motion.dc.html",
     "AgentBar.dc.html",
-    "Composer.dc.html"
+    "Composer.dc.html",
+    "Expand.dc.html"
   ],
   "notes": {
     "t0": {

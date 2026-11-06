@@ -152,6 +152,8 @@ export default {
       data: 'This text comes from data in the artboard’s script, so it can’t be retyped here. Tell Claude what it should say, or change it in the code.',
       span: 'This text mixes values from the template. Change one part at a time, or change the value in Tweaks.',
       nomatch: 'This text can’t be matched to its template (for example, it is restyled in capitals). Change it in the code or in Tweaks.',
+      nothing: 'There is nothing to edit by hand in this element. Change its look in the panel, or tell Claude what it should be.',
+      locked: 'This element is locked. Unlock it in the layers panel to edit it.',
     },
   },
   board: {

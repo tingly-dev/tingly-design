@@ -1,0 +1,37 @@
+export default {
+  title: 'Content',
+  popover: 'Edit content',
+  close: 'Close',
+  more: '{{count}} more parts: select one, or double-click a smaller part to see only its own.',
+  repeated: 'Drawn once for every row of the list: a change here reaches every row.',
+  role: {
+    picture: 'Picture',
+    video: 'Video',
+    link: 'Link',
+    input: 'Input',
+  },
+  field: {
+    text: 'Text',
+    label: 'Label',
+    src: 'Source',
+    alt: 'Alt text',
+    href: 'Address',
+    newTab: 'Open in a new tab',
+    placeholder: 'Placeholder',
+  },
+  tweak: 'Set by the tweak “{{name}}”: changing it changes it everywhere it is used.',
+  readonly: {
+    data: 'Comes from the artboard’s script, so it can’t be changed here. Tell Claude, or change it in the code.',
+    row: 'Comes from a row of a list, so it can’t be changed here. Tell Claude, or change the list’s data.',
+  },
+  picture: {
+    replace: 'Replace…',
+    upload: 'Upload a picture…',
+    uploading: 'Uploading…',
+    noneYet: 'No pictures in this project yet.',
+    pick: 'Use {{name}}',
+    current: 'Current picture',
+    preview: 'Preview of {{src}}',
+    uploadFailed: 'Could not upload the picture: {{message}}',
+  },
+};

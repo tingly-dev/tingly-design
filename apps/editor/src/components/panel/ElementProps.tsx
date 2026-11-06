@@ -5,6 +5,7 @@ import { attr, getStyle, hasHoleValue, isRepeated, setPropDefault, styleHole, ro
 import { useInstalled } from '../ds/ds';
 import { display, edit, editElement, parsed, useStore } from '../../store';
 import { Menu, MenuItem } from '../Menu';
+import { ContentSection } from '../ContentForm';
 import {
   AlignBottom,
   AlignCenterH,
@@ -210,6 +211,7 @@ export function ElementProps({ file, el, info }: { file: string; el: DcElement; 
           {info?.count != null ? t('panel.el.repeated', { count: info.count }) : t('panel.el.repeatedUnknown')}
         </div>
       )}
+      <ContentSection file={file} tid={tid} />
       <div className="sec" style={{ paddingTop: 8, paddingBottom: 8 }}>
         <div className="alignrow">
           {alignBtn('x', 'start', <AlignLeft />, t('panel.el.align.left'))}

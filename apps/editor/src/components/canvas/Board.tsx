@@ -8,6 +8,7 @@ import { focusBoard, onPage } from './view';
 import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
 import { handleKey, leaveField } from '../../shortcuts';
+import { openExpand } from '../../expand';
 import { CopyPicture, Download, Expand, FilePdf, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
@@ -290,6 +291,9 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
         }
         case 'noedit':
           toast(t(`canvas.text.noedit.${m.why}`));
+          break;
+        case 'expand':
+          openExpand(file, m.tid, m.rect, frame.current, m.near);
           break;
         case 'move': {
           const src = display(s, file);

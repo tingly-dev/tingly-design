@@ -251,15 +251,15 @@ export function flipSelection(axis: 'x' | 'y'): void {
 }
 
 /** Enter: down one level — artboard → its root's first child, element → first child. */
-export function selectFirstChild(): void {
+export function selectFirstChild(): boolean {
   const s = get();
   const sel = s.selection;
   const file = sel?.kind === 'el' || sel?.kind === 'board' ? sel.file : null;
-  if (!file) return;
+  if (!file) return false;
   const doc = parsed(display(s, file) ?? '');
   let el = sel?.kind === 'el' ? doc.elements[sel.tid] : rootElement(doc);
-  if (!el) return;
-  if (sel?.kind === 'board') return set({ selection: { kind: 'el', file, tid: el.tid } });
+  if (!el) return false;
+  if (sel?.kind === 'board') return set({ selection: { kind: 'el', file, tid: el.tid } }), true;
   let kid = el.children.find((c) => c.kind === 'el') as DcElement | undefined;
   while (kid && (kid.tag.startsWith('sc-') || kid.tag === 'helmet')) {
     el = kid;
@@ -267,6 +267,7 @@ export function selectFirstChild(): void {
     if (kid?.tag === 'helmet') kid = el.children.filter((c) => c.kind === 'el')[1] as DcElement | undefined;
   }
   if (kid) set({ selection: { kind: 'el', file, tid: kid.tid } });
+  return !!kid;
 }
 
 /** Shift+Enter: up one level — element → parent → artboard → nothing. */

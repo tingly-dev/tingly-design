@@ -9,6 +9,7 @@ import { VideoExportDialog, type ScenePick } from './VideoExportDialog';
 import { TopBar, BarButton, ProjectTitle } from '../TopBar';
 import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
+import { ExpandPanel } from '../ContentForm';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { useChat } from '../ChatPanel';
@@ -422,6 +423,7 @@ export function MotionApp() {
       )}
       {panelOpen && <RightPanel />}
       <ContextMenu />
+      <ExpandPanel />
       <JournalPopover />
     </div>
   );
