@@ -54,6 +54,20 @@ GROUP_ORDER = ['dev', 'dev-bare', 'fake-claude', 'build', 'bundle', 'real']
 def say(msg): print(msg, flush=True)
 
 
+def sweep_strays():
+    """Remove the scratch projects (`zz-*`) a suite left in projects/: one that deletes its own project while the
+    server is still writing to it (a journal line, a late save) can leave a folder behind, and the next suites
+    would list it (the launcher's cards, embed's copy of the samples). Tracked samples are never touched."""
+    root = os.path.join(REPO, 'projects')
+    tracked = {f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2}
+    for d in os.listdir(root):
+        if d.startswith('zz-') and d not in tracked and os.path.isdir(os.path.join(root, d)):
+            for _ in range(3):  # a writer racing the removal can put a file back; try again
+                shutil.rmtree(os.path.join(root, d), ignore_errors=True)
+                if not os.path.exists(os.path.join(root, d)): break
+                time.sleep(0.3)
+
+
 def port_busy(port):
     with socket.socket() as s:
         return s.connect_ex(('127.0.0.1', port)) == 0
@@ -299,9 +313,11 @@ def main(argv):
         try:
             with Group(g, tmp, logs) as grp:
                 for n in names:
+                    sweep_strays()
                     r = run_suite(n, grp.env, timeout, logs)
                     results.append(r)
                     say(f"  {r['status']:7} {n:14} {r['passed']}/{r['passed'] + r['failed']}  {r['seconds']:.0f}s")
+            sweep_strays()  # the group's server is stopped now, so nothing writes behind the sweep
         except RuntimeError as e:
             say(f'  could not start: {e}')
             for n in names:

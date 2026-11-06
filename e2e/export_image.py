@@ -64,6 +64,10 @@ async def main():
         await pg.get_by_role('menuitem', name='PNG', exact=True).click()
         await expect(pg.get_by_text('missing.png').first).to_be_visible(timeout=10000)
         check('canvas: a missing picture is named in the error', True)
+        # leave the board before deleting it: the open page and the server's watcher write to it, and a late write
+        # puts a folder back that the next suites (embed's copy of the samples) would list
+        await pg.goto('about:blank')
+        await pg.wait_for_timeout(1000)
         shutil.rmtree(BOARD, ignore_errors=True)
 
         # docs: this tab
@@ -115,4 +119,9 @@ async def main():
     print(f'\n{len(results) - len(bad)}/{len(results)} passed')
     raise SystemExit(1 if bad else 0)
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+finally:
+    # a crash or a timeout must not leave zz-* projects behind: the next suites list the samples
+    shutil.rmtree(PIECE, ignore_errors=True)
+    shutil.rmtree(BOARD, ignore_errors=True)

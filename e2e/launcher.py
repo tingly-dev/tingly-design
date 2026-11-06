@@ -417,7 +417,8 @@ async def main():
             await pg.keyboard.press('Escape')
         await pg.goto(f'{BASE}/?p=tingly-box-console-canvas')
         await pg.locator('.pmenu button.tb').click()
-        await pg.wait_for_function("document.querySelectorAll('.menu button.mi').length > 3")
+        # the always-there items are All projects, New, Other work to consult and the AI settings; the list of other projects loads after
+        await pg.wait_for_function("document.querySelectorAll('.menu .mi').length > 4")
         items = await pg.locator('.menu a.mi, .menu button.mi').all_inner_texts()
         check('the project menu lists other projects, new and the AI settings', len(items) >= 5 and not any('tingly-box-console-canvas' in i.lower() for i in items), str(items))
         await pg.locator('.menu button.mi').nth(1).click()
