@@ -10,6 +10,7 @@ import { RightPanel } from './components/panel/RightPanel';
 import { FilesPane } from './components/canvas/FilesPane';
 import { PromptBar } from './components/PromptBar';
 import { ContextMenu, FocusView, JournalPopover, NoteFormatBar } from './components/Overlays';
+import { ExpandPanel } from './components/ContentForm';
 import { SlidesApp } from './components/slides/SlidesApp';
 import { DsApp } from './components/ds/DsApp';
 import { DashApp } from './components/dash/DashApp';
@@ -151,6 +152,7 @@ function CanvasApp() {
         {pane === 'inspector' && mode === 'edit' && <RightPanel />}
         {pane === 'files' && mode === 'edit' && <FilesPane />}
         <ContextMenu />
+        {mode === 'edit' && <ExpandPanel />}
         {mode === 'edit' && <NoteFormatBar />}
         <FocusView />
         <Toasts />

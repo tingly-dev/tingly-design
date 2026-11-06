@@ -11,6 +11,7 @@ import {
   ungroupSelection,
   wrapSelection,
 } from './actions';
+import { expandSelection } from './expand';
 import { redo, togglePane, undo, useStore, type Tool } from './store';
 import { fitAll, zoomAt, zoomToSelection } from './components/canvas/view';
 import { addSlide, stepSlide } from './components/slides/slides';
@@ -67,7 +68,8 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
     return true;
   }
   if (key === 'Escape') {
-    if (s.menu) useStore.setState({ menu: null });
+    if (s.expand) useStore.setState({ expand: null });
+    else if (s.menu) useStore.setState({ menu: null });
     else if (s.mode === 'play') {
       useStore.setState({ mode: 'edit' });
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -81,7 +83,8 @@ export function handleKey(key: string, meta: boolean, shift: boolean, _alt = fal
     return true;
   }
   if (key === 'Enter' && !shift && s.mode === 'edit') {
-    selectFirstChild();
+    // down into a container; on something that holds no element, edit it: retype text, or open the form for a picture, a link, an input
+    if (!selectFirstChild()) expandSelection();
     return true;
   }
   // playing a canvas: F fills the screen, as it does in a presentation

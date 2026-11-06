@@ -1,11 +1,12 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { deckSize, elementSource, faceMarkup, sandboxDoc, slideFile, type DeckJson, type FromRuntime, type MotionStageInfo } from '@dc/core';
 import { api } from '../../api';
-import { deckOf, display, editElement, parsed, useStore } from '../../store';
+import { deckOf, display, editElement, parsed, toast, useStore } from '../../store';
+import { openExpand } from '../../expand';
 import { frames, post } from '../canvas/Board';
 import { handleKey, leaveField } from '../../shortcuts';
 import { SERVER } from '../../base';
-import { htmlLang } from '../../i18n';
+import { htmlLang, t as tr } from '../../i18n';
 import { useBoardFiles } from '../../boards';
 
 export type FrameUse = 'stage' | 'thumb' | 'present';
@@ -111,6 +112,12 @@ export const SlideFrame = memo(function SlideFrame({
         }
         case 'text':
           editElement(file, [{ kind: 'text', tid: m.tid, text: m.text }]);
+          break;
+        case 'noedit':
+          toast(tr(`canvas.text.noedit.${m.why}`));
+          break;
+        case 'expand':
+          openExpand(file, m.tid, m.rect, frame.current, m.near);
           break;
         case 'move': {
           const src = display(s, file);

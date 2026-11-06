@@ -14,6 +14,8 @@ export type HumanOp =
   | { kind: 'styles'; tid: number; set: Record<string, string | null> }
   | { kind: 'styleText'; tid: number; text: string }
   | { kind: 'text'; tid: number; text: string }
+  /** change one run of text among an element's children (`run` counts its text nodes), leaving the elements around it */
+  | { kind: 'textRun'; tid: number; run: number; text: string }
   | { kind: 'attr'; tid: number; name: string; value: string | null }
   | { kind: 'remove'; tid: number }
   | { kind: 'duplicate'; tid: number }
@@ -54,6 +56,8 @@ export function describeOp(op: HumanOp, handle: string, before?: string): string
       return `${handle} style rewritten`;
     case 'text':
       return `${handle} text → "${short(op.text)}"`;
+    case 'textRun':
+      return `${handle} text ${op.run + 1} → "${short(op.text)}"`;
     case 'attr':
       return op.value === null ? `${handle} removed [${op.name}]` : `${handle} [${op.name}] → "${short(op.value)}"`;
     case 'remove':
@@ -114,6 +118,16 @@ export function applyHumanOps(source: string, ops: HumanOp[], document: Document
         el.textContent = op.text;
         notes.push(describeOp(op, handle));
         break;
+      case 'textRun': {
+        const node = Array.from(el.childNodes).filter((n) => n.nodeType === 3)[op.run] as Text | undefined;
+        if (!node) throw new Error(`text ${op.run + 1} of element ${tid} is no longer in the design`);
+        // the whitespace the file keeps around the words (indentation, a space before an inline element) stays
+        const lead = /^\s*/.exec(node.data)![0];
+        const trail = node.data.trim() ? /\s*$/.exec(node.data)![0] : '';
+        node.data = lead + op.text + trail;
+        notes.push(describeOp(op, handle));
+        break;
+      }
       case 'attr':
         if (op.value === null) el.removeAttribute(op.name);
         else el.setAttribute(op.name, op.value);

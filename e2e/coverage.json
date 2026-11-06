@@ -598,6 +598,15 @@
       "tweak_text"
     ]
   },
+  "展开非文字元素去编辑": {
+    "design": [
+      "expand"
+    ],
+    "slides": [
+      "expand"
+    ],
+    "motion": "not yet: motion mounts the same SlideFrame handler and ExpandPanel, but no suite double-clicks a picture on a scene; the slides check covers the shared code"
+  },
   "对话记录": {
     "design": [
       "chat_panel"

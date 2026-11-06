@@ -5,6 +5,7 @@ import { goToSlide } from './slides';
 import { RightPanel } from '../panel/RightPanel';
 import { PromptBar } from '../PromptBar';
 import { ContextMenu, JournalPopover } from '../Overlays';
+import { ExpandPanel } from '../ContentForm';
 import { Present, stopPresent } from './Present';
 import { SlidesTopBar, TopLeft } from './SlidesBars';
 import { Stage } from './Stage';
@@ -50,6 +51,7 @@ export function SlidesApp() {
       </main>
       {panelOpen && !present && <RightPanel />}
       <ContextMenu />
+      {!present && <ExpandPanel />}
       {present && <Present />}
     </div>
     </>

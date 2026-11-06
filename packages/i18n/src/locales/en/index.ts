@@ -9,6 +9,7 @@ import app from './app';
 import canvas from './canvas';
 import files from './files';
 import panel from './panel';
+import expand from './expand';
 import slides from './slides';
 import motion from './motion';
 import ds from './ds';
@@ -31,6 +32,7 @@ export default {
   canvas,
   files,
   panel,
+  expand,
   slides,
   motion,
   ds,

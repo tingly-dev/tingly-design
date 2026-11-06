@@ -19,6 +19,7 @@ import {
   timeSpec,
   sceneBaseCss,
   retypeKind,
+  editFields,
   planRetype,
   RetypeError,
   type DcElement,
@@ -858,6 +859,13 @@ function editableTids(): Set<number> {
   return new Set(doc.elements.filter((e) => retypeKind(doc, e) !== null).map((e) => e.tid));
 }
 
+/** The text of the text node under a point, to find which run of a mixed paragraph was double-clicked. */
+function textUnder(x: number, y: number): string | undefined {
+  const pos = (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node } | null }).caretPositionFromPoint?.(x, y);
+  const node = pos?.offsetNode ?? document.caretRangeFromPoint?.(x, y)?.startContainer;
+  return node?.nodeType === 3 ? node.textContent?.trim() || undefined : undefined;
+}
+
 let editingOriginal = '';
 function beginText(el: HTMLElement) {
   current.editing = el;
@@ -888,10 +896,21 @@ document.addEventListener(
     const el = (e.target as Element).closest?.('[data-dc-tid]') as HTMLElement | null;
     if (!el) return;
     const tid = Number(el.getAttribute('data-dc-tid'));
-    if (!editableTids().has(tid) || isLocked(el)) return;
-    // text made only of values from the script: say so instead of doing nothing
-    if (retypeKind(docFor(current.source), docFor(current.source).elements[tid]) === 'data') return void post({ dc: 'noedit', tid, why: 'data' });
-    beginText(el);
+    if (isLocked(el)) return void post({ dc: 'noedit', tid, why: 'locked' });
+    const doc = docFor(current.source);
+    if (editableTids().has(tid)) {
+      // text made only of values from the script: say so instead of doing nothing
+      if (retypeKind(doc, doc.elements[tid]) === 'data') return void post({ dc: 'noedit', tid, why: 'data' });
+      return beginText(el);
+    }
+    // not text: a picture, a link, a card of several parts. The editor opens a form for what it holds, or says it holds nothing
+    const src = doc.elements[tid];
+    if (!src || !editFields(doc, src).length) return void post({ dc: 'noedit', tid, why: 'nothing' });
+    current.selected = tid;
+    showTime();
+    post({ dc: 'select', tid, shift: false, x: e.clientX, y: e.clientY });
+    const r = rectOf(el);
+    post({ dc: 'expand', tid, rect: r ? { x: r.left, y: r.top, w: r.width, h: r.height } : { x: e.clientX, y: e.clientY, w: 0, h: 0 }, near: textUnder(e.clientX, e.clientY) });
   },
   true,
 );
