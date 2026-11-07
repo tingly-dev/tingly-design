@@ -123,7 +123,7 @@ apps/server       Hono server (`app.ts` core routes and mounting, `routes/<area>
 apps/editor       React editors: `store.ts` is the one zustand store (state, selectors, loading and server events), with the request bar and conversation fields in `store/agent.ts` and the edit engine (`edit`, undo, saving queue) in `editEngine.ts` (`.design/store-slices.md`; the two files import each other, so `editEngine.ts` must not touch `useStore` while modules load);
                   components/ root holds what every kind shares (bars, menus, Dialog; the launcher in launcher/);
                   components/<kind>/ holds one kind's app and its state (`slides.ts`, `motion.ts`, …), canvas included
-projects/         sample projects, one per kind; `tingly-design-ui-canvas` is the editor's own design canvas (see "Design the editor in itself")
+projects/         sample projects, one per kind (`tingly-design-wechat-doc` is a second doc holding every element, the reference for the WeChat export); `tingly-design-ui-canvas` is the editor's own design canvas (see "Design the editor in itself")
 .claude/skills/   format references Claude Code reads before every delegated task, one per kind;
                   plus issue-resolve, the maintainer issue sweep (left out of the bundle)
 .design/          design notes (index in .design/README.md)
