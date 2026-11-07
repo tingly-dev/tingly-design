@@ -255,7 +255,7 @@ function box(r: { left: number; top: number; width: number; height: number }, cs
   return `<div style="position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;box-sizing:border-box;${css}"></div>`;
 }
 
-/** The remarks' pins: a numbered amber disc on each element's top left corner, a blue ring on the one being written. */
+/** The remarks' pins: a numbered amber disc hung on each element's top left corner, a blue ring on the one being written. */
 function drawPins(): string[] {
   const size = 22 * review.unit;
   const out: string[] = [];
@@ -263,8 +263,9 @@ function drawPins(): string[] {
     const el = instances(pin.tid)[0];
     const r = el ? rectOf(el) : null;
     if (!r) continue;
-    const x = Math.max(0, r.left - size / 2);
-    const y = Math.max(0, r.top - size / 2);
+    // mostly outside the element's corner, so the words under it stay readable
+    const x = Math.max(0, r.left - size * 0.7);
+    const y = Math.max(0, r.top - size * 0.7);
     const ring = pin.focus ? `0 0 0 ${3 * review.unit}px #fff,0 0 0 ${4.5 * review.unit}px ${BLUE}` : `0 0 0 ${2 * review.unit}px #fff`;
     out.push(
       `<div style="position:fixed;left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-radius:50%;background:${AMBER};color:#fff;box-shadow:${ring};font:600 ${12 * review.unit}px/${size}px system-ui;text-align:center">${pin.n}</div>`,
