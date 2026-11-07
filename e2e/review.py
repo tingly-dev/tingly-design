@@ -12,6 +12,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, 'e2e', 'out') + '/'
 LOG = os.environ.get('FAKE_CLAUDE_LOG', '/tmp/fake-claude.log')
 LANG = os.environ.get('DC_LANG', 'zh-CN')
+THEME = os.environ.get('DC_THEME', '')  # light or dark: only for the pictures a pull request carries
+URL = '&lang=' + LANG[:2] + ('&theme=' + THEME if THEME else '')
+TAG = LANG[:2] + '-' + (THEME or 'light')
 
 results = []
 def check(name, ok, extra=''):
@@ -69,12 +72,13 @@ async def main():
         check('the top bar has a Review button, next to the properties panel', await pg.locator('button[data-pane="review"]').count() == 1 and await pg.locator('button[data-pane="inspector"]').count() == 1)
         # a click selects before the review
         await board.locator('h1').click()
-        check('before a review a click selects', await pg.locator('.lr[aria-selected="true"]').count() == 1)
+        await expect(pg.locator('.lr[aria-selected="true"]')).to_have_count(1)
+        check('before a review a click selects', True)
         await review_on(pg)
         check('opening the review leaves nothing selected', await pg.locator('.lr').count() == 0 or await pg.locator('.lr[aria-selected="true"]').count() == 0)
         check('the empty tray says how to start', await pg.locator('.rvempty').count() == 1 and await card.count() == 0)
         check('and offers nothing to send yet', await pg.locator('.rvfoot .btn.primary').is_disabled())
-        await pg.screenshot(path=OUT + f'review-empty-{LANG[:2]}.png')
+        await pg.screenshot(path=OUT + f'review-empty-{TAG}.png')
 
         await click_in(pg, BOARD, 'h1')
         await expect(card).to_have_count(1)
@@ -92,7 +96,7 @@ async def main():
         await pg.wait_for_timeout(200)
         check('a click on a pinned element goes back to its remark', await card.count() == 2 and await card.first.locator('textarea').evaluate('e => e === document.activeElement'))
         check('reviewing wrote nothing to the project', clean('tingly-box-console-canvas'))
-        await pg.screenshot(path=OUT + f'review-canvas-{LANG[:2]}.png')
+        await pg.screenshot(path=OUT + f'review-canvas-{TAG}.png')
 
         # a third remark with no words stays behind; kept across a reload
         await click_in(pg, BOARD, 'nav', 0)
@@ -133,9 +137,9 @@ async def main():
         check('canvas: no file changed', clean('tingly-box-console-canvas'))
 
         # --- slides and motion: the same on the stage ----------------------------------------------
-        for project, extra, iframe, css, file in [
-            ('tingly-design-intro-slides', '&s=cover', '.sframe.f-stage iframe', 'h1', 'slides/cover.html'),
-            ('tingly-design-motion', '', '.medit iframe', 'h1', 'scenes/'),
+        for project, extra, iframe, css, file, more in [
+            ('tingly-design-intro-slides', '&s=cover', '.sframe.f-stage iframe', 'h1', 'slides/cover.html', ['section > p', 'section > div']),
+            ('tingly-design-motion', '', '.medit iframe', 'h1', 'scenes/', []),
         ]:
             n0 = len(started())
             await pg.goto(BASE + f'/?p={project}{extra}&lang=' + LANG[:2])
@@ -146,11 +150,15 @@ async def main():
             await expect(card).to_have_count(1)
             check(f'{project}: a click on the stage leaves a remark with its pin', await pin_count(pg, iframe, 1, '1'))
             await pg.keyboard.type('Shorter, please')
-            await pg.screenshot(path=OUT + f'review-{project}-{LANG[:2]}.png')
+            for i, other in enumerate(more):
+                await click_in(pg, iframe, other)
+                await expect(card).to_have_count(i + 2)
+                await pg.keyboard.type(['Say this in one line', 'More air around the footer'][i])
+            await pg.screenshot(path=OUT + f'review-{project}-{TAG}.png')
             await pg.locator('.rvfoot .btn.primary').click()
             s = await wait_started(n0 + 1)
             prompt = s[-1]['prompt'] if len(s) > n0 else ''
-            check(f'{project}: the batch goes to Claude Code with the file', len(s) == n0 + 1 and 'Review remarks (1)' in prompt and file in prompt and 'Shorter, please' in prompt, prompt[:300])
+            check(f'{project}: the batch goes to Claude Code with the file', len(s) == n0 + 1 and f'Review remarks ({len(more) + 1})' in prompt and file in prompt and 'Shorter, please' in prompt, prompt[:300])
             check(f'{project}: nothing in the project changed', clean(project))
         check('no page errors', not errs, errs)
         await b.close()
