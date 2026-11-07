@@ -25,7 +25,7 @@
 
 **最终一致**：调和的目标树就是最终源码的目标树，React 提交后的 DOM 与一次性渲染最终源码相同；`data-dc-tid`、选中框、检查器读的是提交后的 DOM，照旧成立。不渐进的路径（模式切换、文字提交收尾的 `renderKey` 重挂）保持原样。
 
-验证：单测、typecheck、knip/depcheck，以及 e2e 的 `fast`、`fast_slides`、`fast_motion`（流式语句逐条上屏）、`external_edit`（写盘 → 监视器 → 画框）、`e2e`、`slides`、`motion`、`tweak_text`、`layers`、`template_values`、`ds`、`dash`、`docs`、`copy_png`、`run_feed`、`theme_switch`、`embed`（bundle 生产构建）；另用 Playwright 探针直接驱动真实编辑器：对一块画板连做改字、插入兄弟、连续六次快速写盘，前后的 DOM 节点是同一个（`isConnected` 且引用不变）、新内容出现、最终态正确。
+验证：`external_edit` 套件在画板、幻灯片和动效场景里给每个已画出的元素打上标记，再依次改深层文字、在前面插入兄弟、连续快速写盘，每一步之后标记都还在——节点没有被重建；其余沿用各类型已有的套件（`fast*` 流式上屏、`e2e`、`slides`、`motion`、`embed` 等）。实际 Chrome 里的渲染以套件为准，没有为此另做单测（沙箱包没有 DOM 测试环境）。
 
 ## 3. 输入侧不再加东西
 

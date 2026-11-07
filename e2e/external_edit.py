@@ -1,6 +1,8 @@
 """An edit made outside the page (an agent, a terminal, git) shows up in an open editor of every kind, with no reload.
 The suite writes straight into the file, the way Claude Code does, and waits for the new text on screen.
 It also replaces a picture an artboard or a slide shows (uploads/pic.svg) and waits for the new picture.
+And it checks that a run of edits to the markup lands on the drawn page, not on a rebuilt one: every element on screen keeps its
+identity (a marker set on the DOM node survives) through a change deep in a part, a new sibling in front of it, and a quick burst of writes.
 Run with `pnpm dev` up: python3 e2e/external_edit.py (or pnpm e2e external_edit). Leaves the sample projects as committed."""
 import asyncio, os, subprocess, time
 from playwright.async_api import async_playwright
@@ -53,9 +55,73 @@ async def picture_bytes(pg):
         except Exception: pass
     return None
 
+# kind -> (sample project, file, text of a leaf element written directly after its opening tag)
+PROGRESSIVE = {
+    'design': ('tingly-box-console-canvas', 'Flow.dc.html', 'Translated'),
+    'slides': ('tingly-design-intro-slides', 'slides/cover.html', 'Meet Tingly'),
+    'motion': ('tingly-design-motion', 'scenes/poster.html', 'AI drafts. You decide.'),  # the poster is the scene the stage opens on
+}
+# stamp every element the page drew; how many of them are still the stamped nodes
+STAMP = "() => { const all = [...document.getElementById('dc-app').querySelectorAll('*')]; all.forEach((e, i) => { e.__keep = i + 1; }); return all.length; }"
+KEPT = "() => [...document.getElementById('dc-app').querySelectorAll('*')].filter((e) => e.__keep).length"
+
+async def frame_with(pg, text, timeout=8.0):
+    """The frame that draws the text (the open artboard, slide or scene), or None."""
+    t = time.time()
+    while time.time() - t < timeout:
+        for fr in pg.frames:
+            try:
+                if await fr.locator('#dc-app').get_by_text(text, exact=False).count(): return fr
+            except Exception: pass
+        await asyncio.sleep(0.3)
+    return None
+
+async def wait_in(fr, text, timeout=8.0):
+    """Does this frame draw the text within the time?"""
+    t = time.time()
+    while time.time() - t < timeout:
+        try:
+            if await fr.locator('#dc-app').get_by_text(text, exact=False).count(): return True
+        except Exception: pass
+        await asyncio.sleep(0.2)
+    return False
+
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
+        for kind, (project, file, anchor) in PROGRESSIVE.items():
+            path = os.path.join(REPO, 'projects', project, file)
+            pg = await b.new_page(viewport={'width': 1440, 'height': 900})
+            try:
+                await pg.goto(f'{BASE}/?p={project}')
+                await pg.wait_for_timeout(2500)
+                # motion also keeps a hidden player frame (a whole piece, rebuilt on a change): the editable stage is the one to check
+                fr = await frame_with(pg, anchor) if kind != 'motion' else await (await pg.wait_for_selector('.medit iframe')).content_frame()
+                check(f'{kind}: progressive edits: the sample shows "{anchor}"', fr is not None and await wait_in(fr, anchor))
+                if fr is None: continue
+                n = await fr.evaluate(STAMP)
+                src = open(path, encoding='utf-8').read()
+                at = src.index(anchor)
+                # a change deep inside a part: every element above and around it must stay the same node
+                open(path, 'w', encoding='utf-8').write(src[:at] + anchor + ' edited' + src[at + len(anchor):])
+                check(f'{kind}: progressive edits: the text change is drawn', await wait_in(fr, anchor + ' edited'))
+                check(f'{kind}: progressive edits: a change inside a part keeps all {n} drawn nodes', await fr.evaluate(KEPT) == n, await fr.evaluate(KEPT))
+                # a new sibling in front of it: the ones after it are not rebuilt (keyed by their own tag, not by position)
+                src = open(path, encoding='utf-8').read()
+                at = src.rindex('<', 0, src.index(anchor))
+                open(path, 'w', encoding='utf-8').write(src[:at] + '<div style="position:absolute;left:0;top:0;font-size:12px">probe sibling</div>' + src[at:])
+                check(f'{kind}: progressive edits: the new sibling is drawn', await wait_in(fr, 'probe sibling'))
+                check(f'{kind}: progressive edits: a new sibling keeps all {n} drawn nodes', await fr.evaluate(KEPT) == n, await fr.evaluate(KEPT))
+                # several writes in a row, the way a run saves a file again and again
+                src = open(path, encoding='utf-8').read()
+                for i in range(1, 7):
+                    open(path, 'w', encoding='utf-8').write(src.replace('probe sibling', f'probe burst {i}', 1))
+                    await asyncio.sleep(0.12)
+                check(f'{kind}: progressive edits: the last of a burst of writes is drawn', await wait_in(fr, 'probe burst 6'))
+                check(f'{kind}: progressive edits: a burst of writes keeps all {n} drawn nodes', await fr.evaluate(KEPT) == n, await fr.evaluate(KEPT))
+            finally:
+                restore(project)
+                await pg.close()
         for kind, (project, file, old, new) in CASES.items():
             path = os.path.join(REPO, 'projects', project, file)
             pg = await b.new_page(viewport={'width': 1440, 'height': 900})
