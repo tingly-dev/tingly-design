@@ -2,6 +2,7 @@
 it is given. Opening the Review pane is the mode: a click on the page leaves a numbered remark on the element (and selects nothing,
 changes nothing), a second click goes back to its remark, remarks are kept across a reload, removed with an Undo, and sent in one
 request that carries each remark's words and the element's source; remarks with no words stay. Canvas, slides and motion share it.
+REVIEW_LANG=en-US and REVIEW_THEME=dark only change the pictures it saves (not DC_LANG, which the editor reads).
 Run with `pnpm dev` started with e2e/fake-claude first on PATH: python3 e2e/review.py (or pnpm e2e review)"""
 import os, json, time, subprocess, asyncio
 from playwright.async_api import async_playwright, expect
@@ -11,8 +12,8 @@ CHROME = os.environ.get('DC_CHROME')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, 'e2e', 'out') + '/'
 LOG = os.environ.get('FAKE_CLAUDE_LOG', '/tmp/fake-claude.log')
-LANG = os.environ.get('DC_LANG', 'zh-CN')
-THEME = os.environ.get('DC_THEME', '')  # light or dark: only for the pictures a pull request carries
+LANG = os.environ.get('REVIEW_LANG', 'zh-CN')
+THEME = os.environ.get('REVIEW_THEME', '')  # light or dark: only for the pictures a pull request carries
 URL = '&lang=' + LANG[:2] + ('&theme=' + THEME if THEME else '')
 TAG = LANG[:2] + '-' + (THEME or 'light')
 
