@@ -29,6 +29,8 @@ projects/<name>/
 
 Rendering follows the original's rules: a `<div>` with no `display` is a flex column; children paint in source order, with all flow content painted as one layer where the first flow child sits (so a full-bleed backdrop written first stays behind the text); `<x-embed>` runs in its own sandboxed page with no network and a different origin.
 
+**Review.** Remarks on the elements of a slide, sent to Claude Code together: see [Review in the canvas guide](canvas.md#review-remarks-on-the-page-sent-all-at-once).
+
 ## PowerPoint (.pptx)
 
 On the home page, choose **New project → Import PowerPoint (.pptx)…**, or drop a PPTX onto the launcher. It becomes a **new slides project**, not an attachment or an addition to the deck you have open. The command line uses the same converter: `tingly-design import talk.pptx`. A name already taken gets a free suffix. The conversion summary lists each kind of change once, with the slides and objects it touches; the original PPTX, pictures and JSON report stay under `uploads/`. Failed conversion creates no project.

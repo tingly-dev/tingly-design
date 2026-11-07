@@ -149,7 +149,7 @@ function CanvasApp() {
           {mode === 'edit' && <PromptBar />}
           <JournalPopover />
         </main>
-        {pane === 'inspector' && mode === 'edit' && <RightPanel />}
+        {(pane === 'inspector' || pane === 'review') && mode === 'edit' && <RightPanel />}
         {pane === 'files' && mode === 'edit' && <FilesPane />}
         <ContextMenu />
         {mode === 'edit' && <ExpandPanel />}

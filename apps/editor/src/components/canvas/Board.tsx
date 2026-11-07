@@ -9,6 +9,7 @@ import { insertHtml, updateBoard } from '../../actions';
 import { handleWheel } from './Canvas';
 import { handleKey, leaveField } from '../../shortcuts';
 import { openExpand } from '../../expand';
+import { clickRemark, usePins } from '../../review';
 import { CopyPicture, Download, Expand, FilePdf, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
@@ -227,6 +228,8 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   const boardSelected = useStore((s) => s.selection?.kind === 'board' && s.selection.file === file);
   const hover = useStore((s) => (s.layerHover?.file === file ? s.layerHover.tid : null));
   const error = useStore((s) => s.runtimeErrors[file]);
+  const reviewing = useStore((s) => s.pane === 'review');
+  const pins = usePins(file);
   const imports = useStore(
     useShallow((s) => {
       if (!source?.includes('<dc-import')) return EMPTY;
@@ -258,6 +261,11 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
           setReady(true);
           break;
         case 'select': {
+          // reviewing: a click leaves a remark and selects nothing
+          if (s.pane === 'review') {
+            clickRemark(file, m.tid);
+            break;
+          }
           if (s.tool === 'text') {
             textTool(m.tid);
             break;
@@ -374,8 +382,13 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
     if (ready) post(file, { dc: 'hover', tid: hover });
   }, [ready, hover, file]);
 
+  // review mode and the remarks' pins; `unit` keeps a pin the same size on screen at any zoom
+  useEffect(() => {
+    if (ready) post(file, { dc: 'review', on: reviewing && mode === 'edit', pins: reviewing ? pins : [], unit: Math.min(6, 1 / zoom) });
+  }, [ready, reviewing, mode, pins, zoom, file]);
+
   const startDrag = (e: React.PointerEvent, kind: 'move' | Corner | Edge) => {
-    if (e.button !== 0 || mode === 'play') return;
+    if (e.button !== 0 || mode === 'play' || useStore.getState().pane === 'review') return;
     e.preventDefault();
     e.stopPropagation();
     useStore.setState({ selection: { kind: 'board', file }, editingNote: null });

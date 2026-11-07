@@ -64,7 +64,7 @@ export function MotionApp() {
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
-  const panelOpen = useStore((s) => s.pane === 'inspector');
+  const panelOpen = useStore((s) => s.pane === 'inspector' || s.pane === 'review');
   const barCollapsed = useStore((s) => s.barCollapsed);
   const barInColumn = useChat().left;
   const { t } = useTranslation();

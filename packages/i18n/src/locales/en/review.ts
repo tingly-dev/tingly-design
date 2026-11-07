@@ -1,0 +1,33 @@
+/** Review: remarks written on the page and sent to Claude Code at once (.design/review-remarks.md). */
+export default {
+  pane: {
+    label: 'Review',
+    hint: 'Review: write a remark on each thing, then send them all at once',
+  },
+  title: 'Review',
+  count_one: '{{count}} remark',
+  count_other: '{{count}} remarks',
+  countNone: 'No remarks yet',
+  clear: 'Clear',
+  close: 'Leave review',
+  empty: {
+    title: 'Click anything on the page',
+    body: 'to leave a remark on it. Click the empty page to remark on the whole page.',
+    more: 'Write as many as you like, then send them to Claude Code together.',
+  },
+  whole: 'Whole page',
+  placeholder: 'What should change here?',
+  textLabel: 'Remark {{n}}',
+  remove: 'Remove remark {{n}}',
+  removedName: 'remark {{n}}',
+  clearedName_one: '{{count}} remark',
+  clearedName_other: '{{count}} remarks',
+  show: 'Show on the page',
+  lost: 'This element changed. Your words are kept; Claude Code gets its last known source.',
+  send_one: 'Send {{count}} remark to Claude Code',
+  send_other: 'Send {{count}} remarks to Claude Code',
+  sendNone: 'Send to Claude Code',
+  busy: 'Claude Code is still working on the last request',
+  unsent_one: '{{count}} remark has no words and stays here',
+  unsent_other: '{{count}} remarks have no words and stay here',
+};

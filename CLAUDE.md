@@ -69,6 +69,8 @@ The canvas's fast AI is told to lay out with flex or grid and gap, not pixel off
 
 Importing from a project copies a canvas artboard into a deck or motion piece (`uploads/<canvas>-<board>/`, recorded in the index's `imports`) and shows it as `<x-embed src data-props>`; an artboard declaring `$time` is an effect and draws only from its `time` prop, so motion renders it frame by frame. See `.design/import-from-project.md`.
 
+Canvas, slides and motion have **Review**: the top bar's Review button opens the `review` side pane (`KIND_PANE_IDS`; opening it is the mode, closing it brings the inspector back, a project never opens in it), and while it is open a click on the page leaves a numbered remark (a pin the sandbox runtime draws, a card in `ReviewPane`) instead of selecting; one button sends every remark that has words to Claude Code as one request (`sendRemarks` in `apps/editor/src/review.ts`: the person's numbered words as the prompt, each element's source as context, core's `review.ts` for anchors and `remarksRequest`). Remarks live in this browser (`dc.review.<project>`, `store/review.ts`), not in the project, and follow their element when the source shifts (`resolveRemark`). "Remark" (批注) is its own word: canvas has sticky notes, slides and motion speaker notes, docs comments. Docs, design systems and dashboards skip it on purpose (`.design/review-remarks.md`, the matrix row).
+
 # Keep these in sync (read this before every change)
 
 Three things drift silently when a session forgets them. Each PR that touches one of them updates it in the same PR, not in a follow-up.
@@ -148,7 +150,7 @@ The command line names each command after the editor's word for the same action 
 
 Server events go through `apps/server/src/log.ts` (`DC_LOG_LEVEL`, `DC_LOG_FORMAT=json`), never bare `console.*`; a new fast-AI or delegation path logs its start and outcome there (`.design/server-log.md`).
 
-End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `external_edit`, `tweak_text`, `template_values`, `theme_switch`, `chat_panel`, `side_resize`, `follow_up`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `image_gen`, `archive`, `claude_design`, `pptx`, `check_snapshots`, `baseline` (the editor's screenshots against the `e2e-baselines` branch; re-recorded by hand from the E2E patrol workflow)); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
+End-to-end suites are listed in `docs/en/development.md` (one per kind, plus `launcher`, `dialogs`, `folders`, `git`, `theme`, `i18n`, `layers`, `embed`, `attach`, `import_here`, `import_board`, `run_feed`, `external_edit`, `tweak_text`, `template_values`, `theme_switch`, `chat_panel`, `side_resize`, `follow_up`, `review`, `fast`, `fast_slides`, `fast_motion`, `delegate`, `export_image`, `export`, `export_menu`, `image_gen`, `archive`, `claude_design`, `pptx`, `check_snapshots`, `baseline` (the editor's screenshots against the `e2e-baselines` branch; re-recorded by hand from the E2E patrol workflow)); add new suites to both language versions of that table, and to the `SUITES` table in `e2e/run.py` (`pnpm e2e`), which names what each suite needs started.
 
 # Issues
 

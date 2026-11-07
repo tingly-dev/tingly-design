@@ -17,12 +17,13 @@ import { editCanvas } from '../../store';
 import { BuildRow, DeckProps, SlideProps } from '../slides/SlidePanel';
 import { DsInstall } from './DsInstall';
 import { ThemeTab } from './ThemeTab';
+import { ReviewPane } from './ReviewPane';
 import { JQueryBox } from './JQueryBox';
 import { TemplateValues, TweaksTab } from './TemplateValues';
 import { AnimRow, FormatNote, MotionLayers, MotionProps, SceneProps } from '../motion/MotionPanel';
 
 /** Layers on top; Properties / Code / Tweaks for whatever is selected below. */
-export function RightPanel() {
+function Inspector() {
   const { t } = useTranslation();
   const rawTab = useStore((s) => s.panelTab);
   const sel = useStore((s) => s.selection);
@@ -180,4 +181,10 @@ export function RightPanel() {
       </div>
     </aside>
   );
+}
+
+/** The column on the right: the inspector, or the review's remarks while a review is open. */
+export function RightPanel() {
+  const reviewing = useStore((s) => s.pane === 'review');
+  return reviewing ? <ReviewPane /> : <Inspector />;
 }

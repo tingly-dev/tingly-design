@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { initialPane, KIND_PANE_IDS, rememberPane, type PaneId } from './panes';
 import { turnOfDelegate, turnOfFast } from './turns';
+import { readRemarks, reviewInitial, type ReviewState } from './store/review';
 import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type BarMode, type DelegateState } from './store/agent';
 import {
   rebaseSwap,
@@ -97,7 +98,7 @@ export interface Present {
   notes: boolean;
 }
 
-export interface State extends AgentState {
+export interface State extends AgentState, ReviewState {
   project: string | null;
   /** design canvas or slide deck, from the project's files */
   kind: ProjectKind | null;
@@ -187,6 +188,7 @@ export const useStore = create<State>(() => ({
   runtimeErrors: {},
   jqDraft: '',
   ...agentInitial(),
+  ...reviewInitial(),
   toasts: [],
   undo: [],
   redo: [],
@@ -289,7 +291,7 @@ export async function openProject(name: string): Promise<void> {
     q.set('p', r.name);
     history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
   }, () => {});
-  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], ...agentReset(), slide: null, present: null, motionView: null });
+  set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], ...agentReset(), remarks: readRemarks(name), remarkFocus: null, slide: null, present: null, motionView: null });
   const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
@@ -452,5 +454,6 @@ export function openPane(id: PaneId): void {
 
 /** Open a pane, or close it when it is the one open. */
 export function togglePane(id: PaneId): void {
-  useStore.setState((s) => (s.kind && KIND_PANE_IDS[s.kind].includes(id) ? { pane: s.pane === id ? null : id } : {}));
+  // leaving a review brings the inspector back: it is the mode that was put on top of it
+  useStore.setState((s) => (s.kind && KIND_PANE_IDS[s.kind].includes(id) ? { pane: s.pane === id ? (id === 'review' ? 'inspector' : null) : id } : {}));
 }
