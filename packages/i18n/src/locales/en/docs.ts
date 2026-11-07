@@ -162,9 +162,13 @@ export default {
     missing_other: '{{count}} pictures could not be read and were left out of the .zip.',
   },
   import: {
-    what: 'Each Markdown file becomes a new tab, titled by its first heading. The original stays in the project’s uploads/; import it with its folder, or the .zip a doc was exported as, and the images it references stay too.',
+    what: 'Each Markdown file becomes a new tab, titled by its first heading. The original stays in the project’s uploads/; import it with its folder, or the .zip a doc was exported as, and the images it references stay too. A picture on its own (a GIF too) is kept in uploads/ and shown at the end of the open tab.',
     addedOne: 'Added {{name}} as a new tab.',
     addedMany_one: 'Added {{count}} tab.',
     addedMany_other: 'Added {{count}} tabs.',
+    noTab: 'There is no tab to put the picture on.',
+    pictureOne: 'Added {{name}} at the end of the tab.',
+    pictureMany_one: 'Added {{count}} picture at the end of the tab.',
+    pictureMany_other: 'Added {{count}} pictures at the end of the tab.',
   },
 };

@@ -24,7 +24,7 @@ import { deleteFile, display, edit, enqueueResult, openPane, toast, useStore } f
 import { api, type DeletedTabGroup } from '../../api';
 import { replaceUrl } from '../../host';
 import { joinPath } from '@dc/import';
-import { keepPicked } from '../../importer';
+import { keepPicked, type Picked } from '../../importer';
 import { filesOf, type ImportTarget } from '../ImportHere';
 import { currentLanguage, t } from '../../i18n';
 import { offerUndo, putFiles } from '../../undoRemove';
@@ -345,16 +345,19 @@ const MD_REF = /(!\[[^\]]*\]\()([^)\s]+)((?:\s+"[^"]*")?\))|(<img\b[^>]*?\ssrc="
  * What a doc takes: each Markdown file becomes a tab after the others, titled
  * by its first heading. The originals are kept in uploads/ like anything
  * brought in; with its folder, the pictures it shows keep the folder's tree
- * there and the tab's links point at them.
+ * there and the tab's links point at them. Pictures on their own (a GIF too)
+ * are kept in uploads/ and shown at the end of the open tab.
  */
 export const docsImport: ImportTarget = {
-  accepts: ['markdown'],
+  accepts: ['markdown', 'image'],
   get what() {
     return t('docs.import.what');
   },
   run: async (picked) => {
     const project = useStore.getState().project!;
     const docs = filesOf(picked, 'markdown');
+    // pictures that are not a Markdown file's own are the person's to place
+    if (!docs.length) return addPictures(project, filesOf(picked, 'image'));
     // what was brought in is kept as it was (a folder with its tree, so the pictures' links hold); the tabs are copies to edit
     const { at } = await keepPicked(project, picked, docs[0].path.replace(/\.[a-z]+$/i, ''));
     let last = '';
@@ -380,6 +383,23 @@ export const docsImport: ImportTarget = {
     return docs.length === 1 ? t('docs.import.addedOne', { name: docs[0].path.split('/').pop() }) : t('docs.import.addedMany', { count: docs.length });
   },
 };
+
+/** Pictures onto the end of the open tab, each kept in uploads/ and written as a Markdown image relative to the tab file. */
+async function addPictures(project: string, pictures: Picked['files']): Promise<string> {
+  const d = parseDoc(display(useStore.getState(), DOC_INDEX));
+  const order = tabOrder(d);
+  const want = useDocs.getState().tab;
+  const tab = want && order.some((x) => x.id === want) ? want : order[0]?.id;
+  if (!tab) return t('docs.import.noTab');
+  const lines: string[] = [];
+  for (const f of pictures) {
+    const name = f.path.split('/').pop()!;
+    const kept = await api.upload(project, new File([f.bytes as Uint8Array<ArrayBuffer>], name, { type: f.type }), 'uploads');
+    lines.push(`![${name.replace(/\.[^.]+$/, '').replace(/[[\]]/g, '')}](../${kept.path})`);
+  }
+  edit(tabFile(tab), (src) => `${src.replace(/\s*$/, '')}\n\n${lines.join('\n\n')}\n`, { actor: 'human', summary: `${tabFile(tab)}: ${lines.length} picture(s) added` });
+  return pictures.length === 1 ? t('docs.import.pictureOne', { name: pictures[0].path.split('/').pop() }) : t('docs.import.pictureMany', { count: pictures.length });
+}
 
 /** Shows one tab, by its id or its title (headless.ts, `views.ts`). */
 export function showTab(what: string): boolean {

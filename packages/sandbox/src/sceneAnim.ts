@@ -6,6 +6,7 @@
  * you edit and what you export are drawn by the same rules.
  */
 import { countText, easeProgress, planScene, type SceneElement } from '@dc/core';
+import { syncGifs } from './gifSync';
 
 interface Counter {
   el: Element;
@@ -33,6 +34,11 @@ export interface SceneAnim {
   setTime(t: number, rest?: ReadonlySet<Element>): void;
   /** Cancel every animation and put counted text back, so the page is as written. */
   clear(): void;
+  /** The scene's GIFs are decoded; until then they play on their own. Notes about those that could not be are in `late` by then. */
+  ready: Promise<void>;
+  late: { index: number; level: string; message: string }[];
+  /** The pictures the last `setTime` chose are decoded, so a copy of the page draws them. */
+  settled(): Promise<void>;
 }
 
 /**
@@ -66,10 +72,17 @@ export function animateScene(els: Element[], start: number, duration: number): S
     anim.pause();
     placed.push({ el, anim, kind: p.kind });
   }
+  const visible = plan.visible.map((v) => ({ el: els[v.index], from: v.from, to: v.to }));
+  // a GIF is a clip: it starts when its element comes on screen
+  const gifs = syncGifs(els, start, (el) => visible.find((v) => v.el === el)?.from ?? 0);
   return {
     issues: plan.issues,
-    visible: plan.visible.map((v) => ({ el: els[v.index], from: v.from, to: v.to })),
+    visible,
+    ready: gifs.ready,
+    late: gifs.issues,
+    settled: () => gifs.pending(),
     setTime(t, rest) {
+      gifs.setTime(t);
       for (const { el, anim, kind } of placed) {
         if (rest?.has(el) && kind !== 'keys') {
           const timing = anim.effect?.getComputedTiming();
@@ -80,6 +93,7 @@ export function animateScene(els: Element[], start: number, duration: number): S
       for (const c of counters) setText(c.el, rest?.has(c.el) ? c.text : countText(c.text, easeProgress(c.easing, (t - c.start) / c.duration)));
     },
     clear() {
+      gifs.clear();
       for (const { anim } of placed) anim.cancel();
       for (const c of counters) setText(c.el, c.text);
     },

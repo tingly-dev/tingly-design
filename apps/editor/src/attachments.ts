@@ -47,8 +47,8 @@ async function loadImage(blob: Blob): Promise<HTMLImageElement> {
 
 /** An image as the model gets it: scaled so its longest side is at most 1568 px, re-encoded only when it had to shrink or is too big. */
 async function fitImage(file: Blob, mediaType: string): Promise<{ blob: Blob; mediaType: string }> {
-  // GIFs keep their frames; the model reads the first
-  if (mediaType === 'image/gif') return { blob: file, mediaType };
+  // a GIF that fits goes as it is (the model reads its first frame); a larger one goes as its first frame, re-encoded, and the project keeps the GIF
+  if (mediaType === 'image/gif' && file.size <= ATTACH_LIMITS.imageBytes) return { blob: file, mediaType };
   const img = await loadImage(file);
   const k = Math.min(1, ATTACH_LIMITS.imageSide / Math.max(img.naturalWidth, img.naturalHeight));
   if (k === 1 && file.size <= ATTACH_LIMITS.imageBytes) return { blob: file, mediaType };

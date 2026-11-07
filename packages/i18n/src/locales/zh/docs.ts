@@ -162,8 +162,11 @@ export default {
     missing_other: '有 {{count}} 张图片读不到，没有放进 .zip。',
   },
   import: {
-    what: '每个 Markdown 文件变成一个新的标签页，标题取自它的第一个标题。原文件留在项目的 uploads/ 里；连同文件夹、或导出文档时得到的 .zip 一起导入，它引用的图片也一起留下。',
+    what: '每个 Markdown 文件变成一个新的标签页，标题取自它的第一个标题。原文件留在项目的 uploads/ 里；连同文件夹、或导出文档时得到的 .zip 一起导入，它引用的图片也一起留下。单独的图片（GIF 也一样）留在 uploads/ 里，并放在当前标签页的末尾。',
     addedOne: '已把 {{name}} 加成新的标签页。',
     addedMany_other: '已加了 {{count}} 个标签页。',
+    noTab: '没有可以放图片的标签页。',
+    pictureOne: '已把 {{name}} 放在标签页的末尾。',
+    pictureMany_other: '已把 {{count}} 张图片放在标签页的末尾。',
   },
 } satisfies Locale<typeof en>;
