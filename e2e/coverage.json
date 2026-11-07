@@ -458,7 +458,8 @@
     "docs": [
       "export_menu",
       "export_image",
-      "copy_png"
+      "copy_png",
+      "wechat"
     ],
     "motion": [
       "export_menu",

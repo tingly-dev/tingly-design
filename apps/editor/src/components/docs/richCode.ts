@@ -31,7 +31,7 @@ const alone = <T>(job: () => Promise<T>): Promise<T> => {
   return run;
 };
 
-async function drawMath(into: HTMLElement, source: string): Promise<void> {
+export async function drawMath(into: HTMLElement, source: string): Promise<void> {
   const [{ default: katex }] = await Promise.all([import('katex'), import('katex/dist/katex.min.css')]);
   into.innerHTML = katex.renderToString(source, { displayMode: true, throwOnError: true, trust: false });
 }
@@ -56,13 +56,14 @@ async function drawTable(into: HTMLElement, source: string, language: string): P
   }
 }
 
-async function drawDiagram(into: HTMLElement, source: string): Promise<void> {
+/** `light` draws for a white page whatever the editor's theme is (an export). */
+export async function drawDiagram(into: HTMLElement, source: string, light = false): Promise<void> {
   const { default: mermaid } = await import('mermaid');
   const svg = await alone(async () => {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
-      theme: document.documentElement.dataset.scheme === 'dark' ? 'dark' : 'default',
+      theme: !light && document.documentElement.dataset.scheme === 'dark' ? 'dark' : 'default',
       flowchart: { htmlLabels: false },
     });
     const id = `rc-${++counter}`;

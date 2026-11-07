@@ -1015,3 +1015,16 @@
   margin-top: 6px;
 }
 
+
+/* WeChat Official Account preview: a phone-width page beside what changed and the Copy button (.design/wechat-export.md) */
+.wechat-preview { width: min(860px, 94vw); }
+.wechat-preview .wp-scope { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+.wechat-preview .wp-body { display: flex; gap: 20px; align-items: flex-start; }
+.wechat-preview .wp-phone { flex: none; width: 375px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #fff; }
+.wechat-preview .wp-phone iframe { display: block; width: 100%; height: min(64vh, 640px); border: 0; background: #fff; }
+.wechat-preview .wp-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.wechat-preview .wp-issues { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; max-height: 40vh; overflow: auto; }
+.wechat-preview .wp-issues .ok { list-style: none; margin-left: -18px; color: var(--muted); }
+.wechat-preview .wp-hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.wechat-preview .wp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 760px) { .wechat-preview .wp-body { flex-direction: column; } .wechat-preview .wp-phone { width: 100%; } }

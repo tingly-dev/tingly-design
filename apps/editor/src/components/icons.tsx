@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { IconFiles, IconFolder, IconFolderOpen, IconLayoutList, IconUnlink } from '@tabler/icons-react';
+import { IconBrandWechat, IconFiles, IconFolder, IconFolderOpen, IconLayoutList, IconUnlink } from '@tabler/icons-react';
 import {
   IconAlignCenter,
   IconFileZip,
