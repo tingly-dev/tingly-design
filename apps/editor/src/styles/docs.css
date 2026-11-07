@@ -1027,3 +1027,4 @@
 .wechat-preview .wp-frame iframe { display: block; width: 100%; height: min(58vh, 620px); border: 0; background: #fff; }
 .wechat-preview .wp-hint { margin: 12px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .wechat-preview .wp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.wechat-preview .wp-head .seg { flex: none; width: auto; }
