@@ -27,10 +27,14 @@ Open it with `pnpm dev` at http://localhost:5173/?p=<name>. `projects/tingly-box
 
 **A live query** — data that changes: `"source": {"kind": "query", "connector": "sqlite", "tool": "query", "args": {"db": "data/box.db", "sql": "SELECT …"}}`. It runs whenever the page opens, refreshes or a filter it names changes. Connectors are modules of this server (`apps/server/src/connectors.ts`); `sqlite` reads a database under `data/`, read only. Find the data first, and use only tables and columns you found:
 
+In the Tingly Design repository or bundle, use its query helper:
+
 ```bash
 node scripts/dash-query.mjs projects/<name>/data/<db>                  # tables, columns, row counts
 node scripts/dash-query.mjs projects/<name>/data/<db> "SELECT … LIMIT 20"
 ```
+
+Outside the repository or bundle, inspect the database with a local read-only SQLite client (for example, `sqlite3 -readonly projects/<name>/data/<db>` and `.schema`); the helper is not installed by the skills CLI.
 
 The SQL is one `SELECT` or `WITH` statement up to 16,000 characters with none of INSERT UPDATE DELETE MERGE DROP ALTER CREATE TRUNCATE GRANT REVOKE CALL EXEC EXECUTE COPY EXPORT LOAD INTO RETURNING DECLARE SET BEGIN COMMIT ATTACH DETACH PRAGMA VACUUM REINDEX REPLACE outside quotes and comments (quote a column so named), or it is refused. Aggregate in SQL: ask for only the rows and columns the page draws. Joins and arithmetic over one database go in the SQL, where readers can check them.
 
