@@ -40,7 +40,15 @@ function clipOf(src: string): Promise<Clip> {
 async function build(src: string): Promise<Clip> {
   const res = await fetch(src);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const info = parseGif(new Uint8Array(await res.arrayBuffer()));
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let info;
+  try {
+    info = parseGif(bytes);
+  } catch (e) {
+    // a file this decoder cannot follow may still be one the browser draws (it then plays on its own); one it cannot draw is broken
+    const playable = (e as { code?: string }).code === 'too-large' || (await createImageBitmap(new Blob([bytes as BlobPart], { type: 'image/gif' })).then((b) => (b.close(), true), () => false));
+    throw Object.assign(e as Error, { playable });
+  }
   const canvas = document.createElement('canvas');
   canvas.width = info.width;
   canvas.height = info.height;
@@ -58,8 +66,10 @@ async function build(src: string): Promise<Clip> {
 }
 
 const wording = (e: unknown) => {
-  const code = (e as { code?: string }).code;
-  return code === 'too-large' ? 'is too large to follow the timeline (it keeps playing on its own)' : code ? 'could not be read as a GIF (it keeps playing on its own)' : `could not be loaded (${e instanceof Error ? e.message : String(e)})`;
+  const { code, playable } = e as { code?: string; playable?: boolean };
+  if (!code) return `could not be loaded (${e instanceof Error ? e.message : String(e)})`;
+  if (!playable) return 'is damaged or not a picture the browser can draw';
+  return code === 'too-large' ? 'is too large to follow the timeline (it plays on its own, out of step)' : 'cannot be read to follow the timeline (it plays on its own, out of step)';
 };
 
 export interface GifSync {

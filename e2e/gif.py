@@ -160,16 +160,23 @@ async def main():
             check('motion: without it the file\'s own loop count applies (this one loops)', ok, got)
             await pg.screenshot(path=OUT + 'gif-motion.png')
 
-            # a file named .gif that is not one is said so in the issues, and the picture plays on its own
+            # a file named .gif that is not a picture is said so in the issues (a broken image is all the browser can show of it)
             write(f'{MOTION}/uploads/bad.gif', 'not a gif at all')
             write(f'{MOTION}/scenes/s1.html', SCENE.format(extra='').replace('<h1', '<img id="bad" src="uploads/bad.gif" style="position:absolute;left:600px;top:100px;width:100px;height:100px"><h1'))
             await expect(stage.locator('#bad')).to_have_count(1)
             await pg.get_by_role('button', name=re.compile('^Check')).click()
-            await expect(pg.locator('.missues')).to_contain_text('GIF could not be read as a GIF')
-            check('motion: a .gif that is not a GIF is reported among the piece\'s issues', True)
+            await expect(pg.locator('.missues')).to_contain_text('GIF is damaged or not a picture the browser can draw')
+            check('motion: a .gif that is damaged or not a picture is reported among the piece\'s issues', True)
+            # one cut short but still drawable by the browser is said to play on its own, out of step
+            write(f'{MOTION}/uploads/cut.gif', GIF[:-40])
+            write(f'{MOTION}/scenes/s1.html', SCENE.format(extra='').replace('<h1', '<img id="cut" src="uploads/cut.gif" style="position:absolute;left:600px;top:300px;width:100px;height:100px"><h1'))
+            await expect(stage.locator('#cut')).to_have_count(1)
+            await expect(pg.locator('.missues')).to_contain_text('cannot be read to follow the timeline')
+            check('motion: a GIF cut short but still drawable is said to play on its own, out of step', True)
             await pg.get_by_role('button', name=re.compile('^Check')).click()
             write(f'{MOTION}/scenes/s1.html', SCENE.format(extra=''))
             os.remove(path(MOTION, 'uploads', 'bad.gif'))
+            os.remove(path(MOTION, 'uploads', 'cut.gif'))
 
             # a frame saved as PNG is the frame of the time on the playhead (on a page loaded afresh: the stage has just been rewritten twice)
             await pg.goto(f'{BASE}/?p={MOTION}')
