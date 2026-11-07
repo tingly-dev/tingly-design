@@ -82,6 +82,10 @@
   min-width: 0;
   font-size: 12px;
   color: var(--ink);
+}
+
+.rvline,
+.rvplace {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
