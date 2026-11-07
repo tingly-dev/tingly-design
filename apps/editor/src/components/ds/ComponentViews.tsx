@@ -35,20 +35,29 @@ export function Preview({ comp, html, t, index, theme, minHeight }: { comp: stri
   // Two frames take turns: the one shown stays while the next document loads in
   // a hidden twin, and the swap waits for the twin's load — a burst of writes to
   // the bundle (Claude Code working on the system) never blanks the preview.
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState<0 | 1>(0);
   const [docs, setDocs] = useState<{ 0: string | null; 1: string | null }>({ 0: doc, 1: null });
   const [gen, setGen] = useState<[number, number]>([0, 0]);
   const frames = [useRef<HTMLIFrameElement>(null), useRef<HTMLIFrameElement>(null)];
   const activeRef = useRef(0);
   activeRef.current = active;
+  const docRef = useRef(doc);
+  docRef.current = doc;
   useEffect(() => {
-    if (doc === docs[0] || doc === docs[1]) return;
     const slot = active === 0 ? 1 : 0;
+    if (doc === docs[active]) {
+      // the document is back to the one on show: the twin still loading an older one is dropped
+      if (docs[slot] !== null) setDocs((d) => ({ ...d, [slot]: null }));
+      return;
+    }
+    if (doc === docs[slot]) return;
     setDocs((d) => ({ ...d, [slot]: doc }));
     setGen((g) => (slot === 0 ? [g[0] + 1, g[1]] : [g[0], g[1] + 1]));
   }, [doc, active, docs]);
   // the twin has loaded: it takes over, and the frame it replaces goes away until the next boot
   const promote = (slot: 0 | 1) => {
+    // a twin that finished after the document moved on is not shown: the next one is already on its way
+    if (slot !== activeRef.current && docs[slot] !== docRef.current) return;
     setActive(slot);
     setDocs((d) => ({ ...d, [slot === 0 ? 1 : 0]: null }));
   };

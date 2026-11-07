@@ -152,6 +152,53 @@ async def main():
         check('the code panel saves the page', ok)
         await expect(fr.locator('h1')).to_have_text('Gateway usage overview')
 
+        # --- the page frame's hand-over: a burst of writes, a language change, the old page retired ------------
+        async def stage_text():
+            # what the frame on stage shows (None while the frames are changing places)
+            try:
+                h = await pg.locator('iframe.dashframe').element_handle(timeout=1000)
+                f = await h.content_frame()
+                return await f.evaluate('document.body ? document.body.innerText.trim().length : 0')
+            except Exception:
+                return None
+        seen = []
+        stop = asyncio.Event()
+        async def watch():
+            while not stop.is_set():
+                seen.append(await stage_text())
+                await asyncio.sleep(0.03)
+        watcher = asyncio.create_task(watch())
+        for i in range(1, 5):
+            write(page, read(page).replace('<h1>Gateway usage overview</h1>' if i == 1 else f'<h1>Burst {i - 1}</h1>', f'<h1>Burst {i}</h1>'))
+            await asyncio.sleep(0.5)
+        await expect(fr.locator('h1')).to_have_text('Burst 4')
+        stop.set()
+        await watcher
+        got = [n for n in seen if n is not None]
+        check('writes to the page file land one after another, the page on stage never blank', len(got) > 20 and min(got) > 0, f'{len(got)} samples, min {min(got) if got else None}')
+        await expect(fr.locator('#dailyChart svg rect').first).to_be_visible()
+        check('the data is still there after the hand-overs', await fr.locator('#providerBody tr').count() == 5 and await fr.locator('#dailyChart svg rect').count() > 90)
+        await pg.wait_for_timeout(300)
+        check('the page that was taken off stage is gone (one page frame left)', await pg.locator('iframe.dashframe, iframe.dashframe-next').count() == 1)
+        await pg.evaluate('window.tinglyDesign.setLanguage("en")')
+        await expect(pg.locator('html')).to_have_attribute('lang', 'en')
+        await expect(fr.locator('h1')).to_have_text('Burst 4')
+        await expect(fr.locator('#providerBody tr')).to_have_count(5)
+        async def drawn():
+            return await fr.locator('#dailyChart svg rect').count() > 90
+        ok = False
+        for _ in range(50):
+            if ok := await drawn(): break
+            await pg.wait_for_timeout(100)
+        check('a language change reloads the page and it is drawn again', ok)
+        await pg.evaluate('window.tinglyDesign.setLanguage("zh")')
+        await expect(pg.locator('html')).to_have_attribute('lang', 'zh-CN')
+        await expect(fr.locator('#providerBody tr')).to_have_count(5)
+        check('…and back again', await fr.locator('h1').inner_text() == 'Burst 4')
+        write(page, read(page).replace('<h1>Burst 4</h1>', '<h1>Burst 5</h1>'))
+        await expect(fr.locator('h1')).to_have_text('Burst 5')
+        check('the page still follows its file after a language change', await fr.locator('#providerBody tr').count() == 5)
+
         # --- upload and a new dashboard -----------------------------------------------------------------
         restore()
         await pg.goto(BASE + '/')

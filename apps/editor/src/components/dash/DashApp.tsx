@@ -93,6 +93,8 @@ function PageFrame() {
   // counts boots per slot: a slot's frame mounts fresh for each boot, and the slots alternate
   const [gen, setGen] = useState<[number, number]>([0, 0]);
   const [active, setActive] = useState(0);
+  // which slots hold a frame: the page that left the stage is taken down, so its scripts stop
+  const [mounted, setMounted] = useState<[boolean, boolean]>([true, false]);
   // what the message router goes by: the slot on stage, and the slot a page is booting in (the first page boots where it stands)
   const stage = useRef<{ active: 0 | 1; pending: 0 | 1 | null; swap: number }>({ active: 0, pending: 0, swap: 0 });
   const frames = [useRef<HTMLIFrameElement>(null), useRef<HTMLIFrameElement>(null)];
@@ -113,6 +115,7 @@ function PageFrame() {
     setFrame(frames[slot].current?.contentWindow ?? null);
     useDash.setState({ report: null, derived: {} });
     setActive(slot);
+    setMounted(slot === 0 ? [true, false] : [false, true]);
   };
 
   const boot = (slot: 0 | 1) => {
@@ -122,6 +125,7 @@ function PageFrame() {
     // a page that never finishes mounting (a script stopped early) still takes the stage after a wait
     st.swap = window.setTimeout(() => adopt(slot), 5000);
     setGen((g) => (slot === 0 ? [g[0] + 1, g[1]] : [g[0], g[1] + 1]));
+    setMounted((m) => (slot === 0 ? [true, m[1]] : [m[0], true]));
   };
 
   // its files changed: the next page boots in the other slot; a boot still under way starts over with the newer files
@@ -143,17 +147,19 @@ function PageFrame() {
       if (!m || typeof m !== 'object' || typeof m.dc !== 'string') return;
       const d = useDash.getState();
       if (m.dc === 'ready') {
+        if (slot !== st.pending && slot !== st.active) return;
         // the page still booting becomes the one we talk to (it is on its way to the stage):
         // it asks for its data while mounting, before it declares, and the answers come back to it here
-        if (slot !== st.pending) return;
-        setFrame(w);
+        if (slot === st.pending) setFrame(w);
+        // a frame on stage that loaded again by itself (a language change) is handed its page again; what the old one reported is gone
+        else if (st.pending === null) useDash.setState({ report: null, derived: {} });
         w.postMessage({ dc: 'dash-page', files: pageFiles(), datasets: ids.current, params: d.params, theme: d.theme, link: decodeURIComponent(location.hash.slice(1)), mode: d.mode }, '*');
         return;
       }
       if (m.dc === 'dash-declared') {
-        // the page has mounted: now it takes the stage
-        if (slot !== st.pending) return;
-        adopt(slot);
+        // the page has mounted: now it takes the stage (one on stage that loaded again has nothing to hand over)
+        if (slot === st.pending) adopt(slot);
+        else if (slot !== st.active) return;
         useDash.setState({ loaders: m.loaders });
         // a dataset loaded as plain rows before its page declared a loader: load it again
         const now = useDash.getState();
@@ -162,7 +168,7 @@ function PageFrame() {
       }
       // the page still booting asks for its data while it mounts: hear it too (the replies go to it — the frame we talk to is already the booting one)
       if (m.dc === 'dash-want') {
-        want(m.ids);
+        if (slot === st.active || slot === st.pending) want(m.ids);
         return;
       }
       // everything else a page says counts only from the one on stage; the one still booting is not listened to
@@ -231,8 +237,8 @@ function PageFrame() {
   return (
     <>
       {/* the keys name the slot too: both slots can be on the same boot number */}
-      <iframe ref={frames[0]} key={`a${gen[0]}`} className={active === 0 ? 'dashframe' : 'dashframe-next'} title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />
-      {gen[1] > 0 && <iframe ref={frames[1]} key={`b${gen[1]}`} className={active === 1 ? 'dashframe' : 'dashframe-next'} title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />}
+      {mounted[0] && <iframe ref={frames[0]} key={`a${gen[0]}`} className={active === 0 ? 'dashframe' : 'dashframe-next'} title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />}
+      {mounted[1] && <iframe ref={frames[1]} key={`b${gen[1]}`} className={active === 1 ? 'dashframe' : 'dashframe-next'} title={t('dash.frameTitle')} sandbox="allow-scripts" srcDoc={srcdoc} />}
     </>
   );
 }

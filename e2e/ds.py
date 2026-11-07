@@ -33,6 +33,13 @@ def check(name, ok, extra=''):
     results.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
 
+async def wait_for_async(get, want, timeout):
+    t = time.time()
+    while time.time() - t < timeout:
+        if await get() == want: return True
+        await asyncio.sleep(0.1)
+    return False
+
 async def click_in_stage(pg, css):
     fr = pg.frame_locator('.sframe.f-stage iframe')
     r = await fr.locator(css).first.evaluate('e => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; }')
@@ -116,6 +123,54 @@ async def main():
         await expect(card.locator('.tg-card .tg-stat').first).to_have_text('< 1 ms')
         check('previews load the bundle and the edited tokens', await card.locator('.tg-card').first.evaluate("e => getComputedStyle(e).borderTopLeftRadius") == '20px')
         await pg.screenshot(path=OUT + 'ds-components.png')
+
+        # --- the preview's hand-over: a burst of writes never blanks it, and it settles on the file as it is ---
+        async def card_radius():
+            # the card's corner as the frame on show draws it ('' while the page is blank, None while the frames change places)
+            try:
+                h = await pg.locator('.comp[data-comp="Card"] iframe.dspreview:not(.next)').element_handle(timeout=1000)
+                f = await h.content_frame()
+                return await f.evaluate("document.querySelector('.tg-card') ? getComputedStyle(document.querySelector('.tg-card')).borderTopLeftRadius : ''")
+            except Exception:
+                return None
+        bundle_css, bundle_js = os.path.join(DS, 'components/bundle.css'), os.path.join(DS, 'components/bundle.js')
+        css0, js0 = read(bundle_css), read(bundle_js)
+        base = await card_radius()
+        seen, stop = [], asyncio.Event()
+        async def watch():
+            while not stop.is_set():
+                seen.append(await card_radius())
+                await asyncio.sleep(0.03)
+        watcher = asyncio.create_task(watch())
+        for i in range(4):
+            open(bundle_css, 'w', encoding='utf-8').write(css0 + f'\n/* burst {i} */\n')
+            await asyncio.sleep(0.5)
+        open(bundle_css, 'w', encoding='utf-8').write(css0)
+        await pg.wait_for_timeout(800)
+        stop.set()
+        await watcher
+        got = [r for r in seen if r is not None]
+        check('writes to the bundle land one after another, the preview never blank', len(got) > 20 and '' not in got and base == '20px', f'{len(got)} samples, base {base}, blank {got.count("")}')
+        # a document that loads slowly (its bundle spins for a while), then the file goes back before it is done:
+        # the slow one must not take the stage, the document now current stays
+        slow = "(function(){var t=Date.now();while(Date.now()-t<2500);var s=document.createElement('style');s.textContent='.tg-card{border-radius:37px!important}';document.documentElement.appendChild(s)})();\n"
+        # (watched in the page itself, so no sample is missed: is the slow document ever the one on show?)
+        await pg.evaluate("""() => {
+            window.__stale = false;
+            const look = () => { for (const f of document.querySelectorAll('.comp[data-comp=Card] iframe.dspreview:not(.next)')) if ((f.getAttribute('srcdoc') || '').includes('37px')) window.__stale = true; };
+            new MutationObserver(look).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'srcdoc'] });
+        }""")
+        open(bundle_js, 'w', encoding='utf-8').write(slow + js0)
+        await pg.wait_for_timeout(400)
+        open(bundle_js, 'w', encoding='utf-8').write(js0)
+        await wait_for_async(lambda: pg.locator('.comp[data-comp=Card] iframe').count(), 2, 10)
+        # the frames settle to one (a document whose libraries come over the network can take a while to load)
+        for _ in range(250):
+            if await pg.locator('.comp[data-comp=Card] iframe').count() == 1: break
+            await pg.wait_for_timeout(100)
+        await pg.wait_for_timeout(500)
+        stale, final = await pg.evaluate('window.__stale'), await card_radius()
+        check('a preview that was loading an older version of the bundle does not take the stage', not stale and final == base, f'stale on show: {stale}, final {final} (want {base})')
 
         # --- assets -------------------------------------------------------------------
         await pg.locator('.navi', has_text='资源').click()
