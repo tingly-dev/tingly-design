@@ -37,13 +37,15 @@ function Card({ remark, n }: { remark: Remark; n: number }) {
       >
         <span className="rvnum">{n}</span>
         <span className="rvanchor">
-          {a ? (
-            <>
-              <code>{a.handle}</code> &lt;{a.tag}&gt; {a.label && <span className="rvlabel">{a.label}</span>}
-            </>
-          ) : (
-            t('review.whole')
-          )}
+          <span className="rvline">
+            {a ? (
+              <>
+                <code>{a.handle}</code> &lt;{a.tag}&gt; {a.label && <span className="rvlabel">{a.label}</span>}
+              </>
+            ) : (
+              t('review.whole')
+            )}
+          </span>
           <span className="rvplace">{placeOf(remark.file)}</span>
         </span>
         <button className="ib sm" aria-label={t('review.remove', { n })} title={t('review.remove', { n })} onClick={(e) => (e.stopPropagation(), removeRemark(remark.id))}>

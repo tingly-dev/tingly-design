@@ -32,6 +32,17 @@ The top left holds the page menu and the tools; the top right holds play, the pa
 
 </details>
 
+## Review: remarks on the page, sent all at once
+
+When you go through a page and have many small things to say, open **Review** (the button in the top bar next to the properties panel; canvas, slides and motion have it). The right column becomes a list of remarks and a click on the page leaves one instead of selecting:
+
+- Click an element: a numbered pin appears on it and a card in the list takes your words. Click the empty page to write about the whole page. Click a pinned element again to go back to its remark.
+- Nothing is moved, resized or retyped while Review is open, and nothing is written to the project: remarks are kept in this browser (they survive a reload) until you send them.
+- **Send N remarks to Claude Code** hands every remark that has words to Claude Code in one request: it sees them together, makes one pass, and answers remark by remark. The run is one step of undo. Remarks without words stay behind.
+- × removes a remark (the toast has Undo); a remark whose element was changed or removed meanwhile stays grey and is still sent, with what it pointed at.
+
+Closing Review brings the properties panel back. Why it works this way: `.design/review-remarks.md`.
+
 ## Undo, redo and the change log
 
 Every kind works the same way.
