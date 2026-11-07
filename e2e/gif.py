@@ -66,6 +66,25 @@ async def png_shade(helper, data, x, y):
       return Array.from(g.getImageData(x, y, 1, 1).data.slice(0, 3));
     }""", [base64.b64encode(data).decode(), x, y]))
 
+
+def big_gif(w, h):
+    """A valid GIF of w×h pixels whose pixel data is stored, not compressed (a clear code every 250 codes), so it is larger than a model attachment may be."""
+    out = bytearray(b'GIF89a' + w.to_bytes(2, 'little') + h.to_bytes(2, 'little') + bytes([0xF7, 0, 0]))
+    out += bytes(v for i in range(256) for v in (i, 255 - i, 128))
+    out += b',' + bytes(4) + w.to_bytes(2, 'little') + h.to_bytes(2, 'little') + b'\x00\x08'
+    data = bytearray()
+    total, chunk = w * h, 250
+    for start in range(0, total, chunk):
+        codes = [256] + [(start + i) * 7 % 256 for i in range(min(chunk, total - start))]
+        bits = 0
+        for i, c in enumerate(codes): bits |= c << (9 * i)
+        data += bits.to_bytes((9 * len(codes) + 7) // 8, 'little')
+    data += (257).to_bytes(2, 'little')
+    for i in range(0, len(data), 255):
+        part = data[i:i + 255]
+        out += bytes([len(part)]) + part
+    return bytes(out) + b'\x00;'
+
 SCENE = ('<section id="s1" data-duration="4s" style="background:#ffffff;color:#16181d">'
          '<img id="g" src="uploads/blink.gif" alt="Blink" {extra}data-in="fade 300ms @1s" style="position:absolute;left:100px;top:100px;width:320px;height:180px">'
          '<h1 style="position:absolute;left:100px;top:360px;margin:0;font-size:48px">Blink</h1></section>\n')
@@ -274,6 +293,15 @@ async def main():
             with zipfile.ZipFile(await d.path()) as z:
                 media = [n for n in z.namelist() if n.startswith('word/media/')]
             check('docs: the Word file holds the GIF', any(n.endswith('.gif') for n in media), media)
+
+            # ===== a request's attachment: a GIF over the model's limit goes as its first frame, the file is kept =====
+            big = big_gif(2600, 2600)
+            await pg.goto(f'{BASE}/?p={MOTION}')
+            await expect(pg.locator('.mtime')).to_be_visible()
+            await pg.locator('.prompt input[type=file]').set_input_files({'name': 'big.gif', 'mimeType': 'image/gif', 'buffer': big})
+            chip = pg.locator('.prompt .attach-chip')
+            await expect(chip).to_have_count(1, timeout=20000)
+            check('attachments: a GIF of over 5 MB is taken (its first frame goes to the model), not refused', len(big) > 5 * 1024 * 1024 and await chip.locator('img').count() == 1, len(big))
 
             # ===== the project package =====================================================================
             r = await pg.request.get(f'{BASE}/api/projects/{MOTION}/archive')
