@@ -195,6 +195,7 @@ export default {
     wearing: '正在穿着 {{name}}',
     wearingNone: '没有设计系统：文档自己的样子。',
     systems: '设计系统',
+    installed: '已装入 {{name}}，文档已经穿上；可以在“主题”里更换或脱下。',
     notReady: '设计系统已装入，但还没送到编辑器；请从列表里选它。',
   },
   import: {

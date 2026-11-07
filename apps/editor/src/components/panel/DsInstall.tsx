@@ -12,7 +12,7 @@ import { wearWhenInstalled } from '../docs/docTheme';
  * index), or remove one. Once installed, colour fields and the text style
  * menu offer its tokens.
  */
-export function DsInstall() {
+export function DsInstall({ heading = true }: { heading?: boolean } = {}) {
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const docs = useStore((s) => s.kind === 'docs');
@@ -32,9 +32,9 @@ export function DsInstall() {
       // a doc has no content to restyle: installing a system there wears it, and that is the one change Claude Code is told about
       if (rec.namespace && docs) {
         if (!installed.some((x) => x.record.namespace === rec.namespace)) void wearWhenInstalled(rec.namespace);
-      }
-      else if (rec.namespace) recordChange({ type: 'designSystem', namespace: rec.namespace, title: rec.title ?? rec.namespace });
-      toast(r.fonts.length ? t('panel.ds.installedWithFonts', { count: r.fonts.length }) : t('panel.ds.installed'));
+      } else if (rec.namespace) recordChange({ type: 'designSystem', namespace: rec.namespace, title: rec.title ?? rec.namespace });
+      // a doc has no colour or text style menus: its toast says what happened to the doc
+      toast(docs ? t('docs.theme.installed', { name: rec.title ?? rec.namespace ?? '' }) : r.fonts.length ? t('panel.ds.installedWithFonts', { count: r.fonts.length }) : t('panel.ds.installed'));
       setPick('');
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -44,7 +44,7 @@ export function DsInstall() {
   };
   return (
     <>
-      <h3>{t('panel.ds.title')}</h3>
+      {heading && <h3>{t('panel.ds.title')}</h3>}
       {installed.map((x) => {
         const from = x.record.artifact.replace(/^projects\//, '');
         return (

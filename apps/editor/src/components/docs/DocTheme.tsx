@@ -53,7 +53,7 @@ export function DocTheme() {
       </p>
       <details className="th-systems" open={!installed.length}>
         <summary>{t('docs.theme.systems')}</summary>
-        <DsInstall />
+        <DsInstall heading={false} />
       </details>
     </div>
   );
