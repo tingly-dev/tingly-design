@@ -1,0 +1,158 @@
+/* Review: the remarks tray in the right column (the pins are drawn in the page by the sandbox runtime). */
+
+.panel.review .rvhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel.review .rvhead h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.panel.review .rvhead .hint {
+  flex: 1;
+}
+
+.rvlist {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.rvcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.rvcard.on {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.rvcard.lost {
+  border-style: dashed;
+}
+
+.rvcard.lost .rvnum {
+  background: var(--faint);
+}
+
+.rvwhere {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.rvwhere .ib {
+  margin-left: auto;
+  flex: none;
+}
+
+.rvnum {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--warn);
+  color: var(--on-accent);
+  font: 600 11px/20px var(--ui);
+  text-align: center;
+}
+
+.rvanchor {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rvanchor code {
+  font: 600 11.5px var(--mono);
+}
+
+.rvlabel {
+  color: var(--muted);
+}
+
+.rvplace {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.rvlostnote {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.rvtext {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: none;
+  padding: 2px 2px 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  field-sizing: content;
+  min-height: 2.9em;
+}
+
+.rvempty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.rvempty p {
+  margin: 0;
+}
+
+.rvempty b {
+  color: var(--ink);
+}
+
+.rvfoot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.rvfoot .btn {
+  width: 100%;
+  justify-content: center;
+}

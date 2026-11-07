@@ -152,6 +152,13 @@
       "w": 1720,
       "h": 940,
       "title": "Expand to edit"
+    },
+    "Review.dc.html": {
+      "x": 2000,
+      "y": 9400,
+      "w": 1800,
+      "h": 1800,
+      "title": "Review"
     }
   },
   "order": [
@@ -175,7 +182,8 @@
     "Motion.dc.html",
     "AgentBar.dc.html",
     "Composer.dc.html",
-    "Expand.dc.html"
+    "Expand.dc.html",
+    "Review.dc.html"
   ],
   "notes": {
     "t0": {

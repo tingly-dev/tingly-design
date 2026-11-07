@@ -18,6 +18,14 @@ export interface Inspect {
   parent: { tid: number | null; display: string; flexDirection: string; position: string; hasHeight: boolean };
 }
 
+/** A review remark's pin: where it hangs and what it says on it. */
+export interface ReviewPin {
+  tid: number;
+  n: number;
+  /** the remark being written, drawn with a ring */
+  focus?: boolean;
+}
+
 export type ToRuntime =
   | {
       dc: 'render';
@@ -37,6 +45,8 @@ export type ToRuntime =
     }
   | { dc: 'select'; tid: number | null }
   | { dc: 'hover'; tid: number | null }
+  /** review mode: clicks leave remarks instead of selecting; draw these pins, `unit` stage px per screen px so they keep their size at any zoom */
+  | { dc: 'review'; on: boolean; pins: ReviewPin[]; unit: number }
   | { dc: 'mode'; mode: Mode }
   | { dc: 'export'; id: string; scale: number; tid?: number }
   /** the artboard as drawn, as a standalone page (the canvas's PDF) */

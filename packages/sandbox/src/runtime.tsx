@@ -27,6 +27,7 @@ import {
   type Inspect,
   type Mode,
   type MotionStageInfo,
+  type ReviewPin,
   type ToRuntime,
 } from '@dc/core';
 import { BUILD_CSS, showSteps } from './slide';
@@ -229,6 +230,9 @@ overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147
 document.documentElement.appendChild(overlay);
 
 let externalHover: number | null = null;
+/** Review mode: clicks leave remarks, so nothing is selected, dragged or retyped, and the remarks hang as numbered pins. */
+const review: { on: boolean; pins: ReviewPin[]; unit: number } = { on: false, pins: [], unit: 1 };
+const AMBER = '#d97706';
 let indicator: { x: number; y: number; w: number; h: number } | null = null;
 
 function rectOf(el: Element): DOMRect | null {
@@ -255,6 +259,24 @@ function box(r: { left: number; top: number; width: number; height: number }, cs
   return `<div style="position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;box-sizing:border-box;${css}"></div>`;
 }
 
+/** The remarks' pins: a numbered amber disc on each element's top left corner, a blue ring on the one being written. */
+function drawPins(): string[] {
+  const size = 22 * review.unit;
+  const out: string[] = [];
+  for (const pin of review.pins) {
+    const el = instances(pin.tid)[0];
+    const r = el ? rectOf(el) : null;
+    if (!r) continue;
+    const x = Math.max(0, r.left - size / 2);
+    const y = Math.max(0, r.top - size / 2);
+    const ring = pin.focus ? `0 0 0 ${3 * review.unit}px #fff,0 0 0 ${4.5 * review.unit}px ${BLUE}` : `0 0 0 ${2 * review.unit}px #fff`;
+    out.push(
+      `<div style="position:fixed;left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-radius:50%;background:${AMBER};color:#fff;box-shadow:${ring};font:600 ${12 * review.unit}px/${size}px system-ui;text-align:center">${pin.n}</div>`,
+    );
+  }
+  return out;
+}
+
 function drawBoxes() {
   const out: string[] = [];
   if (!resize) spots = [];
@@ -266,7 +288,7 @@ function drawBoxes() {
         if (r) out.push(box(r, `border:1px solid ${BLUE}`));
       }
     }
-    if (current.selected !== null) {
+    if (!review.on && current.selected !== null) {
       const els = instances(current.selected);
       for (const el of els) {
         const r = rectOf(el);
@@ -282,6 +304,7 @@ function drawBoxes() {
         }
       }
     }
+    if (review.on) out.push(...drawPins());
     if (indicator) out.push(box({ left: indicator.x, top: indicator.y, width: indicator.w, height: indicator.h }, `background:${BLUE};border-radius:1px`));
     if (resize?.active) {
       const r = resize.el.getBoundingClientRect();
@@ -411,6 +434,8 @@ setInterval(() => {
 // ------------------------------------------------------------- gestures
 
 const inEdit = () => current.mode === 'edit';
+/** Editing gestures (drag, resize, retype) are off while a review is being written. */
+const editing = () => inEdit() && !review.on;
 
 interface Drag {
   tid: number;
@@ -747,7 +772,7 @@ function endResize(cancel = false) {
 document.addEventListener(
   'mousemove',
   (e) => {
-    if (!inEdit() || drag || resize) return;
+    if (!editing() || drag || resize) return;
     const at = spotAt(e.clientX, e.clientY);
     document.documentElement.style.cursor = at ? CURSORS[at] : '';
   },
@@ -757,7 +782,7 @@ document.addEventListener(
 document.addEventListener(
   'pointerdown',
   (e) => {
-    if (!inEdit()) return;
+    if (!editing()) return;
     if (current.editing?.contains(e.target as Node)) return;
     e.preventDefault();
     if (current.editing) commitText();
@@ -829,6 +854,8 @@ document.addEventListener(
   (e) => {
     if (!inEdit()) return;
     e.preventDefault();
+    // reviewing, the menu of what could be done to an element is not on offer
+    if (review.on) return;
     const tid = tidOf(e.target);
     if (tid !== current.selected) {
       current.selected = tid;
@@ -893,7 +920,7 @@ function beginText(el: HTMLElement) {
 document.addEventListener(
   'dblclick',
   (e) => {
-    if (!inEdit()) return;
+    if (!editing()) return;
     e.preventDefault();
     e.stopPropagation();
     const el = (e.target as Element).closest?.('[data-dc-tid]') as HTMLElement | null;
@@ -1087,6 +1114,11 @@ function onMessage(m: ToRuntime) {
     showTime();
   } else if (m.dc === 'hover') {
     externalHover = m.tid;
+  } else if (m.dc === 'review') {
+    review.on = m.on;
+    review.pins = m.pins;
+    review.unit = m.unit;
+    document.documentElement.style.cursor = m.on ? 'crosshair' : '';
   } else if (m.dc === 'mode') {
     current.mode = m.mode;
     document.documentElement.dataset.mode = m.mode;
