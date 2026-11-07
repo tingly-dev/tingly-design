@@ -38,6 +38,10 @@ export default {
     reset: '重置筛选',
   },
   frameTitle: '看板页面',
+  export: {
+    timeout: '导出超时',
+    failed: '导出失败',
+  },
   ask: {
     placeholder: '交给 Claude Code：连上数据、加一张图、加一个筛选、修好没对上的数字…',
     picked: '看板上点的是：来源 {{sources}}{{detail}}。',

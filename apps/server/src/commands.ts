@@ -121,7 +121,17 @@ const KIND_CLI: Record<Kind, KindCli> = {
       return (view ? [view] : every ? DS_VIEWS : ['overview']).map((pick) => ({ pick, item: 'png' }));
     },
   },
-  dashboard: { formats: ['png'], size: false, fast: false, fixed: false, page: false, blame: DASH_PAGE, frameFiles: noFrameFiles, jobs: pngOnly },
+  dashboard: {
+    formats: ['pdf', 'png'],
+    size: false,
+    fast: false,
+    fixed: false,
+    page: false,
+    blame: DASH_PAGE,
+    frameFiles: noFrameFiles,
+    // the one page as drawn: nothing is shown first
+    jobs: async (_p, as) => [{ item: as === 'pdf' ? 'pdf' : 'png' }],
+  },
   motion: { formats: ['mp4', 'gif', 'png', 'html'], size: true, fast: true, fixed: false, page: false, frameFiles: noFrameFiles, jobs: pngOnly },
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASH_PAGE, sandboxDoc, type FromDash, type QuerySource } from '@dc/core';
-import { display, isSaving, openPane, useStore } from '../../store';
+import { display, isSaving, openPane, toast, useStore } from '../../store';
 import {
   changedParams,
   datasetsChanged,
@@ -27,15 +27,16 @@ import {
 import { FileMenu, imageExportItems } from '../FileMenu';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
 import { PreviewAs } from '../PreviewAs';
-import { Moon, Refresh, Sun, Target } from '../icons';
+import { FilePdf, Moon, Refresh, Sun, Target } from '../icons';
 import { fileStem } from '../../imageExport';
+import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
 import { replaceUrl } from '../../host';
 import { SERVER } from '../../base';
-import { currentLanguage, htmlLang } from '../../i18n';
+import { currentLanguage, htmlLang, t as tr } from '../../i18n';
 
 const imageWaits = new Map<string, { ok: (b: Blob) => void; fail: (e: Error) => void }>();
 
@@ -47,6 +48,36 @@ function pageImage(scale = 2): Promise<Blob> {
     imageWaits.set(id, { ok: (b) => (clearTimeout(timer), resolve(b)), fail: (e) => (clearTimeout(timer), reject(e)) });
     postFrame({ dc: 'dash-export', id, scale });
   });
+}
+
+const printWaits = new Map<string, { ok: (html: string) => void; fail: (e: Error) => void }>();
+
+/** The page as drawn now, as a standalone document laid out for printing, made inside its frame. */
+function pagePrintHtml(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const id = Math.random().toString(36).slice(2);
+    // the frame waits up to ten seconds for data still loading before it answers
+    const timer = setTimeout(() => (printWaits.delete(id), reject(new Error(tr('dash.export.timeout')))), 30000);
+    printWaits.set(id, { ok: (h) => (clearTimeout(timer), resolve(h)), fail: (e) => (clearTimeout(timer), reject(e)) });
+    postFrame({ dc: 'dash-print', id });
+  });
+}
+
+/** What the server's Chrome may load while it prints: what the frame itself could (pictures and fonts inline, nothing from the network). */
+const PRINT_CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:">`;
+
+/** The dashboard as one PDF: the page as drawn now, in the theme showing, cut into pages as wide as it is. A machine with no Chrome gets the print window. */
+async function exportDashPdf(name: string): Promise<void> {
+  try {
+    await savePdf(`${name}.pdf`, {
+      html: async () => (await pagePrintHtml()).replace(/<head[^>]*>/i, (m) => m + PRINT_CSP),
+      paper: 'page',
+      fonts: false,
+      print: async () => void printWindow(await pagePrintHtml(), true),
+    });
+  } catch (e) {
+    toast((e as Error).message, 'error');
+  }
 }
 
 /** The page, in its own sandboxed frame; loaded afresh whenever its files change. */
@@ -124,6 +155,13 @@ function PageFrame() {
           imageWaits.delete(m.id);
           if (m.blob) w?.ok(m.blob);
           else w?.fail(new Error(m.error ?? 'failed'));
+          break;
+        }
+        case 'dash-printed': {
+          const w = printWaits.get(m.id);
+          printWaits.delete(m.id);
+          if (m.html) w?.ok(m.html);
+          else w?.fail(new Error(m.error ?? tr('dash.export.failed')));
           break;
         }
         case 'key':
@@ -211,6 +249,7 @@ export function DashApp() {
   const mode = useDash((s) => s.mode);
   const theme = useDash((s) => s.theme);
   const side = useStore((s) => s.pane);
+  const direct = useDirectPdf();
 
   useEffect(() => {
     resetDash();
@@ -239,7 +278,10 @@ export function DashApp() {
           claudeDesign
           target={dashImport}
           label={t('dash.kind')}
-          items={imageExportItems({ hint: t('common.transfer.hint.dashPage'), name: `${fileStem(index.title, 'dashboard')}.png`, make: () => pageImage() })}
+          items={[
+            { id: 'pdf', label: t('common.transfer.label.pdf'), hint: pdfHint(t('common.transfer.hint.dashPdf'), direct), icon: <FilePdf />, run: () => exportDashPdf(fileStem(index.title, 'dashboard')) },
+            ...imageExportItems({ hint: t('common.transfer.hint.dashPage'), name: `${fileStem(index.title, 'dashboard')}.png`, make: () => pageImage(), rule: true }),
+          ]}
         />
       </TopBar>
       <main className="dashmain">

@@ -162,6 +162,7 @@ export default {
       docMdTab: '当前标签页，写成一篇文档 · 有图片时是带图片的 .zip',
       docMdWhole: '文档标题、标签页作章节、标题层级理顺 · 有图片时是带图片的 .zip',
       dashPage: '页面现在的样子',
+      dashPdf: '页面现在的样子，用当前的主题和筛选 · 按页面的宽度分页，卡片、图表和表格行不被切开',
       dsView: '屏幕上的这个视图',
       motionGif: '256 色、没有声音 · 小而循环，默认 15 帧/秒',
       motionVideo: '{{size}} · {{fps}} 帧/秒 · MP4 或 WebM，下一步可调',

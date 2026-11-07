@@ -113,7 +113,9 @@ export type ToDash =
   | { dc: 'dash-spot'; ids: string[] }
   | { dc: 'dash-call-result'; call: number; answer?: unknown; error?: string }
   /** draw the whole page as a PNG and send it back */
-  | { dc: 'dash-export'; id: string; scale: number };
+  | { dc: 'dash-export'; id: string; scale: number }
+  /** the page as drawn now, as a standalone document laid out for printing (the dashboard's PDF) */
+  | { dc: 'dash-print'; id: string };
 
 export interface DashPick {
   sources: string[];
@@ -136,6 +138,7 @@ export type FromDash =
   | { dc: 'dash-call'; call: number; id: string; tool: string; args: Record<string, unknown> }
   | { dc: 'dash-pick'; pick: DashPick }
   | { dc: 'dash-exported'; id: string; blob?: Blob; error?: string }
+  | { dc: 'dash-printed'; id: string; html?: string; error?: string }
   | { dc: 'key'; key: string; meta: boolean; shift: boolean; alt: boolean };
 
 export function cspFor(origin: string, kind: 'runtime' | 'executor' | 'dash' | 'motion'): string {
