@@ -131,3 +131,15 @@ web 编辑器,许可证 WTFPL(随便用)。它回答了插件没做的那些问�
 - doocs/md(WTFPL):`apps/web/src/services/export/{clipboard,clipboard-dom,wechat-svg}.ts`、`apps/web/src/components/editor/editor-header/index.vue`、`packages/core/src/{extensions/footnotes.ts,utils/mathjax.ts}`。
 - 公众号编辑器行为(第三方文章,非官方规格):[HTML/CSS 支持情况](https://www.axtonliu.ai/newsletters/ai-2/posts/wechat-article-html-css-support)、[图片转存与内联样式](https://juejin.cn/post/7678988101557190662)、[粘贴图片失败的原因](https://zhuanlan.zhihu.com/p/78437828)、[外链限制](https://yiban.io/blog/14900)、[mdnice 的外链转脚注](https://mdnice.com/writing/878ed8b436ce4a148e08127e97988a1d)。
 - 官方:[上传发表内容中的图片](https://developers.weixin.qq.com/doc/subscription/api/material/permanent/api_uploadimage.html)(jpg/png,1MB 以下)。
+
+## 9. 不走粘贴,还有什么出口;预览能不能直接做
+
+公众号后台没有我们能确认的"导入 HTML"入口(没核实后台是否能导入 Word,未验证),所以"出口"只有三种,按离粘贴的远近排:
+
+1. **保存成文件,再在浏览器里打开、全选、复制、粘贴。** 单文件 `.html`(内联样式)或带图片的 `.zip`。本质还是粘贴,只是多一步,第三方文章里也把它当兜底(Chrome 打开内联好的 HTML,全选复制)。适合剪贴板写不进的环境(菜单里已有"写不进就下载"的约定)。
+2. **API 发到草稿箱**(`draft/add` + `media/uploadimg`,方案 D)。不用粘贴,图片变成微信 CDN 地址,是唯一能绕开 `data:` 图片未知的路。要 AppID / AppSecret 和服务端 IP 白名单,账号有没有接口权限(未认证订阅号)没核实。第二阶段。
+3. **导出长图(PNG)。** 现成,但文字变图片,不是文章。
+
+**预览可以直接做,而且不依赖微信。** 复制的 HTML 是我们自己生成的、全部内联样式,把同一份放进一个手机宽度(约 375–414px,正文列宽按 677px 的设计宽度缩放)的 iframe 里渲染,看到的就是"贴过去会是什么样"。建议的形态:**一个"公众号预览"对话框**,左边手机宽度预览,右边(或下面)一个问题清单("3 个外链改成了文末引用""2 张图超过 1MB 已压缩""1 张图读不到"),按钮是"复制"(主)和"保存为 HTML / zip"(备),这样"复制到公众号"菜单项打开的是预览,而不是盲目复制。符合 `.design/ux-principles.md` 的"把成品交到下一步动作手里"。
+
+预览的边界要说清:它是**我们对公众号的模拟**,不是公众号过滤后的真实结果(真实过滤只有贴进后台才知道,§7 的实测就是为了把模拟校准到真实)。预览的成本很低(同一份输出,一个 iframe),可以放进 MVP;API 发草稿不放。
