@@ -13,8 +13,8 @@ Usage: tingly-design [command] [options]
   check [project]                  a project's problems, or what this machine can do
   export <project> --as <format>   export, as the Export menu does: any project as zip (the whole project);
                                    claude-design: the original Claude type's files (canvas, slides, design system, dashboard);
-                                   canvas png; slides pdf, pptx, png, html, md, notes; doc pdf, docx, html, md, png;
-                                   design system and dashboard png; motion mp4, gif, png (its cover), html (a player)
+                                   canvas pdf, png; slides pdf, pptx, png, html, md, notes; doc pdf, docx, html, md, png;
+                                   design system png; dashboard pdf, png; motion mp4, gif, png (its cover), html (a player)
   import <file.zip or folder>      a project from a .zip made by export --as zip (or a zipped project folder), a Claude
                                    Design package (the .zip, or the folder Claude Code saved) or a Claude Docs .md export
   prompt <project> <request>       hand a request to Claude Code, as the request bar does: it edits the

@@ -609,6 +609,72 @@ addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.key === 'Escape') post({ dc: 'key', key: e.key, meta: e.metaKey || e.ctrlKey, shift: e.shiftKey, alt: e.altKey });
 });
 
+// ------------------------------------------------------------------- print
+
+/** What the PDF adds to the page as drawn: pages as wide as the page is now and as tall as an A4 sheet of that width, and no cut through a picture, a table row or a card. */
+function printCss(w: number, h: number): string {
+  return `@page{size:${w}px ${h}px;margin:0}
+html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#dash-root{min-height:0!important}
+*,*::before,*::after{animation:none!important;transition:none!important}
+svg,img,canvas,tr,figure,[data-dc-keep]{break-inside:avoid}
+h1,h2,h3,h4,h5,h6{break-after:avoid}`;
+}
+
+/**
+ * The page as it is drawn now (its data, filters and theme), as a standalone document for the PDF: no
+ * scripts, charts as the markup they were drawn into, canvases as pictures, form controls with the values
+ * they show, and a mark on every box that has a face of its own (a card, a tile) and fits on a page so
+ * Chrome keeps it whole. Waits a little for data still on its way, since a PDF of skeletons says nothing.
+ */
+async function printPage(): Promise<{ html: string }> {
+  for (const until = Date.now() + 10_000; !settled() && Date.now() < until; ) await new Promise((ok) => setTimeout(ok, 100));
+  const w = Math.max(320, Math.ceil(document.documentElement.clientWidth));
+  const h = Math.round((w * 297) / 210);
+  const live = Array.from(root.querySelectorAll<HTMLElement>('*'));
+  const copy = document.documentElement.cloneNode(true) as HTMLElement;
+  const mine = copy.querySelector('#dash-root');
+  if (!mine) throw new Error('nothing to print');
+  const parts = Array.from(mine.querySelectorAll<HTMLElement>('*'));
+  if (parts.length !== live.length) throw new Error('the page changed while it was copied');
+  live.forEach((el, i) => {
+    const to = parts[i]!;
+    if (el instanceof HTMLCanvasElement) {
+      try {
+        const img = document.createElement('img');
+        img.src = el.toDataURL('image/png');
+        img.className = el.className;
+        img.setAttribute('style', el.getAttribute('style') ?? '');
+        const r = el.getBoundingClientRect();
+        img.width = Math.round(r.width);
+        img.height = Math.round(r.height);
+        to.replaceWith(img);
+      } catch {
+        // a canvas the browser will not read prints blank
+      }
+      return;
+    }
+    if (el instanceof HTMLInputElement) {
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked ? to.setAttribute('checked', '') : to.removeAttribute('checked');
+      else to.setAttribute('value', el.value);
+    } else if (el instanceof HTMLTextAreaElement) to.textContent = el.value;
+    else if (el instanceof HTMLSelectElement) Array.from((to as HTMLSelectElement).options).forEach((o, k) => (el.options[k]?.selected ? o.setAttribute('selected', '') : o.removeAttribute('selected')));
+    // a box with a face of its own that fits on a page stays on one
+    if (el.closest('svg') && el.tagName !== 'svg') return;
+    const cs = getComputedStyle(el);
+    const faced = (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') || parseFloat(cs.borderTopWidth) > 0 || cs.boxShadow !== 'none';
+    if (faced && el.getBoundingClientRect().height <= h * 0.9) to.setAttribute('data-dc-keep', '');
+  });
+  // what only the editing session draws, and what never loaded in this frame
+  copy.classList.remove('dash-data-mode');
+  copy.querySelectorAll('[data-dash-flag], [data-dash-spot]').forEach((n) => (n.removeAttribute('data-dash-flag'), n.removeAttribute('data-dash-spot')));
+  copy.querySelectorAll('script, meta[http-equiv], link').forEach((n) => n.remove());
+  const css = document.createElement('style');
+  css.textContent = printCss(w, h);
+  copy.querySelector('head')!.appendChild(css);
+  return { html: `<!doctype html>${copy.outerHTML}` };
+}
+
 // -------------------------------------------------------------- messages
 
 let mounted = false;
@@ -648,6 +714,12 @@ addEventListener('message', (e) => {
         .catch((err) => post({ dc: 'dash-exported', id, error: err instanceof Error ? err.message : String(err) }));
       break;
     }
+    case 'dash-print':
+      printPage().then(
+        ({ html }) => post({ dc: 'dash-printed', id: m.id, html }),
+        (err) => post({ dc: 'dash-printed', id: m.id, error: err instanceof Error ? err.message : String(err) }),
+      );
+      break;
     case 'dash-data':
       for (const [id, s] of Object.entries(m.states)) {
         states.set(id, s);

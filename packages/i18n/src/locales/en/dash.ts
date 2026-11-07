@@ -41,6 +41,10 @@ export default {
     reset: 'Reset filters',
   },
   frameTitle: 'Dashboard page',
+  export: {
+    timeout: 'Export timed out',
+    failed: 'Export failed',
+  },
   ask: {
     placeholder: "Hand it to Claude Code: connect data, add a chart, add a filter, fix numbers that don't match…",
     picked: 'Picked on the dashboard: source {{sources}}{{detail}}.',

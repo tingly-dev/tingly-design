@@ -160,6 +160,7 @@ export default {
       docMdTab: 'This tab, as a document · a .zip with its pictures when it has any',
       docMdWhole: 'Doc title, tabs as sections, headings in order · a .zip with its pictures when it has any',
       dashPage: 'The page as it is now',
+      dashPdf: 'The page as it is now, in the theme and filters showing · pages as wide as it is, cards, charts and table rows kept whole',
       dsView: 'The view on screen',
       motionGif: '256 colours, no sound · small and looping, starts at 15 fps',
       motionVideo: '{{size}} · {{fps}} fps · MP4 or WebM, more in the next step',

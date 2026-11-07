@@ -30,7 +30,7 @@ KINDS = {
     'canvas': ('tingly-box-console-canvas', ['PDF', 'PNG image', 'PNG image @2x', 'Copy as PNG', 'PNG images', 'Source file']),
     'slides': ('tingly-design-intro-slides', ['PDF', 'PNG image', 'Copy as PNG', 'PNG images', 'HTML page', 'Markdown', 'Speaker notes']),
     'design system': ('tingly-design-system', ['PNG image', 'Copy as PNG']),
-    'dashboard': ('tingly-box-usage-dashboard', ['PNG image', 'Copy as PNG']),
+    'dashboard': ('tingly-box-usage-dashboard', ['PDF', 'PNG image', 'Copy as PNG']),
     'docs': ('tingly-design-guide-doc', ['PDF', 'Markdown', 'Markdown (this tab)', 'HTML page', 'PNG image', 'Copy as PNG']),
     'motion': ('tingly-design-motion', ['Video…', 'GIF…', 'PNG image', 'Copy as PNG']),
 }
@@ -64,7 +64,7 @@ async def main():
                 check(f'{kind}: a status chip with the change history behind it', await chip.count() == 1 and await chip.get_attribute('data-state') == 'ok')
 
         # --- one-click PDF ---------------------------------------------------------------------------
-        for project, label, want in (('tingly-design-intro-slides', 'slides', 8), ('tingly-design-guide-doc', 'docs', 2), ('tingly-box-console-canvas', 'canvas', 5)):
+        for project, label, want in (('tingly-design-intro-slides', 'slides', 8), ('tingly-design-guide-doc', 'docs', 2), ('tingly-box-console-canvas', 'canvas', 5), ('tingly-box-usage-dashboard', 'dashboard', 1)):
             await pg.goto(f'{BASE}/?p={project}')
             await pg.wait_for_timeout(3500)
             await pg.locator('button[aria-label="Import / Export"]').first.click()
@@ -80,6 +80,27 @@ async def main():
                 # a page per artboard, each as large as its artboard rather than one paper size
                 boxes = {tuple(float(x) for x in m.split()[2:]) for m in (b.decode() for b in re.findall(rb'/MediaBox\s*\[([^\]]+)\]', open(path, 'rb').read()))}
                 check('canvas: …each page the size of its artboard', len(boxes) >= 3 and (595.0, 842.0) not in boxes, sorted(boxes))
+
+        # --- the dashboard's PDF: the page as drawn now, in the theme showing, cut into pages as wide as it is ----
+        await pg.goto(f'{BASE}/?p=tingly-box-usage-dashboard')
+        await pg.wait_for_timeout(3500)
+        await pg.locator('button[data-preview]').click()
+        await pg.get_by_role('menuitemcheckbox', name='Dark').click()
+        await pg.wait_for_timeout(800)
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        async with pg.expect_request('**/api/pdf') as req:
+            async with pg.expect_download(timeout=60000) as dl:
+                await pg.get_by_role('menuitem', name=re.compile('^PDF')).click()
+        body = (await req.value).post_data or ''
+        d = await dl.value
+        path = OUT + d.suggested_filename
+        await d.save_as(path)
+        check('dashboard: the page sent to the server is the one drawn, in the dark theme showing', 'data-theme=\\"dark\\"' in body and 'dash-root' in body, body[:200])
+        check('dashboard: …with its charts as drawn markup and no script', '<svg' in body and '<script' not in body.lower(), ('<svg' in body, '<script' in body.lower()))
+        check('dashboard: …laid out in pages as wide as the page, nothing it loads from the network', '@page{size:' in body and "default-src 'none'" in body)
+        boxes = [tuple(round(float(x)) for x in m.decode().split()[2:]) for m in re.findall(rb'/MediaBox\s*\[([^\]]+)\]', open(path, 'rb').read())]
+        check('dashboard: the PDF has pages of one size, taller than wide like a sheet', len(set(boxes)) == 1 and boxes[0][1] > boxes[0][0], boxes)
+        check('dashboard: …more than one page for a page this long', pages(path) >= 2, pages(path))
 
         # --- Markdown: the deck as a document ---------------------------------------------------------
         await pg.goto(f'{BASE}/?p=tingly-design-intro-slides')
@@ -163,6 +184,16 @@ async def main():
         w = await popup.value
         await w.wait_for_load_state()
         check('…and opens the deck laid out for printing', await w.locator('.dc-slide-host').count() == 8)
+
+        await pg.goto(f'{BASE}/?p=tingly-box-usage-dashboard')
+        await pg.wait_for_timeout(3500)
+        await pg.locator('button[aria-label="Import / Export"]').first.click()
+        check('without Chrome the dashboard PDF item says so too', await pg.get_by_role('menuitem', name=re.compile('^PDF')).locator('.mh', has_text='print dialog').count() == 1)
+        async with ctx.expect_page() as popup:
+            await pg.get_by_role('menuitem', name=re.compile('^PDF')).click()
+        w = await popup.value
+        await w.wait_for_load_state()
+        check('…and opens the page as drawn, with its charts, for printing', await w.locator('#dash-root svg').count() >= 2 and await w.locator('script').count() == 1, await w.locator('script').count())
 
         check('no page errors', not errs, '\n'.join(errs[:5]))
         await b.close()

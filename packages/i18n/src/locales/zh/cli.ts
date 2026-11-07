@@ -15,8 +15,8 @@ export default {
   check [项目]                     一个项目的问题，或这台机器能做什么
   export <项目> --as <格式>        导出，和"导出"菜单一样：任何项目都可导出 zip（整个项目）；
                                    claude-design：原版 Claude 类型的文件（画布、幻灯片、设计系统、看板）；
-                                   画布 png；幻灯片 pdf、pptx、png、html、md、notes；文档 pdf、docx、html、md、png；
-                                   设计系统和看板 png；动效 mp4、gif、png（封面）、html（播放器）
+                                   画布 pdf、png；幻灯片 pdf、pptx、png、html、md、notes；文档 pdf、docx、html、md、png；
+                                   设计系统 png；看板 pdf、png；动效 mp4、gif、png（封面）、html（播放器）
   import <文件.zip或文件夹>        从 export --as zip 导出的 .zip（或压缩的项目文件夹）、Claude Design 包（.zip，或
                                    Claude Code 存下来的文件夹）、Claude Docs 导出的 .md 导入项目
   prompt <项目> <请求>             把请求交给 Claude Code，和请求栏一样：它改文件，打开着的编辑器
