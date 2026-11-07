@@ -116,9 +116,9 @@ describe('docToArticle', () => {
   const doc = index('Guide', [{ id: 'a', title: 'Intro' }, { id: 'b', title: 'Setup', parent: 'a' }]);
   const tabs = files({ a: '# Intro\n\nHello ==world==.\n', b: '## Install\n\n![shot](../assets/a.png)\n' });
 
-  it('is the tabs as written: no doc title, no re-levelled heading, the picture and the highlight made to stand alone', () => {
+  it('is the tabs as written with one divider between them: no doc title, no tab names, no re-levelled heading, the picture and the highlight made to stand alone', () => {
     const a = docToArticle(doc, tabs);
-    expect(a.markdown).toBe('# Intro\n\nHello <mark>world</mark>.\n\n## Install\n\n![shot](assets/a.png)\n');
+    expect(a.markdown).toBe('# Intro\n\nHello <mark>world</mark>.\n\n---\n\n## Install\n\n![shot](assets/a.png)\n');
     expect(a.images).toEqual(['assets/a.png']);
   });
 

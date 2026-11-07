@@ -134,15 +134,15 @@ export function docToMarkdown(docSource: string | undefined, tabSource: (id: str
 
 /**
  * The doc (or one tab) as an article, for a platform that has a title field of its own (the WeChat Official
- * Account): the tabs' own text in their order, exactly as the editor shows it. Nothing is added (no doc title
- * above, no tab title that is not in the text) and no heading is re-levelled; only the pictures' paths are made
+ * Account): the tabs' own text in their order, exactly as the editor shows it, one divider between tabs. Nothing
+ * else is added (no doc title above, no tab title that is not in the text) and no heading is re-levelled; only the pictures' paths are made
  * to stand on their own and `==x==` is written as `<mark>`, as in the Markdown export.
  */
 export function docToArticle(docSource: string | undefined, tabSource: (id: string) => string | undefined, only?: string): DocMarkdown {
   const tabs = tabOrder(parseDoc(docSource)).filter((t) => !only || t.id === only);
   const images = new Set<string>();
   const parts = tabs.map((t) => tidy((tabSource(t.id) ?? '').replace(/\r\n?/g, '\n'), images).replace(/^\n+|\s+$/g, ''));
-  return { markdown: parts.filter(Boolean).join('\n\n') + '\n', images: [...images] };
+  return { markdown: parts.filter(Boolean).join('\n\n---\n\n') + '\n', images: [...images] };
 }
 
 /** What a Markdown file from elsewhere needs to be a tab: `<mark>x</mark>` is the editor's `==x==` (the inverse of the export; code is left alone). */
