@@ -8,7 +8,7 @@
 
 ## 1. 参考实现 1:FFengIll/vscode-wechat-md
 
-VS Code 扩展,MPL-2.0(文件级 copyleft:改动并分发被引用的 MPL 文件时,那些文件要保持 MPL;可以和别的许可证的代码放在一个产品里)。读的是 `main`(`490b61c`)。
+VS Code 扩展,仓库属于本项目的维护者(FFengIll),**授权没有问题**:代码可以直接搬进本仓库,不受它自带的 MPL-2.0 约束(版权人可以另行授权;搬入时按本仓库的 Apache-2.0 处理即可,可在文件头注明出处)。读的是 `main`(`490b61c`)。
 
 **管线**(`CLAUDE.md`、`src/renderer/index.ts`):`markdown-it` 实例两个,`mdPreview`(预览,Shiki 高亮)和 `mdCopy`(复制,公众号结构的代码块),共用 `applyWeChatRules()`(`src/renderer/rules.ts`):把每个 markdown-it 渲染规则(`heading_open`、`paragraph_open`、`blockquote_open`、`ul`/`ol`/`li`、`hr`、`strong`、`em`、`a`、`img`、`table`/`th`/`td`、`code_inline`)改成输出 **带 `style="…"` 的标签**。样式来自 `Theme` 对象(`src/renderer/theme.ts`:读 `.wechat/theme.css` 的 CSS 变量 + 颜色预设 JSON 拼出每个元素的 style 字符串),再叠一层"按类目的装饰预设"(`stylePresets.ts` 974 行:h1–h3、引用、列表、链接、图片、分割线、表格、行内代码)和用户的 `.wechat/custom/<类目>.css`。**没有用 juice 之类的内联库**:因为它自己生成标签,每条规则直接写 `style`,这也是它的核心取舍(CLAUDE.md:"every renderer rule must emit inline styles")。
 
@@ -24,7 +24,7 @@ VS Code 扩展,MPL-2.0(文件级 copyleft:改动并分发被引用的 MPL 文件
 
 **测试**:`test/harness/`(vitest + htmlparser2),`stylePresets.test.ts` 对每个预设断言"没有 `<style>`/`class`、每个元素都有内联样式、标签配对"。这个"不变量测试"的思路值得抄。
 
-**能借什么**:思路(规则表 → 内联样式、封闭的容器目录、"不含 style/class"的不变量测试)可以直接借,不涉及许可证。代码是 markdown-it 的渲染规则,我们的文档渲染用 `marked`(`apps/editor` 和 `packages/core`、`packages/export` 都已依赖 `marked 14.1.4`),规则 API 不同,不能直接拷贝,要移植的只是**样式字符串表**和**规则覆盖的清单**。逐文件拷贝代码会让那些文件落入 MPL-2.0(要保留许可证头、公开这些文件的修改),与本仓库的 Apache-2.0 不冲突但要单独标注;**建议只借思路,自己写**。
+**能借什么**:因为是自己的代码,什么都可以直接搬:样式字符串表(`theme.ts`、`stylePresets.ts` 与 `presets/*.ts` 的 8 套主题和 9 个类目装饰)、容器目录(`containers.ts`)、不变量测试(`test/harness/`)、图片转 base64 的逻辑。搬不能原样套用的只有一处:它挂在 `markdown-it` 的渲染规则上,而我们的文档渲染用 `marked`(`apps/editor`、`packages/core`、`packages/export` 都已依赖 `marked 14.1.4`),规则 API 不同,所以要移植的是**样式表数据和规则覆盖的清单**,渲染挂钩要用 `marked` 的 renderer 重写一遍。它和 VS Code 的耦合(`.wechat/` 设置文件、`workspaceState`、webview)不搬。
 
 ## 2. 参考实现 2:doocs/md(更成熟,WTFPL)
 
@@ -73,18 +73,18 @@ web 编辑器,许可证 WTFPL(随便用)。它回答了插件没做的那些问�
 
 **B. 浏览器里内联计算样式(doocs 的做法,juice 或 `getComputedStyle`)。** 用现有的 `docHtml` 页面渲染,再把样式表内联到元素上。好处:预览什么样、复制什么样,新的 CSS 自动跟上。代价:要加 `juice` 依赖(`cssom`/`postcss` 解析,doocs 为它写了三级回退和一堆预处理,因为 Mermaid、字体名会让它抛错);只能在编辑器页里跑,命令行要开 Chrome;输出冗长,会把公众号不认的属性一并带上,要白名单。
 
-**C. 直接移植插件的转换器。** 规则覆盖和样式表可以参考,但它基于 `markdown-it` 规则、依赖 VS Code 的设置文件(`.wechat/theme.css`、预设 JSON、`workspaceState`),拷过来的主要是"选择器→样式字符串"的数据;拷代码有 MPL-2.0 的文件级约束(见 §1)。没有数学、脚注、Mermaid、代码高亮,这些我们最需要的部分它都没有。
+**C. 直接移植插件的代码(仓库是自己的,没有授权问题)。** 样式表、预设主题、容器目录、不变量测试可以整块搬进 core,省掉重新设计 8 套主题和类目装饰的工作;渲染挂钩要改写成 `marked` 的 renderer,VS Code 相关的设置文件和状态不搬。它没有数学、脚注、Mermaid、代码高亮,这些我们最需要的部分仍要新写(参考 doocs/md)。C 和 A 并不互斥:A 的"样式表"就从 C 搬来。
 
 **D. 调公众号的 API 直接发草稿(`draft/add` + `media/uploadimg`)。** 图片可以上传成微信 CDN 地址,外链和 `data:` 的不确定都消失,还能放封面。代价:要 AppID / AppSecret、服务端 IP 白名单,`uploadimg` 限 1MB 的 jpg/png;凭据的存放要进 AI 设置那样的对话框(`.design/ai-settings.md` 的风格)。不属于"复制粘贴",是第二阶段。
 
 ## 6. 建议
 
-**走 A,借 doocs 的 SVG 经验,不拷插件的代码。** 理由:
+**走 A,样式表和主题从自己的插件搬,SVG 与公式借 doocs 的经验。** 理由:
 
 1. 复制的是**我们自己的文档**,不是任意网页。文档的出口早就是 `docToMarkdown` → `marked`,一张"标签 → 内联样式"的表比引入 juice 再收拾它的解析失败更小也更可测。
 2. 输入是 Markdown + 少量已知的行内标记(`<mark>`、`<span data-color>`),没有任意 CSS 要解析。
 3. 命令行和 MCP 能用同一份(`KIND_CLI` 里一行),Claude Code 也能直接产出文件。
-4. 许可证:只借思路 + 引用 doocs(WTFPL 无要求)的做法;插件的代码不拷,不必处理 MPL 文件级义务(借了思路在笔记里致谢即可)。
+4. 来源:样式表与预设主题从自己的插件搬(无授权问题),SVG / 公式 / 脚注 / 外链转引用借 doocs(WTFPL 无要求)的做法;只有 `markdown-it` 的渲染挂钩不搬(换成 `marked`)。
 
 **结构**(符合 CLAUDE.md 的分层):
 
