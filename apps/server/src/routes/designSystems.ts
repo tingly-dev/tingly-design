@@ -1,17 +1,21 @@
 import type { Hono } from 'hono';
 import { editIndex } from './shared';
-import { CANVAS_FILE, DECK_FILE, DS_INDEX, DS_TOKENS, deckSize, dsFolderOf, dsGlance, isStarterCover, newSlideSource, parseDeck, parseDsIndex, resolveTokens, slideFile, type DsRecord, lookOf, lookTokens } from '@dc/core';
+import { CANVAS_FILE, DECK_FILE, DOC_INDEX, DS_INDEX, DS_TOKENS, deckSize, dsFolderOf, dsGlance, isStarterCover, newSlideSource, parseDeck, parseDsIndex, resolveTokens, slideFile, type DsRecord, lookOf, lookTokens } from '@dc/core';
 import { HttpError, isProjectName, kindOf, projectDir, resolveKey, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf } from '../store';
 import { publish, record } from '../hub';
 import { trOf } from '../i18n';
 
-/** Design systems: install one into a canvas or deck, tokens, components. */
+/** The index each kind keeps its installed design systems in. */
+const INDEX_OF = { design: CANVAS_FILE, slides: DECK_FILE, docs: DOC_INDEX } as const;
+
+/** Design systems: install one into a canvas, deck or doc, tokens, components. */
 export function registerDesignSystems(app: Hono): void {
   /**
-   * Install a project design system or a built-in look into a canvas or deck, the way
-   * the original installs one: the deck keeps its own copy of tokens.json (and
+   * Install a project design system or a built-in look into a canvas, deck or doc, the way
+   * the original installs one: the project keeps its own copy of tokens.json (and
    * the font files it names) under ds/<folder>/, and one record in its index's
-   * designSystems. A deck also gets the system's font files as typefaces.
+   * designSystems. A deck also gets the system's font files as typefaces. A doc keeps
+   * only the copy and the record: which theme it wears is its own `theme` (the editor writes it).
    */
   app.post('/api/projects/:p/design-systems', async (c) => {
     const p = c.req.param('p');
@@ -22,7 +26,7 @@ export function registerDesignSystems(app: Hono): void {
     if (lookId !== undefined && !builtin) throw new HttpError(400, 'badLook', { look: String(lookId) });
     if (!builtin && !isProjectName(from ?? '')) throw new HttpError(400, 'badDesignSystemName');
     const kind = await kindOf(projectDir(p));
-    if (kind !== 'design' && kind !== 'slides') throw new HttpError(400, 'installOnlyInto');
+    if (kind !== 'design' && kind !== 'slides' && kind !== 'docs') throw new HttpError(400, 'installOnlyInto');
     if (!builtin && (await kindOf(projectDir(from!))) !== 'design-system') throw new HttpError(404, 'notDesignSystem', { name: from! });
     const index = builtin
       ? { title: trOf(c)(`ds.look.${builtin.id}`, { defaultValue: builtin.id }), namespace: `look-${builtin.id}` }
@@ -47,7 +51,7 @@ export function registerDesignSystems(app: Hono): void {
       const rec: DsRecord = { title: index.title, namespace: folder, artifact: builtin ? `builtin:${builtin.id}` : `projects/${from}`, version: tokens.version, copiedAt: new Date().toISOString() };
       await editIndex(
         p,
-        kind === 'slides' ? DECK_FILE : CANVAS_FILE,
+        INDEX_OF[kind],
         (json) => {
           const list = (Array.isArray(json.designSystems) ? json.designSystems : []) as DsRecord[];
           const at = list.findIndex((r) => r && r.namespace === folder);
@@ -97,12 +101,15 @@ export function registerDesignSystems(app: Hono): void {
     const folder = c.req.query('namespace') ?? '';
     if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(folder)) throw new HttpError(400, 'badNamespace');
     const kind = await kindOf(projectDir(p));
-    if (kind !== 'design' && kind !== 'slides') throw new HttpError(400, 'notCanvasOrDeck');
+    if (kind !== 'design' && kind !== 'slides' && kind !== 'docs') throw new HttpError(400, 'notCanvasOrDeck');
     return withLock(p, async () => {
       await editIndex(
         p,
-        kind === 'slides' ? DECK_FILE : CANVAS_FILE,
+        INDEX_OF[kind],
         (json) => {
+          // a doc wearing the system it removes goes back to its own look
+          const wearing = (json.theme as { system?: string } | undefined)?.system === folder;
+          if (wearing && kind === 'docs') delete json.theme;
           json.designSystems = ((Array.isArray(json.designSystems) ? json.designSystems : []) as DsRecord[]).filter((r) => r?.namespace !== folder);
         },
         `design system ${folder} removed`,

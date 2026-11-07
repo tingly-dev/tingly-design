@@ -8,7 +8,7 @@ import { LOOK_BASE_CSS, LOOK_DATA } from './looks.data';
  * one, change the script's groups and give its name in @dc/i18n (`ds.look.<id>`; the group is
  * `ds.lookGroup.<group>`); nothing else.
  */
-export const LOOK_GROUPS = ['clean', 'editorial', 'bold', 'tech', 'palette'] as const;
+export const LOOK_GROUPS = ['clean', 'editorial', 'bold', 'tech', 'palette', 'platform'] as const;
 export type LookGroup = (typeof LOOK_GROUPS)[number];
 
 export interface LookData {
@@ -29,7 +29,50 @@ export interface LookData {
   css: string;
 }
 
-export const LOOKS: readonly LookData[] = LOOK_DATA;
+/**
+ * Looks of a platform a work is published to, written by hand (not from html-ppt, so not in `looks.data.ts`).
+ * WeChat is the Official Account's own reading look: white page, near-black text, the platform's green and
+ * its link blue, light grey grounds. A doc that wears it is drawn this way in the editor and every export,
+ * the WeChat paste included (`.design/wechat-export.md`).
+ */
+const PLATFORM_LOOKS: readonly LookData[] = [
+  {
+    id: 'wechat',
+    group: 'platform',
+    dark: false,
+    colors: {
+      surface: '#ffffff',
+      'surface-soft': '#f9f9f9',
+      'surface-raised': '#f6f8fa',
+      'surface-raised-2': '#f0f0f0',
+      line: '#dddddd',
+      'line-strong': '#bbbbbb',
+      ink: '#333333',
+      'ink-muted': '#666666',
+      'ink-faint': '#888888',
+      accent: '#07c160',
+      'accent-2': '#576b95',
+      'accent-3': '#fa5151',
+      good: '#07c160',
+      warn: '#ffc300',
+      bad: '#fa5151',
+      'on-accent': '#06311a',
+    },
+    families: {
+      sans: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+      display: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+      serif: "'Songti SC', 'Noto Serif SC', Georgia, serif",
+      mono: "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace",
+    },
+    hosted: [],
+    radius: ['4px', '6px', '8px'],
+    shadow: [null, null],
+    vars: {},
+    css: '',
+  },
+];
+
+export const LOOKS: readonly LookData[] = [...LOOK_DATA, ...PLATFORM_LOOKS];
 
 export function lookOf(id: string): LookData | undefined {
   return LOOKS.find((l) => l.id === id);

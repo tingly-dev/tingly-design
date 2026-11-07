@@ -294,7 +294,7 @@ async def main():
         await pg.locator('.lnewbtn').click()
         await pg.locator('.menu [data-new="design-system"] .mi').click()
         groups = await dlg.locator('[data-looks] .szcat').evaluate_all('els => els.map(e => e.dataset.group)')
-        check('the looks are grouped, Blank first', groups == ['blank', 'clean', 'editorial', 'bold', 'tech', 'palette'], str(groups))
+        check('the looks are grouped, Blank first', groups == ['blank', 'clean', 'editorial', 'bold', 'tech', 'palette', 'platform'], str(groups))
         await dlg.locator('[data-looks] .szcat[data-group="palette"]').click()
         shown = await dlg.locator('[data-looks] [data-look]').evaluate_all('els => els.map(e => e.dataset.look)')
         check('a group lists only its own looks', 'nord' in shown and 'dracula' in shown and 'swiss-grid' not in shown, str(shown))

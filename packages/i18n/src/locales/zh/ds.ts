@@ -12,6 +12,7 @@ export default {
     bold: '大胆活泼',
     tech: '科技感',
     palette: '编辑器配色',
+    platform: '发布平台',
   },
   nav: {
     overview: '概览',

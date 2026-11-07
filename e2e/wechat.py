@@ -4,12 +4,17 @@ Mermaid block drawn into a picture) on the clipboard, Save as HTML, and the tab 
 The sample doc with every element (projects/tingly-design-wechat-doc) is opened for the visual part, and pictures of it in
 both looks are kept in e2e/out/.
 Run with `pnpm dev` up: python3 e2e/wechat.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
-import os, asyncio, json, re
+import os, asyncio, json, re, subprocess, time
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 CHROME = os.environ.get('DC_CHROME')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SAMPLE = os.path.join(REPO, 'projects/tingly-design-wechat-doc')
+
+def restore():
+    subprocess.run(['git', 'checkout', '--', 'projects/tingly-design-wechat-doc'], cwd=REPO)
+    subprocess.run(['git', 'clean', '-fdq', '--', 'projects/tingly-design-wechat-doc'], cwd=REPO)
 OUT = os.path.join(REPO, 'e2e', 'out') + '/'
 CLIP = '''async () => { const [it] = await navigator.clipboard.read(); if (!it.types.includes('text/html')) return null;
   return { types: it.types, html: await (await it.getType('text/html')).text(), text: it.types.includes('text/plain') ? await (await it.getType('text/plain')).text() : '' }; }'''
@@ -33,6 +38,7 @@ async def open_menu(pg):
     await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
 
 async def main():
+    restore()
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 950}, accept_downloads=True, permissions=['clipboard-read', 'clipboard-write'])
@@ -58,7 +64,7 @@ async def main():
         check('the preview is wide enough to read (the platform column, not a phone)', box and box['width'] >= 600, box)
         head = await dlg.locator('.wp-issues').bounding_box()
         check('the issues sit above the article, not beside it', head and head['y'] + head['height'] <= box['y'] + 1 and head['width'] >= box['width'] - 2, (head, box))
-        check('it opens in the doc\'s own look, nothing added', await dlg.locator('.seg button[aria-pressed=true]').inner_text() in ('和文档一样',) and '#07c160' not in doc.lower())
+        check('it follows the doc: the doc\'s own look, nothing added', '文档自己的样子' in await dlg.locator('[data-testid=wechat-style]').inner_text() and '#07c160' not in doc.lower())
         check('the article carries only inline styles', doc and '<style' not in doc and 'var(' not in doc and re.sub(r'class="(code-snippet|ProseMirror-trailingBreak)[^"]*"', '', doc).count(' class=') == 0 and doc.count('style="') > 40, (doc or '')[:200])
         check('the headings, the table and the code are in it', doc and '<h1 style="' in doc and '<table style="' in doc and 'code-snippet' in doc and 'data-lang=' in doc)
         check('the Mermaid block became a picture', doc and re.search(r'<img src="data:image/png;base64,', doc) is not None)
@@ -107,7 +113,7 @@ async def main():
         check('and nothing is left for the person to fix', 'Nothing' in await dlg.locator('[data-testid=wechat-issues]').inner_text() or '没有需要手工处理' in await dlg.locator('[data-testid=wechat-issues]').inner_text())
         await pg.keyboard.press('Escape')
 
-        # --- the sample doc with every element, in both looks ---------------------------------------------------
+        # --- the sample doc with every element, and the WeChat look as a design system the doc wears --------------------
         # (projects/tingly-design-wechat-doc: two tabs, so the whole-doc article also shows the divider between them)
         await pg.goto(BASE + '/?p=tingly-design-wechat-doc')
         await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
@@ -121,23 +127,30 @@ async def main():
         check('the tabs are joined by one divider and their names are not in the article', plain and '怎么用这份文档' in plain and 'All elements' not in plain and 'How to use' not in plain)
         issues = await dlg.locator('[data-testid=wechat-issues]').inner_text()
         check('the issue list names the links and the raw HTML', '链接' in issues and 'HTML' in issues, issues)
+        check('there is no look picker of its own: the style is the doc\'s, with a way to change it', await dlg.locator('.seg').count() == 0 and await dlg.locator('[data-wechat-change]').count() == 1 and await dlg.locator('[data-wechat-look]').count() == 1)
         await dlg.locator('.wp-frame').screenshot(path=OUT + 'wechat-all-doc.png')
-        await dlg.locator('.seg button', has_text='微信绿').click()
-        await asyncio.sleep(0.4)
+        # one step: the WeChat look is installed and worn, in the editor and in the article
+        await dlg.locator('[data-wechat-look]').click()
+        await expect(dlg.locator('[data-testid=wechat-style]')).to_contain_text('WeChat', timeout=15000)
         green = await dlg.locator('iframe').get_attribute('srcdoc')
-        check('the green look is a choice: it adds the platform\'s bars, the default does not', green and '#07c160' in green.lower() and '#07c160' not in plain.lower())
+        check('wearing the WeChat look turns the article green and gives it its page', green and '#07c160' in green.lower() and 'background-color:#ffffff' in green.lower() and '#07c160' not in plain.lower())
+        check('the doc keeps the choice in its files, not colours', json.load(open(os.path.join(SAMPLE, 'doc.json')))['theme'] == {'system': 'look-wechat', 'theme': 'light'} and os.path.exists(os.path.join(SAMPLE, 'ds/look-wechat/tokens.json')))
+        check('the choice button goes away once a system is worn', await dlg.locator('[data-wechat-look]').count() == 0)
         await dlg.locator('.wp-frame').screenshot(path=OUT + 'wechat-all-green.png')
         await pg.reload()
         await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
+        check('the editor shows the same look, from the same values', await pg.locator('.app.docs[data-wears]').count() == 1 and await pg.locator('.docbody a').first.evaluate('e => getComputedStyle(e).color') == 'rgb(7, 193, 96)')
         await open_menu(pg)
         await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
         await expect(dlg.locator('iframe')).to_have_count(1, timeout=60000)
-        check('the look chosen is kept', await dlg.locator('.seg button[aria-pressed=true]').inner_text() == '微信绿')
-        await dlg.locator('.seg button', has_text='和文档一样').click()
-        await pg.keyboard.press('Escape')
+        check('the look is still worn after a reload', 'WeChat' in await dlg.locator('[data-testid=wechat-style]').inner_text())
+        await dlg.locator('[data-wechat-change]').click()
+        await expect(pg.locator('[data-testid=doc-theme]')).to_be_visible()
+        check('Change… opens the doc\'s Theme', await pg.locator('[data-theme-card="look-wechat/light"][aria-pressed=true]').count() == 1)
 
         check('no page errors', not errs, repr(errs[:5]))
         await b.close()
+    restore()
     failed = [n for n, ok in results if not ok]
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')
     if failed: raise SystemExit(1)

@@ -157,11 +157,13 @@ export interface Installed {
 }
 
 let installedCache: { key: string; list: Installed[] } = { key: '', list: [] };
-/** The design systems installed into this canvas or deck, with their copied tokens. */
+/** The design systems installed into this canvas, deck or doc, with their copied tokens. */
 const NONE: Installed[] = [];
+const INDEX: Record<string, string> = { design: 'canvas.json', slides: 'deck.json', docs: 'doc.json' };
 export function installedOf(s: ReturnType<typeof get>): Installed[] {
-  if (s.kind !== 'design' && s.kind !== 'slides') return NONE;
-  const indexText = display(s, s.kind === 'slides' ? 'deck.json' : 'canvas.json');
+  const index = s.kind ? INDEX[s.kind] : undefined;
+  if (!index) return NONE;
+  const indexText = display(s, index);
   let records: Installed['record'][] = [];
   try {
     const raw = indexText ? JSON.parse(indexText).designSystems : [];

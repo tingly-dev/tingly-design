@@ -39,6 +39,8 @@ interface DocsState {
   draft: { quote: string; prefix: string; suffix: string } | null;
   settings: boolean;
   showResolved: boolean;
+  /** something outside the app (the WeChat preview) asks for the Theme to be opened */
+  themeAsked: boolean;
 }
 
 export const useDocs = create<DocsState>(() => ({
@@ -47,6 +49,7 @@ export const useDocs = create<DocsState>(() => ({
   draft: null,
   settings: false,
   showResolved: false,
+  themeAsked: false,
 }));
 
 export function useDocIndex(): DocJson {

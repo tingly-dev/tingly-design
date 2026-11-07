@@ -174,7 +174,7 @@ const PREVIEW: { [K in ProjectPreview['kind']]: (p: PreviewOf<K>, c: PreviewCtx)
   },
   docs: (p) => (
     <div className="lp-doc">
-      <div className="page">
+      <div className="page" lang={p.lang}>
         <ul>
           {p.tabs.map((tab, i) => (
             <li key={i} style={{ paddingLeft: tab.depth * 10 }}>

@@ -151,9 +151,9 @@ export function outlineProject(kind: ProjectKind, files: ProjectFiles): ProjectO
  * Plain values, no wording; every key is optional because each kind has its own.
  */
 export interface ProjectSettings {
-  /** Canvas, slides: the design systems installed in the project, by namespace. */
+  /** Canvas, slides, docs: the design systems installed in the project, by namespace. */
   designSystems?: string[];
-  /** Canvas, slides: the theme the project was last switched to (system namespace and theme id), when it was. */
+  /** Canvas, slides: the theme the project was last switched to (system namespace and theme id), when it was. Docs: the theme the doc wears. */
   theme?: { system: string; theme: string };
   /** Slides: the page size. */
   size?: [number, number];
@@ -202,7 +202,8 @@ const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFi
     return { formats: Object.entries(m.formats).map(([id, f]) => ({ id, size: f.size })), fps: m.fps, speed: m.speed && m.speed > 0 ? m.speed : 1 };
   },
   docs(index) {
-    return { look: { ...parseDoc(index).settings } };
+    const d = parseDoc(index);
+    return { look: { ...d.settings }, designSystems: namespacesOf(d.designSystems), ...themeSetting(d) };
   },
   dashboard(_index, files) {
     return {
