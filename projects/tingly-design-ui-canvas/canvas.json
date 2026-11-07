@@ -166,6 +166,13 @@
       "w": 1300,
       "h": 900,
       "title": "Doc to WeChat Official Account"
+    },
+    "DocTheme.dc.html": {
+      "x": 3700,
+      "y": 6560,
+      "w": 1560,
+      "h": 620,
+      "title": "Doc theme"
     }
   },
   "order": [
@@ -186,6 +193,7 @@
     "DesignSystem.dc.html",
     "Dashboard.dc.html",
     "Doc.dc.html",
+    "DocTheme.dc.html",
     "DocWechat.dc.html",
     "Motion.dc.html",
     "AgentBar.dc.html",
