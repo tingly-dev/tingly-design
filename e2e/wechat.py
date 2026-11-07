@@ -1,12 +1,17 @@
 """End-to-end checks for the WeChat Official Account export of a doc: the menu item and its tab twin, the
-preview at a phone's width with the issue list, Copy putting inline-styled rich text (pictures inside, the
+preview (the issues above, the article at the platform's column width below, the doc's own look by default), Copy putting inline-styled rich text (pictures inside, the
 Mermaid block drawn into a picture) on the clipboard, Save as HTML, and the tab scope.
+A doc with every element (packages/core/test/fixtures/wechat-all.md) is made on disk for the visual part, and pictures of
+it in both looks are kept in e2e/out/.
 Run with `pnpm dev` up: python3 e2e/wechat.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
-import os, asyncio, json, re
+import os, asyncio, json, re, shutil
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 CHROME = os.environ.get('DC_CHROME')
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(REPO, 'e2e', 'out') + '/'
+ALL = os.path.join(REPO, 'projects', 'zz-wechat')
 CLIP = '''async () => { const [it] = await navigator.clipboard.read(); if (!it.types.includes('text/html')) return null;
   return { types: it.types, html: await (await it.getType('text/html')).text(), text: it.types.includes('text/plain') ? await (await it.getType('text/plain')).text() : '' }; }'''
 
@@ -14,6 +19,16 @@ results = []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
+
+async def shoot(ctx, dlg, name):
+    # the whole article at the platform's column width, on a page of its own: what a reader of it sees
+    html = await dlg.locator('iframe').get_attribute('srcdoc')
+    page = await ctx.new_page()
+    await page.set_viewport_size({'width': 677, 'height': 900})
+    await page.set_content(html)
+    await page.wait_for_timeout(300)
+    await page.screenshot(path=OUT + name, full_page=True)
+    await page.close()
 
 async def open_menu(pg):
     await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
@@ -40,8 +55,11 @@ async def main():
         frame = dlg.locator('iframe')
         await expect(frame).to_have_count(1, timeout=30000)
         doc = await frame.get_attribute('srcdoc')
-        box = await dlg.locator('.wp-phone').bounding_box()
-        check('the preview is a phone-width page', box and 360 <= box['width'] <= 400, box)
+        box = await dlg.locator('.wp-frame').bounding_box()
+        check('the preview is wide enough to read (the platform column, not a phone)', box and box['width'] >= 600, box)
+        head = await dlg.locator('.wp-issues').bounding_box()
+        check('the issues sit above the article, not beside it', head and head['y'] + head['height'] <= box['y'] + 1 and head['width'] >= box['width'] - 2, (head, box))
+        check('it opens in the doc\'s own look, nothing added', await dlg.locator('.seg button[aria-pressed=true]').inner_text() in ('和文档一样',) and '#07c160' not in doc.lower())
         check('the article carries only inline styles', doc and '<style' not in doc and 'var(' not in doc and re.sub(r'class="(code-snippet|ProseMirror-trailingBreak)[^"]*"', '', doc).count(' class=') == 0 and doc.count('style="') > 40, (doc or '')[:200])
         check('the headings, the table and the code are in it', doc and '<h1 style="' in doc and '<table style="' in doc and 'code-snippet' in doc and 'data-lang=' in doc)
         check('the Mermaid block became a picture', doc and re.search(r'<img src="data:image/png;base64,', doc) is not None)
@@ -90,7 +108,45 @@ async def main():
         check('and nothing is left for the person to fix', 'Nothing' in await dlg.locator('[data-testid=wechat-issues]').inner_text() or '没有需要手工处理' in await dlg.locator('[data-testid=wechat-issues]').inner_text())
         await pg.keyboard.press('Escape')
 
-        check('no page errors', not errs, '\n'.join(errs[:5]))
+        # --- a doc with every element, in both looks -----------------------------------------------------
+        shutil.rmtree(ALL, ignore_errors=True)
+        os.makedirs(os.path.join(ALL, 'tabs'))
+        os.makedirs(os.path.join(ALL, 'assets'))
+        shutil.copy(os.path.join(REPO, 'docs/images/readme/cover.png'), os.path.join(ALL, 'assets/wechat-sample.png'))
+        md = open(os.path.join(REPO, 'packages/core/test/fixtures/wechat-all.md'), encoding='utf-8').read().replace('](assets/', '](../assets/')
+        open(os.path.join(ALL, 'tabs/main.md'), 'w', encoding='utf-8').write(md)
+        json.dump({'title': 'WeChat all elements', 'tabs': [{'id': 'main', 'title': 'All elements'}], 'settings': {'headingFont': 'sans', 'bodyFont': 'sans', 'width': 'default', 'lang': 'zh-CN'}}, open(os.path.join(ALL, 'doc.json'), 'w'))
+        try:
+            await pg.goto(BASE + '/?p=zz-wechat')
+            await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
+            await open_menu(pg)
+            await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
+            await expect(dlg.locator('iframe')).to_have_count(1, timeout=60000)
+            plain = await dlg.locator('iframe').get_attribute('srcdoc')
+            tags = ['<h1 ', '<h2 ', '<h3 ', '<h4 ', '<h5 ', '<h6 ', '<blockquote ', '<ul ', '<ol ', '<table ', '<th ', '<pre ', '<hr ', '<sup ', '<br>']
+            check('the article is the tabs as written: no doc title added above them', plain and plain.index('<h1 ') < plain.index('一级标题') and 'WeChat all elements' not in plain.split('<body')[1])
+            check('every element of the all-elements doc is in the article', plain and all(t in plain for t in tags), [t for t in tags if t not in (plain or '')])
+            check('both drawn blocks and the local picture are pictures; the csv is a table', plain and plain.count('<img src="data:image/') == 3 and plain.count('<table ') == 2, plain and plain.count('<img'))
+            issues = await dlg.locator('[data-testid=wechat-issues]').inner_text()
+            check('the issue list names the links and the raw HTML', '链接' in issues and 'HTML' in issues, issues)
+            await shoot(ctx, dlg, 'wechat-all-doc.png')
+            await dlg.locator('.seg button', has_text='微信绿').click()
+            await asyncio.sleep(0.4)
+            green = await dlg.locator('iframe').get_attribute('srcdoc')
+            check('the green look is a choice: it adds the platform\'s bars, the default does not', green and '#07c160' in green.lower() and '#07c160' not in plain.lower())
+            await shoot(ctx, dlg, 'wechat-all-green.png')
+            await pg.reload()
+            await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
+            await open_menu(pg)
+            await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
+            await expect(dlg.locator('iframe')).to_have_count(1, timeout=60000)
+            check('the look chosen is kept', await dlg.locator('.seg button[aria-pressed=true]').inner_text() == '微信绿')
+            await dlg.locator('.seg button', has_text='和文档一样').click()
+            await pg.keyboard.press('Escape')
+        finally:
+            shutil.rmtree(ALL, ignore_errors=True)
+
+        check('no page errors', not errs, repr(errs[:5]))
         await b.close()
     failed = [n for n, ok in results if not ok]
     print(f'\n{len(results) - len(failed)}/{len(results)} passed')

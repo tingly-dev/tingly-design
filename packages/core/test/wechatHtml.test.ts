@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { DOC_COLORS, figureKey, markdownToWechat, wechatFigures, wechatStyles } from '../src';
+import { DOC_COLORS, figureKey, markdownToWechat, WECHAT_LOOKS, wechatFigures, wechatStyles } from '../src';
 
 const SAMPLE = [
   '# Title',
@@ -82,7 +83,7 @@ describe('markdownToWechat', () => {
 
   it('colours the named span and marks the highlight', () => {
     expect(r.html).toContain(`color:${DOC_COLORS.red};`);
-    expect(r.html).toMatch(/background-color:#fff3a3;[^>]*>marked</);
+    expect(r.html).toMatch(/background-color:#ffeeb2;[^>]*>marked</);
   });
 
   it('puts the picture in by its decoded path and flags a remote one', () => {
@@ -132,4 +133,54 @@ describe('wechatFigures', () => {
     expect(got.html).toContain('<img');
     expect(markdownToWechat('```mermaid\n' + src + '\n```').issues).toEqual([{ kind: 'figure-missing', lang: 'mermaid' }]);
   });
+});
+
+describe('looks: what you see is what you get', () => {
+  const sample = markdownToWechat('# T\n\n## H\n\n> q\n\n| a |\n| - |\n| b |\n\n[x](https://example.com)\n');
+
+  it('the default draws the doc as the doc draws itself: no decoration the doc does not show', () => {
+    expect(sample.html).not.toContain('#07c160');
+    expect(sample.html).not.toMatch(/border-left:4px/);
+    expect(wechatStyles().h2).not.toContain('border-left');
+    expect(wechatStyles().blockquote).toContain('border-left:3px solid #d6d4ce');
+    expect(wechatStyles().blockquote).toContain('background-color:transparent');
+  });
+
+  it('a look with its own language is chosen, never added silently', () => {
+    expect(wechatStyles({ look: 'wechat' }).h2).toContain('border-left:4px solid #07c160');
+    expect(markdownToWechat('## H', { look: 'wechat' }).html).toContain('#07c160');
+    expect(WECHAT_LOOKS).toEqual(['doc', 'wechat']);
+  });
+});
+
+describe('the fixture with every element', () => {
+  const md = readFileSync(new URL('./fixtures/wechat-all.md', import.meta.url), 'utf8');
+  const pic = { src: 'data:image/png;base64,AAAA', width: 200, height: 100 };
+  const fig = (lang: string) => wechatFigures(md).find((f) => f.lang === lang)!;
+  const figures = new Map(['mermaid', 'latex'].map((l) => [fig(l).key, pic]));
+  for (const look of WECHAT_LOOKS) {
+    const r = markdownToWechat(md, { look, colors: DOC_COLORS, images: new Map([['assets/wechat-sample.png', pic]]), figures }, 'Links');
+
+    it(`${look}: every element is there, and only inline styles`, () => {
+      for (const tag of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'strong', 'em', 'blockquote', 'ul', 'ol', 'li', 'hr', 'table', 'th', 'td', 'pre', 'code', 'img', 'sup', 'a', 'br']) {
+        expect(r.html, tag).toContain(`<${tag}`);
+      }
+      expect(r.html).not.toMatch(/<style|<link|<script|\sid=|var\(|<div/i);
+      expect([...r.html.matchAll(/\sclass="([^"]*)"/g)].every((m) => /^(code-snippet|ProseMirror-trailingBreak)/.test(m[1]))).toBe(true);
+      // nested lists stay lists, the second quote level is a quote
+      expect(r.html.match(/<ul /g)!.length).toBeGreaterThanOrEqual(4);
+      expect(r.html.match(/<blockquote /g)!.length).toBe(2);
+      expect(r.html).toContain('start="3"');
+      expect(r.html).toContain('text-align:center');
+      expect(r.html).toContain('text-align:right');
+    });
+
+    it(`${look}: links, pictures and drawn blocks`, () => {
+      expect(r.links.map((l) => l.url)).toEqual(['https://example.com/in-quote', 'https://github.com/tingly-dev/tingly-design', 'https://example.com/a?b=1&c=2', 'mailto:hi@example.com']);
+      expect(r.html).toContain('<a href="https://mp.weixin.qq.com/s/abcdef"');
+      expect(r.html.match(/<img /g)!.length).toBe(4); // the local one, the remote one, the diagram, the formula
+      expect(r.html).toContain('<th style');
+      expect(r.issues.map((i) => i.kind).sort()).toEqual(['html-dropped', 'links', 'picture-remote']);
+    });
+  }
 });

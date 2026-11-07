@@ -1,5 +1,5 @@
 import { strToU8, zipSync, type Zippable } from 'fflate';
-import { DOC_INDEX, docToMarkdown, keptName, tabFile } from '@dc/core';
+import { DOC_INDEX, docToArticle, docToMarkdown, keptName, tabFile } from '@dc/core';
 import { api } from '../../api';
 import { download } from '../../local';
 import { t } from '../../i18n';
@@ -9,6 +9,12 @@ import { display, toast, useStore } from '../../store';
 export function docMarkdown(only?: string): { markdown: string; images: string[] } {
   const s = useStore.getState();
   return docToMarkdown(display(s, DOC_INDEX), (id) => display(s, tabFile(id)), only);
+}
+
+/** The doc (or one tab) as an article: the tabs' own text, nothing added (for the WeChat Official Account, which has a title field of its own). */
+export function docArticle(only?: string): { markdown: string; images: string[] } {
+  const s = useStore.getState();
+  return docToArticle(display(s, DOC_INDEX), (id) => display(s, tabFile(id)), only);
 }
 
 /** The bytes of each picture (a path as the Markdown writes it, relative to the project), in the paths' order; null for one that cannot be read. */

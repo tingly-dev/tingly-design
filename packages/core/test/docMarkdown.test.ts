@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outlineOf, wordCount, docColorCss, docToMarkdown, isDocColor, markdownToTab } from '../src';
+import { outlineOf, wordCount, docColorCss, docToArticle, docToMarkdown, isDocColor, markdownToTab } from '../src';
 
 const index = (title: string, tabs: object[]) => JSON.stringify({ title, tabs });
 const files = (m: Record<string, string>) => (id: string) => m[id];
@@ -109,5 +109,20 @@ describe('markdownToTab', () => {
   it('round-trips an export', () => {
     const { markdown } = docToMarkdown(index('T', [{ id: 'a', title: 'A' }]), files({ a: '# A\n\nx ==y== z\n' }));
     expect(markdownToTab(markdown)).toContain('x ==y== z');
+  });
+});
+
+describe('docToArticle', () => {
+  const doc = index('Guide', [{ id: 'a', title: 'Intro' }, { id: 'b', title: 'Setup', parent: 'a' }]);
+  const tabs = files({ a: '# Intro\n\nHello ==world==.\n', b: '## Install\n\n![shot](../assets/a.png)\n' });
+
+  it('is the tabs as written: no doc title, no re-levelled heading, the picture and the highlight made to stand alone', () => {
+    const a = docToArticle(doc, tabs);
+    expect(a.markdown).toBe('# Intro\n\nHello <mark>world</mark>.\n\n## Install\n\n![shot](assets/a.png)\n');
+    expect(a.images).toEqual(['assets/a.png']);
+  });
+
+  it('one tab is just that tab', () => {
+    expect(docToArticle(doc, tabs, 'b').markdown).toBe('## Install\n\n![shot](assets/a.png)\n');
   });
 });

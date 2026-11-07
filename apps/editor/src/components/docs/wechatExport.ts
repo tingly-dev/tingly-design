@@ -1,9 +1,10 @@
-import { DOC_COLORS, DOC_INDEX, figureKey, markdownToWechat, parseDoc, wechatFigures, type WechatOptions, type WechatPicture, type WechatResult } from '@dc/core';
+import { DOC_COLORS, DOC_INDEX, figureKey, markdownToWechat, parseDoc, wechatFigures, type WechatLook, type WechatOptions, type WechatPicture, type WechatResult } from '@dc/core';
+import { readPref, writePref } from '../../local';
 import { download } from '../../local';
 import { t } from '../../i18n';
 import { display, toast, useStore } from '../../store';
 import { nodeToPng } from '../../imageExport';
-import { docMarkdown, fetchPictures } from './markdownExport';
+import { docArticle, fetchPictures } from './markdownExport';
 import { drawDiagram, drawMath } from './richCode';
 
 /**
@@ -98,20 +99,23 @@ async function figurePicture(kind: 'diagram' | 'math', source: string): Promise<
   document.body.appendChild(into);
   try {
     const { width, height } = into.getBoundingClientRect();
-    const blob = await nodeToPng(into, { scale: 2, backgroundColor: '#fff' });
+    // the picture copies the node's own position: put it back in its place or it draws a page of nothing
+    const blob = await nodeToPng(into, { scale: 2, backgroundColor: '#fff', style: { position: 'static', left: '0', top: '0' } });
     return { src: await blobUri(blob), width: Math.ceil(width), height: Math.ceil(height) };
   } finally {
     into.remove();
   }
 }
 
-export interface WechatDoc extends WechatResult {
+/** What the browser had to make once (the pictures, the drawn blocks); the look is applied on top, as often as it is changed. */
+export interface WechatPrepared {
   markdown: string;
+  options: WechatOptions;
 }
 
-/** The doc (or one tab) as WeChat-ready HTML. */
-export async function buildWechat(only?: string): Promise<WechatDoc> {
-  const { markdown, images } = docMarkdown(only);
+/** The pictures and drawings of the doc (or one tab), ready for `renderWechat`. */
+export async function prepareWechat(only?: string): Promise<WechatPrepared> {
+  const { markdown, images } = docArticle(only);
   const settings = parseDoc(display(useStore.getState(), DOC_INDEX)).settings;
   const got = await fetchPictures(images);
   const pictures: NonNullable<WechatOptions['images']> = new Map();
@@ -131,8 +135,20 @@ export async function buildWechat(only?: string): Promise<WechatDoc> {
       }
     }),
   ]);
-  const result = markdownToWechat(markdown, { headingFont: settings.headingFont, bodyFont: settings.bodyFont, colors: DOC_COLORS, images: pictures, figures }, t('docs.wechat.references'));
-  return { ...result, markdown };
+  return { markdown, options: { headingFont: settings.headingFont, bodyFont: settings.bodyFont, colors: DOC_COLORS, images: pictures, figures } };
+}
+
+export function renderWechat(prepared: WechatPrepared, look: WechatLook): WechatResult {
+  return markdownToWechat(prepared.markdown, { ...prepared.options, look }, t('docs.wechat.references'));
+}
+
+/** The look last chosen in the preview, kept in this browser. The first time it is the doc's own: what you see is what you get. */
+export function savedLook(): WechatLook {
+  return readPref('dc.wechat.look') === 'wechat' ? 'wechat' : 'doc';
+}
+
+export function saveLook(look: WechatLook): void {
+  writePref('dc.wechat.look', look);
 }
 
 /** The page that holds the article: open it in a browser, select all, copy, paste. It is also what the preview shows. */
