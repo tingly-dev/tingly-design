@@ -235,6 +235,11 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
   });
 
   await Promise.all(embeds.map((e) => e.ready));
+  // a GIF is read before the first frame so that every seek shows the frame its time calls for
+  await Promise.all(anims.map((a) => a.ready));
+  anims.forEach((a, i) => {
+    for (const is of a.late) issues.push({ scene: parsed[i].id, level: is.level, message: `<img> ${is.message}` });
+  });
   await Promise.all(faceLinks);
   await loadFonts(root);
 
@@ -251,7 +256,7 @@ export async function mount(opts: MountOptions): Promise<MotionStage> {
     async seek(ms, o) {
       const t = Math.max(0, Math.min(ms * speed, timeline.duration));
       setTime(t);
-      await Promise.all(liveAt(t).map((e) => seekEmbed(e.frame, t - e.sceneStart)));
+      await Promise.all([...liveAt(t).map((e) => seekEmbed(e.frame, t - e.sceneStart)), ...anims.map((a) => a.settled())]);
       // the frame after next is the first one painted with the new time on every layer
       if (o?.painted !== false) await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
     },

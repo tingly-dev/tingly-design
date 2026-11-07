@@ -73,6 +73,8 @@ A person can import an artboard of a canvas project into a piece (import menu �
 
 Files people brought in (attachments, imported pictures) live under `uploads/`. A scene shows one by its path from the folder, `<img src="uploads/…">` or `url(uploads/…)`; the editor, the player and the renderer all resolve it. Don't move or rename them.
 
+A GIF is a clip on the timeline: it starts when its `<img>` comes on screen (the `data-in` start, else the scene's start) and shows the frame of that moment, so seeking, scrubbing, speed, the player and every export draw the same frame. It follows the file's own loop count; `data-gif="loop"` or `data-gif="once"` on the `<img>` overrides it. Put it in like any picture (`<img src="uploads/x.gif">`, never converted to another format) and give its entrance with `data-in`.
+
 ## Shader effects
 
 For light, noise, grain or glow that CSS cannot draw, start from a built-in effect: an empty seekable embed whose `data-fx` names a preset and its values (`projects/tingly-design-shader-effects-motion/` uses them):

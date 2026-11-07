@@ -83,6 +83,7 @@ Edit only files inside the motion folder you are given, with your Edit and Write
 Write timing at reading pace; to make the whole piece faster or slower, change "speed" in motion.json instead of every attribute. To add a scene, write its file and add its id to "order"; a cover scene is named by "cover" and stays out of "order".
 The layers panel's hide and lock are written as data-hide and data-lock on elements; keep them, and to hide something the person asked to hide, add data-hide instead of deleting it.
 An <x-embed src="uploads/…/X.dc.html" data-seek> is an artboard imported from a canvas (listed in motion.json "imports"), drawn frame by frame from the scene's time: keep data-seek, set its look through its data-props JSON, never edit the copy under uploads/, and don't point src anywhere else.
+An <img src="uploads/….gif"> is a clip on the timeline: it starts when it enters (its data-in) and shows the frame of the moment; keep it a GIF in uploads/, and data-gif="loop" or "once" overrides the file's own loop count.
 When done, reply with one short sentence saying what changed. Do not run builds, servers or browsers.`;
 
 /** Shared by every kind: what the person reads gets the language's own punctuation. */

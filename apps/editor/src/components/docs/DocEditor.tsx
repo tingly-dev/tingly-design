@@ -142,20 +142,28 @@ export function pickImage(e: Editor): void {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.onchange = async () => {
-    const f = input.files?.[0];
-    const project = useStore.getState().project;
-    if (!f || !project) return;
+  input.onchange = () => void putPictures(e, [...(input.files ?? [])].slice(0, 1));
+  input.click();
+}
+
+/** Pictures into the tab: each kept in uploads/ (a GIF as it is, so it stays animated) and written relative to the tab file; the first goes to `pos` when given, else to the cursor. */
+async function putPictures(e: Editor, files: File[], pos?: number): Promise<void> {
+  const project = useStore.getState().project;
+  if (!project) return;
+  for (const [i, f] of files.entries()) {
     try {
       const up = await api.upload(project, f, 'uploads');
       // the tab file is tabs/<id>.md: images are written relative to it
-      e.chain().focus().setImage({ src: '../' + up.path, alt: f.name.replace(/\.[^.]*$/, '') }).run();
+      const image = { type: 'image', attrs: { src: '../' + up.path, alt: f.name.replace(/\.[^.]*$/, '') } };
+      const chain = e.chain().focus();
+      (i === 0 && pos !== undefined ? chain.insertContentAt(pos, image) : chain.insertContent(image)).run();
     } catch (err) {
       toast((err as Error).message, 'error');
     }
-  };
-  input.click();
+  }
 }
+
+const imagesOf = (list?: FileList | null) => [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
 
 /** Show images written relative to the tab file from the project's raw files. */
 function imageSrc(src: string): string {
@@ -258,6 +266,22 @@ export function DocEditor({ tab }: { tab: string }) {
             return true;
           }
           return false;
+        },
+        // a picture pasted or dropped on the tab is kept and shown there; text on the clipboard with it stays text
+        handlePaste: (_view, ev) => {
+          const files = imagesOf(ev.clipboardData?.files);
+          const e = docEditor.current;
+          if (!files.length || !e || ev.clipboardData?.getData('text/plain').trim()) return false;
+          void putPictures(e, files);
+          return true;
+        },
+        handleDrop: (view, ev) => {
+          const files = imagesOf(ev.dataTransfer?.files);
+          const e = docEditor.current;
+          if (!files.length || !e) return false;
+          ev.preventDefault();
+          void putPictures(e, files, view.posAtCoords({ left: ev.clientX, top: ev.clientY })?.pos);
+          return true;
         },
         handleClick: (_view, _pos, ev) => {
           const el = ev.target as HTMLElement;

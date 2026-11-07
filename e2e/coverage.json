@@ -585,7 +585,8 @@
       "import_here"
     ],
     "docs": [
-      "import_here"
+      "import_here",
+      "gif"
     ],
     "motion": [
       "import_here"
@@ -702,6 +703,17 @@
   "块角部操作栏": {
     "docs": [
       "block_bar"
+    ]
+  },
+  "动图 GIF": {
+    "slides": [
+      "gif"
+    ],
+    "docs": [
+      "gif"
+    ],
+    "motion": [
+      "gif"
     ]
   }
 }
