@@ -34,11 +34,11 @@
 | CSV / TSV 围栏 | 真表格 |
 
 画 SVG 成图时一律走 `data:` 地址，不走 `blob:`：Mermaid 的标签里有 `foreignObject`，从 `blob:` 地址载入再画到画布会让画布“被污染”、取不出 PNG（做的时候真遇到了，那一块被当成画不出来而略去）。
-| 代码块 | 带内联样式的 `section > pre > code`，每行一个 `<br>`，行首空格写成 `&nbsp;`；**没有语法高亮**，也不模仿公众号原生的 `code-snippet__*` 结构（没验证编辑器会采用） |
+| 代码块 | 公众号编辑器自己代码块的结构：`section.code-snippet__js > pre.code-snippet(data-lang) >` 每行一个 `code > span[leaf]`（空行是 `br.ProseMirror-trailingBreak`），内联样式照样写全；这是作者自己的插件 vscode-wechat-md 的做法，据作者实际使用，它复制出来的结果几乎能直接贴进官方编辑器，所以照搬；这是输出里唯一的 class（不变量测试只放行 `code-snippet*` 和空行里的 `ProseMirror-trailingBreak`）。**没有语法高亮** |
 | 其他原始 HTML | 略去，问题清单里说一声；只带 `<mark>`、`<span data-color>`、`<br>` |
 | 暗色 | 复制永远用浅色值，不跟编辑器的暗色主题 |
 
-输出不含 `<style>`、`<link>`、`<script>`、class、id、`var()`，也不用 position / float / flex / grid / transform / animation / box-shadow（`wechatHtml.test.ts` 把这条当不变量查：每个块级标签都有 `style`，标签配对，不含这些）。
+输出不含 `<style>`、`<link>`、`<script>`、id、`var()`，也没有别的 class，也不用 position / float / flex / grid / transform / animation / box-shadow（`wechatHtml.test.ts` 把这条当不变量查：每个块级标签都有 `style`，标签配对，不含这些）。
 
 ## 4. 剪贴板
 
@@ -58,6 +58,8 @@
 - 命令行路径（`export --as wechat`）只验了命令表和类型；本容器里命令行的 Chrome 起不来，没有端到端跑过。
 
 ## 7. 没验证 / 还开着
+
+**已有的一条间接证据**：作者说 vscode-wechat-md 渲染后复制、贴进官方编辑器“几乎能直接用”。那个插件做的就是：每个标签内联样式、本地图片内联成 `data:` base64（不缩放不上传）、上面那种代码块结构、`execCommand('copy')` 的富文本。所以 §3 的方向（内联样式、`data:` 图片、仿原生代码块）大概率是对的，下面的实测是确认细节（图片体量上限、嵌套列表、手机端），不是推翻方向；但那是对插件输出的观感，不是对我们这份输出的测量。
 
 - **真实公众号后台的行为**：`data:` 图片粘贴后是否被接受并转存、1MB 的体量对不对、嵌套列表和 `overflow-x:auto` 的代码块是否保持、手机端和暗色模式的样子。没有后台账号，调研里的"公众号收什么"来自第三方文章和 doocs/md 的源码，不是官方规格。做法是：一个有后台的人把导出的页面贴一遍（`data:` 图片三种大小、表格、代码块、嵌套列表、外链），结果写回这里和调研笔记，再据此改默认。**如果 `data:` 图片被拒**，默认要改成"导出 .zip（页面加图片文件），去后台逐张传"，并把预览里的图片问题提到最前。
 - 代码语法高亮（需要引入一个高亮库，按语言上内联颜色）；脚注语法；Mermaid / 公式是否改成矢量 SVG（doocs/md 做了，约 1500 行适配）；是否有公众号专用样式预设。

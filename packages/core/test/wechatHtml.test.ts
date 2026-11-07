@@ -46,7 +46,9 @@ describe('markdownToWechat', () => {
   const r = markdownToWechat(SAMPLE, { colors: DOC_COLORS, images: new Map([['assets/a b.png', picture]]) }, 'Links');
 
   it('writes only what the editor keeps: no sheet, class, id, variable or script', () => {
-    expect(r.html).not.toMatch(/<style|<link|<script|\sclass=|\sid=|var\(/i);
+    expect(r.html).not.toMatch(/<style|<link|<script|\sid=|var\(/i);
+    // the only classes are the platform's own code-block ones, which the editor knows
+    expect([...r.html.matchAll(/\sclass="([^"]*)"/g)].every((m) => /^(code-snippet|ProseMirror-trailingBreak)/.test(m[1]))).toBe(true);
     expect(r.html).not.toMatch(/position:|float:|display:\s*(flex|grid)|transform:|box-shadow|animation/i);
   });
 
@@ -93,6 +95,8 @@ describe('markdownToWechat', () => {
     expect(r.html).toContain('<th style');
     expect(r.html).toContain('const a = 1 &lt; 2;');
     expect(r.html).toContain('&nbsp;&nbsp;indented();');
+    expect(r.html).toContain('<pre class="code-snippet__js code-snippet code-snippet_nowrap" data-lang="ts"');
+    expect(r.html).toContain('<span leaf="">');
   });
 
   it('leaves a picture it could not read as its description, once', () => {

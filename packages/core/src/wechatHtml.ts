@@ -4,7 +4,7 @@ import { parseDataFile } from './dash';
 /**
  * A doc's Markdown as the HTML the WeChat Official Account editor keeps when it is pasted
  * (.design/wechat-export.md). The editor drops `<style>`, classes and `var()` and keeps what sits in a
- * tag's own `style`, so every tag is written with its style attached from a table, not styled by
+ * tag's own `style` (the one class we write is the platform's own code-block structure), so every tag is written with its style attached from a table, not styled by
  * a sheet and inlined after. Pure: pictures and drawn blocks come in through the options, so the
  * editor, the server and the command line all make the same text.
  */
@@ -105,7 +105,7 @@ export function wechatStyles(o: Pick<WechatOptions, 'headingFont' | 'bodyFont'> 
     // the editor puts its own grey ground behind a bare <code>: say none out loud
     code: `font-family:${MONO};font-size:14px;color:#d63384;background:none;padding:0 2px;`,
     pre: `background-color:#f6f8fa;border-radius:6px;padding:14px 16px;margin:0 0 16px;overflow-x:auto;`,
-    preCode: `font-family:${MONO};font-size:13px;line-height:1.6;color:#24292e;background:none;padding:0;white-space:pre;display:block;`,
+    preCode: `font-family:${MONO};font-size:13px;line-height:1.6;color:#24292e;background:none;padding:0;display:block;white-space:pre-wrap;`,
     blockquote: `border-left:4px solid ${WECHAT_ACCENT};background-color:#f9f9f9;color:#666666;padding:8px 16px;margin:0 0 16px;`,
     ul: 'padding-left:24px;margin:0 0 16px;list-style-type:disc;',
     ol: 'padding-left:24px;margin:0 0 16px;list-style-type:decimal;',
@@ -137,7 +137,6 @@ class Writer {
   readonly issues: WechatIssue[] = [];
   private readonly urls = new Map<string, number>();
   private readonly noted = new Set<string>();
-  private inPre = false;
 
   constructor(private readonly o: WechatOptions) {
     this.st = wechatStyles(o);
@@ -327,10 +326,12 @@ class Writer {
         return `<table style="${this.st.table}"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
       }
     }
+    // the structure the platform's own code block has (the maintainer's vscode-wechat-md copies it, and its
+    // output pastes into the editor close to as it was made): a section holding a pre with one <code> a line.
+    // Our inline styles stay on it for the editor that does not take it as its own.
     const lines = c.text.replace(/\n$/, '').split('\n');
-    // one line per <br>: the editor folds a newline inside a <pre> that has been through its filter
-    const body = lines.map((l) => esc(l).replace(/ {2,}/g, (s) => '&nbsp;'.repeat(s.length)) || '&nbsp;').join('<br>');
-    return `<section style="${this.st.pre}"><pre style="margin:0;padding:0;background:none;"><code style="${this.st.preCode}">${body}</code></pre></section>`;
+    const row = (l: string) => `<code style="${this.st.preCode}"><span leaf="">${l === '' ? '<br class="ProseMirror-trailingBreak">' : esc(l).replace(/ {2,}/g, (m) => '&nbsp;'.repeat(m.length))}</span></code>`;
+    return `<section class="code-snippet__js" style="margin:0 0 16px;"><pre class="code-snippet__js code-snippet code-snippet_nowrap" data-lang="${esc(lang)}" style="${this.st.pre}">${lines.map(row).join('')}</pre></section>`;
   }
 
   private table(t: Tokens.Table): string {
