@@ -153,13 +153,14 @@ describe('looks: what you see is what you get', () => {
   });
 });
 
-describe('the fixture with every element', () => {
-  const md = readFileSync(new URL('./fixtures/wechat-all.md', import.meta.url), 'utf8');
+// the sample project holds the doc with every element: one source for this test, the end-to-end suite and the person's eyes
+describe('the sample doc with every element', () => {
+  const md = readFileSync(new URL('../../../projects/tingly-design-wechat-doc/tabs/all-elements.md', import.meta.url), 'utf8').replace('](../uploads/', '](uploads/');
   const pic = { src: 'data:image/png;base64,AAAA', width: 200, height: 100 };
   const fig = (lang: string) => wechatFigures(md).find((f) => f.lang === lang)!;
   const figures = new Map(['mermaid', 'latex'].map((l) => [fig(l).key, pic]));
   for (const look of WECHAT_LOOKS) {
-    const r = markdownToWechat(md, { look, colors: DOC_COLORS, images: new Map([['assets/wechat-sample.png', pic]]), figures }, 'Links');
+    const r = markdownToWechat(md, { look, colors: DOC_COLORS, images: new Map([['uploads/wechat-sample.png', pic]]), figures }, 'Links');
 
     it(`${look}: every element is there, and only inline styles`, () => {
       for (const tag of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'strong', 'em', 'blockquote', 'ul', 'ol', 'li', 'hr', 'table', 'th', 'td', 'pre', 'code', 'img', 'sup', 'a', 'br']) {

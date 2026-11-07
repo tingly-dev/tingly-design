@@ -1,0 +1,19 @@
+{
+  "title": "WeChat article: every element",
+  "tabs": [
+    {
+      "id": "all-elements",
+      "title": "All elements"
+    },
+    {
+      "id": "how-to",
+      "title": "How to use"
+    }
+  ],
+  "settings": {
+    "headingFont": "sans",
+    "bodyFont": "sans",
+    "width": "default",
+    "lang": "zh-CN"
+  }
+}

@@ -81,7 +81,7 @@ function hello(name: string): string {
 
 ## 图片
 
-![本地图片](assets/wechat-sample.png)
+![本地图片](../uploads/wechat-sample.png)
 
 ![远程图片](https://example.com/remote.png)
 
