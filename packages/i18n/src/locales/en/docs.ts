@@ -195,6 +195,7 @@ export default {
     wearing: 'Wearing {{name}}',
     wearingNone: 'No design system: the doc’s own look.',
     systems: 'Design systems',
+    installed: 'Installed {{name}}. The doc wears it now; change it or take it off in Theme.',
     notReady: 'The design system was installed but has not arrived yet; choose it from the list.',
   },
   import: {
