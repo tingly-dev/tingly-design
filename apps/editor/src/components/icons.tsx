@@ -215,6 +215,7 @@ export const Gif = tabler(IconGif, 14);
 export const Info = tabler(IconInfoCircle, 14);
 export const FilePdf = tabler(IconFileTypePdf, 14);
 export const FileWord = tabler(IconFileTypeDocx, 14);
+export const Wechat = tabler(IconBrandWechat, 14);
 export const FileZip = tabler(IconFileZip, 14);
 
 // what an agent is doing (RunFeed)
