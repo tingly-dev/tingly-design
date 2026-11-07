@@ -17,6 +17,7 @@ import importReport from './importReport';
 import starter from './starter';
 import cli from './cli';
 import claudeDesign from './claudeDesign';
+import review from './review';
 
 export default {
   common,
@@ -38,4 +39,5 @@ export default {
   starter,
   cli,
   claudeDesign,
+  review,
 };

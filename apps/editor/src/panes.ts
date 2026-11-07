@@ -2,7 +2,7 @@ import type { ProjectKind } from '@dc/core';
 import { readPref, writePref } from './local';
 
 /** The side panes a kind's editor can open in its right column: at most one at a time. */
-export type PaneId = 'inspector' | 'sources' | 'code' | 'comments';
+export type PaneId = 'inspector' | 'review' | 'sources' | 'code' | 'comments';
 
 /**
  * Which pane a kind opens with, and which it has at all (the first one is the kind's main pane, the
@@ -11,9 +11,9 @@ export type PaneId = 'inspector' | 'sources' | 'code' | 'comments';
  * closed stays closed. The buttons are drawn by `TopBar` from `components/panes.tsx`.
  */
 export const KIND_PANE_IDS: Record<ProjectKind, PaneId[]> = {
-  design: ['inspector'],
-  slides: ['inspector'],
-  motion: ['inspector'],
+  design: ['inspector', 'review'],
+  slides: ['inspector', 'review'],
+  motion: ['inspector', 'review'],
   'design-system': [],
   dashboard: ['sources', 'code'],
   docs: ['comments'],
@@ -33,5 +33,6 @@ export function initialPane(kind: ProjectKind): PaneId | null {
 }
 
 export function rememberPane(kind: ProjectKind, pane: PaneId | null): void {
-  writePref(key(kind), pane ?? 'none');
+  // a review is a mode (clicks leave remarks instead of selecting): a project never opens in it, whatever was open before
+  writePref(key(kind), pane === 'review' ? 'inspector' : (pane ?? 'none'));
 }

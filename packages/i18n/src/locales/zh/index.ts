@@ -17,6 +17,7 @@ import importReport from './importReport';
 import starter from './starter';
 import cli from './cli';
 import claudeDesign from './claudeDesign';
+import review from './review';
 import type en from '../en';
 import type { Locale } from '../../types';
 
@@ -40,4 +41,5 @@ export default {
   starter,
   cli,
   claudeDesign,
+  review,
 } satisfies Locale<typeof en>;

@@ -138,6 +138,13 @@
       "w": 1720,
       "h": 940,
       "title": "Canvas and deck theme"
+    },
+    "Review.dc.html": {
+      "x": 2000,
+      "y": 9400,
+      "w": 1800,
+      "h": 1800,
+      "title": "Review"
     }
   },
   "order": [
@@ -159,7 +166,8 @@
     "Doc.dc.html",
     "Motion.dc.html",
     "AgentBar.dc.html",
-    "Composer.dc.html"
+    "Composer.dc.html",
+    "Review.dc.html"
   ],
   "notes": {
     "t0": {

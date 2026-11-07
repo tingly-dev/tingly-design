@@ -12,7 +12,7 @@ import { Strip } from './Strip';
 
 export function SlidesApp() {
   const loaded = useStore((s) => s.loaded);
-  const panelOpen = useStore((s) => s.pane === 'inspector');
+  const panelOpen = useStore((s) => s.pane === 'inspector' || s.pane === 'review');
   const present = useStore((s) => !!s.present);
   const slide = useStore((s) => s.slide);
   const ids = useSlideIds();

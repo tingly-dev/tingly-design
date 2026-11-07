@@ -101,6 +101,7 @@ import {
   IconTarget,
   IconLayoutColumns,
   IconMessage,
+  IconMessage2Check,
   IconChecklist,
   IconPresentation,
   IconBug,
@@ -164,6 +165,7 @@ export const Database = tabler(IconDatabase);
 export const Target = tabler(IconTarget);
 export const LayoutCols = tabler(IconLayoutColumns);
 export const Message = tabler(IconMessage);
+export const ReviewI = tabler(IconMessage2Check);
 export const Checklist = tabler(IconChecklist);
 export const Presentation = tabler(IconPresentation);
 export const Bug = tabler(IconBug, 14);

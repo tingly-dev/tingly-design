@@ -135,7 +135,7 @@ function Project() {
 function CanvasApp() {
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
-  const panelOpen = useStore((s) => s.pane === 'inspector');
+  const panelOpen = useStore((s) => s.pane === 'inspector' || s.pane === 'review');
   return (
     <>
       <CanvasTopBar />
