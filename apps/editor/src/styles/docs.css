@@ -1028,3 +1028,64 @@
 .wechat-preview .wp-hint { margin: 12px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .wechat-preview .wp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .wechat-preview .wp-head .seg { flex: none; width: auto; }
+
+/* A doc that wears a design system (.design/doc-design-system.md): the values docLookVars resolves from its tokens dress the
+   page; the editor's chrome, menus and the comment rail keep the editor's own theme. Without it these rules do not apply. */
+.app.docs[data-wears] .docpage {
+  background: var(--look-page, var(--panel));
+  color: var(--look-ink);
+}
+
+.app.docs[data-wears] .docbody {
+  color: var(--look-ink);
+  font-family: var(--look-body);
+  caret-color: var(--look-ink);
+}
+
+.app.docs[data-wears] .docbody :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--look-head);
+  font-weight: var(--look-head-weight);
+  color: var(--look-heading);
+}
+
+.app.docs[data-wears] .docbody h1 { font-size: var(--look-h1); }
+.app.docs[data-wears] .docbody h2 { font-size: var(--look-h2); }
+.app.docs[data-wears] .docbody h3 { font-size: var(--look-h3); }
+
+.app.docs[data-wears] .docbody a { color: var(--look-link); }
+
+.app.docs[data-wears] .docbody blockquote {
+  border-left-color: var(--look-quote);
+  color: var(--look-muted);
+}
+
+.app.docs[data-wears] .docbody :is(pre, code) {
+  font-family: var(--look-mono);
+  background: var(--look-ground);
+  color: var(--look-ink);
+}
+
+.app.docs[data-wears] .docbody pre { border-radius: var(--look-radius); }
+.app.docs[data-wears] .docbody pre code { background: none; }
+
+.app.docs[data-wears] .docbody :is(td, th) { border-color: var(--look-rule); }
+.app.docs[data-wears] .docbody th { background: var(--look-ground); }
+.app.docs[data-wears] .docbody hr { border-top-color: var(--look-rule); }
+.app.docs[data-wears] .docbody mark { background: var(--look-mark); }
+.app.docs[data-wears] .docbody ul[data-type='taskList'] li[data-checked='true'] > div { color: var(--look-faint); }
+
+/* the Theme popover: the same cards as the canvas's and deck's Theme tab */
+.popmenu.doctheme {
+  width: 320px;
+  padding: 12px;
+  gap: 8px;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+}
+
+.popmenu.doctheme h3 { margin: 0; font-size: 13px; }
+.popmenu.doctheme .hint { margin: 0; }
+.popmenu.doctheme .th-systems > summary { cursor: pointer; font-size: 12px; color: var(--muted); margin: 4px 0; }
+
+/* the WeChat preview says which look the article follows */
+.wechat-preview .wp-style { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }

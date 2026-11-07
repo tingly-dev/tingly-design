@@ -38,6 +38,7 @@ export default {
     'rose-pine': 'Rosé Pine',
     'solarized-light': 'Solarized Light',
     'tokyo-night': 'Tokyo Night',
+    wechat: 'WeChat',
   },
   lookGroup: {
     clean: 'Clean and light',
@@ -45,6 +46,7 @@ export default {
     bold: 'Bold and playful',
     tech: 'Technical',
     palette: 'Editor palettes',
+    platform: 'Platforms',
   },
   nav: {
     overview: 'Overview',

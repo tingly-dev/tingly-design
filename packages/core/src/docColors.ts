@@ -13,6 +13,16 @@ export const DOC_COLORS = {
   gray: '#64748b',
 } as const;
 
+/** The same names on a dark page (the editor's dark tokens): the light values are too dark to read there. */
+export const DOC_COLORS_ON_DARK: Record<keyof typeof DOC_COLORS, string> = {
+  red: '#ff8a80',
+  orange: '#fb9a4b',
+  green: '#4ade80',
+  blue: '#7aa5ff',
+  purple: '#a78bfa',
+  gray: '#9aa4b2',
+};
+
 export type DocColor = keyof typeof DOC_COLORS;
 
 export const DOC_COLOR_NAMES = Object.keys(DOC_COLORS) as DocColor[];
@@ -22,6 +32,6 @@ export function isDocColor(name: unknown): name is DocColor {
 }
 
 /** The stylesheet a standalone page (HTML, PDF, PNG export) needs to draw the coloured spans. */
-export function docColorCss(): string {
-  return (Object.entries(DOC_COLORS) as [DocColor, string][]).map(([name, hex]) => `span[data-color="${name}"]{color:${hex}}`).join('');
+export function docColorCss(colors: Record<DocColor, string> = DOC_COLORS): string {
+  return (Object.entries(colors) as [DocColor, string][]).map(([name, hex]) => `span[data-color="${name}"]{color:${hex}}`).join('');
 }

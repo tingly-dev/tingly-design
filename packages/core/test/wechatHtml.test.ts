@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { DOC_COLORS, figureKey, markdownToWechat, WECHAT_LOOKS, wechatFigures, wechatStyles } from '../src';
+import { DOC_COLORS, docLookFromSystem, docOwnLook, figureKey, lookOf, lookTokens, markdownToWechat, resolveTokens, wechatFigures, wechatStyles } from '../src';
+
+// a built-in look as the look a doc wears when it has installed it and chosen its theme
+const worn = (id: string) => {
+  const l = lookOf(id)!;
+  return docLookFromSystem(resolveTokens(lookTokens(l, id)), l.dark ? 'dark' : 'light');
+};
 
 const SAMPLE = [
   '# Title',
@@ -44,7 +50,7 @@ const SAMPLE = [
 const picture = { src: 'data:image/png;base64,AAAA', width: 100, height: 50 };
 
 describe('markdownToWechat', () => {
-  const r = markdownToWechat(SAMPLE, { colors: DOC_COLORS, images: new Map([['assets/a b.png', picture]]) }, 'Links');
+  const r = markdownToWechat(SAMPLE, { images: new Map([['assets/a b.png', picture]]) }, 'Links');
 
   it('writes only what the editor keeps: no sheet, class, id, variable or script', () => {
     expect(r.html).not.toMatch(/<style|<link|<script|\sid=|var\(/i);
@@ -112,7 +118,7 @@ describe('markdownToWechat', () => {
   });
 
   it('follows the doc look for the fonts', () => {
-    expect(wechatStyles({ bodyFont: 'serif' }).p).toContain('Songti');
+    expect(wechatStyles(docOwnLook({ headingFont: 'sans', bodyFont: 'serif' })).p).toContain('Source Serif');
     expect(wechatStyles().p).toContain('PingFang');
   });
 });
@@ -144,12 +150,24 @@ describe('looks: what you see is what you get', () => {
     expect(wechatStyles().h2).not.toContain('border-left');
     expect(wechatStyles().blockquote).toContain('border-left:3px solid #d6d4ce');
     expect(wechatStyles().blockquote).toContain('background-color:transparent');
+    expect(wechatStyles().root).not.toContain('background-color');
   });
 
-  it('a look with its own language is chosen, never added silently', () => {
-    expect(wechatStyles({ look: 'wechat' }).h2).toContain('border-left:4px solid #07c160');
-    expect(markdownToWechat('## H', { look: 'wechat' }).html).toContain('#07c160');
-    expect(WECHAT_LOOKS).toEqual(['doc', 'wechat']);
+  it('a design system the doc wears is what the article follows: the WeChat look is green only because the doc wears it', () => {
+    const html = markdownToWechat('## H\n\n> q\n\n[x](https://mp.weixin.qq.com/s/a)', { look: worn('wechat') }).html;
+    expect(html).toContain('color:#07c160');
+    expect(html).toContain('border-left:3px solid #07c160');
+    // its page is carried with the article, so it reads the same wherever it lands
+    expect(wechatStyles(worn('wechat')).root).toContain('background-color:#ffffff');
+  });
+
+  it('a dark system carries its page and the text colours made for it', () => {
+    const look = worn('nord');
+    const root = wechatStyles(look).root;
+    expect(root).toContain(`background-color:${look.page}`);
+    const html = markdownToWechat('a <span data-color="red">r</span>', { look }).html;
+    expect(html).toContain('color:#ff8a80');
+    expect(html).not.toContain(`color:${DOC_COLORS.red}`);
   });
 });
 
@@ -159,10 +177,10 @@ describe('the sample doc with every element', () => {
   const pic = { src: 'data:image/png;base64,AAAA', width: 200, height: 100 };
   const fig = (lang: string) => wechatFigures(md).find((f) => f.lang === lang)!;
   const figures = new Map(['mermaid', 'latex'].map((l) => [fig(l).key, pic]));
-  for (const look of WECHAT_LOOKS) {
-    const r = markdownToWechat(md, { look, colors: DOC_COLORS, images: new Map([['uploads/wechat-sample.png', pic]]), figures }, 'Links');
+  for (const [name, look] of [['own look', docOwnLook()], ['WeChat', worn('wechat')], ['Nord (dark)', worn('nord')]] as const) {
+    const r = markdownToWechat(md, { look, images: new Map([['uploads/wechat-sample.png', pic]]), figures }, 'Links');
 
-    it(`${look}: every element is there, and only inline styles`, () => {
+    it(`${name}: every element is there, and only inline styles`, () => {
       for (const tag of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'strong', 'em', 'blockquote', 'ul', 'ol', 'li', 'hr', 'table', 'th', 'td', 'pre', 'code', 'img', 'sup', 'a', 'br']) {
         expect(r.html, tag).toContain(`<${tag}`);
       }
@@ -176,7 +194,7 @@ describe('the sample doc with every element', () => {
       expect(r.html).toContain('text-align:right');
     });
 
-    it(`${look}: links, pictures and drawn blocks`, () => {
+    it(`${name}: links, pictures and drawn blocks`, () => {
       expect(r.links.map((l) => l.url)).toEqual(['https://example.com/in-quote', 'https://github.com/tingly-dev/tingly-design', 'https://example.com/a?b=1&c=2', 'mailto:hi@example.com']);
       expect(r.html).toContain('<a href="https://mp.weixin.qq.com/s/abcdef"');
       expect(r.html.match(/<img /g)!.length).toBe(4); // the local one, the remote one, the diagram, the formula

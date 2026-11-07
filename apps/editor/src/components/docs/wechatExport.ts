@@ -1,8 +1,7 @@
-import { DOC_COLORS, DOC_INDEX, figureKey, markdownToWechat, parseDoc, wechatFigures, type WechatLook, type WechatOptions, type WechatPicture, type WechatResult } from '@dc/core';
-import { readPref, writePref } from '../../local';
+import { figureKey, markdownToWechat, wechatFigures, type DocLook, type WechatOptions, type WechatPicture, type WechatResult } from '@dc/core';
 import { download } from '../../local';
 import { t } from '../../i18n';
-import { display, toast, useStore } from '../../store';
+import { toast } from '../../store';
 import { nodeToPng } from '../../imageExport';
 import { docArticle, fetchPictures } from './markdownExport';
 import { drawDiagram, drawMath } from './richCode';
@@ -116,7 +115,6 @@ export interface WechatPrepared {
 /** The pictures and drawings of the doc (or one tab), ready for `renderWechat`. */
 export async function prepareWechat(only?: string): Promise<WechatPrepared> {
   const { markdown, images } = docArticle(only);
-  const settings = parseDoc(display(useStore.getState(), DOC_INDEX)).settings;
   const got = await fetchPictures(images);
   const pictures: NonNullable<WechatOptions['images']> = new Map();
   const figures: NonNullable<WechatOptions['figures']> = new Map();
@@ -135,20 +133,12 @@ export async function prepareWechat(only?: string): Promise<WechatPrepared> {
       }
     }),
   ]);
-  return { markdown, options: { headingFont: settings.headingFont, bodyFont: settings.bodyFont, colors: DOC_COLORS, images: pictures, figures } };
+  return { markdown, options: { images: pictures, figures } };
 }
 
-export function renderWechat(prepared: WechatPrepared, look: WechatLook): WechatResult {
+/** The article in the look the doc wears: what the editor shows is what is pasted. */
+export function renderWechat(prepared: WechatPrepared, look: DocLook): WechatResult {
   return markdownToWechat(prepared.markdown, { ...prepared.options, look }, t('docs.wechat.references'));
-}
-
-/** The look last chosen in the preview, kept in this browser. The first time it is the doc's own: what you see is what you get. */
-export function savedLook(): WechatLook {
-  return readPref('dc.wechat.look') === 'wechat' ? 'wechat' : 'doc';
-}
-
-export function saveLook(look: WechatLook): void {
-  writePref('dc.wechat.look', look);
 }
 
 /** The page that holds the article: open it in a browser, select all, copy, paste. It is also what the preview shows. */

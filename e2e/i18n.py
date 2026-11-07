@@ -15,7 +15,7 @@ HAN = r"""() => {
   const out = [];
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     const el = n.parentElement;
-    if (!el || el.closest('[lang="zh"]') || !/\p{Script=Han}/u.test(n.textContent)) continue;
+    if (!el || el.closest('[lang|="zh"]:not(html)') || !/\p{Script=Han}/u.test(n.textContent)) continue;
     const s = getComputedStyle(el);
     if (s.display === 'none' || s.visibility === 'hidden') continue;
     out.push(n.textContent.trim().slice(0, 40));
@@ -23,7 +23,7 @@ HAN = r"""() => {
   for (const el of document.querySelectorAll('[aria-label], [title], [placeholder]')) {
     for (const a of ['aria-label', 'title', 'placeholder']) {
       const v = el.getAttribute(a);
-      if (v && /\p{Script=Han}/u.test(v) && !el.closest('[lang="zh"]')) out.push(`${a}=${v.slice(0, 40)}`);
+      if (v && /\p{Script=Han}/u.test(v) && !el.closest('[lang|="zh"]:not(html)')) out.push(`${a}=${v.slice(0, 40)}`);
     }
   }
   return out;
