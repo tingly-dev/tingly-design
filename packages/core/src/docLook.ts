@@ -10,6 +10,7 @@ import { DOC_COLORS, DOC_COLORS_ON_DARK, docColorCss, type DocColor } from './do
 import { dsGlance, type DsColor, type DsTokens } from './designSystem';
 import type { DocJson, DocSettings } from './docs';
 import { colourRoles, contrastRatio, themeRecordOf, type ThemeSystem } from './theme';
+import { DOC_ROLES, docColourOf, docLineOf, docRoleGiven, docSizeOf, docSpaceOf, docWeightOf, type DocRole } from './docRoles';
 
 export interface DocLook {
   /** the page's own ground; empty when the doc has none (the reader's page shows: white in an export) */
@@ -29,8 +30,20 @@ export interface DocLook {
   inlineCode: string;
   mark: string;
   quote: { bar: string; bg: string };
-  /** h1, h2, h3 in px; the smaller headings follow */
+  /** h1, h2, h3 in px */
   sizes: [number, number, number];
+  /** h4 in px (h5 and h6 follow it); null leaves it to the reader (a doc's own look) */
+  h4: number | null;
+  /** the line height of every heading, a multiple of its size */
+  headingLine: number;
+  /** the ground of a table's head */
+  tableHead: string;
+  /** code blocks: size in px and line height; null leaves them to the reader */
+  codeSize: number | null;
+  codeLine: number | null;
+  /** space between paragraphs and the indent of lists, px; null leaves them to the reader */
+  gap: number | null;
+  indent: number | null;
   /** running text, px, and its line height (a multiple of the size) */
   body: number;
   line: number;
@@ -68,6 +81,13 @@ export function docOwnLook(s: Pick<DocSettings, 'headingFont' | 'bodyFont'> = { 
     mark: '#ffeeb2',
     quote: { bar: '#d6d4ce', bg: 'transparent' },
     sizes: [30, 22, 18],
+    h4: null,
+    headingLine: 1.3,
+    tableHead: '#f5f5f3',
+    codeSize: null,
+    codeLine: null,
+    gap: null,
+    indent: null,
     body: 16,
     line: 1.75,
     column: null,
@@ -80,33 +100,19 @@ export function docOwnLook(s: Pick<DocSettings, 'headingFont' | 'bodyFont'> = { 
   };
 }
 
-const lengthPx = (v: string | undefined, size = 16): number | null => {
-  const m = /^(-?\d*\.?\d+)(px|rem|em)?$/.exec((v ?? '').trim());
-  if (!m) return null;
-  return m[2] === 'rem' || m[2] === 'em' ? parseFloat(m[1]) * size : parseFloat(m[1]);
-};
-const within = (n: number | null, lo: number, hi: number): number | null => (n !== null && Number.isFinite(n) && n >= lo && n <= hi ? n : null);
-
 const stack = (v: string): string => v.replace(/!important/i, '').replace(/"/g, "'").trim();
 
-/** The sizes, line height and column a system gives documents: its `doc-h1`… `doc-body` text styles and `doc-column` spacing token; whatever it leaves out stays the doc's. */
-function docTypeOf(t: DsTokens, own: DocLook): Pick<DocLook, 'sizes' | 'body' | 'line' | 'column'> {
-  const style = (name: string) => t.groups.flatMap((g) => g.styles).find((x) => x.name === name);
-  const bodyStyle = style('doc-body');
-  const body = within(lengthPx(bodyStyle?.fontSize), 10, 28) ?? own.body;
-  const sizes = (['doc-h1', 'doc-h2', 'doc-h3'] as const).map((n, i) => within(lengthPx(style(n)?.fontSize, body), 10, 72) ?? own.sizes[i]) as [number, number, number];
-  // unitless is a multiple of the size; a length is divided by it
-  const raw = bodyStyle?.lineHeight?.trim();
-  const ratio = raw && /^\d*\.?\d+$/.test(raw) ? parseFloat(raw) : raw ? (lengthPx(raw, body) ?? 0) / body : null;
-  const col = t.others.find((f) => f.key === 'spacing')?.tokens.find((x) => x.name === 'doc-column');
-  return { sizes, body, line: within(ratio, 1, 3) ?? own.line, column: within(lengthPx(col?.value), 280, 1200) };
-}
-
-/** The look a design system's theme gives a doc: its page, text, line, card and brand colours, its two faces and its corner radius, and, when it has `doc-*` text styles, the heading and body sizes, line height and column; what it leaves out stays the doc's. */
+/**
+ * The look a design system's theme gives a doc: its page, text, line, card and brand colours, its two faces and its corner
+ * radius, and every `doc-*` role it gives itself (`DOC_ROLES`: colours, heading and body type, code, column, gap, indent).
+ * A role it leaves out follows the generic roles, so a system with none still dresses a doc; the doc's own sizes stand
+ * where nothing is said.
+ */
 export function docLookFromSystem(t: DsTokens, themeId: string, s?: Pick<DocSettings, 'headingFont' | 'bodyFont'>): DocLook {
   const own = docOwnLook(s);
   const roles = colourRoles(t);
   const val = (c?: DsColor) => (c ? (c.values[themeId] ?? Object.values(c.values)[0]) : undefined);
+  const doc = (name: string) => docColourOf(t, name, themeId);
   const g = dsGlance(t, themeId);
   const page = val(roles.page) ?? '';
   const onWhite = page ? contrastRatio(page, '#ffffff') : null;
@@ -117,28 +123,78 @@ export function docLookFromSystem(t: DsTokens, themeId: string, s?: Pick<DocSett
   const accent = val(roles.accent) ?? g.accent;
   const radii = t.others.find((f) => f.key === 'radius')?.tokens ?? [];
   const radius = parseFloat((radii[1] ?? radii[0])?.value ?? '');
+  const ground = doc('doc-code-bg') ?? val(roles.card) ?? (dark ? 'rgba(255,255,255,0.06)' : own.ground);
+  const rule = doc('doc-rule') ?? val(roles.line) ?? (dark ? '#3a3f4b' : own.rule);
+  const body = docSizeOf(t, 'doc-body', 10, 28) ?? own.body;
+  const sizes = (['doc-h1', 'doc-h2', 'doc-h3'] as const).map((n, i) => docSizeOf(t, n, 10, 72, body) ?? own.sizes[i]) as [number, number, number];
+  const code = docSizeOf(t, 'doc-code', 9, 24, body);
   return {
     page,
     dark,
     ink,
-    heading: ink,
+    heading: doc('doc-heading') ?? ink,
     strong: ink,
     muted,
     faint: val(roles.faint) ?? muted,
-    link: accent ?? ink,
-    rule: val(roles.line) ?? (dark ? '#3a3f4b' : own.rule),
-    ground: val(roles.card) ?? (dark ? 'rgba(255,255,255,0.06)' : own.ground),
-    inlineCode: ink,
-    mark: dark ? 'rgba(255,196,0,0.30)' : own.mark,
-    quote: { bar: accent ?? val(roles.line) ?? own.rule, bg: 'transparent' },
-    ...docTypeOf(t, own),
+    link: doc('doc-link') ?? accent ?? ink,
+    rule,
+    ground,
+    inlineCode: doc('doc-code-ink') ?? ink,
+    mark: doc('doc-mark') ?? (dark ? 'rgba(255,196,0,0.30)' : own.mark),
+    quote: { bar: doc('doc-quote-bar') ?? accent ?? val(roles.line) ?? own.rule, bg: doc('doc-quote-bg') ?? 'transparent' },
+    sizes,
+    h4: docSizeOf(t, 'doc-h4', 10, 40, body),
+    headingLine: docLineOf(t, 'doc-h1', sizes[0]) ?? own.headingLine,
+    tableHead: doc('doc-table-head') ?? ground,
+    codeSize: code,
+    codeLine: code ? docLineOf(t, 'doc-code', code) : null,
+    gap: docSpaceOf(t, 'doc-gap', 0, 48),
+    indent: docSpaceOf(t, 'doc-indent', 8, 64),
+    body,
+    line: docLineOf(t, 'doc-body', body) ?? own.line,
+    column: docSpaceOf(t, 'doc-column', 280, 1200),
     headingFont: g.headingFont ? stack(g.headingFont) : own.headingFont,
     bodyFont: g.bodyFont ? stack(g.bodyFont) : own.bodyFont,
     mono: t.families.mono ? stack(t.families.mono) : own.mono,
-    headingWeight: 700,
+    headingWeight: docWeightOf(t, 'doc-h1') ?? 700,
     radius: Number.isFinite(radius) ? Math.max(0, Math.min(20, radius)) : own.radius,
     colors: dark ? DOC_COLORS_ON_DARK : DOC_COLORS,
   };
+}
+
+export interface DocRoleLine {
+  role: DocRole;
+  /** the system wrote this role itself, or the look worked it out */
+  source: 'system' | 'derived';
+  /** the value as the doc is drawn with it */
+  value: string;
+}
+
+/** Every doc role with the value the doc is drawn by and where it came from: the system's own token, or derived (`role.from` says what it follows). */
+export function docRoleReport(t: DsTokens, themeId: string, look: DocLook = docLookFromSystem(t, themeId)): DocRoleLine[] {
+  const n = (v: number | null, unit = 'px') => (v === null ? '–' : `${Math.round(v * 100) / 100}${unit}`);
+  const type = (size: number | null, line: number | null, weight?: number) => (size === null ? '–' : [n(size), line ? `/ ${Math.round(line * 100) / 100}` : '', weight ? `· ${weight}` : ''].filter(Boolean).join(' '));
+  const value: Record<string, string> = {
+    'doc-heading': look.heading,
+    'doc-link': look.link,
+    'doc-quote-bar': look.quote.bar,
+    'doc-quote-bg': look.quote.bg,
+    'doc-code-bg': look.ground,
+    'doc-code-ink': look.inlineCode,
+    'doc-table-head': look.tableHead,
+    'doc-mark': look.mark,
+    'doc-rule': look.rule,
+    'doc-h1': type(look.sizes[0], look.headingLine, look.headingWeight),
+    'doc-h2': type(look.sizes[1], null),
+    'doc-h3': type(look.sizes[2], null),
+    'doc-h4': type(look.h4 ?? look.body, null),
+    'doc-body': type(look.body, look.line),
+    'doc-code': type(look.codeSize ?? 13, look.codeLine ?? 1.6),
+    'doc-column': look.column === null ? '–' : n(look.column),
+    'doc-gap': n(look.gap ?? 10),
+    'doc-indent': n(look.indent ?? 24),
+  };
+  return DOC_ROLES.map((role) => ({ role, source: docRoleGiven(t, role, themeId) ? 'system' : 'derived', value: value[role.name] }));
 }
 
 /** What a doc wears: the look and, when it is a design system's, which one (`worn`) and the tokens it came from. */
@@ -180,26 +236,42 @@ export function docLookVars(l: DocLook): Record<string, string> {
     '--look-h2': `${l.sizes[1]}px`,
     '--look-h3': `${l.sizes[2]}px`,
     '--look-size': `${l.body}px`,
+    '--look-head-line': String(l.headingLine),
+    '--look-quote-bg': l.quote.bg,
+    '--look-code-ink': l.inlineCode,
+    '--look-table-head': l.tableHead,
     '--look-line': String(l.line),
     '--look-radius': `${l.radius}px`,
   };
   if (l.column) vars['--look-column'] = `${l.column}px`;
+  if (l.h4) vars['--look-h4'] = `${l.h4}px`;
+  if (l.codeSize) vars['--look-code'] = `${l.codeSize}px`;
+  if (l.codeLine) vars['--look-code-line'] = String(l.codeLine);
+  if (l.gap !== null) vars['--look-gap'] = `${l.gap}px`;
+  if (l.indent !== null) vars['--look-indent'] = `${l.indent}px`;
   for (const [name, hex] of Object.entries(l.colors)) vars[`--doc-${name}`] = hex;
   return vars;
 }
 
 /** The stylesheet of the doc's own page as HTML (the HTML, PDF and PNG exports); layout (width, margins) is the exporter's. */
 export function docLookCss(l: DocLook): string {
+  const gap = l.gap === null ? '' : `p{margin:${l.gap}px 0}`;
+  const indent = l.indent === null ? '' : `ul,ol{padding-left:${l.indent}px}`;
+  const h4 = l.h4 === null ? '' : `h4{font-size:${l.h4}px}`;
+  const code = l.codeSize === null ? '' : `pre{font-size:${l.codeSize}px;${l.codeLine ? `line-height:${l.codeLine}` : ''}}code{font-size:${l.codeSize + 1}px}pre code{font-size:inherit}`;
   return (
     `html,body{${l.page ? `background:${l.page};` : ''}}` +
     `body{font:${l.body}px/${l.line} ${l.bodyFont};color:${l.ink}}` +
-    `h1,h2,h3,h4,h5,h6{font-family:${l.headingFont};font-weight:${l.headingWeight};color:${l.heading};line-height:1.3}` +
-    `h1{font-size:${l.sizes[0]}px}h2{font-size:${l.sizes[1]}px}h3{font-size:${l.sizes[2]}px}` +
+    `h1,h2,h3,h4,h5,h6{font-family:${l.headingFont};font-weight:${l.headingWeight};color:${l.heading};line-height:${l.headingLine}}` +
+    `h1{font-size:${l.sizes[0]}px}h2{font-size:${l.sizes[1]}px}h3{font-size:${l.sizes[2]}px}${h4}` +
+    gap +
+    indent +
     `a{color:${l.link}}` +
-    `table{border-collapse:collapse;display:block;max-width:100%;overflow-x:auto}td,th{border:1px solid ${l.rule};padding:6px 10px}th{background:${l.ground};font-weight:600;text-align:left}` +
+    `table{border-collapse:collapse;display:block;max-width:100%;overflow-x:auto}td,th{border:1px solid ${l.rule};padding:6px 10px}th{background:${l.tableHead};font-weight:600;text-align:left}` +
     `pre{background:${l.ground};padding:12px;border-radius:${l.radius}px;overflow:auto}` +
-    `code{font-family:${l.mono};font-size:.9em}` +
-    `blockquote{margin:0;padding-left:16px;border-left:3px solid ${l.quote.bar};color:${l.muted}}` +
+    `code{font-family:${l.mono};font-size:.9em;color:${l.inlineCode}}pre code{color:${l.ink}}` +
+    code +
+    `blockquote{margin:0;padding-left:16px;border-left:3px solid ${l.quote.bar};${l.quote.bg !== 'transparent' ? `background:${l.quote.bg};` : ''}color:${l.muted}}` +
     `hr{border:0;border-top:1px solid ${l.rule}}` +
     `mark{background:${l.mark};color:inherit}` +
     docColorCss(l.colors)

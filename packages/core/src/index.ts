@@ -16,6 +16,7 @@ export * from './slidesMarkdown';
 export * from './docMarkdown';
 export * from './docColors';
 export * from './docLook';
+export * from './docRoles';
 export * from './wechatHtml';
 export * from './slideArt';
 export * from './designSystem';

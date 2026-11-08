@@ -1,5 +1,6 @@
 import { DS_COVER } from './designSystem';
 import { LOOK_BASE_CSS, LOOK_DATA } from './looks.data';
+import { DOC_ROLES } from './docRoles';
 
 /**
  * Looks: ready-made starting points for a new design system, in groups by what they feel like. A look
@@ -27,8 +28,12 @@ export interface LookData {
   vars: Record<string, string>;
   /** The theme's own rules, on `lk-` classes and our token names. */
   css: string;
-  /** A look made for documents: h1–h3 and body sizes (px), line height and the text column (px); written as `doc-*` text styles and a `doc-column` spacing token. */
-  doc?: { sizes: [number, number, number]; body: number; line: number; column: number };
+  /** What a look says for documents (`DOC_ROLES`): `doc-*` colours (this look's one theme), text styles (size in px, line height, weight) and spacing tokens (px). A role left out follows the generic ones. */
+  doc?: {
+    colors: Record<string, string>;
+    styles: { name: string; size: number; line: number; weight?: number }[];
+    space: Record<string, number>;
+  };
 }
 
 /**
@@ -71,8 +76,28 @@ const PLATFORM_LOOKS: readonly LookData[] = [
     shadow: [null, null],
     vars: {},
     css: '',
-    // the reader's article: 16px text at 1.8, a 677px column (what the platform's phone view and editor draw)
-    doc: { sizes: [24, 20, 18], body: 16, line: 1.8, column: 677 },
+    // the reader's article, from the platform's phone view and the maintainer's own plugin: headings 24/20/18 bold at 1.4, 16px text at 1.8,
+    // a 677px column, green quote bar on a light ground. The code ink and the highlight are left to follow the generic roles.
+    doc: {
+      colors: {
+        'doc-heading': '#1a1a1a',
+        'doc-link': '#07c160',
+        'doc-quote-bar': '#07c160',
+        'doc-quote-bg': '#f9f9f9',
+        'doc-code-bg': '#f6f8fa',
+        'doc-table-head': '#f6f8fa',
+        'doc-rule': '#dddddd',
+      },
+      styles: [
+        { name: 'doc-h1', size: 24, line: 1.4, weight: 700 },
+        { name: 'doc-h2', size: 20, line: 1.4, weight: 700 },
+        { name: 'doc-h3', size: 18, line: 1.4, weight: 700 },
+        { name: 'doc-h4', size: 16, line: 1.4, weight: 700 },
+        { name: 'doc-body', size: 16, line: 1.8, weight: 400 },
+        { name: 'doc-code', size: 13, line: 1.6, weight: 400 },
+      ],
+      space: { 'doc-column': 677, 'doc-gap': 13, 'doc-indent': 24 },
+    },
   },
 ];
 
@@ -101,6 +126,8 @@ const COLOUR_USAGE: Record<string, string> = {
   'on-accent': 'Text on an accent fill.',
 };
 
+const DOC_USE: Record<string, string> = Object.fromEntries(DOC_ROLES.map((r) => [r.name, r.use]));
+
 /** tokens.json for a new system that starts from `look`: its colours (one theme), families, radii and shadows, plus the generic text styles and spacing. */
 export function lookTokens(look: LookData, name: string): string {
   const pick = <T,>(names: string[], values: (T | null)[], usage: string[]) =>
@@ -112,7 +139,10 @@ export function lookTokens(look: LookData, name: string): string {
         version: 1,
         color: {
           themes: [look.dark ? { id: 'dark', name: 'Dark' } : { id: 'light', name: 'Light' }],
-          tokens: Object.entries(look.colors).map(([n, value]) => ({ name: n, value, usage: COLOUR_USAGE[n] ?? '' })),
+          tokens: [
+            ...Object.entries(look.colors).map(([n, value]) => ({ name: n, value, usage: COLOUR_USAGE[n] ?? '' })),
+            ...Object.entries(look.doc?.colors ?? {}).map(([n, value]) => ({ name: n, value, usage: DOC_USE[n] ?? '' })),
+          ],
         },
         type: {
           fonts: [],
@@ -134,13 +164,15 @@ export function lookTokens(look: LookData, name: string): string {
                   {
                     name: 'Doc',
                     family: 'sans',
-                    note: 'Text styles for documents: a doc wearing this system takes its heading and body sizes and line height from here.',
-                    styles: [
-                      { name: 'doc-h1', family: 'display', fontSize: `${look.doc.sizes[0]}px`, lineHeight: 1.3, fontWeight: 700, usage: 'A doc\'s first-level heading.' },
-                      { name: 'doc-h2', family: 'display', fontSize: `${look.doc.sizes[1]}px`, lineHeight: 1.3, fontWeight: 700, usage: 'A doc\'s second-level heading.' },
-                      { name: 'doc-h3', family: 'display', fontSize: `${look.doc.sizes[2]}px`, lineHeight: 1.3, fontWeight: 700, usage: 'A doc\'s third-level heading.' },
-                      { name: 'doc-body', fontSize: `${look.doc.body}px`, lineHeight: look.doc.line, fontWeight: 400, usage: 'A doc\'s running text.' },
-                    ],
+                    note: 'Text styles for documents: a doc wearing this system takes its heading, body and code sizes, line heights and weights from here.',
+                    styles: look.doc.styles.map((x) => ({
+                      name: x.name,
+                      ...(x.name.startsWith('doc-h') ? { family: 'display' } : x.name === 'doc-code' ? { family: 'mono' } : {}),
+                      fontSize: `${x.size}px`,
+                      lineHeight: x.line,
+                      fontWeight: x.weight ?? 400,
+                      usage: DOC_USE[x.name] ?? '',
+                    })),
                   },
                 ]
               : []),
@@ -149,7 +181,7 @@ export function lookTokens(look: LookData, name: string): string {
         spacing: {
           tokens: [
             ...[4, 8, 16, 32].map((n, i) => ({ name: `space-${i + 1}`, value: `${n}px`, usage: 'Layout rhythm.' })),
-            ...(look.doc ? [{ name: 'doc-column', value: `${look.doc.column}px`, usage: 'Width of a doc\'s text column.' }] : []),
+            ...Object.entries(look.doc?.space ?? {}).map(([n, v]) => ({ name: n, value: `${v}px`, usage: DOC_USE[n] ?? '' })),
           ],
         },
         // a theme that gives no radius at all draws square corners

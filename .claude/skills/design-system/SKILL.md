@@ -89,7 +89,13 @@ What the page reads (anything else drops, and the editor's 问题 view says why)
 
 ## Installing into a doc, and the doc's own text styles
 
-A doc installs a system from its top bar's Theme, the same copy (`ds/<folder>/tokens.json`) and record in `doc.json`; the doc keeps no colours, it reads the system when it is drawn (the editor page, HTML / PDF / PNG and the WeChat article). It takes the colours, the two faces and the corner radius from the system's roles. For sizes it reads only what you name for documents: text styles `doc-h1`, `doc-h2`, `doc-h3` (heading sizes) and `doc-body` (size and line height), and a spacing token `doc-column` (the text column's width in px). Anything missing leaves the doc's own value, and the other text styles (made for slides) are never used. The built-in WeChat look (look id `wechat`, group `platform`) is the example: `Doc` group `doc-h1…doc-body` 24/20/18/16px at 1.8 and `doc-column` 677px, with a README that describes the platform's rules.
+A doc installs a system from its top bar's Theme, the same copy (`ds/<folder>/tokens.json`) and record in `doc.json`; the doc keeps no colours, it reads the system when it is drawn (the editor page, HTML / PDF / PNG and the WeChat article). It takes the colours, the two faces and the corner radius from the system's generic roles, and everything a document draws from tokens whose names start with `doc-`. Write them when the system should speak for documents; a role you leave out is worked out from the generic ones, so none is required:
+
+- colours (per theme, like any colour): `doc-heading` `doc-link` `doc-quote-bar` `doc-quote-bg` `doc-code-bg` `doc-code-ink` `doc-table-head` `doc-mark` `doc-rule`;
+- text styles (a group named for documents, e.g. `Doc`): `doc-h1`…`doc-h4` (size; `doc-h1`'s weight and line height set every heading, `doc-h4`'s size the smaller ones), `doc-body` (size and line height), `doc-code` (code blocks; inline code is 1px larger);
+- spacing: `doc-column` (text column px), `doc-gap` (between paragraphs), `doc-indent` (lists).
+
+Sizes sensible for reading (body 10–28px, headings up to 72px); the slide text styles (`title`, `heading`…) are never used for documents. The system's "Doc" page lists each role as given or derived next to a sample Markdown drawn in the system. The built-in WeChat look (look id `wechat`, group `platform`) is the example, with a README that describes the platform's rules.
 
 ## Installing into a canvas or deck
 
