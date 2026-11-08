@@ -5,7 +5,7 @@ import { headlessActive } from '../../headless';
 import { toast } from '../../store';
 import { Dialog } from '../Dialog';
 import { useInstalled } from '../ds/ds';
-import { applyWechatLook, currentDocLook, docThemeName, useDocLook } from './docLookState';
+import { CHANNEL_LOOK, applyLook, currentDocLook, docThemeName, useDocLook } from './docLookState';
 import { useDocs } from './docs';
 import { copyWechat, prepareWechat, renderWechat, saveWechat, wechatPage, type WechatPrepared } from './wechatExport';
 
@@ -72,7 +72,7 @@ export function WechatPreview() {
           <span className="wp-style" data-testid="wechat-style">
             <span>{worn ? t('docs.wechat.styleWorn', { name: wornName }) : t('docs.wechat.styleOwn')}</span>
             {!worn && (
-              <button type="button" className="btn ghost sm" data-wechat-look="" onClick={() => void applyWechatLook()}>
+              <button type="button" className="btn ghost sm" data-wechat-look="" onClick={() => void applyLook(CHANNEL_LOOK.wechat)}>
                 {t('docs.wechat.useWechat')}
               </button>
             )}

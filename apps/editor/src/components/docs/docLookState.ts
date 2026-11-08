@@ -60,12 +60,15 @@ export async function wearWhenInstalled(namespace: string): Promise<void> {
   applyDocTheme({ system: namespace, theme: sys.tokens.themes[0].id });
 }
 
-/** The WeChat look in one step: install the built-in look and wear it (the preview’s "Use the WeChat look"). */
-export async function applyWechatLook(): Promise<void> {
+/** The look each publishing channel is made for: what its export offers to wear in one step (a new channel adds a row, and its preview calls `applyLook`). */
+export const CHANNEL_LOOK = { wechat: 'wechat' } as const;
+
+/** A built-in look in one step: install it and wear it (the WeChat preview's "Use the WeChat look" passes the channel's own). */
+export async function applyLook(look: string): Promise<void> {
   const project = useStore.getState().project;
   if (!project) return;
   try {
-    const r = await api.installDs(project, { look: 'wechat' });
+    const r = await api.installDs(project, { look });
     const ns = (r.record as { namespace?: string }).namespace;
     if (ns) await wearWhenInstalled(ns);
   } catch (e) {

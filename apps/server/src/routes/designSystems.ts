@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { editIndex } from './shared';
 import { CANVAS_FILE, DECK_FILE, DOC_INDEX, DS_INDEX, DS_TOKENS, deckSize, dsFolderOf, dsGlance, isStarterCover, newSlideSource, parseDeck, parseDsIndex, resolveTokens, slideFile, type DsRecord, lookOf, lookTokens } from '@dc/core';
-import { HttpError, isProjectName, kindOf, projectDir, resolveKey, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf, lookReadme } from '../store';
+import { HttpError, isProjectName, kindOf, projectDir, resolveKey, readAsset, readOne, removeFile, withLock, writeAsset, writeAtomic, versionOf, lookDescription } from '../store';
 import { publish, record } from '../hub';
 import { trOf } from '../i18n';
 
@@ -39,9 +39,9 @@ export function registerDesignSystems(app: Hono): void {
       const rel = `ds/${folder}/tokens.json`;
       const v = await writeAtomic(p, rel, tokens.content);
       publish(p, { type: 'file', path: rel, content: tokens.content, version: v, actor: 'human' });
-      // a platform look is more than values: its description goes beside the copy, for the agent that reads the project
-      if (builtin?.group === 'platform') {
-        const readme = lookReadme(builtin, index.title, trOf(c));
+      // a look with words of its own is more than values: its description goes beside the copy, for the agent that reads the project
+      const readme = builtin ? lookDescription(builtin, index.title, trOf(c)) : undefined;
+      if (readme !== undefined) {
         const rv = await writeAtomic(p, `ds/${folder}/README.md`, readme);
         publish(p, { type: 'file', path: `ds/${folder}/README.md`, content: readme, version: rv, actor: 'human' });
       }

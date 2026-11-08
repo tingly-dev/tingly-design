@@ -22,6 +22,13 @@ export const SUPPORTED_LANGUAGES = [
 /** A message the server can refuse a request with (`errors.<key>`). */
 export type ErrorKey = keyof typeof en.errors;
 
+/** The built-in looks that carry a description of their own (`starter.lookDescription.<id>`); the type is the key set, so a new one needs its words in both languages before it compiles into a lookup. */
+export type LookDescriptionId = keyof typeof en.starter.lookDescription;
+
+export function hasLookDescription(id: string): id is LookDescriptionId {
+  return Object.prototype.hasOwnProperty.call(en.starter.lookDescription, id);
+}
+
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]['code'];
 
 export const DEFAULT_LANGUAGE: Language = 'en';
