@@ -40,7 +40,7 @@ function Section({ path, theme }: { path: string; theme: string }) {
     if (!editing) setDraft(text);
   }, [text, editing]);
   return (
-    <div className="dssection" data-section={path}>
+    <div className="dssection" data-section={path} data-designed={designed && !editing && text.trim() ? '' : undefined}>
       <div className="secbar">
         <span className="hint">{path}</span>
         {isReadme && !editing && (

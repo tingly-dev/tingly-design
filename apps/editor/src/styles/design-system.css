@@ -1127,15 +1127,26 @@ textarea.dsin {
 
 
 
-/* the README drawn as a document wearing the system (ReadmeDesigned): a frame as tall as its page */
+/* the README card's body drawn as a document wearing the system (ReadmeDesigned): the card keeps its box and its bar; the page fills the rest, edge to edge */
+.dssection[data-designed] {
+  padding: 0;
+  overflow: hidden;
+}
+
+.dssection[data-designed] .secbar {
+  margin: 0;
+  padding: 8px 14px 6px;
+}
+
 .readme-designed iframe {
   display: block;
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 0;
   background: #fff;
 }
 
 .readme-designed .hint {
-  margin: 4px 0 10px;
+  margin: 0;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--line);
 }
