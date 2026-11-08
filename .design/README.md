@@ -47,7 +47,7 @@
 | [docs-markdown.md](./docs-markdown.md) | 文档导出为 Markdown：文档标题和标签页成章节、标题层级理顺、图片路径跟着走（有图片时出带图片的 .zip）、`==高亮==` 转 `<mark>`、评论不导出；文字颜色存成 `<span data-color>` 的名字而不是色值 | 已实施 |
 | [docs-docx.md](./docs-docx.md) | 文档导出为 Word（.docx）：由导出 Markdown 的同一份文本在浏览器里生成，不依赖服务；Google 文档靠传 Drive、Notion 靠贴 Markdown；哪些保留、哪些留作文字 | 已实施 |
 | [wechat-export.md](./wechat-export.md) | 文档导出到微信公众号：所见即所得：菜单项打开上下排的预览（问题清单、公众号栏宽的文章、复制、保存为 HTML），默认样式就是文档自己的样子、绿色等是选出来的样式；核心的纯函数把各标签页原样接成的文章写成只带内联样式的 HTML，外链改成文末编号引用、图片缩到编辑器收得下的大小、Mermaid 和公式画成图片；预览只是模拟，真实后台的行为还没实测 | 已实施（文档）；后台实测、代码高亮、API 发草稿没做 |
-| [doc-design-system.md](./doc-design-system.md) | 文档穿上设计系统：文件只存选择（`designSystems`、`theme`），画的时候从 tokens 解出一份 `DocLook`，编辑器的页面、HTML / PDF / PNG 和微信公众号读同一份；顶栏“主题”、装入即穿上；公众号的样子是内置的 WeChat 风格（自带说明、`doc-*` 文字样式和栏宽）；设计系统的 README 可以“有设计 / 无设计”地看 | 已实施；Word、对比度没做 |
+| [doc-design-system.md](./doc-design-system.md) | 文档穿上设计系统：文件只存选择（`designSystems`、`theme`），画的时候从 tokens 解出一份 `DocLook`，编辑器的页面、HTML / PDF / PNG 和微信公众号读同一份；顶栏“主题”、装入即穿上；公众号的样子是内置的 WeChat 风格（自带说明、`doc-*` 文字样式和栏宽）；设计系统的 README 可以“有设计 / 无设计”地看，设计系统有“文档”页（内置样例文档 + 每个文档角色是给定还是推出来的） | 已实施；Word、对比度没做 |
 | [docs-comments.md](./docs-comments.md) | 文档评论的表情回应（固定六个、存在评论里、不算请求），以及刻意不做的草稿 / @提及 / 多人光标 | 已实施 |
 | [docs-history.md](./docs-history.md) | 文档的历史版本：写盘前存下被覆盖的标签页文本（本机、不进 zip 和提交），列表、预览、恢复走普通编辑 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |

@@ -18,12 +18,13 @@ import { currentTheme } from '../../theme';
 import { Segmented } from '../Segmented';
 import { readPref, writePref } from '../../local';
 import { ReadmeDesigned } from './ReadmeDesigned';
+import { DocView } from './DocView';
 import { replaceUrl } from '../../host';
 import { useTranslation } from 'react-i18next';
 
 type View = DsViewId;
 
-const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
+const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'doc', 'components', 'assets'];
 
 /** One brand-book section: rendered, or edited as markdown. */
 function Section({ path, theme }: { path: string; theme: string }) {
@@ -253,6 +254,7 @@ export function DsApp() {
         {view === 'colors' && <ColorsView t={t} theme={theme} />}
         {view === 'type' && <TypeView t={t} />}
         {view === 'space' && <FamiliesView t={t} theme={theme} />}
+        {view === 'doc' && <DocView t={t} theme={theme} />}
         {view === 'components' && <ComponentsView t={t} index={index} theme={theme} />}
         {view === 'assets' && <AssetsView index={index} />}
         {view === 'issues' && <Issues />}

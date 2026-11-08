@@ -234,7 +234,7 @@ export const dsImport: ImportTarget = {
   },
 };
 
-export const DS_VIEW_IDS = ['overview', 'colors', 'type', 'space', 'components', 'assets', 'issues'] as const;
+export const DS_VIEW_IDS = ['overview', 'colors', 'type', 'space', 'doc', 'components', 'assets', 'issues'] as const;
 export type DsViewId = (typeof DS_VIEW_IDS)[number];
 
 /** Which page of the design system is showing (`?v=` in the address); the nav and `showView` both set it. */

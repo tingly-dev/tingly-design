@@ -1150,3 +1150,61 @@ textarea.dsin {
   padding: 8px 14px 10px;
   border-top: 1px solid var(--line);
 }
+
+
+/* the Doc page: the sample document in its card, then the roles the system gives or derives */
+.docintro {
+  margin: 0 0 10px;
+}
+
+.docroles h3 {
+  margin: 14px 0 2px;
+  font-size: 15px;
+}
+
+.rolegroup h4 {
+  margin: 14px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: none;
+}
+
+.roletable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.roletable td {
+  padding: 4px 8px 4px 0;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.roletable td:first-child {
+  width: 30%;
+}
+
+.roletable code {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.rolesw {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.rolesrc.system {
+  color: var(--ok, #16794a);
+}
+
+.rolesrc.derived {
+  color: var(--muted);
+}
