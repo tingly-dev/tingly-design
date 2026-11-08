@@ -66,8 +66,7 @@ import {
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
 import { logInfo, logWarn } from './log';
 import { repoOf } from './git';
-import type { ErrorKey, Language, TFunction } from '@dc/i18n';
-import { translator } from '@dc/i18n';
+import { hasLookDescription, translator, type ErrorKey, type Language, type TFunction } from '@dc/i18n';
 
 export { PROJECTS_DIR, ROOT as REPO_ROOT } from './layout';
 
@@ -523,7 +522,7 @@ export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
   if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
-  // a design system's text files, and a copy of one installed into a canvas, deck or doc (its tokens, and a built-in platform look's description)
+  // a design system's text files, and a copy of one installed into a canvas, deck or doc (its tokens, and the description a built-in look carries)
   if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/(tokens\.json|README\.md)$/.test(r)) return r;
   throw new HttpError(400, 'notProjectFile', { path: rel });
 }
@@ -882,11 +881,14 @@ export async function readEntry(name: string, rel: string): Promise<Buffer | nul
 
 type Written = { content: string; version: string };
 
-/** The README a design system started from a look begins with: a platform look has its own description, the html-ppt ones carry its credits. */
+/** A look's own description (its words, in the person's language), when it has one; the html-ppt looks have none and carry its credit line instead. */
+export function lookDescription(look: NonNullable<ReturnType<typeof lookOf>>, title: string, t: TFunction): string | undefined {
+  return hasLookDescription(look.id) ? t(`starter.lookDescription.${look.id}`, { title }) : undefined;
+}
+
+/** The README a design system started from a look begins with. */
 export function lookReadme(look: NonNullable<ReturnType<typeof lookOf>>, title: string, t: TFunction): string {
-  // WeChat is the only platform look; the next one adds its key and a lookup here
-  if (look.group === 'platform') return t('starter.dsPlatformReadme.wechat', { title });
-  return t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id });
+  return lookDescription(look, title, t) ?? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id });
 }
 
 /**
