@@ -77,8 +77,8 @@ async def main():
         readme = os.path.join(DOC, 'ds/look-wechat/README.md')
         text = open(readme, encoding='utf-8').read() if os.path.exists(readme) else ''
         check('a platform look keeps its own description beside the copy of its tokens, without html-ppt\'s credits', '07c160' in text and 'MIT License' not in text)
-        look = await pg.evaluate("() => { const l = document.querySelector('.docbody a'); const p = document.querySelector('.docpage'); return { link: getComputedStyle(l).color, page: getComputedStyle(p).backgroundColor, h1: getComputedStyle(document.querySelector('.docbody h1')).fontSize }; }")
-        check('the editor\'s page is the system\'s: its page colour and brand-coloured links', look['link'] == 'rgb(7, 193, 96)' and look['page'] == 'rgb(255, 255, 255)' and look['h1'] == '30px', json.dumps(look))
+        look = await pg.evaluate("() => { const l = document.querySelector('.docbody a'); const p = document.querySelector('.docpage'); return { link: getComputedStyle(l).color, page: getComputedStyle(p).backgroundColor, h1: getComputedStyle(document.querySelector('.docbody h1')).fontSize, column: getComputedStyle(p).maxWidth, body: getComputedStyle(document.querySelector('.docbody p')).fontSize + '/' + getComputedStyle(document.querySelector('.docbody p')).lineHeight }; }")
+        check('the editor\'s page is the system\'s: its page colour, brand-coloured links, its heading and body sizes, line height and column', look['link'] == 'rgb(7, 193, 96)' and look['page'] == 'rgb(255, 255, 255)' and look['h1'] == '24px' and look['column'] == '805px' and look['body'] == '16px/28.8px', json.dumps(look))
         await expect(theme.locator('[data-theme-card="look-wechat/light"][aria-pressed=true]')).to_have_count(1)
 
         # --- the HTML export reads the same values --------------------------------------------------

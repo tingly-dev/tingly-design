@@ -252,7 +252,7 @@ function docHtml(d: DocJson, only?: string): string {
   const faces = worn && tokens ? lookFontCss(tokens, systemFontBase(worn.system)) : '';
   return `<!doctype html><html lang="${d.settings.lang}"><head><meta charset="utf-8"><title>${d.title.replace(/[<&]/g, '')}</title>${fonts}<style>
 ${faces}
-body{max-width:${d.settings.width === 'wide' ? 1000 : 720}px;margin:40px auto;padding:0 24px}
+body{max-width:${d.settings.width === 'wide' ? 1000 : (look.column ?? 720)}px;margin:40px auto;padding:0 24px}
 ${docLookCss(look)}
 img{max-width:100%}.tab+.tab{border-top:1px solid ${look.rule};margin-top:48px;padding-top:24px}@media print{.tab+.tab{break-before:page;border:0}}
 </style></head><body>${parts.join('\n')}</body></html>`;

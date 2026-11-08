@@ -27,6 +27,8 @@ export interface LookData {
   vars: Record<string, string>;
   /** The theme's own rules, on `lk-` classes and our token names. */
   css: string;
+  /** A look made for documents: h1–h3 and body sizes (px), line height and the text column (px); written as `doc-*` text styles and a `doc-column` spacing token. */
+  doc?: { sizes: [number, number, number]; body: number; line: number; column: number };
 }
 
 /**
@@ -69,6 +71,8 @@ const PLATFORM_LOOKS: readonly LookData[] = [
     shadow: [null, null],
     vars: {},
     css: '',
+    // the reader's article: 16px text at 1.8, a 677px column (what the platform's phone view and editor draw)
+    doc: { sizes: [24, 20, 18], body: 16, line: 1.8, column: 677 },
   },
 ];
 
@@ -125,9 +129,29 @@ export function lookTokens(look: LookData, name: string): string {
                 { name: 'caption', fontSize: '16px', lineHeight: 1.4, fontWeight: 500, usage: 'Labels and captions.' },
               ],
             },
+            ...(look.doc
+              ? [
+                  {
+                    name: 'Doc',
+                    family: 'sans',
+                    note: 'Text styles for documents: a doc wearing this system takes its heading and body sizes and line height from here.',
+                    styles: [
+                      { name: 'doc-h1', family: 'display', fontSize: `${look.doc.sizes[0]}px`, lineHeight: 1.3, fontWeight: 700, usage: 'A doc\'s first-level heading.' },
+                      { name: 'doc-h2', family: 'display', fontSize: `${look.doc.sizes[1]}px`, lineHeight: 1.3, fontWeight: 700, usage: 'A doc\'s second-level heading.' },
+                      { name: 'doc-h3', family: 'display', fontSize: `${look.doc.sizes[2]}px`, lineHeight: 1.3, fontWeight: 700, usage: 'A doc\'s third-level heading.' },
+                      { name: 'doc-body', fontSize: `${look.doc.body}px`, lineHeight: look.doc.line, fontWeight: 400, usage: 'A doc\'s running text.' },
+                    ],
+                  },
+                ]
+              : []),
           ],
         },
-        spacing: { tokens: [4, 8, 16, 32].map((n, i) => ({ name: `space-${i + 1}`, value: `${n}px`, usage: 'Layout rhythm.' })) },
+        spacing: {
+          tokens: [
+            ...[4, 8, 16, 32].map((n, i) => ({ name: `space-${i + 1}`, value: `${n}px`, usage: 'Layout rhythm.' })),
+            ...(look.doc ? [{ name: 'doc-column', value: `${look.doc.column}px`, usage: 'Width of a doc\'s text column.' }] : []),
+          ],
+        },
         // a theme that gives no radius at all draws square corners
         radius: { tokens: pick(['radius-s', 'radius-m', 'radius-l'], look.radius.some(Boolean) ? look.radius : ['0px', '0px', '0px'], ['Chips and small controls.', 'Cards.', 'Large panels.']) },
         shadow: { tokens: pick(['raised', 'overlay'], look.shadow, ['Cards.', 'Menus and dialogs.']) },

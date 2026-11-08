@@ -87,19 +87,20 @@ export function wechatFigures(markdown: string): { key: string; lang: string; so
  */
 export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> {
   const [h1, h2, h3] = l.sizes;
-  const line = 1.75;
+  const line = l.line;
+  const size = l.body;
   const p = 10;
   const heading = (size: number, top: number, bottom: number, extra = '') =>
     `font-size:${size}px;font-weight:${l.headingWeight};color:${l.heading};line-height:1.3;margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
   return {
-    root: `font-size:16px;line-height:${line};color:${l.ink};word-break:break-word;padding:${l.page ? '16px' : '0 8px'};margin:0;${l.page ? `background-color:${l.page};` : ''}`,
+    root: `font-size:${size}px;line-height:${line};color:${l.ink};word-break:break-word;padding:${l.page ? '16px' : '0 8px'};margin:0;${l.page ? `background-color:${l.page};` : ''}`,
     h1: heading(h1, Math.round(h1 * 1.4), Math.round(h1 * 0.5)),
     h2: heading(h2, Math.round(h2 * 1.4), Math.round(h2 * 0.5)),
     h3: heading(h3, Math.round(h3 * 1.4), Math.round(h3 * 0.5)),
-    h4: heading(16, 22, 8),
+    h4: heading(size, 22, 8),
     h5: heading(15, 20, 8, `color:${l.muted};`),
     h6: heading(14, 20, 8, `color:${l.muted};`),
-    p: `font-size:16px;line-height:${line};color:${l.ink};margin:${p}px 0;padding:0;`,
+    p: `font-size:${size}px;line-height:${line};color:${l.ink};margin:${p}px 0;padding:0;`,
     strong: `font-weight:bold;color:${l.strong};`,
     em: 'font-style:italic;',
     del: 'text-decoration:line-through;',
@@ -111,7 +112,7 @@ export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> 
     blockquote: `border-left:3px solid ${l.quote.bar};background-color:${l.quote.bg};color:${l.muted};padding:0 0 0 16px;margin:${p + 2}px 0;`,
     ul: `padding-left:24px;margin:${p}px 0;list-style-type:disc;`,
     ol: `padding-left:24px;margin:${p}px 0;list-style-type:decimal;`,
-    li: `font-size:16px;line-height:${line};color:${l.ink};margin:4px 0;`,
+    li: `font-size:${size}px;line-height:${line};color:${l.ink};margin:4px 0;`,
     hr: `border:none;border-top:1px solid ${l.rule};margin:26px 0;height:1px;`,
     a: `color:${l.link};text-decoration:underline;`,
     sup: `color:${l.link};font-size:12px;vertical-align:super;line-height:1;`,
