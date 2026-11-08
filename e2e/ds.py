@@ -140,6 +140,7 @@ async def main():
         elements = await doc.locator('body').evaluate("b => ['h2','h3','h4','h5','h6','blockquote blockquote','ul ul','ol ol','table','pre code','hr','img','mark','span[data-color=red]','a'].filter((q) => !b.querySelector(q))")
         check('the sample holds every element a doc draws', elements == [], json.dumps(elements))
         rows = pg.locator('[data-testid=ds-doc] .roletable tr[data-role]')
+        check('the Doc page tells how to dress an element beyond the values, and says a doc reads tokens.json only', await pg.locator('[data-testid=ds-doc] .docroles > .hint').last.text_content() is not None and 'tokens.json' in (await pg.locator('[data-testid=ds-doc] .docroles > .hint').last.text_content()))
         check('every doc role is listed, none given by a system that has not written any', await rows.count() == 18 and await pg.locator('[data-testid=ds-doc] tr[data-source=system]').count() == 0)
         t = tokens()
         t['color']['tokens'].append({'name': 'doc-quote-bg', 'value': '#fff7e6', 'usage': 'The ground of a quote.'})
@@ -147,6 +148,12 @@ async def main():
         await expect(pg.locator('[data-testid=ds-doc] tr[data-role=doc-quote-bg][data-source=system]')).to_have_count(1, timeout=10000)
         quote = await doc.locator('blockquote').first.evaluate("e => getComputedStyle(e).backgroundColor")
         check('writing a doc role in tokens.json shows as given and reaches the sample', quote == 'rgb(255, 247, 230)', quote)
+        t = tokens()
+        t['doc'] = {'tokens': [{'name': 'h1', 'value': 'border-left: 6px solid {ink}; padding-left: 12px'}, {'name': 'img', 'value': 'padding: 8px 8px 28px; background-color: {surface}; border: 1px solid {line}'}]}
+        open(os.path.join(DS, 'tokens.json'), 'w', encoding='utf-8').write(json.dumps(t, indent=2, ensure_ascii=False) + '\n')
+        await expect(pg.locator('[data-testid=ds-doc] tr[data-role=h1][data-source=system]')).to_have_count(1, timeout=10000)
+        deco = await doc.locator('h1').first.evaluate("e => { const s = getComputedStyle(e); return [s.borderLeftWidth, s.borderLeftColor, s.paddingLeft].join(' '); }")
+        check('a doc family in tokens.json dresses the sample and is listed under Decoration', deco.startswith('6px rgb(') and deco.endswith(' 12px') and await pg.locator('[data-testid=ds-doc] tr[data-role=img]').count() == 1, deco)
 
         # --- components ----------------------------------------------------------------
         await pg.locator('.navi', has_text='组件').click()
