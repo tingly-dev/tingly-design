@@ -192,6 +192,8 @@ export interface DsFamily {
   tokens: DsPlainToken[];
 }
 
+import { docDeclAliases, isDocElement, parseDocDecls, type DocDecor } from './docDecor';
+
 export interface DsTokens {
   name?: string;
   themes: DsTheme[];
@@ -202,6 +204,8 @@ export interface DsTokens {
   groups: DsTypeGroup[];
   /** spacing, radius, shadow, then any other `{tokens:[…]}` family, in file order */
   others: DsFamily[];
+  /** the `doc` family: how a document's elements are dressed (`docDecor.ts`); not a token anyone reads as a value, so it is not in `others` */
+  docStyles: DocDecor[];
   issues: DsIssue[];
 }
 
@@ -435,7 +439,7 @@ export function resolveTokens(input: unknown): DsTokens {
 
   // the other families
   const others: DsFamily[] = [];
-  const keys = Object.keys(json).filter((k) => !['name', 'version', 'color', 'type', 'meta', '$schema'].includes(k));
+  const keys = Object.keys(json).filter((k) => !['name', 'version', 'color', 'type', 'meta', '$schema', 'doc'].includes(k));
   keys.sort((a, b) => {
     const rank = (k: string) => (k === 'spacing' ? 0 : k === 'radius' ? 1 : k === 'shadow' ? 2 : 3);
     return rank(a) - rank(b);
@@ -496,7 +500,33 @@ export function resolveTokens(input: unknown): DsTokens {
     }
     others.push(out);
   }
-  return { name: typeof json.name === 'string' ? json.name : undefined, themes, colors, families, fonts, hosted, groups, others, issues };
+  // how a document's elements are dressed: a list of declarations per element, whose {aliases} must name a colour or a length
+  const docStyles: DocDecor[] = [];
+  const docFam = json.doc as { tokens?: unknown } | undefined;
+  if (docFam !== undefined) {
+    if (!docFam || typeof docFam !== 'object' || !Array.isArray(docFam.tokens)) drop('doc', 'doc is {"tokens": [{name, value, usage}]}, one token per element, its value a list of CSS declarations.');
+    else {
+      const known = new Set([...colors.map((c) => c.name), ...others.filter((f) => f.key === 'spacing' || f.key === 'radius').flatMap((f) => f.tokens.map((x) => x.name))]);
+      for (const [i, t] of docFam.tokens.slice(0, 40).entries()) {
+        const at = `doc.tokens[${i}]`;
+        const tok = t as { name?: unknown; value?: unknown; usage?: unknown };
+        const name = cleanName(tok?.name);
+        if (!isDocElement(name) || docStyles.some((d) => d.element === name)) {
+          drop(at, isDocElement(name) ? `"${name}" is used twice.` : `"${String(tok?.name ?? '')}" is not an element a document dresses (h1…h6, p, quote, code, pre, img, hr, table, th, td, a, ul, ol, li, mark, strong).`);
+          continue;
+        }
+        const { css, dropped } = parseDocDecls(typeof tok.value === 'string' ? tok.value : '');
+        for (const why of dropped) drop(at, `"${name}": ${why}.`);
+        const unknown = docDeclAliases(css).find((a) => !known.has(a));
+        if (unknown !== undefined) {
+          drop(at, `"${name}": {${unknown}} is not a colour or a length of the system.`);
+          continue;
+        }
+        if (css) docStyles.push({ element: name, css, usage: typeof tok.usage === 'string' ? tok.usage.slice(0, 1000) : undefined });
+      }
+    }
+  }
+  return { name: typeof json.name === 'string' ? json.name : undefined, themes, colors, families, fonts, hosted, groups, others, docStyles, issues };
 }
 
 /** What tells one design system from another at a glance: its roles, faces and shape. */

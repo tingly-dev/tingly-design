@@ -3,7 +3,7 @@ cards of each installed system, installing a built-in look there wears it at onc
 values (a light system, a dark one with its own text colours), the files keep only the choice (doc.json's `designSystems` and `theme`), going back
 to the own look, and removing the worn system. Uses projects/tingly-design-wechat-doc and puts it back with git.
 Run with `pnpm dev` up: python3 e2e/doc_theme.py  (DC_CHROME=/path/to/chrome to use another Chromium)"""
-import os, asyncio, json, subprocess, time
+import os, re, asyncio, json, subprocess, time
 from playwright.async_api import async_playwright, expect
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
@@ -82,6 +82,30 @@ async def main():
         await expect(theme.locator('[data-theme-card="look-wechat/light"][aria-pressed=true]')).to_have_count(1)
         roles = await pg.evaluate("() => { const q = document.querySelector('.docbody blockquote'); const t = document.querySelector('.docbody th'); const pre = document.querySelector('.docbody pre'); const p = document.querySelector('.docbody > p'); return { quote: getComputedStyle(q).backgroundColor, bar: getComputedStyle(q).borderLeftColor, th: getComputedStyle(t).backgroundColor, code: getComputedStyle(pre).fontSize, gap: getComputedStyle(p).marginTop }; }")
         check('the doc roles the system gives reach the page: quote ground and bar, table head, code size, paragraph gap', roles == {'quote': 'rgb(249, 249, 249)', 'bar': 'rgb(7, 193, 96)', 'th': 'rgb(246, 248, 250)', 'code': '13px', 'gap': '13px'}, json.dumps(roles))
+
+        # --- a system's own decoration of elements: a bar beside a heading, a frame round a picture -----------------
+        copy = os.path.join(DOC, 'ds/look-wechat/tokens.json')
+        tk = json.load(open(copy, encoding='utf-8'))
+        tk['doc'] = {'tokens': [
+            {'name': 'h1', 'value': 'border-left: 6px solid {accent}; padding-left: 12px'},
+            {'name': 'img', 'value': 'background-color: #ffffff; padding: 8px 8px 28px; border: 1px solid {line}'},
+            {'name': 'hr', 'value': 'box-shadow: 0 0 4px #000'},
+        ]}
+        open(copy, 'w', encoding='utf-8').write(json.dumps(tk, indent=2, ensure_ascii=False) + '\n')
+        await expect(pg.locator('.docbody h1').first).to_have_css('border-left-width', '6px', timeout=10000)
+        deco = await pg.evaluate("() => { const h = getComputedStyle(document.querySelector('.docbody h1')); const i = document.querySelector('.docbody img'); const f = i ? getComputedStyle(i) : null; return { bar: h.borderLeftColor, pad: h.paddingLeft, frame: f && f.paddingBottom, frameBg: f && f.backgroundColor, shadow: getComputedStyle(document.querySelector('.docbody hr')).boxShadow }; }")
+        check('a system\'s doc decoration dresses the page: a bar beside the heading, a frame round the picture, and nothing the platform drops', deco['bar'] == 'rgb(7, 193, 96)' and deco['pad'] == '12px' and deco['frame'] == '28px' and deco['frameBg'] == 'rgb(255, 255, 255)' and deco['shadow'] == 'none', json.dumps(deco))
+        await pg.keyboard.press('Escape')
+        deco_html = await html_export()
+        check('the HTML export applies the same decoration', 'h1{border-left:6px solid #07c160;padding-left:12px}' in deco_html and 'box-shadow' not in deco_html)
+        await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
+        await pg.get_by_role('menuitem', name='微信公众号…').first.click()
+        wx = pg.locator('[data-testid=wechat-preview] iframe')
+        await expect(wx).to_have_count(1, timeout=60000)
+        wx_html = await wx.get_attribute('srcdoc')
+        check('and so does the WeChat article, written inline', re.search(r'<h1 style="[^"]*border-left:6px solid #07c160;padding-left:12px', wx_html) is not None and re.search(r'<img [^>]*style="[^"]*padding:8px 8px 28px', wx_html) is not None and 'box-shadow' not in wx_html)
+        await pg.keyboard.press('Escape')
+        await open_theme()
 
         # --- the HTML export reads the same values --------------------------------------------------
         await pg.keyboard.press('Escape')

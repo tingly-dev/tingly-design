@@ -181,7 +181,7 @@ export function DsApp() {
     document.title = tr('ds.app.docTitle', { title: index.title });
   }, [index.title, tr]);
   // the system's own faces and tokens, for samples on this page
-  const pageCss = useMemo(() => compileTokensCss({ ...t, colors: [], others: [], groups: [] }), [t]);
+  const pageCss = useMemo(() => compileTokensCss({ ...t, colors: [], others: [], docStyles: [], groups: [] }), [t]);
   return (
     <>
     <TopBar title={<ProjectTitle value={index.title} label={tr('ds.app.nameLabel')} hint={tr('ds.app.renameHint')} onRename={(v) => editDsIndex((d) => (d.title = v), `title → ${v}`)} />}>

@@ -7,7 +7,7 @@
  */
 import type { DsTokens, DsTypeStyle } from './designSystem';
 
-export type DocRoleKind = 'color' | 'text' | 'space';
+export type DocRoleKind = 'color' | 'text' | 'space' | 'style';
 
 export interface DocRole {
   name: string;

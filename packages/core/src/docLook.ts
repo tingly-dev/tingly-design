@@ -10,6 +10,7 @@ import { DOC_COLORS, DOC_COLORS_ON_DARK, docColorCss, type DocColor } from './do
 import { dsGlance, type DsColor, type DsTokens } from './designSystem';
 import type { DocJson, DocSettings } from './docs';
 import { colourRoles, contrastRatio, themeRecordOf, type ThemeSystem } from './theme';
+import { DOC_TAG, resolveDocDecls, type DocElement } from './docDecor';
 import { DOC_ROLES, docColourOf, docLineOf, docRoleGiven, docSizeOf, docSpaceOf, docWeightOf, type DocRole } from './docRoles';
 
 export interface DocLook {
@@ -38,6 +39,8 @@ export interface DocLook {
   headingLine: number;
   /** the ground of a table's head */
   tableHead: string;
+  /** what the system adds to an element beyond the values above (a bar beside a heading, a frame round a picture): resolved declarations, `prop:value;…`, for this theme */
+  decor: Partial<Record<DocElement, string>>;
   /** code blocks: size in px and line height; null leaves them to the reader */
   codeSize: number | null;
   codeLine: number | null;
@@ -84,6 +87,7 @@ export function docOwnLook(s: Pick<DocSettings, 'headingFont' | 'bodyFont'> = { 
     h4: null,
     headingLine: 1.3,
     tableHead: '#f5f5f3',
+    decor: {},
     codeSize: null,
     codeLine: null,
     gap: null,
@@ -101,6 +105,18 @@ export function docOwnLook(s: Pick<DocSettings, 'headingFont' | 'bodyFont'> = { 
 }
 
 const stack = (v: string): string => v.replace(/!important/i, '').replace(/"/g, "'").trim();
+
+/** The `doc` family with every `{colour}` and `{length}` filled in for the theme. */
+function decorOf(t: DsTokens, themeId: string): Partial<Record<DocElement, string>> {
+  const lengths = t.others.filter((f) => f.key === 'spacing' || f.key === 'radius').flatMap((f) => f.tokens);
+  const resolve = (name: string) => docColourOf(t, name, themeId) ?? lengths.find((x) => x.name === name)?.value;
+  const out: Partial<Record<DocElement, string>> = {};
+  for (const d of t.docStyles) {
+    const css = resolveDocDecls(d.css, resolve);
+    if (css) out[d.element] = css;
+  }
+  return out;
+}
 
 /**
  * The look a design system's theme gives a doc: its page, text, line, card and brand colours, its two faces and its corner
@@ -146,6 +162,7 @@ export function docLookFromSystem(t: DsTokens, themeId: string, s?: Pick<DocSett
     h4: docSizeOf(t, 'doc-h4', 10, 40, body),
     headingLine: docLineOf(t, 'doc-h1', sizes[0]) ?? own.headingLine,
     tableHead: doc('doc-table-head') ?? ground,
+    decor: decorOf(t, themeId),
     codeSize: code,
     codeLine: code ? docLineOf(t, 'doc-code', code) : null,
     gap: docSpaceOf(t, 'doc-gap', 0, 48),
@@ -194,7 +211,13 @@ export function docRoleReport(t: DsTokens, themeId: string, look: DocLook = docL
     'doc-gap': n(look.gap ?? 10),
     'doc-indent': n(look.indent ?? 24),
   };
-  return DOC_ROLES.map((role) => ({ role, source: docRoleGiven(t, role, themeId) ? 'system' : 'derived', value: value[role.name] }));
+  const lines: DocRoleLine[] = DOC_ROLES.map((role) => ({ role, source: docRoleGiven(t, role, themeId) ? 'system' : 'derived', value: value[role.name] }));
+  // what the system adds to an element beyond values: listed only when it says something (the others draw as the values above)
+  for (const d of t.docStyles) {
+    const css = look.decor[d.element];
+    if (css) lines.push({ role: { name: d.element, kind: 'style', use: d.usage ?? `Added to every ${DOC_TAG[d.element]}.`, from: 'none' }, source: 'system', value: css.replace(/;/g, '; ').trim() });
+  }
+  return lines;
 }
 
 /** What a doc wears: the look and, when it is a design system's, which one (`worn`) and the tokens it came from. */
@@ -274,8 +297,14 @@ export function docLookCss(l: DocLook): string {
     `blockquote{margin:0;padding-left:16px;border-left:3px solid ${l.quote.bar};${l.quote.bg !== 'transparent' ? `background:${l.quote.bg};` : ''}color:${l.muted}}` +
     `hr{border:0;border-top:1px solid ${l.rule}}` +
     `mark{background:${l.mark};color:inherit}` +
-    docColorCss(l.colors)
+    docColorCss(l.colors) +
+    docDecorCss(l)
   );
+}
+
+/** What the system adds to each element, as rules under `scope` (the editor's page: `.app.docs[data-wears] .docpage .docbody`; an export: ``). */
+export function docDecorCss(l: DocLook, scope = ''): string {
+  return (Object.keys(l.decor) as DocElement[]).map((e) => `${scope ? `${scope} ` : ''}${DOC_TAG[e]}{${l.decor[e]}}`).join('');
 }
 
 /** The faces a system's tokens need drawn on a page: hosted ones by `@import` (it has to come first in a stylesheet) and its font files by `@font-face` under `fontBase`. */

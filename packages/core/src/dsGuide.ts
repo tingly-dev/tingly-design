@@ -126,6 +126,16 @@ export function consumingGuide(t: DsTokens): string {
       '',
     );
   }
+  if (t.docStyles.length) {
+    out.push(
+      '### Document decorations',
+      '',
+      'A document wearing this system adds these declarations to its elements (it reads them from `tokens.json`, not from any CSS bundle); `{name}` is the colour or length of that name in the theme the document wears.',
+      '',
+      table(['element', 'declarations'], t.docStyles.map((d) => [code(d.element), code(d.css)])),
+      '',
+    );
+  }
   out.push(`${code(DS_TOKENS_CSS)} is the stylesheet; it never needs editing.`, '');
   out.push(END);
   return out.join('\n');
