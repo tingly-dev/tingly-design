@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOC_COLORS, DOC_COLORS_ON_DARK, docLookCss, docLookFromSystem, docLookOf, docLookVars, docOwnLook, lookFontCss, lookOf, lookTokens, parseDoc, resolveTokens, settingsProject, type ThemeSystem } from '../src';
+import { DOC_COLORS, DOC_COLORS_ON_DARK, DOC_ROLES, docLookCss, docLookFromSystem, docLookOf, docLookVars, docOwnLook, docRoleGiven, docRoleReport, lookFontCss, lookOf, lookTokens, parseDoc, resolveTokens, settingsProject, type ThemeSystem } from '../src';
 
 const system = (id: string): ThemeSystem => ({ namespace: `look-${id}`, title: id, tokens: resolveTokens(lookTokens(lookOf(id)!, id)) });
 const doc = (extra: object = {}) => parseDoc(JSON.stringify({ title: 'D', tabs: [{ id: 'a', title: 'A' }], ...extra }));
@@ -31,10 +31,11 @@ describe('the look a design system gives a doc', () => {
 
   it('takes sizes, line height and column from the system’s own doc styles, and ignores a value out of range', () => {
     const l = docLookFromSystem(system('wechat').tokens, 'light');
-    expect(l).toMatchObject({ sizes: [24, 20, 18], body: 16, line: 1.8, column: 677 });
+    expect(l).toMatchObject({ sizes: [24, 20, 18], h4: 16, body: 16, line: 1.8, headingLine: 1.4, headingWeight: 700, column: 677 });
     const t = JSON.parse(lookTokens(lookOf('wechat')!, 'X'));
-    t.type.groups[1].styles[0].fontSize = '400px';
-    t.type.groups[1].styles[3].lineHeight = '27px';
+    const style = (n: string) => t.type.groups[1].styles.find((x: { name: string }) => x.name === n);
+    style('doc-h1').fontSize = '400px';
+    style('doc-body').lineHeight = '27px';
     t.spacing.tokens.find((x: { name: string }) => x.name === 'doc-column').value = '20px';
     const odd = docLookFromSystem(resolveTokens(JSON.stringify(t)), 'light');
     expect(odd.sizes[0]).toBe(30);
@@ -42,6 +43,46 @@ describe('the look a design system gives a doc', () => {
     expect(odd.column).toBeNull();
   });
 
+  it('reads every role a system gives for documents: quote, code, table head, rule, gap, indent, code size', () => {
+    const l = docLookFromSystem(system('wechat').tokens, 'light');
+    expect(l).toMatchObject({ heading: '#1a1a1a', rule: '#dddddd', ground: '#f6f8fa', tableHead: '#f6f8fa', gap: 13, indent: 24, codeSize: 13, codeLine: 1.6 });
+    expect(l.quote).toEqual({ bar: '#07c160', bg: '#f9f9f9' });
+  });
+
+  it('derives what a system leaves out from its generic roles, and leaves the reader’s rhythm alone', () => {
+    const l = docLookFromSystem(system('bauhaus').tokens, 'light');
+    expect(l).toMatchObject({ gap: null, indent: null, codeSize: null, h4: null, headingLine: 1.3 });
+    expect(l.quote.bg).toBe('transparent');
+    expect(l.tableHead).toBe(l.ground);
+    expect(l.heading).toBe(l.ink);
+  });
+});
+
+describe('docRoleReport', () => {
+  it('says which roles the system gave and which were derived, with the value the doc is drawn by', () => {
+    const wx = docRoleReport(system('wechat').tokens, 'light');
+    expect(wx).toHaveLength(DOC_ROLES.length);
+    const by = (n: string) => wx.find((x) => x.role.name === n)!;
+    expect(by('doc-quote-bg')).toMatchObject({ source: 'system', value: '#f9f9f9' });
+    expect(by('doc-body')).toMatchObject({ source: 'system', value: '16px / 1.8' });
+    expect(by('doc-mark').source).toBe('derived');
+    expect(by('doc-code-ink').source).toBe('derived');
+    const plain = docRoleReport(system('bauhaus').tokens, 'light');
+    expect(plain.every((x) => x.source === 'derived')).toBe(true);
+    expect(plain.find((x) => x.role.name === 'doc-gap')!.value).toBe('10px');
+  });
+
+  it('names every role once, in a kind the page can read', () => {
+    expect(new Set(DOC_ROLES.map((r) => r.name)).size).toBe(DOC_ROLES.length);
+    for (const r of DOC_ROLES) expect(r.name).toMatch(/^doc-[a-z0-9-]+$/);
+  });
+
+  it('is written into a new system from a look that carries it, and reads back without issues', () => {
+    const t = resolveTokens(lookTokens(lookOf('wechat')!, 'X'));
+    expect(t.issues).toEqual([]);
+    expect(t.colors.some((c) => c.name === 'doc-quote-bg')).toBe(true);
+    expect(DOC_ROLES.filter((r) => docRoleGiven(t, r, 'light')).length).toBeGreaterThanOrEqual(15);
+  });
   it('knows a dark page, and gives it text colours and a highlight made for it', () => {
     const l = docLookFromSystem(system('nord').tokens, 'dark');
     expect(l.dark).toBe(true);

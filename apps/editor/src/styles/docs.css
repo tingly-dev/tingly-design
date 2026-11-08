@@ -1052,17 +1052,24 @@
 .app.docs[data-wears] .docbody :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--look-head);
   font-weight: var(--look-head-weight);
+  line-height: var(--look-head-line);
   color: var(--look-heading);
 }
 
 .app.docs[data-wears] .docbody h1 { font-size: var(--look-h1); }
 .app.docs[data-wears] .docbody h2 { font-size: var(--look-h2); }
 .app.docs[data-wears] .docbody h3 { font-size: var(--look-h3); }
+.app.docs[data-wears] .docbody h4 { font-size: var(--look-h4, 1em); }
+
+/* what a system says in doc-gap and doc-indent; without them the editor's own rhythm stays */
+.app.docs[data-wears] .docbody p { margin: var(--look-gap, 0.6em) 0; }
+.app.docs[data-wears] .docbody :is(ul, ol):not([data-type='taskList']) { padding-left: var(--look-indent, 1.5em); }
 
 .app.docs[data-wears] .docbody a { color: var(--look-link); }
 
 .app.docs[data-wears] .docbody blockquote {
   border-left-color: var(--look-quote);
+  background: var(--look-quote-bg);
   color: var(--look-muted);
 }
 
@@ -1072,11 +1079,16 @@
   color: var(--look-ink);
 }
 
-.app.docs[data-wears] .docbody pre { border-radius: var(--look-radius); }
-.app.docs[data-wears] .docbody pre code { background: none; }
+.app.docs[data-wears] .docbody pre {
+  border-radius: var(--look-radius);
+  font-size: var(--look-code, 13px);
+  line-height: var(--look-code-line, 1.6);
+}
+.app.docs[data-wears] .docbody pre code { background: none; font-size: inherit; }
+.app.docs[data-wears] .docbody :not(pre) > code { color: var(--look-code-ink); font-size: calc(var(--look-code, 12.8px) + 1px); }
 
 .app.docs[data-wears] .docbody :is(td, th) { border-color: var(--look-rule); }
-.app.docs[data-wears] .docbody th { background: var(--look-ground); }
+.app.docs[data-wears] .docbody th { background: var(--look-table-head); }
 .app.docs[data-wears] .docbody hr { border-top-color: var(--look-rule); }
 .app.docs[data-wears] .docbody mark { background: var(--look-mark); }
 .app.docs[data-wears] .docbody ul[data-type='taskList'] li[data-checked='true'] > div { color: var(--look-faint); }
