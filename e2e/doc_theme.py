@@ -83,6 +83,9 @@ async def main():
         roles = await pg.evaluate("() => { const q = document.querySelector('.docbody blockquote'); const t = document.querySelector('.docbody th'); const pre = document.querySelector('.docbody pre'); const p = document.querySelector('.docbody > p'); return { quote: getComputedStyle(q).backgroundColor, bar: getComputedStyle(q).borderLeftColor, th: getComputedStyle(t).backgroundColor, code: getComputedStyle(pre).fontSize, gap: getComputedStyle(p).marginTop }; }")
         check('the doc roles the system gives reach the page: quote ground and bar, table head, code size, paragraph gap', roles == {'quote': 'rgb(249, 249, 249)', 'bar': 'rgb(7, 193, 96)', 'th': 'rgb(246, 248, 250)', 'code': '13px', 'gap': '13px'}, json.dumps(roles))
 
+        own_deco = await pg.evaluate("() => { const h = getComputedStyle(document.querySelector('.docbody h1')); const i = document.querySelector('.docbody img'); const f = i ? getComputedStyle(i) : null; return { bar: h.borderLeftWidth + ' ' + h.borderLeftColor, frame: f && f.paddingBottom, sizing: f && f.boxSizing }; }")
+        check('the built-in WeChat look dresses the heading with a bar and the pictures with a photograph\'s frame on its own', own_deco == {'bar': '6px rgb(7, 193, 96)', 'frame': '36px', 'sizing': 'border-box'}, json.dumps(own_deco))
+
         # --- a system's own decoration of elements: a bar beside a heading, a frame round a picture -----------------
         copy = os.path.join(DOC, 'ds/look-wechat/tokens.json')
         tk = json.load(open(copy, encoding='utf-8'))
@@ -92,7 +95,8 @@ async def main():
             {'name': 'hr', 'value': 'box-shadow: 0 0 4px #000'},
         ]}
         open(copy, 'w', encoding='utf-8').write(json.dumps(tk, indent=2, ensure_ascii=False) + '\n')
-        await expect(pg.locator('.docbody h1').first).to_have_css('border-left-width', '6px', timeout=10000)
+        # the copy's own doc family replaces the built-in one: the frame goes from 36px to the 28px written here
+        await expect(pg.locator('.docbody img').first).to_have_css('padding-bottom', '28px', timeout=10000)
         deco = await pg.evaluate("() => { const h = getComputedStyle(document.querySelector('.docbody h1')); const i = document.querySelector('.docbody img'); const f = i ? getComputedStyle(i) : null; return { bar: h.borderLeftColor, pad: h.paddingLeft, frame: f && f.paddingBottom, frameBg: f && f.backgroundColor, shadow: getComputedStyle(document.querySelector('.docbody hr')).boxShadow }; }")
         check('a system\'s doc decoration dresses the page: a bar beside the heading, a frame round the picture, and nothing the platform drops', deco['bar'] == 'rgb(7, 193, 96)' and deco['pad'] == '12px' and deco['frame'] == '28px' and deco['frameBg'] == 'rgb(255, 255, 255)' and deco['shadow'] == 'none', json.dumps(deco))
         await pg.keyboard.press('Escape')

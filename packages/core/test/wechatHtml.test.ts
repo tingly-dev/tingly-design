@@ -156,6 +156,15 @@ describe('looks: what you see is what you get', () => {
     expect(wechatStyles().root).not.toContain('background-color');
   });
 
+  it('the WeChat look dresses its first-level heading and its pictures itself, inline, and the doc’s own look adds nothing', () => {
+    const md = '# T\n\n![a](data:image/png;base64,AAAA)\n';
+    const wx = markdownToWechat(md, { look: worn('wechat') }).html;
+    expect(wx).toMatch(/<h1 style="[^"]*border-left:6px solid #07c160;padding-left:12px;/);
+    expect(wx).toMatch(/<img [^>]*style="[^"]*box-sizing:border-box;[^"]*padding:10px 10px 36px/);
+    expect(wx).not.toMatch(/box-shadow|position:|var\(/);
+    expect(markdownToWechat(md).html).not.toContain('border-left:6px');
+  });
+
   it('the text sizes and line height are the look’s: the WeChat system sets 16px at 1.8 and h1 24px, the doc’s own 1.75 and 30px', () => {
     const wx = wechatStyles(worn('wechat'));
     expect(wx.p).toContain('font-size:16px;line-height:1.8;');

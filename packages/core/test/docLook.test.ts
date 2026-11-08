@@ -47,6 +47,10 @@ describe('the look a design system gives a doc', () => {
     const l = docLookFromSystem(system('wechat').tokens, 'light');
     expect(l).toMatchObject({ heading: '#1a1a1a', rule: '#dddddd', ground: '#f6f8fa', tableHead: '#f6f8fa', gap: 13, indent: 24, codeSize: 13, codeLine: 1.6 });
     expect(l.quote).toEqual({ bar: '#07c160', bg: '#f9f9f9' });
+    expect(l.decor).toEqual({
+      h1: 'border-left:6px solid #07c160;padding-left:12px',
+      img: 'box-sizing:border-box;background-color:#ffffff;padding:10px 10px 36px;border:1px solid #dddddd',
+    });
   });
 
   it('derives what a system leaves out from its generic roles, and leaves the reader’s rhythm alone', () => {
@@ -61,7 +65,8 @@ describe('the look a design system gives a doc', () => {
 describe('docRoleReport', () => {
   it('says which roles the system gave and which were derived, with the value the doc is drawn by', () => {
     const wx = docRoleReport(system('wechat').tokens, 'light');
-    expect(wx).toHaveLength(DOC_ROLES.length);
+    expect(wx).toHaveLength(DOC_ROLES.length + 2);
+    expect(wx.filter((x) => x.role.kind === 'style').map((x) => x.role.name)).toEqual(['h1', 'img']);
     const by = (n: string) => wx.find((x) => x.role.name === n)!;
     expect(by('doc-quote-bg')).toMatchObject({ source: 'system', value: '#f9f9f9' });
     expect(by('doc-body')).toMatchObject({ source: 'system', value: '16px / 1.8' });

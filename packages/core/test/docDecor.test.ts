@@ -34,6 +34,11 @@ describe('parseDocDecls', () => {
     expect(r.css).toBe('padding:4px');
     expect(r.dropped).toHaveLength(6);
   });
+
+  it('keeps box-sizing, which a frame round a picture needs to stay inside the column, but only its two values', () => {
+    expect(parseDocDecls('box-sizing: border-box').css).toBe('box-sizing:border-box');
+    expect(parseDocDecls('box-sizing: padding-box').dropped).toHaveLength(1);
+  });
 });
 
 describe('resolveDocDecls', () => {
