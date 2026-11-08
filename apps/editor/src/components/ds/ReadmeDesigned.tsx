@@ -6,7 +6,7 @@ import { useStore } from '../../store';
 import { markdown } from './ds';
 
 /**
- * The README drawn as a document that wears this system and theme (.design/doc-design-system.md): the same
+ * The body of the README card drawn as a document that wears this system and theme (.design/doc-design-system.md): the same
  * values and stylesheet the HTML export of a doc uses (`docLookFromSystem`, `docLookCss`), in a frame of its own so
  * the editor's styles do not reach it. The generated "Consuming this system" appendix is left out: it is variable
  * names and tables, for the agent that builds with the system.
@@ -57,11 +57,11 @@ img{max-width:100%}`;
   }, [page]);
   return (
     <div className="readme-designed" data-testid="readme-designed">
+      <iframe ref={frame} title={tr('ds.readme.frameTitle')} srcDoc={page} sandbox="allow-same-origin" style={{ height }} />
       <p className="hint">
         {note ? tr('ds.readme.noteDoc') : tr('ds.readme.noteSizes')}
         {had && ` ${tr('ds.readme.noteAppendix')}`}
       </p>
-      <iframe ref={frame} title={tr('ds.readme.frameTitle')} srcDoc={page} sandbox="allow-same-origin" style={{ height }} />
     </div>
   );
 }
