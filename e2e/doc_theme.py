@@ -74,6 +74,9 @@ async def main():
         await expect(pg.locator('.app.docs[data-wears]')).to_have_count(1, timeout=15000)
         ix = index()
         check('the files keep the choice and the copy of the tokens, never colours', ix.get('theme') == {'system': 'look-wechat', 'theme': 'light'} and any(r.get('artifact') == 'builtin:wechat' for r in ix.get('designSystems', [])) and os.path.exists(os.path.join(DOC, 'ds/look-wechat/tokens.json')) and '07c160' not in open(os.path.join(DOC, 'tabs/all-elements.md'), encoding='utf-8').read())
+        readme = os.path.join(DOC, 'ds/look-wechat/README.md')
+        text = open(readme, encoding='utf-8').read() if os.path.exists(readme) else ''
+        check('a platform look keeps its own description beside the copy of its tokens, without html-ppt\'s credits', '07c160' in text and 'MIT License' not in text)
         look = await pg.evaluate("() => { const l = document.querySelector('.docbody a'); const p = document.querySelector('.docpage'); return { link: getComputedStyle(l).color, page: getComputedStyle(p).backgroundColor, h1: getComputedStyle(document.querySelector('.docbody h1')).fontSize }; }")
         check('the editor\'s page is the system\'s: its page colour and brand-coloured links', look['link'] == 'rgb(7, 193, 96)' and look['page'] == 'rgb(255, 255, 255)' and look['h1'] == '30px', json.dumps(look))
         await expect(theme.locator('[data-theme-card="look-wechat/light"][aria-pressed=true]')).to_have_count(1)

@@ -523,8 +523,8 @@ export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
   if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
-  // a design system's text files, and a copy of one installed into a canvas or deck
-  if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/tokens\.json$/.test(r)) return r;
+  // a design system's text files, and a copy of one installed into a canvas, deck or doc (its tokens, and a built-in platform look's description)
+  if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/(tokens\.json|README\.md)$/.test(r)) return r;
   throw new HttpError(400, 'notProjectFile', { path: rel });
 }
 
@@ -882,6 +882,13 @@ export async function readEntry(name: string, rel: string): Promise<Buffer | nul
 
 type Written = { content: string; version: string };
 
+/** The README a design system started from a look begins with: a platform look has its own description, the html-ppt ones carry its credits. */
+export function lookReadme(look: NonNullable<ReturnType<typeof lookOf>>, title: string, t: TFunction): string {
+  // WeChat is the only platform look; the next one adds its key and a lookup here
+  if (look.group === 'platform') return t('starter.dsPlatformReadme.wechat', { title });
+  return t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id });
+}
+
 /**
  * tokens.css is generated from tokens.json (never written by hand): rebuilt
  * whenever tokens.json changes, from the editor, Claude Code or a terminal.
@@ -1001,7 +1008,7 @@ const STARTER: Record<ProjectKind, (c: Starter) => Promise<void>> = {
   async 'design-system'({ name, title, t, look }) {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
     await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
-    await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id }) : t('starter.dsReadme', { title }));
+    await writeAtomic(name, DS_README, look ? lookReadme(look, title, t) : t('starter.dsReadme', { title }));
     if (look) {
       const words = Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, t(`starter.lookKit.${k}`, { lib: ns })])) as Record<LookKitWord, string>;
       await Promise.all(Object.entries(lookKit(look, ns, title, words)).map(([path, text]) => writeAtomic(name, path, text)));
