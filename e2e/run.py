@@ -36,7 +36,7 @@ SUITES = {
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev', 'pointer': 'dev',
     'ai_settings': 'dev-bare', 'image_gen': 'dev-bare',
     'conversation': 'fake-claude', 'follow_up': 'fake-claude', 'folder_groups': 'fake-claude', 'review': 'fake-claude',
-    'attach': 'build', 'run_feed': 'build', 'ds_ask': 'build', 'chat_panel': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',
+    'attach': 'build', 'run_feed': 'build', 'ds_ask': 'build', 'chat_panel': 'build', 'chat_copy': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',
     'check_snapshots': 'build',
     'embed': 'bundle',
     'delegate': 'real',
@@ -44,7 +44,7 @@ SUITES = {
 # The per-PR subset: open, edit and save in every kind, plus the request bar's run feed.
 SMOKE = ['e2e', 'slides', 'ds', 'dash', 'docs', 'motion', 'run_feed']
 # Rough seconds per suite from a full run, to balance the slices (an unlisted suite counts WEIGHT_DEFAULT).
-WEIGHTS = {'baseline': 162, 'run_feed': 40, 'chat_panel': 36, 'external_edit': 32, 'copy_png': 29, 'import_here': 23, 'import_board': 19,
+WEIGHTS = {'baseline': 162, 'run_feed': 40, 'chat_panel': 36, 'chat_copy': 30, 'external_edit': 32, 'copy_png': 29, 'import_here': 23, 'import_board': 19,
            'side_resize': 17, 'attach': 13, 'ai_settings': 9, 'check_snapshots': 8, 'fast': 6, 'fast_slides': 6, 'fast_motion': 6,
            'embed': 6, 'conversation': 3}
 WEIGHT_DEFAULT = 20

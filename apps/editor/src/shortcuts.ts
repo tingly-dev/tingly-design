@@ -148,14 +148,22 @@ function slideKey(key: string, meta: boolean, shift: boolean): boolean {
 
 const typingIn = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
 
+/** Text the person has selected in the editor's own page (a conversation turn, a label): ⌘C and ⌘X belong to it, as on any page. */
+const textSelected = () => {
+  const sel = window.getSelection();
+  return !!sel && !sel.isCollapsed && sel.toString().trim() !== '';
+};
+
 /**
  * A click inside a sandboxed frame does not move focus out of the editor (the runtime prevents the
  * mousedown so nothing in the work reacts), so a panel field used just before keeps it and swallows
- * the keys meant for the new selection. Frames call this when they report a selection.
+ * the keys meant for the new selection, and text selected in the page keeps ⌘C for itself. Frames call this when they report a selection.
  */
 export function leaveField(): void {
   const a = document.activeElement;
   if (typingIn(a)) (a as HTMLElement).blur();
+  // the same click leaves text selected in the page (a conversation turn): ⌘C then means the element just clicked
+  if (!typingIn(a)) window.getSelection()?.removeAllRanges();
 }
 
 export function installShortcuts(): () => void {
@@ -163,6 +171,8 @@ export function installShortcuts(): () => void {
   let waiting = 0;
   const onKey = (e: KeyboardEvent) => {
     if (typingIn(e.target)) return;
+    // the browser copies selected text; only with none selected is ⌘C (or ⌘X) the selected element's, which the frames' keys reach through handleKey
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && /^[cx]$/i.test(e.key) && textSelected()) return;
     // ⌘V in the editor window goes through the browser's paste event (onPaste), so
     // files and SVG on the system clipboard can reach the import first
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'v' && !useStore.getState().present) {
