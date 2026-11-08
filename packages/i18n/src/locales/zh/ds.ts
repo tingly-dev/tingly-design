@@ -50,6 +50,15 @@ export default {
     nothingToSave: '画面上没有可保存的内容。',
     renameHint: '双击改名',
   },
+  readme: {
+    switchLabel: 'README 的看法',
+    withDesign: '有设计',
+    noDesign: '无设计',
+    frameTitle: '这套设计系统里的 README',
+    noteDoc: '按穿着这套系统的文档画：它的颜色、字体，和文档文字样式的字号。',
+    noteSizes: '按穿着这套系统的文档画：它的颜色和字体。字号来自文档，因为这套系统没有文档文字样式。',
+    noteAppendix: '生成的“Consuming this system”一节没有画出来。',
+  },
   section: {
     editLabel: '编辑 {{path}}',
     empty: '在这里写品牌手册：内容原则、视觉基础、图标，配上真实的例子；用法规则要点名 token。',
