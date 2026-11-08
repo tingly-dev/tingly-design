@@ -153,6 +153,14 @@ describe('looks: what you see is what you get', () => {
     expect(wechatStyles().root).not.toContain('background-color');
   });
 
+  it('the text sizes and line height are the look’s: the WeChat system sets 16px at 1.8 and h1 24px, the doc’s own 1.75 and 30px', () => {
+    const wx = wechatStyles(worn('wechat'));
+    expect(wx.p).toContain('font-size:16px;line-height:1.8;');
+    expect(wx.h1).toContain('font-size:24px');
+    expect(wechatStyles().p).toContain('line-height:1.75;');
+    expect(wechatStyles().h1).toContain('font-size:30px');
+  });
+
   it('a design system the doc wears is what the article follows: the WeChat look is green only because the doc wears it', () => {
     const html = markdownToWechat('## H\n\n> q\n\n[x](https://mp.weixin.qq.com/s/a)', { look: worn('wechat') }).html;
     expect(html).toContain('color:#07c160');

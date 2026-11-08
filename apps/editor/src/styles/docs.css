@@ -1039,7 +1039,14 @@
 .app.docs[data-wears] .docbody {
   color: var(--look-ink);
   font-family: var(--look-body);
+  font-size: var(--look-size);
+  line-height: var(--look-line);
   caret-color: var(--look-ink);
+}
+
+/* a system with a text column of its own (a platform's reader) sets the page's width; a doc set to wide stays wide */
+.app.docs[data-wears]:not([data-width='wide']) .docpage {
+  max-width: calc(var(--look-column, 632px) + 128px);
 }
 
 .app.docs[data-wears] .docbody :is(h1, h2, h3, h4, h5, h6) {

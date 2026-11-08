@@ -87,6 +87,10 @@ What the page reads (anything else drops, and the editor's 问题 view says why)
 - The frame has already loaded tokens.css, bundle.css, the `libraries` the index lists, and bundle.js, and set `<html data-theme="<first theme>">`. Render one component in a few states; use `var(--token)` for every colour and length.
 - No `<iframe>`, `<object>`, `<embed>`. Images by relative path (`../../assets/Logos/mark.svg`) or `data:`. Nothing loads from the network but the pinned script CDNs (an exact version: `react@18.3.1`) and Google Fonts.
 
+## Installing into a doc, and the doc's own text styles
+
+A doc installs a system from its top bar's Theme, the same copy (`ds/<folder>/tokens.json`) and record in `doc.json`; the doc keeps no colours, it reads the system when it is drawn (the editor page, HTML / PDF / PNG and the WeChat article). It takes the colours, the two faces and the corner radius from the system's roles. For sizes it reads only what you name for documents: text styles `doc-h1`, `doc-h2`, `doc-h3` (heading sizes) and `doc-body` (size and line height), and a spacing token `doc-column` (the text column's width in px). Anything missing leaves the doc's own value, and the other text styles (made for slides) are never used. The built-in WeChat look (look id `wechat`, group `platform`) is the example: `Doc` group `doc-h1…doc-body` 24/20/18/16px at 1.8 and `doc-column` 677px, with a README that describes the platform's rules.
+
 ## Installing into a canvas or deck
 
 A canvas or deck installs a system from its panel (nothing selected → 设计系统). Installing copies `tokens.json` to `ds/<folder>/tokens.json` in that project (and the font files it names to `ds/<folder>/fonts/…`), and adds `{"title","namespace":"<folder>","artifact":"projects/<system>","version","copiedAt"}` to the index's `designSystems`. `<folder>` is the namespace lowercased, other characters as `-`. Then colour fields offer the system's colours and the text style menu its styles; a deck also gets the system's fonts as typefaces. Re-install to pick up later changes.

@@ -31,6 +31,11 @@ export interface DocLook {
   quote: { bar: string; bg: string };
   /** h1, h2, h3 in px; the smaller headings follow */
   sizes: [number, number, number];
+  /** running text, px, and its line height (a multiple of the size) */
+  body: number;
+  line: number;
+  /** the text column in px when the system gives one (a platform's reader), else the doc's own width setting decides */
+  column: number | null;
   /** full font stacks, single-quoted so they sit in an inline `style` */
   headingFont: string;
   bodyFont: string;
@@ -63,6 +68,9 @@ export function docOwnLook(s: Pick<DocSettings, 'headingFont' | 'bodyFont'> = { 
     mark: '#ffeeb2',
     quote: { bar: '#d6d4ce', bg: 'transparent' },
     sizes: [30, 22, 18],
+    body: 16,
+    line: 1.75,
+    column: null,
     headingFont: s.headingFont === 'serif' ? SERIF : SANS,
     bodyFont: s.bodyFont === 'serif' ? SERIF : SANS,
     mono: MONO,
@@ -72,9 +80,29 @@ export function docOwnLook(s: Pick<DocSettings, 'headingFont' | 'bodyFont'> = { 
   };
 }
 
+const lengthPx = (v: string | undefined, size = 16): number | null => {
+  const m = /^(-?\d*\.?\d+)(px|rem|em)?$/.exec((v ?? '').trim());
+  if (!m) return null;
+  return m[2] === 'rem' || m[2] === 'em' ? parseFloat(m[1]) * size : parseFloat(m[1]);
+};
+const within = (n: number | null, lo: number, hi: number): number | null => (n !== null && Number.isFinite(n) && n >= lo && n <= hi ? n : null);
+
 const stack = (v: string): string => v.replace(/!important/i, '').replace(/"/g, "'").trim();
 
-/** The look a design system's theme gives a doc: its page, text, line, card and brand colours, its two faces and its corner radius; sizes and rhythm stay the doc's. */
+/** The sizes, line height and column a system gives documents: its `doc-h1`… `doc-body` text styles and `doc-column` spacing token; whatever it leaves out stays the doc's. */
+function docTypeOf(t: DsTokens, own: DocLook): Pick<DocLook, 'sizes' | 'body' | 'line' | 'column'> {
+  const style = (name: string) => t.groups.flatMap((g) => g.styles).find((x) => x.name === name);
+  const bodyStyle = style('doc-body');
+  const body = within(lengthPx(bodyStyle?.fontSize), 10, 28) ?? own.body;
+  const sizes = (['doc-h1', 'doc-h2', 'doc-h3'] as const).map((n, i) => within(lengthPx(style(n)?.fontSize, body), 10, 72) ?? own.sizes[i]) as [number, number, number];
+  // unitless is a multiple of the size; a length is divided by it
+  const raw = bodyStyle?.lineHeight?.trim();
+  const ratio = raw && /^\d*\.?\d+$/.test(raw) ? parseFloat(raw) : raw ? (lengthPx(raw, body) ?? 0) / body : null;
+  const col = t.others.find((f) => f.key === 'spacing')?.tokens.find((x) => x.name === 'doc-column');
+  return { sizes, body, line: within(ratio, 1, 3) ?? own.line, column: within(lengthPx(col?.value), 280, 1200) };
+}
+
+/** The look a design system's theme gives a doc: its page, text, line, card and brand colours, its two faces and its corner radius, and, when it has `doc-*` text styles, the heading and body sizes, line height and column; what it leaves out stays the doc's. */
 export function docLookFromSystem(t: DsTokens, themeId: string, s?: Pick<DocSettings, 'headingFont' | 'bodyFont'>): DocLook {
   const own = docOwnLook(s);
   const roles = colourRoles(t);
@@ -103,7 +131,7 @@ export function docLookFromSystem(t: DsTokens, themeId: string, s?: Pick<DocSett
     inlineCode: ink,
     mark: dark ? 'rgba(255,196,0,0.30)' : own.mark,
     quote: { bar: accent ?? val(roles.line) ?? own.rule, bg: 'transparent' },
-    sizes: own.sizes,
+    ...docTypeOf(t, own),
     headingFont: g.headingFont ? stack(g.headingFont) : own.headingFont,
     bodyFont: g.bodyFont ? stack(g.bodyFont) : own.bodyFont,
     mono: t.families.mono ? stack(t.families.mono) : own.mono,
@@ -151,8 +179,11 @@ export function docLookVars(l: DocLook): Record<string, string> {
     '--look-h1': `${l.sizes[0]}px`,
     '--look-h2': `${l.sizes[1]}px`,
     '--look-h3': `${l.sizes[2]}px`,
+    '--look-size': `${l.body}px`,
+    '--look-line': String(l.line),
     '--look-radius': `${l.radius}px`,
   };
+  if (l.column) vars['--look-column'] = `${l.column}px`;
   for (const [name, hex] of Object.entries(l.colors)) vars[`--doc-${name}`] = hex;
   return vars;
 }
@@ -161,7 +192,7 @@ export function docLookVars(l: DocLook): Record<string, string> {
 export function docLookCss(l: DocLook): string {
   return (
     `html,body{${l.page ? `background:${l.page};` : ''}}` +
-    `body{font:16px/1.75 ${l.bodyFont};color:${l.ink}}` +
+    `body{font:${l.body}px/${l.line} ${l.bodyFont};color:${l.ink}}` +
     `h1,h2,h3,h4,h5,h6{font-family:${l.headingFont};font-weight:${l.headingWeight};color:${l.heading};line-height:1.3}` +
     `h1{font-size:${l.sizes[0]}px}h2{font-size:${l.sizes[1]}px}h3{font-size:${l.sizes[2]}px}` +
     `a{color:${l.link}}` +

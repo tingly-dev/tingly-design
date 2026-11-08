@@ -25,7 +25,21 @@ describe('the look a design system gives a doc', () => {
   });
 
   it('keeps the doc’s sizes and rhythm: a system sized for slides does not size a document', () => {
-    expect(docLookFromSystem(system('bauhaus').tokens, 'light').sizes).toEqual([30, 22, 18]);
+    const l = docLookFromSystem(system('bauhaus').tokens, 'light');
+    expect(l).toMatchObject({ sizes: [30, 22, 18], body: 16, line: 1.75, column: null });
+  });
+
+  it('takes sizes, line height and column from the system’s own doc styles, and ignores a value out of range', () => {
+    const l = docLookFromSystem(system('wechat').tokens, 'light');
+    expect(l).toMatchObject({ sizes: [24, 20, 18], body: 16, line: 1.8, column: 677 });
+    const t = JSON.parse(lookTokens(lookOf('wechat')!, 'X'));
+    t.type.groups[1].styles[0].fontSize = '400px';
+    t.type.groups[1].styles[3].lineHeight = '27px';
+    t.spacing.tokens.find((x: { name: string }) => x.name === 'doc-column').value = '20px';
+    const odd = docLookFromSystem(resolveTokens(JSON.stringify(t)), 'light');
+    expect(odd.sizes[0]).toBe(30);
+    expect(odd.line).toBeCloseTo(27 / 16);
+    expect(odd.column).toBeNull();
   });
 
   it('knows a dark page, and gives it text colours and a highlight made for it', () => {
@@ -66,7 +80,11 @@ describe('what the look becomes', () => {
     const v = docLookVars(l);
     expect(v['--look-page']).toBe('#ffffff');
     expect(v['--look-link']).toBe('#07c160');
-    expect(v['--look-h1']).toBe('30px');
+    expect(v['--look-h1']).toBe('24px');
+    expect(v['--look-size']).toBe('16px');
+    expect(v['--look-line']).toBe('1.8');
+    expect(v['--look-column']).toBe('677px');
+    expect(docLookVars(docOwnLook())['--look-column']).toBeUndefined();
     expect(v['--doc-red']).toBe(DOC_COLORS.red);
     expect(docLookVars(docLookFromSystem(system('nord').tokens, 'dark'))['--doc-red']).toBe(DOC_COLORS_ON_DARK.red);
   });
