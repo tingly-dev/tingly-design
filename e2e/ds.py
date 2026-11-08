@@ -131,6 +131,23 @@ async def main():
         ok = await wait_for(lambda: tokens()['radius']['tokens'][0]['value'] == '20px')
         check('editing a radius', ok)
 
+        # --- the Doc page: a sample document in the system, and the roles given or derived ---------------------------
+        await pg.locator('.navi', has_text='文档').click()
+        doc = pg.frame_locator('[data-testid=ds-doc] iframe')
+        await expect(doc.locator('h1').first).to_have_text('这套系统里的一份文档')
+        face = await doc.locator('h1').first.evaluate("e => getComputedStyle(e).fontFamily")
+        check('the Doc page draws the sample document in the system\'s own heading face', face.split(',')[0].strip('"\' ') in json.dumps(tokens()['type']['families']), face)
+        elements = await doc.locator('body').evaluate("b => ['h2','h3','h4','h5','h6','blockquote blockquote','ul ul','ol ol','table','pre code','hr','img','mark','span[data-color=red]','a'].filter((q) => !b.querySelector(q))")
+        check('the sample holds every element a doc draws', elements == [], json.dumps(elements))
+        rows = pg.locator('[data-testid=ds-doc] .roletable tr[data-role]')
+        check('every doc role is listed, none given by a system that has not written any', await rows.count() == 18 and await pg.locator('[data-testid=ds-doc] tr[data-source=system]').count() == 0)
+        t = tokens()
+        t['color']['tokens'].append({'name': 'doc-quote-bg', 'value': '#fff7e6', 'usage': 'The ground of a quote.'})
+        open(os.path.join(DS, 'tokens.json'), 'w', encoding='utf-8').write(json.dumps(t, indent=2, ensure_ascii=False) + '\n')
+        await expect(pg.locator('[data-testid=ds-doc] tr[data-role=doc-quote-bg][data-source=system]')).to_have_count(1, timeout=10000)
+        quote = await doc.locator('blockquote').first.evaluate("e => getComputedStyle(e).backgroundColor")
+        check('writing a doc role in tokens.json shows as given and reaches the sample', quote == 'rgb(255, 247, 230)', quote)
+
         # --- components ----------------------------------------------------------------
         await pg.locator('.navi', has_text='组件').click()
         await expect(pg.locator('.comp')).to_have_count(4)
