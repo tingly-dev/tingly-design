@@ -5,7 +5,7 @@ import { headlessActive } from '../../headless';
 import { toast } from '../../store';
 import { Dialog } from '../Dialog';
 import { useInstalled } from '../ds/ds';
-import { applyWechatLook, currentDocLook, docThemeName, useDocLook } from './docTheme';
+import { applyWechatLook, currentDocLook, docThemeName, useDocLook } from './docLookState';
 import { useDocs } from './docs';
 import { copyWechat, prepareWechat, renderWechat, saveWechat, wechatPage, type WechatPrepared } from './wechatExport';
 
