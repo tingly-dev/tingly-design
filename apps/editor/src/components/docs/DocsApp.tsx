@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docLookCss, docLookVars, docsViewContext, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docDecorCss, docLookCss, docLookVars, docsViewContext, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -452,7 +452,10 @@ export function DocsApp() {
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">
-          <div className="docpage" style={worn ? (docLookVars(look) as CSSProperties) : undefined}>{tab && <DocEditor key={tab} tab={tab} />}</div>
+          <div className="docpage" style={worn ? (docLookVars(look) as CSSProperties) : undefined}>
+            {worn && <style>{docDecorCss(look, '.app.docs[data-wears] .docpage .docbody')}</style>}
+            {tab && <DocEditor key={tab} tab={tab} />}
+          </div>
         </div>
         <BlockBar />
         <AskClaude

@@ -1,6 +1,7 @@
 import { marked, type Token, type Tokens } from 'marked';
 import { parseDataFile } from './dash';
 import { docOwnLook, type DocLook } from './docLook';
+import type { DocElement } from './docDecor';
 
 /**
  * A doc's Markdown as the HTML the WeChat Official Account editor keeps when it is pasted
@@ -94,7 +95,7 @@ export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> 
   const indent = l.indent ?? 24;
   const heading = (size: number, top: number, bottom: number, extra = '') =>
     `font-size:${size}px;font-weight:${l.headingWeight};color:${l.heading};line-height:${l.headingLine};margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
-  return {
+  const st: Record<string, string> = {
     root: `font-size:${size}px;line-height:${line};color:${l.ink};word-break:break-word;padding:${l.page ? '16px' : '0 8px'};margin:0;${l.page ? `background-color:${l.page};` : ''}`,
     h1: heading(h1, Math.round(h1 * 1.4), Math.round(h1 * 0.5)),
     h2: heading(h2, Math.round(h2 * 1.4), Math.round(h2 * 0.5)),
@@ -126,6 +127,12 @@ export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> 
     refsTitle: `font-size:14px;font-weight:bold;color:${l.muted};margin:0 0 6px;`,
     ref: `font-size:12px;line-height:1.7;color:${l.faint};margin:0 0 2px;word-break:break-all;`,
   };
+  // what the system adds to an element goes after the values above, so it wins; the platform keeps it because it is all inline
+  for (const e of Object.keys(l.decor) as DocElement[]) {
+    const key = e === 'quote' ? 'blockquote' : e;
+    if (st[key] !== undefined) st[key] += `${l.decor[e]};`;
+  }
+  return st;
 }
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
