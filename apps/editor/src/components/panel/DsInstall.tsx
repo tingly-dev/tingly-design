@@ -4,7 +4,7 @@ import { api, type DesignSystemChoice } from '../../api';
 import { DesignSystemPicker } from '../DesignSystemPicker';
 import { useInstalled } from '../ds/ds';
 import { forgetChange, recordChange, toast, useStore } from '../../store';
-import { wearWhenInstalled } from '../docs/docTheme';
+import { wearWhenInstalled } from '../docs/docLookState';
 
 /**
  * Design systems in a canvas, deck or doc: install a project system or built-in look

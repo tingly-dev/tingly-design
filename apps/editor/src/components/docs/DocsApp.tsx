@@ -42,7 +42,7 @@ import { CommentsRail } from './Comments';
 import { FileMenu, imageExportItems, type ExportItem } from '../FileMenu';
 import { CopyPicture, FilePdf, FileText, FileWord, Palette, Wechat } from '../icons';
 import { DocTheme } from './DocTheme';
-import { currentDocLook, systemFontBase, useDocLook } from './docTheme';
+import { currentDocLook, systemFontBase, useDocLook } from './docLookState';
 import { exportWechat, WechatPreview } from './WechatPreview';
 import { t as tNow } from '../../i18n';
 import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';

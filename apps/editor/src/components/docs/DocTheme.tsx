@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { dsGlance } from '@dc/core';
 import { DsInstall } from '../panel/DsInstall';
 import { useInstalled } from '../ds/ds';
-import { applyDocTheme, docThemeName, useDocLook } from './docTheme';
+import { applyDocTheme, docThemeName, useDocLook } from './docLookState';
 
 /**
  * A doc's Theme (`.design/doc-design-system.md`): the doc's own look or a theme of an installed design system, one click,
