@@ -29,7 +29,7 @@ def start(tmp, projects, claude_src, log):
     open(os.path.join(bin_dir, 'claude'), 'w').write(claude_src); os.chmod(os.path.join(bin_dir, 'claude'), 0o755)
     server = subprocess.Popen(
         [os.path.join(REPO, 'apps/server/node_modules/.bin/tsx'), 'src/index.ts'], cwd=os.path.join(REPO, 'apps/server'),
-        env={**os.environ, 'NODE_ENV': 'production', 'PORT': '0', 'DC_PROJECTS': projects, 'DC_EXIT_WITH_STDIN': '1',
+        env={**{k: v for k, v in os.environ.items() if not k.startswith(('ANTHROPIC_', 'DC_CLAUDE', 'DC_DELEGATE'))}, 'NODE_ENV': 'production', 'PORT': '0', 'DC_PROJECTS': projects, 'DC_EXIT_WITH_STDIN': '1',
              'PATH': bin_dir + os.pathsep + os.environ['PATH'], 'FAKE_CLAUDE_LOG': log, 'DC_CONFIG': os.path.join(tmp, f'ai-{os.path.basename(bin_dir)}.json'),},
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     port = None; t = time.time()

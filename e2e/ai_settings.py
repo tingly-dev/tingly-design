@@ -111,7 +111,7 @@ async def main():
         await expect(pg.locator('[role=dialog]')).to_be_visible()
         await expect(pg.locator('[role=dialog] [data-card=fast] input[type=password]')).to_have_attribute('placeholder', 'Saved on this machine · type to replace')
         await pg.locator('[role=dialog] [data-mode=local]').click()
-        await expect(pg.locator('[role=dialog] [data-card=claude] input')).to_have_count(0)
+        await expect(pg.locator('[role=dialog] [data-card=claude] input')).to_have_count(1)  # the claude command's own field
         await shot(pg, '3-project-claude-local.png')
         # a key stays with the address it was saved for: another address does not inherit it
         await pg.locator('[role=dialog] [data-card=fast] [data-preset=anthropic]').click()

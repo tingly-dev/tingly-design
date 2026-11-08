@@ -100,6 +100,9 @@ async def main():
 
             # the fast model: the request stays in view, the run ends with what to do next
             pristine = read('tingly-box-console-canvas', 'Main.dc.html')
+            # Claude Code answers by default; the fast model is the one asked for
+            check('the bar offers Claude Code first and answers with it by default', await pg.locator('.prompt .seg button').first.inner_text() == 'Claude Code' and await pg.locator('.prompt .seg button[aria-pressed=true]').inner_text() == 'Claude Code')
+            await pg.locator('.prompt .seg button', has_text='快速 AI').click()
             await box.fill('把标题改成紫色')
             await box.press('Enter')
             await expect(feed.locator('.run-ask')).to_have_text('把标题改成紫色')
