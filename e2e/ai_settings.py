@@ -56,7 +56,8 @@ async def main():
         claude, image, fast = dlg.locator('[data-card=claude]'), dlg.locator('[data-card=image]'), dlg.locator('[data-card=fast]')
         # Claude Code opens on its own sign-in and needs nothing; its tabs hold only their own fields
         await expect(claude.locator('[data-mode=local]')).to_have_attribute('aria-pressed', 'true')
-        await expect(claude.locator('input')).to_have_count(0)
+        await expect(claude.locator('input')).to_have_count(1)  # only the claude command's own field
+        await expect(claude.locator('[data-claude-command] input')).to_have_count(1)
         await expect(claude.locator('[data-mode=box]')).to_contain_text('suggested')
         # fast AI: Tingly Box fills its address; Box is not running here, and the card says so
         await fast.locator('[data-preset=tingly-box]').click()

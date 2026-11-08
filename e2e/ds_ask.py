@@ -1,7 +1,8 @@
 """End-to-end checks for a design system's request bar (it hands everything to Claude Code): a request from
 every page reaches Claude Code with the page that is open and the theme the previews are drawn in, from the
 bar at the bottom and from the conversation column on the left; the edit lands in the open page; and on a
-machine without the claude command the bar says why and offers the AI settings.
+machine where the claude command is not found the bar says why and offers the AI settings, where a path typed
+by hand is tried as it is typed, saved, and from then on the requests are handed to it.
 Run after `pnpm build`: python3 e2e/ds_ask.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own servers (production mode, PORT=0) on a fresh projects folder with a stand-in `claude`, so it
 needs neither `pnpm dev` nor an API key."""
@@ -29,7 +30,7 @@ def start(tmp, projects, claude_src, log):
     server = subprocess.Popen(
         [os.path.join(REPO, 'apps/server/node_modules/.bin/tsx'), 'src/index.ts'], cwd=os.path.join(REPO, 'apps/server'),
         env={**os.environ, 'NODE_ENV': 'production', 'PORT': '0', 'DC_PROJECTS': projects, 'DC_EXIT_WITH_STDIN': '1',
-             'PATH': bin_dir + os.pathsep + os.environ['PATH'], 'FAKE_CLAUDE_LOG': log},
+             'PATH': bin_dir + os.pathsep + os.environ['PATH'], 'FAKE_CLAUDE_LOG': log, 'DC_CONFIG': os.path.join(tmp, f'ai-{os.path.basename(bin_dir)}.json'),},
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     port = None; t = time.time()
     while time.time() - t < 30:
@@ -103,9 +104,11 @@ async def main():
             await b.close()
         stop(server); server = None
 
-        # a machine without the claude command: the bar says why and offers the settings
+        # a machine where the claude command is not found: the bar says why and offers the settings
         log2 = os.path.join(tmp, 'claude2.log')
         server2, base2 = start(tmp, projects, BROKEN_CLAUDE, log2)
+        good = os.path.join(tmp, 'good'); os.makedirs(good)
+        open(os.path.join(good, 'claude'), 'w').write(FAKE_CLAUDE); os.chmod(os.path.join(good, 'claude'), 0o755)
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 860})
@@ -119,8 +122,39 @@ async def main():
             await pg.locator('.dsask textarea').fill('hi')
             check('sending stays off', await pg.locator('.dsask .send').is_disabled())
             await setup.click()
-            await expect(pg.get_by_role('dialog')).to_be_visible()
+            dlg = pg.get_by_role('dialog')
+            await expect(dlg).to_be_visible()
             check('the settings open from the bar', True)
+
+            # the card says the command is missing in every tab, and a path can be typed
+            claude = dlg.locator('[data-card=claude]')
+            await expect(claude.locator('[data-command-status=missing]')).to_be_visible()
+            check('the Claude Code card says the command is missing', await claude.locator('[data-state=missing]').count() == 1)
+            await claude.locator('[data-mode=box]').click()
+            check('whichever tab is open', await claude.locator('[data-state=missing]').count() == 1 and await claude.locator('[data-claude-command] input').count() == 1)
+            await claude.locator('[data-mode=local]').click()
+            cmd = claude.locator('[data-claude-command] input')
+            await cmd.fill(os.path.join(tmp, 'nowhere', 'claude'))
+            await expect(claude.locator('[data-command-status=missing]')).to_contain_text('没有可用的 claude 命令')
+            check('a path that does not answer is named as such', True)
+            await cmd.fill(os.path.join(good, 'claude'))
+            await expect(claude.locator('[data-command-status=found]')).to_contain_text('0.0.0 (fake)')
+            check('a path that answers is found, with its version, before anything is saved', await claude.locator('[data-state=ready]').count() == 1)
+            await dlg.get_by_role('button', name='保存').click()
+            await expect(dlg).to_have_count(0)
+            check('saving closes the dialog', True)
+
+            # the bar is open now, and a request goes to that command
+            await expect(pg.locator('.dsask textarea')).not_to_have_attribute('placeholder', '本机找不到 claude 命令，无法委托。')
+            check('the bar no longer says there is no claude command', await pg.locator('.dsask .setup').count() == 0)
+            await pg.locator('.dsask textarea').fill('让主色更暖一点')
+            await pg.locator('.dsask textarea').press('Enter')
+            await expect(pg.locator('.runfeed')).to_contain_text('Claude Code 完成', timeout=20000)
+            sent = requests(log2)
+            check('the request is handed to the command the person named', len(sent) == 1 and '让主色更暖一点' in sent[0])
+            await pg.reload()
+            await pg.wait_for_selector('.dsask textarea')
+            check('and it is remembered after a reload', await pg.locator('.dsask .setup').count() == 0)
             await b.close()
     finally:
         if server: stop(server)

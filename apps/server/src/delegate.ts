@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -10,6 +10,7 @@ import { linkedProjects, projectDir, readRefs, projectsIn, type Reference } from
 import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
 import { aiResolved, claudeLaunch } from './aiconfig';
+import { claudeCommand } from './claudeBin';
 import { TurnWriter } from './transcript';
 
 /**
@@ -22,11 +23,7 @@ import { TurnWriter } from './transcript';
  */
 
 export function claudeAvailable(): boolean {
-  try {
-    return spawnSync('claude', ['--version'], { timeout: 5000 }).status === 0;
-  } catch {
-    return false;
-  }
+  return claudeCommand().path !== null;
 }
 
 const SYSTEM = `You are editing a design canvas stored as files. A canvas folder holds canvas.json (artboard layout, notes) and one *.dc.html file per artboard.
@@ -291,7 +288,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
 
   // one attempt; a resume Claude Code no longer has is retried once as a new conversation
   const attempt = (resumeId: string | undefined) => {
-    const child = spawn('claude', resumeId ? [...args, '--resume', resumeId] : args, { cwd: ROOT, env: { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !launch.unset.includes(k))), ...launch.env, DC_PROJECTS: PROJECTS_DIR, DC_PROJECT_ARG: 'name' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(claudeCommand().path ?? 'claude', resumeId ? [...args, '--resume', resumeId] : args, { cwd: ROOT, env: { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !launch.unset.includes(k))), ...launch.env, DC_PROJECTS: PROJECTS_DIR, DC_PROJECT_ARG: 'name' }, stdio: ['ignore', 'pipe', 'pipe'] });
     children.set(id, {
       project,
       child,
