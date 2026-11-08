@@ -7,7 +7,7 @@
  * theme the doc wears, so the declarations follow the theme and carry no `var()`.
  *
  * The editor's page, the HTML / PDF / PNG exports and the WeChat article all apply the same declarations, so only
- * properties that every one of them keeps are allowed: no shadows, positioning, floats, flex, grid or transforms
+ * properties that every one of them keeps are allowed (`box-sizing` among them, so a frame round a picture stays inside the column): no shadows, positioning, floats, flex, grid or transforms
  * (the platform drops them), no pictures by address and no `var()`. What is not allowed is dropped with a reason,
  * like any other token that cannot be read.
  */
@@ -61,11 +61,12 @@ const PROPS = new Set([
   'border-radius', 'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
   'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
   'font-size', 'font-weight', 'font-style', 'letter-spacing', 'line-height', 'text-align', 'text-indent', 'text-decoration', 'text-transform',
-  'width', 'max-width', 'display', 'list-style-type',
+  'width', 'max-width', 'display', 'list-style-type', 'box-sizing',
 ]);
 
 const VALUE_RE = /^[A-Za-z0-9 #%(),./+_{}-]{1,120}$/;
 const DISPLAY = new Set(['block', 'inline', 'inline-block']);
+const BOX = new Set(['border-box', 'content-box']);
 
 /**
  * The declarations of one value, kept in the written order and written the same way (`prop:value;`). Each one that
@@ -83,6 +84,7 @@ export function parseDocDecls(raw: string): { css: string; dropped: string[] } {
     if (!PROPS.has(prop)) dropped.push(`"${prop || text}" is not a property a document keeps (the platform drops the others)`);
     else if (!VALUE_RE.test(value) || /url\(|var\(|expression|!important|@/i.test(value)) dropped.push(`"${prop}: ${value.slice(0, 40)}" is not a plain value (no url(), var(), !important)`);
     else if (prop === 'display' && !DISPLAY.has(value)) dropped.push(`"display: ${value}" is not block, inline or inline-block`);
+    else if (prop === 'box-sizing' && !BOX.has(value)) dropped.push(`"box-sizing: ${value}" is not border-box or content-box`);
     else kept.push(`${prop}:${value}`);
   }
   return { css: kept.join(';'), dropped };

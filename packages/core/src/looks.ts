@@ -1,6 +1,7 @@
 import { DS_COVER } from './designSystem';
 import { LOOK_BASE_CSS, LOOK_DATA } from './looks.data';
 import { DOC_ROLES } from './docRoles';
+import type { DocElement } from './docDecor';
 
 /**
  * Looks: ready-made starting points for a new design system, in groups by what they feel like. A look
@@ -33,6 +34,8 @@ export interface LookData {
     colors: Record<string, string>;
     styles: { name: string; size: number; line: number; weight?: number }[];
     space: Record<string, number>;
+    /** What it adds to an element beyond the values (`docDecor.ts`): CSS declarations with `{colour}` aliases. */
+    decor?: Partial<Record<DocElement, string>>;
   };
 }
 
@@ -97,6 +100,11 @@ const PLATFORM_LOOKS: readonly LookData[] = [
         { name: 'doc-code', size: 13, line: 1.6, weight: 400 },
       ],
       space: { 'doc-column': 677, 'doc-gap': 13, 'doc-indent': 24 },
+      // our sample of a system that dresses elements: a green bar beside the first-level heading, and a picture in a photograph's white frame
+      decor: {
+        h1: 'border-left: 6px solid {accent}; padding-left: 12px',
+        img: 'box-sizing: border-box; background-color: #ffffff; padding: 10px 10px 36px; border: 1px solid {line}',
+      },
     },
   },
 ];
@@ -125,6 +133,8 @@ const COLOUR_USAGE: Record<string, string> = {
   bad: 'Negative status.',
   'on-accent': 'Text on an accent fill.',
 };
+
+const DOC_ELEMENT_USE: Record<string, string> = { h1: 'Added to every first-level heading.', img: 'Added to every picture.' };
 
 const DOC_USE: Record<string, string> = Object.fromEntries(DOC_ROLES.map((r) => [r.name, r.use]));
 
@@ -184,6 +194,7 @@ export function lookTokens(look: LookData, name: string): string {
             ...Object.entries(look.doc?.space ?? {}).map(([n, v]) => ({ name: n, value: `${v}px`, usage: DOC_USE[n] ?? '' })),
           ],
         },
+        ...(look.doc?.decor ? { doc: { tokens: Object.entries(look.doc.decor).map(([name, value]) => ({ name, value, usage: DOC_ELEMENT_USE[name] ?? '' })) } } : {}),
         // a theme that gives no radius at all draws square corners
         radius: { tokens: pick(['radius-s', 'radius-m', 'radius-l'], look.radius.some(Boolean) ? look.radius : ['0px', '0px', '0px'], ['Chips and small controls.', 'Cards.', 'Large panels.']) },
         shadow: { tokens: pick(['raised', 'overlay'], look.shadow, ['Cards.', 'Menus and dialogs.']) },
