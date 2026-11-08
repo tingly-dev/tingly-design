@@ -845,3 +845,22 @@ export function starterTokens(name: string): string {
     ) + '\n'
   );
 }
+
+/** What each page of a design system shows, in the files Claude Code edits to change it. */
+const DS_PAGE_FILES: Record<string, string> = {
+  overview: 'the specimen, the palette, the cover (components/Cover/preview.html) and the brand book sections (README.md and the other *.md files)',
+  colors: 'the colour tokens of tokens.json, per theme',
+  type: 'the type styles and font faces of tokens.json (and fonts/)',
+  space: 'the spacing, radius, shadow and other plain tokens of tokens.json',
+  components: 'the components (components/<Comp>/README.md and preview.html, components/bundle.js and bundle.css)',
+  assets: 'the asset groups of design-system.json and the files under assets/',
+  issues: 'the problems the editor found in tokens.json',
+};
+
+/** What Claude Code is told about the design system the person is looking at, before their request. */
+export function dsViewContext(v: { view: string; theme?: { id: string; name: string }; themes?: number; issues?: { at: string; message: string }[] }): string {
+  const lines = [`The person has the ${v.view} page of the design system open: it shows ${DS_PAGE_FILES[v.view] ?? 'the system'}.`];
+  if (v.theme && (v.themes ?? 0) > 1) lines.push(`The previews are drawn in the theme "${v.theme.name}" (${v.theme.id}).`);
+  if (v.view === 'issues' && v.issues?.length) lines.push(`The problems listed there:\n${v.issues.slice(0, 20).map((i) => `- ${i.at}: ${i.message}`).join('\n')}`);
+  return lines.join('\n');
+}

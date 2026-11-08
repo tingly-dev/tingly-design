@@ -869,7 +869,8 @@ button.file-chip:hover {
 }
 
 
-.prompt .head .setup {
+.prompt .head .setup,
+.dsask .tools .setup {
   color: var(--accent);
   white-space: nowrap;
 }

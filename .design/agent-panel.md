@@ -71,7 +71,7 @@
 
 ## 4. 跨类型
 
-六种类型的栏是同一个 `RequestBar`（`RequestBar.tsx`）：运行卡片或历史、栏头、附件、输入框、发送 / 停止、提示，位置（底部或左侧列的脚）和折叠都在这里。各类型只决定栏头写什么、请求交给谁：画布、幻灯片、动效用 `PromptBar`，栏头多了指向的元素和快速 AI / Claude Code 的切换；设计系统、看板、文档用 `AskClaude`，只交给 Claude Code。栏的外观仍按 `.prompt` 和 `.dsask` 两个 class 区分，这两套样式要等样式表按区域拆开后再合并。矩阵见 [project-kinds.md](./project-kinds.md) 的"请求栏面板"一行。
+六种类型的栏是同一个 `RequestBar`（`RequestBar.tsx`）：运行卡片或历史、栏头、附件、输入框、发送 / 停止、提示，位置（底部或左侧列的脚）和折叠都在这里。各类型只决定栏头写什么、请求交给谁：画布、幻灯片、动效用 `PromptBar`，栏头多了指向的元素和快速 AI / Claude Code 的切换；设计系统、看板、文档用 `AskClaude`，只交给 Claude Code：它们没有快速 AI 可退，所以本机没有 `claude` 命令时栏子除了说明原因，还带“去设置”；每个类型把眼前的页面、选中的东西作为 `context` 交给它（设计系统：打开的页面、它显示的文件、预览主题，核心 `dsViewContext`）。栏的外观仍按 `.prompt` 和 `.dsask` 两个 class 区分，这两套样式要等样式表按区域拆开后再合并。矩阵见 [project-kinds.md](./project-kinds.md) 的"请求栏面板"一行。
 
 ## 5. 还开着的问题
 

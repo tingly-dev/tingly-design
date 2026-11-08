@@ -170,7 +170,7 @@ export function forgetConversation(project: string): void {
 const DELEGATE: Record<ProjectKind, { folder: string; viewing: string; system: string; tools: string[]; images: boolean }> = {
   design: { folder: 'Canvas', viewing: 'artboard', system: SYSTEM, tools: [], images: true },
   slides: { folder: 'Deck', viewing: 'slide', system: SLIDES_SYSTEM, tools: [], images: true },
-  'design-system': { folder: 'Design system', viewing: 'artboard', system: DS_SYSTEM, tools: [], images: false },
+  'design-system': { folder: 'Design system', viewing: 'file', system: DS_SYSTEM, tools: [], images: false },
   dashboard: { folder: 'Dashboard', viewing: 'page file', system: DASH_SYSTEM, tools: ['Bash(node scripts/dash-query.mjs:*)'], images: false },
   docs: { folder: 'Doc', viewing: 'tab', system: DOCS_SYSTEM, tools: [], images: true },
   motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM, tools: [], images: true },
