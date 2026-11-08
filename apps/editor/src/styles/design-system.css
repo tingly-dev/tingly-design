@@ -415,6 +415,12 @@ textarea.dsin {
 }
 
 
+.secbar .seg {
+  flex: none;
+  width: auto;
+}
+
+
 .mdedit {
   width: 100%;
   min-height: 420px;
@@ -1119,3 +1125,17 @@ textarea.dsin {
   }
 }
 
+
+
+/* the README drawn as a document wearing the system (ReadmeDesigned): a frame as tall as its page */
+.readme-designed iframe {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.readme-designed .hint {
+  margin: 4px 0 10px;
+}

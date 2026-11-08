@@ -88,6 +88,15 @@ export default {
     nothingToSave: 'Nothing on screen to save.',
     renameHint: 'Double-click to rename',
   },
+  readme: {
+    switchLabel: 'How to read the README',
+    withDesign: 'With design',
+    noDesign: 'No design',
+    frameTitle: 'The README in this design system',
+    noteDoc: 'Drawn as a document wearing this system: its colours, faces, and the sizes of its doc text styles.',
+    noteSizes: 'Drawn as a document wearing this system: its colours and faces. Type sizes come from the doc, because this system has no doc text styles.',
+    noteAppendix: 'The generated “Consuming this system” section is left out.',
+  },
   section: {
     editLabel: 'Edit {{path}}',
     empty: 'Write the brand book here: content principles, visual foundations, iconography, with real examples; usage rules should name tokens.',
