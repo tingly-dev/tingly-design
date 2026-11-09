@@ -141,6 +141,14 @@ export function consumingGuide(t: DsTokens): string {
   return out.join('\n');
 }
 
+/** `readme` without the generated appendix (whatever sits between its markers, markers included), and whether it had one. */
+export function withoutConsumingGuide(readme: string): { text: string; had: boolean } {
+  const b = readme.lastIndexOf(END);
+  const a = b >= 0 ? readme.lastIndexOf(BEGIN, b) : -1;
+  if (a < 0) return { text: readme, had: false };
+  return { text: (readme.slice(0, a) + readme.slice(b + END.length)).replace(/\s*$/, '\n'), had: true };
+}
+
 /** `readme` with the appendix replaced (between its markers) or appended; unchanged text keeps its bytes. */
 export function withConsumingGuide(readme: string, guide: string): string {
   // the appendix is the last thing in the file: a marker quoted in the brand book above it is not the one

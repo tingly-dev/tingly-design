@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consumingGuide, resolveTokens, withConsumingGuide } from '../src';
+import { consumingGuide, hasDocStyles, resolveTokens, withConsumingGuide, withoutConsumingGuide } from '../src';
 
 const tokens = resolveTokens({
   name: 'Ember',
@@ -84,5 +84,23 @@ describe('withConsumingGuide', () => {
     const again = withConsumingGuide(once, g);
     expect(again).toBe(once);
     expect(again.startsWith(quoted)).toBe(true);
+  });
+});
+
+describe('withoutConsumingGuide', () => {
+  it('drops the appendix and says it was there; a README without one comes back as it was', () => {
+    const readme = withConsumingGuide('# Ember\n\nBrand book.\n', consumingGuide(tokens));
+    const r = withoutConsumingGuide(readme);
+    expect(r.had).toBe(true);
+    expect(r.text).toBe('# Ember\n\nBrand book.\n');
+    expect(withoutConsumingGuide('# Ember\n')).toEqual({ text: '# Ember\n', had: false });
+  });
+});
+
+describe('hasDocStyles', () => {
+  it('is true only for a system with doc text styles', () => {
+    expect(hasDocStyles(tokens)).toBe(false);
+    const t = resolveTokens({ type: { groups: [{ name: 'Doc', styles: [{ name: 'doc-body', fontSize: '16px' }] }] } });
+    expect(hasDocStyles(t)).toBe(true);
   });
 });

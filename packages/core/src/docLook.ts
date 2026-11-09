@@ -118,6 +118,11 @@ function decorOf(t: DsTokens, themeId: string): Partial<Record<DocElement, strin
   return out;
 }
 
+/** Whether the system says anything about document type of its own (`doc-h1`…`doc-code`); without it a doc keeps its own sizes. */
+export function hasDocStyles(t: DsTokens, themeId = ''): boolean {
+  return DOC_ROLES.some((r) => r.kind === 'text' && docRoleGiven(t, r, themeId));
+}
+
 /**
  * The look a design system's theme gives a doc: its page, text, line, card and brand colours, its two faces and its corner
  * radius, and every `doc-*` role it gives itself (`DOC_ROLES`: colours, heading and body type, code, column, gap, indent).

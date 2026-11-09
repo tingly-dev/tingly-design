@@ -15,26 +15,50 @@ import { AssetsView, ComponentsView, Markdown, Preview } from './ComponentViews'
 import { JournalPopover } from '../Overlays';
 import { Specimen } from './Specimen';
 import { currentTheme } from '../../theme';
+import { Segmented } from '../Segmented';
+import { readPref, writePref } from '../../local';
+import { ReadmeDesigned } from './ReadmeDesigned';
+import { DocView } from './DocView';
 import { replaceUrl } from '../../host';
 import { useTranslation } from 'react-i18next';
 
 type View = DsViewId;
 
-const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'components', 'assets'];
+const VIEWS: Exclude<View, 'issues'>[] = ['overview', 'colors', 'type', 'space', 'doc', 'components', 'assets'];
 
 /** One brand-book section: rendered, or edited as markdown. */
-function Section({ path }: { path: string }) {
+function Section({ path, theme }: { path: string; theme: string }) {
   const { t: tr } = useTranslation();
   const text = useStore((s) => display(s, path)) ?? '';
+  const tokens = useTokens();
   const [editing, setEditing] = useState(false);
+  // the README can be read plain or drawn in the system itself (default); the choice stays in this browser
+  const isReadme = path === DS_README;
+  const [look, setLook] = useState<'design' | 'plain'>(() => (readPref('dc.ds.readme') === 'plain' ? 'plain' : 'design'));
+  const designed = isReadme && look === 'design' && tokens.themes.length > 0;
   const [draft, setDraft] = useState(text);
   useEffect(() => {
     if (!editing) setDraft(text);
   }, [text, editing]);
   return (
-    <div className="dssection" data-section={path}>
+    <div className="dssection" data-section={path} data-designed={designed && !editing && text.trim() ? '' : undefined}>
       <div className="secbar">
         <span className="hint">{path}</span>
+        {isReadme && !editing && (
+          <Segmented
+            value={look}
+            label={tr('ds.readme.switchLabel')}
+            data="readme"
+            options={[
+              { value: 'design', label: tr('ds.readme.withDesign') },
+              { value: 'plain', label: tr('ds.readme.noDesign') },
+            ]}
+            onChange={(v) => {
+              setLook(v);
+              writePref('dc.ds.readme', v);
+            }}
+          />
+        )}
         {editing ? (
           <>
             <button className="btn ghost" onClick={() => setEditing(false)}>
@@ -58,6 +82,8 @@ function Section({ path }: { path: string }) {
       </div>
       {editing ? (
         <textarea className="code mdedit" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label={tr('ds.section.editLabel', { path })} spellCheck={false} />
+      ) : text.trim() && designed ? (
+        <ReadmeDesigned text={text} tokens={tokens} theme={theme} />
       ) : text.trim() ? (
         <Markdown text={text} />
       ) : (
@@ -130,7 +156,7 @@ function Overview({ theme }: { theme: string }) {
         </div>
       )}
       {sections.map((p) => (
-        <Section key={p} path={p} />
+        <Section key={p} path={p} theme={theme} />
       ))}
     </section>
   );
@@ -228,6 +254,7 @@ export function DsApp() {
         {view === 'colors' && <ColorsView t={t} theme={theme} />}
         {view === 'type' && <TypeView t={t} />}
         {view === 'space' && <FamiliesView t={t} theme={theme} />}
+        {view === 'doc' && <DocView t={t} theme={theme} />}
         {view === 'components' && <ComponentsView t={t} index={index} theme={theme} />}
         {view === 'assets' && <AssetsView index={index} />}
         {view === 'issues' && <Issues />}
