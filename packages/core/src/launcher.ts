@@ -75,7 +75,8 @@ export type ProjectPreview =
       cover: boolean;
     }
   | { kind: 'dashboard'; datasets: string[] }
-  | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string }
+  /** `lang` is the doc's language: its text on the card is content, in that language, whatever the editor speaks */
+  | { kind: 'docs'; tabs: { title: string; depth: number }[]; excerpt: string; lang: string }
   | {
       kind: 'motion';
       /** every format's name and size, the primary one first */
@@ -188,7 +189,7 @@ const CARD: Record<ProjectKind, (c: CardCtx) => Promise<CardBody>> = {
     return {
       title: doc.title,
       count: doc.tabs.length,
-      preview: { kind: 'docs', tabs: doc.tabs.slice(0, 6).map((t) => ({ title: t.title, depth: depth(t.parent) })), excerpt },
+      preview: { kind: 'docs', tabs: doc.tabs.slice(0, 6).map((t) => ({ title: t.title, depth: depth(t.parent) })), excerpt, lang: doc.settings.lang },
     };
   },
   async design({ read, small }) {

@@ -5,7 +5,7 @@ import { InlineRename } from '../InlineRename';
 import { Segmented } from '../Segmented';
 import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
-import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import {
   IconArrowBackUp,
   IconArrowForwardUp,
@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docColorCss, docsViewContext, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docDecorCss, docLookCss, docLookVars, docsViewContext, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -40,7 +40,9 @@ import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { BlockBar, downloadTableCsv } from './BlockBar';
 import { CommentsRail } from './Comments';
 import { FileMenu, imageExportItems, type ExportItem } from '../FileMenu';
-import { CopyPicture, FilePdf, FileText, FileWord, Wechat } from '../icons';
+import { CopyPicture, FilePdf, FileText, FileWord, Palette, Wechat } from '../icons';
+import { DocTheme } from './DocTheme';
+import { currentDocLook, systemFontBase, useDocLook } from './docLookState';
 import { exportWechat, WechatPreview } from './WechatPreview';
 import { t as tNow } from '../../i18n';
 import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';
@@ -241,17 +243,18 @@ function docHtml(d: DocJson, only?: string): string {
       const md = (display(s, tabFile(t.id)) ?? '').replace(/\]\((\.\.\/)?((?:assets|uploads)\/[^)\s]+)\)/g, (_m, _p, path) => `](${api.rawBase(project)}${path})`);
       return `<section class="tab">${DOMPurify.sanitize(marked.parse(md, { gfm: true, async: false }) as string)}</section>`;
     });
-  const serif = '"Source Serif 4", Georgia, "Songti SC", "Noto Serif SC", serif';
-  const sans = 'system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif';
+  // what the doc wears is what the page draws: the doc's own look, or the design system and theme it chose (.design/doc-design-system.md)
+  const { look, worn, tokens } = currentDocLook();
   // the serif look names a hosted face: without the link the page (and every picture of it) draws a stand-in
-  const fonts = d.settings.headingFont === 'serif' || d.settings.bodyFont === 'serif' ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap">' : '';
+  const serif = !worn && (d.settings.headingFont === 'serif' || d.settings.bodyFont === 'serif');
+  const fonts = serif ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap">' : '';
+  // a system's faces: its hosted ones by @import (first in the sheet) and its font files from the project
+  const faces = worn && tokens ? lookFontCss(tokens, systemFontBase(worn.system)) : '';
   return `<!doctype html><html lang="${d.settings.lang}"><head><meta charset="utf-8"><title>${d.title.replace(/[<&]/g, '')}</title>${fonts}<style>
-body{max-width:${d.settings.width === 'wide' ? 1000 : 720}px;margin:40px auto;padding:0 24px;font:16px/1.75 ${d.settings.bodyFont === 'serif' ? serif : sans};color:#1d1d1b}
-h1,h2,h3,h4{font-family:${d.settings.headingFont === 'serif' ? serif : sans};line-height:1.3}
-table{border-collapse:collapse;display:block;max-width:100%;overflow-x:auto}td,th{border:1px solid #d6d4ce;padding:6px 10px}pre{background:#f5f5f3;padding:12px;border-radius:8px;overflow:auto}
-code{font-family:ui-monospace,Menlo,monospace;font-size:.9em}blockquote{margin:0;padding-left:16px;border-left:3px solid #d6d4ce;color:#555}
-${docColorCss()}
-img{max-width:100%}.tab+.tab{border-top:1px solid #e4e3df;margin-top:48px;padding-top:24px}@media print{.tab+.tab{break-before:page;border:0}}
+${faces}
+body{max-width:${d.settings.width === 'wide' ? 1000 : (look.column ?? 720)}px;margin:40px auto;padding:0 24px}
+${docLookCss(look)}
+img{max-width:100%}.tab+.tab{border-top:1px solid ${look.rule};margin-top:48px;padding-top:24px}@media print{.tab+.tab{break-before:page;border:0}}
 </style></head><body>${parts.join('\n')}</body></html>`;
 }
 
@@ -361,7 +364,28 @@ export function DocsApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useStore((s) => s.pane === 'comments');
   const comments = useComments();
-  const [pop, setPop] = useState<'settings' | 'versions' | null>(null);
+  const [pop, setPop] = useState<'settings' | 'versions' | 'theme' | null>(null);
+  const { look, worn, tokens } = useDocLook();
+  // the WeChat preview's "Change…" opens the Theme here
+  const themeAsked = useDocs((x) => x.themeAsked);
+  useEffect(() => {
+    if (!themeAsked) return;
+    setPop('theme');
+    useDocs.setState({ themeAsked: false });
+  }, [themeAsked]);
+  // a system's faces for the page: hosted ones by @import, font files from the project
+  useEffect(() => {
+    const id = 'doc-look-faces';
+    document.getElementById(id)?.remove();
+    if (!worn || !tokens) return;
+    const css = lookFontCss(tokens, systemFontBase(worn.system));
+    if (!css) return;
+    const el = document.createElement('style');
+    el.id = id;
+    el.textContent = css;
+    document.head.prepend(el);
+    return () => el.remove();
+  }, [worn?.system, tokens]);
   const source = useStore((s) => (tab ? display(s, tabFile(tab)) : '')) ?? '';
   const words = useMemo(() => wordCount(source), [source]);
 
@@ -388,12 +412,16 @@ export function DocsApp() {
 
   const order = tabOrder(d);
   return (
-    <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont}>
+    <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
       <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
         <div className="popwrap">
           <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
           {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
+        </div>
+        <div className="popwrap">
+          <BarButton icon={<Palette />} label={t('docs.theme.title')} title={t('docs.theme.hint')} on={pop === 'theme' || !!worn} data-theme-button="" onClick={() => setPop(pop === 'theme' ? null : 'theme')} />
+          {pop === 'theme' && <DocTheme />}
         </div>
         {tab && (
           <div className="popwrap">
@@ -424,7 +452,10 @@ export function DocsApp() {
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">
-          <div className="docpage">{tab && <DocEditor key={tab} tab={tab} />}</div>
+          <div className="docpage" style={worn ? (docLookVars(look) as CSSProperties) : undefined}>
+            {worn && <style>{docDecorCss(look, '.app.docs[data-wears] .docpage .docbody')}</style>}
+            {tab && <DocEditor key={tab} tab={tab} />}
+          </div>
         </div>
         <BlockBar />
         <AskClaude

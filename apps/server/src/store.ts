@@ -66,8 +66,7 @@ import {
 import { PROJECTS_DIR, SAMPLES_DIR } from './layout';
 import { logInfo, logWarn } from './log';
 import { repoOf } from './git';
-import type { ErrorKey, Language, TFunction } from '@dc/i18n';
-import { translator } from '@dc/i18n';
+import { hasLookDescription, translator, type ErrorKey, type Language, type TFunction } from '@dc/i18n';
 
 export { PROJECTS_DIR, ROOT as REPO_ROOT } from './layout';
 
@@ -523,8 +522,8 @@ export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
   if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
-  // a design system's text files, and a copy of one installed into a canvas or deck
-  if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/tokens\.json$/.test(r)) return r;
+  // a design system's text files, and a copy of one installed into a canvas, deck or doc (its tokens, and the description a built-in look carries)
+  if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/(tokens\.json|README\.md)$/.test(r)) return r;
   throw new HttpError(400, 'notProjectFile', { path: rel });
 }
 
@@ -882,6 +881,16 @@ export async function readEntry(name: string, rel: string): Promise<Buffer | nul
 
 type Written = { content: string; version: string };
 
+/** A look's own description (its words, in the person's language), when it has one; the html-ppt looks have none and carry its credit line instead. */
+export function lookDescription(look: NonNullable<ReturnType<typeof lookOf>>, title: string, t: TFunction): string | undefined {
+  return hasLookDescription(look.id) ? t(`starter.lookDescription.${look.id}`, { title }) : undefined;
+}
+
+/** The README a design system started from a look begins with. */
+export function lookReadme(look: NonNullable<ReturnType<typeof lookOf>>, title: string, t: TFunction): string {
+  return lookDescription(look, title, t) ?? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id });
+}
+
 /**
  * tokens.css is generated from tokens.json (never written by hand): rebuilt
  * whenever tokens.json changes, from the editor, Claude Code or a terminal.
@@ -1001,7 +1010,7 @@ const STARTER: Record<ProjectKind, (c: Starter) => Promise<void>> = {
   async 'design-system'({ name, title, t, look }) {
     const ns = namespaceOf(title) === 'DS' ? namespaceOf(name) : namespaceOf(title);
     await writeAtomic(name, DS_TOKENS, look ? lookTokens(look, title) : starterTokens(title));
-    await writeAtomic(name, DS_README, look ? t('starter.dsLookReadme', { title, look: t(`ds.look.${look.id}`, { defaultValue: look.id }), id: look.id }) : t('starter.dsReadme', { title }));
+    await writeAtomic(name, DS_README, look ? lookReadme(look, title, t) : t('starter.dsReadme', { title }));
     if (look) {
       const words = Object.fromEntries(LOOK_KIT_WORDS.map((k) => [k, t(`starter.lookKit.${k}`, { lib: ns })])) as Record<LookKitWord, string>;
       await Promise.all(Object.entries(lookKit(look, ns, title, words)).map(([path, text]) => writeAtomic(name, path, text)));

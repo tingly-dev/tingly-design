@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resources } from '../../i18n/src';
+import { hasLookDescription, resources } from '../../i18n/src';
 import { LOOKS, LOOK_GROUPS, LOOK_KIT_WORDS, compileTokensCss, componentNames, dsGlance, lookKit, lookOf, lookTokens, parseBundleHeader, parseCardMarker, resolveTokens } from '../src';
 
 type Bundle = { ds: { look: Record<string, string>; lookGroup: Record<string, string> }; starter: { lookKit: Record<string, string> } };
@@ -18,6 +18,22 @@ describe('LOOKS', () => {
       expect(Object.keys(lang.ds.look).sort()).toEqual(LOOKS.map((l) => l.id).sort());
       expect(Object.keys(lang.ds.lookGroup).sort()).toEqual([...LOOK_GROUPS].sort());
     }
+  });
+
+  it('describes a look in both languages only for a look that exists, and only the hand-written ones', () => {
+    type Words = { starter: { lookDescription: Record<string, string> } };
+    for (const lang of [en, zh] as unknown as Words[]) {
+      const ids = Object.keys(lang.starter.lookDescription);
+      expect(ids.sort()).toEqual(Object.keys((en as unknown as Words).starter.lookDescription).sort());
+      for (const id of ids) {
+        expect(lookOf(id), id).toBeDefined();
+        expect(hasLookDescription(id)).toBe(true);
+        expect(lang.starter.lookDescription[id]).toContain('{{title}}');
+      }
+    }
+    // a look made from html-ppt carries its credit line instead, so it has no description of its own
+    expect(hasLookDescription('nord')).toBe(false);
+    expect(hasLookDescription('constructor')).toBe(false);
   });
 
   it('turns every look into tokens the page reads without dropping anything', () => {

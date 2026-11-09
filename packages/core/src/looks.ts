@@ -1,5 +1,7 @@
 import { DS_COVER } from './designSystem';
 import { LOOK_BASE_CSS, LOOK_DATA } from './looks.data';
+import { DOC_ROLES } from './docRoles';
+import type { DocElement } from './docDecor';
 
 /**
  * Looks: ready-made starting points for a new design system, in groups by what they feel like. A look
@@ -8,7 +10,7 @@ import { LOOK_BASE_CSS, LOOK_DATA } from './looks.data';
  * one, change the script's groups and give its name in @dc/i18n (`ds.look.<id>`; the group is
  * `ds.lookGroup.<group>`); nothing else.
  */
-export const LOOK_GROUPS = ['clean', 'editorial', 'bold', 'tech', 'palette'] as const;
+export const LOOK_GROUPS = ['clean', 'editorial', 'bold', 'tech', 'palette', 'platform'] as const;
 export type LookGroup = (typeof LOOK_GROUPS)[number];
 
 export interface LookData {
@@ -27,9 +29,87 @@ export interface LookData {
   vars: Record<string, string>;
   /** The theme's own rules, on `lk-` classes and our token names. */
   css: string;
+  /** What a look says for documents (`DOC_ROLES`): `doc-*` colours (this look's one theme), text styles (size in px, line height, weight) and spacing tokens (px). A role left out follows the generic ones. */
+  doc?: {
+    colors: Record<string, string>;
+    styles: { name: string; size: number; line: number; weight?: number }[];
+    space: Record<string, number>;
+    /** What it adds to an element beyond the values (`docDecor.ts`): CSS declarations with `{colour}` aliases. */
+    decor?: Partial<Record<DocElement, string>>;
+  };
 }
 
-export const LOOKS: readonly LookData[] = LOOK_DATA;
+/**
+ * Looks of a platform a work is published to, written by hand (not from html-ppt, so not in `looks.data.ts`).
+ * WeChat is the Official Account's own reading look: white page, near-black text, the platform's green and
+ * its link blue, light grey grounds. A doc that wears it is drawn this way in the editor and every export,
+ * the WeChat paste included (`.design/wechat-export.md`).
+ */
+const PLATFORM_LOOKS: readonly LookData[] = [
+  {
+    id: 'wechat',
+    group: 'platform',
+    dark: false,
+    colors: {
+      surface: '#ffffff',
+      'surface-soft': '#f9f9f9',
+      'surface-raised': '#f6f8fa',
+      'surface-raised-2': '#f0f0f0',
+      line: '#dddddd',
+      'line-strong': '#bbbbbb',
+      ink: '#333333',
+      'ink-muted': '#666666',
+      'ink-faint': '#888888',
+      accent: '#07c160',
+      'accent-2': '#576b95',
+      'accent-3': '#fa5151',
+      good: '#07c160',
+      warn: '#ffc300',
+      bad: '#fa5151',
+      'on-accent': '#06311a',
+    },
+    families: {
+      sans: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+      display: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+      serif: "'Songti SC', 'Noto Serif SC', Georgia, serif",
+      mono: "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace",
+    },
+    hosted: [],
+    radius: ['4px', '6px', '8px'],
+    shadow: [null, null],
+    vars: {},
+    css: '',
+    // the reader's article, from the platform's phone view and the maintainer's own plugin: headings 24/20/18 bold at 1.4, 16px text at 1.8,
+    // a 677px column, green quote bar on a light ground. The code ink and the highlight are left to follow the generic roles.
+    doc: {
+      colors: {
+        'doc-heading': '#1a1a1a',
+        'doc-link': '#07c160',
+        'doc-quote-bar': '#07c160',
+        'doc-quote-bg': '#f9f9f9',
+        'doc-code-bg': '#f6f8fa',
+        'doc-table-head': '#f6f8fa',
+        'doc-rule': '#dddddd',
+      },
+      styles: [
+        { name: 'doc-h1', size: 24, line: 1.4, weight: 700 },
+        { name: 'doc-h2', size: 20, line: 1.4, weight: 700 },
+        { name: 'doc-h3', size: 18, line: 1.4, weight: 700 },
+        { name: 'doc-h4', size: 16, line: 1.4, weight: 700 },
+        { name: 'doc-body', size: 16, line: 1.8, weight: 400 },
+        { name: 'doc-code', size: 13, line: 1.6, weight: 400 },
+      ],
+      space: { 'doc-column': 677, 'doc-gap': 13, 'doc-indent': 24 },
+      // our sample of a system that dresses elements: a green bar beside the first-level heading, and a picture in a photograph's white frame
+      decor: {
+        h1: 'border-left: 6px solid {accent}; padding-left: 12px',
+        img: 'box-sizing: border-box; background-color: #ffffff; padding: 10px 10px 36px; border: 1px solid {line}',
+      },
+    },
+  },
+];
+
+export const LOOKS: readonly LookData[] = [...LOOK_DATA, ...PLATFORM_LOOKS];
 
 export function lookOf(id: string): LookData | undefined {
   return LOOKS.find((l) => l.id === id);
@@ -54,6 +134,10 @@ const COLOUR_USAGE: Record<string, string> = {
   'on-accent': 'Text on an accent fill.',
 };
 
+const DOC_ELEMENT_USE: Record<string, string> = { h1: 'Added to every first-level heading.', img: 'Added to every picture.' };
+
+const DOC_USE: Record<string, string> = Object.fromEntries(DOC_ROLES.map((r) => [r.name, r.use]));
+
 /** tokens.json for a new system that starts from `look`: its colours (one theme), families, radii and shadows, plus the generic text styles and spacing. */
 export function lookTokens(look: LookData, name: string): string {
   const pick = <T,>(names: string[], values: (T | null)[], usage: string[]) =>
@@ -65,7 +149,10 @@ export function lookTokens(look: LookData, name: string): string {
         version: 1,
         color: {
           themes: [look.dark ? { id: 'dark', name: 'Dark' } : { id: 'light', name: 'Light' }],
-          tokens: Object.entries(look.colors).map(([n, value]) => ({ name: n, value, usage: COLOUR_USAGE[n] ?? '' })),
+          tokens: [
+            ...Object.entries(look.colors).map(([n, value]) => ({ name: n, value, usage: COLOUR_USAGE[n] ?? '' })),
+            ...Object.entries(look.doc?.colors ?? {}).map(([n, value]) => ({ name: n, value, usage: DOC_USE[n] ?? '' })),
+          ],
         },
         type: {
           fonts: [],
@@ -82,9 +169,32 @@ export function lookTokens(look: LookData, name: string): string {
                 { name: 'caption', fontSize: '16px', lineHeight: 1.4, fontWeight: 500, usage: 'Labels and captions.' },
               ],
             },
+            ...(look.doc
+              ? [
+                  {
+                    name: 'Doc',
+                    family: 'sans',
+                    note: 'Text styles for documents: a doc wearing this system takes its heading, body and code sizes, line heights and weights from here.',
+                    styles: look.doc.styles.map((x) => ({
+                      name: x.name,
+                      ...(x.name.startsWith('doc-h') ? { family: 'display' } : x.name === 'doc-code' ? { family: 'mono' } : {}),
+                      fontSize: `${x.size}px`,
+                      lineHeight: x.line,
+                      fontWeight: x.weight ?? 400,
+                      usage: DOC_USE[x.name] ?? '',
+                    })),
+                  },
+                ]
+              : []),
           ],
         },
-        spacing: { tokens: [4, 8, 16, 32].map((n, i) => ({ name: `space-${i + 1}`, value: `${n}px`, usage: 'Layout rhythm.' })) },
+        spacing: {
+          tokens: [
+            ...[4, 8, 16, 32].map((n, i) => ({ name: `space-${i + 1}`, value: `${n}px`, usage: 'Layout rhythm.' })),
+            ...Object.entries(look.doc?.space ?? {}).map(([n, v]) => ({ name: n, value: `${v}px`, usage: DOC_USE[n] ?? '' })),
+          ],
+        },
+        ...(look.doc?.decor ? { doc: { tokens: Object.entries(look.doc.decor).map(([name, value]) => ({ name, value, usage: DOC_ELEMENT_USE[name] ?? '' })) } } : {}),
         // a theme that gives no radius at all draws square corners
         radius: { tokens: pick(['radius-s', 'radius-m', 'radius-l'], look.radius.some(Boolean) ? look.radius : ['0px', '0px', '0px'], ['Chips and small controls.', 'Cards.', 'Large panels.']) },
         shadow: { tokens: pick(['raised', 'overlay'], look.shadow, ['Cards.', 'Menus and dialogs.']) },

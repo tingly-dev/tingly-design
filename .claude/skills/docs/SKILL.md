@@ -11,7 +11,7 @@ A doc is a folder under `projects/<name>/`. The original Docs type keeps a doc i
 
 | path | what |
 |---|---|
-| `doc.json` | `{"title", "tabs": [{"id", "title", "parent"?}], "settings": {"headingFont": "sans"\|"serif", "bodyFont": …, "width": "default"\|"wide", "lang"}}`. `tabs` is the reading order; a tab with `parent` is a subtab of that (top-level) tab. Keep keys you are not changing. JSON, two-space indentation. |
+| `doc.json` | `{"title", "tabs": [{"id", "title", "parent"?}], "settings": {"headingFont": "sans"\|"serif", "bodyFont": …, "width": "default"\|"wide", "lang"}}`. `tabs` is the reading order; a tab with `parent` is a subtab of that (top-level) tab. Keep keys you are not changing. The editor also keeps `designSystems` (the design systems installed in the doc, their copies in `ds/<name>/tokens.json`) and `theme` (`{"system", "theme"}`, the one the doc wears: its colours, faces and corners, in the editor and every export). Never write colours into a tab to match it: change `theme` or ask the person to choose in the Theme menu, and leave `designSystems`, `theme` and `ds/` alone. JSON, two-space indentation. |
 | `tabs/<id>.md` | one tab's contents. `<id>` is `[A-Za-z0-9_-]`, 1–64 characters. |
 | `comments.json` | `{"threads": [{"id", "tab", "quote", "prefix"?, "suffix"?, "resolved"?, "comments": [{"id", "author", "text", "at", "reactions"?}]}]}` |
 | `assets/` | uploaded images, linked from a tab as `../assets/<file>`. |

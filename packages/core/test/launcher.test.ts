@@ -71,7 +71,7 @@ describe('projectCard', () => {
       'tabs/a.md': '# Handbook\n\nStatus: draft\n\nThis is **the** first [paragraph](https://x.dev).\n\nSecond.',
     };
     const c = await projectCard('hb', 'docs', Object.keys(files), reader(files));
-    expect(c.preview).toEqual({ kind: 'docs', tabs: [{ title: 'Overview', depth: 0 }, { title: 'Detail', depth: 1 }], excerpt: 'This is the first paragraph.' });
+    expect(c.preview).toEqual({ kind: 'docs', tabs: [{ title: 'Overview', depth: 0 }, { title: 'Detail', depth: 1 }], excerpt: 'This is the first paragraph.', lang: 'zh-CN' });
   });
 
   it('a motion piece counts its scenes, times it after speed and stands on its cover', async () => {

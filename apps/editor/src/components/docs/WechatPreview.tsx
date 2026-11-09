@@ -1,20 +1,23 @@
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { WechatIssue, WechatLook } from '@dc/core';
+import { docOwnLook, type WechatIssue } from '@dc/core';
 import { headlessActive } from '../../headless';
 import { toast } from '../../store';
 import { Dialog } from '../Dialog';
-import { Segmented } from '../Segmented';
-import { copyWechat, prepareWechat, renderWechat, saveLook, savedLook, saveWechat, wechatPage, type WechatPrepared } from './wechatExport';
+import { useInstalled } from '../ds/ds';
+import { CHANNEL_LOOK, applyLook, currentDocLook, docThemeName, useDocLook } from './docLookState';
+import { useDocs } from './docs';
+import { copyWechat, prepareWechat, renderWechat, saveWechat, wechatPage, type WechatPrepared } from './wechatExport';
 
 /**
  * "WeChat Official Account" in the doc's Import / Export menu: the article as the platform's editor
  * will get it, with what changed on the way above it and the one action that matters, Copy, below
  * (.design/wechat-export.md). The preview is our own picture of the paste, not the platform's.
- * What you see is what you get: it opens in the doc's own look; another look is chosen, not added.
- * The command line asks nothing: it gets the page as a file.
+ * What you see is what you get: the article is the doc as the editor shows it, in the design system and
+ * theme the doc wears (.design/doc-design-system.md); there is no look of its own here. The command line
+ * asks nothing: it gets the page as a file.
  */
-type State = { name: string; scope: string | null; prepared: WechatPrepared | null; look: WechatLook; error?: string } | null;
+type State = { name: string; scope: string | null; prepared: WechatPrepared | null; error?: string } | null;
 let state: State = null;
 const listeners = new Set<() => void>();
 const set = (next: State) => {
@@ -25,8 +28,8 @@ const subscribe = (fn: () => void) => (listeners.add(fn), () => void listeners.d
 
 /** Open the preview of the doc (or of the tab `only`, titled `tabTitle`). */
 export async function exportWechat(name: string, only?: string, tabTitle?: string): Promise<void> {
-  if (headlessActive()) return saveWechat(renderWechat(await prepareWechat(only), 'doc'), name);
-  const mine: NonNullable<State> = { name, scope: only ? (tabTitle ?? only) : null, prepared: null, look: savedLook() };
+  if (headlessActive()) return saveWechat(renderWechat(await prepareWechat(only), currentDocLook().look), name);
+  const mine: NonNullable<State> = { name, scope: only ? (tabTitle ?? only) : null, prepared: null };
   set(mine);
   try {
     const prepared = await prepareWechat(only);
@@ -55,28 +58,36 @@ function IssueLine({ issue }: { issue: WechatIssue }) {
 export function WechatPreview() {
   const value = useSyncExternalStore(subscribe, () => state);
   const { t } = useTranslation();
+  const { look, worn } = useDocLook();
+  const installed = useInstalled();
   if (!value) return null;
   const close = () => set(null);
-  const doc = value.prepared ? renderWechat(value.prepared, value.look) : null;
-  const pick = (look: WechatLook) => {
-    saveLook(look);
-    set({ ...value, look });
-  };
+  const doc = value.prepared ? renderWechat(value.prepared, look ?? docOwnLook()) : null;
+  const wornName = worn ? docThemeName({ title: worn.title, themes: installed.find((x) => x.record.namespace === worn.system)?.tokens.themes ?? [] }, worn.theme) : '';
   return (
     <Dialog label={t('docs.wechat.title')} className="wechat-preview" onClose={close}>
       <div className="dialog-body" data-testid="wechat-preview">
         <div className="wp-head">
           <span className="wp-scope">{value.scope ? t('docs.wechat.scopeTab', { name: value.scope }) : t('docs.wechat.scopeDoc')}</span>
-          <Segmented
-            label={t('docs.wechat.look')}
-            value={value.look}
-            data="look"
-            onChange={pick}
-            options={[
-              { value: 'doc', label: t('docs.wechat.lookDoc'), title: t('docs.wechat.lookDocHint') },
-              { value: 'wechat', label: t('docs.wechat.lookWechat'), title: t('docs.wechat.lookWechatHint') },
-            ]}
-          />
+          <span className="wp-style" data-testid="wechat-style">
+            <span>{worn ? t('docs.wechat.styleWorn', { name: wornName }) : t('docs.wechat.styleOwn')}</span>
+            {!worn && (
+              <button type="button" className="btn ghost sm" data-wechat-look="" onClick={() => void applyLook(CHANNEL_LOOK.wechat)}>
+                {t('docs.wechat.useWechat')}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn ghost sm"
+              data-wechat-change=""
+              onClick={() => {
+                close();
+                useDocs.setState({ themeAsked: true });
+              }}
+            >
+              {t('docs.wechat.change')}
+            </button>
+          </span>
         </div>
         {value.error ? <p role="alert">{t('docs.wechat.failed', { message: value.error })}</p> : null}
         {!doc && !value.error ? <p role="status">{t('docs.wechat.preparing')}</p> : null}

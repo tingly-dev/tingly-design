@@ -4,16 +4,18 @@ import { api, type DesignSystemChoice } from '../../api';
 import { DesignSystemPicker } from '../DesignSystemPicker';
 import { useInstalled } from '../ds/ds';
 import { forgetChange, recordChange, toast, useStore } from '../../store';
+import { wearWhenInstalled } from '../docs/docLookState';
 
 /**
- * Design systems in a canvas or deck: install a project system or built-in look
+ * Design systems in a canvas, deck or doc: install a project system or built-in look
  * (its tokens are copied into ds/<folder>/, and recorded in the
  * index), or remove one. Once installed, colour fields and the text style
  * menu offer its tokens.
  */
-export function DsInstall() {
+export function DsInstall({ heading = true }: { heading?: boolean } = {}) {
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
+  const docs = useStore((s) => s.kind === 'docs');
   const installed = useInstalled();
   const [systems, setSystems] = useState<{ name: string; title: string; aliases?: string[] }[]>([]);
   const [pick, setPick] = useState<DesignSystemChoice>('');
@@ -27,8 +29,12 @@ export function DsInstall() {
     try {
       const r = await api.installDs(project, from);
       const rec = (r.record ?? {}) as { namespace?: string; title?: string };
-      if (rec.namespace) recordChange({ type: 'designSystem', namespace: rec.namespace, title: rec.title ?? rec.namespace });
-      toast(r.fonts.length ? t('panel.ds.installedWithFonts', { count: r.fonts.length }) : t('panel.ds.installed'));
+      // a doc has no content to restyle: installing a system there wears it, and that is the one change Claude Code is told about
+      if (rec.namespace && docs) {
+        if (!installed.some((x) => x.record.namespace === rec.namespace)) void wearWhenInstalled(rec.namespace);
+      } else if (rec.namespace) recordChange({ type: 'designSystem', namespace: rec.namespace, title: rec.title ?? rec.namespace });
+      // a doc has no colour or text style menus: its toast says what happened to the doc
+      toast(docs ? t('docs.theme.installed', { name: rec.title ?? rec.namespace ?? '' }) : r.fonts.length ? t('panel.ds.installedWithFonts', { count: r.fonts.length }) : t('panel.ds.installed'));
       setPick('');
     } catch (e) {
       toast((e as Error).message, 'error');
@@ -38,7 +44,7 @@ export function DsInstall() {
   };
   return (
     <>
-      <h3>{t('panel.ds.title')}</h3>
+      {heading && <h3>{t('panel.ds.title')}</h3>}
       {installed.map((x) => {
         const from = x.record.artifact.replace(/^projects\//, '');
         return (

@@ -1,5 +1,7 @@
 import { marked, type Token, type Tokens } from 'marked';
 import { parseDataFile } from './dash';
+import { docOwnLook, type DocLook } from './docLook';
+import type { DocElement } from './docDecor';
 
 /**
  * A doc's Markdown as the HTML the WeChat Official Account editor keeps when it is pasted
@@ -16,11 +18,9 @@ export interface WechatPicture {
 }
 
 export interface WechatOptions {
-  headingFont?: 'sans' | 'serif';
-  bodyFont?: 'sans' | 'serif';
-  /** the look of the article; the default draws the doc as the doc draws itself */
-  look?: WechatLook;
-  /** `<span data-color="name">` names and their colours; a name not in here is left uncoloured */
+  /** what the article looks like: the doc's look (`docLookOf`), so the paste is what the editor shows; the doc's own look by default */
+  look?: DocLook;
+  /** `<span data-color="name">` names and their colours; the look's by default, a name not in here is left uncoloured */
   colors?: Record<string, string>;
   /** the picture behind each local path the Markdown writes (as `docToMarkdown` lists them) */
   images?: Map<string, WechatPicture>;
@@ -48,9 +48,6 @@ export interface WechatResult {
   links: WechatLink[];
   issues: WechatIssue[];
 }
-
-/** The brand colour of the links, the quote bar and the reference list. */
-export const WECHAT_ACCENT = '#07c160';
 
 const DRAWN: Record<string, 'diagram' | 'math'> = { mermaid: 'diagram', latex: 'math', tex: 'math', math: 'math' };
 
@@ -80,124 +77,59 @@ export function wechatFigures(markdown: string): { key: string; lang: string; so
   return out;
 }
 
-const SANS = `-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif`;
-const SERIF = `'Songti SC','Noto Serif SC',Georgia,'Times New Roman',serif`;
-const MONO = `'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace`;
-
 /**
- * What the article looks like is a *look*: a table of the style of each tag. What you see is what you get
- * (.design/wechat-export.md): the default look, `doc`, draws exactly what the doc draws in the editor and in its
- * own HTML export, no decoration the doc does not show. A look with its own design language (the
- * green of the platform's own editors, later a design system's tokens) is chosen on purpose, never added silently.
+ * The style of each tag, from the doc's look. What the article looks like is the doc's look and nothing else:
+ * what you see in the editor is what is pasted (`.design/wechat-export.md`). A look with its own design
+ * language is a design system the doc wears, never a decoration this table adds. A declaration list, no `var()`,
+ * nothing the editor is known to drop (position, float, flex, grid, transform, shadow).
  */
-export const WECHAT_LOOKS = ['doc', 'wechat'] as const;
-export type WechatLook = (typeof WECHAT_LOOKS)[number];
-
-/** The values a look is made of; each look is these filled in, and the table of tag styles is derived from them. */
-interface LookValues {
-  ink: string;
-  strong: string;
-  heading: string;
-  /** h1..h3 px; h4 and below follow */
-  sizes: [number, number, number];
-  /** a decoration of the h2 beside its text, or '' for none */
-  h2: string;
-  accent: string;
-  link: string;
-  rule: string;
-  quote: { border: string; bg: string; ink: string; italic: boolean };
-  ground: string;
-  codeInk: string;
-  inlineCodeInk: string;
-  thBg: string;
-  letter: string;
-  line: number;
-  paragraph: number;
-}
-
-const LOOKS: Record<WechatLook, LookValues> = {
-  // the editor's own page and the doc's HTML export (`docHtml`): the same ink, rules and grounds
-  doc: {
-    ink: '#1d1d1b',
-    strong: '#1d1d1b',
-    heading: '#1d1d1b',
-    sizes: [30, 22, 18],
-    h2: '',
-    accent: '#1d4ed8',
-    link: '#1d4ed8',
-    rule: '#d6d4ce',
-    quote: { border: '3px solid #d6d4ce', bg: 'transparent', ink: '#555555', italic: false },
-    ground: '#f5f5f3',
-    codeInk: '#1d1d1b',
-    inlineCodeInk: '#1d1d1b',
-    thBg: '#f5f5f3',
-    letter: '0',
-    line: 1.75,
-    paragraph: 10,
-  },
-  // the platform's own green, as the maintainer's vscode-wechat-md draws it
-  wechat: {
-    ink: '#333333',
-    strong: '#1a1a1a',
-    heading: '#1a1a1a',
-    sizes: [24, 20, 18],
-    h2: `padding-left:10px;border-left:4px solid ${WECHAT_ACCENT};`,
-    accent: WECHAT_ACCENT,
-    link: WECHAT_ACCENT,
-    rule: '#dddddd',
-    quote: { border: `4px solid ${WECHAT_ACCENT}`, bg: '#f9f9f9', ink: '#666666', italic: false },
-    ground: '#f6f8fa',
-    codeInk: '#24292e',
-    inlineCodeInk: '#d63384',
-    thBg: '#f0f0f0',
-    letter: '0.5px',
-    line: 1.8,
-    paragraph: 16,
-  },
-};
-
-/** The style of each tag. A declaration list, no `var()`, nothing the editor is known to drop (position, float, flex, grid, transform, shadow). */
-export function wechatStyles(o: Pick<WechatOptions, 'headingFont' | 'bodyFont' | 'look'> = {}): Record<string, string> {
-  const v = LOOKS[o.look ?? 'doc'] ?? LOOKS.doc;
-  const body = o.bodyFont === 'serif' ? SERIF : SANS;
-  const head = o.headingFont === 'serif' ? SERIF : SANS;
-  const weight = o.headingFont === 'serif' ? 600 : 700;
+export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> {
+  const [h1, h2, h3] = l.sizes;
+  const line = l.line;
+  const size = l.body;
+  const p = l.gap ?? 10;
+  const codeSize = l.codeSize ?? 13;
+  const indent = l.indent ?? 24;
   const heading = (size: number, top: number, bottom: number, extra = '') =>
-    `font-family:${head};font-size:${size}px;font-weight:${weight};color:${v.heading};line-height:1.3;margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
-  const [h1, h2, h3] = v.sizes;
-  const p = v.paragraph;
-  return {
-    root: `font-family:${body};font-size:16px;line-height:${v.line};color:${v.ink};letter-spacing:${v.letter};word-break:break-word;padding:0 8px;margin:0;`,
+    `font-family:${l.headingFont};font-size:${size}px;font-weight:${l.headingWeight};color:${l.heading};line-height:${l.headingLine};margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
+  const st: Record<string, string> = {
+    root: `font-family:${l.bodyFont};font-size:${size}px;line-height:${line};color:${l.ink};word-break:break-word;padding:${l.page ? '16px' : '0 8px'};margin:0;${l.page ? `background-color:${l.page};` : ''}`,
     h1: heading(h1, Math.round(h1 * 1.4), Math.round(h1 * 0.5)),
-    h2: heading(h2, Math.round(h2 * 1.4), Math.round(h2 * 0.5), v.h2),
+    h2: heading(h2, Math.round(h2 * 1.4), Math.round(h2 * 0.5)),
     h3: heading(h3, Math.round(h3 * 1.4), Math.round(h3 * 0.5)),
-    h4: heading(16, 22, 8),
-    h5: heading(15, 20, 8, `color:${v.quote.ink};`),
-    h6: heading(14, 20, 8, `color:${v.quote.ink};`),
-    p: `font-family:${body};font-size:16px;line-height:${v.line};color:${v.ink};margin:${p}px 0;padding:0;`,
-    strong: `font-weight:bold;color:${v.strong};`,
+    h4: heading(l.h4 ?? size, 22, 8),
+    h5: heading(15, 20, 8, `color:${l.muted};`),
+    h6: heading(14, 20, 8, `color:${l.muted};`),
+    p: `font-family:${l.bodyFont};font-size:${size}px;line-height:${line};color:${l.ink};margin:${p}px 0;padding:0;`,
+    strong: `font-weight:bold;color:${l.strong};`,
     em: 'font-style:italic;',
     del: 'text-decoration:line-through;',
-    mark: 'background-color:#ffeeb2;color:inherit;padding:0 1px;',
+    mark: `background-color:${l.mark};color:inherit;padding:0 1px;`,
     // the editor puts its own grey ground behind a bare <code>: say what the doc draws out loud
-    code: `font-family:${MONO};font-size:14px;color:${v.inlineCodeInk};background-color:${v.ground};padding:1px 4px;border-radius:4px;`,
-    pre: `background-color:${v.ground};border-radius:8px;padding:12px 14px;margin:${p}px 0;overflow-x:auto;`,
-    preCode: `font-family:${MONO};font-size:13px;line-height:1.6;color:${v.codeInk};background:none;padding:0;display:block;white-space:pre-wrap;`,
-    blockquote: `border-left:${v.quote.border};background-color:${v.quote.bg};color:${v.quote.ink};padding:${v.quote.bg === 'transparent' ? '0 0 0 16px' : '8px 16px'};margin:${p + 2}px 0;${v.quote.italic ? 'font-style:italic;' : ''}`,
-    ul: `padding-left:24px;margin:${p}px 0;list-style-type:disc;`,
-    ol: `padding-left:24px;margin:${p}px 0;list-style-type:decimal;`,
-    li: `font-size:16px;line-height:${v.line};color:${v.ink};margin:4px 0;`,
-    hr: `border:none;border-top:1px solid ${v.rule};margin:26px 0;height:1px;`,
-    a: `color:${v.link};text-decoration:${o.look === 'wechat' ? 'none' : 'underline'};`,
-    sup: `color:${v.link};font-size:12px;vertical-align:super;line-height:0;`,
-    img: `max-width:100%;border-radius:6px;display:block;margin:${p}px auto;`,
+    code: `font-family:${l.mono};font-size:${codeSize + 1}px;color:${l.inlineCode};background-color:${l.ground};padding:1px 4px;border-radius:4px;`,
+    pre: `background-color:${l.ground};border-radius:${l.radius}px;padding:12px 14px;margin:${p}px 0;overflow-x:auto;`,
+    preCode: `font-family:${l.mono};font-size:${codeSize}px;line-height:${l.codeLine ?? 1.6};color:${l.ink};background:none;padding:0;display:block;white-space:pre-wrap;`,
+    blockquote: `border-left:3px solid ${l.quote.bar};background-color:${l.quote.bg};color:${l.muted};padding:0 0 0 16px;margin:${p + 2}px 0;`,
+    ul: `padding-left:${indent}px;margin:${p}px 0;list-style-type:disc;`,
+    ol: `padding-left:${indent}px;margin:${p}px 0;list-style-type:decimal;`,
+    li: `font-size:${size}px;line-height:${line};color:${l.ink};margin:4px 0;`,
+    hr: `border:none;border-top:1px solid ${l.rule};margin:26px 0;height:1px;`,
+    a: `color:${l.link};text-decoration:underline;`,
+    sup: `color:${l.link};font-size:12px;vertical-align:super;line-height:0;`,
+    img: `max-width:100%;border-radius:${Math.min(l.radius, 6)}px;display:block;margin:${p}px auto;`,
     table: `width:100%;border-collapse:collapse;margin:${p + 6}px 0;font-size:15px;display:table;`,
-    th: `background-color:${v.thBg};border:1px solid ${v.rule};padding:6px 10px;font-weight:600;text-align:left;color:${v.ink};`,
-    td: `border:1px solid ${v.rule};padding:6px 10px;color:${v.ink};`,
-    refs: `margin:32px 0 0;padding-top:12px;border-top:1px solid ${v.rule};`,
-    refsTitle: `font-size:14px;font-weight:bold;color:${v.quote.ink};margin:0 0 6px;`,
-    ref: 'font-size:12px;line-height:1.7;color:#888888;margin:0 0 2px;word-break:break-all;',
+    th: `background-color:${l.tableHead};border:1px solid ${l.rule};padding:6px 10px;font-weight:600;text-align:left;color:${l.ink};`,
+    td: `border:1px solid ${l.rule};padding:6px 10px;color:${l.ink};`,
+    refs: `margin:32px 0 0;padding-top:12px;border-top:1px solid ${l.rule};`,
+    refsTitle: `font-size:14px;font-weight:bold;color:${l.muted};margin:0 0 6px;`,
+    ref: `font-size:12px;line-height:1.7;color:${l.faint};margin:0 0 2px;word-break:break-all;`,
   };
+  // what the system adds to an element goes after the values above, so it wins; the platform keeps it because it is all inline
+  for (const e of Object.keys(l.decor) as DocElement[]) {
+    const key = e === 'quote' ? 'blockquote' : e;
+    if (st[key] !== undefined) st[key] += `${l.decor[e]};`;
+  }
+  return st;
 }
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -217,7 +149,7 @@ class Writer {
   private depth = 0;
 
   constructor(private readonly o: WechatOptions) {
-    this.st = wechatStyles(o);
+    this.st = wechatStyles(o.look);
   }
 
   note(i: WechatIssue, key: string): void {
@@ -272,7 +204,7 @@ class Writer {
           else if (/^<\/mark>/i.test(tag)) state.mark = false;
           else if (/^<span\b/i.test(tag)) {
             const name = /data-color="([a-z]+)"/i.exec(tag)?.[1];
-            state.color = (name && this.o.colors?.[name]) || null;
+            state.color = (name && ((this.o.colors ?? this.o.look?.colors ?? docOwnLook().colors) as Record<string, string>)[name]) || null;
           } else if (/^<\/span>/i.test(tag)) state.color = null;
           else if (/^<br\s*\/?>/i.test(tag)) x += '<br>';
           else this.note({ kind: 'html-dropped' }, 'html');
