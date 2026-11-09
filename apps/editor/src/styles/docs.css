@@ -1015,3 +1015,16 @@
   margin-top: 6px;
 }
 
+
+/* WeChat Official Account preview: the issues above, the article at the platform's column width, Copy below (.design/wechat-export.md) */
+.wechat-preview { width: min(780px, 96vw); }
+.wechat-preview .wp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.wechat-preview .wp-scope { color: var(--muted); font-size: 13px; }
+.wechat-preview .wp-issues { margin: 0 0 12px; padding: 10px 14px 10px 30px; font-size: 14px; line-height: 1.6; background: var(--warn-soft); border-radius: 8px; max-height: 20vh; overflow: auto; }
+.wechat-preview .wp-issues li { margin: 2px 0; }
+.wechat-preview .wp-issues .ok { list-style: none; margin-left: -16px; color: var(--ok); }
+.wechat-preview .wp-frame { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+.wechat-preview .wp-frame iframe { display: block; width: 100%; height: min(58vh, 620px); border: 0; background: #fff; }
+.wechat-preview .wp-hint { margin: 12px 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.wechat-preview .wp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.wechat-preview .wp-head .seg { flex: none; width: auto; }

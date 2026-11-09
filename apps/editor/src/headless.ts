@@ -54,6 +54,9 @@ export function offerPrompt(file: () => string | undefined): () => void {
   };
 }
 
+/** True while the command line runs an item: one that opens a dialog to ask something makes its file instead. */
+export const headlessActive = (): boolean => catching !== null;
+
 /** True while an item runs headless: `download` hands the file here and does not click a link. */
 export function catchFile(name: string, file: Blob | string): boolean {
   if (!catching) return false;

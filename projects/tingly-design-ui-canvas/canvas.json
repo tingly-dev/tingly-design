@@ -159,6 +159,13 @@
       "w": 1800,
       "h": 1800,
       "title": "Review"
+    },
+    "DocWechat.dc.html": {
+      "x": 2300,
+      "y": 6200,
+      "w": 1300,
+      "h": 900,
+      "title": "Doc to WeChat Official Account"
     }
   },
   "order": [
@@ -179,6 +186,7 @@
     "DesignSystem.dc.html",
     "Dashboard.dc.html",
     "Doc.dc.html",
+    "DocWechat.dc.html",
     "Motion.dc.html",
     "AgentBar.dc.html",
     "Composer.dc.html",

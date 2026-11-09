@@ -40,7 +40,8 @@ import { DocEditor, docEditor, pickImage } from './DocEditor';
 import { BlockBar, downloadTableCsv } from './BlockBar';
 import { CommentsRail } from './Comments';
 import { FileMenu, imageExportItems, type ExportItem } from '../FileMenu';
-import { CopyPicture, FilePdf, FileText, FileWord } from '../icons';
+import { CopyPicture, FilePdf, FileText, FileWord, Wechat } from '../icons';
+import { exportWechat, WechatPreview } from './WechatPreview';
 import { t as tNow } from '../../i18n';
 import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';
 import { saveDocWord } from './wordExport';
@@ -289,6 +290,21 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => saveDocMarkdown(name, tab!),
     },
     {
+      id: 'wechat',
+      label: tNow('common.transfer.label.wechat'),
+      hint: tNow('common.transfer.hint.docWechat'),
+      icon: <Wechat />,
+      run: () => exportWechat(`${name}-wechat`),
+    },
+    {
+      id: 'wechat-tab',
+      label: tNow('common.transfer.label.wechatTab'),
+      hint: tNow('common.transfer.hint.docWechatTab'),
+      icon: <Wechat />,
+      disabled: !tab,
+      run: () => exportWechat(`${name}-wechat`, tab!, d.tabs.find((x) => x.id === tab)?.title),
+    },
+    {
       id: 'copy-md',
       label: tNow('common.transfer.label.copyMarkdownTab'),
       hint: tNow('common.transfer.hint.docCopyMd'),
@@ -387,6 +403,7 @@ export function DocsApp() {
         )}
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} />
       </TopBar>
+      <WechatPreview />
       <ListColumn label={t('docs.app.tabs')} className="docs">
         <aside className="doctabs" aria-label={t('docs.app.tabs')}>
           <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />

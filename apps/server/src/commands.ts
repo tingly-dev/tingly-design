@@ -94,7 +94,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     },
   },
   docs: {
-    formats: ['pdf', 'docx', 'html', 'md', 'png'],
+    formats: ['pdf', 'docx', 'html', 'md', 'wechat', 'png'],
     size: false,
     fast: false,
     pick: 'tab',
@@ -104,6 +104,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     async jobs(p, as, o, one) {
       const tab = one(o.tab);
       if (as === 'md') return tab ? [{ pick: tab, item: 'md' }] : [{ item: 'mdAll' }];
+      if (as === 'wechat') return tab ? [{ pick: tab, item: 'wechat-tab' }] : [{ item: 'wechat' }];
       if (as === 'png') return (tab ? [tab] : tabOrder(parseDoc(await readIn(p, 'doc.json'))).map((x) => x.id)).map((pick) => ({ pick, item: 'png' }));
       return [{ item: as }];
     },
