@@ -141,9 +141,14 @@ export function renderWechat(prepared: WechatPrepared, look: DocLook): WechatRes
   return markdownToWechat(prepared.markdown, { ...prepared.options, look }, t('docs.wechat.references'));
 }
 
-/** The page that holds the article: open it in a browser, select all, copy, paste. It is also what the preview shows. */
+/** The page that holds the article: open it in a browser, select all, copy, paste. It is also what the preview shows.
+ * The article itself names no font (the platform's specification asks exporters not to); this page puts the platform's
+ * own stack on its body, so the preview shows the type the paste becomes. */
+const PLATFORM_STACK =
+  `'mp-quote','PingFang SC',system-ui,-apple-system,'BlinkMacSystemFont','Helvetica Neue','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei',Arial,sans-serif`;
+
 export function wechatPage(html: string, title: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title.replace(/[<&]/g, '')}</title></head><body style="margin:0;padding:16px 0;background:#ffffff;">${html}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title.replace(/[<&]/g, '')}</title></head><body style="margin:0;padding:16px 0;background:#ffffff;font-family:${PLATFORM_STACK};">${html}</body></html>`;
 }
 
 /**
