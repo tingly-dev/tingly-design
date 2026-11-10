@@ -73,6 +73,7 @@
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [folder-groups.md](./folder-groups.md) | 按目录管理：打开一个装着项目的文件夹作为分组（`.folders.json`，成员看磁盘得到）、项目引用其他项目或文件夹，Claude Code 只读授权（`--add-dir` 加拒绝编辑的权限规则） | 已实施 |
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |
+| [skills-install.md](./skills-install.md) | 通用 skills CLI 的安装、发现与维护者内部 skill 边界 | 已实施；外部约定与验证见调研 |
 | [cli.md](./cli.md) | 命令行 `tingly-design`：命令用编辑器里同一个词（`open`、`new`、`list`、`check`、`export`）；服务端拆成路由和启动；核心给数据、命令行给措辞；`server.mjs` 就是 `serve`；找到正在运行的编辑器（`.server.json`）、`history`；其他类型的导出由本机 Chrome 打开编辑器、跑导出菜单自己的项（`headless.ts`、`pageExport.ts`），`check --snapshots`；命令抽成数据（`commands.ts`），同一份作为 MCP 工具（`/mcp`、`tingly-design mcp`），`skills add`；`prompt` 交给编辑器跑 Claude Code；`new -i` 交互式新建（流程在核心、提问在终端） | 第 1–5 步已实施；§6 是还开着的和暂不做的 |
 | [design-system-looks.md](./design-system-looks.md) | 设计系统的起点：从 36 个风格（html-ppt 的主题，MIT）里选一个，按感觉分五组；新建对话框、`new design-system --look`；原始英文名，画布和幻灯片可直接从收起的“内置”组装入；颜色字体圆角阴影之外，还带原主题规则画的组件和封面；DESIGN.md 导入是下一步 | 已实施；§5 是还原度，§6 是没做的 |
 | [design-system-guide.md](./design-system-guide.md) | 设计系统的“怎么用”：README 末尾由 tokens.json 生成的使用说明（链接、主题、变量与备用值、色阶、字体族、文字样式），画布和幻灯片为什么只能用值，以及 `.ttc` 字体集合 | 已实施；开放问题是画板链接样式表 |

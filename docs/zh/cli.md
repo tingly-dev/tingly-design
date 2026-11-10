@@ -35,6 +35,8 @@ pnpm tingly-design …              # 在本仓库里
 
 项目由它的文件夹决定：参数默认是路径（`./pitch`、`~/work/site`），`export`、`prompt`、`history` 不给参数就是当前所在的文件夹。名字可以重复、路径不会，所以只有加 `-n` / `--name` 才按名字找（`tingly-design check pitch --name`）；名字对应多个项目时列出每个路径，不替你挑。只写一个词、又不是项目文件夹时，会告诉你那个名字的项目在哪里。编辑器启动的 Claude Code 会话不在项目文件夹里运行，参数按名字读。`list`、`check`、`export` 就地读路径，不会把它加到启动页上。
 
+要为 [skills CLI](https://github.com/vercel-labs/skills) 支持的 agent 安装格式说明，在工作文件夹中运行 `npx skills add tingly-dev/tingly-design`，按提示选择 skill 和 agent。这只安装说明，不安装编辑器或 Tingly Design CLI；详见 [README](../../README.zh-CN.md)。
+
 ## 编辑器已经打开时
 
 运行中的服务会在它的项目文件夹里写 `.server.json`，停下时删掉。同一个文件夹上有服务在运行时，`open` 和 `new` 交给它来做：不会再起第二个服务，登记或新建的文件夹马上出现在打开着的启动页上，它记着的链接文件夹也不会被覆盖。不带项目的 `tingly-design check` 会说有没有编辑器在运行。`open` 带了 `--port` 时总是自己起服务。`pnpm dev` 下编辑器地址是 Vite 的（`DC_EDITOR_URL`，默认 `http://localhost:5173/`）。

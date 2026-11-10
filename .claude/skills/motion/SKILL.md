@@ -10,7 +10,7 @@ description: Read before creating or editing a motion piece (an animated video) 
 A motion piece is a folder under `projects/<name>/`:
 
 - `motion.json` — title, formats and their sizes, fps, speed, scene order and cover.
-- `scenes/<id>.html` — one file per scene: exactly one `<section id="<id>" …>`, written in the same closed HTML/CSS subset as a slide (see `.claude/skills/slides/SKILL.md`), sized to the format instead of a fixed 1920×1080.
+- `scenes/<id>.html` — one file per scene: exactly one `<section id="<id>" …>`, written in the same closed HTML/CSS subset as a slide (see the installed `slides` skill, or [its format reference](https://github.com/tingly-dev/tingly-design/blob/main/.claude/skills/slides/SKILL.md)), sized to the format instead of a fixed 1920×1080.
 
 The editor (`pnpm dev`, http://localhost:5173/?p=<name>) plays the piece and reloads within a second of a change. People may edit these files too, so **read a file right before you change it** and change only what was asked. `projects/tingly-design-motion` is a full example (a 36 s promo in 16:9 and 9:16 with a cover). The design notes are in `.design/motion.md`.
 

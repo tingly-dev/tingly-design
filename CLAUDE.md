@@ -83,6 +83,8 @@ Three things drift silently when a session forgets them. Each PR that touches on
 
 Update `CLAUDE.md` when a PR adds a project kind, a package or app, a cross-kind feature, a convention, a test suite, or a doc that future sessions must read first. If you had to discover something by reading code that a new session would need on day one, it belongs here or in a doc linked from here.
 
+The six format skills in `.claude/skills/` are also installed by `npx skills add tingly-dev/tingly-design`; the maintainer-only `issue-resolve` workflow uses `metadata.internal: true` to hide it from ordinary skills CLI discovery. Keep references usable outside the repository and in supported agents, including when only one skill is installed. See `.design/skills-install.md`.
+
 ## 2. `.design/`
 
 `.design/` holds the design notes: why a subsystem looks the way it is, the options weighed, what was decided and what is still open. `.design/README.md` is the index, with a row per note grouped by topic.
