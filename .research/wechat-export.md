@@ -40,7 +40,22 @@ web 编辑器,许可证 WTFPL(随便用)。它回答了插件没做的那些问�
 
 ## 3. 公众号编辑器到底收什么
 
-下表来源:几篇中文技术文章的一致说法(来源见末尾),**不是微信的官方规格**;微信官方文档只写了素材上传接口。标"实测?"的是我们没验证、需要用真实账号试。
+**官方规格(2026-11 找到,第三方之上的权威来源)**:[插件/第三方内容开发规范](https://developers.weixin.qq.com/doc/service/guide/product/plugin_spec.html),配套官方校验器 [wechatjs/verify-article-structure-spec](https://github.com/wechatjs/verify-article-structure-spec)(puppeteer CLI,退出码可接 CI,规则以仓库内 `verify_article_structure.md` 为准)。要点与我们的做法:
+
+| 官方规则 | 对我们的意义 |
+|---|---|
+| **不建议设置任何 `font-family`**;平台有自己的默认字体栈(`"mp-quote", PingFang SC, system-ui, …`),自设字体在 iOS 17+ 会出现大小/字距不一致 | **已照办**:文章不写 `font-family`(标题粗细仍随衬线选择变 600/700);预览页把平台默认栈放在 body 上,预览即所见 |
+| `width`:固定宽度不被鼓励(宽屏不居中/窄屏溢出/不同屏占比不一);建议 `<img>` 带 `data-w`(图片原始像素宽),校验器用它兜底 | **已照办**:图片不再写死 `width:677px`,只留 `max-width:100%`,并写 `data-w`;文字/列宽用 padding 与百分比自适应 |
+| `line-height` 不得小于字号(多行重叠);单行与纯图片元素豁免 | 我们的行高全部 ≥1(角色推导也限制在 1–3);`sup` 原写 `line-height:0`,已改 1 |
+| `text-align: start/end` 不用(不同端不一致) | 我们只写 left/center/right |
+| `<pre>` 不包普通段落(不换行会截断);代码块是它的正当用途 | 我们只在代码块用 `pre`,且 `white-space:pre-wrap` |
+| 嵌套:同标签+同样式+单子节点的链 ≤10 层;`span[leaf]` 只装行内;`section[nodeleaf]` 只装官方组件或 `img` | 我们结构扁平、无这些容器,天然合规 |
+| 不用 `!important`;`opacity:0` 图片、透明 `caret-color`、`height:0` 容器都会出问题 | 我们从不写这些;`docDecor` 的白名单也拒绝它们 |
+| Dark Mode:平台算法自动转色,保对比度;文字背景少用渐变;`data-no-dark` 可让单节点跳过 | 我们全部纯色,交给算法即可,无需标记 |
+
+官方校验器是后续把"预览=模拟"校准成"预览=实测"的现成工具(见 §7);本容器里没跑(puppeteer 要自带的 Chrome)。
+
+下表是官方规格之外的补充说法,来源:几篇中文技术文章的一致说法(来源见末尾)。标"实测?"的是我们没验证、需要用真实账号试。
 
 | 项 | 行为 | 把握 |
 |---|---|---|
@@ -131,7 +146,7 @@ web 编辑器,许可证 WTFPL(随便用)。它回答了插件没做的那些问�
 - FFengIll/vscode-wechat-md:`CLAUDE.md`、`src/renderer/{index,rules,wechatTransformer,containers,theme}.ts`、`src/panel/{imageUtils,PreviewPanel,webview}.ts`、`LICENSE`(MPL-2.0)。
 - doocs/md(WTFPL):`apps/web/src/services/export/{clipboard,clipboard-dom,wechat-svg}.ts`、`apps/web/src/components/editor/editor-header/index.vue`、`packages/core/src/{extensions/footnotes.ts,utils/mathjax.ts}`。
 - 公众号编辑器行为(第三方文章,非官方规格):[HTML/CSS 支持情况](https://www.axtonliu.ai/newsletters/ai-2/posts/wechat-article-html-css-support)、[图片转存与内联样式](https://juejin.cn/post/7678988101557190662)、[粘贴图片失败的原因](https://zhuanlan.zhihu.com/p/78437828)、[外链限制](https://yiban.io/blog/14900)、[mdnice 的外链转脚注](https://mdnice.com/writing/878ed8b436ce4a148e08127e97988a1d)。
-- 官方:[上传发表内容中的图片](https://developers.weixin.qq.com/doc/subscription/api/material/permanent/api_uploadimage.html)(jpg/png,1MB 以下)。
+- 官方:[上传发表内容中的图片](https://developers.weixin.qq.com/doc/subscription/api/material/permanent/api_uploadimage.html)(jpg/png,1MB 以下);[第三方内容开发规范](https://developers.weixin.qq.com/doc/service/guide/product/plugin_spec.html)(CSS/结构/字体/Dark Mode);[wechatjs/verify-article-structure-spec](https://github.com/wechatjs/verify-article-structure-spec)(官方校验器,`verify_article_structure.md` 为权威规则)。
 
 ## 9. 不走粘贴,还有什么出口;预览能不能直接做
 

@@ -16,8 +16,8 @@ export interface WechatPicture {
 }
 
 export interface WechatOptions {
+  /** serif headings draw a step lighter (600); the article never names a font itself */
   headingFont?: 'sans' | 'serif';
-  bodyFont?: 'sans' | 'serif';
   /** the look of the article; the default draws the doc as the doc draws itself */
   look?: WechatLook;
   /** `<span data-color="name">` names and their colours; a name not in here is left uncoloured */
@@ -80,15 +80,15 @@ export function wechatFigures(markdown: string): { key: string; lang: string; so
   return out;
 }
 
-const SANS = `-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif`;
-const SERIF = `'Songti SC','Noto Serif SC',Georgia,'Times New Roman',serif`;
-const MONO = `'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace`;
-
 /**
  * What the article looks like is a *look*: a table of the style of each tag. What you see is what you get
  * (.design/wechat-export.md): the default look, `doc`, draws exactly what the doc draws in the editor and in its
  * own HTML export, no decoration the doc does not show. A look with its own design language (the
  * green of the platform's own editors, later a design system's tokens) is chosen on purpose, never added silently.
+ *
+ * The platform's own specification (developers.weixin.qq.com, plugin_spec) asks exporters not to set any
+ * `font-family`: the platform draws its own tuned stack, and a written one draws differently on iOS 17+. So no
+ * style here names a font; the preview page puts the platform's stack on its body to show what the paste becomes.
  */
 export const WECHAT_LOOKS = ['doc', 'wechat'] as const;
 export type WechatLook = (typeof WECHAT_LOOKS)[number];
@@ -156,40 +156,38 @@ const LOOKS: Record<WechatLook, LookValues> = {
   },
 };
 
-/** The style of each tag. A declaration list, no `var()`, nothing the editor is known to drop (position, float, flex, grid, transform, shadow). */
-export function wechatStyles(o: Pick<WechatOptions, 'headingFont' | 'bodyFont' | 'look'> = {}): Record<string, string> {
+/** The style of each tag. A declaration list, no `var()`, no `font-family` (the platform draws its own stack), nothing the editor is known to drop (position, float, flex, grid, transform, shadow). */
+export function wechatStyles(o: Pick<WechatOptions, 'headingFont' | 'look'> = {}): Record<string, string> {
   const v = LOOKS[o.look ?? 'doc'] ?? LOOKS.doc;
-  const body = o.bodyFont === 'serif' ? SERIF : SANS;
-  const head = o.headingFont === 'serif' ? SERIF : SANS;
   const weight = o.headingFont === 'serif' ? 600 : 700;
   const heading = (size: number, top: number, bottom: number, extra = '') =>
-    `font-family:${head};font-size:${size}px;font-weight:${weight};color:${v.heading};line-height:1.3;margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
+    `font-size:${size}px;font-weight:${weight};color:${v.heading};line-height:1.3;margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
   const [h1, h2, h3] = v.sizes;
   const p = v.paragraph;
   return {
-    root: `font-family:${body};font-size:16px;line-height:${v.line};color:${v.ink};letter-spacing:${v.letter};word-break:break-word;padding:0 8px;margin:0;`,
+    root: `font-size:16px;line-height:${v.line};color:${v.ink};letter-spacing:${v.letter};word-break:break-word;padding:0 8px;margin:0;`,
     h1: heading(h1, Math.round(h1 * 1.4), Math.round(h1 * 0.5)),
     h2: heading(h2, Math.round(h2 * 1.4), Math.round(h2 * 0.5), v.h2),
     h3: heading(h3, Math.round(h3 * 1.4), Math.round(h3 * 0.5)),
     h4: heading(16, 22, 8),
     h5: heading(15, 20, 8, `color:${v.quote.ink};`),
     h6: heading(14, 20, 8, `color:${v.quote.ink};`),
-    p: `font-family:${body};font-size:16px;line-height:${v.line};color:${v.ink};margin:${p}px 0;padding:0;`,
+    p: `font-size:16px;line-height:${v.line};color:${v.ink};margin:${p}px 0;padding:0;`,
     strong: `font-weight:bold;color:${v.strong};`,
     em: 'font-style:italic;',
     del: 'text-decoration:line-through;',
     mark: 'background-color:#ffeeb2;color:inherit;padding:0 1px;',
     // the editor puts its own grey ground behind a bare <code>: say what the doc draws out loud
-    code: `font-family:${MONO};font-size:14px;color:${v.inlineCodeInk};background-color:${v.ground};padding:1px 4px;border-radius:4px;`,
+    code: `font-size:14px;color:${v.inlineCodeInk};background-color:${v.ground};padding:1px 4px;border-radius:4px;`,
     pre: `background-color:${v.ground};border-radius:8px;padding:12px 14px;margin:${p}px 0;overflow-x:auto;`,
-    preCode: `font-family:${MONO};font-size:13px;line-height:1.6;color:${v.codeInk};background:none;padding:0;display:block;white-space:pre-wrap;`,
+    preCode: `font-size:13px;line-height:1.6;color:${v.codeInk};background:none;padding:0;display:block;white-space:pre-wrap;`,
     blockquote: `border-left:${v.quote.border};background-color:${v.quote.bg};color:${v.quote.ink};padding:${v.quote.bg === 'transparent' ? '0 0 0 16px' : '8px 16px'};margin:${p + 2}px 0;${v.quote.italic ? 'font-style:italic;' : ''}`,
     ul: `padding-left:24px;margin:${p}px 0;list-style-type:disc;`,
     ol: `padding-left:24px;margin:${p}px 0;list-style-type:decimal;`,
     li: `font-size:16px;line-height:${v.line};color:${v.ink};margin:4px 0;`,
     hr: `border:none;border-top:1px solid ${v.rule};margin:26px 0;height:1px;`,
     a: `color:${v.link};text-decoration:${o.look === 'wechat' ? 'none' : 'underline'};`,
-    sup: `color:${v.link};font-size:12px;vertical-align:super;line-height:0;`,
+    sup: `color:${v.link};font-size:12px;vertical-align:super;line-height:1;`,
     img: `max-width:100%;border-radius:6px;display:block;margin:${p}px auto;`,
     table: `width:100%;border-collapse:collapse;margin:${p + 6}px 0;font-size:15px;display:table;`,
     th: `background-color:${v.thBg};border:1px solid ${v.rule};padding:6px 10px;font-weight:600;text-align:left;color:${v.ink};`,
@@ -323,8 +321,9 @@ class Writer {
   }
 
   private img(p: WechatPicture, alt: string): string {
-    const size = p.width && p.height ? `width:${Math.min(p.width, 677)}px;` : '';
-    return `<img src="${esc(p.src)}" alt="${alt}" style="${this.st.img}${size}">`;
+    // the platform asks for no fixed width (it breaks on narrower screens) and suggests `data-w` = the picture's own width
+    const w = p.width ? ` data-w="${p.width}"` : '';
+    return `<img src="${esc(p.src)}" alt="${alt}"${w} style="${this.st.img}">`;
   }
 
   // ---------------------------------------------------------------- blocks
