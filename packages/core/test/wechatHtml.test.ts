@@ -94,7 +94,7 @@ describe('markdownToWechat', () => {
 
   it('puts the picture in by its decoded path and flags a remote one', () => {
     expect(r.html).toContain('src="data:image/png;base64,AAAA"');
-    expect(r.html).toContain('width:100px;');
+    expect(r.html).toContain('data-w="100"');
     expect(r.issues).toContainEqual({ kind: 'picture-remote', url: 'https://cdn.example.com/p.png' });
   });
 
@@ -117,9 +117,12 @@ describe('markdownToWechat', () => {
     expect(r.text).not.toMatch(/<\/?[a-z]/);
   });
 
-  it('follows the doc look for the fonts', () => {
-    expect(wechatStyles(docOwnLook({ headingFont: 'sans', bodyFont: 'serif' })).p).toContain('Source Serif');
-    expect(wechatStyles().p).toContain('PingFang');
+  it('names no font: the platform draws its own stack (the official specification asks for it)', () => {
+    const st = wechatStyles();
+    for (const [tag, css] of Object.entries(st)) expect(css, tag).not.toContain('font-family');
+    // the one thing the font choice still decides is the weight of the headings
+    expect(st.h1).toContain('font-weight:700');
+    expect(wechatStyles(docOwnLook({ headingFont: 'serif', bodyFont: 'serif' })).h1).toContain('font-weight:600');
   });
 });
 

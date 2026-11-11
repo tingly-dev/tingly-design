@@ -20,7 +20,6 @@ export interface WechatPicture {
 export interface WechatOptions {
   /** what the article looks like: the doc's look (`docLookOf`), so the paste is what the editor shows; the doc's own look by default */
   look?: DocLook;
-  /** `<span data-color="name">` names and their colours; the look's by default, a name not in here is left uncoloured */
   colors?: Record<string, string>;
   /** the picture behind each local path the Markdown writes (as `docToMarkdown` lists them) */
   images?: Map<string, WechatPicture>;
@@ -82,6 +81,10 @@ export function wechatFigures(markdown: string): { key: string; lang: string; so
  * what you see in the editor is what is pasted (`.design/wechat-export.md`). A look with its own design
  * language is a design system the doc wears, never a decoration this table adds. A declaration list, no `var()`,
  * nothing the editor is known to drop (position, float, flex, grid, transform, shadow).
+ *
+ * No style names a font: the platform's own specification (developers.weixin.qq.com, plugin_spec) asks exporters
+ * not to set any `font-family` — the platform draws its own tuned stack, and a written one draws differently on
+ * iOS 17+. The preview page puts the platform's stack on its body to show what the paste becomes.
  */
 export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> {
   const [h1, h2, h3] = l.sizes;
@@ -91,31 +94,31 @@ export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> 
   const codeSize = l.codeSize ?? 13;
   const indent = l.indent ?? 24;
   const heading = (size: number, top: number, bottom: number, extra = '') =>
-    `font-family:${l.headingFont};font-size:${size}px;font-weight:${l.headingWeight};color:${l.heading};line-height:${l.headingLine};margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
+    `font-size:${size}px;font-weight:${l.headingWeight};color:${l.heading};line-height:${l.headingLine};margin:${top}px 0 ${bottom}px;padding:0;${extra}`;
   const st: Record<string, string> = {
-    root: `font-family:${l.bodyFont};font-size:${size}px;line-height:${line};color:${l.ink};word-break:break-word;padding:${l.page ? '16px' : '0 8px'};margin:0;${l.page ? `background-color:${l.page};` : ''}`,
+    root: `font-size:${size}px;line-height:${line};color:${l.ink};word-break:break-word;padding:${l.page ? '16px' : '0 8px'};margin:0;${l.page ? `background-color:${l.page};` : ''}`,
     h1: heading(h1, Math.round(h1 * 1.4), Math.round(h1 * 0.5)),
     h2: heading(h2, Math.round(h2 * 1.4), Math.round(h2 * 0.5)),
     h3: heading(h3, Math.round(h3 * 1.4), Math.round(h3 * 0.5)),
     h4: heading(l.h4 ?? size, 22, 8),
     h5: heading(15, 20, 8, `color:${l.muted};`),
     h6: heading(14, 20, 8, `color:${l.muted};`),
-    p: `font-family:${l.bodyFont};font-size:${size}px;line-height:${line};color:${l.ink};margin:${p}px 0;padding:0;`,
+    p: `font-size:${size}px;line-height:${line};color:${l.ink};margin:${p}px 0;padding:0;`,
     strong: `font-weight:bold;color:${l.strong};`,
     em: 'font-style:italic;',
     del: 'text-decoration:line-through;',
     mark: `background-color:${l.mark};color:inherit;padding:0 1px;`,
     // the editor puts its own grey ground behind a bare <code>: say what the doc draws out loud
-    code: `font-family:${l.mono};font-size:${codeSize + 1}px;color:${l.inlineCode};background-color:${l.ground};padding:1px 4px;border-radius:4px;`,
+    code: `font-size:${codeSize + 1}px;color:${l.inlineCode};background-color:${l.ground};padding:1px 4px;border-radius:4px;`,
     pre: `background-color:${l.ground};border-radius:${l.radius}px;padding:12px 14px;margin:${p}px 0;overflow-x:auto;`,
-    preCode: `font-family:${l.mono};font-size:${codeSize}px;line-height:${l.codeLine ?? 1.6};color:${l.ink};background:none;padding:0;display:block;white-space:pre-wrap;`,
+    preCode: `font-size:${codeSize}px;line-height:${l.codeLine ?? 1.6};color:${l.ink};background:none;padding:0;display:block;white-space:pre-wrap;`,
     blockquote: `border-left:3px solid ${l.quote.bar};background-color:${l.quote.bg};color:${l.muted};padding:0 0 0 16px;margin:${p + 2}px 0;`,
     ul: `padding-left:${indent}px;margin:${p}px 0;list-style-type:disc;`,
     ol: `padding-left:${indent}px;margin:${p}px 0;list-style-type:decimal;`,
     li: `font-size:${size}px;line-height:${line};color:${l.ink};margin:4px 0;`,
     hr: `border:none;border-top:1px solid ${l.rule};margin:26px 0;height:1px;`,
     a: `color:${l.link};text-decoration:underline;`,
-    sup: `color:${l.link};font-size:12px;vertical-align:super;line-height:0;`,
+    sup: `color:${l.link};font-size:12px;vertical-align:super;line-height:1;`,
     img: `max-width:100%;border-radius:${Math.min(l.radius, 6)}px;display:block;margin:${p}px auto;`,
     table: `width:100%;border-collapse:collapse;margin:${p + 6}px 0;font-size:15px;display:table;`,
     th: `background-color:${l.tableHead};border:1px solid ${l.rule};padding:6px 10px;font-weight:600;text-align:left;color:${l.ink};`,
@@ -255,8 +258,9 @@ class Writer {
   }
 
   private img(p: WechatPicture, alt: string): string {
-    const size = p.width && p.height ? `width:${Math.min(p.width, 677)}px;` : '';
-    return `<img src="${esc(p.src)}" alt="${alt}" style="${this.st.img}${size}">`;
+    // the platform asks for no fixed width (it breaks on narrower screens) and suggests `data-w` = the picture's own width
+    const w = p.width ? ` data-w="${p.width}"` : '';
+    return `<img src="${esc(p.src)}" alt="${alt}"${w} style="${this.st.img}">`;
   }
 
   // ---------------------------------------------------------------- blocks
