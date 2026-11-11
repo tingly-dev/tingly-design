@@ -44,9 +44,12 @@
 
 - `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_API_KEY` 是宿主的网关：快速 AI 的地址和密钥，也是 Claude Code「自定义地址」标签的地址和密钥。宿主设了地址，Claude Code 就固定在这个标签上（标签不再显示），按宿主给的原样启动。
 - `DC_FAST_MODEL` 是快速 AI 的模型；`DC_DELEGATE_MODEL` 是 Claude Code 的模型，对每个标签都生效（本地登录也会带上）。
+- `DC_CLAUDE_COMMAND` 是 `claude` 命令本身（路径或 PATH 上的名字），对每个标签都生效；界面里同一栏存的值（`claudeCommand`）排在它后面。
 - `DC_IMAGE_*` 见 [image-generation.md](./image-generation.md)。
 
 解析是纯函数（`packages/core/src/aiConfig.ts` 的 `resolveAi`），服务端和测试共用；服务端只管读写文件和密钥。结果按卡分：`fast`、`claude`（`mode`、`box`、`custom` 各有自己的令牌和模型）、`image`。
+
+**`claude` 命令在哪。** 三个标签最后都要起 `claude`，所以命令不属于哪个标签，而是 Claude Code 这张卡底部的一栏（`claudeCommand`，路径或名字）。留空就用服务器 PATH 上的 `claude`，不自己到别处搜：桌面应用、服务里起的服务器常常没有 shell 的 PATH，找不到时说清楚并让人填，比猜一个装在哪里的 `claude` 稳（猜到的可能是另一个版本、另一个账号）。填了就以它为准，不满足时不悄悄退回 PATH 上的那个；这一栏边填边试（`POST /api/ai-config/claude-command` 跑一次 `--version`，回路径和版本），没保存也看得到结果，卡头在任何标签下都按它说“没有 claude 命令”。找到过的命令在设置不变时不再问；没找到的每隔几秒再问一次，装好了不用重启。请求栏在没有命令时灰掉并带“去设置”（画布、幻灯片、动效、设计系统、看板、文档同一个入口）。
 
 Claude Code 没存过选择时的默认：宿主给了密钥就是自定义地址，否则是本地登录（装了 `claude` 并登录过的人不需要任何密钥，我们不碰它的环境变量）。人明确选过之后就记下来，不再自动变。
 

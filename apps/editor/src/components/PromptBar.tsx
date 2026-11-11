@@ -21,13 +21,9 @@ export function PromptBar() {
   const health = useStore((s) => s.health);
   const delegates = useStore((s) => s.delegates);
   const canvas = useCanvas();
-  const [target, setTarget] = useState<Target>('ai');
-
-  useEffect(() => {
-    if (health && !health.fastEdit && health.claudeCli && target === 'ai') setTarget('claude');
-    // only when health first arrives
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [health]);
+  // Claude Code answers by default; the fast model is the rare, quick change the person asks for, and the answer when this machine has no claude command
+  const [picked, setTarget] = useState<Target | null>(null);
+  const target: Target = picked ?? (health?.claudeCli === false && health.fastEdit ? 'ai' : 'claude');
 
   const slides = useStore((s) => s.kind === 'slides');
   const motion = useStore((s) => s.kind === 'motion');
@@ -134,8 +130,8 @@ export function PromptBar() {
             value={target}
             onChange={setTarget}
             options={[
-              { value: 'ai', label: t('prompt.bar.fastAi') },
               { value: 'claude', label: 'Claude Code' },
+              { value: 'ai', label: t('prompt.bar.fastAi') },
             ]}
           />
           {why && (

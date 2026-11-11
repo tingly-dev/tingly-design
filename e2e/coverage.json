@@ -21,7 +21,8 @@
       "run_feed"
     ],
     "design-system": [
-      "run_feed"
+      "run_feed",
+      "ds_ask"
     ],
     "dashboard": [
       "run_feed"

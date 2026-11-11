@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   colorIn,
+  dsViewContext,
   compileTokensCss,
   componentNames,
   dsFolderOf,
@@ -209,5 +210,22 @@ describe('font collections', () => {
     const t = resolveTokens({ type: { fonts: [{ family: 'Noto Sans CJK', file: 'NotoSansCJK.ttc', weight: '400' }] } });
     expect(t.fonts.map((f) => f.file)).toEqual(['fonts/NotoSansCJK.ttc']);
     expect(compileTokensCss(t)).toContain('url("fonts/NotoSansCJK.ttc") format("collection")');
+  });
+});
+
+describe('dsViewContext', () => {
+  it('names the page and the files it shows', () => {
+    const c = dsViewContext({ view: 'colors' });
+    expect(c).toContain('the colors page');
+    expect(c).toContain('tokens.json');
+  });
+  it('says which theme the previews are drawn in only when there are several', () => {
+    expect(dsViewContext({ view: 'type', theme: { id: 'dark', name: 'Dark' }, themes: 2 })).toContain('theme "Dark" (dark)');
+    expect(dsViewContext({ view: 'type', theme: { id: 'light', name: 'Light' }, themes: 1 })).not.toContain('theme');
+  });
+  it('lists the problems on the issues page', () => {
+    const c = dsViewContext({ view: 'issues', issues: [{ at: 'color.brand', message: 'no value for dark' }] });
+    expect(c).toContain('- color.brand: no value for dark');
+    expect(dsViewContext({ view: 'colors', issues: [{ at: 'x', message: 'y' }] })).not.toContain('- x: y');
   });
 });

@@ -56,7 +56,8 @@ async def main():
         claude, image, fast = dlg.locator('[data-card=claude]'), dlg.locator('[data-card=image]'), dlg.locator('[data-card=fast]')
         # Claude Code opens on its own sign-in and needs nothing; its tabs hold only their own fields
         await expect(claude.locator('[data-mode=local]')).to_have_attribute('aria-pressed', 'true')
-        await expect(claude.locator('input')).to_have_count(0)
+        await expect(claude.locator('input')).to_have_count(1)  # only the claude command's own field
+        await expect(claude.locator('[data-claude-command] input')).to_have_count(1)
         await expect(claude.locator('[data-mode=box]')).to_contain_text('suggested')
         # fast AI: Tingly Box fills its address; Box is not running here, and the card says so
         await fast.locator('[data-preset=tingly-box]').click()
@@ -110,7 +111,7 @@ async def main():
         await expect(pg.locator('[role=dialog]')).to_be_visible()
         await expect(pg.locator('[role=dialog] [data-card=fast] input[type=password]')).to_have_attribute('placeholder', 'Saved on this machine · type to replace')
         await pg.locator('[role=dialog] [data-mode=local]').click()
-        await expect(pg.locator('[role=dialog] [data-card=claude] input')).to_have_count(0)
+        await expect(pg.locator('[role=dialog] [data-card=claude] input')).to_have_count(1)  # the claude command's own field
         await shot(pg, '3-project-claude-local.png')
         # a key stays with the address it was saved for: another address does not inherit it
         await pg.locator('[role=dialog] [data-card=fast] [data-preset=anthropic]').click()

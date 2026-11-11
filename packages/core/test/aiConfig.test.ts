@@ -160,3 +160,21 @@ describe('migrateSaved: a file from the shared-connection dialog', () => {
     expect(migrateSaved({ baseUrl: 'https://gw.example' }).claudeMode).toBe('local');
   });
 });
+
+describe('the claude command', () => {
+  it('is empty by default: look for it', () => {
+    expect(resolveAi({}, {}).claude.command).toEqual({ value: '', source: 'default' });
+  });
+  it('is the saved path, and the host’s own wins over it', () => {
+    expect(resolveAi({}, { claudeCommand: ' /opt/bin/claude ' }).claude.command).toEqual({ value: '/opt/bin/claude', source: 'saved' });
+    expect(resolveAi({ claudeCommand: '/host/claude' }, { claudeCommand: '/opt/bin/claude' }).claude.command).toEqual({ value: '/host/claude', source: 'env' });
+  });
+  it('is kept by a save when it is one line, and dropped when blank or multi-line', () => {
+    expect(sanitizeSaved({ claudeCommand: ' ~/bin/claude ' }).claudeCommand).toBe('~/bin/claude');
+    expect(sanitizeSaved({ claudeCommand: '   ' }).claudeCommand).toBeUndefined();
+    expect(sanitizeSaved({ claudeCommand: 'a\nb' }).claudeCommand).toBeUndefined();
+  });
+  it('does not depend on the tab chosen', () => {
+    for (const claudeMode of ['local', 'box', 'custom'] as const) expect(resolveAi({}, { claudeMode, claudeCommand: '/x/claude' }).claude.command.value).toBe('/x/claude');
+  });
+});

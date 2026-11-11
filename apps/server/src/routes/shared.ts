@@ -3,11 +3,9 @@ import { claudeAvailable } from '../delegate';
 import { publish, record } from '../hub';
 import { HttpError, kindOf, projectDir, readOne, regenTokensCss, writeAtomic } from '../store';
 
-let cliChecked: boolean | null = null;
-/** Whether the Claude Code command is on this machine. Asked once. */
+/** Whether the Claude Code command is on this machine (looked for again when the setting changes, or a few seconds after it was not found). */
 export function claudeCliReady(): boolean {
-  cliChecked ??= claudeAvailable();
-  return cliChecked;
+  return claudeAvailable();
 }
 
 /** tokens.json changed in a design system: rebuild tokens.css and tell every editor. */

@@ -99,7 +99,7 @@
 
 ### 3.8 请求栏的接线
 
-`RequestBar` 共用，但每个类型给 `AskClaude` / `PromptBar` 传的是临时拼的一包：`context` 闭包（看板那段最长）、`onOpen`（定位到改动）、`placeholder`、`file`。这是 §3.1 "当前条目"没有统一出口的后果。
+`RequestBar` 共用，但每个类型给 `AskClaude` / `PromptBar` 传的是临时拼的一包：`context` 闭包（看板那段最长）、`onOpen`（定位到改动）、`placeholder`、`file`。设计系统的 `context` 现在也有了（打开的页面、预览主题，核心 `dsViewContext`），和文档、看板一样；没有 `claude` 命令时 `AskClaude` 和 `PromptBar` 一样亮出“去设置”。这是 §3.1 "当前条目"没有统一出口的后果。
 
 ### 3.9 检查结果（"这件作品哪里有问题"）
 

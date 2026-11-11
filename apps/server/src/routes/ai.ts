@@ -5,6 +5,7 @@ import { type ProjectKind, FAST_EDIT_SYSTEM, FAST_EDIT_SYSTEM_CANVAS, FAST_EDIT_
 import { HttpError, projectDir } from '../store';
 import { publish } from '../hub';
 import { logError, logInfo, logWarn } from '../log';
+import { claudeCommand, findClaude } from '../claudeBin';
 import { aiResolved, boxReachable, fastClient, saveAi, testFast, withKeyFrom } from '../aiconfig';
 import { generateImage, imageState, setProjectImageOn } from '../imagegen';
 import { langOf, replyLanguage, trOf } from '../i18n';
@@ -90,7 +91,15 @@ export function registerAi(app: Hono): void {
   /** What the settings dialog shows. The key never leaves the server: only whether one is set, and where it came from. */
   app.get('/api/ai-config', async (c) => {
     const boxUp = await boxReachable();
-    return c.json({ ...aiResolved(), claudeCli: claudeCliReady(), box: { reachable: boxUp } });
+    const found = claudeCommand();
+    return c.json({ ...aiResolved(), claudeCli: claudeCliReady(), claudeFound: { path: found.path, version: found.version ?? '' }, box: { reachable: boxUp } });
+  });
+
+  /** Whether a `claude` command (a path, or a name; empty means `claude` on the PATH) runs: the dialog asks before it saves. */
+  app.post('/api/ai-config/claude-command', async (c) => {
+    const b = await c.req.json<{ command?: unknown }>().catch(() => ({}) as { command?: unknown });
+    const found = findClaude(typeof b.command === 'string' ? b.command : '');
+    return c.json({ ok: found.path !== null, path: found.path, version: found.version ?? '' });
   });
 
   app.put('/api/ai-config', async (c) => {

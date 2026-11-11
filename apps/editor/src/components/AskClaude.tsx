@@ -30,6 +30,13 @@ export function AskClaude({
       variant="dsask"
       label={t('prompt.askClaude.label')}
       head={null}
+      picker={
+        noCli && (
+          <button className="tb setup" onClick={() => useStore.setState({ aiSettingsOpen: true })}>
+            {t('prompt.bar.setUp')}
+          </button>
+        )
+      }
       options={
         <>
           <ContextChip target="claude" />

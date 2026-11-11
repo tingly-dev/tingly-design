@@ -1,7 +1,7 @@
 import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useState } from 'react';
-import { DS_COVER, DS_README, compileTokensCss, componentNames, dsGlance, sectionFiles } from '@dc/core';
+import { DS_COVER, DS_README, compileTokensCss, componentNames, dsGlance, dsViewContext, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
 import { display, edit, toast, useStore } from '../../store';
 import { dsViewFromUrl, useDsView, type DsViewId, dsImport, editDsIndex, useDsIndex, useTokens } from './ds';
@@ -258,7 +258,12 @@ export function DsApp() {
         {view === 'components' && <ComponentsView t={t} index={index} theme={theme} />}
         {view === 'assets' && <AssetsView index={index} />}
         {view === 'issues' && <Issues />}
-        <AskClaude />
+        <AskClaude
+          context={() => {
+            const current = t.themes.find((x) => x.id === theme);
+            return dsViewContext({ view, theme: current && { id: current.id, name: current.name }, themes: t.themes.length, issues: t.issues });
+          }}
+        />
         <JournalPopover />
       </main>
     </div>

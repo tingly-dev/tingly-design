@@ -139,7 +139,14 @@ export interface Health {
 }
 
 /** GET /api/ai-config: what is in force and where each value came from (the keys themselves stay on the server). */
-export type AiConfig = AiResolved & { claudeCli: boolean; box: { reachable: boolean } };
+export type AiConfig = AiResolved & { claudeCli: boolean; claudeFound: { path: string | null; version: string }; box: { reachable: boolean } };
+
+/** POST /api/ai-config/claude-command: whether that `claude` command (or, left empty, one found by looking around) runs. */
+export interface ClaudeCommandCheck {
+  ok: boolean;
+  path: string | null;
+  version: string;
+}
 
 /** What the dialog saves: a blank field falls back to its default; a key left out is kept as saved. */
 export interface AiDraft extends AiSaved {
@@ -182,6 +189,8 @@ export const api = {
   imageState: (p: string) => call(at(`api/projects/${enc(p)}/image-gen`)).then((r) => json<ImageState>(r)),
   setImageState: (p: string, enabled: boolean) =>
     call(at(`api/projects/${enc(p)}/image-gen`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled }) }).then((r) => json<ImageState>(r)),
+  checkClaudeCommand: (command: string) =>
+    call(at('api/ai-config/claude-command'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ command }) }).then((r) => json<ClaudeCommandCheck>(r)),
   testAiConfig: (d: AiDraft) =>
     call(at('api/ai-config/test'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }).then((r) => json<{ ok: boolean; ms: number; error?: string }>(r)),
   projects: () => call(at('api/projects')).then((r) => json<ProjectCard[]>(r)),

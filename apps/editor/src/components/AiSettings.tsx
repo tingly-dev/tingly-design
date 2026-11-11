@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TINGLY_BOX_ANTHROPIC, TINGLY_BOX_IMAGEGEN, TINGLY_BOX_URL, boxClaudeUrl, cleanUrl, resolveAi, validBaseUrl, validProfile, type AiCard, type AiSource, type ClaudeMode, type KeyFrom } from '@dc/core';
-import { api, type AiConfig, type AiDraft } from '../api';
+import { api, type AiConfig, type AiDraft, type ClaudeCommandCheck } from '../api';
 import { toast, useStore } from '../store';
 import { External } from './icons';
 import { Dialog } from './Dialog';
@@ -134,6 +134,8 @@ function AiSettings() {
   const [customUrl, setCustomUrl] = useState('');
   const [customKey, setCustomKey] = useState('');
   const [customModel, setCustomModel] = useState('');
+  const [command, setCommand] = useState('');
+  const [commandCheck, setCommandCheck] = useState<ClaudeCommandCheck | null>(null);
   // ImageGen
   const [imgPreset, setImgPreset] = useState<ImagePreset>('tingly-box');
   const [imgCustom, setImgCustom] = useState('');
@@ -160,6 +162,7 @@ function AiSettings() {
         setProfile(c.claude.box.profile.value);
         setCustomUrl(c.claude.custom.baseUrl.value);
         setCustomModel(c.claude.custom.model.source === 'saved' ? c.claude.custom.model.value : '');
+        setCommand(c.claude.command.source === 'saved' ? c.claude.command.value : '');
         setImgPreset(c.image.preset ?? 'tingly-box');
         setImgCustom(c.image.preset === 'custom' ? c.image.baseUrl.value : '');
         setImgModel(c.image.model.source === 'saved' ? c.image.model.value : '');
@@ -171,7 +174,24 @@ function AiSettings() {
       },
     );
   }, []);
+  // the command typed here is tried as it is typed, before anything is saved
+  const commandLocked = cfg?.claude.command.source === 'env';
+  useEffect(() => {
+    if (!cfg || commandLocked) return;
+    let stale = false;
+    const timer = setTimeout(() => {
+      api.checkClaudeCommand(command.trim()).then(
+        (r) => !stale && setCommandCheck(r),
+        () => {},
+      );
+    }, 300);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+  }, [cfg, command, commandLocked]);
   if (!cfg) return null;
+  const claudeFound = commandLocked ? { ok: cfg.claudeCli, path: cfg.claudeFound.path, version: cfg.claudeFound.version } : (commandCheck ?? { ok: cfg.claudeCli, path: cfg.claudeFound.path, version: cfg.claudeFound.version });
 
   // ---- fast AI
   const fastUrlLocked = cfg.fast.baseUrl.source === 'env';
@@ -237,6 +257,7 @@ function AiSettings() {
     claudeBaseUrl: customLocked ? '' : customUrl.trim(),
     ...(customKey.trim() ? { claudeKey: customKey.trim() } : {}),
     claudeModel: customModel.trim(),
+    ...(commandLocked ? {} : { claudeCommand: command.trim() }),
     imageBaseUrl: imgUrlLocked || imgPristine ? '' : imgUrl,
     ...(imgKey.trim() ? { imageKey: imgKey.trim() } : {}),
     imageModel: imgModel.trim(),
@@ -275,11 +296,11 @@ function AiSettings() {
   };
 
   // ---- how each card stands, for its header
-  const claudeState =
-    mode === 'local'
-      ? cfg.claudeCli
-        ? { ok: true, text: t('aiSettings.state.ready') }
-        : { ok: false, text: t('aiSettings.state.noCli') }
+  // every tab runs the claude command, so a missing one is missing whichever is chosen
+  const claudeState = !claudeFound.ok
+    ? { ok: false, text: t('aiSettings.state.noCli') }
+    : mode === 'local'
+      ? { ok: true, text: t('aiSettings.state.ready') }
       : (mode === 'box' ? boxHasKey : customHasKey)
         ? { ok: true, text: t('aiSettings.state.ready') }
         : { ok: false, text: t(mode === 'box' ? 'aiSettings.state.needsToken' : 'aiSettings.state.needsKey') };
@@ -312,12 +333,7 @@ function AiSettings() {
           )
         }
       >
-        {mode === 'local' && (
-          <>
-            <p className="note">{t('aiSettings.localNote')}</p>
-            <p className={`status ${cfg.claudeCli ? 'ok' : 'bad'}`}>{cfg.claudeCli ? t('aiSettings.cliOk') : t('aiSettings.cliMissing')}</p>
-          </>
-        )}
+        {mode === 'local' && <p className="note">{t('aiSettings.localNote')}</p>}
         {mode === 'box' && (
           <>
             <BoxStatus up={cfg.box.reachable} />
@@ -391,6 +407,22 @@ function AiSettings() {
             {customProblem && <p className="status bad">{customProblem}</p>}
           </>
         )}
+        <label className="field" data-claude-command>
+          <span>{t('aiSettings.command')}</span>
+          {commandLocked ? (
+            <code className="addr">{cfg.claude.command.value}</code>
+          ) : (
+            <input className="input mono" placeholder={cfg.claudeFound.path ?? 'claude'} value={command} onChange={(e) => setCommand(e.target.value)} aria-label={t('aiSettings.claude') + ' ' + t('aiSettings.command')} spellCheck={false} />
+          )}
+          <Locked source={cfg.claude.command.source} />
+        </label>
+        <p className={`status ${claudeFound.ok ? 'ok' : 'bad'}`} data-command-status={claudeFound.ok ? 'found' : 'missing'}>
+          {claudeFound.ok
+            ? t('aiSettings.commandFound', { path: claudeFound.path, version: claudeFound.version })
+            : (commandLocked ? cfg.claude.command.value : command.trim())
+              ? t('aiSettings.commandBad', { path: commandLocked ? cfg.claude.command.value : command.trim() })
+              : t('aiSettings.commandMissing')}
+        </p>
       </Card>
 
       <Card id="image" title={t('aiSettings.image')} note={t('aiSettings.imageNote')} state={imageState}>

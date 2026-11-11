@@ -43,6 +43,8 @@ export interface AiSaved {
   fastModel?: string;
   /** how Claude Code runs; left out until chosen: the host's key makes it `custom`, else `local` */
   claudeMode?: ClaudeMode;
+  /** where the `claude` command is, when it cannot be found by itself (a path, or a name on the PATH); every tab runs it */
+  claudeCommand?: string;
   /** `box`: the Tingly Box token, the model name on Box's Claude Code routing, and an optional profile (its name or id; empty is the main routing) */
   claudeBoxKey?: string;
   claudeBoxModel?: string;
@@ -72,6 +74,8 @@ export interface AiEnv {
   key?: string;
   fastModel?: string;
   claudeModel?: string;
+  /** the `claude` command (a path, or a name on the PATH) */
+  claudeCommand?: string;
   imageBaseUrl?: string;
   imageKey?: string;
   imageModel?: string;
@@ -100,6 +104,8 @@ export interface AiResolved {
     custom: { baseUrl: AiField<string>; key: AiKey; model: AiField<string> };
     /** the model `claude` is given: the active mode's; empty is Claude Code's own default */
     model: AiField<string>;
+    /** the command that starts Claude Code; empty means `claude` on the server's PATH */
+    command: AiField<string>;
     /** where `claude` is pointed; empty for the sign-in of this machine, or Anthropic's own address */
     launchUrl: string;
     /** nothing is missing: the sign-in needs nothing, the other two need a key */
@@ -181,6 +187,7 @@ export function resolveAi(env: AiEnv, saved: AiSaved): AiResolved {
     box,
     custom,
     model: active ? active.model : envModel ? { value: envModel, source: 'env' } : { value: '', source: 'default' },
+    command: pick(clean(env.claudeCommand), clean(saved.claudeCommand), ''),
     launchUrl: mode.value === 'box' ? boxClaudeUrl(TINGLY_BOX_URL, profile.value) : mode.value === 'custom' ? customUrl.value : '',
     ready: active ? active.key.set : true,
   };
@@ -235,6 +242,7 @@ export function sanitizeSaved(input: unknown): AiSaved {
   url('imageBaseUrl');
   for (const k of ['fastKey', 'fastModel', 'claudeBoxKey', 'claudeBoxModel', 'claudeKey', 'claudeModel', 'imageKey', 'imageModel'] as const) text(k);
   if (clean(o.claudeProfile) && validProfile(clean(o.claudeProfile))) out.claudeProfile = clean(o.claudeProfile);
+  if (clean(o.claudeCommand) && !/[\r\n]/.test(clean(o.claudeCommand))) out.claudeCommand = clean(o.claudeCommand);
   if (o.imageEnabled === false) out.imageEnabled = false;
   if (o.claudeMode === 'local' || o.claudeMode === 'box' || o.claudeMode === 'custom') out.claudeMode = o.claudeMode;
   return out;
