@@ -56,22 +56,28 @@
   },
   "请求栏面板": {
     "design": [
-      "chat_panel"
+      "chat_panel",
+      "chat_copy"
     ],
     "slides": [
-      "chat_panel"
+      "chat_panel",
+      "chat_copy"
     ],
     "design-system": [
-      "chat_panel"
+      "chat_panel",
+      "chat_copy"
     ],
     "dashboard": [
-      "chat_panel"
+      "chat_panel",
+      "chat_copy"
     ],
     "docs": [
-      "chat_panel"
+      "chat_panel",
+      "chat_copy"
     ],
     "motion": [
-      "chat_panel"
+      "chat_panel",
+      "chat_copy"
     ]
   },
   "Claude Code 对话": {
