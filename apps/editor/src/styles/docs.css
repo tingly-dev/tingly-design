@@ -1110,7 +1110,7 @@
 .wechat-preview .wp-style { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
 
 
-/* live edit pointers (.design/live-pointers.md): a frame in the participant's colour round the block it changed */
+/* live edit pointers (.design/live-pointers.md): a mouse cursor and its name at the lower right corner of the block that changed, a faint frame round the block */
 .docpointers {
   position: relative;
   height: 0;
@@ -1118,34 +1118,59 @@
   pointer-events: none;
 }
 
+
 .docpointer {
   position: absolute;
   box-sizing: border-box;
-  border: 2px solid var(--pc);
+  border: 1.5px solid color-mix(in srgb, var(--pc) 53%, transparent);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--pc) 7%, transparent);
+  background: color-mix(in srgb, var(--pc) 6%, transparent);
   transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s ease;
   animation: docpointer-in 0.15s ease;
 }
+
 
 .docpointer[data-fading] {
   opacity: 0;
   transition: opacity 1.2s ease;
 }
 
-/* on the frame's top edge, like a legend: a paragraph's gap is too small to hold it above without covering the text before */
+
+.docpointer-cursor {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+}
+
+
+.docpointer-cursor svg {
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  width: 14px;
+  height: 20px;
+  overflow: visible;
+  fill: var(--pc);
+  stroke: #fff;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 30%));
+}
+
+
 .docpointer-tag {
   position: absolute;
-  left: 10px;
-  top: -9px;
+  left: 12px;
+  top: 15px;
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: 9px 9px 9px 2px;
   background: var(--pc);
   color: #fff;
   font: 600 11px/1.5 system-ui, sans-serif;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
 }
+
 
 @keyframes docpointer-in {
   from {

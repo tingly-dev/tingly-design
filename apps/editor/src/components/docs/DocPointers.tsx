@@ -11,8 +11,9 @@ interface Placed {
 }
 
 /**
- * The live pointers on the open doc tab (`.design/live-pointers.md`): a frame in the participant's colour round
- * the top-level block it changed, its name above. Measured against the page every frame while any is showing,
+ * The live pointers on the open doc tab (`.design/live-pointers.md`): a mouse cursor in the participant's colour,
+ * its name on a pill beside it, resting at the lower right corner of the top-level block it changed, which keeps
+ * a faint frame in the same colour. Measured against the page every frame while any is showing,
  * so they follow the text as it reflows; they never take a click.
  */
 export function DocPointers({ editor, file }: { editor: Editor; file: string }) {
@@ -69,7 +70,12 @@ export function DocPointers({ editor, file }: { editor: Editor; file: string }) 
           // a participant's colour is who it is, the same in light and dark: a value, not a theme token
           style={{ ['--pc' as string]: p.color, left: p.box.left - 6, top: p.box.top - 4, width: p.box.width + 12, height: p.box.height + 8 }}
         >
-          <span className="docpointer-tag">{p.label}</span>
+          <span className="docpointer-cursor">
+            <svg viewBox="0 0 14 20" aria-hidden="true">
+              <path d="M1 1v14l3.6-3.4L7.2 18l2.6-1.1L7.3 10.6H12z" />
+            </svg>
+            <span className="docpointer-tag">{p.label}</span>
+          </span>
         </div>
       ))}
     </div>

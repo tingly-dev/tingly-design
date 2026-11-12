@@ -32,7 +32,8 @@ def api(method, path, body=None, headers=None):
                                  headers={'content-type': 'application/json', **(headers or {})})
     with urllib.request.urlopen(req, timeout=10) as r: return json.loads(r.read() or b'{}')
 
-# in a frame: the pointer's node, its frame colour and name, and whether it holds the element drawing `text` (frame coordinates)
+# in a frame: the pointer's node, its cursor's colour and name, whether its frame holds the element drawing `text` and its cursor
+# rests at that element's lower right corner (frame coordinates)
 MEASURE = """([pid, text]) => {
   const node = document.querySelector(`[data-dc-pointer="${pid}"]`);
   if (!node) return null;
@@ -46,7 +47,8 @@ MEASURE = """([pid, text]) => {
   const cx = at ? at.left + at.width / 2 : 0, cy = at ? at.top + at.height / 2 : 0;
   const hit = at ? document.elementFromPoint(cx, cy) : null;
   return {
-    label: node.textContent, color: getComputedStyle(node.firstElementChild).borderTopColor, fading: node.hasAttribute('data-fading'),
+    label: node.textContent, color: getComputedStyle(node.querySelector('svg path')).fill, fading: node.hasAttribute('data-fading'),
+    cursor: (() => { const c = node.querySelector('svg').getBoundingClientRect(), n = node.querySelector('span').getBoundingClientRect(); return { x: c.left, y: c.top, nameRight: n.left >= c.left && n.top >= c.top }; })(),
     holds: !!at && p.left <= cx && cx <= p.right && p.top <= cy && cy <= p.bottom,
     passes: !!layer && getComputedStyle(layer).pointerEvents === 'none' && !!hit && !hit.closest('[data-dc-pointers]'),
   };
@@ -105,6 +107,7 @@ async def main():
                 check(f'{kind}: the pointer frames the element that changed', m['holds'], m)
                 check(f'{kind}: the pointer says who changed it', m['label'] == 'Outside the editor', m['label'])
                 check(f'{kind}: the pointer lets a click through to the page', m['passes'], m)
+                check(f'{kind}: the pointer is a cursor with its name beside it', m['cursor']['nameRight'], m['cursor'])
                 if kind == 'design':
                     await pg.screenshot(path=os.path.join(REPO, 'e2e', 'out', 'pointer-canvas.png'))
                 check(f'{kind}: the pointer fades once its participant is still', await gone(fr, '[data-dc-pointer="external"]'))
@@ -133,6 +136,8 @@ async def main():
                 cx, cy = block['x'] + block['width'] / 2, block['y'] + block['height'] / 2
                 check('docs: the pointer frames the block that changed', box['x'] <= cx <= box['x'] + box['width'] and box['y'] <= cy <= box['y'] + box['height'], (box, block))
                 check('docs: the pointer says who changed it', (await ptr.inner_text()).strip() == 'Outside the editor')
+                cur = await ptr.locator('.docpointer-cursor svg').bounding_box()
+                check('docs: the cursor rests at the block\'s lower right corner', abs(cur['x'] - (block['x'] + block['width'])) < 24 and abs(cur['y'] - (block['y'] + block['height'])) < 24, (cur, block))
                 check('docs: the pointer lets a click through to the text', await pg.evaluate("([x, y]) => !document.elementFromPoint(x, y).closest('.docpointers')", [cx, cy]))
                 await pg.screenshot(path=os.path.join(REPO, 'e2e', 'out', 'pointer-docs.png'))
                 check('docs: the pointer fades once its participant is still', await gone(pg, '.docpointer[data-dc-pointer="external"]'))

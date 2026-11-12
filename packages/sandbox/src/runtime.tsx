@@ -322,9 +322,10 @@ function drawBoxes() {
 // ---------------------------------------------------------- live pointers
 
 /**
- * Who else is changing this page, and where (`.design/live-pointers.md`): a frame in each participant's
- * colour round the element it changed, its name above. Each pointer is one node that keeps its place
- * between frames, so moving to another element glides there and going idle fades out. Under the
+ * Who else is changing this page, and where (`.design/live-pointers.md`): a mouse cursor in each participant's
+ * colour, its name on a pill beside it, resting at the lower right corner of the element it changed, which keeps
+ * a faint frame in the same colour so it is clear what the cursor points at. Each pointer is one node that keeps
+ * its place between frames, so moving to another element glides there and going idle fades out. Under the
  * selection, never in the way of a click, and left out of every export like the selection overlay.
  */
 const pointerLayer = document.createElement('div');
@@ -334,7 +335,8 @@ pointerLayer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index
 document.documentElement.insertBefore(pointerLayer, overlay);
 const pointers: { list: RuntimePointer[]; unit: number } = { list: [], unit: 1 };
 const pointerNodes = new Map<string, { node: HTMLDivElement; drawn: string; fresh: boolean }>();
-const GLIDE = 'left .35s cubic-bezier(.2,.8,.2,1),top .35s cubic-bezier(.2,.8,.2,1),width .35s cubic-bezier(.2,.8,.2,1),height .35s cubic-bezier(.2,.8,.2,1)';
+const GLIDE = 'left .35s cubic-bezier(.2,.8,.2,1),top .35s cubic-bezier(.2,.8,.2,1)';
+const CURSOR_PATH = 'M1 1v14l3.6-3.4L7.2 18l2.6-1.1L7.3 10.6H12z';
 
 function drawPointers() {
   const seen = new Set<string>();
@@ -348,24 +350,32 @@ function drawPointers() {
     if (!at) {
       const node = document.createElement('div');
       node.dataset.dcPointer = p.id;
-      node.innerHTML = '<div></div><span></span>';
+      node.innerHTML = `<div></div><div><svg viewBox="0 0 14 20" aria-hidden="true"><path d="${CURSOR_PATH}"/></svg><span></span></div>`;
       pointerLayer.appendChild(node);
       at = { node, drawn: '', fresh: true };
       pointerNodes.set(p.id, at);
     }
     const pad = 3 * u;
-    // the name sits above the frame, or inside its top when there is no room above
-    const inside = r.top < 24 * u;
-    const key = [r.left, r.top, r.width, r.height, p.color, p.label, p.fading, u, at.fresh].join('|');
+    // the cursor's tip rests on the element's lower right corner, pulled inside when the page edge is too near for its name
+    const nameW = (p.label.length * 6.4 + 12) * u;
+    const tipX = Math.min(r.right, Math.max(r.left, innerWidth - nameW - 16 * u));
+    const tipY = Math.min(r.bottom, Math.max(r.top, innerHeight - 34 * u));
+    const key = [r.left, r.top, r.width, r.height, tipX, tipY, p.color, p.label, p.fading, u, at.fresh].join('|');
     if (key === at.drawn) continue;
     at.drawn = key;
-    const [frame, name] = Array.from(at.node.children) as HTMLElement[];
-    at.node.style.cssText = `position:fixed;left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + 2 * pad}px;height:${r.height + 2 * pad}px;opacity:${at.fresh || p.fading ? 0 : 1};transition:${at.fresh ? 'none' : `${GLIDE},opacity ${p.fading ? '1.2s' : '.15s'} ease`}`;
+    const [frame, cursor] = Array.from(at.node.children) as HTMLElement[];
+    at.node.style.cssText = `position:fixed;left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + 2 * pad}px;height:${r.height + 2 * pad}px;opacity:${at.fresh || p.fading ? 0 : 1};transition:${at.fresh ? 'none' : `${GLIDE},width .35s cubic-bezier(.2,.8,.2,1),height .35s cubic-bezier(.2,.8,.2,1),opacity ${p.fading ? '1.2s' : '.15s'} ease`}`;
     if (p.fading) at.node.dataset.fading = '';
     else delete at.node.dataset.fading;
-    frame.style.cssText = `position:absolute;inset:0;border:${2 * u}px solid ${p.color};border-radius:${4 * u}px;background:${p.color}14`;
+    frame.style.cssText = `position:absolute;inset:0;border:${1.5 * u}px solid ${p.color}88;border-radius:${4 * u}px;background:${p.color}10`;
+    cursor.style.cssText = `position:absolute;left:${tipX - r.left + pad}px;top:${tipY - r.top + pad}px;transition:${at.fresh ? 'none' : GLIDE}`;
+    const svg = cursor.firstElementChild as SVGElement;
+    svg.style.cssText = `position:absolute;left:${-1 * u}px;top:${-1 * u}px;width:${14 * u}px;height:${20 * u}px;overflow:visible;filter:drop-shadow(0 ${u}px ${2 * u}px rgba(0,0,0,.3))`;
+    const path = svg.firstElementChild as SVGElement;
+    path.style.cssText = `fill:${p.color};stroke:#fff;stroke-width:1.2;stroke-linejoin:round`;
+    const name = cursor.lastElementChild as HTMLElement;
     name.textContent = p.label;
-    name.style.cssText = `position:absolute;${inside ? `top:${4 * u}px;left:${4 * u}px` : `left:${-2 * u}px;bottom:calc(100% + ${3 * u}px)`};white-space:nowrap;background:${p.color};color:#fff;font:600 ${11 * u}px/1.5 system-ui,sans-serif;padding:0 ${6 * u}px;border-radius:${4 * u}px;box-shadow:0 1px ${3 * u}px rgba(0,0,0,.18)`;
+    name.style.cssText = `position:absolute;left:${12 * u}px;top:${15 * u}px;white-space:nowrap;background:${p.color};color:#fff;font:600 ${11 * u}px/1.5 system-ui,sans-serif;padding:0 ${6 * u}px;border-radius:${9 * u}px ${9 * u}px ${9 * u}px ${2 * u}px;box-shadow:0 ${u}px ${3 * u}px rgba(0,0,0,.22)`;
     // drawn once in place unseen, then shown: it fades in where it lands instead of flying in from a corner
     if (at.fresh) at.fresh = false;
   }
