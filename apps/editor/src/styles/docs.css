@@ -1108,3 +1108,46 @@
 
 /* the WeChat preview says which look the article follows */
 .wechat-preview .wp-style { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+
+
+/* live edit pointers (.design/live-pointers.md): a frame in the participant's colour round the block it changed */
+.docpointers {
+  position: relative;
+  height: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.docpointer {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--pc);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pc) 7%, transparent);
+  transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s ease;
+  animation: docpointer-in 0.15s ease;
+}
+
+.docpointer[data-fading] {
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.docpointer-tag {
+  position: absolute;
+  left: -2px;
+  bottom: calc(100% + 3px);
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--pc);
+  color: #fff;
+  font: 600 11px/1.5 system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+}
+
+@keyframes docpointer-in {
+  from {
+    opacity: 0;
+  }
+}

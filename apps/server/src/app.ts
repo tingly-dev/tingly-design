@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { DS_TOKENS, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
+import { DS_TOKENS, cleanParticipant, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
 import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
@@ -29,6 +29,8 @@ import { registerGit } from './routes/git';
 import { afterTokens, claudeCliReady } from './routes/shared';
 
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
+/** The editor window a save came from (`x-dc-client`), passed on with its file event. */
+const clientOf = (h: string | undefined): string | undefined => (h && /^[\w-]{1,40}$/.test(h) ? h : undefined);
 /** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, sunlit, system), inline JSON, or a .json file */
 const DC_THEME: unknown = await (async () => {
   const v = process.env.DC_THEME?.trim();
@@ -272,7 +274,8 @@ app.put('/api/projects/:p/file', async (c) => {
     }
     if (cur && cur.content === body.content) return c.json({ version: cur.version, unchanged: true });
     const version = await writeAtomic(p, rel, body.content);
-    publish(p, { type: 'file', path: rel, content: body.content, version, actor });
+    const by = clientOf(c.req.header('x-dc-client'));
+    publish(p, { type: 'file', path: rel, content: body.content, version, actor, ...(by ? { by } : {}) });
     await record(p, {
       actor,
       file: rel,
@@ -283,6 +286,22 @@ app.put('/api/projects/:p/file', async (c) => {
     if (rel === DS_TOKENS) await afterTokens(p, actor);
     return c.json({ version });
   });
+});
+
+/**
+ * A participant says where it is working before (or without) writing there: another agent, a script, later a guest.
+ * Every open editor of the project shows its pointer (`.design/live-pointers.md`); `file: null` takes it away.
+ */
+app.post('/api/projects/:p/pointer', async (c) => {
+  const p = c.req.param('p');
+  const body = await c.req.json<{ participant?: unknown; file?: unknown; tid?: unknown; block?: unknown }>();
+  const participant = cleanParticipant(body.participant);
+  if (!participant) throw new HttpError(400, 'badParticipant');
+  if (!(await kindOf(projectDir(p)))) throw new HttpError(404, 'noProject', { name: p });
+  const index = (x: unknown) => (Number.isInteger(x) && (x as number) >= 0 ? (x as number) : undefined);
+  const target = typeof body.file === 'string' ? { file: safeRel(body.file), ...(index(body.tid) !== undefined ? { tid: index(body.tid) } : {}), ...(index(body.block) !== undefined ? { block: index(body.block) } : {}) } : null;
+  publish(p, { type: 'pointer', participant, target });
+  return c.json({ ok: true });
 });
 
 app.delete('/api/projects/:p/file', async (c) => {

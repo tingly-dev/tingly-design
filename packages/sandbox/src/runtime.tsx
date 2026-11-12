@@ -28,6 +28,7 @@ import {
   type Mode,
   type MotionStageInfo,
   type ReviewPin,
+  type RuntimePointer,
   type ToRuntime,
 } from '@dc/core';
 import { BUILD_CSS, showSteps } from './slide';
@@ -318,8 +319,66 @@ function drawBoxes() {
   const html = out.join('');
   if (overlay.innerHTML !== html) overlay.innerHTML = html;
 }
+// ---------------------------------------------------------- live pointers
+
+/**
+ * Who else is changing this page, and where (`.design/live-pointers.md`): a frame in each participant's
+ * colour round the element it changed, its name above. Each pointer is one node that keeps its place
+ * between frames, so moving to another element glides there and going idle fades out. Under the
+ * selection, never in the way of a click, and left out of every export like the selection overlay.
+ */
+const pointerLayer = document.createElement('div');
+pointerLayer.setAttribute('aria-hidden', 'true');
+pointerLayer.dataset.dcPointers = '';
+pointerLayer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647';
+document.documentElement.insertBefore(pointerLayer, overlay);
+const pointers: { list: RuntimePointer[]; unit: number } = { list: [], unit: 1 };
+const pointerNodes = new Map<string, { node: HTMLDivElement; drawn: string; fresh: boolean }>();
+const GLIDE = 'left .35s cubic-bezier(.2,.8,.2,1),top .35s cubic-bezier(.2,.8,.2,1),width .35s cubic-bezier(.2,.8,.2,1),height .35s cubic-bezier(.2,.8,.2,1)';
+
+function drawPointers() {
+  const seen = new Set<string>();
+  const u = pointers.unit;
+  for (const p of pointers.list) {
+    const el = instances(p.tid)[0];
+    const r = el ? rectOf(el) : null;
+    if (!r) continue;
+    seen.add(p.id);
+    let at = pointerNodes.get(p.id);
+    if (!at) {
+      const node = document.createElement('div');
+      node.dataset.dcPointer = p.id;
+      node.innerHTML = '<div></div><span></span>';
+      pointerLayer.appendChild(node);
+      at = { node, drawn: '', fresh: true };
+      pointerNodes.set(p.id, at);
+    }
+    const pad = 3 * u;
+    // the name sits above the frame, or inside its top when there is no room above
+    const inside = r.top < 24 * u;
+    const key = [r.left, r.top, r.width, r.height, p.color, p.label, p.fading, u, at.fresh].join('|');
+    if (key === at.drawn) continue;
+    at.drawn = key;
+    const [frame, name] = Array.from(at.node.children) as HTMLElement[];
+    at.node.style.cssText = `position:fixed;left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + 2 * pad}px;height:${r.height + 2 * pad}px;opacity:${at.fresh || p.fading ? 0 : 1};transition:${at.fresh ? 'none' : `${GLIDE},opacity ${p.fading ? '1.2s' : '.15s'} ease`}`;
+    if (p.fading) at.node.dataset.fading = '';
+    else delete at.node.dataset.fading;
+    frame.style.cssText = `position:absolute;inset:0;border:${2 * u}px solid ${p.color};border-radius:${4 * u}px;background:${p.color}14`;
+    name.textContent = p.label;
+    name.style.cssText = `position:absolute;${inside ? `top:${4 * u}px;left:${4 * u}px` : `left:${-2 * u}px;bottom:calc(100% + ${3 * u}px)`};white-space:nowrap;background:${p.color};color:#fff;font:600 ${11 * u}px/1.5 system-ui,sans-serif;padding:0 ${6 * u}px;border-radius:${4 * u}px;box-shadow:0 1px ${3 * u}px rgba(0,0,0,.18)`;
+    // drawn once in place unseen, then shown: it fades in where it lands instead of flying in from a corner
+    if (at.fresh) at.fresh = false;
+  }
+  for (const [id, at] of pointerNodes) {
+    if (seen.has(id)) continue;
+    at.node.remove();
+    pointerNodes.delete(id);
+  }
+}
+
 (function loop() {
   drawBoxes();
+  drawPointers();
   requestAnimationFrame(loop);
 })();
 
@@ -1069,7 +1128,7 @@ function snapshot(id: string) {
     if (broken) throw new Error(`could not load the picture ${broken.getAttribute('src')!.slice(0, 120)}`);
     const r = node.getBoundingClientRect();
     const copy = document.documentElement.cloneNode(true) as HTMLElement;
-    copy.querySelectorAll('script, meta[http-equiv], [aria-hidden="true"][style*="2147483647"]').forEach((n) => n.remove());
+    copy.querySelectorAll('script, meta[http-equiv], [aria-hidden="true"][style*="2147483647"], [data-dc-pointers]').forEach((n) => n.remove());
     // a text being retyped right now is drawn with its editing outline: print it as it will be
     copy.querySelectorAll<HTMLElement>('[contenteditable]').forEach((n) => {
       n.removeAttribute('contenteditable');
@@ -1120,6 +1179,9 @@ function onMessage(m: ToRuntime) {
     review.pins = m.pins;
     review.unit = m.unit;
     document.documentElement.style.cursor = m.on ? 'crosshair' : '';
+  } else if (m.dc === 'pointers') {
+    pointers.list = m.pointers;
+    pointers.unit = m.unit;
   } else if (m.dc === 'mode') {
     current.mode = m.mode;
     document.documentElement.dataset.mode = m.mode;

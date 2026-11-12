@@ -8,6 +8,15 @@ export default {
     external: 'Outside',
     undo: 'Undo',
   },
+  /** a live edit pointer's name tag (core's Participant actor): who is changing the spot it marks */
+  pointer: {
+    human: 'Someone else',
+    jquery: 'jQuery',
+    'fast-edit': 'Fast AI',
+    claude: 'Claude Code',
+    external: 'Outside the editor',
+    undo: 'Undo',
+  },
   open: {
     loading: 'Opening {{name}}…',
     failed: 'This project couldn\'t be opened: {{error}}',

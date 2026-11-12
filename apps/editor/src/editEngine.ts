@@ -22,7 +22,10 @@ import {
   type Actor,
   type CanvasJson,
   type HumanOp,
+  type Participant,
+  isElementFile,
 } from '@dc/core';
+import { pointChange } from './pointers';
 import { api } from './api';
 import { t } from './i18n';
 import { canvasOf, display, editDeck, parsed, toast, useStore, type FileEntry, type Pending, type State } from './store';
@@ -55,6 +58,9 @@ interface EditOptions {
   group?: number;
 }
 
+/** The fast AI as a participant: its pointer shows where a reply landed on the page (`.design/live-pointers.md`). */
+const FAST_AI: Participant = { id: 'fast-edit', actor: 'fast-edit' };
+
 let groupSeq = 0;
 /** A new undo group for edits that must be undone together. */
 export const newUndoGroup = (): number => ++groupSeq;
@@ -68,6 +74,8 @@ export function enqueueResult(
   opts: EditOptions,
 ): boolean {
   if (optimistic === basis) return false;
+  // (a doc's fast AI rewrites the passage the person is on: no pointer needed there)
+  if (opts.actor === 'fast-edit' && isElementFile(file)) pointChange(FAST_AI, file, basis, optimistic);
   const item: Pending = { id: ++pendingId, basis, optimistic, apply, actor: opts.actor, summary: opts.summary, prompt: opts.prompt };
   patchEntry(file, (e) => ({ ...e, pending: [...e.pending, item] }));
   if (opts.undoable !== false) set((s) => ({ undo: capUndo([...s.undo, { file, before: basis, after: optimistic, ...(opts.batch ? { batch: opts.batch } : {}), ...(opts.group ? { group: opts.group } : {}) }]), redo: [] }));

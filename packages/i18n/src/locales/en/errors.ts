@@ -23,6 +23,7 @@ export default {
   emptyTitle: 'A title cannot be empty',
   badIndex: '{{file}} is not valid JSON, so it cannot be renamed here',
   projectExists: 'A project named {{name}} already exists',
+  badParticipant: 'A pointer needs a participant with an id of letters, digits and : . @ _ -',
   contentMissing: 'The request has no content',
   versionMissing: 'That version is no longer kept',
   invalidJson: '{{path}} is not valid JSON',
