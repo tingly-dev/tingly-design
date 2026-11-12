@@ -61,7 +61,17 @@ function TabRow({ id, title, sub, current, first, last }: { id: string; title: s
       {renaming ? (
         <InlineRename value={title} label={t('docs.tab.nameLabel')} onCommit={(v) => renameTab(id, v)} onDone={() => setRenaming(false)} />
       ) : (
-        <button className="tabname" aria-current={current ? 'page' : undefined} onClick={() => openTab(id)} onDoubleClick={() => setRenaming(true)}>
+        <button
+          className="tabname"
+          aria-current={current ? 'page' : undefined}
+          onClick={() => openTab(id)}
+          onDoubleClick={() => setRenaming(true)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+            e.preventDefault();
+            void deleteTab(id);
+          }}
+        >
           {title}
         </button>
       )}

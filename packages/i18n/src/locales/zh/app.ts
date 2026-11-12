@@ -45,10 +45,8 @@ export default {
     empty: '剪贴板是空的。',
     selectFirst: '先选中一个元素或画板，再粘贴。',
   },
-  scene: {
-    notInEditor: '场景的新建、复制和删除还没有放进编辑器，可以交给 Claude Code。',
-  },
   board: {
+    lastBoard: '画布至少要有一个画板。',
     rootDelete: '这是画板的根元素；要删除整个画板，请选中画板再删除。',
     rootWrap: '画板的根元素不能再包一层。',
     rootUnwrap: '画板的根元素不能拆开。',

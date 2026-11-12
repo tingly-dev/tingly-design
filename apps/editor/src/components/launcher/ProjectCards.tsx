@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { type ProjectCard, type ProjectKind } from '@dc/core';
-import { FileZip, GroupFolder, More, Rename, Unlink } from '../icons';
+import { FileZip, GroupFolder, More, Rename, Trash, Unlink } from '../icons';
 import { saveProjectArchive } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { useElementSize } from '../../hooks';
@@ -10,7 +10,7 @@ import { Preview } from './Preview';
 import { KIND, KindIcon } from './kinds';
 import { open } from './recent';
 
-function ago(t: TFunction, iso: string | null): string {
+export function ago(t: TFunction, iso: string | null): string {
   if (!iso) return '';
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
   if (s < 60) return t('launcher.ago.now');
@@ -114,7 +114,7 @@ function MenuInput({ value, onChange, onEnter, label, placeholder }: { value: st
 }
 
 /** What a project's ⋯ opens: its actions, then the rename box or the group list. */
-export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnlink }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void; onUnlink: () => void }) {
+export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnlink, onDelete }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void; onUnlink: () => void; onDelete: () => void }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<'menu' | 'rename' | 'group'>('menu');
   const [text, setText] = useState(p.title || p.name);
@@ -129,6 +129,12 @@ export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnl
           <MenuItem label={t('launcher.rename.menu')} icon={<Rename />} onSelect={() => setStep('rename')} />
           <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />
           <MenuItem label={t('launcher.archive.export')} icon={<FileZip />} onSelect={() => (onClose(), void saveProjectArchive(p.name, true))} />
+          {!p.path && (
+            <>
+              <div className="msep" role="separator" />
+              <MenuItem label={t('launcher.trash.menu')} icon={<Trash />} danger onSelect={() => (onDelete(), onClose())} />
+            </>
+          )}
           {p.path && !p.folderGroup && (
             <>
               <div className="msep" role="separator" />

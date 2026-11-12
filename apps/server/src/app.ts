@@ -8,6 +8,7 @@ import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, cleanParticipant, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
 import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { listTrash, purgeTrash, restoreTrash, trashProject } from './trash';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -221,6 +222,19 @@ app.post('/api/archive', async (c) => {
 /** Take a linked project off the launcher; its folder stays as it is. */
 app.delete('/api/links/:p', async (c) => {
   await unlinkProject(c.req.param('p'));
+  return c.json({ ok: true });
+});
+
+/** Delete a project: its folder moves to the trash, where Restore brings it back whole. */
+app.delete('/api/projects/:p', async (c) => c.json(await trashProject(c.req.param('p'))));
+app.get('/api/trash', async (c) => c.json(await listTrash()));
+app.post('/api/trash/:id/restore', async (c) => c.json(await restoreTrash(c.req.param('id'))));
+app.delete('/api/trash/:id', async (c) => {
+  await purgeTrash(c.req.param('id'));
+  return c.json({ ok: true });
+});
+app.delete('/api/trash', async (c) => {
+  await purgeTrash();
   return c.json({ ok: true });
 });
 

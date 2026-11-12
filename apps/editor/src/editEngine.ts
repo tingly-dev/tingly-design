@@ -358,6 +358,7 @@ export async function deleteBoard(file: string, offerBack = true): Promise<void>
   const project = get().project;
   if (!project) return;
   const c0 = canvasOf(get());
+  if (c0.order.length <= 1 && c0.order.includes(file)) return void toast(t('app.board.lastBoard'));
   const entry = c0.boards[file] && structuredClone(c0.boards[file]);
   const at = c0.order.indexOf(file);
   const source = display(get(), file);
