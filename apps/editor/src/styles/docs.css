@@ -1133,10 +1133,11 @@
   transition: opacity 1.2s ease;
 }
 
+/* on the frame's top edge, like a legend: a paragraph's gap is too small to hold it above without covering the text before */
 .docpointer-tag {
   position: absolute;
-  left: -2px;
-  bottom: calc(100% + 3px);
+  left: 10px;
+  top: -9px;
   padding: 0 6px;
   border-radius: 4px;
   background: var(--pc);
