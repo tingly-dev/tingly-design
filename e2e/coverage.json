@@ -153,6 +153,20 @@
       "external_edit"
     ]
   },
+  "实时编辑指针": {
+    "design": [
+      "pointer"
+    ],
+    "slides": [
+      "pointer"
+    ],
+    "docs": [
+      "pointer"
+    ],
+    "motion": [
+      "pointer"
+    ]
+  },
   "日志": {
     "design": "no e2e checks this kind yet",
     "slides": "no e2e checks this kind yet",

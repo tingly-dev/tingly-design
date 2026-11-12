@@ -10,6 +10,14 @@ export default {
     external: '外部',
     undo: '撤销',
   },
+  pointer: {
+    human: '其他人',
+    jquery: 'jQuery',
+    'fast-edit': '快速 AI',
+    claude: 'Claude Code',
+    external: '编辑器外',
+    undo: '撤销',
+  },
   open: {
     loading: '正在打开 {{name}}…',
     failed: '这个项目打不开：{{error}}',

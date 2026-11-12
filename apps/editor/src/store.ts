@@ -28,8 +28,10 @@ import {
   isStream,
   mergeChange,
   type ConfigChange,
+  participantOf,
 } from '@dc/core';
-import { api, type FileState, type Health, type ServerEvent } from './api';
+import { api, CLIENT_ID, type FileState, type Health, type ServerEvent } from './api';
+import { clearPointers, pointChange, showPointer } from './pointers';
 import { t } from './i18n';
 import { headlessRun } from './headless';
 import { readPref, writePref } from './local';
@@ -291,6 +293,7 @@ export async function openProject(name: string): Promise<void> {
     q.set('p', r.name);
     history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
   }, () => {});
+  clearPointers();
   set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], ...agentReset(), remarks: readRemarks(name), remarkFocus: null, slide: null, present: null, motionView: null });
   const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
   const entries: Record<string, FileEntry> = {};
@@ -314,6 +317,10 @@ function bumpAssetRev(): void {
 
 function onEvent(e: ServerEvent): void {
   if (e.type === 'file') {
+    const was = get().files[e.path]?.server;
+    // someone else's write: their pointer goes to what it changed (before the views take the new text in)
+    const who = was?.version === e.version ? null : participantOf(e.actor, e.by, CLIENT_ID);
+    if (who) pointChange(who, e.path, was?.content, e.content);
     set((s) => {
       const cur = s.files[e.path];
       if (cur?.server?.version === e.version) return {};
@@ -342,6 +349,8 @@ function onEvent(e: ServerEvent): void {
   } else if (e.type === 'entries') {
     // a file the editor does not track (a tool's data beside the project's files): the files pane re-lists
     bumpAssetRev();
+  } else if (e.type === 'pointer') {
+    showPointer(e.participant, e.target);
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {

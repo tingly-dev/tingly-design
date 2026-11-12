@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, DocTab } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, DocTab, Participant, PointerTarget } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -26,10 +26,14 @@ export interface DeletedTabGroup {
   tabs: DocTab[];
 }
 
-/** fetch, telling the server the language on screen: it answers errors and writes starter copy in it. */
+/** This window, as the server stamps the files it saves: the other windows show where it worked (`.design/live-pointers.md`). */
+export const CLIENT_ID = Math.random().toString(36).slice(2, 10);
+
+/** fetch, telling the server the language on screen (it answers errors and writes starter copy in it) and which window asks. */
 function call(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set('x-dc-lang', currentLanguage());
+  headers.set('x-dc-client', CLIENT_ID);
   return fetch(url, { ...init, headers });
 }
 
@@ -165,12 +169,13 @@ export interface ImageState {
 }
 
 export type ServerEvent =
-  | { type: 'file'; path: string; content: string; version: string; actor: Actor }
+  | { type: 'file'; path: string; content: string; version: string; actor: Actor; by?: string }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
   | { type: 'assets'; path?: string }
-  | { type: 'entries' };
+  | { type: 'entries' }
+  | { type: 'pointer'; participant: Participant; target: PointerTarget | null };
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));

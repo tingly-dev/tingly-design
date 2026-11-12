@@ -33,7 +33,7 @@ SUITES = {
     'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev', 'expand': 'dev', 'tweak_text': 'dev', 'template_values': 'dev', 'theme_switch': 'dev', 'files': 'dev', 'gif': 'dev',
     'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
     'export_menu': 'dev', 'wechat': 'dev', 'doc_theme': 'dev', 'export_image': 'dev', 'export': 'dev', 'pptx': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev', 'block_bar': 'dev',
-    'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',
+    'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev', 'pointer': 'dev',
     'ai_settings': 'dev-bare', 'image_gen': 'dev-bare',
     'conversation': 'fake-claude', 'follow_up': 'fake-claude', 'folder_groups': 'fake-claude', 'review': 'fake-claude',
     'attach': 'build', 'run_feed': 'build', 'ds_ask': 'build', 'chat_panel': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',

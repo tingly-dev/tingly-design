@@ -10,6 +10,7 @@ import { handleWheel } from './Canvas';
 import { handleKey, leaveField } from '../../shortcuts';
 import { openExpand } from '../../expand';
 import { clickRemark, usePins } from '../../review';
+import { useRuntimePointers } from '../../pointers';
 import { CopyPicture, Download, Expand, FilePdf, FileText, Picture } from '../icons';
 import type { ExportItem } from '../FileMenu';
 import { Menu, MenuItem } from '../Menu';
@@ -230,6 +231,7 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   const error = useStore((s) => s.runtimeErrors[file]);
   const reviewing = useStore((s) => s.pane === 'review');
   const pins = usePins(file);
+  const pointers = useRuntimePointers(file);
   const imports = useStore(
     useShallow((s) => {
       if (!source?.includes('<dc-import')) return EMPTY;
@@ -386,6 +388,11 @@ export const BoardView = memo(function BoardView({ file, entry }: { file: string
   useEffect(() => {
     if (ready) post(file, { dc: 'review', on: reviewing && mode === 'edit', pins: reviewing ? pins : [], unit: Math.min(6, 1 / zoom) });
   }, [ready, reviewing, mode, pins, zoom, file]);
+
+  // who else is changing this artboard, and where (live pointers); sized like the pins
+  useEffect(() => {
+    if (ready) post(file, { dc: 'pointers', pointers, unit: Math.min(6, 1 / zoom) });
+  }, [ready, pointers, zoom, file]);
 
   const startDrag = (e: React.PointerEvent, kind: 'move' | Corner | Edge) => {
     if (e.button !== 0 || mode === 'play' || useStore.getState().pane === 'review') return;

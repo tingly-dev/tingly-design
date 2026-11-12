@@ -18,6 +18,8 @@ import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';
 import { RichCodeBlock } from './richCode';
 import { TextColor } from './textColor';
+import { DocPointers } from './DocPointers';
+import { hasLanding, placeLanding } from '../../pointers';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
@@ -351,6 +353,7 @@ export function DocEditor({ tab }: { tab: string }) {
       return;
     }
     const focused = e.isFocused;
+    const was = e.state.doc;
     const t = docText(e.state.doc);
     const sel = { from: t.offsetAt(e.state.selection.from), to: t.offsetAt(e.state.selection.to) };
     e.chain()
@@ -359,6 +362,12 @@ export function DocEditor({ tab }: { tab: string }) {
       .setContent(source, { contentType: 'markdown', emitUpdate: false })
       .run();
     synced.current = source;
+    // someone else wrote this: their pointer lands on the first top-level block that changed
+    if (hasLanding(file, source)) {
+      const at = was.content.findDiffStart(e.state.doc.content);
+      const doc = e.state.doc;
+      placeLanding(file, source, at === null || !doc.childCount ? null : Math.min(doc.resolve(Math.min(at, doc.content.size)).index(0), doc.childCount - 1));
+    }
     if (focused) {
       const n = docText(e.state.doc);
       const size = e.state.doc.content.size;
@@ -505,6 +514,7 @@ export function DocEditor({ tab }: { tab: string }) {
           />
         </div>
       </BubbleMenu>
+      <DocPointers editor={editor} file={file} />
       <EditorContent editor={editor} />
       {slash && list.length > 0 && (
         <div className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={{ left: slash.x, top: slash.y }}>

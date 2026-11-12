@@ -55,6 +55,7 @@ $('#dc12').next().children().first().repeat(3)
 - Every edit in the editor is queued as a function from source to new source and shown optimistically; on a 409 the function runs again on the new version and saves. Two people editing the same file at once both keep their changes.
 - Undo locates your own change by its context, so you can undo it even after someone else changed other parts of the same file.
 - The journal records every editor's changes (direct, jQuery, fast AI, Claude, outside, undo), pushes them live to every open editor, and is part of fast AI's context, so "one more" or "a bit less" is understood.
+- Live edit pointers show who is changing what. When Claude Code, a program outside the editor, the fast AI or another editor window changes an artboard, a slide, a motion scene or a doc tab, a mouse cursor in that participant's colour, with its name, rests at the corner of the element or block it changed (which keeps a faint frame) (the editor compares the file before and after the write: `changedSpan` and `pointerTid` in `packages/core/src/pointer.ts`), glides to the next spot it changes and fades a few seconds after it stops. Your own changes in this window show none. Any participant can also announce where it is working with `POST /api/projects/:p/pointer` (`{participant: {id, name?, color?}, file, tid? or block?}`, `file: null` to take it away); every open editor shows it. See `.design/live-pointers.md`.
 
 ## 5. Sandboxing
 
