@@ -10,7 +10,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('DC_CHROME')
 PROJECTS = os.path.join(REPO, 'projects')
 TRASH = os.path.join(PROJECTS, '.trash')
-MADE = ['zz-del-a', 'zz-del-a-2', 'zz-del-b', 'zz-del-canvas', 'zz-del-doc', 'zz-del-motion']
+MADE = ['zz-del-slides', 'zz-del-ds', 'zz-del-dash', 'zz-del-a', 'zz-del-a-2', 'zz-del-b', 'zz-del-canvas', 'zz-del-doc', 'zz-del-motion']
 
 def sweep():
     for n in MADE: subprocess.run(['rm', '-rf', os.path.join(PROJECTS, n)])
@@ -123,6 +123,14 @@ async def main():
         check('deleting a project that does not exist is a 404', status == 404, str(status))
         status, _ = api('POST', 'trash/not-there/restore')
         check('restoring something that is not in the trash is a 404', status == 404, str(status))
+
+        # every kind moves to the trash whole and comes back through the same route
+        for name, kind, index in (('zz-del-slides', 'slides', 'deck.json'), ('zz-del-ds', 'design-system', 'design-system.json'), ('zz-del-dash', 'dashboard', 'dash.json'), ('zz-del-motion', 'motion', 'motion.json'), ('zz-del-doc', 'docs', 'doc.json'), ('zz-del-canvas', 'design', 'canvas.json')):
+            if kind in ('slides', 'design-system', 'dashboard'): make(name, kind)
+            status, got = api('DELETE', 'projects/' + name)
+            moved = status == 200 and not exists(name) and os.path.exists(os.path.join(TRASH, got['id'], index))
+            status, back = api('POST', f"trash/{got['id']}/restore") if status == 200 else (0, {})
+            check(f'a {kind} project goes to the trash and comes back whole', moved and status == 200 and back.get('name') == name and exists(name, index), f'{moved} {status}')
 
         # --- a page inside a project ---------------------------------------------------------------------
         # canvas: the last artboard stays
