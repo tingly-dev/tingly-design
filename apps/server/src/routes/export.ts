@@ -9,9 +9,40 @@ import { type ExportReport } from '@dc/export/timing';
 import { RenderError, renderCapabilities, renderMotion } from '../render';
 import { trOf } from '../i18n';
 import { SANDBOX_DIST } from '../layout';
+import { CommandError, look, resolveProject } from '../commands';
+
+/** One look at a time per project: they share a folder, and each draws in a Chrome of its own. */
+const looking = new Map<string, Promise<unknown>>();
 
 /** Exact motion render, PDF and the page exports. */
 export function registerExport(app: Hono): void {
+  /**
+   * Draw the project as the Export menu does and keep the pictures in renders/look/, for Claude Code
+   * to read back (scripts/look.mjs; .design/agent-look.md). `pick` is one board, slide, tab or view.
+   * The words are English: the reader is a model.
+   */
+  app.post('/api/projects/:p/look', async (c) => {
+    const name = c.req.param('p');
+    projectDir(name);
+    const body = await c.req.json<{ pick?: unknown }>().catch(() => ({}) as { pick?: unknown });
+    const pick = typeof body.pick === 'string' ? body.pick : undefined;
+    const ctx = { lang: 'en' as const, inServer: true };
+    const turn = (looking.get(name) ?? Promise.resolve()).catch(() => {}).then(async () => look(ctx, await resolveProject(ctx, name, 'look', 'name'), { pick }));
+    looking.set(name, turn);
+    logInfo('look.start', { project: name, pick: pick ?? '' });
+    try {
+      const r = await turn;
+      logInfo('look.done', { project: name, files: r.files.length, problems: r.problems.length });
+      return c.json(r);
+    } catch (e) {
+      if (!(e instanceof CommandError)) throw e;
+      logError('look.failed', { project: name, error: e.message });
+      return c.json({ error: e.message }, 501);
+    } finally {
+      if (looking.get(name) === turn) looking.delete(name);
+    }
+  });
+
   /** Whether this machine can render a motion piece exactly (Chrome and ffmpeg), so the editor knows where to send one that holds an embed. */
   app.get('/api/render', async (c) => c.json(await renderCapabilities()));
 

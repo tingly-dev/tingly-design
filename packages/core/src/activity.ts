@@ -12,7 +12,7 @@
 export type StepKind = 'read' | 'search' | 'edit' | 'run' | 'plan' | 'other';
 
 /** what the step did; each has a `prompt.step.<op>` string */
-export type StepOp = 'readSkill' | 'read' | 'glob' | 'grep' | 'grepIn' | 'write' | 'edit' | 'query' | 'run' | 'plan' | 'tool';
+export type StepOp = 'readSkill' | 'read' | 'glob' | 'grep' | 'grepIn' | 'write' | 'edit' | 'query' | 'look' | 'run' | 'plan' | 'tool';
 
 export interface AgentStep {
   kind: StepKind;
@@ -79,6 +79,7 @@ export function describeTool(tool: string, input: ToolInput, root: string, proje
     case 'Bash': {
       const cmd = str(input.command);
       if (cmd.includes('dash-query')) return { kind: 'run', op: 'query' };
+      if (cmd.includes('scripts/look.mjs')) return { kind: 'run', op: 'look' };
       return { kind: 'run', op: 'run', target: cmd.length > 60 ? cmd.slice(0, 60) + '…' : cmd };
     }
     case 'TodoWrite':

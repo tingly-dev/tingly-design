@@ -61,6 +61,7 @@ copy('projects', 'samples', (src) => !/[/\\]\.[^/\\]+$/.test(src) && !/[/\\]rend
 copy('.claude/skills', '.claude/skills', (src) => !/[/\\]issue-resolve([/\\]|$)/.test(src));
 copy('scripts/dash-query.mjs', 'scripts/dash-query.mjs');
 copy('scripts/image-gen.mjs', 'scripts/image-gen.mjs');
+copy('scripts/look.mjs', 'scripts/look.mjs');
 
 writeFileSync(
   join(out, 'tingly-design.json'),

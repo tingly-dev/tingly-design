@@ -339,6 +339,28 @@ export async function check(ctx: Ctx, p: Project, o: { snapshots?: boolean; out?
   return { name: p.name, kind: p.kind, problems, errors: problems.filter((x) => x.level === 'error').length, ...(pictures ? { snapshots: pictures } : {}) };
 }
 
+/** A problem in words, as the command line prints it and an agent reads it. */
+export function problemWords(t: ReturnType<typeof translator>, x: ProjectProblem): string {
+  return x.code === 'canvas' || x.code === 'layout' ? t(`cli.${x.code}Rules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { ...x.params, file: x.file, ref: x.ref ?? '', message: x.message ?? '' });
+}
+
+/** Where `look` keeps its pictures, apart from `check --snapshots`' so the two never clear each other's. */
+export const LOOK_DIR = ['renders', 'look'];
+
+/**
+ * What an agent in its edit loop runs to see the page it is changing (.design/agent-look.md): the
+ * pictures `check --snapshots` draws, of one board, slide, tab or view (`pick`) or of all of them,
+ * kept in the project's renders/look/ with what the drawing found, worded for a model.
+ */
+export async function look(ctx: Ctx, p: Project, o: { pick?: string } = {}) {
+  const dir = resolve(p.dir, ...LOOK_DIR);
+  await rm(dir, { recursive: true, force: true });
+  const one = o.pick?.trim();
+  const r = await check(ctx, p, { snapshots: true, out: dir, pick: pickFor(p.kind, one), format: p.kind === 'motion' && one ? [one] : undefined });
+  const t = translator(ctx.lang);
+  return { dir, files: r.snapshots?.files ?? [], problems: r.problems.map((x) => ({ file: x.file, level: x.level, text: problemWords(t, x) })) };
+}
+
 /**
  * The half of `check` that looks: every board, slide, tab, design-system view or motion cover drawn
  * as the Export menu draws it, and the pictures kept for whoever checks (an agent reads them back).

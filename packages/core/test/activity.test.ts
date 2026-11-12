@@ -22,6 +22,7 @@ describe('describeTool', () => {
     expect(describeTool('Grep', { pattern: 'title', path: '/repo/projects/deck/slides' }, root, project)).toEqual({ kind: 'search', op: 'grepIn', target: 'title', within: 'slides' });
     expect(describeTool('Glob', { pattern: '**/*.html' }, root, project)).toEqual({ kind: 'search', op: 'glob', target: '**/*.html' });
     expect(describeTool('Bash', { command: 'node scripts/dash-query.mjs projects/x/data/a.db "select 1"' }, root, project)).toEqual({ kind: 'run', op: 'query' });
+    expect(describeTool('Bash', { command: 'node scripts/look.mjs deck cover' }, root, project)).toEqual({ kind: 'run', op: 'look' });
     expect(describeTool('Mystery', {}, root, project)).toEqual({ kind: 'other', op: 'tool', target: 'Mystery' });
   });
 });

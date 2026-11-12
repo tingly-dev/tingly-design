@@ -85,6 +85,7 @@
 | [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
 | [composer.md](./composer.md) | 请求栏的外形：一张卡三行（头、输入、工具条），设置是药丸、整栏的工具是图标，谁来回答放在发送旁边，窄列里设置独占一行；ImageGen 的命名 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：Claude Code（本地登录 / Tingly Box / 自定义地址）、ImageGen、快速 AI 三张卡，各带自己的连接；令牌可在保存时取用另一张卡的；环境变量 > 已保存 > 默认；Tingly Box 为推荐；旧的共用连接文件读成三张卡 | 已实施；§6 是没做的 |
+| [agent-look.md](./agent-look.md) | Claude Code 看得见页面：编辑器起的执行多一个“看”的工具（`scripts/look.mjs`，经服务端用本机 Chrome 画 `check --snapshots` 同一张图，PNG 放进 `renders/look/` 让它自己读），默认选人打开的那一页；比较过截图打开的标签页和把整个命令行交给执行 | 已实施；§6 是没做的 |
 | [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
 | [server-log.md](./server-log.md) | 服务端结构化日志（快速 AI、Claude Code 委托）和改动记录弹层里对撤销 / 记录 / 提交的说明 | 已实施；末尾是没做的 |
