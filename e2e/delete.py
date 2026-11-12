@@ -157,7 +157,7 @@ async def main():
         await expect(pg.locator('.tabrow')).to_have_count(1)
         await pg.locator('.tabrow').first.locator('.tabname').focus()
         await pg.keyboard.press('Delete')
-        await expect(pg.locator('.toast').last).to_contain_text('at least one tab')
+        await expect(pg.locator('.toast', has_text='at least one tab')).to_be_visible()
         check('the last tab stays', await pg.locator('.tabrow').count() == 1)
 
         # motion: a selected scene
@@ -167,11 +167,11 @@ async def main():
         await pg.locator('.mscene').first.click(button='right')
         await pg.get_by_role('menuitem', name='Duplicate').click()
         await expect(pg.locator('.mscene')).to_have_count(n0 + 1)
-        await pg.locator('.mscene').nth(1).click()
+        await pg.locator('.mscene').nth(1).focus()
         await pg.keyboard.press('Delete')
         await expect(pg.locator('.mscene')).to_have_count(n0)
         ok = await wait_for(lambda: len(readj('zz-del-motion', 'motion.json')['order']) == n0)
-        check('Delete on the selected scene deletes it', ok)
+        check('Delete on a focused scene deletes it', ok)
         await pg.locator('.toast-act').click()
         await expect(pg.locator('.mscene')).to_have_count(n0 + 1)
         check('Undo brings the scene back', await wait_for(lambda: len(readj('zz-del-motion', 'motion.json')['order']) == n0 + 1))

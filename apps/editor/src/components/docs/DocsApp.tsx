@@ -69,6 +69,7 @@ function TabRow({ id, title, sub, current, first, last }: { id: string; title: s
           onKeyDown={(e) => {
             if (e.key !== 'Delete' && e.key !== 'Backspace') return;
             e.preventDefault();
+            e.stopPropagation();
             void deleteTab(id);
           }}
         >

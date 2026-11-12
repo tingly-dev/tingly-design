@@ -294,7 +294,7 @@ def main(argv):
     # a folder holding only ignored files (a change log left by an earlier run) is not in git status, but takes a name
     tracked = {f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2}
     dirty += ''.join(f'?? projects/{d}/ (no tracked files)\n' for d in sorted(os.listdir(os.path.join(REPO, 'projects')))
-                     if os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
+                     if not d.startswith('.') and os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
     if dirty and '--force' not in flags:
         say('projects/ has uncommitted changes, and the suites put the samples back with `git checkout`.\n'
             'Commit or stash them first, or pass --force to run anyway (they will be lost).\n' + dirty)
