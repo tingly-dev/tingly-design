@@ -11,6 +11,7 @@ export default {
     write: '写 {{target}}',
     edit: '改 {{target}}',
     query: '查询数据',
+    look: '看一眼页面',
     run: '运行 {{target}}',
     plan: '列出步骤',
     tool: '{{target}}',

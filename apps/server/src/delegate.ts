@@ -11,6 +11,7 @@ import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
 import { aiResolved, claudeLaunch } from './aiconfig';
 import { claudeCommand } from './claudeBin';
+import { findChrome } from './chrome';
 import { TurnWriter } from './transcript';
 
 /**
@@ -37,6 +38,9 @@ When done, reply with one short sentence saying what changed. Do not run builds,
 
 /** Added to Claude Code's instructions while image generation is configured: how to get a picture into the work. */
 const imageNote = (project: string) => `You can make pictures. When the request needs a picture that does not exist yet, or asks you to change one from uploads/, run: node scripts/image-gen.mjs ${project} "<a full description of the picture>" [--size 1024x1024|1536x1024|1024x1536] [--edit uploads/<file>]. It prints the path of the new picture inside the folder, under uploads/; reference it exactly as .claude/skills says a picture from uploads/ is referenced. Make a picture only when asked for one or when the request cannot be done without it, and describe it in the language of the request. A picture can take a minute or two: give that command a Bash timeout of 200000 ms, and if it fails, say so instead of running it again at once.`;
+
+/** Added to Claude Code's instructions while this machine has a Chrome to draw with: how to see the page it is editing (.design/agent-look.md). */
+const lookNote = (project: string, hint: string, open: string | undefined) => `You can see the page. After a change to how the work looks (layout, colour, type, a picture, a chart), run: node scripts/look.mjs ${project}${open ? ` ${open}` : ' [pick]'}. It draws the project in a real browser, the picture the Export menu saves, prints the path of each PNG (under renders/look/) and what the drawing found (a script that threw, a file that did not load, text cut off or past the edge, faint text); read each PNG with your Read tool, compare it with the request, fix what is wrong and look again, at most three times. This is the one exception to "do not run browsers", and it stands in for the tingly-design check --snapshots and export commands the format reference mentions, which you may not run. ${hint} Without a pick every one is drawn, which is slow: give the one you changed. Give the command a Bash timeout of 120000 ms. Skip it for a change that cannot alter the picture (a note, a rename); if it fails, say so in your reply and finish without it.`;
 
 const SLIDES_SYSTEM = `You are editing a slide deck stored as files. A deck folder holds deck.json (title, slide order, sections, typefaces) and one slides/<id>.html per slide: exactly one <section id="<id>"> on the canvas given by deck.json.size ([width,height], 1920x1080 when absent); read and preserve that size, adapting margins and layout to fit, every style inline, in a closed subset of HTML and CSS.
 Before you change any file, read .claude/skills/slides/SKILL.md in the current directory: it is the full format reference.
@@ -164,13 +168,13 @@ export function forgetConversation(project: string): void {
 }
 
 /** What differs per kind in a Claude Code request: how the folder and the open file are named, the system prompt, and the tools beyond reading and editing. */
-const DELEGATE: Record<ProjectKind, { folder: string; viewing: string; system: string; tools: string[]; images: boolean }> = {
-  design: { folder: 'Canvas', viewing: 'artboard', system: SYSTEM, tools: [], images: true },
-  slides: { folder: 'Deck', viewing: 'slide', system: SLIDES_SYSTEM, tools: [], images: true },
-  'design-system': { folder: 'Design system', viewing: 'file', system: DS_SYSTEM, tools: [], images: false },
-  dashboard: { folder: 'Dashboard', viewing: 'page file', system: DASH_SYSTEM, tools: ['Bash(node scripts/dash-query.mjs:*)'], images: false },
-  docs: { folder: 'Doc', viewing: 'tab', system: DOCS_SYSTEM, tools: [], images: true },
-  motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM, tools: [], images: true },
+const DELEGATE: Record<ProjectKind, { folder: string; viewing: string; system: string; tools: string[]; images: boolean; seeing: { hint: string; pick?: (file: string) => string | undefined } }> = {
+  design: { folder: 'Canvas', viewing: 'artboard', system: SYSTEM, tools: [], images: true, seeing: { hint: 'pick is an artboard file (such as home.dc.html) or its name.', pick: (f) => (f.endsWith('.dc.html') ? f : undefined) } },
+  slides: { folder: 'Deck', viewing: 'slide', system: SLIDES_SYSTEM, tools: [], images: true, seeing: { hint: 'pick is a slide id (the file name in slides/ without .html) or its number.', pick: (f) => f.match(/^slides\/(.+)\.html$/)?.[1] } },
+  'design-system': { folder: 'Design system', viewing: 'file', system: DS_SYSTEM, tools: [], images: false, seeing: { hint: 'pick is a view: overview, colors, type, space, components or assets (components\' previews are frames and come out empty).' } },
+  dashboard: { folder: 'Dashboard', viewing: 'page file', system: DASH_SYSTEM, tools: ['Bash(node scripts/dash-query.mjs:*)'], images: false, seeing: { hint: 'A dashboard is one page, drawn once its datasets have loaded; there is no pick.' } },
+  docs: { folder: 'Doc', viewing: 'tab', system: DOCS_SYSTEM, tools: [], images: true, seeing: { hint: 'pick is a tab id (the file name in tabs/ without .md) or its title.', pick: (f) => f.match(/^tabs\/(.+)\.md$/)?.[1] } },
+  motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM, tools: [], images: true, seeing: { hint: 'pick is a format name from motion.json; each format is drawn as its cover frame (the picture at the cover time), not as a video.' } },
 };
 
 /**
@@ -200,6 +204,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const profile = DELEGATE[kind];
   // a dashboard reads files only from data/ and a design system keeps its pictures in its own assets/: neither gets the tool
   const images = imageOn && profile.images;
+  // a drawing needs a Chrome on this machine: without one the tool is not offered, so a run does not spend a turn on a refusal
+  const seeing = findChrome() !== null;
   const refs = referenceArgs(absProject, readRefs(project));
   const lines = [
     `${profile.folder} folder: ${dir}/`,
@@ -227,9 +233,9 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--permission-mode',
     'acceptEdits',
     '--allowedTools',
-    ['Read,Edit,Write,Glob,Grep', ...profile.tools, images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
+    ['Read,Edit,Write,Glob,Grep', ...profile.tools, images ? 'Bash(node scripts/image-gen.mjs:*)' : '', seeing ? 'Bash(node scripts/look.mjs:*)' : ''].filter(Boolean).join(','),
     '--append-system-prompt',
-    `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}\n${STEPWISE}`,
+    `${profile.system}${images ? '\n' + imageNote(project) : ''}${seeing ? '\n' + lookNote(project, profile.seeing.hint, req.file ? profile.seeing.pick?.(req.file) : undefined) : ''}\n${PUNCTUATION}\n${STEPWISE}`,
   ];
   if (refs.deny.length) args.push('--disallowedTools', refs.deny.join(','));
   for (const d of refs.dirs) args.push('--add-dir', d);

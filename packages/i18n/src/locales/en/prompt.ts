@@ -9,6 +9,7 @@ export default {
     write: 'Write {{target}}',
     edit: 'Edit {{target}}',
     query: 'Query the data',
+    look: 'Look at the page',
     run: 'Run {{target}}',
     plan: 'List the steps',
     tool: '{{target}}',

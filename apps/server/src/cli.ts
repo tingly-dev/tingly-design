@@ -254,7 +254,7 @@ async function check(arg: string | undefined): Promise<number> {
   if (opts.json) print({ name: r.name, kind: r.kind, problems: r.problems, ...(r.snapshots ? { snapshots: r.snapshots.files } : {}) });
   else if (!r.problems.length) console.log(t('cli.noProblems', { name: p.name }));
   else {
-    table(r.problems.map((x) => [x.file, x.level, x.code === 'canvas' || x.code === 'layout' ? t(`cli.${x.code}Rules.${x.rule}`, { ...x.params, defaultValue: x.rule ?? '' }) : t(`cli.problems.${x.code}`, { ...x.params, file: x.file, ref: x.ref ?? '', message: x.message ?? '' })]));
+    table(r.problems.map((x) => [x.file, x.level, cmd.problemWords(t, x)]));
     console.log(t('cli.problemCount', { count: r.problems.length }));
   }
   if (r.snapshots && !opts.json) {

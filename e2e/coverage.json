@@ -299,6 +299,26 @@
     "docs": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet",
     "motion": "image_gen checks the route every kind shares; no e2e has Claude Code place a picture in this kind yet"
   },
+  "Claude Code 看得见页面": {
+    "design": [
+      "look"
+    ],
+    "slides": [
+      "look"
+    ],
+    "design-system": [
+      "look"
+    ],
+    "dashboard": [
+      "look"
+    ],
+    "docs": [
+      "look"
+    ],
+    "motion": [
+      "look"
+    ]
+  },
   "启动页卡片和预览": {
     "design": [
       "launcher"
