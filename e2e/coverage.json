@@ -359,6 +359,40 @@
       "launcher"
     ]
   },
+  "删除项目": {
+    "design": [
+      "delete"
+    ],
+    "slides": [
+      "delete"
+    ],
+    "design-system": [
+      "delete"
+    ],
+    "dashboard": [
+      "delete"
+    ],
+    "docs": [
+      "delete"
+    ],
+    "motion": [
+      "delete"
+    ]
+  },
+  "删除一页": {
+    "design": [
+      "delete"
+    ],
+    "slides": [
+      "slides"
+    ],
+    "docs": [
+      "delete"
+    ],
+    "motion": [
+      "delete"
+    ]
+  },
   "项目放在别处": {
     "design": [
       "folders"

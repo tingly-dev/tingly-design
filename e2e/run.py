@@ -31,7 +31,7 @@ IMAGES_PORT = MOCK_PORT + 1  # the OpenAI-style images mock (image_gen)
 # suite -> group. A group is what has to be running before the suite starts.
 SUITES = {
     'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev', 'expand': 'dev', 'tweak_text': 'dev', 'template_values': 'dev', 'theme_switch': 'dev', 'files': 'dev', 'gif': 'dev',
-    'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
+    'launcher': 'dev', 'delete': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
     'export_menu': 'dev', 'wechat': 'dev', 'doc_theme': 'dev', 'export_image': 'dev', 'export': 'dev', 'pptx': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev', 'block_bar': 'dev',
     'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev', 'pointer': 'dev',
     'ai_settings': 'dev-bare', 'image_gen': 'dev-bare',
@@ -294,7 +294,7 @@ def main(argv):
     # a folder holding only ignored files (a change log left by an earlier run) is not in git status, but takes a name
     tracked = {f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2}
     dirty += ''.join(f'?? projects/{d}/ (no tracked files)\n' for d in sorted(os.listdir(os.path.join(REPO, 'projects')))
-                     if os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
+                     if not d.startswith('.') and os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
     if dirty and '--force' not in flags:
         say('projects/ has uncommitted changes, and the suites put the samples back with `git checkout`.\n'
             'Commit or stash them first, or pass --force to run anyway (they will be lost).\n' + dirty)

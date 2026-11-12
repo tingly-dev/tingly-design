@@ -23,7 +23,7 @@ The top left holds the page menu and the tools; the top right holds play, the pa
 |---|---|
 | Esc | Close a menu → leave play mode → back to the select tool → clear the selection |
 | ⇧↵ / ↵ | Select the parent / the first child |
-| ⌫ | Delete |
+| ⌫ | Delete (an artboard too; the toast's Undo brings it back, and the last artboard stays) |
 | ⌘C ⌘X ⌘V ⌘D | Copy, cut, paste, duplicate |
 | ⌘G / ⌘⇧G / ⇧A | Group / ungroup / wrap in a flex container |
 | [ ] | Bring to front / send to back |

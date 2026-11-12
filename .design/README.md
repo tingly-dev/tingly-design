@@ -70,6 +70,7 @@
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
 | [project-stages.md](./project-stages.md) | 跳回早先的阶段：阶段是一次提交，改动记录弹层里列出并跳回；只进不退的前向恢复（旧内容作为一批新改动写回，toast 带 Undo），恢复不跑 git 写命令、Claude Code 运行时拒绝 | 已实施 |
+| [project-trash.md](./project-trash.md) | 删除：项目移进 `projects/.trash/`（启动页“最近删除”里恢复或彻底删除，toast 可撤销）、页面的 Delete 键与“最后一页留下” | 已实施 |
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [folder-groups.md](./folder-groups.md) | 按目录管理：打开一个装着项目的文件夹作为分组（`.folders.json`，成员看磁盘得到）、项目引用其他项目或文件夹，Claude Code 只读授权（`--add-dir` 加拒绝编辑的权限规则） | 已实施 |
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |

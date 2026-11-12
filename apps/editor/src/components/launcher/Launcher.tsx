@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconFileImport, IconPlus, IconSearch } from '@tabler/icons-react';
-import { type ProjectCard, type ProjectKind } from '@dc/core';
+import { type ProjectCard, type ProjectKind, type TrashedProject } from '@dc/core';
 import { api } from '../../api';
 import { toast, useStore } from '../../store';
-import { Chevron, FileZip, FolderOpen, GridLayout, ListLayout, Sliders, Unlink } from '../icons';
+import { Chevron, FileZip, FolderOpen, GridLayout, ListLayout, Sliders, Trash, Unlink } from '../icons';
 import { chooseProjectArchive, importProjectFile, isProjectImportFile } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { Appearance, LanguageMenu } from '../Appearance';
@@ -14,6 +14,7 @@ import { droppedFiles, pickedFromText, readPicked, type Picked } from '../../imp
 import { readPref, writePref } from '../../local';
 import { NewDialog, OpenFolderDialog } from './NewDialog';
 import { Card, NewTile, ProjectActions, Row } from './ProjectCards';
+import { TrashDialog } from './TrashDialog';
 import { KIND, KINDS, KindIcon } from './kinds';
 import { open, readRecent } from './recent';
 
@@ -80,6 +81,10 @@ export function Launcher() {
     });
   }, []);
   useEffect(reload, [reload]);
+  const [trashed, setTrashed] = useState<TrashedProject[]>([]);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const loadTrash = useCallback(() => void api.trash().then(setTrashed, () => {}), []);
+  useEffect(loadTrash, [loadTrash]);
   // a folder of projects opened as a group is taken off again from its heading; the toast puts it back
   const closeFolder = (id: string, path: string) => {
     const folder = path.split('/').filter(Boolean).pop() ?? path;
@@ -178,6 +183,24 @@ export function Launcher() {
           label: t('launcher.group.undo'),
           run: () => api.link(p.path!).then(() => api.projects().then(setList), (e: Error) => toast(e.message, 'error')),
         }),
+      (e: Error) => {
+        setList((l) => l && [...l, p]);
+        toast(e.message, 'error');
+      },
+    );
+  };
+  // the folder moves to the trash and the toast's Undo brings it back whole
+  const remove = (p: ProjectCard) => {
+    const title = p.title || p.name;
+    setList((l) => l && l.filter((x) => x.name !== p.name));
+    api.trashProject(p.name).then(
+      ({ id }) => {
+        loadTrash();
+        toast(t('launcher.trash.moved', { title }), 'info', {
+          label: t('launcher.group.undo'),
+          run: () => api.restoreTrashed(id).then(() => (reload(), loadTrash()), (e: Error) => toast(e.message, 'error')),
+        });
+      },
       (e: Error) => {
         setList((l) => l && [...l, p]);
         toast(e.message, 'error');
@@ -298,6 +321,13 @@ export function Launcher() {
                     </button>
                   ))}
                 </div>
+                {trashed.length > 0 && (
+                  <button className="btn ghost sm ltrash" data-trash-open onClick={() => setTrashOpen(true)}>
+                    <Trash />
+                    {t('launcher.trash.open')}
+                    <span className="n">{trashed.length}</span>
+                  </button>
+                )}
                 <select className="lsort" aria-label={t('launcher.sort.label')} value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'name')}>
                   <option value="recent">{t('launcher.sort.recent')}</option>
                   <option value="name">{t('launcher.sort.name')}</option>
@@ -408,7 +438,8 @@ export function Launcher() {
           )}
         </Menu>
       )}
-      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onUnlink={() => unlink(acted)} />}
+      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onUnlink={() => unlink(acted)} onDelete={() => remove(acted)} />}
+      {trashOpen && <TrashDialog initial={trashed} onClose={() => setTrashOpen(false)} onChanged={() => (reload(), loadTrash())} />}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} at={createAt} onClose={() => (setCreating(null), setCreateAt(undefined))} />}
       {opening && <OpenFolderDialog onClose={() => setOpening(false)} onOpened={() => (setOpening(false), reload())} onCreateHere={(path) => (setOpening(false), setCreateAt(path), setCreating('design'))} />}

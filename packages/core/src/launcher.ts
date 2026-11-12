@@ -25,6 +25,14 @@ export interface ProjectCard {
   preview: ProjectPreview;
 }
 
+/** A deleted project waiting in the trash. */
+export interface TrashedProject extends ProjectCard {
+  /** what restore and delete-forever take */
+  id: string;
+  /** ISO time */
+  deletedAt: string;
+}
+
 /** The file that holds a project's title, per kind. */
 export const INDEX_FILE: Record<ProjectKind, string> = {
   design: CANVAS_FILE,

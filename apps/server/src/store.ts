@@ -602,7 +602,7 @@ export function isTracked(rel: string): boolean {
   }
 }
 
-async function walk(dir: string, base: string, out: string[]): Promise<void> {
+export async function walk(dir: string, base: string, out: string[]): Promise<void> {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });

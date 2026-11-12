@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, DocTab, Participant, PointerTarget } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -228,6 +228,12 @@ export const api = {
     call(at(`api/projects/${enc(p)}/references`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paths }) }).then((r) => json<{ references: Reference[] }>(r)).then((r) => r.references),
   /** take a linked project off the launcher; its folder stays as it is */
   unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+  /** delete a project: its folder goes to the trash (`id`), from where `restoreTrashed` brings it back */
+  trashProject: (p: string) => call(at(`api/projects/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ id: string }>(r)),
+  trash: () => call(at('api/trash')).then((r) => json<TrashedProject[]>(r)),
+  restoreTrashed: (id: string) => call(at(`api/trash/${enc(id)}/restore`), { method: 'POST' }).then((r) => json<{ name: string }>(r)),
+  /** delete forever; without an id, the whole trash */
+  purgeTrashed: (id?: string) => call(at(id ? `api/trash/${enc(id)}` : 'api/trash'), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
   /** the whole project as one .zip; `full: false` leaves out the change log and the design systems it installed */
   archive: async (p: string, full: boolean): Promise<Blob> => {
     const res = await call(at(`api/projects/${enc(p)}/archive${full ? '' : '?journal=0&systems=0'}`));

@@ -23,7 +23,7 @@ function read(dir: string): ProjectFiles {
 /** Samples that still break the subset; `tingly-design check` lists what to fix. */
 const KNOWN_PROBLEMS = new Set<string>();
 
-const samples = readdirSync(SAMPLES).filter((d) => statSync(join(SAMPLES, d)).isDirectory());
+const samples = readdirSync(SAMPLES).filter((d) => !d.startsWith('.') && statSync(join(SAMPLES, d)).isDirectory());
 
 describe('outlineProject and checkProject on the samples', () => {
   it('covers every kind', () => {

@@ -20,7 +20,8 @@ import { canvasOf, deleteBoard, display, edit, editCanvas, editElement, parsed, 
 import { focusBoard } from './components/canvas/view';
 import { getClip, setClip } from './clipboard';
 import { deleteSlide, duplicateSlide, moveSlide } from './components/slides/slides';
-import { slideIdOf } from '@dc/core';
+import { deleteScene, duplicateScene } from './components/motion/motion';
+import { sceneIdOf, slideIdOf } from '@dc/core';
 import { currentLanguage, t } from './i18n';
 import { locked, lockOf } from './layerFlags';
 
@@ -146,7 +147,11 @@ export function duplicateSelection(): void {
     copySelection();
     return paste();
   }
-  if (sel?.kind === 'board' && s.kind === 'motion') return toast(t('app.scene.notInEditor'));
+  if (sel?.kind === 'board' && s.kind === 'motion') {
+    const scene = sceneIdOf(sel.file);
+    if (scene) duplicateScene(scene);
+    return;
+  }
   if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
     if (s.kind === 'slides' && slide) duplicateSlide(slide);
@@ -167,7 +172,8 @@ export function deleteSelection(offerBack = true): void {
     editCanvas((c) => void delete c.notes[sel.id], `note ${sel.id} deleted`);
     set({ selection: null });
   } else if (sel?.kind === 'board' && s.kind === 'motion') {
-    toast(t('app.scene.notInEditor'));
+    const scene = sceneIdOf(sel.file);
+    if (scene) void deleteScene(scene);
   } else if (sel?.kind === 'board') {
     const slide = slideIdOf(sel.file);
     if (s.kind === 'slides' && slide) void deleteSlide(slide, offerBack);
