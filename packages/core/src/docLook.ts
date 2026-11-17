@@ -50,7 +50,7 @@ export interface DocLook {
   /** running text, px, and its line height (a multiple of the size) */
   body: number;
   line: number;
-  /** the text column in px when the system gives one (a platform's reader), else the doc's own width setting decides */
+  /** the system's own text column in px (a platform's reader); it is what the doc's Standard width means, and an explicit Narrow / Wide / Full overrides it (`docColumnOf` in docs.ts) */
   column: number | null;
   /** full font stacks, single-quoted so they sit in an inline `style` */
   headingFont: string;

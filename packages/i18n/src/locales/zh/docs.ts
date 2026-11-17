@@ -116,6 +116,8 @@ export default {
     serif: '衬线',
     standard: '标准',
     wide: '宽',
+    narrow: '窄',
+    full: '通栏',
   },
   title: {
     label: '文档标题',
@@ -173,6 +175,7 @@ export default {
     useWechat: '用微信的样子',
     change: '更换…',
     hint: '复制后，到 mp.weixin.qq.com 的文章编辑器里粘贴。这里的预览是我们自己的模拟，以公众号编辑器里实际的样子为准。',
+    widthNotCarried: '这份文档设成了“{{width}}”，但文章宽度由平台决定，版面宽度不会带过去。',
     copy: '复制',
     copied: '已复制，去公众号文章编辑器里粘贴',
     copyFallback: '浏览器不让页面复制，已改为下载网页。打开它，全选、复制，再粘贴',
