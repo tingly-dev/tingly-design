@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWindowWidth } from '../hooks';
 import { chatFits, chatLeftWidth, MIN_WORK } from '../panes';
@@ -69,7 +69,7 @@ export function ChatPane() {
     <aside
       className="chat-pane"
       aria-label={t('prompt.chat.label')}
-      style={kind ? ({ '--chat-left': `${chatLeftWidth(kind)}px`, '--chat-need': `${MIN_WORK[kind]}px` } as React.CSSProperties) : undefined}
+      style={kind ? ({ '--chat-left': `${chatLeftWidth(kind)}px`, '--chat-need': `${MIN_WORK[kind]}px` } as CSSProperties) : undefined}
     >
       <SideResizer id="chat" edge="start" name={t('prompt.chat.resizeName')} />
       <header className="chat-head">
