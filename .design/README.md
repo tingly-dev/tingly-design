@@ -86,6 +86,7 @@
 | [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的；§6 底部条的固定高度与拖动（动效元素行） |
 | [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
 | [composer.md](./composer.md) | 请求栏的外形：一张卡三行（头、输入、工具条），设置是药丸、整栏的工具是图标，谁来回答放在发送旁边，窄列里设置独占一行；ImageGen 的命名 | 已实施；§5 是没做的 |
+| [chat-skills.md](./chat-skills.md) | 对话里选技能：发现项目 / 内置 / 用户三处的 `.claude/skills`，请求栏的 chip 和可搜索的勾选框（类型自己的格式说明永远读），选择存在项目的 `.claude-skills.json`，每次请求把选中的 SKILL.md 写进 `--append-system-prompt`，运行卡片和对话记录写明读了什么 | 已实施；§6 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：Claude Code（本地登录 / Tingly Box / 自定义地址）、ImageGen、快速 AI 三张卡，各带自己的连接；令牌可在保存时取用另一张卡的；环境变量 > 已保存 > 默认；Tingly Box 为推荐；旧的共用连接文件读成三张卡 | 已实施；§6 是没做的 |
 | [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
 | [attachments.md](./attachments.md) | 给 AI 的附件，存进 `uploads/` | 已实施；§5 是没做的 |
