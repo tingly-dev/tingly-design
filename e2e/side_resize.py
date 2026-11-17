@@ -1,7 +1,7 @@
 """End-to-end checks for the side columns: every one has an edge the person drags to make it wider or
 narrower, arrow keys do the same, a double click gives it back its own width, and the width is remembered
 (the right panel of canvas, slides and motion, the slide strip, a doc's tabs and comments, a design system's
-navigation, a dashboard's data sources). The conversation column's own edge is checked in chat_panel.py.
+navigation, a dashboard's data sources), and the conversation pane's own left edge (also checked in chat_panel.py).
 Run after `pnpm build`: python3 e2e/side_resize.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh projects folder."""
 import os, sys, asyncio, json, subprocess, tempfile, threading, time, shutil
@@ -81,6 +81,31 @@ async def main():
                 check(f'{label}: a double click gives it back its own width', abs(await width() - w0) < 2, f'{await width()} vs {w0}')
                 # the work still has room: nothing was pushed out of the window
                 check(f'{label}: the page does not scroll sideways', await pg.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'))
+            # the conversation pane: its own left edge, widened, remembered and given back
+            label = 'conversation pane'
+            await pg.goto(f'{base}/?p=tingly-box-console-canvas')
+            await pg.wait_for_selector('.topbar', timeout=10000)
+            await pg.wait_for_timeout(700)
+            await pg.locator('[data-pane=chat]').click()
+            col = pg.locator('.chat-pane')
+            await col.wait_for(state='visible', timeout=8000)
+            sep = pg.locator('[role=separator][data-side=chat]')
+            width = lambda: col.evaluate('e => e.getBoundingClientRect().width')
+            w0 = await width()
+            check(f'{label}: it opens on the right at 340', abs(w0 - 340) < 2, w0)
+            check(f'{label}: it has an edge to drag', await sep.count() == 1)
+            bb = await sep.bounding_box()
+            await pg.mouse.move(bb['x'] + bb['width'] / 2, 400); await pg.mouse.down(); await pg.mouse.move(bb['x'] - 80, 400, steps=6); await pg.mouse.up()
+            w1 = await width()
+            check(f'{label}: dragging its left edge widens it', 60 < w1 - w0 < 100, f'{w0} -> {w1}')
+            await pg.reload(); await pg.wait_for_selector('.chat-pane'); await pg.wait_for_timeout(700)
+            check(f'{label}: the pane and its width are remembered', abs(await width() - w1) < 2, f'{await width()} vs {w1}')
+            sep = pg.locator('[role=separator][data-side=chat]')
+            await sep.focus(); await pg.keyboard.press('ArrowLeft')
+            check(f'{label}: an arrow key widens it', await width() > w1)
+            await sep.dblclick()
+            check(f'{label}: a double click gives it back its own width', abs(await width() - w0) < 2, f'{await width()} vs {w0}')
+            await pg.evaluate("localStorage.setItem('dc.pane.design', 'none')")
             # the request bar's input box has a top edge too: drag up makes it taller, the height is remembered
             for proj in sorted({c[0] for c in COLUMNS}):
                 label = f'{proj} request bar'

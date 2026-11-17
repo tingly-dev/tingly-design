@@ -17,6 +17,11 @@
 }
 
 
+.app.docs.with-chat {
+  grid-template-columns: var(--w-doctabs, 220px) 1fr auto;
+}
+
+
 .dashbar .badge.blue {
   background: var(--accent);
 }

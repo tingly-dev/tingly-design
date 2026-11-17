@@ -17,7 +17,7 @@ import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
 import { MotionApp } from './components/motion/MotionApp';
 import { Launcher } from './components/launcher/Launcher';
-import { ChatShell } from './components/ChatPanel';
+import { ChatPane, ChatSlotsProvider } from './components/ChatPane';
 import { serverDefault } from './theme';
 import { ConfirmHost } from './components/ConfirmDialog';
 import { ShortcutsHost } from './components/Shortcuts';
@@ -52,12 +52,12 @@ function Toasts() {
   );
 }
 
-/** The launcher, or a project in the shell that holds the conversation column. */
+/** The launcher, or a project in the editor that holds the conversation pane. */
 export function App() {
   return (
-    <ChatShell>
+    <ChatSlotsProvider>
       <Project />
-    </ChatShell>
+    </ChatSlotsProvider>
   );
 }
 
@@ -151,6 +151,7 @@ function CanvasApp() {
         </main>
         {(pane === 'inspector' || pane === 'review') && mode === 'edit' && <RightPanel />}
         {pane === 'files' && mode === 'edit' && <FilesPane />}
+        {pane === 'chat' && mode === 'edit' && <ChatPane />}
         <ContextMenu />
         {mode === 'edit' && <ExpandPanel />}
         {mode === 'edit' && <NoteFormatBar />}

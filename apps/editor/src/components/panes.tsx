@@ -2,11 +2,12 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { ProjectKind } from '@dc/core';
-import { KIND_PANE_IDS, type PaneId } from '../panes';
+import { useWindowWidth } from '../hooks';
+import { chatFits, KIND_PANE_IDS, type PaneId } from '../panes';
 import { togglePane, useStore } from '../store';
 import { useDash } from './dash/dash';
 import { useComments, useCurrentTab } from './docs/docs';
-import { CodeI, Database, FilesI, Message, Panel, ReviewI } from './icons';
+import { CodeI, Conversation, Database, FilesI, Message, Panel, ReviewI, Spinner } from './icons';
 import { BarButton } from './TopBar';
 
 /** How a pane is offered in the top bar: its icon, its names and the count it wears. */
@@ -39,7 +40,22 @@ function ReviewBadge() {
   return count ? <span className="badge blue">{count}</span> : null;
 }
 
+/** What the conversation is doing while its pane is closed: working, a new result or a failure. Opening the pane reads it. */
+function ChatBadge() {
+  const { t } = useTranslation();
+  const running = useStore((s) => s.fast.status === 'running' || s.delegates.some((d) => d.state === 'start' || d.state === 'progress'));
+  const note = useStore((s) => s.chatNote);
+  if (!running && !note) return null;
+  const label = running ? t('prompt.chat.stateRunning') : note === 'failed' ? t('prompt.chat.stateFailed') : t('prompt.chat.stateDone');
+  return (
+    <span className={`badge${!running && note === 'failed' ? ' err' : ' ai'}`} title={label} aria-hidden="true">
+      {running ? <Spinner size={11} /> : note === 'failed' ? '!' : '•'}
+    </span>
+  );
+}
+
 const PANE_DEF: Record<PaneId, PaneDef> = {
+  chat: { icon: <Conversation />, label: (t) => t('common.pane.chat'), hint: (t) => t('common.pane.chatHint'), Badge: ChatBadge },
   inspector: { icon: <Panel />, label: (t) => t('common.pane.inspector'), hint: (t) => t('common.pane.inspectorHint') },
   files: { icon: <FilesI />, label: (t) => t('common.pane.files'), hint: (t) => t('common.pane.filesHint') },
   review: { icon: <ReviewI />, label: (t) => t('review.pane.label'), hint: (t) => t('review.pane.hint'), Badge: ReviewBadge },
@@ -56,11 +72,26 @@ const PANE_DEF: Record<PaneId, PaneDef> = {
 export function PaneToggles({ kind }: { kind: ProjectKind }) {
   const { t } = useTranslation();
   const pane = useStore((s) => s.pane);
+  const width = useWindowWidth();
   return (
     <>
       {KIND_PANE_IDS[kind].map((id) => {
         const def = PANE_DEF[id];
-        return <BarButton key={id} icon={def.icon} label={def.label(t)} title={def.hint?.(t)} on={pane === id} badge={def.Badge ? <def.Badge /> : null} onClick={() => togglePane(id)} data-pane={id} />;
+        // the conversation needs room beside the work; a window too narrow says so instead of moving it over the work
+        const fits = id !== 'chat' || chatFits(kind, width);
+        return (
+          <BarButton
+            key={id}
+            icon={def.icon}
+            label={def.label(t)}
+            title={fits ? def.hint?.(t) : t('common.pane.chatNarrow')}
+            on={pane === id}
+            disabled={!fits}
+            badge={def.Badge ? <def.Badge /> : null}
+            onClick={() => togglePane(id)}
+            data-pane={id}
+          />
+        );
       })}
     </>
   );

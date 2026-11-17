@@ -1,5 +1,5 @@
 import { SideResizer } from '../SideResizer';
-import { ListColumn } from '../ChatPanel';
+import { ChatPane } from '../ChatPane';
 import { useEffect, useMemo, useState } from 'react';
 import { DS_COVER, DS_README, compileTokensCss, componentNames, dsGlance, dsViewContext, sectionFiles } from '@dc/core';
 import { AskClaude } from '../AskClaude';
@@ -191,6 +191,7 @@ export function DsApp() {
   const index = useDsIndex();
   const view = useDsView((s) => s.view);
   const setView = (v: View) => useDsView.setState({ view: v });
+  const chat = useStore((s) => s.pane === 'chat');
   // a design system opens on the page its address names, not the one the last one was left on
   useEffect(() => useDsView.setState({ view: dsViewFromUrl() }), []);
   // previews open in the system's dark theme when the editor itself is dark
@@ -228,27 +229,25 @@ export function DsApp() {
         })}
       />
     </TopBar>
-    <div className="app ds" data-theme={theme}>
+    <div className={`app ds${chat ? ' with-chat' : ''}`} data-theme={theme}>
       <style>{pageCss}</style>
-      <ListColumn label={tr('ds.app.listTab')} className="ds">
-        <nav className="dsnav" aria-label={tr('ds.app.label')}>
-          <SideResizer id="dsnav" edge="end" name={tr('ds.app.label')} />
-          <div className="hint ns">window.{index.namespace}</div>
-          {VIEWS.map((v) => (
-            <button key={v} className="navi" aria-current={view === v ? 'page' : undefined} onClick={() => setView(v)}>
-              {tr(`ds.nav.${v}`)}
-              <span className="cnt">
-                {v === 'colors' ? t.colors.length : v === 'type' ? t.groups.reduce((n, g) => n + g.styles.length, 0) : v === 'space' ? t.others.reduce((n, f) => n + f.tokens.length, 0) : ''}
-              </span>
-            </button>
-          ))}
-          {t.issues.length > 0 && (
-            <button className="navi warn" aria-current={view === 'issues' ? 'page' : undefined} onClick={() => setView('issues')}>
-              {tr('ds.nav.issues')} <span className="cnt">{t.issues.length}</span>
-            </button>
-          )}
-        </nav>
-      </ListColumn>
+      <nav className="dsnav" aria-label={tr('ds.app.label')}>
+        <SideResizer id="dsnav" edge="end" name={tr('ds.app.label')} />
+        <div className="hint ns">window.{index.namespace}</div>
+        {VIEWS.map((v) => (
+          <button key={v} className="navi" aria-current={view === v ? 'page' : undefined} onClick={() => setView(v)}>
+            {tr(`ds.nav.${v}`)}
+            <span className="cnt">
+              {v === 'colors' ? t.colors.length : v === 'type' ? t.groups.reduce((n, g) => n + g.styles.length, 0) : v === 'space' ? t.others.reduce((n, f) => n + f.tokens.length, 0) : ''}
+            </span>
+          </button>
+        ))}
+        {t.issues.length > 0 && (
+          <button className="navi warn" aria-current={view === 'issues' ? 'page' : undefined} onClick={() => setView('issues')}>
+            {tr('ds.nav.issues')} <span className="cnt">{t.issues.length}</span>
+          </button>
+        )}
+      </nav>
       <main className="dsmain">
         {view === 'overview' && <Overview theme={theme} />}
         {view === 'colors' && <ColorsView t={t} theme={theme} />}
@@ -266,6 +265,7 @@ export function DsApp() {
         />
         <JournalPopover />
       </main>
+      {chat && <ChatPane />}
     </div>
     </>
   );

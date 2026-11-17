@@ -114,9 +114,9 @@ async def main():
                     await pg.wait_for_timeout(150)
                     check(f'{label}: and copies', prompt in plain(await clip()), await clip())
 
-            # --- the column on the left, canvas --------------------------------------------
+            # --- the conversation pane, canvas ---------------------------------------------
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'left')")
+            await pg.evaluate("localStorage.setItem('dc.pane.design', 'chat')")
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
@@ -125,13 +125,13 @@ async def main():
             await box.press('Enter')
             turn = pg.locator('.turn').last
             await expect(turn).to_contain_text('Claude Code 完成', timeout=20000)
-            await copy_checks('column', turn, ANSWER, '把标题改短')
+            await copy_checks('conversation pane', turn, ANSWER, '把标题改短')
 
             # steps unfolded: the tool lines are text too
             await turn.locator('.run-link').click()
             step = turn.locator('.run-steps li').first
             await step.click(click_count=3)
-            check('column: an unfolded step line can be selected', len(plain(await sel())) > 3, await sel())
+            check('conversation pane: an unfolded step line can be selected', len(plain(await sel())) > 3, await sel())
 
             # --- the canvas's own copy and paste of an element must keep working ------------
             canvas_dir = os.path.join(projects, 'tingly-box-console-canvas')
@@ -151,11 +151,11 @@ async def main():
             await pg.keyboard.press('ControlOrMeta+C')
             await pg.wait_for_timeout(150)
             got = plain(await clip())
-            check('column: with an element selected, selected conversation text still copies as text', got != '' and got == plain(await sel()) and got in plain(ANSWER), got)
+            check('conversation pane: with an element selected, selected conversation text still copies as text', got != '' and got == plain(await sel()) and got in plain(ANSWER), got)
             check('…and the element was not duplicated', count() == before, (before, count()))
 
             # --- the bottom bar: the run card and the history --------------------------------
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
+            await pg.evaluate("localStorage.setItem('dc.pane.design', 'none')")
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
@@ -170,14 +170,12 @@ async def main():
             await row.locator('.hist-prompt').click()
             await copy_checks('history', row, ANSWER)
 
-            # --- every other kind: the column's answer copies -------------------------------
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'left')")
+            # --- every other kind: the pane's answer copies ---------------------------------
             for proj, kind in [('tingly-design-intro-slides', 'slides'), ('tingly-design-system', 'design-system'), ('tingly-design-guide-doc', 'docs'), ('tingly-box-usage-dashboard', 'dashboard'), ('tingly-design-motion', 'motion')]:
+                await pg.evaluate(f"localStorage.setItem('dc.pane.{kind}', 'chat')")
                 await pg.goto(f'{base}/?p={proj}')
-                await pg.wait_for_selector('.chat-panel', timeout=10000)
+                await pg.wait_for_selector('.chat-pane', timeout=10000)
                 await pg.wait_for_timeout(700)
-                if await pg.locator('.chat-tabs').count():
-                    await pg.locator('.chat-tabs [role=tab]').nth(1).click()
                 if not await pg.locator('.turn').count():
                     # a kind with a fast AI picks who answers; the others only have Claude Code
                     if await pg.get_by_role('button', name='Claude Code', exact=True).count():
@@ -191,7 +189,7 @@ async def main():
                 await pg.keyboard.press('ControlOrMeta+C')
                 await pg.wait_for_timeout(150)
                 got = plain(await clip())
-                check(f'{kind}: the answer in the column selects and copies', got != '' and got == plain(await sel()) and got in plain(ANSWER), got)
+                check(f'{kind}: the answer in the conversation pane selects and copies', got != '' and got == plain(await sel()) and got in plain(ANSWER), got)
 
             check('no page errors', not errs, errs)
             await b.close()

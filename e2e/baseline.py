@@ -20,8 +20,9 @@ RECORD = os.environ.get('DC_RECORD') == '1'
 BRANCH = 'e2e-baselines'
 SCREENS = {'launcher': '', 'canvas': 'tingly-box-console-canvas', 'slides': 'tingly-design-intro-slides', 'design-system': 'tingly-design-system',
            'dashboard': 'tingly-box-usage-dashboard', 'docs': 'tingly-design-guide-doc', 'motion': 'tingly-design-motion'}
-# the same kinds with the request bar moved into the conversation column on the left
-LEFT = {f'{k}-left': v for k, v in SCREENS.items() if v}
+# the same kinds with the conversation open as a right-hand pane (dc.pane.<kind> = chat)
+CHAT = {f'{k}-chat': v for k, v in SCREENS.items() if v}
+KIND = {'canvas': 'design', 'slides': 'slides', 'design-system': 'design-system', 'dashboard': 'dashboard', 'docs': 'docs', 'motion': 'motion'}
 LOOKS = [('light', 'en'), ('dark', 'en'), ('light', 'zh'), ('dark', 'zh')]
 # open states of the editor's chrome, not only the first screen: project, then how to reach the state
 STATES = {'canvas-theme-tab': ('tingly-box-console-canvas', 'theme'), 'canvas-shortcuts': ('tingly-box-console-canvas', 'shortcuts')}
@@ -82,11 +83,17 @@ async def main():
                                       locale='zh-CN' if lang == 'zh' else 'en-US')
             pg = await ctx.new_page()
             await pg.route(NO_TURNS, lambda route: route.fulfill(json=[]) if route.request.method == 'GET' else route.continue_())
-            for screen, project in {**SCREENS, **LEFT, **{k: v[0] for k, v in STATES.items()}}.items():
+            for screen, project in {**SCREENS, **CHAT, **{k: v[0] for k, v in STATES.items()}}.items():
                 name = f'{screen}-{scheme}-{lang}.png'
-                left = screen in LEFT
+                chat = screen in CHAT
+                kind = KIND.get(screen.removesuffix('-chat'))
                 # a page's own frames are sandboxed and have no storage, so the write is guarded
-                await pg.add_init_script(f"try {{ localStorage.setItem('dc.barMode', '{'left' if left else 'float'}') }} catch (e) {{}}")
+                pref = (
+                    f"localStorage.setItem('dc.pane.{kind}', 'chat')" if chat and kind
+                    else f"localStorage.removeItem('dc.pane.{kind}')" if kind
+                    else "Object.keys(localStorage).filter((k) => k.startsWith('dc.pane.')).forEach((k) => localStorage.removeItem(k))"
+                )
+                await pg.add_init_script(f"try {{ localStorage.removeItem('dc.barMode'); {pref} }} catch (e) {{}}")
                 await pg.goto(f'{BASE}/?lang={lang}' + (f'&p={project}' if project else ''))
                 # the editor keeps a live connection open, so the network may never fall quiet; wait for it a while
                 try: await pg.wait_for_load_state('networkidle', timeout=3000)
@@ -94,7 +101,7 @@ async def main():
                 await pg.add_style_tag(content=STILL)
                 if not project and await pg.locator('.lsort').count(): await pg.select_option('.lsort', 'name')
                 await pg.wait_for_timeout(2500)
-                if left: check(f'{name}: the column is open with the work beside it', await pg.locator('.chat-panel').count() == 1)
+                if chat: check(f'{name}: the conversation pane is open beside the work', await pg.locator('.chat-pane').count() == 1)
                 if screen in STATES:
                     if STATES[screen][1] == 'theme':
                         await pg.get_by_role('tab', name=re.compile('^(Theme|主题)$')).click()

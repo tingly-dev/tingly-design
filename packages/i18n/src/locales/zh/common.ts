@@ -78,6 +78,9 @@ export default {
     current: '预览为：{{name}}',
   },
   pane: {
+    chat: '对话',
+    chatHint: '在作品旁边看对话',
+    chatNarrow: '窗口再宽一点才能把对话放在作品旁边。',
     inspector: '属性面板',
     inspectorHint: '属性面板（⌘\\）',
     files: '文件',

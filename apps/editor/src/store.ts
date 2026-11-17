@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { initialPane, KIND_PANE_IDS, rememberPane, type PaneId } from './panes';
 import { turnOfDelegate, turnOfFast } from './turns';
 import { readRemarks, reviewInitial, type ReviewState } from './store/review';
-import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type BarMode, type DelegateState } from './store/agent';
+import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type DelegateState } from './store/agent';
 import {
   rebaseSwap,
   parseCanvas,
@@ -367,12 +367,6 @@ function onEvent(e: ServerEvent): void {
       if (!get().feeds) toast(ok ? t('app.delegate.done', { text: (e.text ?? '').slice(0, 120) }) : t('app.delegate.failed', { text: (e.text ?? '').slice(0, 200) }), ok ? 'info' : 'error');
     }
   }
-}
-
-/** Where the prompt lives (kept across sessions, the same in every kind). */
-export function setBarMode(mode: BarMode): void {
-  writePref('dc.barMode', mode);
-  set({ barMode: mode, historyOpen: false, chatNote: null });
 }
 
 /** A setting changed by hand: Claude Code hears of it with the next request, and the bar offers a follow-up when the change is worth one. */

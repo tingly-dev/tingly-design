@@ -76,6 +76,9 @@ export default {
     current: 'Preview as: {{name}}',
   },
   pane: {
+    chat: 'Conversation',
+    chatHint: 'The conversation beside the work',
+    chatNarrow: 'Make the window wider to keep the conversation beside the work.',
     inspector: 'Properties panel',
     inspectorHint: 'Properties panel (⌘\\)',
     files: 'Files',

@@ -34,6 +34,7 @@ import { AskClaude } from '../AskClaude';
 import { JournalPopover } from '../Overlays';
 import { SourcesPanel } from './Sources';
 import { CodePanel } from './CodePanel';
+import { ChatPane } from '../ChatPane';
 import { replaceUrl } from '../../host';
 import { SERVER } from '../../base';
 import { currentLanguage, htmlLang, t as tr } from '../../i18n';
@@ -333,7 +334,7 @@ export function DashApp() {
   }, []);
 
   return (
-    <div className={`app dash${side ? ' with-side' : ''}`} data-mode={mode}>
+    <div className={`app dash${side === 'sources' || side === 'code' ? ' with-side' : side === 'chat' ? ' with-chat' : ''}`} data-mode={mode}>
       <TopBar title={<Title />}>
         <Filters />
         <BarButton icon={<Refresh />} label={t('dash.bar.refresh')} title={t('dash.bar.refreshAllTitle')} onClick={refreshAll} />
@@ -371,6 +372,7 @@ export function DashApp() {
       </main>
       {side === 'sources' && <SourcesPanel />}
       {side === 'code' && <CodePanel />}
+      {side === 'chat' && <ChatPane />}
       <Watch />
       <JournalPopover />
     </div>

@@ -4,7 +4,7 @@ import { RowMenu } from '../RowMenu';
 import { InlineRename } from '../InlineRename';
 import { Segmented } from '../Segmented';
 import { SideResizer } from '../SideResizer';
-import { ListColumn } from '../ChatPanel';
+import { ChatPane } from '../ChatPane';
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import {
   IconArrowBackUp,
@@ -393,6 +393,7 @@ export function DocsApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useStore((s) => s.pane === 'comments');
+  const chat = useStore((s) => s.pane === 'chat');
   const comments = useComments();
   const [pop, setPop] = useState<'settings' | 'versions' | 'theme' | null>(null);
   const { look, worn, tokens } = useDocLook();
@@ -444,7 +445,7 @@ export function DocsApp() {
 
   const order = tabOrder(d);
   return (
-    <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
+    <div className={`app docs${rail ? ' with-rail' : chat ? ' with-chat' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
       <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
         <div className="popwrap">
@@ -464,23 +465,21 @@ export function DocsApp() {
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} />
       </TopBar>
       <WechatPreview />
-      <ListColumn label={t('docs.app.tabs')} className="docs">
-        <aside className="doctabs" aria-label={t('docs.app.tabs')}>
-          <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
-          <h3>{t('docs.app.tabs')}</h3>
-          <ul>
-            {order.map((x) => {
-              const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
-              return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
-            })}
-          </ul>
-          <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
-            {t('docs.app.addTab')}
-          </button>
-          <RestoreDeleted />
-          {tab && <Outline tab={tab} />}
-        </aside>
-      </ListColumn>
+      <aside className="doctabs" aria-label={t('docs.app.tabs')}>
+        <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
+        <h3>{t('docs.app.tabs')}</h3>
+        <ul>
+          {order.map((x) => {
+            const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
+            return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
+          })}
+        </ul>
+        <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
+          {t('docs.app.addTab')}
+        </button>
+        <RestoreDeleted />
+        {tab && <Outline tab={tab} />}
+      </aside>
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">
@@ -515,6 +514,7 @@ export function DocsApp() {
         />
       </main>
       {rail && <CommentsRail />}
+      {chat && <ChatPane />}
       <JournalPopover />
     </div>
   );

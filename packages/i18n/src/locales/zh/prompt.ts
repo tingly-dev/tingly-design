@@ -103,17 +103,9 @@ export default {
     unfold: '展开输入栏',
     enterHint: 'Enter 发送，Shift + Enter 换行',
   },
-  position: {
-    button: '请求栏的位置',
-    bottom: '底部',
-    bottomHint: '浮在作品上方，可以收起；适合发一句看一眼',
-    left: '左侧',
-    leftHint: '一直打开的一列，留着整段对话；作品往右让',
-    leftNarrow: '窗口再宽一点才能放在左侧',
-  },
   chat: {
     label: '对话',
-    tab: '对话',
+    close: '关闭对话',
     empty: '你的请求、AI 做了什么、它的回答都留在这里。在下面写点什么吧。',
     newConversation: '新对话',
     jump: '回到最新',
