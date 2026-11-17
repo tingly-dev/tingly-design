@@ -253,20 +253,23 @@ async def main():
         ok = await wait_for(lambda: not os.path.exists(os.path.join(hist, '.deleted.json')))
         await expect(pg.locator('.restoretab')).to_have_count(0, timeout=8000)
         check('a restored tab leaves the deleted list', ok)
-        await pg.locator('.dashbar button[aria-label="版式"]').click()
-        seg = pg.locator('.popmenu.settings .seg').nth(2)
-        widths = [('窄', 'narrow', '728px'), ('标准', 'standard', '805px'), ('宽', 'wide', '948px'), ('通栏', 'full', 'none')]
-        ok = True
-        for label, value, maxw in widths:
-            await seg.locator('button', has_text=label).click()
+        width = pg.locator('.doctools select[data-page-width]')
+        has_width = await width.count() == 1
+        standard_label = await width.locator('option[value=standard]').inner_text() if has_width else ''
+        check('the top bar has no Layout button; the page width is in the formatting bar', await pg.locator('.dashbar button[aria-label="版式"]').count() == 0 and has_width)
+        check('Standard shows its real column in the width menu', '677' in standard_label, standard_label)
+        widths = [('narrow', '728px'), ('standard', '805px'), ('wide', '948px'), ('full', 'none')]
+        ok = has_width
+        for value, maxw in widths:
+            await width.select_option(value)
             stored = await wait_for(lambda: index()['settings']['width'] == value)
             drawn = await pg.evaluate("() => getComputedStyle(document.querySelector('.docpage')).maxWidth")
             on = await pg.locator(f'.app.docs[data-width={value}]').count() == 1
             ok = ok and stored and drawn == maxw and on
             if not (stored and drawn == maxw and on): print('  width', value, stored, drawn, on)
-        check('layout settings offer four page widths, write doc.json and set the page', ok)
+        check('the width menu offers four page widths, writes doc.json and sets the page', ok)
         # the export reads the same measure as the page: Narrow is a 600px text column
-        await seg.locator('button', has_text='窄').click()
+        await width.select_option('narrow')
         ok = await wait_for(lambda: index()['settings']['width'] == 'narrow')
         await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
         async with pg.expect_download() as dl:

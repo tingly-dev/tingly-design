@@ -1,18 +1,77 @@
 import { useTranslation } from 'react-i18next';
-import { dsGlance } from '@dc/core';
+import { dsGlance, type DocLookOf } from '@dc/core';
 import { DsInstall } from '../panel/DsInstall';
+import { Segmented } from '../Segmented';
 import { useInstalled } from '../ds/ds';
+import { editDoc, useDocIndex } from './docs';
 import { applyDocTheme, docThemeName, useDocLook } from './docLookState';
+
+/**
+ * A doc's faces: the own look's two choices, or the worn theme's own, read-only, when the theme supplies them.
+ * A theme says it dresses the doc in its colours, faces and corners, so the faces answer here, next to the cards,
+ * rather than in a second top-bar menu.
+ */
+function ThemeFonts({ docLook, wornName }: { docLook: DocLookOf; wornName: string }) {
+  const { t } = useTranslation();
+  const d = useDocIndex();
+  const { look, worn, tokens } = docLook;
+  const glance = worn && tokens ? dsGlance(tokens, worn.theme) : null;
+  const fromTheme = { heading: !!(worn && glance?.headingFont), body: !!(worn && glance?.bodyFont) };
+  const set = (k: 'headingFont' | 'bodyFont', v: 'sans' | 'serif') => editDoc((x) => (x.settings[k] = v), `settings ${k} = ${v}`);
+  // the first face a person would name: system aliases and generic families read as implementation, not as a face
+  const face = (stack: string) => {
+    const families = stack.split(',').map((x) => x.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    return families.find((x) => !/^(-apple-system|blinkmacsystemfont|system-ui|sans-serif|serif|monospace)$/i.test(x)) ?? families[0] ?? '';
+  };
+  const row = (k: 'headingFont' | 'bodyFont', label: string, from: boolean, family: string) => (
+    <div className="th-fontrow" data-font={k === 'headingFont' ? 'heading' : 'body'}>
+      <span className="th-fontlabel">{label}</span>
+      {from ? (
+        <span className="th-fontval" data-font-readonly={k === 'headingFont' ? 'heading' : 'body'}>
+          {face(family)}
+        </span>
+      ) : (
+        <Segmented
+          label={label}
+          value={d.settings[k]}
+          onChange={(v) => set(k, v as 'sans' | 'serif')}
+          data={`font-${k === 'headingFont' ? 'heading' : 'body'}`}
+          options={[
+            { value: 'sans', label: t('docs.theme.sans') },
+            { value: 'serif', label: t('docs.theme.serif') },
+          ]}
+        />
+      )}
+    </div>
+  );
+  return (
+    <div className="th-fonts" data-theme-fonts="">
+      <div className="th-fonts-h">{t('docs.theme.fonts')}</div>
+      {row('headingFont', t('docs.theme.headingFont'), fromTheme.heading, look.headingFont)}
+      {row('bodyFont', t('docs.theme.bodyFont'), fromTheme.body, look.bodyFont)}
+      {(fromTheme.heading || fromTheme.body) && (
+        <p className="hint" data-font-hint="">
+          {t('docs.theme.fontsHint', { name: wornName, own: t('docs.theme.own') })}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * A doc's Theme (`.design/doc-design-system.md`): the doc's own look or a theme of an installed design system, one click,
  * no preview state; the same word, cards and place of the canvas's and deck's Theme, as a top-bar popover because a doc has no
  * right panel. Installing a system here wears it at once. What is chosen dresses the editor's page and every export, WeChat included.
+ * The doc's faces live here too: the own look's choices, or the worn theme's own.
  */
 export function DocTheme() {
   const { t } = useTranslation();
   const installed = useInstalled();
-  const { worn } = useDocLook();
+  const docLook = useDocLook();
+  const { worn } = docLook;
+  const wornName = worn
+    ? docThemeName({ title: worn.title, themes: installed.find((x) => x.record.namespace === worn.system)?.tokens.themes ?? [] }, worn.theme)
+    : '';
   return (
     <div className="popmenu doctheme" data-testid="doc-theme">
       <h3>{t('docs.theme.title')}</h3>
@@ -49,8 +108,9 @@ export function DocTheme() {
         )}
       </div>
       <p className="hint" aria-live="polite">
-        {worn ? t('docs.theme.wearing', { name: docThemeName({ title: worn.title, themes: installed.find((x) => x.record.namespace === worn.system)?.tokens.themes ?? [] }, worn.theme) }) : t('docs.theme.wearingNone')}
+        {worn ? t('docs.theme.wearing', { name: wornName }) : t('docs.theme.wearingNone')}
       </p>
+      <ThemeFonts docLook={docLook} wornName={wornName} />
       <details className="th-systems" open={!installed.length}>
         <summary>{t('docs.theme.systems')}</summary>
         <DsInstall heading={false} />

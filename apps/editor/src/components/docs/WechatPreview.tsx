@@ -111,7 +111,7 @@ export function WechatPreview() {
             <p className="wp-hint">{t('docs.wechat.hint')}</p>
             {d.settings.width !== 'standard' && (
               <p className="wp-hint" data-width-note="">
-                {t('docs.wechat.widthNotCarried', { width: t(`docs.settings.${d.settings.width}`) })}
+                {t('docs.wechat.widthNotCarried', { width: t(`docs.page.${d.settings.width}`) })}
               </p>
             )}
             <div className="wp-actions">

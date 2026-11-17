@@ -13,11 +13,11 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;co
 </style>
 </helmet>
 <div style="width:1560px;height:760px;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:18px;background:#f7f7f4">
-<div style="display:flex;flex-direction:column;gap:6px"><h2 style="margin:0;font-size:22px">Doc page settings</h2><div style="font-size:14px;color:#4a4f5a;line-height:1.5;max-width:1120px">Proposal, not implemented. Theme keeps its top-bar place. Page width moves into the formatting bar, next to the page it changes; the heading and body faces move into Theme, so a worn theme no longer leaves two dead toggles in a second popover.</div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><h2 style="margin:0;font-size:22px">Doc page settings</h2><div style="font-size:14px;color:#4a4f5a;line-height:1.5;max-width:1120px">Theme is the top bar’s only page-level button. Page width sits at the far right of the formatting bar, next to the page it changes; the heading and body faces live under Theme’s cards, so a worn theme shows its own faces instead of leaving two dead toggles in a second popover.</div></div>
 <div style="display:flex;gap:24px;align-items:flex-start;flex:1">
 
 <div style="width:462px;flex:none;display:flex;flex-direction:column;gap:10px">
-<div style="font-size:13px;font-weight:600;color:#16181d">Before — today: two page-level buttons</div>
+<div style="font-size:13px;font-weight:600;color:#16181d">Before — the two page-level buttons this replaces</div>
 <div style="height:34px;display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:0 10px;font-size:11px;color:#64748b;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px"><span>1,284 words</span><span style="padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px">▥</span><span style="padding:3px 6px;border:1px solid #2563eb;border-radius:5px;background:#e0e7ff;color:#1d4ed8;font-weight:600">◐</span><span style="padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px">◷</span><span style="padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px">⇅</span></div>
 <div style="display:flex;gap:10px;align-items:flex-start">
 <div style="width:200px;box-sizing:border-box;padding:11px;background:#ffffff;border-radius:10px;box-shadow:0 0 0 1px #e2e8f0,0 8px 20px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:7px;font-size:12px;color:#1e293b">
@@ -39,7 +39,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;co
 </div>
 
 <div style="width:620px;flex:none;display:flex;flex-direction:column;gap:10px">
-<div style="font-size:13px;font-weight:600;color:#16181d">After — proposal: Theme stays, page width joins the formatting bar, faces move into Theme</div>
+<div style="font-size:13px;font-weight:600;color:#16181d">After — the shipped shape: Theme stays, page width in the formatting bar, faces in Theme</div>
 <div style="border:1px solid #e2e8f0;border-radius:10px;background:#ffffff;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,.06)">
 <div style="height:34px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:11px;color:#64748b;border-bottom:1px solid #e2e8f0"><span style="font-size:12px;font-weight:600;color:#16181d">Tingly Design handbook</span><span style="flex:1"></span><span>309 words</span><span style="padding:3px 6px;border:1px solid #2563eb;border-radius:5px;background:#e0e7ff;color:#1d4ed8;font-weight:600">◐</span><span style="padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px">◷</span><span style="padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px">⇅</span><span style="padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px">⋯</span></div>
 <div style="height:34px;display:flex;align-items:center;gap:5px;padding:0 8px;font-size:11px;color:#47505e;border-bottom:1px solid #e2e8f0">
@@ -67,9 +67,9 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;co
 <div style="width:380px;flex:none;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:10px;background:#ffffff;border:1px solid #e2e8f0">
 <div style="font-size:13px;font-weight:600">Why this shape</div>
 <div style="font-size:12px;line-height:1.5;color:#4a4f5a">Theme is a project-level look and keeps its top-bar place. Page width is a property of the page being edited, so it belongs beside the page’s own tools; the formatting bar already wraps and has room at its right end. Faces are what a theme already promises, so Theme owns them and the second popover disappears.</div>
-<div style="font-size:13px;font-weight:600;margin-top:2px">Options weighed</div>
-<div style="font-size:12px;line-height:1.5;color:#4a4f5a"><b>A · merge into Theme</b> — one button, but a tall popover and page width under a look. <b>B · rename and explain</b> — smallest, still two buttons. <b>C · split by axis</b> — Theme faces, a “Page” top-bar menu for width; two buttons. <b>D · drawn</b> — Theme stays, width in the editing bar, faces in Theme.</div>
-<div style="padding:12px;border-radius:10px;background:#fff4d6;font-size:12px;line-height:1.5;color:#5c4a12"><b>Open</b><br>Faces in Theme or also in the editing bar? Width as a value dropdown or a small popover? Does Standard keep following the worn theme’s column? Nothing below is implemented until this is answered.</div>
+<div style="font-size:13px;font-weight:600;margin-top:2px">What changed</div>
+<div style="font-size:12px;line-height:1.5;color:#4a4f5a">The top bar keeps Theme and drops Layout. Page width is a value dropdown at the right end of the formatting bar. Theme’s cards own the faces: the own look’s two choices, or a worn theme’s own, read-only.</div>
+<div style="padding:12px;border-radius:10px;background:#fff4d6;font-size:12px;line-height:1.5;color:#5c4a12"><b>Open</b><br>Canvas and slides keep their Theme in the inspector and have no page-width control. A theme that supplies only one face leaves the other row editable. The width control wraps below about 700 px.</div>
 </div>
 
 </div>
