@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { ContextChip } from './AgentBar';
 import { ImageToggle } from './ImageToggle';
 import { ReferencesChip } from './References';
+import { SkillsChip } from './Skills';
 import { RequestBar } from './RequestBar';
 
 /**
@@ -40,6 +41,7 @@ export function AskClaude({
       options={
         <>
           <ContextChip target="claude" />
+          <SkillsChip />
           <ReferencesChip /><ImageToggle />
         </>
       }

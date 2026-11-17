@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { openPane, undo, undoDelegate, useStore } from '../store';
 import type { DelegateState, FastState } from '../store/agent';
+import { SkillChips } from './Skills';
 import {
   Chevron,
   Close,
@@ -163,6 +164,7 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
     <section className={`runfeed ${running ? 'running' : d.state}`} aria-label={t('prompt.run.claudeProgress')} aria-live="polite">
       <Ask text={d.prompt} />
       {d.via === 'fast' && <div className="run-via">{t('prompt.run.viaFast')}</div>}
+      <SkillChips ids={d.skills ?? []} />
       <header className="run-head">
         <span className="run-state">{running ? <Spinner size={16} /> : d.state === 'done' ? <Done /> : <Failed />}</span>
         <b>{title}</b>

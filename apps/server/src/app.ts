@@ -24,6 +24,7 @@ import { registerAssets } from './routes/assets';
 import { registerDashboards } from './routes/dashboards';
 import { registerAi } from './routes/ai';
 import { registerDelegate } from './routes/delegate';
+import { registerSkills } from './routes/skills';
 import { registerExport } from './routes/export';
 import { registerHistory } from './routes/history';
 import { registerGit } from './routes/git';
@@ -341,6 +342,7 @@ registerDashboards(app);
 registerHistory(app);
 registerAi(app);
 registerDelegate(app);
+registerSkills(app);
 registerExport(app);
 registerGit(app);
 

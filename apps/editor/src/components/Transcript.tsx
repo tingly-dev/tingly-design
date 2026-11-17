@@ -6,6 +6,7 @@ import { undo, undoDelegate, useStore } from '../store';
 import { useTurns } from '../turns';
 import { ArrowDown, Chevron, Done, Failed, Reuse, Spinner, Undo, UndoAll } from './icons';
 import { elapsedLabel, Entry, useNow } from './RunFeed';
+import { SkillChips } from './Skills';
 
 /**
  * The conversation of a project: every request, what the agent did about it, what it answered
@@ -64,6 +65,7 @@ export function TurnBody({ turn, latest, onOpen, onReuse }: { turn: Turn } & Act
   return (
     <div className={`runfeed turn-body${fast ? ' fast' : ''} ${running ? 'running' : turn.state}`}>
       {turn.via === 'fast' && <div className="run-via">{t('prompt.run.viaFast')}</div>}
+      <SkillChips ids={turn.skills ?? []} />
       <div className="run-head">
         <span className="run-state">{running ? <Spinner size={16} /> : turn.state === 'done' ? <Done /> : <Failed />}</span>
         <b>{title}</b>

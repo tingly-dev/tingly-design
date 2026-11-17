@@ -41,6 +41,7 @@ export * from './textRetype';
 export * from './expand';
 export * from './projectArchive';
 export * from './conversation';
+export * from './skills';
 export * from './project';
 export * from './transcript';
 export * from './claudeDesign';

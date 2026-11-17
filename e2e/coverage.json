@@ -777,5 +777,25 @@
     "motion": [
       "gif"
     ]
+  },
+  "技能选择": {
+    "design": [
+      "skills"
+    ],
+    "slides": [
+      "skills"
+    ],
+    "design-system": [
+      "skills"
+    ],
+    "dashboard": [
+      "skills"
+    ],
+    "docs": [
+      "skills"
+    ],
+    "motion": [
+      "skills"
+    ]
   }
 }
