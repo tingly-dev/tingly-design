@@ -59,6 +59,14 @@ npx tingly-design new slides ./pitch                      # 在这个文件夹�
 claude                                                    # “做一份 Q3 汇报幻灯片，放在 ./pitch”；想看过程：npx tingly-design open ./pitch
 ```
 
+也可以用 [skills CLI](https://github.com/vercel-labs/skills) 为它支持的其他 agent 安装格式说明。在工作文件夹中运行，按提示选择需要的格式和 agent：
+
+```bash
+npx skills add tingly-dev/tingly-design
+```
+
+只需要一种格式时，可在 `--skill` 后指定对应名称；加 `-g` 可安装到用户级目录。skills CLI 需要 Node.js 22.20 或更新版本。动效会用到幻灯片说明，幻灯片也可能用到动效特效说明，需要这些功能时请同时安装 `slides` 和 `motion`。安装 skill 不会安装编辑器或 CLI；可另用 `npx tingly-design`。
+
 **MCP。** 让任何支持 MCP 的 agent 以工具的方式使用同样的命令：
 
 ```bash

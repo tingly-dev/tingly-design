@@ -105,6 +105,8 @@
 - 安全：带 `Origin` 的请求只收本机或编辑器自己地址来的，别的网站不能借人的浏览器调它。服务默认只听 127.0.0.1；监听到网络上时，`/mcp` 和其余 `/api` 一样，谁能连上谁就能用。
 - 工具的说明写给模型，用英文，和其他提示词一样；工具报的错跟调用方的语言（HTTP 看 `x-dc-lang`、`Accept-Language`，stdio 看命令行的语言）。
 
+**外部 skills CLI。** 仓库现有的 `.claude/skills/` 也是 `npx skills add tingly-dev/tingly-design` 的发现入口。默认发现六份格式说明，用户按提示选择 skill 和 agent；维护者用的 `issue-resolve` 以 `metadata.internal: true` 从 skills CLI 的普通发现中隐藏（显式设置 `INSTALL_INTERNAL_SKILLS=1` 可发现）。参考页随其所属 skill 一起复制。单独安装 slides 或 motion 时，跨 skill 引用提供上游链接；dashboard 的仓库脚本在外部安装时以本地只读 SQLite 客户端替代。此方式安装说明，不安装编辑器或 CLI；原有 `tingly-design skills add` 保留。
+
 **`skills`。** 格式 skill 是给 agent 读的说明，原来只在这个仓库和 bundle 里。`skills` 列出它们（类型、名字、什么时候读），`skills add [文件夹]` 复制到那个文件夹的 `.claude/skills/<名字>/SKILL.md`（连同它指向的参考页 `reference/*.md`；MCP 的 `read_skill` 带 `page` 读其中一篇），别的仓库里的 Claude Code 就认得 Tingly Design 的文件。已有的同名副本内容不同时留着、提示 `--force`，免得盖掉别人改过的版本；一样的报"已是最新"。skill 里"怎么运行"的那段写全三种情形：bundle 里 `node cli.mjs`，仓库里 `pnpm tingly-design`，别处是装好的 `tingly-design`，连着 MCP 时用它的 `check`、`export`。
 
 **`prompt`。** 交给 Claude Code 的活由编辑器来跑（`POST …/delegate`），命令不自己起 `claude`：这样改动在改动记录里记成 Claude（监听靠 `activeDelegates` 认），打开着的编辑器实时看到，运行列表、停止按钮也都是同一个。命令先订阅项目的改动流（短的运行可能在启动请求返回前就结束），再发请求，按编号跟着这次运行的步骤，终端里一步一行（措辞用请求栏的 `prompt.step`），结束后稍等监听记完最后的写入，再读改动记录里这之后 Claude 的条目。用哪个编辑器和导出一样（`withEditor`，只是不需要页面）；没有在运行的就在进程里起一个，跑完关掉。MCP 也有同名的 `prompt` 工具，说明里让 agent 能自己改文件时就自己改。默认交给 Claude Code 而不是快速 AI：脚本和 agent 要的是把事做完，不是即时回答；它本来就在服务端跑，不需要页面；看板也只收 Claude Code。

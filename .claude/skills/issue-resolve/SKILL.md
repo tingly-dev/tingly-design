@@ -1,5 +1,7 @@
 ---
 name: issue-resolve
+metadata:
+  internal: true
 description: Pull new or updated GitHub issues in tingly-dev/tingly-design, evaluate them, and push each one forward. Team issues go straight to analysis, experiments and a draft PR; external issues get a short evaluation reply and wait for a maintainer. Use for the scheduled issue sweep or when asked to triage or resolve issues.
 ---
 

@@ -35,6 +35,8 @@ It needs Node 20 or newer. Exporting video needs Chrome or Edge and ffmpeg on th
 
 A project is its folder: the argument is a path (`./pitch`, `~/work/site`), and with none, for `export`, `prompt` and `history`, the folder you are in. Names can repeat, paths cannot, so a name is only used when you say so with `-n` / `--name` (`tingly-design check pitch --name`); a name that fits more than one project lists every path instead of picking one. A plain word that is not a project folder says where a project of that name is. Claude Code sessions the editor starts read the argument as a name, as they run from the editor's folder, not the project's. `list`, `check` and `export` read a path where it is, without adding it to the launcher.
 
+To install the format skills for an agent supported by the [skills CLI](https://github.com/vercel-labs/skills), run `npx skills add tingly-dev/tingly-design` in your working folder and choose the skills and agents. This installs instructions, not the editor or Tingly Design CLI; see the [README](../../README.md) for details.
+
 ## With the editor open
 
 A running server writes `.server.json` in its projects folder and removes it when it stops. When one is running on the same folder, `open` and `new` go through it: no second server starts, a folder you link or create shows up in the open launcher at once, and its list of linked folders stays whole. `tingly-design check` with no project says whether one is running. `--port` on `open` always starts a server of its own. Under `pnpm dev` the editor's address is Vite's (`DC_EDITOR_URL`, default `http://localhost:5173/`).

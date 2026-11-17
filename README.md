@@ -59,6 +59,14 @@ npx tingly-design new slides ./pitch                      # a project inside thi
 claude                                                    # "Make a Q3 pitch deck in ./pitch"; watch it with: npx tingly-design open ./pitch
 ```
 
+The [skills CLI](https://github.com/vercel-labs/skills) can install the format references for other supported agents too. From your working folder, choose the format skills and agents in its prompts:
+
+```bash
+npx skills add tingly-dev/tingly-design
+```
+
+To install only one format, pass its name to `--skill`. Add `-g` for a user-wide installation. The skills CLI requires Node.js 22.20 or later. Motion uses the slides reference, and slides can use motion's effect reference, so install both for those features. Installing skills does not install the editor or CLI; use `npx tingly-design` separately.
+
 **MCP.** Give any MCP-capable agent the same commands as tools:
 
 ```bash
