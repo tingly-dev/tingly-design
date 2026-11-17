@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docDecorCss, docLookCss, docLookVars, docsViewContext, captionsAsFigures, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { DOC_FULL_COLUMN, DOC_WIDTHS, docColumnOf, docDecorCss, docLookCss, docLookVars, docsViewContext, captionsAsFigures, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -256,6 +256,9 @@ function docHtml(d: DocJson, only?: string): string {
     });
   // what the doc wears is what the page draws: the doc's own look, or the design system and theme it chose (.design/doc-design-system.md)
   const { look, worn, tokens } = currentDocLook();
+  // the doc's width setting: a text column (a worn system's doc-column is what Standard means), or the whole page
+  const column = docColumnOf(d.settings.width, look.column);
+  const measure = column === null ? '' : `max-width:${column}px;`;
   // the serif look names a hosted face: without the link the page (and every picture of it) draws a stand-in
   const serif = !worn && (d.settings.headingFont === 'serif' || d.settings.bodyFont === 'serif');
   const fonts = serif ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap">' : '';
@@ -263,7 +266,7 @@ function docHtml(d: DocJson, only?: string): string {
   const faces = worn && tokens ? lookFontCss(tokens, systemFontBase(worn.system)) : '';
   return `<!doctype html><html lang="${d.settings.lang}"><head><meta charset="utf-8"><title>${d.title.replace(/[<&]/g, '')}</title>${fonts}<style>
 ${faces}
-body{max-width:${d.settings.width === 'wide' ? 1000 : (look.column ?? 720)}px;margin:40px auto;padding:0 24px}
+body{${measure}margin:40px auto;padding:0 24px}
 ${docLookCss(look)}
 img{max-width:100%}.tab+.tab{border-top:1px solid ${look.rule};margin-top:48px;padding-top:24px}@media print{.tab+.tab{break-before:page;border:0}}
 </style></head><body>${parts.join('\n')}</body></html>`;
@@ -272,6 +275,8 @@ img{max-width:100%}.tab+.tab{border-top:1px solid ${look.rule};margin-top:48px;p
 /** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
 function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
+  // the same measure the page draws: a text column, or (full) a page of its own for the picture
+  const column = docColumnOf(d.settings.width, currentDocLook().look.column);
   return [
     {
       id: 'pdf',
@@ -327,19 +332,36 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => copyDocMarkdown(name, tab!),
     },
     { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
-    ...imageExportItems({ hint: tNow('common.transfer.hint.docTab'), name: `${name}.png`, disabled: !tab, rule: true, make: () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }) }),
+    ...imageExportItems({ hint: tNow('common.transfer.hint.docTab'), name: `${name}.png`, disabled: !tab, rule: true, make: () => htmlToPng(docHtml(d, tab!), { width: (column ?? DOC_FULL_COLUMN) + 48 }) }),
   ];
 }
 
 function Settings({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const d = useDocIndex();
+  // a pointer leaving is not enough to close it: choosing a page width reflows the page under the pointer, and the menu
+  // must not vanish mid-choice (an outside click or Escape closes it, like every other menu)
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) onClose();
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('pointerdown', down);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('pointerdown', down);
+      document.removeEventListener('keydown', key);
+    };
+  }, [onClose]);
   const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
   const seg = (k: 'headingFont' | 'bodyFont' | 'width', label: string, opts: [string, string][]) => (
     <Segmented label={label} value={d.settings[k]} onChange={(v) => set(k, v)} options={opts.map(([value, text]) => ({ value, label: text }))} />
   );
   return (
-    <div className="popmenu settings" onMouseLeave={onClose}>
+    <div className="popmenu settings" ref={box}>
       <label>{t('docs.settings.headingFont')}</label>
       {seg('headingFont', t('docs.settings.headingFont'), [
         ['sans', t('docs.settings.sans')],
@@ -351,10 +373,7 @@ function Settings({ onClose }: { onClose: () => void }) {
         ['serif', t('docs.settings.serif')],
       ])}
       <label>{t('docs.settings.width')}</label>
-      {seg('width', t('docs.settings.width'), [
-        ['default', t('docs.settings.standard')],
-        ['wide', t('docs.settings.wide')],
-      ])}
+      {seg('width', t('docs.settings.width'), DOC_WIDTHS.map((w): [string, string] => [w, t(`docs.settings.${w}`)]))}
     </div>
   );
 }
@@ -377,6 +396,8 @@ export function DocsApp() {
   const comments = useComments();
   const [pop, setPop] = useState<'settings' | 'versions' | 'theme' | null>(null);
   const { look, worn, tokens } = useDocLook();
+  // the page's own width: the text column the doc asks for (a worn system's doc-column is its Standard) plus the two 64px gutters
+  const column = docColumnOf(d.settings.width, look.column);
   // the WeChat preview's "Change…" opens the Theme here
   const themeAsked = useDocs((x) => x.themeAsked);
   useEffect(() => {
@@ -463,7 +484,7 @@ export function DocsApp() {
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">
-          <div className="docpage" style={worn ? (docLookVars(look) as CSSProperties) : undefined}>
+          <div className="docpage" style={{ ...(worn ? (docLookVars(look) as CSSProperties) : {}), '--doc-page-max': column === null ? 'none' : `${column + 128}px` } as CSSProperties}>
             {worn && <style>{docDecorCss(look, '.app.docs[data-wears] .docpage .docbody')}</style>}
             {tab && <DocEditor key={tab} tab={tab} />}
           </div>

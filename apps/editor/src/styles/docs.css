@@ -381,7 +381,8 @@
 
 
 .docpage {
-  max-width: 760px;
+  /* the doc's own width (setting × design system): DocsApp sets the text column, the page adds its two gutters */
+  max-width: var(--doc-page-max, 805px);
   margin: 0 auto;
   background: var(--panel);
   border-radius: 10px;
@@ -389,11 +390,6 @@
   padding: 48px 64px 80px;
   min-height: calc(100% - 40px);
   box-sizing: border-box;
-}
-
-
-.app.docs[data-width='wide'] .docpage {
-  max-width: 1040px;
 }
 
 
@@ -1107,10 +1103,7 @@
   caret-color: var(--look-ink);
 }
 
-/* a system with a text column of its own (a platform's reader) sets the page's width; a doc set to wide stays wide */
-.app.docs[data-wears]:not([data-width='wide']) .docpage {
-  max-width: calc(var(--look-column, 632px) + 128px);
-}
+/* a system's text column is what the doc's Standard width means; DocsApp sets --doc-page-max from it (narrow / wide / full override it) */
 
 .app.docs[data-wears] .docbody :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--look-head);

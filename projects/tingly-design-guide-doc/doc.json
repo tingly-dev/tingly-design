@@ -26,7 +26,7 @@
   "settings": {
     "headingFont": "serif",
     "bodyFont": "sans",
-    "width": "default",
+    "width": "standard",
     "lang": "en"
   }
 }

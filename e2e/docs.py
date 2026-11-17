@@ -43,7 +43,7 @@ async def main():
     health = json.loads(urllib.request.urlopen(BASE.replace('5173', '8787') + '/api/health').read())
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 950})
+        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 950}, accept_downloads=True)
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -254,9 +254,25 @@ async def main():
         await expect(pg.locator('.restoretab')).to_have_count(0, timeout=8000)
         check('a restored tab leaves the deleted list', ok)
         await pg.locator('.dashbar button[aria-label="版式"]').click()
-        await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
-        ok = await wait_for(lambda: index()['settings']['width'] == 'wide')
-        check('layout settings write doc.json', ok and await pg.locator('.app.docs[data-width=wide]').count() == 1)
+        seg = pg.locator('.popmenu.settings .seg').nth(2)
+        widths = [('窄', 'narrow', '728px'), ('标准', 'standard', '805px'), ('宽', 'wide', '948px'), ('通栏', 'full', 'none')]
+        ok = True
+        for label, value, maxw in widths:
+            await seg.locator('button', has_text=label).click()
+            stored = await wait_for(lambda: index()['settings']['width'] == value)
+            drawn = await pg.evaluate("() => getComputedStyle(document.querySelector('.docpage')).maxWidth")
+            on = await pg.locator(f'.app.docs[data-width={value}]').count() == 1
+            ok = ok and stored and drawn == maxw and on
+            if not (stored and drawn == maxw and on): print('  width', value, stored, drawn, on)
+        check('layout settings offer four page widths, write doc.json and set the page', ok)
+        # the export reads the same measure as the page: Narrow is a 600px text column
+        await seg.locator('button', has_text='窄').click()
+        ok = await wait_for(lambda: index()['settings']['width'] == 'narrow')
+        await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
+        async with pg.expect_download() as dl:
+            await pg.get_by_role('menuitem', name='HTML 网页').click()
+        html = open(await (await dl.value).path(), encoding='utf-8').read()
+        check('the HTML export draws at the same measure as the page', ok and 'body{max-width:600px;margin:40px auto;padding:0 24px}' in html)
 
         # --- AI rewrite -------------------------------------------------------------------------
         if health.get('fastEdit'):

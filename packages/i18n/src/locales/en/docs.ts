@@ -121,6 +121,8 @@ export default {
     serif: 'Serif',
     standard: 'Standard',
     wide: 'Wide',
+    narrow: 'Narrow',
+    full: 'Full',
   },
   title: {
     label: 'Doc title',
@@ -180,6 +182,7 @@ export default {
     useWechat: 'Use the WeChat look',
     change: 'Change…',
     hint: 'Copy it, then paste into the article editor at mp.weixin.qq.com. This preview is our own picture of it; the editor has the last word.',
+    widthNotCarried: 'This document is set to {{width}}, but the platform draws the article at its own column, so the page width is not carried over.',
     copy: 'Copy',
     copied: 'Copied. Paste it into the WeChat article editor',
     copyFallback: 'Your browser would not let the page copy, so the page was downloaded instead. Open it, select all, copy, and paste',
