@@ -174,12 +174,12 @@
       "h": 620,
       "title": "Doc theme"
     },
-    "DocStyleMenu.dc.html": {
+    "DocPageSettings.dc.html": {
       "x": 3700,
       "y": 7220,
       "w": 1560,
       "h": 760,
-      "title": "Doc style menu (proposal)"
+      "title": "Doc page settings (proposal)"
     },
     "LivePointers.dc.html": {
       "x": 3900,
@@ -222,7 +222,7 @@
     "Dashboard.dc.html",
     "Doc.dc.html",
     "DocTheme.dc.html",
-    "DocStyleMenu.dc.html",
+    "DocPageSettings.dc.html",
     "DocWechat.dc.html",
     "Motion.dc.html",
     "AgentBar.dc.html",
