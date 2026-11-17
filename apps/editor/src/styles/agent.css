@@ -788,6 +788,204 @@
 }
 
 
+/* An answer read as Markdown (ChatMarkdown): the same frame, the type of a conversation. */
+.run-result.md {
+  white-space: normal;
+}
+
+
+.run-result.md > :first-child {
+  margin-top: 0;
+}
+
+
+.run-result.md > :last-child {
+  margin-bottom: 0;
+}
+
+
+.run-result.md p {
+  margin: 0 0 8px;
+}
+
+
+.run-result.md h1,
+.run-result.md h2,
+.run-result.md h3,
+.run-result.md h4 {
+  margin: 14px 0 6px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+
+.run-result.md h1 {
+  font-size: 16px;
+}
+
+
+.run-result.md h2 {
+  font-size: 15px;
+}
+
+
+.run-result.md h3,
+.run-result.md h4 {
+  font-size: 13.5px;
+}
+
+
+.run-result.md ul,
+.run-result.md ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+
+.run-result.md li {
+  margin: 2px 0;
+}
+
+
+.run-result.md li::marker {
+  color: var(--muted);
+}
+
+
+.run-result.md a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+
+.run-result.md blockquote {
+  margin: 0 0 8px;
+  padding-left: 10px;
+  border-left: 3px solid var(--line);
+  color: var(--ink-2);
+}
+
+
+.run-result.md hr {
+  margin: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+
+.run-result.md :not(pre) > code {
+  font: 12px var(--mono);
+  color: var(--ink);
+  background: var(--hover);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+
+.run-result.md table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+}
+
+
+.run-result.md th,
+.run-result.md td {
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  text-align: left;
+}
+
+
+.run-result.md th {
+  background: var(--panel-2);
+  font-weight: 600;
+}
+
+
+.run-result.md .md-code {
+  margin: 0 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+
+.run-result.md .md-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+  padding: 1px 4px 1px 10px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  font: 11px var(--mono);
+  color: var(--muted);
+}
+
+
+.run-result.md .md-code-head > span:empty {
+  display: none;
+}
+
+
+.run-result.md .md-code pre {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--canvas);
+}
+
+
+.run-result.md .md-code pre code {
+  display: block;
+  font: 12px/1.5 var(--mono);
+  color: var(--ink);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+
+.run-result.md .md-copy {
+  font: 11px var(--ui);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+
+.run-result.md .md-copy:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
+
+
+.run-result.md .md-copy.copied {
+  color: var(--ok);
+}
+
+
+.run-result.md .md-image {
+  color: var(--muted);
+  font-style: italic;
+}
+
+
+.run-result.md .md-image::before {
+  content: '▧ ';
+}
+
+
 .run-files {
   display: flex;
   flex-wrap: wrap;
