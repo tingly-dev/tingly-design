@@ -120,6 +120,8 @@ export function wechatStyles(l: DocLook = docOwnLook()): Record<string, string> 
     a: `color:${l.link};text-decoration:underline;`,
     sup: `color:${l.link};font-size:12px;vertical-align:super;line-height:1;`,
     img: `max-width:100%;border-radius:${Math.min(l.radius, 6)}px;display:block;margin:${p}px auto;`,
+    figure: `margin:${p}px 0;text-align:center;`,
+    figcaption: `font-size:${Math.max(12, size - 2)}px;line-height:1.5;color:${l.muted};margin:6px 0 0;text-align:center;`,
     table: `width:100%;border-collapse:collapse;margin:${p + 6}px 0;font-size:15px;display:table;`,
     th: `background-color:${l.tableHead};border:1px solid ${l.rule};padding:6px 10px;font-weight:600;text-align:left;color:${l.ink};`,
     td: `border:1px solid ${l.rule};padding:6px 10px;color:${l.ink};`,
@@ -240,6 +242,8 @@ class Writer {
 
   private picture(t: Tokens.Image): string {
     const alt = esc(unesc(t.text || ''));
+    // a Markdown title is the picture's caption: it goes under it, visible to the reader
+    const caption = t.title ? esc(unesc(t.title)) : '';
     let path = t.href;
     try {
       path = decodeURI(path);
@@ -247,14 +251,20 @@ class Writer {
       // keep as written
     }
     const given = this.o.images?.get(path) ?? this.o.images?.get(t.href);
-    if (given) return this.img(given, alt);
-    if (/^data:image\//i.test(t.href)) return `<img src="${esc(t.href)}" alt="${alt}" style="${this.st.img}">`;
+    if (given) return this.figure(this.img(given, alt), caption);
+    if (/^data:image\//i.test(t.href)) return this.figure(`<img src="${esc(t.href)}" alt="${alt}" style="${this.st.img}">`, caption);
     if (/^https?:\/\//i.test(t.href)) {
       this.note({ kind: 'picture-remote', url: t.href }, `remote:${t.href}`);
-      return `<img src="${esc(t.href)}" alt="${alt}" style="${this.st.img}">`;
+      return this.figure(`<img src="${esc(t.href)}" alt="${alt}" style="${this.st.img}">`, caption);
     }
     this.note({ kind: 'picture-missing', path }, `missing:${path}`);
-    return `<span style="color:#888888;font-style:italic;">[${alt || 'image'}]</span>`;
+    return this.figure(`<span style="color:#888888;font-style:italic;">[${alt || 'image'}]</span>`, caption);
+  }
+
+  /** A picture with a caption: one section holding both, so the caption stays with it wherever the platform draws it. */
+  private figure(img: string, caption: string): string {
+    if (!caption) return img;
+    return `<section style="${this.st.figure}">${img}<p style="${this.st.figcaption}">${caption}</p></section>`;
   }
 
   private img(p: WechatPicture, alt: string): string {

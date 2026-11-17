@@ -11,7 +11,6 @@ export default {
     dark: 'Dark',
     claude: 'Claude',
     ds: 'DeepSeek',
-    sunlit: 'Sunlit',
   },
   custom: 'Custom theme',
   source: {

@@ -115,8 +115,13 @@ async def main():
 
         # --- the sample doc with every element, and the WeChat look as a design system the doc wears --------------------
         # (projects/tingly-design-wechat-doc: two tabs, so the whole-doc article also shows the divider between them)
+        # the local picture gets a caption (its Markdown title); written as Markdown here, the authoring is the docs suite's
+        pic = os.path.join(SAMPLE, 'tabs/all-elements.md')
+        pic_text = open(pic, encoding='utf-8').read()
+        open(pic, 'w', encoding='utf-8').write(pic_text.replace('![本地图片](../uploads/wechat-sample.png)', '![本地图片](../uploads/wechat-sample.png "本地图片的说明")'))
         await pg.goto(BASE + '/?p=tingly-design-wechat-doc')
         await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
+        await expect(pg.locator('.docbody figure.docfig figcaption')).to_contain_text('本地图片的说明')
         await open_menu(pg)
         await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
         await expect(dlg.locator('iframe')).to_have_count(1, timeout=60000)
@@ -125,6 +130,7 @@ async def main():
         check('every element of the sample doc is in the article', plain and all(t in plain for t in tags), [t for t in tags if t not in (plain or '')])
         check('both drawn blocks and the local picture are pictures; the csv is a table', plain and plain.count('<img src="data:image/') == 3 and plain.count('<table ') == 2, plain and plain.count('<img'))
         check('the tabs are joined by one divider and their names are not in the article', plain and '怎么用这份文档' in plain and 'All elements' not in plain and 'How to use' not in plain)
+        check('a picture\'s caption goes under it, from the same Markdown title', plain and re.search(r'<section style="[^"]*text-align:center;">.*?本地图片的说明</p></section>', plain, re.S) is not None)
         issues = await dlg.locator('[data-testid=wechat-issues]').inner_text()
         check('the issue list names the links and the raw HTML', '链接' in issues and 'HTML' in issues, issues)
         check('there is no look picker of its own: the style is the doc\'s, with a way to change it', await dlg.locator('.seg').count() == 0 and await dlg.locator('[data-wechat-change]').count() == 1 and await dlg.locator('[data-wechat-look]').count() == 1)

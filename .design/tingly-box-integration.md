@@ -26,7 +26,7 @@ TB 侧的引用路径都相对 tingly-box 仓库。
 | 数据目录 | `DC_PROJECTS`；目录不存在时放入示例项目，`DC_SAMPLES=0` 则从空开始 |
 | 模型 | 快速 AI 直接调用 `ANTHROPIC_BASE_URL`；「交给 Claude Code」在同样的环境里运行 `claude`。模型名用 `DC_FAST_MODEL` 和 `DC_DELEGATE_MODEL` 指定 |
 | 宿主消息 | `tingly-design:open`、`set-theme`（宿主发给编辑器）；`ready`、`location`、`theme-changed`（编辑器发给宿主） |
-| 主题 | 预设 `light`、`dark`、`claude`、`ds`、`sunlit`，取自 TB `@tingly/ui` 的调色板，用 `scripts/sync-tingly-box-theme.mjs` 同步 |
+| 主题 | 预设 `light`、`dark`、`claude`、`ds`，取自 TB `@tingly/ui` 的调色板，用 `scripts/sync-tingly-box-theme.mjs` 同步 |
 
 ### 2.2 TB 侧和接入有关的事实
 
@@ -38,7 +38,7 @@ TB 侧的引用路径都相对 tingly-box 仓库。
 - **前端**：
   - 路由在 `frontend/src/routes/appRoutes.tsx`（都是 `lazy()`），侧栏在 `layout/useActivityItems.tsx`。
   - 实验功能用 `_global` 场景开关加 `<ExperimentalFeatureGate>` 控制（`components/ExperimentalFeatureGate.tsx`、`contexts/FeatureFlagsContext.tsx`）。
-  - 主题模式存在 localStorage `tingly-theme-mode`，取值 `light | dark | sunlit | claude | ds | system`（`packages/ui/src/theme/options.ts:8`），**和我们的预设名一一对应**。
+  - 主题模式存在 localStorage `tingly-theme-mode`（`packages/ui/src/theme/options.ts:8`）。其中 `light | dark | claude | ds | system` 和我们的预设名一一对应；TB 还多一个模式，这里不提供，宿主把它传进来时按默认外观处理。
 - **分发**：
   - 发的是单个 Go 二进制，CLI 和 Wails 桌面版共用同一份前端构建，**不带 Node**。
   - npm 包 `tingly-box` 只是一层薄壳，按平台下载 release 压缩包（`.design/npm.md`）。

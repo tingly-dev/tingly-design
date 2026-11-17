@@ -18,7 +18,7 @@ export interface ThemePalette {
   error?: Swatch;
   warning?: Swatch;
   info?: Swatch;
-  /** `default` may be `transparent` with a `gradient` behind it (ds, sunlit) */
+  /** `default` may be `transparent` with a `gradient` behind it (ds) */
   background?: { default?: string; paper?: string; gradient?: Record<string, string> };
   text?: { primary?: string; secondary?: string; disabled?: string };
   divider?: string;

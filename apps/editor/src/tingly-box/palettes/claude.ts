@@ -79,5 +79,4 @@ export const claudePalette: ThemePalette = {
       emptyIconBg: 'rgba(217, 119, 87, 0.1)',
     },
   },
-  isSunlit: false,
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outlineOf, wordCount, docColorCss, docToArticle, docToMarkdown, isDocColor, markdownToTab } from '../src';
+import { outlineOf, wordCount, docColorCss, docToArticle, docToMarkdown, isDocColor, markdownToTab, captionsAsFigures } from '../src';
 
 const index = (title: string, tabs: object[]) => JSON.stringify({ title, tabs });
 const files = (m: Record<string, string>) => (id: string) => m[id];
@@ -124,5 +124,18 @@ describe('docToArticle', () => {
 
   it('one tab is just that tab', () => {
     expect(docToArticle(doc, tabs, 'b').markdown).toBe('## Install\n\n![shot](assets/a.png)\n');
+  });
+});
+
+describe('captionsAsFigures', () => {
+  it('turns a lone picture with a title into a figure and drops the tooltip title', () => {
+    expect(captionsAsFigures('<p><img src="a.png" alt="shot" title="A screenshot"></p>')).toBe(
+      '<figure><img src="a.png" alt="shot"><figcaption>A screenshot</figcaption></figure>',
+    );
+  });
+
+  it('leaves an untitled picture, a picture among words and a titled inline mention alone', () => {
+    expect(captionsAsFigures('<p><img src="a.png" alt="shot"></p>')).toBe('<p><img src="a.png" alt="shot"></p>');
+    expect(captionsAsFigures('<p>see <img src="a.png" alt="shot" title="x"></p>')).toBe('<p>see <img src="a.png" alt="shot" title="x"></p>');
   });
 });

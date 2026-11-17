@@ -40,6 +40,7 @@
 |---|---|---|
 | [self-design.md](./self-design.md) | 自身设计稿：用一个画布项目（`projects/tingly-design-ui-canvas`）画 Tingly Design 自己的界面——整体结构、外壳、启动页、六种类型、顶栏和菜单、请求栏、主题 token；画到什么程度，先画再改代码，代码变了同一个 PR 里重画 | 已实施；§5 是没定的 |
 | [top-bar.md](./top-bar.md) | 顶栏：六种类型共用的一条栏——项目名、同步状态、导入 / 导出放哪，反馈、点星、语言、外观为什么在最右；浮栏只留工具 | 已实施 |
+| [editor-themes.md](./editor-themes.md) | 编辑器外壳的主题：一份注册表（`THEMES`）推出预设、外观菜单和脚本 API，名字只在 i18n；调色板一份预设一份文件、同步脚本按文件夹拷贝；首屏由 `base.css` 兜底 | 已实施 |
 | [dialog.md](./dialog.md) | 对话框：所有模态框共用一个 `Dialog`——遮罩、标题和关闭、焦点进出、Tab 留在框内、Esc 和菜单的先后 | 已实施 |
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
 | [slides-pptx.md](./slides-pptx.md) | 幻灯片 PPTX 双向交换：新项目导入（包级严格、对象级尽力而为，74 种内置表格样式、经典与 Office 2016 图表重绘）、向已开 deck 整批追加、整份/范围可见 deck 导出（原生优先、原生表格、逐元素图片化、旋转/SVG/表格双线对角线竖排原生化）、opaque runtime 捕获、来源/报告与诊断、安全和验证门槛 | 独立模块与 launcher/API/CLI/FileMenu/MCP 接入已实施；聚焦产品 e2e 106/106 通过，导入方向曾以 LibreOffice 图像差分作保真度量，成品另经 python-pptx 独立读回，真实 PowerPoint 渲染未验收；未来提案单列 |
@@ -48,6 +49,7 @@
 | [docs-docx.md](./docs-docx.md) | 文档导出为 Word（.docx）：由导出 Markdown 的同一份文本在浏览器里生成，不依赖服务；Google 文档靠传 Drive、Notion 靠贴 Markdown；哪些保留、哪些留作文字 | 已实施 |
 | [wechat-export.md](./wechat-export.md) | 文档导出到微信公众号：所见即所得：菜单项打开上下排的预览（问题清单、公众号栏宽的文章、复制、保存为 HTML），默认样式就是文档自己的样子、绿色等是选出来的样式；核心的纯函数把各标签页原样接成的文章写成只带内联样式的 HTML，外链改成文末编号引用、图片缩到编辑器收得下的大小、Mermaid 和公式画成图片；预览只是模拟，真实后台的行为还没实测 | 已实施（文档）；后台实测、代码高亮、API 发草稿没做 |
 | [doc-design-system.md](./doc-design-system.md) | 文档穿上设计系统：文件只存选择（`designSystems`、`theme`），画的时候从 tokens 解出一份 `DocLook`，编辑器的页面、HTML / PDF / PNG 和微信公众号读同一份；文档自己的页宽（窄 / 标准 / 宽 / 通栏，标准跟着系统的 `doc-column`）也走这份取值；顶栏“主题”、装入即穿上；公众号的样子是内置的 WeChat 风格（自带说明、`doc-*` 文字样式和栏宽）；设计系统的 README 可以“有设计 / 无设计”地看，设计系统有“文档”页（内置样例文档 + 每个文档角色是给定还是推出来的） | 已实施；Word、对比度没做 |
+| [doc-image-caption.md](./doc-image-caption.md) | 文档图片的替代文字和图片说明：alt 是 Markdown 的图片文字，说明用图片 title（`![alt](x.png "说明")`，没有新语法）；点图片浮出两格表单，编辑器画成 figure + figcaption，HTML / PDF / PNG 和微信公众号导出都跟随；mermaid、公式围栏不做 | 已实施；Word、混排文字的图注、说明里的格式没做 |
 | [docs-comments.md](./docs-comments.md) | 文档评论的表情回应（固定六个、存在评论里、不算请求），以及刻意不做的草稿 / @提及 / 多人光标 | 已实施 |
 | [docs-history.md](./docs-history.md) | 文档的历史版本：写盘前存下被覆盖的标签页文本（本机、不进 zip 和提交），列表、预览、恢复走普通编辑 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
@@ -83,8 +85,9 @@
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [progressive-edit.md](./progressive-edit.md) | AI 编辑的渐进上屏：输入侧本来逐笔，渲染侧沙箱增量调和（类按脚本缓存、兄弟按开标签记名）、看板页面帧和设计系统预览双帧交接、委托提示的分笔落盘，以及仍整块刷新的地方和原因 | 已实施；§6 是没做的 |
 | [chat-panel.md](./chat-panel.md) | 对话面板：对话是右侧的一个面板（和属性 / 批注 / 数据来源同级，同时最多一个，左侧位置已删除），面板里是一份能回头读的对话记录（每轮的请求、步骤、回答、改动），存在服务端，命令行和 MCP 的请求也在里面；左边一直是类型自己的列表；窄窗口禁用而不是自动换；草稿跨开合 | 已实施；§7 是没做的 |
-| [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的；§6 底部条的固定高度与拖动（动效元素行） |
-| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
+| [chat-pane.md](./chat-pane.md) | 对话放在右侧一栏（方案）：把左边还给类型自己的列表，删掉请求栏的位置菜单、外壳和 `ListColumn`；对话成为每种类型的一个右侧面板（和属性 / 批注 / 数据来源同级），底部仍是默认，窄窗口把按钮禁用而不是自动换位置；六种类型的宽度、各列、迁移和测试怎么改 | 已实施（并入 chat-panel.md） |
+| [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话面板，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的；§6 底部条的固定高度与拖动（动效元素行） |
+| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（默认，卡片平时一行）或右侧的对话面板、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
 | [composer.md](./composer.md) | 请求栏的外形：一张卡三行（头、输入、工具条），设置是药丸、整栏的工具是图标，谁来回答放在发送旁边，窄列里设置独占一行；ImageGen 的命名 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：Claude Code（本地登录 / Tingly Box / 自定义地址）、ImageGen、快速 AI 三张卡，各带自己的连接；令牌可在保存时取用另一张卡的；环境变量 > 已保存 > 默认；Tingly Box 为推荐；旧的共用连接文件读成三张卡 | 已实施；§6 是没做的 |
 | [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |

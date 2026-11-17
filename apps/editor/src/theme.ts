@@ -6,9 +6,12 @@
  * picker, `window.tinglyDesign.setTheme()` and a host's postMessage wins. docs/en/theming.md
  * has the formats.
  *
- * The presets are Tingly Box's theme modes (light, dark, claude, ds, sunlit, system), built
+ * The presets are Tingly Box's theme modes (light, dark, claude, ds, system), built
  * from its own palettes and font stacks (copied into ./tingly-box), so the editor looks like
  * Tingly Box on its own and inside it, and a host can pass its mode name through unchanged.
+ * `THEMES` below is the one list of presets: the picker, `PRESET_IDS`, `PRESETS` and the
+ * script API all come from it, and what a preset is called lives only in the `appearance.mode.*`
+ * i18n entries.
  */
 
 import { t } from './i18n';
@@ -17,7 +20,6 @@ import { claudePalette } from './tingly-box/palettes/claude';
 import { darkPalette } from './tingly-box/palettes/dark';
 import { dsPalette } from './tingly-box/palettes/ds';
 import { lightPalette } from './tingly-box/palettes/light';
-import { sunlitBackgroundGradient, sunlitPalette } from './tingly-box/palettes/sunlit';
 import type { ThemePalette } from './tingly-box/types';
 
 export const TOKENS = [
@@ -53,14 +55,32 @@ export type Token = (typeof TOKENS)[number];
 export type Tokens = Record<Token, string>;
 export type Scheme = 'light' | 'dark';
 
-export const PRESET_IDS = ['light', 'dark', 'claude', 'ds', 'sunlit'] as const;
-export type PresetId = (typeof PRESET_IDS)[number];
+/**
+ * The presets, in the order the appearance menu shows them: each one's palette (copied into
+ * ./tingly-box by scripts/sync-tingly-box-theme.mjs) and the few things the palette does not
+ * carry, taken from Tingly Box's component overrides (frontend/packages/ui/src/theme/
+ * components/*): the menu and dialog shadows, and where a gradient page background needs one
+ * solid colour for the canvas. Names are not here: they are `appearance.mode.<id>` in both
+ * language bundles, so the editor holds no UI wording.
+ */
+const THEMES = [
+  { id: 'light', palette: lightPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)' },
+  { id: 'dark', palette: darkPalette, menu: '0 10px 32px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5)', dialog: '0 24px 56px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5)' },
+  { id: 'claude', palette: claudePalette, menu: '0 10px 24px rgba(20, 20, 19, 0.08)', dialog: '0 20px 48px rgba(20, 20, 19, 0.16)' },
+  // the page is a near-white base under a sky-blue wash: the canvas takes a quarter of the wash
+  { id: 'ds', palette: dsPalette, menu: '0 10px 24px rgba(30, 35, 44, 0.1)', dialog: '0 20px 48px rgba(30, 35, 44, 0.18)', canvas: '#e2eaf4' },
+] as const satisfies readonly { id: string; palette: ThemePalette; menu: string; dialog: string; canvas?: string }[];
+
+export type PresetId = (typeof THEMES)[number]['id'];
+/** The presets, in menu order; the one list the picker, script API and tests read. */
+export const PRESET_IDS: readonly PresetId[] = THEMES.map((th) => th.id);
 /** what the picker offers and what a host may name */
 export type ThemeMode = PresetId | 'system';
+/** The rows of every appearance menu (`system` first), in the registry's order. */
+export const THEME_MODES: readonly ThemeMode[] = ['system', ...PRESET_IDS];
 
 export interface Preset {
   id: PresetId;
-  label: string;
   scheme: Scheme;
   tokens: Tokens;
 }
@@ -91,23 +111,6 @@ export type ThemeInput =
       palette?: PaletteInput;
     };
 
-/**
- * Tingly Box's look, per preset: its palette (copied into ./tingly-box by
- * scripts/sync-tingly-box-theme.mjs) plus the few things the palette does not
- * carry, taken from its component overrides (frontend/packages/ui/src/theme/
- * components/*): the menu and dialog shadows, and where a gradient page
- * background needs one solid colour for the canvas.
- */
-const TINGLY_BOX: Record<PresetId, { label: string; palette: ThemePalette; menu: string; dialog: string; canvas?: string }> = {
-  light: { label: 'Light', palette: lightPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)' },
-  dark: { label: 'Dark', palette: darkPalette, menu: '0 10px 32px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5)', dialog: '0 24px 56px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5)' },
-  claude: { label: 'Claude', palette: claudePalette, menu: '0 10px 24px rgba(20, 20, 19, 0.08)', dialog: '0 20px 48px rgba(20, 20, 19, 0.16)' },
-  // the page is a near-white base under a sky-blue wash: the canvas takes a quarter of the wash
-  ds: { label: 'DeepSeek', palette: dsPalette, menu: '0 10px 24px rgba(30, 35, 44, 0.1)', dialog: '0 20px 48px rgba(30, 35, 44, 0.18)', canvas: '#e2eaf4' },
-  // the page is a sky gradient: the canvas is its top
-  sunlit: { label: 'Sunlit', palette: sunlitPalette, menu: '0 10px 24px rgba(15, 23, 42, 0.08)', dialog: '0 20px 48px rgba(15, 23, 42, 0.16)', canvas: sunlitBackgroundGradient.start },
-};
-
 /** A colour that may be translucent, composited over a solid one: tokens are solid, so mixes and fills stay predictable. */
 function flatten(c: string | undefined, over: string): string | undefined {
   if (!c) return undefined;
@@ -130,8 +133,9 @@ function mixed(v: string): string {
 }
 
 /** One preset from Tingly Box's palette: what the palette names is copied, the rest derived the same way a host's palette is. */
-function fromTinglyBox(id: PresetId): Preset {
-  const { label, palette: p, menu, dialog, canvas: canvasOverride } = TINGLY_BOX[id];
+function fromTinglyBox(spec: (typeof THEMES)[number]): Preset {
+  const { id, palette: p, menu, dialog } = spec;
+  const canvasOverride = 'canvas' in spec ? spec.canvas : undefined;
   const scheme: Scheme = p.mode === 'dark' ? 'dark' : 'light';
   const bg = p.background?.default;
   const canvas = canvasOverride ?? (bg && bg !== 'transparent' ? bg.toLowerCase() : scheme === 'dark' ? '#000000' : '#ffffff');
@@ -167,7 +171,7 @@ function fromTinglyBox(id: PresetId): Preset {
   tokens['float-shadow'] = `0 0 0 1px ${tokens.line}, ${menu}`;
   tokens['lift-shadow'] = `0 0 0 1px ${tokens.line}, ${dialog}`;
   tokens.backdrop = scheme === 'dark' ? 'rgba(0, 0, 0, 0.6)' : `rgba(${hexRgb(tokens.ink)?.join(', ') ?? '0, 0, 0'}, 0.32)`;
-  return { id, label, scheme, tokens };
+  return { id, scheme, tokens };
 }
 
 export interface ResolvedTheme {
@@ -235,7 +239,7 @@ const DERIVED: Partial<Record<Token, { from: Token[]; make: (t: Tokens, s: Schem
   canvas: { from: ['panel', 'ink'], make: (t, s) => (s === 'dark' ? mix('#000', 40, t.panel) : mix(t.ink, 6, t.panel)) },
 };
 
-export const PRESETS: Record<PresetId, Preset> = Object.fromEntries(PRESET_IDS.map((id) => [id, fromTinglyBox(id)])) as Record<PresetId, Preset>;
+export const PRESETS: Record<PresetId, Preset> = Object.fromEntries(THEMES.map((spec) => [spec.id, fromTinglyBox(spec)])) as Record<PresetId, Preset>;
 
 /** Tingly Box (MUI) palette → token overrides. */
 export function fromPalette(p: PaletteInput): Partial<Tokens> {
@@ -392,7 +396,7 @@ export function initTheme(): void {
   Object.assign(((window as unknown as { tinglyDesign?: object }).tinglyDesign ??= {}), {
     setTheme,
     getTheme: () => current && { ...current.theme, source: current.source },
-    presets: () => PRESET_IDS.map((id) => ({ id, label: PRESETS[id].label, scheme: PRESETS[id].scheme })),
+    presets: () => PRESET_IDS.map((id) => ({ id, label: t(`appearance.mode.${id}`), scheme: PRESETS[id].scheme })),
   });
 }
 

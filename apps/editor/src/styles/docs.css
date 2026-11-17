@@ -624,8 +624,71 @@
 }
 
 
-.docbody img.ProseMirror-selectednode {
+.docbody figure.docfig {
+  margin: 0.8em 0;
+  text-align: center;
+}
+
+
+.docbody figure.docfig > img {
+  display: block;
+  margin: 0 auto;
+}
+
+
+/* a picture's caption: Markdown's image title, drawn under it (.design/doc-image-caption.md) */
+.docbody figcaption {
+  margin-top: 0.35em;
+  color: var(--muted);
+  font-size: 0.86em;
+  line-height: 1.5;
+  text-align: center;
+}
+
+
+.app.docs[data-wears] .docbody figcaption {
+  color: var(--look-muted);
+}
+
+
+.docbody img.ProseMirror-selectednode,
+.docbody .docfig[data-selected] > img {
   outline: 2px solid var(--accent);
+}
+
+
+/* the form on a selected picture, beside it: caption and alt text (DocEditor's ImageForm) */
+.docimgform {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+}
+
+
+.docimgform label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+
+.docimgform input {
+  width: 168px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
 }
 
 

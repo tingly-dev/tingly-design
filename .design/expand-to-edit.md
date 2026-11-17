@@ -92,7 +92,7 @@ Esc 关闭气泡（在表单里的任何输入框里按都行，没提交的输�
 | 动效 | ✓ 同一个 `SlideFrame` 和面板（e2e 只测了幻灯片，见 `e2e/coverage.json` 的理由） |
 | 设计系统 | — 没有元素选择：组件预览是整份源码，在代码里改 |
 | 看板 | — 页面在沙箱框架里，靠"认领"而不是选择模型；先要把选择语义带进框架 |
-| 文档 | — 文档是 ProseMirror 的块，不是带 `tid` 的元素；图片块的来源和 alt 另议（块角部栏的"图片"行，[block-corner-bar.md](./block-corner-bar.md) §4），那一页会复用 `ContentForm` 的图片行 |
+| 文档 | — 文档是 ProseMirror 的块，不是带 `tid` 的元素。点一张图有一个自己的两格表单（图片说明、替代文字），见 [doc-image-caption.md](./doc-image-caption.md)；不经过 `ContentForm`，因为写回的是 Markdown 的 title / alt，不是元素的属性 |
 
 幻灯片里 `x-icon`、`x-embed`、`x-shape`、`x-connector` 不收：它们的属性（图标名、嵌入的地址、形状类型）各是一张自己的小表单，不是"文字和一个地址"，见 §8。
 

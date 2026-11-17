@@ -180,6 +180,20 @@
       "w": 1800,
       "h": 760,
       "title": "Live pointers"
+    },
+    "ChatSide.dc.html": {
+      "x": 0,
+      "y": 11600,
+      "w": 1720,
+      "h": 1140,
+      "title": "Conversation beside the work"
+    },
+    "ChatPane.dc.html": {
+      "x": 1800,
+      "y": 11600,
+      "w": 1720,
+      "h": 1200,
+      "title": "Conversation pane states"
     }
   },
   "order": [
@@ -207,7 +221,9 @@
     "Composer.dc.html",
     "Expand.dc.html",
     "Review.dc.html",
-    "LivePointers.dc.html"
+    "LivePointers.dc.html",
+    "ChatSide.dc.html",
+    "ChatPane.dc.html"
   ],
   "notes": {
     "t0": {
@@ -244,6 +260,13 @@
       "y": 6240,
       "text": "Agent bar",
       "maxW": 1720
+    },
+    "t5": {
+      "kind": "title1",
+      "x": 0,
+      "y": 11360,
+      "text": "The conversation and the left side",
+      "maxW": 3520
     },
     "s1": {
       "x": 3480,
