@@ -2,7 +2,6 @@ import { ItemMenuItems } from '../ItemMenu';
 import { Menu, MenuItem } from '../Menu';
 import { RowMenu } from '../RowMenu';
 import { InlineRename } from '../InlineRename';
-import { Segmented } from '../Segmented';
 import { SideResizer } from '../SideResizer';
 import { ListColumn } from '../ChatPanel';
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
@@ -28,7 +27,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { DOC_FULL_COLUMN, DOC_WIDTHS, docColumnOf, docDecorCss, docLookCss, docLookVars, docsViewContext, captionsAsFigures, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { DOC_FULL_COLUMN, DOC_WIDTHS, docColumnOf, docDecorCss, docLookCss, docLookVars, docsViewContext, captionsAsFigures, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson, type DocWidth } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -49,7 +48,7 @@ import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';
 import { saveDocWord } from './wordExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { LayoutCols, VersionsIcon } from '../icons';
+import { VersionsIcon } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
@@ -177,6 +176,8 @@ function Outline({ tab }: { tab: string }) {
 
 function Toolbar() {
   const { t } = useTranslation();
+  const d = useDocIndex();
+  const { look } = useDocLook();
   const [, force] = useState(0);
   useEffect(() => {
     const e = docEditor.current;
@@ -240,6 +241,26 @@ function Toolbar() {
       )}
       {b(i(IconPhoto), false, () => pickImage(e), t('docs.block.image'))}
       {b(i(IconSeparatorHorizontal), false, () => e.chain().focus().setHorizontalRule().run(), t('docs.block.hr'))}
+      <span className="sep" />
+      <label className="pagewidth">
+        <span>{t('docs.page.width')}</span>
+        <select
+          data-page-width=""
+          aria-label={t('docs.page.width')}
+          value={d.settings.width}
+          onChange={(ev) => {
+            const w = ev.target.value as DocWidth;
+            editDoc((x) => (x.settings.width = w), `settings width = ${w}`);
+            e.chain().focus().run();
+          }}
+        >
+          {DOC_WIDTHS.map((w) => (
+            <option key={w} value={w}>
+              {w === 'standard' ? t('docs.page.standardPx', { px: docColumnOf('standard', look.column) ?? 677 }) : t(`docs.page.${w}`)}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -336,48 +357,6 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
   ];
 }
 
-function Settings({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
-  const d = useDocIndex();
-  // a pointer leaving is not enough to close it: choosing a page width reflows the page under the pointer, and the menu
-  // must not vanish mid-choice (an outside click or Escape closes it, like every other menu)
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const down = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) onClose();
-    };
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('pointerdown', down);
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('pointerdown', down);
-      document.removeEventListener('keydown', key);
-    };
-  }, [onClose]);
-  const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
-  const seg = (k: 'headingFont' | 'bodyFont' | 'width', label: string, opts: [string, string][]) => (
-    <Segmented label={label} value={d.settings[k]} onChange={(v) => set(k, v)} options={opts.map(([value, text]) => ({ value, label: text }))} />
-  );
-  return (
-    <div className="popmenu settings" ref={box}>
-      <label>{t('docs.settings.headingFont')}</label>
-      {seg('headingFont', t('docs.settings.headingFont'), [
-        ['sans', t('docs.settings.sans')],
-        ['serif', t('docs.settings.serif')],
-      ])}
-      <label>{t('docs.settings.bodyFont')}</label>
-      {seg('bodyFont', t('docs.settings.bodyFont'), [
-        ['sans', t('docs.settings.sans')],
-        ['serif', t('docs.settings.serif')],
-      ])}
-      <label>{t('docs.settings.width')}</label>
-      {seg('width', t('docs.settings.width'), DOC_WIDTHS.map((w): [string, string] => [w, t(`docs.settings.${w}`)]))}
-    </div>
-  );
-}
-
 function Title() {
   const { t } = useTranslation();
   const d = useDocIndex();
@@ -394,7 +373,7 @@ export function DocsApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useStore((s) => s.pane === 'comments');
   const comments = useComments();
-  const [pop, setPop] = useState<'settings' | 'versions' | 'theme' | null>(null);
+  const [pop, setPop] = useState<'versions' | 'theme' | null>(null);
   const { look, worn, tokens } = useDocLook();
   // the page's own width: the text column the doc asks for (a worn system's doc-column is its Standard) plus the two 64px gutters
   const column = docColumnOf(d.settings.width, look.column);
@@ -447,10 +426,6 @@ export function DocsApp() {
     <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
       <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
-        <div className="popwrap">
-          <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
-          {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
-        </div>
         <div className="popwrap">
           <BarButton icon={<Palette />} label={t('docs.theme.title')} title={t('docs.theme.hint')} on={pop === 'theme' || !!worn} data-theme-button="" onClick={() => setPop(pop === 'theme' ? null : 'theme')} />
           {pop === 'theme' && <DocTheme />}

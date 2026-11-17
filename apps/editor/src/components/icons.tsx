@@ -99,7 +99,6 @@ import {
   IconCode,
   IconDatabase,
   IconTarget,
-  IconLayoutColumns,
   IconMessage,
   IconMessage2Check,
   IconChecklist,
@@ -163,7 +162,6 @@ export const Sun = tabler(IconSun);
 export const CodeI = tabler(IconCode);
 export const Database = tabler(IconDatabase);
 export const Target = tabler(IconTarget);
-export const LayoutCols = tabler(IconLayoutColumns);
 export const Message = tabler(IconMessage);
 export const ReviewI = tabler(IconMessage2Check);
 export const Checklist = tabler(IconChecklist);

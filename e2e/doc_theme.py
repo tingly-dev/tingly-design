@@ -62,8 +62,16 @@ async def main():
         # --- the doc's own look -----------------------------------------------------------------------
         own_html = await html_export()
         check('without a system the doc is drawn by its own look', await pg.locator('.app.docs[data-wears]').count() == 0 and 'a{color:#1d4ed8}' in own_html)
+        check('the top bar has no Layout button', await pg.locator('.dashbar button[aria-label="版式"]').count() == 0)
         await open_theme()
         check('the Theme popover offers the doc\'s own look, selected, and the systems to install', await theme.locator('[data-theme-card=original][aria-pressed=true]').count() == 1 and await theme.locator('.dsbuiltins').count() == 1)
+        check('the Theme popover owns the doc\'s faces', await theme.locator('[data-theme-fonts]').count() == 1 and await theme.locator('[data-font-body=serif]').count() == 1)
+        await theme.locator('[data-font-body=serif]').click()
+        check('choosing a body face writes it into the doc', await wait_for(lambda: index()['settings']['bodyFont'] == 'serif'))
+        face = await pg.evaluate("() => getComputedStyle(document.querySelector('.docbody p')).fontFamily")
+        check('...and the page draws it', 'Source Serif' in face, face)
+        await theme.locator('[data-font-body=sans]').click()
+        check('...and back to sans', await wait_for(lambda: index()['settings']['bodyFont'] == 'sans'))
 
         # --- install a built-in look: it is worn at once ---------------------------------------------
         builtins = theme.locator('.dsbuiltins')
@@ -80,6 +88,8 @@ async def main():
         look = await pg.evaluate("() => { const l = document.querySelector('.docbody a'); const p = document.querySelector('.docpage'); return { link: getComputedStyle(l).color, page: getComputedStyle(p).backgroundColor, h1: getComputedStyle(document.querySelector('.docbody h1')).fontSize, column: getComputedStyle(p).maxWidth, body: getComputedStyle(document.querySelector('.docbody p')).fontSize + '/' + getComputedStyle(document.querySelector('.docbody p')).lineHeight }; }")
         check('the editor\'s page is the system\'s: its page colour, brand-coloured links, its heading and body sizes, line height and column', look['link'] == 'rgb(7, 193, 96)' and look['page'] == 'rgb(255, 255, 255)' and look['h1'] == '24px' and look['column'] == '805px' and look['body'] == '16px/28.8px', json.dumps(look))
         await expect(theme.locator('[data-theme-card="look-wechat/light"][aria-pressed=true]')).to_have_count(1)
+        await open_theme()
+        check('a worn theme shows its own faces read-only, with the way back', await theme.locator('[data-font-readonly=heading]').count() == 1 and await theme.locator('[data-font-readonly=body]').count() == 1 and await theme.locator('[data-font-body=serif]').count() == 0 and await theme.locator('[data-font-hint]').count() == 1)
         roles = await pg.evaluate("() => { const q = document.querySelector('.docbody blockquote'); const t = document.querySelector('.docbody th'); const pre = document.querySelector('.docbody pre'); const p = document.querySelector('.docbody > p'); return { quote: getComputedStyle(q).backgroundColor, bar: getComputedStyle(q).borderLeftColor, th: getComputedStyle(t).backgroundColor, code: getComputedStyle(pre).fontSize, gap: getComputedStyle(p).marginTop }; }")
         check('the doc roles the system gives reach the page: quote ground and bar, table head, code size, paragraph gap', roles == {'quote': 'rgb(249, 249, 249)', 'bar': 'rgb(7, 193, 96)', 'th': 'rgb(246, 248, 250)', 'code': '13px', 'gap': '13px'}, json.dumps(roles))
 
@@ -133,6 +143,8 @@ async def main():
         # --- back to the doc's own look -----------------------------------------------------------
         await theme.locator('[data-theme-card=original]').click()
         check('the doc\'s own look takes the theme away again', await wait_for(lambda: 'theme' not in index()) and await pg.locator('.app.docs[data-wears]').count() == 0)
+        await open_theme()
+        check('the own look gives the faces back', await theme.locator('[data-font-body=serif]').count() == 1 and await theme.locator('[data-font-readonly=body]').count() == 0)
         await pg.keyboard.press('Escape')
         check('and the export is the doc\'s own again', 'a{color:#1d4ed8}' in await html_export())
 
