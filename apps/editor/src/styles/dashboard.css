@@ -15,6 +15,16 @@
 }
 
 
+.app.dash.with-chat {
+  grid-template-columns: auto 1fr;
+}
+
+
+.app.dash.with-chat.with-side {
+  grid-template-columns: auto 1fr var(--w-dashside, 400px);
+}
+
+
 .dashbar {
   display: flex;
   align-items: center;

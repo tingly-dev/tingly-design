@@ -34,10 +34,10 @@ export function ProjectTitle({ value, label, hint, onRename }: { value: string; 
  * keep only tools; nothing about the project lives anywhere else.
  */
 /** An icon button for the bar: grey like every other control in it, lit only while what it opens is open. The name is the tooltip. */
-export function BarButton({ icon, label, title, on, badge, menu, btnRef, onClick, ...rest }: { icon: ReactNode; label: string; title?: string; on?: boolean; badge?: ReactNode; menu?: boolean; btnRef?: Ref<HTMLButtonElement>; onClick: () => void } & Record<`data-${string}`, string | undefined>) {
+export function BarButton({ icon, label, title, on, badge, menu, btnRef, disabled, onClick, ...rest }: { icon: ReactNode; label: string; title?: string; on?: boolean; badge?: ReactNode; menu?: boolean; btnRef?: Ref<HTMLButtonElement>; disabled?: boolean; onClick: () => void } & Record<`data-${string}`, string | undefined>) {
   // a button that opens a menu says so with a caret and `aria-expanded`; one that toggles something is `aria-pressed`
   return (
-    <button ref={btnRef} className="tb" {...(menu ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': !!on } : { 'aria-pressed': on })} aria-label={label} title={title ?? label} onClick={onClick} {...rest}>
+    <button ref={btnRef} className="tb" {...(menu ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': !!on } : { 'aria-pressed': on })} aria-label={label} aria-disabled={disabled} title={title ?? label} disabled={disabled} onClick={onClick} {...rest}>
       {icon}
       {menu && (
         <span className="caret">

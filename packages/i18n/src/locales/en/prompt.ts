@@ -106,17 +106,9 @@ export default {
     unfold: 'Open the prompt',
     enterHint: 'Enter to send, Shift + Enter for a new line',
   },
-  position: {
-    button: 'Where the prompt sits',
-    bottom: 'Bottom',
-    bottomHint: 'Floats over the work and folds away; good for asking once and looking',
-    left: 'Left',
-    leftHint: 'A column that stays open with the whole conversation; the work moves over',
-    leftNarrow: 'Make the window wider to put it on the left',
-  },
   chat: {
     label: 'Conversation',
-    tab: 'Conversation',
+    close: 'Close the conversation',
     empty: 'Your requests, what the AI did and what it answered are kept here. Ask for something below.',
     newConversation: 'New conversation',
     jump: 'Jump to latest',

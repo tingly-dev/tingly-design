@@ -1,13 +1,11 @@
 import { useEffect, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Turn } from '@dc/core';
-import { SIDES } from '../sideWidth';
-import { setBarCollapsed, setBarMode, useStore } from '../store';
+import { setBarCollapsed, useStore } from '../store';
 import { useTurns } from '../turns';
-import { MIN_WORK, useChat } from './ChatPanel';
-import { Menu, MenuItem } from './Menu';
+import { useChat } from './ChatPane';
 import { TurnBody } from './Transcript';
-import { Chevron, Done, DockBottom, DockLeft, Failed, History as HistoryIcon, Reuse, Sparkle, Spinner } from './icons';
+import { Chevron, Done, Failed, History as HistoryIcon, Reuse, Sparkle, Spinner } from './icons';
 
 /** Ctrl/⌘ J puts the cursor in the request box, opening the folded bar on the way; a click on the work lets go of the box, which folds the run card of the floating bar. */
 export function useBarKeys(box: RefObject<HTMLTextAreaElement | null>): void {
@@ -52,87 +50,29 @@ export function useBarKeys(box: RefObject<HTMLTextAreaElement | null>): void {
  * See .design/agent-panel.md.
  */
 
-/** The position menu, history and fold buttons, at the right end of the bar's header. */
+/** The history and fold buttons, at the right end of the bar's header; the conversation pane's foot has neither (the record is the history, and folding is the bottom card's). */
 export function BarTools() {
   const { t } = useTranslation();
   const open = useStore((s) => s.historyOpen);
   const count = useStore((s) => s.turns.length + s.delegates.length);
-  const { left } = useChat();
+  const inPane = !!useChat().composer;
+  if (inPane) return null;
   return (
     <span className="bar-tools">
-      {!left && (
-        <button
-          className={`ib sm${open ? ' on' : ''}`}
-          aria-pressed={open}
-          aria-label={t('prompt.history.button')}
-          title={t('prompt.history.button')}
-          disabled={!count}
-          onClick={() => useStore.setState({ historyOpen: !open })}
-        >
-          <HistoryIcon />
-        </button>
-      )}
-      <PositionMenu />
-      {!left && (
-        <button className="ib sm" aria-label={t('prompt.bar.fold')} title={t('prompt.bar.fold')} onClick={() => setBarCollapsed(true)}>
-          <Chevron />
-        </button>
-      )}
-    </span>
-  );
-}
-
-/** Where the request bar sits: the bottom of the work, or a column on the left. One menu, two items, each saying what it costs. */
-function PositionMenu() {
-  const { t } = useTranslation();
-  const mode = useStore((s) => s.barMode);
-  const kind = useStore((s) => s.kind);
-  const { left } = useChat();
-  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
-  // the preference says left, the window is too narrow for it: the bar is at the bottom for now
-  const fits = window.innerWidth >= SIDES.chat.min + (MIN_WORK[kind ?? 'design'] ?? 860);
-  const label = t('prompt.position.button');
-  return (
-    <>
       <button
-        className="ib sm"
-        aria-label={label}
-        title={label}
-        aria-haspopup="menu"
-        aria-expanded={!!at}
-        onClick={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          setAt(at ? null : { x: r.right, y: r.bottom + 4 });
-        }}
+        className={`ib sm${open ? ' on' : ''}`}
+        aria-pressed={open}
+        aria-label={t('prompt.history.button')}
+        title={t('prompt.history.button')}
+        disabled={!count}
+        onClick={() => useStore.setState({ historyOpen: !open })}
       >
-        {left ? <DockLeft /> : <DockBottom />}
+        <HistoryIcon />
       </button>
-      {at && (
-        <Menu x={at.x} y={at.y} align="right" label={label} onClose={() => setAt(null)}>
-          <MenuItem
-            label={t('prompt.position.bottom')}
-            hint={t('prompt.position.bottomHint')}
-            icon={<DockBottom />}
-            checked={mode === 'float'}
-            onSelect={() => {
-              setBarMode('float');
-              setAt(null);
-            }}
-          />
-          <MenuItem
-            label={t('prompt.position.left')}
-            hint={fits ? t('prompt.position.leftHint') : t('prompt.position.leftNarrow')}
-            icon={<DockLeft />}
-            checked={mode === 'left'}
-            disabled={!fits && mode !== 'left'}
-            onSelect={() => {
-              setBarMode('left');
-              setAt(null);
-            }}
-          />
-        </Menu>
-      )}
-    </>
+      <button className="ib sm" aria-label={t('prompt.bar.fold')} title={t('prompt.bar.fold')} onClick={() => setBarCollapsed(true)}>
+        <Chevron />
+      </button>
+    </span>
   );
 }
 
@@ -211,7 +151,7 @@ function time(at: number): string {
   return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/** The requests of this project, newest first, from the same record as the left column; a row opens to the steps, the answer and the files. */
+/** The requests of this project, newest first, from the same record as the conversation pane; a row opens to the steps, the answer and the files. */
 export function HistoryList({ onReuse, onOpen }: { onReuse?: (prompt: string) => void; onOpen?: (file: string) => void }) {
   const { t } = useTranslation();
   const turns = useTurns();

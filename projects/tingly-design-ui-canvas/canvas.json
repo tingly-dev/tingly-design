@@ -193,14 +193,21 @@
       "y": 11600,
       "w": 1720,
       "h": 1140,
-      "title": "Conversation beside the work"
+      "title": "Conversation and the left side (superseded)"
     },
     "ChatPane.dc.html": {
       "x": 1800,
       "y": 11600,
       "w": 1720,
       "h": 1200,
-      "title": "Conversation pane states"
+      "title": "The conversation pane (superseded)"
+    },
+    "ChatLeft.dc.html": {
+      "x": 3600,
+      "y": 11600,
+      "w": 1720,
+      "h": 960,
+      "title": "Conversation at the far left"
     }
   },
   "order": [
@@ -231,7 +238,8 @@
     "Review.dc.html",
     "LivePointers.dc.html",
     "ChatSide.dc.html",
-    "ChatPane.dc.html"
+    "ChatPane.dc.html",
+    "ChatLeft.dc.html"
   ],
   "notes": {
     "t0": {

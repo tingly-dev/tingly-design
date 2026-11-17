@@ -49,6 +49,17 @@
 }
 
 
+.topbar .tb:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+
+.topbar .tb:disabled:hover {
+  color: var(--muted);
+}
+
+
 .topbar .tb .badge,
 .topbar .tb .mnotedot {
   position: absolute;

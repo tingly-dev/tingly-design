@@ -92,7 +92,6 @@ export default {
   },
   strip: {
     label: 'Slides',
-    tab: 'Pages',
     list: 'Slide list',
     thumb: 'Slide {{n}}: {{title}}',
     skipped: 'Skipped',

@@ -55,8 +55,6 @@ export interface DelegateState {
 /** Which run the prompt bar's feed shows: the fast model's, or a Claude Code run by id. */
 export type LastRun = { kind: 'fast' } | { kind: 'delegate'; id: string } | null;
 
-export type BarMode = 'left' | 'float';
-
 export interface AgentState {
   fast: FastState;
   delegates: DelegateState[];
@@ -67,15 +65,13 @@ export interface AgentState {
   feeds: number;
   /** the prompt bar folded to a pill (kept across sessions) */
   barCollapsed: boolean;
-  /** where the prompt lives: the bar at the bottom of the stage (`float`, the default), or a column of conversation on the left (`left`) */
-  barMode: BarMode;
+  /** what is typed in the request box and not sent: kept in the store so opening or closing the conversation pane does not lose it */
+  draft: string;
   /** the list of earlier requests open above the bar */
   historyOpen: boolean;
   /** the project's stored conversation, oldest first: runs that ended, from the server and from this session (the live ones are read from `delegates` and `fast`) */
   turns: Turn[];
-  /** which tab of the conversation column shows when the kind has a list of its own */
-  chatTab: 'list' | 'chat';
-  /** the conversation tab's dot while the person is on the other tab: a result arrived, or a run failed */
+  /** the conversation pane's button wears this while the person is on another pane: a result arrived, or a run failed */
   chatNote: 'new' | 'failed' | null;
   /** the project's Claude Code conversation, kept by the server: the next request continues it */
   conversation: Conversation | null;
@@ -95,11 +91,9 @@ export const agentInitial = (): AgentState => ({
   runHidden: false,
   feeds: 0,
   barCollapsed: readPref('dc.barCollapsed') === '1',
-  // the right-edge dock this value used to name (`auto`) is the left column now
-  barMode: readPref('dc.barMode') === 'left' || readPref('dc.barMode') === 'auto' ? 'left' : 'float',
+  draft: '',
   historyOpen: false,
   turns: [],
-  chatTab: 'chat',
   chatNote: null,
   freshNext: false,
   changes: [],
@@ -107,7 +101,7 @@ export const agentInitial = (): AgentState => ({
 });
 
 /** What a newly opened project starts from: the conversation of the last one is gone (the bar's own look is kept). */
-export const agentReset = (): Partial<AgentState> => ({ delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false, changes: [], followUp: null });
+export const agentReset = (): Partial<AgentState> => ({ delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], draft: '', chatNote: null, historyOpen: false, freshNext: false, changes: [], followUp: null });
 
 /** Add a turn to the stored ones, or replace the one with its id. */
 function upsertTurn(list: Turn[], turn: Turn): Turn[] {
@@ -116,10 +110,10 @@ function upsertTurn(list: Turn[], turn: Turn): Turn[] {
   return next.slice(-200);
 }
 
-/** A run ended: it joins the stored turns, and the conversation tab says so when the person is not on it. */
-export const endTurnPatch = (s: AgentState, turn: Turn): Partial<AgentState> => ({
+/** A run ended: it joins the stored turns, and the conversation button says so when the column is closed. */
+export const endTurnPatch = (s: AgentState & { chatOpen: boolean }, turn: Turn): Partial<AgentState> => ({
   turns: upsertTurn(s.turns, turn),
-  ...(s.chatTab !== 'chat' ? { chatNote: turn.state === 'done' ? (s.chatNote === 'failed' ? 'failed' : 'new') : turn.state === 'error' ? 'failed' : s.chatNote } : {}),
+  ...(!s.chatOpen ? { chatNote: turn.state === 'done' ? (s.chatNote === 'failed' ? 'failed' : 'new') : turn.state === 'error' ? 'failed' : s.chatNote } : {}),
 });
 
 type DelegateEvent = Extract<ServerEvent, { type: 'delegate' }>;
