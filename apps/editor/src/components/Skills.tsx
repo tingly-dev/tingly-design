@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { KIND_SKILL, type SkillInfo, type SkillScope } from '@dc/core';
 import { setSkillChoice, useStore } from '../store';
@@ -41,33 +42,35 @@ export function SkillsDialog({ onClose }: { onClose: () => void }) {
       {skills.length ? (
         <input className="inp skills-search" type="search" value={q} placeholder={t('prompt.skills.search')} aria-label={t('prompt.skills.search')} autoFocus onChange={(e) => setQ(e.currentTarget.value)} />
       ) : null}
-      {!skills.length ? (
-        <p className="refnote">{t('prompt.skills.none')}</p>
-      ) : !groups.length ? (
-        <p className="refnote">{t('prompt.skills.noMatch', { query: q.trim() })}</p>
-      ) : (
-        groups.map(({ scope, list }) => (
-          <section key={scope} aria-label={t(HEADING[scope])}>
-            <h3>{t(HEADING[scope])}</h3>
-            <ul>
-              {list.map((s) => {
-                const always = isAlways(s, kind);
-                const checked = always || on.has(s.id);
-                return (
-                  <li key={s.id}>
-                    <label className={`refrow skillrow${checked ? ' on' : ''}`} title={s.description ? `${s.description}\n${s.path}` : s.path}>
-                      <input type="checkbox" checked={checked} disabled={always} onChange={() => pick(s)} aria-label={t('prompt.skills.pick', { name: s.name })} />
-                      <SkillI />
-                      <span className="rname">{s.name}</span>
-                      <span className="rpath">{always ? t('prompt.skills.always') : s.description}</span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))
-      )}
+      <div className="skills-list">
+        {!skills.length ? (
+          <p className="refnote">{t('prompt.skills.none')}</p>
+        ) : !groups.length ? (
+          <p className="refnote">{t('prompt.skills.noMatch', { query: q.trim() })}</p>
+        ) : (
+          groups.map(({ scope, list }) => (
+            <section key={scope} aria-label={t(HEADING[scope])}>
+              <h3>{t(HEADING[scope])}</h3>
+              <ul>
+                {list.map((s) => {
+                  const always = isAlways(s, kind);
+                  const checked = always || on.has(s.id);
+                  return (
+                    <li key={s.id}>
+                      <label className={`refrow skillrow${checked ? ' on' : ''}`} title={s.description ? `${s.description}\n${s.path}` : s.path}>
+                        <input type="checkbox" checked={checked} disabled={always} onChange={() => pick(s)} aria-label={t('prompt.skills.pick', { name: s.name })} />
+                        <SkillI />
+                        <span className="rname">{s.name}</span>
+                        <span className="rpath">{always ? t('prompt.skills.always') : s.description}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
+        )}
+      </div>
       <footer>
         <button type="button" className="btn primary" onClick={onClose}>
           {t('common.done')}
@@ -77,7 +80,8 @@ export function SkillsDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** The request bar's way in: what this chat reads, beside the request's other options. */
+/** The request bar's way in: what this chat reads, beside the request's other options. The dialog is drawn
+ * on the body: the bar is shifted by a transform, which would otherwise hold a fixed backdrop inside it. */
 export function SkillsChip() {
   const { t } = useTranslation();
   const count = useStore((s) => s.skillChoice.length);
@@ -87,7 +91,7 @@ export function SkillsChip() {
       <button className={`ctx-chip action skillchip${count ? ' on' : ''}`} title={t('prompt.skills.hint')} onClick={() => setOpen(true)}>
         <SkillI /> {count ? t('prompt.skills.chipCount', { count }) : t('prompt.skills.chip')}
       </button>
-      {open && <SkillsDialog onClose={() => setOpen(false)} />}
+      {open && createPortal(<SkillsDialog onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

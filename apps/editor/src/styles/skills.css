@@ -14,14 +14,27 @@
 }
 
 
+/* only the list scrolls, so its rows never sit under the dialog's sticky footer */
+.skillsdlg {
+  overflow: hidden;
+}
+
+
 .skillsdlg .skills-search {
   width: 100%;
   margin: 4px 0 10px;
 }
 
 
+.skillsdlg .skills-list {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+
 .skillsdlg ul {
-  max-height: 280px;
+  max-height: none;
+  overflow: visible;
 }
 
 

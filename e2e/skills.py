@@ -123,7 +123,7 @@ async def main():
             chip = pg.locator('.prompt .skillchip')
             await chip.wait_for(timeout=15000)
             await pg.wait_for_timeout(600)
-            expect(chip).to_contain_text('技能 · 1')
+            await expect(chip).to_contain_text('技能 · 1')
             check('the bar says how many skills the chat reads', '技能 · 1' in await chip.inner_text(), await chip.inner_text())
 
             await chip.click()
@@ -159,7 +159,7 @@ async def main():
             await pg.locator('.skillrow', has_text='Brand voice').locator('input[type=checkbox]').click()
             await wait_for(lambda: stored(CANVAS) == {'skills': [SKILL]}, 5)
             await pg.locator('.skillsdlg').get_by_role('button', name='完成').click()
-            expect(chip).to_contain_text('技能 · 1')
+            await expect(chip).to_contain_text('技能 · 1')
 
             # English, light: the two pictures a PR shows
             if not os.environ.get('DC_E2E_NO_SHOTS'):
@@ -204,7 +204,7 @@ async def main():
             await pg.locator('.skillsdlg .skillrow', has_text='dc-canvas').locator('input[type=checkbox]').click()
             check('the doc\'s choice is the doc project\'s own', await wait_for(lambda: stored(DOCS) == {'skills': ['dc-canvas']}, 5))
             await pg.locator('.skillsdlg').get_by_role('button', name='完成').click()
-            expect(dchip).to_contain_text('技能 · 1')
+            await expect(dchip).to_contain_text('技能 · 1')
             await pg.locator('.dsask textarea').fill('Add a note about the skills picker')
             before = len(calls())
             await pg.locator('.dsask button.send').click()
@@ -233,6 +233,8 @@ async def main():
             await b.close()
     finally:
         restore()
+
+asyncio.run(main())
 
 failed = [n for n, ok in results if not ok]
 print(f'\n{len(results) - len(failed)}/{len(results)} passed')

@@ -11,8 +11,6 @@ export const KIND_SKILL: Record<ProjectKind, string> = { design: 'dc-canvas', sl
 /** Where a skill was found, in the order the same directory name resolves: this project, the product, the machine. */
 export type SkillScope = 'project' | 'builtin' | 'user';
 
-export const SKILL_SCOPES: SkillScope[] = ['project', 'builtin', 'user'];
-
 /** One skill a request may pick. */
 export interface SkillInfo {
   /** the folder's name: what a request carries and what a turn records */
