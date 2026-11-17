@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
-import { EditorContent, useEditor, type Editor } from '@tiptap/react';
+import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type NodeViewProps } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
+import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
@@ -178,7 +179,90 @@ const ProjectImage = Image.extend({
   renderHTML({ HTMLAttributes }) {
     return ['img', { ...HTMLAttributes, src: imageSrc(String(HTMLAttributes.src ?? '')), 'data-src': HTMLAttributes.src }];
   },
+  addNodeView() {
+    return ReactNodeViewRenderer(DocImage);
+  },
+  renderMarkdown(node) {
+    const src = String(node.attrs?.src ?? '');
+    const alt = String(node.attrs?.alt ?? '');
+    const title = String(node.attrs?.title ?? '');
+    if (!title) return `![${alt}](${src})`;
+    // a caption holding a double quote is written with single quotes, which Markdown reads the same
+    const quoted = title.includes('"') ? `'${title.replace(/'/g, "\\'")}'` : `"${title}"`;
+    return `![${alt}](${src} ${quoted})`;
+  },
 });
+
+/**
+ * A picture in the tab, drawn as a figure: Markdown's image title is its caption, shown under it
+ * (`.design/doc-image-caption.md`). The alt text stays the picture's own `alt` attribute, so a screen
+ * reader and a picture that did not load still say what it is.
+ */
+function DocImage({ node, selected }: NodeViewProps) {
+  const src = String(node.attrs.src ?? '');
+  const caption = String(node.attrs.title ?? '');
+  return (
+    <NodeViewWrapper as="figure" className="docfig" data-selected={selected ? '' : undefined}>
+      <img src={imageSrc(src)} alt={String(node.attrs.alt ?? '')} data-src={src} draggable={false} />
+      {caption && <figcaption>{caption}</figcaption>}
+    </NodeViewWrapper>
+  );
+}
+
+/**
+ * The form on the selected picture, beside it: its caption (drawn under the picture as you type) and
+ * its alt text (what a screen reader and a picture that did not load say). No new block and no
+ * layout change: the picture stays where it is and the caption is part of its own block.
+ */
+function ImageForm({ editor }: { editor: Editor }) {
+  const { t } = useTranslation();
+  const [, force] = useState(0);
+  useEffect(() => {
+    const f = () => {
+      if (editor.state.selection instanceof NodeSelection) force((n) => n + 1);
+    };
+    editor.on('transaction', f);
+    editor.on('focus', f);
+    window.addEventListener('scroll', f, true);
+    window.addEventListener('resize', f);
+    return () => {
+      editor.off('transaction', f);
+      editor.off('focus', f);
+      window.removeEventListener('scroll', f, true);
+      window.removeEventListener('resize', f);
+    };
+  }, [editor]);
+  const sel = editor.state.selection;
+  if (!(sel instanceof NodeSelection) || sel.node.type.name !== 'image') return null;
+  const dom = editor.view.nodeDOM(sel.from);
+  if (!(dom instanceof HTMLElement)) return null;
+  const r = dom.getBoundingClientRect();
+  const below = r.bottom + 8;
+  const set = (attrs: { title?: string | null; alt?: string | null }) => editor.chain().updateAttributes('image', attrs).run();
+  return (
+    <div
+      className="docimgform"
+      role="dialog"
+      aria-label={t('docs.image.label')}
+      style={{ left: Math.max(8, Math.min(r.left, innerWidth - 388)), top: below + 72 > innerHeight ? Math.max(8, r.top - 76) : below }}
+      // the picture's own keys are its own: the field handles them, not the editor behind it
+      onKeyDown={(ev) => ev.stopPropagation()}
+    >
+      <label>
+        {t('docs.image.caption')}
+        <input
+          value={String(sel.node.attrs.title ?? '')}
+          placeholder={t('docs.image.captionPlaceholder')}
+          onChange={(ev) => set({ title: ev.currentTarget.value || null })}
+        />
+      </label>
+      <label>
+        {t('docs.image.alt')}
+        <input value={String(sel.node.attrs.alt ?? '')} placeholder={t('docs.image.altPlaceholder')} onChange={(ev) => set({ alt: ev.currentTarget.value || null })} />
+      </label>
+    </div>
+  );
+}
 
 /** The top-level blocks a selection touches, as positions. */
 function blockRange(e: Editor): { from: number; to: number } {
@@ -515,6 +599,7 @@ export function DocEditor({ tab }: { tab: string }) {
         </div>
       </BubbleMenu>
       <DocPointers editor={editor} file={file} />
+      <ImageForm editor={editor} />
       <EditorContent editor={editor} />
       {slash && list.length > 0 && (
         <div className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={{ left: slash.x, top: slash.y }}>

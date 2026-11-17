@@ -86,6 +86,13 @@ export default {
     date: '今天的日期',
     image: '图片',
   },
+  image: {
+    label: '图片',
+    caption: '图片说明',
+    captionPlaceholder: '添加图片说明',
+    alt: '替代文字',
+    altPlaceholder: '描述这张图片',
+  },
   format: {
     label: '文字格式',
     bold: '粗体',

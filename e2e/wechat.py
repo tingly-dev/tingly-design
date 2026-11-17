@@ -117,6 +117,13 @@ async def main():
         # (projects/tingly-design-wechat-doc: two tabs, so the whole-doc article also shows the divider between them)
         await pg.goto(BASE + '/?p=tingly-design-wechat-doc')
         await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
+        # the local picture gets a caption (its Markdown title) in the editor before the article is made
+        await pg.locator('.docbody figure.docfig img').first.click()
+        await pg.locator('.docimgform label:has-text("图片说明") input').fill('本地图片的说明')
+        for _ in range(40):
+            if '本地图片的说明' in open(os.path.join(SAMPLE, 'tabs/all-elements.md'), encoding='utf-8').read(): break
+            await asyncio.sleep(0.1)
+        await pg.keyboard.press('Escape')
         await open_menu(pg)
         await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
         await expect(dlg.locator('iframe')).to_have_count(1, timeout=60000)
@@ -125,6 +132,7 @@ async def main():
         check('every element of the sample doc is in the article', plain and all(t in plain for t in tags), [t for t in tags if t not in (plain or '')])
         check('both drawn blocks and the local picture are pictures; the csv is a table', plain and plain.count('<img src="data:image/') == 3 and plain.count('<table ') == 2, plain and plain.count('<img'))
         check('the tabs are joined by one divider and their names are not in the article', plain and '怎么用这份文档' in plain and 'All elements' not in plain and 'How to use' not in plain)
+        check('a picture\'s caption goes under it, from the same Markdown title', plain and re.search(r'<section style="[^"]*text-align:center;">.*?本地图片的说明</p></section>', plain, re.S) is not None)
         issues = await dlg.locator('[data-testid=wechat-issues]').inner_text()
         check('the issue list names the links and the raw HTML', '链接' in issues and 'HTML' in issues, issues)
         check('there is no look picker of its own: the style is the doc\'s, with a way to change it', await dlg.locator('.seg').count() == 0 and await dlg.locator('[data-wechat-change]').count() == 1 and await dlg.locator('[data-wechat-look]').count() == 1)

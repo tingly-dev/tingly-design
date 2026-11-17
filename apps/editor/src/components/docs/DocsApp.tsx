@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docDecorCss, docLookCss, docLookVars, docsViewContext, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { docDecorCss, docLookCss, docLookVars, docsViewContext, captionsAsFigures, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -252,7 +252,7 @@ function docHtml(d: DocJson, only?: string): string {
     .filter((t) => !only || t.id === only)
     .map((t) => {
       const md = (display(s, tabFile(t.id)) ?? '').replace(/\]\((\.\.\/)?((?:assets|uploads)\/[^)\s]+)\)/g, (_m, _p, path) => `](${api.rawBase(project)}${path})`);
-      return `<section class="tab">${DOMPurify.sanitize(marked.parse(md, { gfm: true, async: false }) as string)}</section>`;
+      return `<section class="tab">${captionsAsFigures(DOMPurify.sanitize(marked.parse(md, { gfm: true, async: false }) as string))}</section>`;
     });
   // what the doc wears is what the page draws: the doc's own look, or the design system and theme it chose (.design/doc-design-system.md)
   const { look, worn, tokens } = currentDocLook();

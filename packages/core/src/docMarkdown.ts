@@ -149,3 +149,15 @@ export function docToArticle(docSource: string | undefined, tabSource: (id: stri
 export function markdownToTab(source: string): string {
   return mapOutsideCode(source, (line) => outsideSpans(line, (text) => text.replace(/<mark>([^<\n]+?)<\/mark>/gi, '==$1==')));
 }
+
+/**
+ * A picture's Markdown title is its caption (`![alt](x.png "the caption")`): an HTML paragraph that holds
+ * nothing but such a picture becomes a figure, with the picture and the caption underneath, and the
+ * title attribute (the browser's tooltip, now a duplicate) is dropped. The `alt` attribute stays. A
+ * paragraph that holds other words too is left alone, as is every picture without a caption.
+ */
+export function captionsAsFigures(html: string): string {
+  return html.replace(/<p>\s*(<img\b[^>]*?\stitle="([^"]*)"[^>]*>)\s*<\/p>/g, (all, img: string, caption: string) =>
+    caption ? `<figure>${img.replace(/\s+title="[^"]*"/, '')}<figcaption>${caption}</figcaption></figure>` : all,
+  );
+}
