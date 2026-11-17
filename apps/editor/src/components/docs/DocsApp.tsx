@@ -339,12 +339,29 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
 function Settings({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const d = useDocIndex();
+  // a pointer leaving is not enough to close it: choosing a page width reflows the page under the pointer, and the menu
+  // must not vanish mid-choice (an outside click or Escape closes it, like every other menu)
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) onClose();
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('pointerdown', down);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('pointerdown', down);
+      document.removeEventListener('keydown', key);
+    };
+  }, [onClose]);
   const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
   const seg = (k: 'headingFont' | 'bodyFont' | 'width', label: string, opts: [string, string][]) => (
     <Segmented label={label} value={d.settings[k]} onChange={(v) => set(k, v)} options={opts.map(([value, text]) => ({ value, label: text }))} />
   );
   return (
-    <div className="popmenu settings" onMouseLeave={onClose}>
+    <div className="popmenu settings" ref={box}>
       <label>{t('docs.settings.headingFont')}</label>
       {seg('headingFont', t('docs.settings.headingFont'), [
         ['sans', t('docs.settings.sans')],
