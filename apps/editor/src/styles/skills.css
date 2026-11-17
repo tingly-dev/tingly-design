@@ -32,6 +32,11 @@
 }
 
 
+.skillsdlg section + section {
+  margin-top: 14px;
+}
+
+
 .skillsdlg ul {
   max-height: none;
   overflow: visible;

@@ -161,30 +161,30 @@ async def main():
             await pg.locator('.skillsdlg').get_by_role('button', name='完成').click()
             await expect(chip).to_contain_text('技能 · 1')
 
-            # English, light: the two pictures a PR shows
+            # English, light: the pictures a PR shows, and the request they send
+            en = await b.new_page(locale='en-US', viewport={'width': 1440, 'height': 900})
+            await en.goto(BASE + f'/?p={CANVAS}')
+            await en.locator('.prompt .skillchip').wait_for(timeout=15000)
+            await en.wait_for_timeout(600)
             if not os.environ.get('DC_E2E_NO_SHOTS'):
-                en = await b.new_page(locale='en-US', viewport={'width': 1440, 'height': 900})
-                await en.goto(BASE + f'/?p={CANVAS}')
-                await en.locator('.prompt .skillchip').wait_for(timeout=15000)
-                await en.wait_for_timeout(600)
                 await en.locator('.prompt .skillchip').click()
                 await en.locator('.skillsdlg').wait_for()
                 await en.screenshot(path=OUT + 'skills-picker-en.png')
                 await en.locator('.skillsdlg').get_by_role('button', name='Done').click()
 
-            await pg.locator('.prompt .seg button', has_text='Claude Code').click()
-            await pg.locator('.prompt textarea').fill('Tighten the opening paragraph')
+            await en.locator('.prompt .seg button', has_text='Claude Code').click()
+            await en.locator('.prompt textarea').fill('Tighten the opening paragraph')
             before = len(calls())
-            await pg.locator('.prompt .send').click()
+            await en.locator('.prompt .send').click()
             await wait_for(lambda: len([c for c in calls() if c['ev'] == 'start']) > before)
             s = [c for c in calls()[before:] if c['ev'] == 'start']
             check('a request sent from the bar carries the chosen skill', bool(s) and 'Brand voice' in appended(s[0]), appended(s[0])[-300:] if s else s)
 
-            runfeed = pg.locator('.runfeed').last
+            runfeed = en.locator('.runfeed').last
             await runfeed.wait_for(timeout=15000)
             await runfeed.locator('.run-skills').wait_for(timeout=15000)
             check('the run\'s card says what it read', 'Brand voice' in await runfeed.locator('.run-skills').inner_text(), await runfeed.locator('.run-skills').inner_text())
-            await pg.wait_for_timeout(400)
+            await en.wait_for_timeout(400)
             if not os.environ.get('DC_E2E_NO_SHOTS'):
                 await runfeed.screenshot(path=OUT + 'skills-run-en.png')
 
