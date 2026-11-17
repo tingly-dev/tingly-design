@@ -14,7 +14,6 @@ export default {
     dark: '深色',
     claude: 'Claude',
     ds: 'DeepSeek',
-    sunlit: 'Sunlit',
   },
   custom: '外部主题',
   source: {

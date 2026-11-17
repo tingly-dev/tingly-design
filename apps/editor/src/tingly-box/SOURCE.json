@@ -4,10 +4,9 @@
   "commit": "a3a00b3",
   "files": [
     "fonts.ts",
-    "palettes/light.ts",
-    "palettes/dark.ts",
     "palettes/claude.ts",
+    "palettes/dark.ts",
     "palettes/ds.ts",
-    "palettes/sunlit.ts"
+    "palettes/light.ts"
   ]
 }

@@ -32,7 +32,7 @@ import { afterTokens, claudeCliReady } from './routes/shared';
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
 /** The editor window a save came from (`x-dc-client`), passed on with its file event. */
 const clientOf = (h: string | undefined): string | undefined => (h && /^[\w-]{1,40}$/.test(h) ? h : undefined);
-/** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, sunlit, system), inline JSON, or a .json file */
+/** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, system), inline JSON, or a .json file */
 const DC_THEME: unknown = await (async () => {
   const v = process.env.DC_THEME?.trim();
   if (!v) return null;
