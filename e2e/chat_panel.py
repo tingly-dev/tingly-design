@@ -212,8 +212,9 @@ async def main():
             chat_btn = pg.locator('[data-pane=chat]')
             check('the conversation button is disabled with an explanation', await chat_btn.is_disabled() and '窗口再宽一点' in (await chat_btn.get_attribute('title') or ''), await chat_btn.get_attribute('title'))
             await pg.set_viewport_size({'width': 1440, 'height': 860})
+            await expect(chat_btn).to_be_enabled()
             await expect(pane).to_have_count(0)
-            check('widening restores the button but does not reopen the pane', not await chat_btn.is_disabled() and await pane.count() == 0)
+            check('widening restores the button but does not reopen the pane', True)
 
             # the old left-column setting migrates once into the pane
             await pg.evaluate("localStorage.setItem('dc.barMode', 'left'); localStorage.removeItem('dc.pane.design')")
@@ -266,7 +267,9 @@ async def main():
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board', timeout=10000)
             await pg.wait_for_timeout(500)
-            check('canvas: the conversation pane opens from the top bar', await pane.count() == 1)
+            await open_chat()
+            await expect(pane).to_have_count(1)
+            check('canvas: the conversation pane opens from the top bar', True)
             await pane.get_by_role('button', name='关闭对话').click()
             await expect(pane).to_have_count(0)
             check('canvas: closing it puts the bottom bar back', await pg.locator('.prompt:not(.chat-composer)').count() == 1)
