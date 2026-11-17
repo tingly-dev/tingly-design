@@ -13,7 +13,7 @@
   "settings": {
     "headingFont": "sans",
     "bodyFont": "sans",
-    "width": "default",
+    "width": "standard",
     "lang": "zh-CN"
   }
 }

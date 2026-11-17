@@ -6,7 +6,7 @@ import { toast } from '../../store';
 import { Dialog } from '../Dialog';
 import { useInstalled } from '../ds/ds';
 import { CHANNEL_LOOK, applyLook, currentDocLook, docThemeName, useDocLook } from './docLookState';
-import { useDocs } from './docs';
+import { useDocIndex, useDocs } from './docs';
 import { copyWechat, prepareWechat, renderWechat, saveWechat, wechatPage, type WechatPrepared } from './wechatExport';
 
 /**
@@ -59,6 +59,7 @@ export function WechatPreview() {
   const value = useSyncExternalStore(subscribe, () => state);
   const { t } = useTranslation();
   const { look, worn } = useDocLook();
+  const d = useDocIndex();
   const installed = useInstalled();
   if (!value) return null;
   const close = () => set(null);
@@ -108,6 +109,11 @@ export function WechatPreview() {
               <iframe title={t('docs.wechat.previewLabel')} sandbox="" srcDoc={wechatPage(doc.html, value.name)} />
             </div>
             <p className="wp-hint">{t('docs.wechat.hint')}</p>
+            {d.settings.width !== 'standard' && (
+              <p className="wp-hint" data-width-note="">
+                {t('docs.wechat.widthNotCarried', { width: t(`docs.settings.${d.settings.width}`) })}
+              </p>
+            )}
             <div className="wp-actions">
               <button className="btn primary" onClick={() => void copyWechat(doc, value.name)}>
                 {t('docs.wechat.copy')}

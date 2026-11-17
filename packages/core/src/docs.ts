@@ -28,10 +28,36 @@ export interface DocTab {
   parent?: string;
 }
 
+/** How wide a doc's text column is; `full` fills the page it is drawn on. A design system's `doc-column` is its own Standard. */
+export type DocWidth = 'narrow' | 'standard' | 'wide' | 'full';
+
+/** The reading measure each width asks for, in px of text. `full` has none: the page decides. */
+export const DOC_WIDTH_COLUMNS: Record<Exclude<DocWidth, 'full'>, number> = { narrow: 600, standard: 677, wide: 820 };
+
+/** The widths the Layout popover offers, in reading order. */
+export const DOC_WIDTHS: readonly DocWidth[] = ['narrow', 'standard', 'wide', 'full'];
+
+/** The text column a `full` doc is drawn at when the reader's own width is not known (a PNG export), in px. */
+export const DOC_FULL_COLUMN = 1200;
+
+function isDocWidth(v: unknown): v is DocWidth {
+  return v === 'narrow' || v === 'standard' || v === 'wide' || v === 'full';
+}
+
+/**
+ * The text column a doc asks for, in px; `null` fills the page. `systemColumn` is the design system's own `doc-column`:
+ * it is what Standard means for that system, while an explicit Narrow / Wide / Full overrides it.
+ */
+export function docColumnOf(width: DocWidth, systemColumn?: number | null): number | null {
+  if (width === 'full') return null;
+  if (width === 'standard' && systemColumn && systemColumn > 0) return systemColumn;
+  return DOC_WIDTH_COLUMNS[width];
+}
+
 export interface DocSettings {
   headingFont: 'serif' | 'sans';
   bodyFont: 'serif' | 'sans';
-  width: 'default' | 'wide';
+  width: DocWidth;
   lang: string;
 }
 
@@ -42,7 +68,7 @@ export interface DocJson {
   [k: string]: unknown;
 }
 
-export const DEFAULT_SETTINGS: DocSettings = { headingFont: 'sans', bodyFont: 'sans', width: 'default', lang: 'zh-CN' };
+export const DEFAULT_SETTINGS: DocSettings = { headingFont: 'sans', bodyFont: 'sans', width: 'standard', lang: 'zh-CN' };
 
 export function tabFile(id: string): string {
   return `tabs/${id}.md`;
@@ -80,7 +106,8 @@ export function parseDoc(text: string | undefined): DocJson {
   const settings: DocSettings = {
     headingFont: s.headingFont === 'serif' ? 'serif' : 'sans',
     bodyFont: s.bodyFont === 'serif' ? 'serif' : 'sans',
-    width: s.width === 'wide' ? 'wide' : 'default',
+    // an older file says `default` (it was the narrower of two): it is Standard now
+    width: isDocWidth(s.width) ? s.width : 'standard',
     lang: typeof s.lang === 'string' && s.lang ? s.lang : DEFAULT_SETTINGS.lang,
   };
   return { ...raw, title: typeof raw.title === 'string' && raw.title.trim() ? raw.title : 'Untitled', tabs, settings };

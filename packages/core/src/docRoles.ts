@@ -33,7 +33,7 @@ export const DOC_ROLES: readonly DocRole[] = [
   { name: 'doc-h4', kind: 'text', use: 'A fourth-level heading; the smaller ones follow its size.', from: 'doc-body' },
   { name: 'doc-body', kind: 'text', use: 'Running text: size and line height.', from: 'doc' },
   { name: 'doc-code', kind: 'text', use: 'Code blocks: size and line height.', from: 'doc' },
-  { name: 'doc-column', kind: 'space', use: 'Width of the text column.', from: 'doc' },
+  { name: 'doc-column', kind: 'space', use: 'Width of the text column: what the doc’s Standard page width means.', from: 'doc' },
   { name: 'doc-gap', kind: 'space', use: 'Space between paragraphs.', from: 'doc' },
   { name: 'doc-indent', kind: 'space', use: 'Indent of lists.', from: 'doc' },
 ];
