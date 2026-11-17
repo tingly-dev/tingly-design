@@ -84,6 +84,13 @@ export default {
     date: 'Today’s date',
     image: 'Image',
   },
+  image: {
+    label: 'Picture',
+    caption: 'Caption',
+    captionPlaceholder: 'Add a caption',
+    alt: 'Alt text',
+    altPlaceholder: 'Describe the picture',
+  },
   format: {
     label: 'Text format',
     bold: 'Bold',

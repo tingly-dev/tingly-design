@@ -300,6 +300,8 @@ export function docLookCss(l: DocLook): string {
     `code{font-family:${l.mono};font-size:.9em;color:${l.inlineCode}}pre code{color:${l.ink}}` +
     code +
     `blockquote{margin:0;padding-left:16px;border-left:3px solid ${l.quote.bar};${l.quote.bg !== 'transparent' ? `background:${l.quote.bg};` : ''}color:${l.muted}}` +
+    `figure{margin:${l.gap ?? 12}px 0;text-align:center}figure img{margin:0 auto}` +
+    `figcaption{font-size:${Math.max(12, l.body - 2)}px;line-height:1.5;color:${l.muted};margin-top:6px;text-align:center}` +
     `hr{border:0;border-top:1px solid ${l.rule}}` +
     `mark{background:${l.mark};color:inherit}` +
     docColorCss(l.colors) +

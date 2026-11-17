@@ -322,6 +322,24 @@ async def main():
         check('the file keeps plain fences', all(f in md for f in ('```mermaid', '```latex', '```csv')), md[-300:])
         await pg.screenshot(path=OUT + 'docs-code-blocks.png')
 
+        # --- a picture's caption and alt text ------------------------------------------------------
+        # the tab's picture was written with its alt as the words; a caption is its Markdown title
+        fig = body.locator('figure.docfig')
+        await expect(fig).to_have_count(1)
+        check('a picture is drawn as a figure, its words on the img as alt', await fig.locator('img').get_attribute('alt') == 'Every editor writes to the same project files')
+        await fig.locator('img').click()
+        form = pg.locator('.docimgform')
+        await expect(form).to_be_visible()
+        check('clicking a picture opens the caption and alt form', await form.get_by_label('图片说明').count() == 1 and await form.get_by_label('替代文字').count() == 1)
+        await form.get_by_label('图片说明').fill('One write-back engine')
+        await form.get_by_label('替代文字').fill('The write-back engine')
+        ok = await wait_for(lambda: '![The write-back engine](../uploads/architecture.svg "One write-back engine")' in tab('architecture'))
+        check('the caption is the Markdown title and the alt its words', ok, [l for l in tab('architecture').splitlines() if l.startswith('![')])
+        caption = body.locator('figure.docfig figcaption')
+        await expect(caption).to_have_text('One write-back engine')
+        check('…and the picture is drawn with it underneath at once', True)
+        await pg.screenshot(path=OUT + 'docs-image-caption.png')
+
         # --- earlier versions ---------------------------------------------------------------------
         shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)  # earlier runs leave copies, and one a minute is kept
         await pg.locator('.tabname', has_text='Overview').click()
@@ -379,6 +397,7 @@ async def main():
             await pg.get_by_role('menuitem', name='HTML 网页').click()
         html = read(await (await dl.value).path())
         check('export the whole doc as HTML', '<h1>Project kinds</h1>' in html and '<table>' in html and 'overflow-x:auto' in html)
+        check('…and a picture with a caption is a figure under it', '<figure>' in html and '<figcaption>One write-back engine</figcaption>' in html, html[html.find('architecture.svg') - 80:html.find('architecture.svg') + 160])
 
         # --- a new doc ----------------------------------------------------------------------------
         await pg.goto(BASE + '/')

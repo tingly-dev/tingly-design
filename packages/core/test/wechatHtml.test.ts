@@ -223,3 +223,19 @@ describe('the sample doc with every element', () => {
     });
   }
 });
+
+describe('a picture’s caption', () => {
+  it('is the Markdown title, drawn under the picture; the alt stays on the img', () => {
+    const r = markdownToWechat('![shot](data:image/png;base64,AAAA "A screenshot")', {}, 'Links');
+    // the article's own section and the picture's, which holds it and its caption
+    expect(r.html.match(/<section /g)!.length).toBe(2);
+    expect(r.html).toContain('<img src="data:image/png;base64,AAAA" alt="shot"');
+    expect(r.html).toMatch(/<p style="[^"]*">A screenshot<\/p><\/section>/);
+  });
+
+  it('no title, no figure around the picture: one section, the article’s', () => {
+    const r = markdownToWechat('![shot](data:image/png;base64,AAAA)', {}, 'Links');
+    expect(r.html.match(/<section /g)!.length).toBe(1);
+    expect(r.html).toContain('alt="shot"');
+  });
+});
