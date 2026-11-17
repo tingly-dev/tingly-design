@@ -115,12 +115,12 @@ async def main():
 
         # --- the sample doc with every element, and the WeChat look as a design system the doc wears --------------------
         # (projects/tingly-design-wechat-doc: two tabs, so the whole-doc article also shows the divider between them)
-        await pg.goto(BASE + '/?p=tingly-design-wechat-doc')
-        await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
         # the local picture gets a caption (its Markdown title); written as Markdown here, the authoring is the docs suite's
         pic = os.path.join(SAMPLE, 'tabs/all-elements.md')
         pic_text = open(pic, encoding='utf-8').read()
         open(pic, 'w', encoding='utf-8').write(pic_text.replace('![本地图片](../uploads/wechat-sample.png)', '![本地图片](../uploads/wechat-sample.png "本地图片的说明")'))
+        await pg.goto(BASE + '/?p=tingly-design-wechat-doc')
+        await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
         await expect(pg.locator('.docbody figure.docfig figcaption')).to_contain_text('本地图片的说明')
         await open_menu(pg)
         await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
