@@ -4,6 +4,7 @@ import type { Turn } from '@dc/core';
 import { stopRun } from '../fastedit';
 import { undo, undoDelegate, useStore } from '../store';
 import { useTurns } from '../turns';
+import { ChatMarkdown } from './ChatMarkdown';
 import { ArrowDown, Chevron, Done, Failed, Reuse, Spinner, Undo, UndoAll } from './icons';
 import { elapsedLabel, Entry, useNow } from './RunFeed';
 
@@ -109,7 +110,11 @@ export function TurnBody({ turn, latest, onOpen, onReuse }: { turn: Turn } & Act
           ))}
         </ol>
       )}
-      {!running && (answer ? <p className={`run-result${turn.state === 'done' ? '' : ' bad'}`}>{answer}</p> : null)}
+      {!running &&
+        (answer ? (
+          // an answer is read as Markdown; a stopped or failed run's note is a diagnostic, kept as typed
+          !fast && turn.state === 'done' ? <ChatMarkdown text={answer} /> : <p className={`run-result${turn.state === 'done' ? '' : ' bad'}`}>{answer}</p>
+        ) : null)}
       {changed.length > 0 && (
         <div className="run-files">
           <span>{running ? t('prompt.run.filesChanging') : t('prompt.run.filesChanged')}</span>

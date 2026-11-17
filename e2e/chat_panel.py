@@ -150,6 +150,7 @@ async def main():
             await box.press('Enter')
             await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
             check('a finished turn has its answer', '改好了标题。' in await pg.locator('.turn').last.inner_text())
+            check('the answer in the record is read as Markdown', await pg.locator('.turn').last.locator('.run-result.md p', has_text='改好了标题。').count() == 1)
             check('and a chip for the file it changed', await pg.locator('.turn').last.locator('.file-chip').count() >= 1)
             await expect(pg.locator('.turn').last.get_by_role('button', name='撤销这次改动')).to_have_count(1)  # it appears a moment after the chip
             check('undo is offered on the newest turn only', await pg.get_by_role('button', name='撤销这次改动').count() == 1 and await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').count() == 1)
