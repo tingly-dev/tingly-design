@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, settingsProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, KIND_SKILL, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, settingsProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, PROJECTS_DIR, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -18,8 +18,8 @@ import { createProject, isProjectName, kindOf, linkFolder, linkedProjects, resol
 export type Kind = 'design' | 'slides' | 'design-system' | 'dashboard' | 'docs' | 'motion';
 /** The launcher's words for the kinds, as typed, and the internal names they map to. */
 export const KINDS: Record<string, Kind> = { canvas: 'design', slides: 'slides', 'design-system': 'design-system', dashboard: 'dashboard', doc: 'docs', docs: 'docs', motion: 'motion' };
-/** Each kind's format reference under `.claude/skills/`. */
-export const SKILLS: Record<Kind, string> = { design: 'dc-canvas', slides: 'slides', 'design-system': 'design-system', dashboard: 'dashboard', docs: 'docs', motion: 'motion' };
+/** Each kind's format reference under `.claude/skills/` (core's table: the chat's skill picker names the same one). */
+export const SKILLS: Record<Kind, string> = KIND_SKILL;
 
 /** The views of a design system that have a picture (`issues` is a list, not a page). */
 const DS_VIEWS = ['overview', 'colors', 'type', 'space', 'components', 'assets'];

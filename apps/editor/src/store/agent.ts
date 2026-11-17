@@ -1,6 +1,6 @@
 // The request bar and the conversation: the fast model's run, Claude Code's runs, the stored turns and where the prompt lives.
 // Pure: it holds the types, the initial values and the patches; `store.ts` composes them into the one `useStore`.
-import type { AgentStep, ConfigChange, Conversation, Turn } from '@dc/core';
+import type { AgentStep, ConfigChange, Conversation, SkillInfo, Turn } from '@dc/core';
 import type { ServerEvent } from '../api';
 import { readPref } from '../local';
 
@@ -44,6 +44,8 @@ export interface DelegateState {
   session?: string;
   /** this run continued an earlier session instead of starting a fresh one */
   continued?: boolean;
+  /** the skills the person chose for this run (.design/chat-skills.md) */
+  skills?: string[];
   /** project files the run changed, in the order it first touched them */
   files: string[];
   /** each changed file before the run touched it (null: the run created it) and as the run left it, to undo the run */
@@ -79,6 +81,9 @@ export interface AgentState {
   chatNote: 'new' | 'failed' | null;
   /** the project's Claude Code conversation, kept by the server: the next request continues it */
   conversation: Conversation | null;
+  /** every skill this machine offers this project, and the ones the chat chose (.design/chat-skills.md) */
+  skills: SkillInfo[];
+  skillChoice: string[];
   /** the next Claude Code request starts a fresh session even though one could be continued */
   freshNext: boolean;
   /** settings the person changed by hand since Claude Code last ran: told to it with the next request */
@@ -91,6 +96,8 @@ export const agentInitial = (): AgentState => ({
   fast: { status: 'idle', mode: 'ai', lines: [] },
   delegates: [],
   conversation: null,
+  skills: [],
+  skillChoice: [],
   lastRun: null,
   runHidden: false,
   feeds: 0,
@@ -107,7 +114,7 @@ export const agentInitial = (): AgentState => ({
 });
 
 /** What a newly opened project starts from: the conversation of the last one is gone (the bar's own look is kept). */
-export const agentReset = (): Partial<AgentState> => ({ delegates: [], conversation: null, lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false, changes: [], followUp: null });
+export const agentReset = (): Partial<AgentState> => ({ delegates: [], conversation: null, skills: [], skillChoice: [], lastRun: null, runHidden: false, turns: [], chatTab: 'chat', chatNote: null, historyOpen: false, freshNext: false, changes: [], followUp: null });
 
 /** Add a turn to the stored ones, or replace the one with its id. */
 function upsertTurn(list: Turn[], turn: Turn): Turn[] {
@@ -139,6 +146,7 @@ export function delegateEventPatch(s: AgentState, e: DelegateEvent, now: number)
     if (e.at) d.startedAt = e.at;
     if (e.continued) d.continued = true;
     if (e.source) d.source = e.source;
+    if (e.skills?.length) d.skills = e.skills;
   }
   if (e.session) d.session = e.session;
   if (e.continued === false) d.continued = false;

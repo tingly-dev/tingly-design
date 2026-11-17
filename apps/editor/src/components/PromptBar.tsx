@@ -8,6 +8,7 @@ import { delegateToClaude, runFastEdit } from '../fastedit';
 import { ContextChip } from './AgentBar';
 import { ImageToggle } from './ImageToggle';
 import { ReferencesChip } from './References';
+import { SkillsChip } from './Skills';
 import { RequestBar } from './RequestBar';
 import { offerPrompt } from '../headless';
 
@@ -117,6 +118,7 @@ export function PromptBar() {
           <ContextChip target={target} />
           {target === 'claude' && (
             <>
+              <SkillsChip />
               <ReferencesChip />
               <ImageToggle />
             </>

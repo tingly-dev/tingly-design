@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { describeTool, isSessionId, parseConversation, resumeLost, sessionFor, type Conversation, type ProjectKind, type ProjectSettings } from '@dc/core';
+import { chosenSkills, describeTool, isSessionId, KIND_SKILL, parseConversation, resumeLost, sessionFor, type Conversation, type ProjectKind, type ProjectSettings, type SkillInfo } from '@dc/core';
 import type { Language } from '@dc/i18n';
 import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
@@ -12,6 +12,7 @@ import { logDebug, logInfo, logWarn } from './log';
 import { aiResolved, claudeLaunch } from './aiconfig';
 import { claudeCommand } from './claudeBin';
 import { TurnWriter } from './transcript';
+import { listSkills, readSkillChoice } from './skills';
 
 /**
  * The slow agent: Claude Code, run headless in this repository (or the
@@ -37,6 +38,15 @@ When done, reply with one short sentence saying what changed. Do not run builds,
 
 /** Added to Claude Code's instructions while image generation is configured: how to get a picture into the work. */
 const imageNote = (project: string) => `You can make pictures. When the request needs a picture that does not exist yet, or asks you to change one from uploads/, run: node scripts/image-gen.mjs ${project} "<a full description of the picture>" [--size 1024x1024|1536x1024|1024x1536] [--edit uploads/<file>]. It prints the path of the new picture inside the folder, under uploads/; reference it exactly as .claude/skills says a picture from uploads/ is referenced. Make a picture only when asked for one or when the request cannot be done without it, and describe it in the language of the request. A picture can take a minute or two: give that command a Bash timeout of 200000 ms, and if it fails, say so instead of running it again at once.`;
+
+/**
+ * Added to Claude Code's instructions when the chat has chosen skills (.design/chat-skills.md): the
+ * path of each one's SKILL.md and what it is for. Claude Code finds the built-in and the user's
+ * skills by itself but not a project's own, and discoveries alone do not say which one this request
+ * wants; this does, whichever scope the skill comes from.
+ */
+const skillsNote = (skills: SkillInfo[]) =>
+  `The person chose these skills for this request. Read each one's SKILL.md before you start and follow it: it adds to the format reference above, and the request stays the task.\n${skills.map((s) => `- ${s.name}${s.description ? `: ${s.description}` : ''} (${s.path})`).join('\n')}`;
 
 const SLIDES_SYSTEM = `You are editing a slide deck stored as files. A deck folder holds deck.json (title, slide order, sections, typefaces) and one slides/<id>.html per slide: exactly one <section id="<id>"> on the canvas given by deck.json.size ([width,height], 1920x1080 when absent); read and preserve that size, adapting margins and layout to fit, every style inline, in a closed subset of HTML and CSS.
 Before you change any file, read .claude/skills/slides/SKILL.md in the current directory: it is the full format reference.
@@ -133,6 +143,8 @@ export interface DelegateRequest {
   source?: 'editor' | 'cli' | 'mcp';
   /** the fast model handed this request over */
   via?: 'fast';
+  /** the skills chosen for this request, by folder name; the project's stored choice when absent (.design/chat-skills.md) */
+  skills?: string[];
 }
 
 const conversationFile = (project: string) => join(projectDir(project), '.claude-session.json');
@@ -201,6 +213,9 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   // a dashboard reads files only from data/ and a design system keeps its pictures in its own assets/: neither gets the tool
   const images = imageOn && profile.images;
   const refs = referenceArgs(absProject, readRefs(project));
+  // the skills this request asks for; the project's own choice when it names none. The kind's format
+  // reference is already read by the system prompt above, so it is not repeated.
+  const chosen = chosenSkills(listSkills(project), Array.isArray(req.skills) ? req.skills : readSkillChoice(project)).filter((s) => s.id !== KIND_SKILL[kind]);
   const lines = [
     `${profile.folder} folder: ${dir}/`,
     refs.note,
@@ -229,7 +244,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--allowedTools',
     ['Read,Edit,Write,Glob,Grep', ...profile.tools, images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
     '--append-system-prompt',
-    `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}\n${STEPWISE}`,
+    `${profile.system}${images ? '\n' + imageNote(project) : ''}${chosen.length ? '\n' + skillsNote(chosen) : ''}\n${PUNCTUATION}\n${STEPWISE}`,
   ];
   if (refs.deny.length) args.push('--disallowedTools', refs.deny.join(','));
   for (const d of refs.dirs) args.push('--add-dir', d);
@@ -245,7 +260,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const resume = sessionFor(req, readConversation(project));
 
   activeDelegates.set(project, (activeDelegates.get(project) ?? 0) + 1);
-  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), source: req.source === 'cli' || req.source === 'mcp' ? req.source : 'editor', ...(resume ? { continued: true } : {}) });
+  publish(project, { type: 'delegate', id, state: 'start', text: req.prompt, at: Date.now(), source: req.source === 'cli' || req.source === 'mcp' ? req.source : 'editor', ...(resume ? { continued: true } : {}), ...(chosen.length ? { skills: chosen.map((s) => s.id) } : {}) });
 
   const started = Date.now();
   const log = new TurnWriter(project, {
@@ -256,12 +271,13 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     state: 'running',
     ...(resume ? { continued: true } : { continued: false }),
     ...(req.via === 'fast' ? { via: 'fast' as const } : {}),
+    ...(chosen.length ? { skills: chosen.map((s) => s.id) } : {}),
     startedAt: started,
     steps: [],
     files: [],
   });
   let steps = 0;
-  const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0, continued: !!resume };
+  const meta = { run: id, project, kind, model: launch.model ?? 'default', promptChars: req.prompt.length, attachments: req.attachments?.length ?? 0, continued: !!resume, skills: chosen.map((s) => s.id) };
   logInfo('delegate.start', meta);
   let stopped = false;
   let finished = false;

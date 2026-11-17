@@ -19,6 +19,7 @@ export function turnOfDelegate(d: DelegateState): Turn {
     state: d.state === 'start' || d.state === 'progress' ? 'running' : d.state,
     continued: !!d.continued,
     ...(d.via ? { via: d.via } : {}),
+    ...(d.skills?.length ? { skills: d.skills } : {}),
     startedAt: d.startedAt,
     ...(d.endedAt ? { endedAt: d.endedAt } : {}),
     steps: d.log,

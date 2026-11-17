@@ -178,6 +178,23 @@ export default {
     off: 'ImageGen is off in this project. Click to let Claude Code make pictures.',
     globalOff: 'ImageGen is switched off for every project in AI settings.',
   },
+  /** the skills a chat can use (.design/chat-skills.md) */
+  skills: {
+    chip: 'Skills',
+    chipCount: 'Skills · {{count}}',
+    hint: 'Choose the skills Claude Code reads with your requests in this chat',
+    title: 'Skills for this chat',
+    blurb: 'Skills this machine offers. The ones you pick are read by Claude Code before it starts, with every request in this chat, until you change them.',
+    search: 'Search skills',
+    none: 'No skills found on this machine. A skill is a folder with a SKILL.md in .claude/skills.',
+    noMatch: 'No skill matches “{{query}}”.',
+    fromProject: 'From this project',
+    builtIn: 'Built in',
+    yours: 'Yours',
+    always: 'Always read',
+    pick: 'Use the skill {{name}}',
+    run: 'Skills',
+  },
   attach: {
     keepFailed: 'Couldn\'t save the attachments to the project: {{error}}',
     dropHint: 'Drop to attach as a reference for this request',

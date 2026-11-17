@@ -20,6 +20,8 @@ export interface Turn {
   continued?: boolean;
   /** the fast model handed the request to Claude Code */
   via?: 'fast';
+  /** the skills the person chose for this turn (.design/chat-skills.md), by folder name */
+  skills?: string[];
   startedAt: number;
   endedAt?: number;
   /** what the agent did, in order (the fast model's statements are `say` entries) */

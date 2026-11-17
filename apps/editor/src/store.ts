@@ -295,11 +295,11 @@ export async function openProject(name: string): Promise<void> {
   }, () => {});
   clearPointers();
   set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], ...agentReset(), remarks: readRemarks(name), remarkFocus: null, slide: null, present: null, motionView: null });
-  const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
+  const [{ files }, journal, conversation, turns, skills] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[]), api.skills(name).catch(() => null)]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
+  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns, ...(skills ? { skills: skills.skills, skillChoice: skills.chosen } : {}) }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
@@ -407,6 +407,24 @@ export function dismissFollowUp(): void {
 export function setBarCollapsed(on: boolean): void {
   writePref('dc.barCollapsed', on ? '1' : '0');
   set({ barCollapsed: on, historyOpen: false });
+}
+
+/**
+ * The skills this chat uses (.design/chat-skills.md): saved at once, and every Claude Code request
+ * in the project carries them until they change. A skill the server does not know is dropped, and
+ * what comes back is what it kept.
+ */
+export function setSkillChoice(ids: string[]): void {
+  const project = get().project;
+  if (!project) return;
+  set({ skillChoice: ids });
+  void api.setSkills(project, ids).then(
+    (kept) => set({ skillChoice: kept }),
+    (e: Error) => {
+      toast(e.message, 'error');
+      void api.skills(project).then((r) => set({ skills: r.skills, skillChoice: r.chosen }), () => {});
+    },
+  );
 }
 
 const endTurn = (turn: Turn): void => set((s) => endTurnPatch(s, turn));

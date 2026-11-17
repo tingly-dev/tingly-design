@@ -1,0 +1,59 @@
+/* the skills a chat can use (components/Skills.tsx, .design/chat-skills.md) */
+.ctx-chip.skillchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: none;
+}
+
+
+.ctx-chip.skillchip.on {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--panel));
+  color: var(--accent-ink);
+}
+
+
+.skillsdlg .skills-search {
+  width: 100%;
+  margin: 4px 0 10px;
+}
+
+
+.skillsdlg ul {
+  max-height: 280px;
+}
+
+
+.skillsdlg .skillrow.on .rname {
+  color: var(--accent-ink);
+}
+
+
+.skillsdlg .refrow input:disabled {
+  cursor: default;
+}
+
+
+/* what a run was given, on its card and in the conversation */
+.run-skills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font: 11.5px var(--mono);
+}

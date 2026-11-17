@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, SkillInfo, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -172,7 +172,7 @@ export type ServerEvent =
   | { type: 'file'; path: string; content: string; version: string; actor: Actor; by?: string }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
-  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
+  | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp'; skills?: string[] }
   | { type: 'assets'; path?: string }
   | { type: 'entries' }
   | { type: 'pointer'; participant: Participant; target: PointerTarget | null };
@@ -403,6 +403,13 @@ export const api = {
     void call(at(`api/projects/${enc(p)}/transcript`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(turn) }).catch(() => {}),
 
   conversation: (p: string) => call(at(`api/projects/${enc(p)}/conversation`)).then((r) => json<Conversation | null>(r)),
+
+  /** the skills this machine offers this chat, and the ones it chose (.design/chat-skills.md) */
+  skills: (p: string) => call(at(`api/projects/${enc(p)}/skills`)).then((r) => json<{ skills: SkillInfo[]; chosen: string[] }>(r)),
+
+  /** replaces the chat's skill choice; what comes back is what the server kept */
+  setSkills: (p: string, skills: string[]) =>
+    call(at(`api/projects/${enc(p)}/skills`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ skills }) }).then((r) => json<{ chosen: string[] }>(r).then((v) => v.chosen)),
 
   stopDelegate: (p: string, id: string) => call(at(`api/projects/${enc(p)}/delegate/${enc(id)}`), { method: 'DELETE' }).then((r) => json<{ ok: boolean }>(r)),
 

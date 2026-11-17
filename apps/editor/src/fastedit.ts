@@ -230,6 +230,7 @@ export async function delegateToClaude(
       file,
       pointed: file ? pointedInfo(file, tid) : null,
       journal,
+      ...(get().skillChoice.length ? { skills: get().skillChoice } : {}),
       ...(attachments.length ? { attachments: attachments.filter((a) => a.path).map((a) => ({ name: a.name, path: a.path })) } : {}),
     });
     // only what this request told Claude Code: a change made while it was being sent waits for the next one

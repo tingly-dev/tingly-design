@@ -220,6 +220,8 @@ export const FileZip = tabler(IconFileZip, 14);
 
 // what an agent is doing (RunFeed)
 export const StepRead = tabler(IconBook, 14);
+/** a skill a chat can choose (.design/chat-skills.md) */
+export const SkillI = tabler(IconBook, 12);
 export const StepSearch = tabler(IconSearch, 14);
 export const StepEdit = tabler(IconEdit, 14);
 export const StepRun = tabler(IconTerminal2, 14);
