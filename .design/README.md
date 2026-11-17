@@ -40,6 +40,7 @@
 |---|---|---|
 | [self-design.md](./self-design.md) | 自身设计稿：用一个画布项目（`projects/tingly-design-ui-canvas`）画 Tingly Design 自己的界面——整体结构、外壳、启动页、六种类型、顶栏和菜单、请求栏、主题 token；画到什么程度，先画再改代码，代码变了同一个 PR 里重画 | 已实施；§5 是没定的 |
 | [top-bar.md](./top-bar.md) | 顶栏：六种类型共用的一条栏——项目名、同步状态、导入 / 导出放哪，反馈、点星、语言、外观为什么在最右；浮栏只留工具 | 已实施 |
+| [editor-themes.md](./editor-themes.md) | 编辑器外壳的主题：一份注册表（`THEMES`）推出预设、外观菜单和脚本 API，名字只在 i18n；调色板一份预设一份文件、同步脚本按文件夹拷贝；首屏由 `base.css` 兜底 | 已实施 |
 | [dialog.md](./dialog.md) | 对话框：所有模态框共用一个 `Dialog`——遮罩、标题和关闭、焦点进出、Tab 留在框内、Esc 和菜单的先后 | 已实施 |
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
 | [slides-pptx.md](./slides-pptx.md) | 幻灯片 PPTX 双向交换：新项目导入（包级严格、对象级尽力而为，74 种内置表格样式、经典与 Office 2016 图表重绘）、向已开 deck 整批追加、整份/范围可见 deck 导出（原生优先、原生表格、逐元素图片化、旋转/SVG/表格双线对角线竖排原生化）、opaque runtime 捕获、来源/报告与诊断、安全和验证门槛 | 独立模块与 launcher/API/CLI/FileMenu/MCP 接入已实施；聚焦产品 e2e 106/106 通过，导入方向曾以 LibreOffice 图像差分作保真度量，成品另经 python-pptx 独立读回，真实 PowerPoint 渲染未验收；未来提案单列 |

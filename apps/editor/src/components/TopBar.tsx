@@ -4,7 +4,7 @@ import { ISSUES_URL, REPO_URL } from '../links';
 import { Bug, Caret, Check, External, Keyboard, More, Star } from './icons';
 import { useStore } from '../store';
 import { Menu, MenuItem } from './Menu';
-import { PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode } from '../theme';
+import { THEME_MODES, currentTheme, onTheme, pickTheme } from '../theme';
 import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
 import { InlineRename } from './InlineRename';
 import { PaneToggles } from './panes';
@@ -49,7 +49,6 @@ export function BarButton({ icon, label, title, on, badge, menu, btnRef, onClick
   );
 }
 
-const MODES: ThemeMode[] = ['system', ...PRESET_IDS];
 
 /**
  * What belongs to the product and is rarely used, behind one button: report an issue, star the
@@ -106,7 +105,7 @@ function MoreMenu() {
             <>
               <hr />
               <div className="head">{t('appearance.theme')}</div>
-              {MODES.map((m) => (
+              {THEME_MODES.map((m) => (
                 <MenuItem key={m} label={t(`appearance.mode.${m}`)} checked={theme.theme.mode === m} onSelect={() => (pickTheme(m), close())} />
               ))}
             </>

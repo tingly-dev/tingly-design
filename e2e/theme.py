@@ -52,8 +52,8 @@ async def main():
         # --- the appearance menu --------------------------------------------------------------
         await pg.locator('button[aria-label="外观"]').click()
         modes = await pg.locator('.menu .amode').evaluate_all('bs => bs.map(b => b.dataset.mode)')
-        check('the menu offers system and the five presets', modes == ['system', 'light', 'dark', 'claude', 'ds', 'sunlit'], str(modes))
-        check('each row shows the theme\'s own colours', await pg.locator('.menu .amode .aswatch i').count() == 18)
+        check('the menu offers system and the four presets', modes == ['system', 'light', 'dark', 'claude', 'ds'], str(modes))
+        check('each row shows the theme\'s own colours', await pg.locator('.menu .amode .aswatch i').count() == 15)
         await pg.locator('.menu .amode[data-mode="dark"]').click()
         check('picking dark repaints at once, in Tingly Box\'s dark colours', await pg.evaluate(TOKEN.format('panel')) == '#11141c' and await pg.evaluate(BG) == 'rgb(7, 9, 15)')
         check('form controls switch to a dark colour scheme', await pg.evaluate('getComputedStyle(document.documentElement).colorScheme') == 'dark')
@@ -100,7 +100,7 @@ async def main():
 
         # --- the script API -------------------------------------------------------------------------
         got = await pg.evaluate('window.tinglyDesign.presets().map(p => p.id)')
-        check('tinglyDesign.presets() lists the presets', got == ['light', 'dark', 'claude', 'ds', 'sunlit'], str(got))
+        check('tinglyDesign.presets() lists the presets', got == ['light', 'dark', 'claude', 'ds'], str(got))
         t = await pg.evaluate('window.tinglyDesign.setTheme(%s)' % json.dumps(TB_CLAUDE))
         check('a Tingly Box palette maps onto the tokens', t['tokens']['accent'] == '#D97757' and t['tokens']['canvas'] == '#FAF9F5' and t['tokens']['line'] == '#E8E6DC' and t['tokens']['accent-ink'] == '#C26146')
         bad = await pg.evaluate('window.tinglyDesign.setTheme({ tokens: { accent: "red; background: url(https://x.invalid/a.png)", panel: "#123456" } }).tokens')
