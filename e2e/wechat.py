@@ -117,13 +117,10 @@ async def main():
         # (projects/tingly-design-wechat-doc: two tabs, so the whole-doc article also shows the divider between them)
         await pg.goto(BASE + '/?p=tingly-design-wechat-doc')
         await expect(pg.locator('.docbody h1')).to_have_text('一级标题 Heading 1', timeout=15000)
-        # the local picture gets a caption (its Markdown title) in the editor before the article is made
-        await pg.locator('.docbody figure.docfig img').first.click()
-        await pg.locator('.docimgform label:has-text("图片说明") input').fill('本地图片的说明')
-        for _ in range(40):
-            if '本地图片的说明' in open(os.path.join(SAMPLE, 'tabs/all-elements.md'), encoding='utf-8').read(): break
-            await asyncio.sleep(0.1)
-        await pg.keyboard.press('Escape')
+        # the local picture gets a caption (its Markdown title); written as Markdown here, the authoring is the docs suite's
+        pic = os.path.join(SAMPLE, 'tabs/all-elements.md')
+        open(pic, 'w', encoding='utf-8').write(open(pic, encoding='utf-8').read().replace('![本地图片](../uploads/wechat-sample.png)', '![本地图片](../uploads/wechat-sample.png "本地图片的说明")'))
+        await expect(pg.locator('.docbody figure.docfig figcaption')).to_contain_text('本地图片的说明')
         await open_menu(pg)
         await pg.locator('[role=menuitem]:has-text("微信公众号…")').first.click()
         await expect(dlg.locator('iframe')).to_have_count(1, timeout=60000)

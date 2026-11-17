@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
-import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type NodeViewProps } from '@tiptap/react';
+import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { NodeSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
@@ -180,7 +180,7 @@ const ProjectImage = Image.extend({
     return ['img', { ...HTMLAttributes, src: imageSrc(String(HTMLAttributes.src ?? '')), 'data-src': HTMLAttributes.src }];
   },
   addNodeView() {
-    return ReactNodeViewRenderer(DocImage);
+    return imageNodeView;
   },
   renderMarkdown(node) {
     const src = String(node.attrs?.src ?? '');
@@ -197,16 +197,44 @@ const ProjectImage = Image.extend({
  * A picture in the tab, drawn as a figure: Markdown's image title is its caption, shown under it
  * (`.design/doc-image-caption.md`). The alt text stays the picture's own `alt` attribute, so a screen
  * reader and a picture that did not load still say what it is.
+ *
+ * Plain DOM rather than a React node view: a tab's content is set once it has loaded, inside an effect,
+ * and TipTap draws a React node view with a `flushSync` from there, which React warns about.
  */
-function DocImage({ node, selected }: NodeViewProps) {
-  const src = String(node.attrs.src ?? '');
-  const caption = String(node.attrs.title ?? '');
-  return (
-    <NodeViewWrapper as="figure" className="docfig" data-selected={selected ? '' : undefined}>
-      <img src={imageSrc(src)} alt={String(node.attrs.alt ?? '')} data-src={src} draggable={false} />
-      {caption && <figcaption>{caption}</figcaption>}
-    </NodeViewWrapper>
-  );
+function imageNodeView(initial: { node: { type: unknown; attrs: Record<string, unknown> } }) {
+  let node = initial.node as unknown as { type: unknown; attrs: Record<string, unknown> };
+  const figure = document.createElement('figure');
+  figure.className = 'docfig';
+  const img = document.createElement('img');
+  img.draggable = false;
+  figure.appendChild(img);
+  let caption: HTMLElement | null = null;
+  const draw = () => {
+    const src = String(node.attrs.src ?? '');
+    img.src = imageSrc(src);
+    img.alt = String(node.attrs.alt ?? '');
+    img.dataset.src = src;
+    const title = String(node.attrs.title ?? '');
+    if (title) {
+      if (!caption) figure.appendChild((caption = document.createElement('figcaption')));
+      caption.textContent = title;
+    } else if (caption) {
+      caption.remove();
+      caption = null;
+    }
+  };
+  draw();
+  return {
+    dom: figure,
+    update: (next: typeof node) => {
+      if (next.type !== node.type) return false;
+      node = next;
+      draw();
+      return true;
+    },
+    selectNode: () => figure.setAttribute('data-selected', ''),
+    deselectNode: () => figure.removeAttribute('data-selected'),
+  };
 }
 
 /**
