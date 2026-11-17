@@ -228,13 +228,15 @@
 }
 
 
-.prompt.chat-composer,
-.dsask.chat-composer {
+/* `.app` gives these two the same weight as a kind's own rule (`.app.docs .dsask`, `.app.motion .dsask`); this file is last, so the pane's foot wins. */
+.app :is(.prompt, .dsask).chat-composer {
   position: relative;
   left: auto;
   bottom: auto;
   transform: none;
   width: auto;
+  max-width: none;
+  margin: 0;
   padding: 0;
   gap: 0;
   display: flex;
