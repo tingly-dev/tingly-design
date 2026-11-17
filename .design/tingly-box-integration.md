@@ -1,6 +1,6 @@
 # 对接 Tingly Box：未来方案
 
-状态：**方案，未实施**。tingly-design 这边的准备工作（打包、路径前缀、宿主消息、Tingly Box 主题）已经做完，见 [docs/en/embedding.md](../docs/en/embedding.md)（约定 protocol 1）和 [docs/en/theming.md](../docs/en/theming.md)。本文写的是将来在 Tingly Box（下称 TB）里接入时怎么做，以及为什么这样做。在决定动 TB 之前，TB 仓库不做任何改动。
+状态：**方案，未实施**。tingly-design 这边的准备工作（打包、路径前缀、宿主消息、Tingly Box 主题）已经做完，见 [docs/en/embedding.md](../docs/en/embedding.md)（约定 protocol 1）和 [docs/en/theming.md](../docs/en/theming.md)。本文写的是将来在 Tingly Box（下称 TB）里接入时怎么做，以及为什么这样做。在决定动 TB 之前，TB 仓库不做任何改动。本文以 Node 子进程为前提；服务端改用 Go、直接挂进 TB 的替代方案见 [server-runtime.md](../.research/server-runtime.md)。
 
 TB 侧的引用路径都相对 tingly-box 仓库。
 
