@@ -20,7 +20,8 @@ def check(name, ok, extra=''):
 # A stand-in for Claude Code that works like the real one, slowly: it says something, reads the format
 # reference and the index, searches, then edits the first content file of the folder (absolute paths, as
 # Claude Code reports them). "SLOW" in the request makes it pause long enough to be stopped; "FAIL" makes
-# it fail after editing. It records each request.
+# it fail after editing; "MARKDOWN" answers with Markdown of every shape, unsafe parts included, to check
+# what is read and what is dropped. It records each request.
 FAKE_CLAUDE = r'''#!/usr/bin/env python3
 import sys, json, os, re, time, glob
 if '--version' in sys.argv: print('0.0.0 (fake)'); sys.exit(0)
@@ -48,6 +49,28 @@ open(p, 'w').write(s + '\n<!-- run-feed -->\n' if p.endswith('.md') else s.repla
 time.sleep(d * 2)
 if 'FAIL' in prompt:
     out({'type': 'result', 'result': 'API Error: overloaded', 'is_error': True}); sys.exit(1)
+if 'MARKDOWN' in prompt:
+    answer = '\n'.join([
+        '## 检查结果',
+        '',
+        '**粗体** 和 `npm run build`。',
+        '',
+        '- 第一项',
+        '- 第二项',
+        '',
+        '| 文件 | 改动 |',
+        '| --- | --- |',
+        '| Main.dc.html | 标题 |',
+        '',
+        '[说明](https://example.com/docs) 与 [危险](javascript:window.__xss=1)',
+        '',
+        '```bash',
+        'npm run build',
+        '```',
+        '',
+        '<script>window.__xss = 1</script><img src=x onerror="window.__xss = 1">',
+    ])
+    out({'type': 'result', 'result': answer, 'is_error': False}); sys.exit(0)
 out({'type': 'result', 'result': '改好了标题。', 'is_error': False})
 '''
 
@@ -90,6 +113,7 @@ async def main():
         async with async_playwright() as p:
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1280, 'height': 800})
+            await pg.context.grant_permissions(['clipboard-read', 'clipboard-write'], origin=base)
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             feed = pg.locator('.runfeed')
@@ -173,6 +197,31 @@ async def main():
             await feed.get_by_role('button', name='放回输入框').click()
             check('a failed request can be put back in the box', await box.input_value() == 'FAIL 改标题')
             await box.fill('')
+
+            # an answer is read as Markdown: the shapes it uses, a copyable code frame, safe links only
+            await box.fill('MARKDOWN 改标题')
+            await box.press('Enter')
+            await expect(feed).to_contain_text('Claude Code 完成', timeout=15000)
+            res = feed.locator('.run-result.md')
+            check('an answer is read as Markdown: a heading, bold and a list',
+                  await res.locator('h2', has_text='检查结果').count() == 1 and await res.locator('strong', has_text='粗体').count() == 1
+                  and await res.locator('li').count() == 2, await res.inner_text())
+            check('a table in an answer is a table', await res.locator('table th', has_text='文件').count() == 1
+                  and await res.locator('table td', has_text='Main.dc.html').count() == 1)
+            mdcode = res.locator('.md-code')
+            check('a fenced block keeps its language and its code', await mdcode.locator('.md-code-head span').inner_text() == 'bash'
+                  and (await mdcode.locator('pre code').inner_text()).strip() == 'npm run build')
+            await mdcode.locator('.md-copy').click()
+            await expect(mdcode.locator('.md-copy')).to_have_text('已复制')
+            clip = await pg.evaluate('navigator.clipboard.readText()')
+            check('the code frame copies its code', clip.strip() == 'npm run build', clip)
+            safe = res.locator('a', has_text='说明')
+            check('a web link opens in a new tab, safely', await safe.get_attribute('href') == 'https://example.com/docs'
+                  and await safe.get_attribute('target') == '_blank' and 'noopener' in (await safe.get_attribute('rel') or ''))
+            danger = res.locator('a', has_text='危险')
+            check('a link that is not http, https or mailto loses its address', await danger.count() == 1 and await danger.get_attribute('href') is None)
+            check('a script or a picture in an answer does nothing and is not there',
+                  await pg.evaluate('window.__xss') is None and await res.locator('script, img').count() == 0)
 
             # stopping, and an editor that opens mid-run
             await box.fill('SLOW 改标题')

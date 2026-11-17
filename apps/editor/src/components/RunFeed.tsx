@@ -3,6 +3,7 @@ import { elapsed, type AgentStep, type TurnEntry } from '@dc/core';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { openPane, undo, undoDelegate, useStore } from '../store';
+import { ChatMarkdown } from './ChatMarkdown';
 import type { DelegateState, FastState } from '../store/agent';
 import {
   Chevron,
@@ -207,7 +208,7 @@ function DelegateRun({ d, onReuse, onOpen }: { d: DelegateState; onReuse?: (p: s
           )}
         </ol>
       )}
-      {!running && result && <p className={`run-result${d.state === 'done' ? '' : ' bad'}`}>{result}</p>}
+      {!running && result && (d.state === 'done' ? <ChatMarkdown text={result} /> : <p className="run-result bad">{result}</p>)}
       {changed.length > 0 && (
         <div className="run-files">
           <span>{running ? t('prompt.run.filesChanging') : d.undone ? t('prompt.run.filesRestored') : t('prompt.run.filesChanged')}</span>
