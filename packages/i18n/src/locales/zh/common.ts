@@ -79,8 +79,8 @@ export default {
   },
   pane: {
     chat: '对话',
-    chatHint: '在作品旁边看对话',
-    chatNarrow: '窗口再宽一点才能把对话放在作品旁边。',
+    chatHint: '对话在最左边，作品在旁边',
+    chatNarrow: '窗口再宽一点，或关掉右侧面板，才能把对话放在作品旁边。',
     inspector: '属性面板',
     inspectorHint: '属性面板（⌘\\）',
     files: '文件',

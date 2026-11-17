@@ -1,11 +1,11 @@
 """End-to-end checks for the conversation pane (.design/chat-panel.md): the request bar at the bottom by
-default; the top bar's Conversation button opening the conversation as a right-hand pane beside the work
-(at most one right pane, so Properties steps aside); the record kept as a transcript (every turn with its
-steps, answer and files, the same after a reload, requests from the command line included); undo on the
-newest turn only; the pane's left edge dragged and remembered; a draft surviving the pane opening and
-closing; a window too narrow disabling the button with an explanation instead of moving the bar; the old
-left-column setting migrated once; the kind's own list staying on the left beside the pane; one run in
-every kind.
+default; the top bar's Conversation button opening the conversation as the leftmost column, with the kind's
+own list moved to its right and the right pane (Properties, Comments, Sources) staying where it is; the
+record kept as a transcript (every turn with its steps, answer and files, the same after a reload, requests
+from the command line included); undo on the newest turn only; the column's right edge dragged and
+remembered; a draft surviving the column opening and closing; a window too narrow disabling the button with
+an explanation instead of moving anything; the old left-column setting migrated once; two independent left
+columns in every kind; one run in every kind.
 Run after `pnpm build`: python3 e2e/chat_panel.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh projects folder, with the mock model and a
 stand-in `claude`, so it needs neither `pnpm dev` nor an API key."""
@@ -72,10 +72,11 @@ async def main():
             pg.on('pageerror', lambda e: errs.append(str(e)))
             pane = pg.locator('.chat-pane')
             box = pg.locator('.chat-composer textarea')
-            open_chat = lambda: pg.locator('[data-pane=chat]').click()
+            async def open_chat():
+                if not await pane.count(): await pg.locator('[data-pane=chat]').click()
             panel_w = lambda: pane.evaluate('e => e.getBoundingClientRect().width')
             panel_left = lambda: pane.evaluate('e => e.getBoundingClientRect().left')
-            pane_pref = lambda: pg.evaluate("localStorage.getItem('dc.pane.design')")
+            pane_pref = lambda: pg.evaluate("localStorage.getItem('dc.chat')")
             send = lambda text: box.fill(text)
 
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
@@ -109,17 +110,17 @@ async def main():
             await pg.locator('.prompt:not(.chat-composer) textarea').fill('写到一半的话')
             await open_chat()
             await expect(pane).to_have_count(1)
-            check('the conversation opens on the right edge', abs(await panel_left() + await panel_w() - 1440) < 2, f'{await panel_left()} + {await panel_w()}')
+            check('the conversation opens at the left edge', abs(await panel_left()) < 2, await panel_left())
             check('it is 340 wide by default', abs(await panel_w() - 340) < 2, await panel_w())
-            check('the work is not covered: the stage ends at the pane', await pg.locator('.stage').evaluate('e => e.getBoundingClientRect().right') <= await panel_left() + 1)
-            check('the properties pane steps aside: one right pane at a time', await pg.locator('.panel').count() == 0)
+            check('the work starts after the conversation', await pg.locator('.stage').evaluate('e => e.getBoundingClientRect().left') >= await panel_w() - 1)
+            check('the properties pane stays: the conversation and it are independent', await pg.locator('.panel').count() == 1)
             check('the bar moved to the pane foot', await pg.locator('.prompt:not(.chat-composer)').count() == 0 and await pg.locator('.chat-composer').count() == 1)
-            check('the choice is remembered per kind', await pane_pref() == 'chat')
+            check('the choice is remembered for every kind', await pane_pref() == '1')
             check('the draft survived opening the pane', await box.input_value() == '写到一半的话')
             await pane.get_by_role('button', name='关闭对话').click()
             await expect(pane).to_have_count(0)
             check('closing brings the bottom bar back with the same draft', await pg.locator('.prompt textarea').input_value() == '写到一半的话')
-            check('closing moves nothing else by itself', await pg.locator('.panel').count() == 0)
+            check('closing moves nothing else by itself', await pg.locator('.panel').count() == 1)
             await pg.locator('.prompt textarea').fill('')
             await open_chat()
             await expect(pane).to_have_count(1)
@@ -190,42 +191,44 @@ async def main():
             check('the server keeps it in the project folder as local state', len(stored) == 4 and os.path.exists(os.path.join(projects, 'tingly-box-console-canvas', '.transcript.jsonl')))
             check('and not in the files git or a zip would carry', all(not f.endswith('.transcript.jsonl') for f in json.load(urllib.request.urlopen(f'{base}/api/projects/tingly-box-console-canvas/files'))['files']))
 
-            # the pane's width: dragged by its left edge, remembered, back with a double click
+            # the conversation's width: dragged by its right edge, remembered, back with a double click
             sep = pg.get_by_role('separator', name='调整对话的宽度')
             bb = await sep.bounding_box()
-            await pg.mouse.move(bb['x'] + bb['width'] / 2, 300); await pg.mouse.down(); await pg.mouse.move(bb['x'] - 100, 300, steps=5); await pg.mouse.up()
+            await pg.mouse.move(bb['x'] + bb['width'] / 2, 300); await pg.mouse.down(); await pg.mouse.move(bb['x'] + 100, 300, steps=5); await pg.mouse.up()
             w = await panel_w()
-            check('dragging its left edge widens the pane', 430 < w < 450, w)
-            check('and the work keeps its right edge on the pane', await pg.locator('.stage').evaluate('e => e.getBoundingClientRect().right') <= await panel_left() + 1)
+            check('dragging its right edge widens the conversation', 430 < w < 450, w)
             await pg.reload(); await pg.wait_for_selector('.chat-pane')
             check('the width is remembered', abs(await panel_w() - w) < 2)
-            await sep.focus(); await pg.keyboard.press('ArrowLeft')
+            await sep.focus(); await pg.keyboard.press('ArrowRight')
             check('arrow keys move it too', await panel_w() > w)
             await sep.dblclick()
             check('a double click gives it back its width', abs(await panel_w() - 340) < 2)
 
-            # a narrow window cannot hold it: the pane closes, the button says why, nothing moves by itself
+            # a narrow window does not move anything by itself; once closed, the button says why it cannot open
             await pg.set_viewport_size({'width': 1000, 'height': 760})
+            await expect(pane).to_have_count(1)
+            check('a narrow window leaves the open conversation where it is', True)
+            await pane.get_by_role('button', name='关闭对话').click()
             await expect(pane).to_have_count(0)
-            check('a narrow window closes the pane', True)
             check('the bar is back at the bottom', await pg.locator('.prompt:not(.chat-composer)').count() == 1)
             chat_btn = pg.locator('[data-pane=chat]')
             check('the conversation button is disabled with an explanation', await chat_btn.is_disabled() and '窗口再宽一点' in (await chat_btn.get_attribute('title') or ''), await chat_btn.get_attribute('title'))
             await pg.set_viewport_size({'width': 1440, 'height': 860})
             await expect(chat_btn).to_be_enabled()
             await expect(pane).to_have_count(0)
-            check('widening restores the button but does not reopen the pane', True)
+            check('widening restores the button but does not reopen the conversation', True)
 
             # the old left-column setting migrates once into the pane
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'left'); localStorage.removeItem('dc.pane.design')")
+            await pg.evaluate("localStorage.setItem('dc.barMode', 'left'); localStorage.setItem('dc.chat', '0')")
             await pg.reload(); await pg.wait_for_selector('.chat-pane')
             check('the old left setting opens the conversation beside the work', True)
             check('and is cleared after migrating', await pg.evaluate("localStorage.getItem('dc.barMode')") == '')
-            await pg.reload(); await pg.wait_for_selector('.board'); await pg.wait_for_timeout(500)
-            check('the migration happens once: a later open has no pane', await pg.locator('.chat-pane').count() == 0)
+            await pg.reload(); await pg.wait_for_selector('.chat-pane')
+            check('the conversation stays open after migrating, as a remembered choice', True)
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
 
-            # every kind: the same right pane; the kind's own list is still on the left beside it
-            await pg.evaluate("localStorage.removeItem('dc.pane.design')")
+            # every kind: the conversation at the far left, the kind's own list moved to its right
+            await pg.goto(f'{base}/?p=tingly-box-console-canvas'); await pg.wait_for_timeout(300)
             for proj, kind, lst, work in [
                 ('tingly-design-intro-slides', 'slides', '.strip', '.stage'),
                 ('tingly-design-system', 'design-system', '.dsnav', '.dsmain'),
@@ -238,12 +241,12 @@ async def main():
                 await pg.wait_for_timeout(500)
                 await open_chat()
                 await expect(pane).to_have_count(1)
-                check(f'{kind}: the conversation opens on the right', abs(await panel_left() + await panel_w() - 1440) < 2)
+                check(f'{kind}: the conversation opens at the left edge', abs(await panel_left()) < 2)
                 if lst:
-                    check(f'{kind}: its own list is still on the left beside the pane', await pg.locator(lst).is_visible())
-                    check(f'{kind}: the list is not inside the conversation pane', await pg.locator(f'.chat-pane {lst}').count() == 0)
+                    check(f'{kind}: its own list is still there, moved to the right of the conversation', await pg.locator(lst).is_visible() and await pg.locator(lst).evaluate('e => e.getBoundingClientRect().left') >= await panel_w() - 1)
+                    check(f'{kind}: the list is not inside the conversation column', await pg.locator(f'.chat-pane {lst}').count() == 0)
                 if await pg.locator(work).count():
-                    check(f'{kind}: the work sits between the list and the pane', await pg.locator(work).evaluate('e => e.getBoundingClientRect().right') <= await panel_left() + 1)
+                    check(f'{kind}: the work sits between the kind\'s list and the right pane', await pg.locator(work).evaluate('e => e.getBoundingClientRect().left') >= await panel_w() - 1)
                 if kind == 'motion':
                     check('motion: no empty slot under the timeline while the pane is open', await pg.locator('.mprompt').count() == 0 or not await pg.locator('.mprompt').is_visible())
                 if await pg.locator('.chat-composer .seg').count(): await pg.locator('.chat-composer .seg').get_by_role('button', name='Claude Code', exact=True).click()

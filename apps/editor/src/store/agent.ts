@@ -110,10 +110,10 @@ function upsertTurn(list: Turn[], turn: Turn): Turn[] {
   return next.slice(-200);
 }
 
-/** A run ended: it joins the stored turns, and the conversation pane's button says so when the person is not on it. */
-export const endTurnPatch = (s: AgentState & { pane: string | null }, turn: Turn): Partial<AgentState> => ({
+/** A run ended: it joins the stored turns, and the conversation button says so when the column is closed. */
+export const endTurnPatch = (s: AgentState & { chatOpen: boolean }, turn: Turn): Partial<AgentState> => ({
   turns: upsertTurn(s.turns, turn),
-  ...(s.pane !== 'chat' ? { chatNote: turn.state === 'done' ? (s.chatNote === 'failed' ? 'failed' : 'new') : turn.state === 'error' ? 'failed' : s.chatNote } : {}),
+  ...(!s.chatOpen ? { chatNote: turn.state === 'done' ? (s.chatNote === 'failed' ? 'failed' : 'new') : turn.state === 'error' ? 'failed' : s.chatNote } : {}),
 });
 
 type DelegateEvent = Extract<ServerEvent, { type: 'delegate' }>;

@@ -66,8 +66,9 @@ export function MotionApp() {
   const journalOpen = useStore((s) => s.journalOpen);
   const pane = useStore((s) => s.pane);
   const panelOpen = pane === 'inspector' || pane === 'review';
+  const chatOpen = useStore((s) => s.chatOpen);
   const barCollapsed = useStore((s) => s.barCollapsed);
-  const barInPane = pane === 'chat';
+  const barInPane = chatOpen;
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const assetRev = useStore((s) => s.assetRev);
@@ -253,7 +254,8 @@ export function MotionApp() {
   const scale = Math.max(0.01, Math.min(box.w / W, box.h / H));
 
   return (
-    <div className={`app dash motion${panelOpen || barInPane ? ' with-panel' : ''}`}>
+    <div className={`app dash motion${panelOpen ? ' with-panel' : ''}${chatOpen ? ' with-chat' : ''}`}>
+      {chatOpen && <ChatPane />}
       <TopBar
         title={
           <ProjectTitle
@@ -423,7 +425,6 @@ export function MotionApp() {
         />
       )}
       {panelOpen && <RightPanel />}
-      {pane === 'chat' && <ChatPane />}
       <ContextMenu />
       <ExpandPanel />
       <JournalPopover />

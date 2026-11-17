@@ -393,7 +393,7 @@ export function DocsApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useStore((s) => s.pane === 'comments');
-  const chat = useStore((s) => s.pane === 'chat');
+  const chat = useStore((s) => s.chatOpen);
   const comments = useComments();
   const [pop, setPop] = useState<'settings' | 'versions' | 'theme' | null>(null);
   const { look, worn, tokens } = useDocLook();
@@ -445,7 +445,8 @@ export function DocsApp() {
 
   const order = tabOrder(d);
   return (
-    <div className={`app docs${rail ? ' with-rail' : chat ? ' with-chat' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
+    <div className={`app docs${rail ? ' with-rail' : ''}${chat ? ' with-chat' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
+      {chat && <ChatPane />}
       <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
         <div className="popwrap">
@@ -514,7 +515,6 @@ export function DocsApp() {
         />
       </main>
       {rail && <CommentsRail />}
-      {chat && <ChatPane />}
       <JournalPopover />
     </div>
   );

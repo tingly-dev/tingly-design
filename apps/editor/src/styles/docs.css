@@ -18,7 +18,12 @@
 
 
 .app.docs.with-chat {
-  grid-template-columns: var(--w-doctabs, 220px) 1fr auto;
+  grid-template-columns: auto var(--w-doctabs, 220px) 1fr;
+}
+
+
+.app.docs.with-chat.with-rail {
+  grid-template-columns: auto var(--w-doctabs, 220px) 1fr var(--w-docrail, 320px);
 }
 
 

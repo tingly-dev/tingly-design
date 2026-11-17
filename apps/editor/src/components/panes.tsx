@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next';
 import type { ProjectKind } from '@dc/core';
 import { useWindowWidth } from '../hooks';
 import { chatFits, KIND_PANE_IDS, type PaneId } from '../panes';
-import { togglePane, useStore } from '../store';
+import { toggleChat, togglePane, useStore } from '../store';
 import { useDash } from './dash/dash';
 import { useComments, useCurrentTab } from './docs/docs';
 import { CodeI, Conversation, Database, FilesI, Message, Panel, ReviewI, Spinner } from './icons';
@@ -55,7 +55,6 @@ function ChatBadge() {
 }
 
 const PANE_DEF: Record<PaneId, PaneDef> = {
-  chat: { icon: <Conversation />, label: (t) => t('common.pane.chat'), hint: (t) => t('common.pane.chatHint'), Badge: ChatBadge },
   inspector: { icon: <Panel />, label: (t) => t('common.pane.inspector'), hint: (t) => t('common.pane.inspectorHint') },
   files: { icon: <FilesI />, label: (t) => t('common.pane.files'), hint: (t) => t('common.pane.filesHint') },
   review: { icon: <ReviewI />, label: (t) => t('review.pane.label'), hint: (t) => t('review.pane.hint'), Badge: ReviewBadge },
@@ -64,29 +63,42 @@ const PANE_DEF: Record<PaneId, PaneDef> = {
   comments: { icon: <Message />, label: (t) => t('docs.app.comments'), Badge: CommentsBadge },
 };
 
+/** The conversation column: every kind has it, on the left, and it is independent of the right pane. */
+const CHAT_DEF: PaneDef = { icon: <Conversation />, label: (t) => t('common.pane.chat'), hint: (t) => t('common.pane.chatHint'), Badge: ChatBadge };
+
 /**
- * The buttons that open a kind's side panes: one per pane, at the end of the bar's own actions, in the
- * same place and look in every kind that has a column (`KIND_PANE_IDS`). A kind adds a pane by
- * listing it there; the bar is not touched.
+ * The buttons that open a kind's side panes: the conversation first (every kind has it, on the left),
+ * then one per pane in the right column, in the same place and look in every kind that has one
+ * (`KIND_PANE_IDS`). A kind adds a right pane by listing it there; the bar is not touched.
  */
 export function PaneToggles({ kind }: { kind: ProjectKind }) {
   const { t } = useTranslation();
   const pane = useStore((s) => s.pane);
+  const chatOpen = useStore((s) => s.chatOpen);
   const width = useWindowWidth();
+  // the conversation needs room beside the kind's list and right pane; too narrow says why instead of moving it
+  const fits = chatFits(kind, pane, width);
   return (
     <>
+      <BarButton
+        icon={CHAT_DEF.icon}
+        label={CHAT_DEF.label(t)}
+        title={fits ? CHAT_DEF.hint?.(t) : t('common.pane.chatNarrow')}
+        on={chatOpen}
+        disabled={!fits && !chatOpen}
+        badge={CHAT_DEF.Badge ? <CHAT_DEF.Badge /> : null}
+        onClick={toggleChat}
+        data-pane="chat"
+      />
       {KIND_PANE_IDS[kind].map((id) => {
         const def = PANE_DEF[id];
-        // the conversation needs room beside the work; a window too narrow says so instead of moving it over the work
-        const fits = id !== 'chat' || chatFits(kind, width);
         return (
           <BarButton
             key={id}
             icon={def.icon}
             label={def.label(t)}
-            title={fits ? def.hint?.(t) : t('common.pane.chatNarrow')}
+            title={def.hint?.(t)}
             on={pane === id}
-            disabled={!fits}
             badge={def.Badge ? <def.Badge /> : null}
             onClick={() => togglePane(id)}
             data-pane={id}

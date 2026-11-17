@@ -22,6 +22,11 @@
 }
 
 
+.app.slides.with-chat {
+  grid-template-columns: auto var(--w-strip, 216px) 1fr auto;
+}
+
+
 .slides .strip {
   background: var(--panel);
   border-right: 1px solid var(--line);

@@ -315,6 +315,7 @@ export function DashApp() {
   const mode = useDash((s) => s.mode);
   const theme = useDash((s) => s.theme);
   const side = useStore((s) => s.pane);
+  const chatOpen = useStore((s) => s.chatOpen);
   const direct = useDirectPdf();
 
   useEffect(() => {
@@ -334,7 +335,8 @@ export function DashApp() {
   }, []);
 
   return (
-    <div className={`app dash${side === 'sources' || side === 'code' ? ' with-side' : side === 'chat' ? ' with-chat' : ''}`} data-mode={mode}>
+    <div className={`app dash${side === 'sources' || side === 'code' ? ' with-side' : ''}${chatOpen ? ' with-chat' : ''}`} data-mode={mode}>
+      {chatOpen && <ChatPane />}
       <TopBar title={<Title />}>
         <Filters />
         <BarButton icon={<Refresh />} label={t('dash.bar.refresh')} title={t('dash.bar.refreshAllTitle')} onClick={refreshAll} />
@@ -372,7 +374,6 @@ export function DashApp() {
       </main>
       {side === 'sources' && <SourcesPanel />}
       {side === 'code' && <CodePanel />}
-      {side === 'chat' && <ChatPane />}
       <Watch />
       <JournalPopover />
     </div>

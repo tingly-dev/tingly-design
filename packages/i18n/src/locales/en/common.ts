@@ -78,7 +78,7 @@ export default {
   pane: {
     chat: 'Conversation',
     chatHint: 'The conversation beside the work',
-    chatNarrow: 'Make the window wider to keep the conversation beside the work.',
+    chatNarrow: 'Make the window wider, or close the right panel, to keep the conversation beside the work.',
     inspector: 'Properties panel',
     inspectorHint: 'Properties panel (⌘\\)',
     files: 'Files',

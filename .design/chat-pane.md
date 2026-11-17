@@ -1,6 +1,6 @@
 # 对话放在右侧一栏：把左边留给类型自己的列表
 
-状态：**已实施**（并入 [chat-panel.md](./chat-panel.md)，这份留下的取舍仍在下面）。现行为 chat-panel.md 的 §3.1 / §3.3 / §3.6：对话是右侧的一个面板，左边还给类型自己的列表，位置菜单、外壳和 `ListColumn` 都已删除。设计方案见 issue [#463](https://github.com/tingly-dev/tingly-design/issues/463)，板子在 `projects/tingly-design-ui-canvas` 的 “The conversation and the left side” 和 “The conversation pane”。
+状态：**未采纳**（保留取舍）。#465 曾选“对话在右侧、顶掉右侧面板”；用户判断那样会丢掉“对话和属性同屏”，最终改为 **对话固定最左、类型列表整体右移、右侧面板独立**，现行设计见 [chat-panel.md](./chat-panel.md)。位置菜单、外壳 `ChatShell`、`ListColumn` 都已删除；本文件里“右侧一栏”的部分只作为被否掉的方案保留。设计方案见 issue [#463](https://github.com/tingly-dev/tingly-design/issues/463)，板子在 `projects/tingly-design-ui-canvas` 的 “The conversation and the left side” 和 “The conversation pane”。
 
 ## 1. 问题
 

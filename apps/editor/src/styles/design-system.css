@@ -16,7 +16,7 @@
 
 
 .app.ds.with-chat {
-  grid-template-columns: var(--w-dsnav, 220px) 1fr auto;
+  grid-template-columns: auto var(--w-dsnav, 220px) 1fr;
 }
 
 

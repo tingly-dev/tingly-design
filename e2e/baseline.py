@@ -89,11 +89,11 @@ async def main():
                 kind = KIND.get(screen.removesuffix('-chat'))
                 # a page's own frames are sandboxed and have no storage, so the write is guarded
                 pref = (
-                    f"localStorage.setItem('dc.pane.{kind}', 'chat')" if chat and kind
-                    else f"localStorage.removeItem('dc.pane.{kind}')" if kind
-                    else "Object.keys(localStorage).filter((k) => k.startsWith('dc.pane.')).forEach((k) => localStorage.removeItem(k))"
+                    "localStorage.setItem('dc.chat', '1')" if chat and kind
+                    else "localStorage.setItem('dc.chat', '0')" if kind
+                    else "localStorage.removeItem('dc.chat')"
                 )
-                await pg.add_init_script(f"try {{ localStorage.removeItem('dc.barMode'); {pref} }} catch (e) {{}}")
+                await pg.add_init_script(f"try {{ localStorage.removeItem('dc.barMode'); localStorage.removeItem('dc.pane.{kind}'); {pref} }} catch (e) {{}}")
                 await pg.goto(f'{BASE}/?lang={lang}' + (f'&p={project}' if project else ''))
                 # the editor keeps a live connection open, so the network may never fall quiet; wait for it a while
                 try: await pg.wait_for_load_state('networkidle', timeout=3000)
@@ -101,7 +101,7 @@ async def main():
                 await pg.add_style_tag(content=STILL)
                 if not project and await pg.locator('.lsort').count(): await pg.select_option('.lsort', 'name')
                 await pg.wait_for_timeout(2500)
-                if chat: check(f'{name}: the conversation pane is open beside the work', await pg.locator('.chat-pane').count() == 1)
+                if chat: check(f'{name}: the conversation column is open at the left', await pg.locator('.chat-pane').count() == 1 and await pg.locator('.chat-pane').evaluate('e => e.getBoundingClientRect().left') == 0)
                 if screen in STATES:
                     if STATES[screen][1] == 'theme':
                         await pg.get_by_role('tab', name=re.compile('^(Theme|主题)$')).click()

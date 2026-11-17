@@ -191,7 +191,7 @@ export function DsApp() {
   const index = useDsIndex();
   const view = useDsView((s) => s.view);
   const setView = (v: View) => useDsView.setState({ view: v });
-  const chat = useStore((s) => s.pane === 'chat');
+  const chat = useStore((s) => s.chatOpen);
   // a design system opens on the page its address names, not the one the last one was left on
   useEffect(() => useDsView.setState({ view: dsViewFromUrl() }), []);
   // previews open in the system's dark theme when the editor itself is dark
@@ -231,6 +231,7 @@ export function DsApp() {
     </TopBar>
     <div className={`app ds${chat ? ' with-chat' : ''}`} data-theme={theme}>
       <style>{pageCss}</style>
+      {chat && <ChatPane />}
       <nav className="dsnav" aria-label={tr('ds.app.label')}>
         <SideResizer id="dsnav" edge="end" name={tr('ds.app.label')} />
         <div className="hint ns">window.{index.namespace}</div>
@@ -265,7 +266,6 @@ export function DsApp() {
         />
         <JournalPopover />
       </main>
-      {chat && <ChatPane />}
     </div>
     </>
   );

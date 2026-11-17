@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Conversation at the far left</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:1720px;height:960px;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:22px;background:#f7f7f4;font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;color:#16181d">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <h2 style="margin:0;font-size:22px;font-weight:600">Conversation at the far left</h2>
+    <div style="font-size:14px;line-height:1.5;color:#4a4f5a;max-width:1320px">The chosen layout: the conversation is the leftmost column, the kind's own list is moved to its right, and the right pane (Properties / Comments / Sources) stays where it is — the conversation and the right pane can be open together. The bottom bar is still the default. See .design/chat-panel.md §3.1 / §3.3 / §3.5.</div>
+  </div>
+
+  <div style="display:flex;gap:24px">
+    <div style="width:520px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:600">1 · Before — one left column, list folded into a tab</div>
+      <div style="position:relative;width:520px;height:300px;overflow:hidden;border:1px solid #d7d8dc;border-radius:10px;background:#f8fafc">
+        <div style="position:absolute;left:0;top:0;width:520px;height:22px;display:flex;align-items:center;gap:6px;padding:0 8px;box-sizing:border-box;background:#fff;border-bottom:1px solid #e2e8f0;font-size:7px;font-weight:600;color:#1e293b">Tingly Design Intro Slides<span style="margin-left:auto;color:#64748b">⌂  ⋯</span></div>
+        <div style="position:absolute;left:0;top:22px;width:150px;height:278px;box-sizing:border-box;background:#fff;border-right:1px solid #e2e8f0">
+          <div style="display:flex;gap:10px;padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:7px;color:#64748b"><b style="color:#1e293b">Pages</b><span>Conversation</span></div>
+          <div style="padding:8px;font-size:6.5px;color:#47505e">Pages are behind the tab.</div>
+          <div style="position:absolute;left:8px;right:8px;bottom:8px;height:40px;box-sizing:border-box;border:1px solid #d7d8dc;border-radius:6px;background:#fff"></div>
+        </div>
+        <div style="position:absolute;left:150px;top:22px;width:218px;height:278px;background:#eef2f7;display:grid;place-items:center;font-size:8px;color:#64748b">Stage 628 px</div>
+        <div style="position:absolute;left:368px;top:22px;width:152px;height:278px;box-sizing:border-box;background:#fff;border-left:1px solid #e2e8f0;padding:6px"><div style="font-size:7px;font-weight:600;color:#1e293b">Properties</div><div style="margin-top:8px;font-size:6px;color:#64748b">Nothing selected</div></div>
+      </div>
+      <div style="font-size:12px;color:#4a4f5a;line-height:1.45">The kind's list and the conversation share one column as tabs; you never see both, and the work is squeezed by a third side column.</div>
+    </div>
+
+    <div style="width:520px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:600">2 · After — conversation, then the pages, then the work, properties</div>
+      <div style="position:relative;width:520px;height:300px;overflow:hidden;border:1px solid #d7d8dc;border-radius:10px;background:#f8fafc">
+        <div style="position:absolute;left:0;top:0;width:520px;height:22px;display:flex;align-items:center;gap:6px;padding:0 8px;box-sizing:border-box;background:#fff;border-bottom:1px solid #e2e8f0;font-size:7px;font-weight:600;color:#1e293b">Tingly Design Intro Slides<span style="margin-left:auto;color:#2563eb">▣</span><span style="color:#64748b">  ⌂  ⋯</span></div>
+        <div style="position:absolute;left:0;top:22px;width:138px;height:278px;box-sizing:border-box;background:#fff;border-right:1px solid #e2e8f0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:7px;font-weight:600;color:#1e293b">Conversation<span style="color:#64748b">×</span></div>
+          <div style="padding:10px 8px;font-size:6px;color:#64748b;line-height:1.5">Your requests, what the AI did and what it answered are kept here.</div>
+          <div style="position:absolute;left:6px;right:6px;bottom:6px;height:42px;box-sizing:border-box;border:1px solid #d7d8dc;border-radius:6px;background:#fff"><div style="padding:4px 5px;font-size:5px;color:#64748b">Whole slide cover</div><div style="position:absolute;right:4px;bottom:4px;width:9px;height:9px;border-radius:50%;background:#2563eb"></div></div>
+        </div>
+        <div style="position:absolute;left:138px;top:22px;width:86px;height:278px;box-sizing:border-box;background:#fff;border-right:1px solid #e2e8f0">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:7px;font-weight:600;color:#1e293b">Pages<span style="color:#64748b">+</span></div>
+          <div style="padding:6px 7px;display:flex;flex-direction:column;gap:6px"><div style="height:36px;border:1.5px solid #2563eb;border-radius:3px;background:#0b1220"></div><div style="height:36px;border:1px solid #d7d8dc;border-radius:3px;background:#fff"></div><div style="height:36px;border:1px solid #d7d8dc;border-radius:3px;background:#fff"></div></div>
+        </div>
+        <div style="position:absolute;left:224px;top:22px;width:158px;height:278px;background:#eef2f7;display:grid;place-items:center;font-size:8px;color:#64748b">Stage 420 px</div>
+        <div style="position:absolute;left:382px;top:22px;width:138px;height:278px;box-sizing:border-box;background:#fff;border-left:1px solid #e2e8f0;padding:6px"><div style="font-size:7px;font-weight:600;color:#1e293b">Properties</div><div style="margin-top:8px;font-size:6px;color:#64748b">Stays open beside the conversation.</div></div>
+      </div>
+      <div style="font-size:12px;color:#4a4f5a;line-height:1.45">Two independent left columns: conversation at 0, the kind's list after it. Every column keeps its own draggable edge; the right pane is untouched.</div>
+    </div>
+
+    <div style="width:520px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:600">3 · 1100 px — the button says why, nothing moves</div>
+      <div style="position:relative;width:520px;height:300px;overflow:hidden;border:1px solid #d7d8dc;border-radius:10px;background:#f8fafc">
+        <div style="position:absolute;left:0;top:0;width:520px;height:22px;display:flex;align-items:center;gap:6px;padding:0 8px;box-sizing:border-box;background:#fff;border-bottom:1px solid #e2e8f0;font-size:7px;font-weight:600;color:#1e293b">Tingly Box Console Canvas<span style="margin-left:auto;color:#cbd5e1">▣</span><span style="color:#64748b">  ⌂  ⋯</span></div>
+        <div style="position:absolute;left:300px;top:26px;width:214px;box-sizing:border-box;padding:5px 7px;border:1px solid #d7d8dc;border-radius:4px;background:#fff;box-shadow:0 3px 8px rgba(15,23,42,.12);font-size:6.5px;line-height:1.4;color:#1e293b">Make the window wider, or close the right panel, to keep the conversation beside the work.</div>
+        <div style="position:absolute;left:0;top:22px;width:372px;height:278px;background:#eef2f7;display:grid;place-items:center;font-size:8px;color:#64748b">Canvas work keeps its width</div>
+        <div style="position:absolute;left:372px;top:22px;width:148px;height:278px;box-sizing:border-box;background:#fff;border-left:1px solid #e2e8f0;padding:6px"><div style="font-size:7px;font-weight:600;color:#1e293b">Properties</div><div style="margin-top:8px;font-size:6px;color:#64748b">Nothing selected</div></div>
+        <div style="position:absolute;left:14px;bottom:12px;width:250px;height:28px;box-sizing:border-box;padding:4px 6px;border:1px solid #d7d8dc;border-radius:7px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.08);font-size:6px;color:#64748b">Prompt at the bottom</div>
+      </div>
+      <div style="font-size:12px;color:#4a4f5a;line-height:1.45">Below the budget the Conversation button is disabled with that explanation. An already open column is never closed or moved by itself; the button only gates opening.</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:24px;align-items:flex-start;font-size:12.5px;color:#4a4f5a;line-height:1.55">
+    <table style="border-collapse:collapse;font-size:12px">
+      <thead><tr style="color:#6b7080;text-align:left"><th style="padding:4px 14px 4px 0;font-weight:600">Kind</th><th style="padding:4px 10px;font-weight:600">1280 · chat / list / work / right</th><th style="padding:4px 10px;font-weight:600">1100 with the right pane open</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:3px 14px 3px 0">Canvas</td><td style="padding:3px 10px">340 / – / 628 / 312</td><td style="padding:3px 10px">308 / – / 480 / 312</td></tr>
+        <tr><td style="padding:3px 14px 3px 0">Slides</td><td style="padding:3px 10px">332 / 216 / 420 / 312</td><td style="padding:3px 10px">disabled (need 1228)</td></tr>
+        <tr><td style="padding:3px 14px 3px 0">Docs</td><td style="padding:3px 10px">320 / 220 / 420 / 320</td><td style="padding:3px 10px">disabled (need 1240)</td></tr>
+        <tr><td style="padding:3px 14px 3px 0">Design system</td><td style="padding:3px 10px">340 / 220 / 720 / –</td><td style="padding:3px 10px">340 / 220 / 540 / –</td></tr>
+        <tr><td style="padding:3px 14px 3px 0">Dashboard</td><td style="padding:3px 10px">340 / – / 540 / 400</td><td style="padding:3px 10px">disabled (need 1120)</td></tr>
+        <tr><td style="padding:3px 14px 3px 0">Motion</td><td style="padding:3px 10px">340 / – / 628 / 312</td><td style="padding:3px 10px">308 / – / 480 / 312</td></tr>
+      </tbody>
+    </table>
+    <div style="max-width:640px">MIN_WORK (the work's own minimum): canvas 480, slides 420, docs 420, design system 480, dashboard 440, motion 480. The budget is <b>280 + the kind's list + the open right pane + MIN_WORK</b>; with the right pane closed, the same window can open the column (e.g. slides at 1100: 280 + 216 + 420 = 916). Widths are the person's remembered ones; chat is 280–560 and starts at 340.</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

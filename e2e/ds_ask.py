@@ -68,7 +68,7 @@ async def main():
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(f'{base}/')
-            await pg.evaluate("localStorage.setItem('dc.pane.design-system', 'none')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
 
             # the bar at the bottom of the colors page, previewing the dark theme
             await pg.goto(f'{base}/?p=tingly-design-system&v=colors')
@@ -88,7 +88,7 @@ async def main():
 
             # the conversation pane: a request from the components page
             await pg.goto(f'{base}/')
-            await pg.evaluate("localStorage.setItem('dc.pane.design-system', 'chat')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '1')")
             await pg.goto(f'{base}/?p=tingly-design-system&v=components')
             await pg.wait_for_selector('.chat-composer textarea')
             await pg.locator('.chat-composer textarea').fill('加一个 Tag 组件')
@@ -113,7 +113,7 @@ async def main():
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 860})
             await pg.goto(f'{base2}/')
-            await pg.evaluate("localStorage.setItem('dc.pane.design-system', 'none')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
             await pg.goto(f'{base2}/?p=tingly-design-system')
             await pg.wait_for_selector('.dsask textarea')
             check('without the claude command the box says so', '找不到 claude 命令' in (await pg.locator('.dsask textarea').get_attribute('placeholder') or ''))

@@ -15,6 +15,7 @@ import { Strip } from './Strip';
 export function SlidesApp() {
   const loaded = useStore((s) => s.loaded);
   const pane = useStore((s) => s.pane);
+  const chatOpen = useStore((s) => s.chatOpen);
   const panelOpen = pane === 'inspector' || pane === 'review';
   const present = useStore((s) => !!s.present);
   const slide = useStore((s) => s.slide);
@@ -43,7 +44,8 @@ export function SlidesApp() {
   return (
     <>
     {!present && <SlidesTopBar />}
-    <div className="app slides" data-mode={present ? 'play' : 'edit'}>
+    <div className={`app slides${chatOpen && !present ? ' with-chat' : ''}`} data-mode={present ? 'play' : 'edit'}>
+      {chatOpen && !present && <ChatPane />}
       <Strip />
       <main className="stage">
         <TopLeft />
@@ -52,7 +54,6 @@ export function SlidesApp() {
         <JournalPopover />
       </main>
       {panelOpen && !present && <RightPanel />}
-      {pane === 'chat' && !present && <ChatPane />}
       <ContextMenu />
       {!present && <ExpandPanel />}
       {present && <Present />}

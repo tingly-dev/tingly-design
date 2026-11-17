@@ -116,7 +116,7 @@ async def main():
 
             # --- the conversation pane, canvas ---------------------------------------------
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
-            await pg.evaluate("localStorage.setItem('dc.pane.design', 'chat')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '1')")
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
@@ -155,7 +155,7 @@ async def main():
             check('…and the element was not duplicated', count() == before, (before, count()))
 
             # --- the bottom bar: the run card and the history --------------------------------
-            await pg.evaluate("localStorage.setItem('dc.pane.design', 'none')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
             await pg.wait_for_selector('.board')
             await pg.wait_for_timeout(800)
@@ -172,7 +172,7 @@ async def main():
 
             # --- every other kind: the pane's answer copies ---------------------------------
             for proj, kind in [('tingly-design-intro-slides', 'slides'), ('tingly-design-system', 'design-system'), ('tingly-design-guide-doc', 'docs'), ('tingly-box-usage-dashboard', 'dashboard'), ('tingly-design-motion', 'motion')]:
-                await pg.evaluate(f"localStorage.setItem('dc.pane.{kind}', 'chat')")
+                await pg.evaluate("localStorage.setItem('dc.chat', '1')")
                 await pg.goto(f'{base}/?p={proj}')
                 await pg.wait_for_selector('.chat-pane', timeout=10000)
                 await pg.wait_for_timeout(700)

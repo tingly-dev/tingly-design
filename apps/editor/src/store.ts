@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { initialPane, KIND_PANE_IDS, rememberPane, type PaneId } from './panes';
+import { chatFits, initialChatOpen, initialPane, KIND_PANE_IDS, rememberChat, rememberPane, type PaneId } from './panes';
 import { turnOfDelegate, turnOfFast } from './turns';
 import { readRemarks, reviewInitial, type ReviewState } from './store/review';
 import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type DelegateState } from './store/agent';
@@ -127,6 +127,8 @@ export interface State extends AgentState, ReviewState {
   mode: Mode;
   /** the side pane open in the right column (inspector, data sources, code, comments), or none; see panes.ts */
   pane: PaneId | null;
+  /** the conversation column on the left, open beside the kind's own list and the right pane */
+  chatOpen: boolean;
   panelTab: 'props' | 'code' | 'tweaks' | 'theme';
   /** what the runtime measured about the selected element */
   inspect: Inspect | null;
@@ -174,6 +176,7 @@ export const useStore = create<State>(() => ({
   tool: 'select',
   mode: 'edit',
   pane: null,
+  chatOpen: false,
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -299,7 +302,8 @@ export async function openProject(name: string): Promise<void> {
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
+  const pane = kind ? initialPane(kind) : null;
+  set((s) => ({ files: entries, journal, loaded: true, kind, pane, chatOpen: kind ? initialChatOpen(kind, pane) : false, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
@@ -445,10 +449,21 @@ export function undoDelegate(id: string): void {
   set((s) => ({ delegates: s.delegates.map((x) => (x.id === id ? { ...x, undone: true } : x)) }));
 }
 
-// remember which pane is open, per kind and browser
+// remember which pane is open, per kind and browser; the conversation is one setting for every kind
 useStore.subscribe((st, prev) => {
   if (st.kind && st.kind === prev.kind && st.pane !== prev.pane) rememberPane(st.kind, st.pane);
+  if (st.chatOpen !== prev.chatOpen) rememberChat(st.chatOpen);
 });
+
+/** Open or close the conversation column on the left; a window too narrow to hold it stays closed. */
+export function toggleChat(): void {
+  useStore.setState((s) => {
+    if (!s.kind) return {};
+    if (s.chatOpen) return { chatOpen: false };
+    // opening reads the record and may bring a new result; it is on screen from now on
+    return chatFits(s.kind, s.pane) ? { chatOpen: true, chatNote: null } : {};
+  });
+}
 
 /** Show a pane (a request, a link from a file chip or a comment): never closes it. */
 export function openPane(id: PaneId): void {
