@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
@@ -267,12 +268,14 @@ function ImageForm({ editor }: { editor: Editor }) {
   const r = dom.getBoundingClientRect();
   const below = r.bottom + 8;
   const set = (attrs: { title?: string | null; alt?: string | null }) => editor.chain().updateAttributes('image', attrs).run();
-  return (
+  // on document.body: the column around the page puts a containing block on `fixed` (a transform), which
+  // would draw the form beside the page's own corner instead of beside the picture on screen
+  return createPortal(
     <div
       className="docimgform"
       role="dialog"
       aria-label={t('docs.image.label')}
-      style={{ left: Math.max(8, Math.min(r.left, innerWidth - 388)), top: below + 72 > innerHeight ? Math.max(8, r.top - 76) : below }}
+      style={{ left: Math.max(8, Math.min(r.left, innerWidth - 388)), top: below + 72 <= innerHeight ? below : Math.max(8, r.top - 76) }}
       // the picture's own keys are its own: the field handles them, not the editor behind it
       onKeyDown={(ev) => ev.stopPropagation()}
     >
@@ -288,7 +291,8 @@ function ImageForm({ editor }: { editor: Editor }) {
         {t('docs.image.alt')}
         <input value={String(sel.node.attrs.alt ?? '')} placeholder={t('docs.image.altPlaceholder')} onChange={(ev) => set({ alt: ev.currentTarget.value || null })} />
       </label>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
