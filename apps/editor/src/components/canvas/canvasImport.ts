@@ -23,7 +23,31 @@ export const canvasImport: ImportTarget = {
     return t('importer.canvas.what');
   },
   run: async (picked, at) => (picked.entry ? addPage(picked) : addImages(picked, at)),
+  page: {
+    get what() {
+      return t('linked.picker.what', { kind: t('launcher.kind.design.name').toLowerCase() });
+    },
+    place: ({ path, size, title, project }) => {
+      placeImageNote(path, size[0], size[1], t('linked.alt', { title, project }));
+      return t('linked.toast.placed.canvas', { title });
+    },
+  },
 };
+
+/** A picture already in the project as an image item in the middle of what is on screen, selected. */
+function placeImageNote(path: string, w: number, h: number, alt: string): void {
+  const { viewport } = get();
+  const origin = toCanvas(viewport.w / 2, viewport.h / 2);
+  const k = Math.min(1, IMAGE_MAX / w, IMAGE_MAX / h);
+  const iw = Math.round(w * k);
+  const ih = Math.round(h * k);
+  let id = '';
+  editCanvas((c) => {
+    id = uniqueNoteId(c, 'img');
+    c.notes[id] = { kind: 'image', x: Math.round(origin.x - iw / 2), y: Math.round(origin.y - ih / 2), w: iw, h: ih, src: path, alt, ...(get().page ? { page: get().page } : {}) } as NoteEntry;
+  }, 'linked page placed');
+  if (id) useStore.setState({ selection: { kind: 'note', id } });
+}
 
 async function addPage(picked: Picked): Promise<string> {
   const project = get().project!;

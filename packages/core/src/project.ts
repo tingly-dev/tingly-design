@@ -168,6 +168,8 @@ export interface ProjectSettings {
   look?: { headingFont: string; bodyFont: string; width: string; lang: string };
   /** Dashboard: where each dataset's rows come from (a `data/` file or `connector/tool`), and whether it fails to read. */
   datasets?: { id: string; source?: string; broken?: boolean }[];
+  /** Canvas, slides, docs, motion: the pages of other projects linked in (`.design/cross-kind-embedding.md`): copies, not to be edited by hand. */
+  linked?: { path: string; from: string; page: string; kind: string; mode: string }[];
   /** Design system: its namespace, theme ids, the first colour names (and how many there are) and the typeface stack of each role. */
   namespace?: string;
   themes?: string[];
@@ -183,6 +185,15 @@ const themeSetting = (index: Record<string, unknown>): Pick<ProjectSettings, 'th
   return r ? { theme: { system: r.system, theme: r.theme } } : {};
 };
 
+/** The pages of other projects an index lists as linked (its `imports`), as plain values; an artboard imported before pages were linked is a live one. */
+const linkedSetting = (index: string | undefined): Pick<ProjectSettings, 'linked'> => {
+  const raw = (json(index) as { imports?: unknown } | undefined)?.imports;
+  const list = (Array.isArray(raw) ? raw : []).filter((r): r is Record<string, unknown> => isObject(r) && typeof r.path === 'string' && typeof r.from === 'string');
+  return list.length
+    ? { linked: list.slice(0, 20).map((r) => ({ path: String(r.path), from: String(r.from), page: String(r.page ?? r.board ?? ''), kind: String(r.kind ?? 'design'), mode: String(r.mode ?? (r.board ? 'live' : 'image')) })) }
+    : {};
+};
+
 /** A long list of names is cut here: the files hold the rest, and the same line goes into every request. */
 const NAMES_MAX = 40;
 
@@ -191,19 +202,19 @@ const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFi
   design(index) {
     const c = parseCanvas(index);
     const order = [...c.order.filter((f) => c.boards[f]), ...Object.keys(c.boards).filter((f) => !c.order.includes(f))];
-    return { designSystems: namespacesOf(c.designSystems), ...themeSetting(c), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
+    return { designSystems: namespacesOf(c.designSystems), ...themeSetting(c), ...linkedSetting(index), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
   },
   slides(index) {
     const d = parseDeck(index);
-    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems), ...themeSetting(d) };
+    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems), ...themeSetting(d), ...linkedSetting(index) };
   },
   motion(index) {
     const m = parseMotion(index);
-    return { formats: Object.entries(m.formats).map(([id, f]) => ({ id, size: f.size })), fps: m.fps, speed: m.speed && m.speed > 0 ? m.speed : 1 };
+    return { formats: Object.entries(m.formats).map(([id, f]) => ({ id, size: f.size })), fps: m.fps, speed: m.speed && m.speed > 0 ? m.speed : 1, ...linkedSetting(index) };
   },
   docs(index) {
     const d = parseDoc(index);
-    return { look: { ...d.settings }, designSystems: namespacesOf(d.designSystems), ...themeSetting(d) };
+    return { look: { ...d.settings }, designSystems: namespacesOf(d.designSystems), ...themeSetting(d), ...linkedSetting(index) };
   },
   dashboard(_index, files) {
     return {

@@ -190,7 +190,7 @@
 }
 
 
-/* importing an artboard from a project: the picker, and the selected embed's panel */
+/* a page of another project: the picker, and the selected linked page's panel */
 
 
 .ldialog.bpick {
@@ -206,6 +206,64 @@
 .bpick-group h3 {
   margin: 0 0 8px;
   font-size: 13px;
+  color: var(--ink-2);
+}
+
+
+.bpick-search {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
+
+
+.bpick-busy,
+.bpick-error {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+
+.bpick-busy {
+  color: var(--ink-2);
+}
+
+
+.bpick-error {
+  color: var(--danger, #c0392b);
+}
+
+
+.bpick-project {
+  margin: 0 0 14px;
+}
+
+
+.bpick-ptitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+
+.bpick-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 196px;
+  min-height: 96px;
+  max-height: 196px;
+  border-radius: calc(var(--r) - 2px);
+  background: var(--panel-2);
   color: var(--ink-2);
 }
 
@@ -441,4 +499,78 @@
   border-radius: 5px;
   background: var(--surface-2, rgba(127, 127, 127, 0.12));
   white-space: nowrap;
+}
+
+
+/* a selected linked page: where it came from, whether the original changed, what to do about it */
+
+
+.linkedp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+.linkedp h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+
+.linkedp.compact {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+
+.linkedp-src {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+
+.linkedp-k {
+  flex: none;
+  width: 44px;
+  color: var(--faint);
+}
+
+
+.linkedp-v {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.linkedp-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+
+.linkedp-words {
+  color: var(--ink-2);
+}
+
+
+.linkedp-words.changed {
+  color: var(--warn, #b45309);
+}
+
+
+.linkedp-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }

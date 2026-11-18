@@ -20,6 +20,7 @@ import starter from './starter';
 import cli from './cli';
 import claudeDesign from './claudeDesign';
 import review from './review';
+import linked from './linked';
 
 export default {
   common,
@@ -44,4 +45,5 @@ export default {
   cli,
   claudeDesign,
   review,
+  linked,
 };

@@ -16,8 +16,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PIECE = os.path.join(REPO, 'projects', 'zz-dialog-motion')
 
 L = {
-    'en': {'io': 'Import / Export', 'ai': 'AI model settings', 'video': 'Video…', 'from': 'Import from a project…'},
-    'zh': {'io': '导入 / 导出', 'ai': 'AI 模型设置', 'video': '视频…', 'from': '从项目导入…'},
+    'en': {'io': 'Import / Export', 'ai': 'AI model settings', 'video': 'Video…', 'from': 'A page from another project…'},
+    'zh': {'io': '导入 / 导出', 'ai': 'AI 模型设置', 'video': '视频…', 'from': '来自另一个项目的页面…'},
 }
 
 results = []

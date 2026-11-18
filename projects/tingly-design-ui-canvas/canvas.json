@@ -213,14 +213,14 @@
       "x": 5600,
       "y": 6300,
       "w": 1720,
-      "h": 1040,
+      "h": 800,
       "title": "Linked pages: insert"
     },
     "LinkedItem.dc.html": {
       "x": 5600,
       "y": 7500,
       "w": 1720,
-      "h": 1500,
+      "h": 980,
       "title": "Linked pages: the item"
     }
   },
