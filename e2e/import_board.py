@@ -1,5 +1,5 @@
 """End-to-end checks for importing from a project: an artboard of a canvas (the sample effect, Glow) comes
-into a slide deck and a motion piece through the import menu's 从项目导入…, is copied under uploads/,
+into a slide deck and a motion piece through the import menu's 来自另一个项目的页面…, is copied under uploads/,
 recorded in the index, drawn on the stage by the artboard runtime, set from the panel (data-props) and
 updated from its canvas; a canvas looks at a moving artboard at any moment from its Tweaks.
 Run after `pnpm build`: python3 e2e/import_board.py  (DC_CHROME=/path/to/chrome to use another Chromium)
@@ -51,7 +51,7 @@ async def board_drawn(pg, timeout=10.0, player=False):
 async def pick_glow(pg):
     # the shared Import / Export menu every kind's bar carries
     await pg.locator('button[aria-label="导入 / 导出"]').first.click()
-    await pg.locator('.menu .mi', has_text='从项目导入').click()
+    await pg.locator('.menu .mi', has_text='来自另一个项目的页面').click()
     await expect(pg.locator('.bpick')).to_be_visible()
     item = pg.locator('.bpick-item[data-pick="Glow.dc.html"]')
     await expect(item).to_be_visible()
@@ -112,7 +112,10 @@ async def main():
             # --- the panel: where it came from, and its options as this embed sets them ---------------
             panel = pg.locator('.bembed')
             await expect(panel).to_be_visible()
-            check('panel: says where the artboard came from', await panel.locator('.hint', has_text='来自 tingly-box-console-canvas 的 Glow').count() == 1)
+            linked = pg.locator('.linkedp')
+            await expect(linked.locator('.linkedp-v')).to_contain_text('Glow backdrop')
+            check('panel: says where the artboard came from', await linked.locator('.linkedp-v', has_text='Tingly Box Console Canvas').count() == 1)
+            check('panel: the original has not changed', await linked.get_attribute('data-state') == 'current')
             await panel.locator('.swatches button[aria-label="#7c3aed"]').click()
             ok = await wait_for(lambda: '"accent":"#7c3aed"' in slide().replace('&quot;', '"'))
             check('panel: a tweak is written to the embed’s data-props', ok, slide()[:400])
@@ -127,8 +130,8 @@ async def main():
             text = open(glow).read()
             open(glow, 'w').write(text.replace('<title>Glow backdrop</title>', '<title>Glow backdrop v2</title>'))
             await pg.wait_for_timeout(500)
-            await panel.locator('button', has_text='从原画板更新').click()
-            check('panel: updating says so', await toast(pg, '已从画布更新'))
+            await linked.locator('button', has_text='更新').first.click()
+            check('panel: updating says so', await toast(pg, '已用 Tingly Box Console Canvas 更新'))
             check('…and the copy is the canvas’s artboard again', await wait_for(lambda: 'Glow backdrop v2' in read('tingly-design-intro-slides', COPY)))
 
             # --- presenting: the moving artboard loops ---------------------------------------------------

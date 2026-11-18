@@ -60,6 +60,13 @@ Text people read (on the page, in notes, titles and descriptions) uses its langu
 
 `tingly-design check <name> --name --snapshots` checks the files and draws every tab as the editor's Export menu does, into `projects/<name>/renders/check/`. Read the PNGs to see the result; anything listed as "could not be drawn" is broken, and so is a script that "threw while the editor showed it"; "lists …, which is missing" names a file you referenced that is not there, and "did not load" a picture, font, style or script that never arrived. Warnings about the layout (text "cut off by its box", text that "runs past the edge", text "hard to read on its background", "nothing is drawn") are worth fixing unless the design means it. `tingly-design export <name> --name --as png --tab <id or title>` draws one tab; `--as pdf`, `html` and `md` are the doc's other exports. Run `tingly-design` as the editor that started you ships it, so it sees the same projects folder and version: `node cli.mjs …` when `cli.mjs` is in the working directory (the shipped bundle), `pnpm tingly-design …` in this repository, otherwise the installed `tingly-design …`; not `npx`, which may fetch another version. With Tingly Design's MCP server connected (`tingly-design mcp`, or the editor's `/mcp`), its `check`, `look` and `export` tools do the same (`look` hands the pictures back, one thing at a time with `pick`).
 
+## Linked pages
+
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page into `uploads/linked/<id>/<name>.png`, records where it came from in `doc.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture at the end of the open tab, or at the cursor, as an ordinary Markdown image `![…](../uploads/linked/<id>/<name>.png)`.
+
+- It is a copy: you may leave it, resize it or move it, but never edit or replace the file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
+- To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
+
 ## Reference folders
 
 A request may list "Reference folders": other projects, or folders of projects, the person wants this work to consult (a design system to match, sibling decks). Read them, and take values from them (tokens, wording, structure) by copying the value into this project; never link to a file in them, and never edit, create or delete anything in them.

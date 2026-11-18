@@ -20,6 +20,7 @@ import starter from './starter';
 import cli from './cli';
 import claudeDesign from './claudeDesign';
 import review from './review';
+import linked from './linked';
 import type en from '../en';
 import type { Locale } from '../../types';
 
@@ -46,4 +47,5 @@ export default {
   cli,
   claudeDesign,
   review,
+  linked,
 } satisfies Locale<typeof en>;

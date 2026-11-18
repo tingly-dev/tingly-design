@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, LinkCheck, LinkSource, LinkedPage, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -184,6 +184,7 @@ async function json<T>(res: Response): Promise<T> {
 }
 
 const enc = encodeURIComponent;
+const post = (path: string, body: unknown) => call(at(path), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 export const api = {
   resolve: (p: string) => call(at(`api/resolve/${enc(p)}`)).then((r) => json<{ name: string }>(r)),
@@ -327,6 +328,25 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ from, board }),
     }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
+
+  /** The projects whose pages this one can take, each with its pages (.design/cross-kind-embedding.md). */
+  linkSources: (p: string) => call(at(`api/projects/${enc(p)}/link-sources`)).then((r) => json<{ sources: LinkSource[] }>(r)),
+
+  /** Put a picture of a page of another project in this one; the caller puts it on the page. */
+  linkPage: (p: string, from: string, page: string) =>
+    post(`api/projects/${enc(p)}/link-page`, { from, page }).then((r) => json<{ record: LinkedPage; size: [number, number] | null; title: string }>(r)),
+
+  /** Where each linked page stands against its original. */
+  linkCheck: (p: string) => post(`api/projects/${enc(p)}/link-check`, {}).then((r) => json<{ links: LinkCheck[] }>(r)),
+
+  /** Copy the original of a linked page again. */
+  linkRefresh: (p: string, path: string) => post(`api/projects/${enc(p)}/link-refresh`, { path }).then((r) => json<{ record: LinkedPage; changed: boolean; size: [number, number] | null }>(r)),
+
+  /** Take back the last update (or unlink) of a linked page. */
+  linkUndo: (p: string, path: string) => post(`api/projects/${enc(p)}/link-undo`, { path }).then((r) => json<{ record: LinkedPage }>(r)),
+
+  /** Let go of the original: the record goes, the copy stays. */
+  linkUnlink: (p: string, path: string) => post(`api/projects/${enc(p)}/link-unlink`, { path }).then((r) => json<{ record: LinkedPage }>(r)),
 
   /** Convert a PowerPoint into slides for the open deck: a pure conversion (nothing is written);
    * the slides' media rides along as base64 and the editor performs the append transaction. */

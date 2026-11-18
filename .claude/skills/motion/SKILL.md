@@ -60,7 +60,7 @@ The editor lists problems it finds: an exit before the entry, text on screen und
 
 ## Artboards imported from a canvas (effects)
 
-A person can import an artboard of a canvas project into a piece (import menu → From a project). The server copies it, with its sibling artboards and pictures, to `uploads/<canvas>-<board>/` and records it in `motion.json` `imports` (`{path, from, board, copiedAt}`); the editor puts it on the scene under the playhead:
+A person can import an artboard of a canvas project into a piece (import menu → A page from another project). The server copies it, with its sibling artboards and pictures, to `uploads/<canvas>-<board>/` and records it in `motion.json` `imports` (`{path, from, kind, page, board, mode, at, copiedAt}`); the editor puts it on the scene under the playhead:
 
 ```html
 <x-embed src="uploads/box-console-Glow/Glow.dc.html" data-seek data-props='{"accent":"#e8590c"}' style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>
@@ -68,6 +68,13 @@ A person can import an artboard of a canvas project into a piece (import menu �
 
 - An artboard that declares `"$time"` is an effect: the player hands it the scene's time on every frame (`data-seek`), so it is drawn frame by frame and renders exactly. Keep `data-seek` on every such embed. A moving one usually fills the frame as the scene's first child, so the scene paints over it; it takes `data-in`/`data-out`/`data-keys` like any element.
 - `data-props` sets the artboard's tweaks; leave a key out for its default. Change the look through `data-props`, never by editing the copy under `uploads/` (importing again overwrites it). Reuse it in another scene with the same `src`; don't point `src` anywhere else.
+
+## Linked pages
+
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page into `uploads/linked/<id>/<name>.png`, records where it came from in `motion.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture on the scene under the playhead as an `<img>` that enters at the playhead. An artboard of a canvas shown live is the `<x-embed>` described above and has the same record.
+
+- It is a copy: you may leave it, resize it or move it, but never edit or replace the file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
+- To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
 
 ## Pictures and files people brought in
 

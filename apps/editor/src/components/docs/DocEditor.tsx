@@ -22,6 +22,10 @@ import { RichCodeBlock } from './richCode';
 import { TextColor } from './textColor';
 import { DocPointers } from './DocPointers';
 import { hasLanding, placeLanding } from '../../pointers';
+import { PagePicker } from '../PagePicker';
+import { LinkedPanel } from '../panel/LinkedPanel';
+import { isLinkedPicture } from '@dc/core';
+import { linkPick } from '../../linkedPages';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
@@ -109,7 +113,7 @@ function TextColorPicker({ editor }: { editor: Editor }) {
   );
 }
 
-type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'diagram' | 'formula' | 'table' | 'hr' | 'date' | 'image';
+type BlockKey = 'link' | 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'diagram' | 'formula' | 'table' | 'hr' | 'date' | 'image';
 
 interface SlashItem {
   key: BlockKey;
@@ -133,7 +137,11 @@ const SLASH: SlashItem[] = [
   { key: 'hr', hint: 'divider rule hr', run: (e) => e.chain().focus().setHorizontalRule().run() },
   { key: 'date', hint: 'date today', run: (e) => e.chain().focus().insertContent(new Date().toLocaleDateString(dateLocale(), { year: 'numeric', month: 'long', day: 'numeric' })).run() },
   { key: 'image', hint: 'image picture upload', run: (e) => pickImage(e) },
+  { key: 'link', hint: 'linked page project another canvas slide dashboard picture', run: (e) => openLinkPicker(e) },
 ];
+
+/** Where the editor mounted registers how to open the page picker for the cursor: the slash menu's items are plain functions of the editor. */
+let openLinkPicker: (e: Editor) => void = () => {};
 
 /** A code block with a language and a starting text, selected so typing replaces it. */
 function fence(e: Editor, language: string, text: string): void {
@@ -173,7 +181,9 @@ const imagesOf = (list?: FileList | null) => [...(list ?? [])].filter((f) => f.t
 function imageSrc(src: string): string {
   const project = useStore.getState().project;
   if (!project || /^(https?:|data:|blob:)/.test(src)) return src;
-  return api.rawBase(project) + src.replace(/^\.\.\//, '').replace(/^\.\//, 'tabs/');
+  const rel = src.replace(/^\.\.\//, '').replace(/^\.\//, 'tabs/');
+  // a linked page's picture is drawn again when its copy is replaced: the address carries the revision
+  return api.rawBase(project) + rel + (isLinkedPicture(rel) ? `?v=${useStore.getState().assetRev}` : '');
 }
 
 const ProjectImage = Image.extend({
@@ -267,6 +277,9 @@ function ImageForm({ editor }: { editor: Editor }) {
   if (!(dom instanceof HTMLElement)) return null;
   const r = dom.getBoundingClientRect();
   const below = r.bottom + 8;
+  const linkedPath = String(sel.node.attrs.src ?? '').replace(/^\.\.\//, '');
+  // the form is taller when the picture is a linked page: its source, whether it is current, the actions
+  const height = isLinkedPicture(linkedPath) ? 168 : 76;
   const set = (attrs: { title?: string | null; alt?: string | null }) => editor.chain().updateAttributes('image', attrs).run();
   // on document.body: the column around the page puts a containing block on `fixed` (a transform), which
   // would draw the form beside the page's own corner instead of beside the picture on screen
@@ -275,7 +288,7 @@ function ImageForm({ editor }: { editor: Editor }) {
       className="docimgform"
       role="dialog"
       aria-label={t('docs.image.label')}
-      style={{ left: Math.max(8, Math.min(r.left, innerWidth - 388)), top: below + 72 <= innerHeight ? below : Math.max(8, r.top - 76) }}
+      style={{ left: Math.max(8, Math.min(r.left, innerWidth - 388)), top: below + height - 4 <= innerHeight ? below : Math.max(8, r.top - height) }}
       // the picture's own keys are its own: the field handles them, not the editor behind it
       onKeyDown={(ev) => ev.stopPropagation()}
     >
@@ -291,6 +304,7 @@ function ImageForm({ editor }: { editor: Editor }) {
         {t('docs.image.alt')}
         <input value={String(sel.node.attrs.alt ?? '')} placeholder={t('docs.image.altPlaceholder')} onChange={(ev) => set({ alt: ev.currentTarget.value || null })} />
       </label>
+      {isLinkedPicture(linkedPath) && <LinkedPanel path={linkedPath} compact />}
     </div>,
     document.body,
   );
@@ -338,6 +352,8 @@ export function DocEditor({ tab }: { tab: string }) {
   const nextActor = useRef<'human' | 'fast-edit'>('human');
   const [slash, setSlash] = useState<{ query: string; x: number; y: number; index: number } | null>(null);
   const [spark, setSpark] = useState<Spark | null>(null);
+  const [linking, setLinking] = useState(false);
+  const rev = useStore((st) => st.assetRev);
   const [ask, setAsk] = useState('');
   const abort = useRef<AbortController | null>(null);
 
@@ -432,6 +448,21 @@ export function DocEditor({ tab }: { tab: string }) {
 
   const slashRef = useRef(slash);
   slashRef.current = slash;
+
+  // the slash menu's "A page from another project" opens the picker; the page lands at the cursor
+  useEffect(() => {
+    openLinkPicker = () => setLinking(true);
+    return () => {
+      openLinkPicker = () => {};
+    };
+  }, []);
+  // a linked page's copy was replaced: its picture is asked for again
+  useEffect(() => {
+    editor?.view.dom.querySelectorAll<HTMLImageElement>('img[data-src]').forEach((img) => {
+      const src = img.dataset.src ?? '';
+      if (isLinkedPicture(src.replace(/^\.\.\//, ''))) img.src = imageSrc(src);
+    });
+  }, [rev, editor]);
 
   function matches(q: string): SlashItem[] {
     const s = q.trim().toLowerCase();
@@ -632,6 +663,22 @@ export function DocEditor({ tab }: { tab: string }) {
       </BubbleMenu>
       <DocPointers editor={editor} file={file} />
       <ImageForm editor={editor} />
+      {linking && editor && (
+        <PagePicker
+          kind="docs"
+          what={t('linked.picker.what', { kind: t('launcher.kind.docs.name').toLowerCase() })}
+          onClose={() => setLinking(false)}
+          onPick={async (source, page) => {
+            const placed = await linkPick(source, page);
+            editor
+              .chain()
+              .focus()
+              .insertContent({ type: 'image', attrs: { src: '../' + placed.path, alt: t('linked.alt', { title: placed.title, project: placed.project }).replace(/[[\]]/g, '') } })
+              .run();
+            toast(t('linked.toast.placed.doc', { title: placed.title }));
+          }}
+        />
+      )}
       <EditorContent editor={editor} />
       {slash && list.length > 0 && (
         <div className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={{ left: slash.x, top: slash.y }}>
