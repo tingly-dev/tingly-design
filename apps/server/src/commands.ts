@@ -221,7 +221,7 @@ async function texts(dir: string): Promise<Record<string, string>> {
 // ---------------------------------------------------------------- list
 
 export async function projects() {
-  return (await listProjects()).map((c) => ({ name: c.name, kind: c.kind as Kind, title: c.title, ...(c.path ? { path: c.path } : {}), ...(c.parent ? { parent: c.parent } : {}), updatedAt: c.updatedAt }));
+  return (await listProjects()).map((c) => ({ name: c.name, kind: c.kind as Kind, title: c.title, ...(c.path ? { path: c.path } : {}), updatedAt: c.updatedAt }));
 }
 
 export async function outline(p: Project) {
