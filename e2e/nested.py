@@ -85,18 +85,18 @@ async def main():
     check("a folder a project keeps its own files in is refused", st == 400 and r.get('code') == 'subReserved' and not os.path.exists(os.path.join(parent_dir, 'uploads', 'canvas.json')), str(r))
 
     # --- a project folder put there by hand: nobody registered it, it is still not the parent's ---
-    shutil.copytree(os.path.join(parent_dir, 'words'), os.path.join(parent_dir, 'handmade'), ignore=shutil.ignore_patterns('.*'))
+    shutil.copytree(os.path.join(parent_dir, 'logo'), os.path.join(parent_dir, 'handmade'), ignore=shutil.ignore_patterns('.*'))
     check("a project folder put inside by hand is left out of the parent's files", files(PARENT) == before, str(files(PARENT)))
     check("and out of its git changes", call('GET', f'/api/projects/{PARENT}/git')[1].get('changes') == g0.get('changes'))
     time.sleep(1.5)
-    open(os.path.join(parent_dir, 'handmade', 'tabs', 'extra.md'), 'w').write('typed outside\n')
+    open(os.path.join(parent_dir, 'handmade', 'Late.dc.html'), 'w').write('<dc-board title="Late" width="400" height="300"></dc-board>\n')
     open(os.path.join(parent_dir, 'logo', 'Outside.dc.html'), 'w').write('<dc-board title="Outside" width="400" height="300"></dc-board>\n')
     t = time.time()
     while time.time() - t < 8 and 'Outside.dc.html' not in journal_files(logo): time.sleep(0.4)
     check("an edit made outside is the sub-project's journal entry", 'Outside.dc.html' in journal_files(logo))
     time.sleep(1)
     parent_journal = journal_files(PARENT)
-    check("and neither the sub-project's nor the hand-placed folder's file is the parent's", not (parent_journal & {'Outside.dc.html', 'logo/Outside.dc.html', 'handmade/tabs/extra.md', 'tabs/extra.md'}), str(parent_journal))
+    check("and neither the sub-project's nor the hand-placed folder's file is the parent's", not (parent_journal & {'Outside.dc.html', 'logo/Outside.dc.html', 'handmade/Late.dc.html', 'Late.dc.html'}), str(parent_journal))
     check("the parent's card still counts only its own boards", cards()[PARENT]['count'] == count)
 
     # --- git: the parent's changes leave the sub-project's out ------------------------------------
