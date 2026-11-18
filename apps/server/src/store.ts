@@ -79,9 +79,6 @@ export function versionOf(content: string): string {
   return createHash('sha256').update(content).digest('hex').slice(0, 12);
 }
 
-/** The file that makes a folder a project, and the kind it makes it. */
-const INDEX_KINDS = [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [DOC_INDEX, 'docs'], [MOTION_FILE, 'motion'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const;
-
 export function isProjectName(name: string): boolean {
   return /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name);
 }
@@ -91,10 +88,9 @@ export function projectDir(name: string): string {
   const known = links.get(name);
   if (known) return known;
   const inProjects = join(PROJECTS_DIR, name);
-  // a project made in an opened folder, or inside another project, a moment ago is not in the list yet
-  if (!existsSync(inProjects) && (folders.size || SUB_ID.test(name))) {
-    if (folders.size) refreshMembers();
-    if (!links.has(name) && SUB_ID.test(name)) refreshNested();
+  // a project made in an opened folder a moment ago is not in the list yet
+  if (folders.size && !existsSync(inProjects)) {
+    refreshMembers();
     return links.get(name) ?? inProjects;
   }
   return inProjects;
@@ -237,7 +233,7 @@ function saveLinks(): Promise<void> {
   const next = linksWrite.then(async () => {
     await mkdir(PROJECTS_DIR, { recursive: true });
     const tmp = join(PROJECTS_DIR, `${LINKS_FILE}.tmp-${randomUUID().slice(0, 8)}`);
-    await writeFile(tmp, JSON.stringify({ ...Object.fromEntries(aliases), ...Object.fromEntries([...links].filter(([name]) => !memberNames.has(name) && !nestedNames.has(name))) }, null, 2) + '\n', 'utf8');
+    await writeFile(tmp, JSON.stringify({ ...Object.fromEntries(aliases), ...Object.fromEntries([...links].filter(([name]) => !memberNames.has(name))) }, null, 2) + '\n', 'utf8');
     await rename(tmp, join(PROJECTS_DIR, LINKS_FILE));
   });
   linksWrite = next.catch(() => {});
@@ -276,22 +272,14 @@ export async function linkFolder(input: string, create = false): Promise<string>
   if (create ? at.state !== 'free' : at.state !== 'project') {
     throw new HttpError(create ? 409 : 404, create ? (at.state === 'project' ? 'folderHasProject' : 'folderNotEmpty') : at.state === 'free' ? 'noFolder' : 'noProjectInFolder', { path: at.path });
   }
-  refreshNested();
   const known = nameOfFolder(abs);
   if (known) {
     if (create) throw new HttpError(409, 'folderHasProject', { path: at.path });
     return known;
   }
-  const name = idFor(abs);
-  // a folder directly inside a project is that project's sub-project: found by looking, so nothing is listed in the links file
-  const up = parentFolderOf(abs);
-  const parent = up ? nameOfFolder(up) : undefined;
+  // a folder a project keeps its own files in would be read as part of that project, not as a project beside them
   if (create && kindOfSync(dirname(abs)) && isSubSkipped(basename(abs))) throw new HttpError(400, 'subReserved', { name: basename(abs) });
-  if (parent) {
-    // until `createProject` has written it, or the unlink of a failed one
-    registerNested(name, abs, parent, create);
-    return name;
-  }
+  const name = idFor(abs);
   links.set(name, abs);
   await saveLinks();
   for (const fn of linkListeners) fn(name, abs);
@@ -311,14 +299,6 @@ export async function unlinkProject(key: string): Promise<void> {
   const name = resolveKey(key);
   const dir = links.get(name);
   if (!dir) throw new HttpError(404, 'notLinked', { name: key });
-  if (nestedNames.has(name)) {
-    // a sub-project is found on the disk, so only this process forgets it (a new project that failed to be written)
-    nestedNames.delete(name);
-    parentOf.delete(name);
-    pendingNested.delete(name);
-    links.delete(name);
-    return;
-  }
   if (memberNames.has(name)) throw new HttpError(409, 'inFolderGroup', { name: key });
   links.delete(name);
   for (const [old, d] of aliases) if (d === dir) aliases.delete(old);
@@ -406,85 +386,6 @@ export function refreshMembers(): void {
     links.delete(name);
   }
   for (const [name, dir] of added) for (const fn of linkListeners) fn(name, dir);
-}
-
-// ---------------------------------------------------------------- sub-projects
-
-/**
- * A project folder directly inside another project's folder is a sub-project (.design/sub-projects.md).
- * Like the members of an opened folder it is found by looking, never stored: it joins `links` under
- * the same path-made name (`idFor`) and is told apart by `nestedNames`, so the links file never holds
- * it, and `parentOf` says which project it is under. A project linked or opened on its own stays
- * what it was. The parent's own file list (`walk`) leaves a sub-project's folder out.
- */
-const nestedNames = new Set<string>();
-const parentOf = new Map<string, string>();
-/** Sub-projects `linkFolder` has named for a folder that is being written: not looked for on the disk yet, so a look in between must not drop them. */
-const pendingNested = new Set<string>();
-/** Folders a project keeps its own things in: never looked in for a sub-project. */
-const SUB_RESERVED = new Set(['uploads', 'ds', 'data', 'assets', 'fonts', 'slides', 'scenes', 'tabs', 'datasets', 'files', 'renders', 'node_modules']);
-const SUB_DEPTH = 4;
-/** What a name made by `idFor` ends with: the lookup that may need to look for a sub-project. */
-const SUB_ID = /-[0-9a-f]{6}$/;
-
-/** A folder name a sub-project cannot have: hidden, or one of a project's own folders. */
-export function isSubSkipped(folder: string): boolean {
-  return folder.startsWith('.') || SUB_RESERVED.has(folder);
-}
-
-/** The sub-projects directly inside a project folder: their folder name, path and kind. */
-export function subsIn(dir: string): { folder: string; dir: string; kind: ProjectKind }[] {
-  return projectsIn(dir).filter((m) => !isSubSkipped(m.folder));
-}
-
-/** The name of the project a sub-project is under, if it is one. */
-export function parentName(name: string): string | undefined {
-  return parentOf.get(name);
-}
-
-/** Every sub-project under a project (all depths), by name. */
-export function subProjectsOf(name: string): string[] {
-  return [...parentOf].filter(([, p]) => p === name).map(([n]) => n);
-}
-
-/** Looks at every project folder again: sub-projects that appeared join, the ones that left go. Called when the list is made and when a name is not known. */
-export function refreshNested(): void {
-  const roots: [string, string][] = [];
-  try {
-    for (const e of readdirSync(PROJECTS_DIR, { withFileTypes: true })) {
-      if (e.isDirectory() && isProjectName(e.name) && !links.has(e.name) && kindOfSync(join(PROJECTS_DIR, e.name))) roots.push([e.name, join(PROJECTS_DIR, e.name)]);
-    }
-  } catch {
-    // no projects folder yet
-  }
-  for (const [name, dir] of links) if (!nestedNames.has(name)) roots.push([name, dir]);
-  const seen = new Set<string>();
-  const visit = (parent: string, dir: string, depth: number) => {
-    if (depth > SUB_DEPTH) return;
-    for (const m of subsIn(dir)) {
-      const name = idFor(m.dir);
-      if (links.has(name) && !nestedNames.has(name)) continue;
-      seen.add(name);
-      parentOf.set(name, parent);
-      links.set(name, m.dir);
-      nestedNames.add(name);
-      visit(name, m.dir, depth + 1);
-    }
-  };
-  for (const [name, dir] of roots) visit(name, dir, 1);
-  for (const name of [...nestedNames]) {
-    if (seen.has(name) || pendingNested.has(name)) continue;
-    nestedNames.delete(name);
-    parentOf.delete(name);
-    links.delete(name);
-  }
-}
-refreshNested();
-
-/** The project whose folder a path is directly inside, when that folder is a project (a new project there is a sub-project). */
-export function parentFolderOf(abs: string): string | null {
-  const up = dirname(abs);
-  return up !== abs && !isSubSkipped(basename(abs)) && kindOfSync(up) ? up : null;
 }
 
 let foldersWrite: Promise<unknown> = Promise.resolve();
@@ -681,6 +582,9 @@ export function assetRel(rel: string): string {
   return r;
 }
 
+/** The file that makes a folder a project, and the kind it makes it. */
+const INDEX_KINDS = [[DECK_FILE, 'slides'], [DASH_INDEX, 'dashboard'], [DOC_INDEX, 'docs'], [MOTION_FILE, 'motion'], [CANVAS_FILE, 'design'], [DS_INDEX, 'design-system']] as const;
+
 export async function kindOf(dir: string): Promise<ProjectKind | null> {
   for (const [file, kind] of INDEX_KINDS) {
     try {
@@ -697,6 +601,36 @@ export async function kindOf(dir: string): Promise<ProjectKind | null> {
 export function kindOfSync(dir: string): ProjectKind | null {
   for (const [file, kind] of INDEX_KINDS) if (existsSync(join(dir, file))) return kind;
   return null;
+}
+
+/**
+ * A project folder directly inside another project's folder is that project's sub-project
+ * (.design/sub-projects.md): it is a project of its own, so the folder that holds it leaves it out of
+ * its files, its file watching and its commits. These are the folders a project keeps its own things
+ * in, and dot folders, which are never a sub-project's.
+ */
+const SUB_RESERVED = new Set(['uploads', 'ds', 'data', 'assets', 'fonts', 'slides', 'scenes', 'tabs', 'datasets', 'files', 'renders', 'node_modules']);
+
+/** A folder name a sub-project cannot have: hidden, or one of a project's own folders. */
+export function isSubSkipped(folder: string): boolean {
+  return folder.startsWith('.') || SUB_RESERVED.has(folder);
+}
+
+/** Whether the folder `dir`, named `name` inside a project, is a project of its own. */
+function isNestedProject(dir: string, name: string): boolean {
+  return !isSubSkipped(name) && kindOfSync(dir) !== null;
+}
+
+/** The sub-projects directly inside a project folder: their folder name, path and kind. */
+export function subsIn(dir: string): { folder: string; dir: string; kind: ProjectKind }[] {
+  return projectsIn(dir).filter((m) => !isSubSkipped(m.folder));
+}
+
+/** Whether `rel` (a path inside the project folder `dir`) is inside a project nested in it, so it is not this project's file. */
+export function inNestedProject(dir: string, rel: string): boolean {
+  const parts = rel.split('/');
+  for (let i = 1; i < parts.length; i++) if (isNestedProject(join(dir, ...parts.slice(0, i)), parts[i - 1])) return true;
+  return false;
 }
 
 export function isTracked(rel: string): boolean {
@@ -720,7 +654,7 @@ export async function walk(dir: string, base: string, out: string[]): Promise<vo
     const p = join(dir, e.name);
     // a project of its own inside this one is not this project's file
     if (e.isDirectory()) {
-      if (!isSubSkipped(e.name) && kindOfSync(p)) continue;
+      if (isNestedProject(p, e.name)) continue;
       await walk(p, base, out);
     } else {
       const rel = relative(base, p).split(sep).join('/');
@@ -857,7 +791,6 @@ export function setGroup(name: string, group: string): Promise<void> {
 export async function listProjects(): Promise<ProjectCard[]> {
   await mkdir(PROJECTS_DIR, { recursive: true });
   refreshMembers();
-  refreshNested();
   const groups = await readGroups();
   // the launcher group a person gave a project wins; without one a project in an opened folder is grouped by the folder
   const groupOf = (name: string): Pick<ProjectCard, 'group' | 'folderGroup'> => {
@@ -887,8 +820,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
         }
       }
       const read = (rel: string) => readFile(join(dir, rel), 'utf8').catch(() => undefined);
-      const parent = parentOf.get(e.name);
-      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), ...(parent ? { parent } : groupOf(e.name)), ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
+      out.push({ ...(await projectCard(e.name, kind, files, read, newest ? new Date(newest).toISOString() : null)), ...groupOf(e.name), ...(e.path ? { path: e.path, ...(aliasesOf(e.dir).length ? { aliases: aliasesOf(e.dir) } : {}) } : {}) });
     } catch {
       // unreadable index
     }
@@ -1178,7 +1110,7 @@ const STARTER: Record<ProjectKind, (c: Starter) => Promise<void>> = {
 };
 
 /** A new project, its starter copy in `lang`: the language of whoever created it. */
-async function writeNewProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
   const t: TFunction = translator(lang);
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
@@ -1187,37 +1119,4 @@ async function writeNewProject(name: string, title: string, kind: ProjectKind = 
   if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
   await mkdir(dir, { recursive: true });
   await STARTER[kind]({ name, title, lang, t, opts, look });
-}
-
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
-  try {
-    await writeNewProject(name, title, kind, lang, opts);
-  } finally {
-    pendingNested.delete(name);
-  }
-}
-
-/**
- * A new sub-project of `parent`: the folder `leaf` inside the parent's folder, written with `kind`'s
- * starter (the same as the New dialog's). What Claude Code reaches through `scripts/new-sub-project.mjs`;
- * it needs no links, so it works on a host that keeps projects to itself too.
- */
-export async function createSubProject(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
-  const parentName = resolveKey(parent);
-  const parentDir = projectDir(parentName);
-  if (!(await kindOf(parentDir))) throw new HttpError(404, 'noProject', { name: parent });
-  if (!isProjectName(leaf)) throw new HttpError(400, 'badProjectName');
-  if (isSubSkipped(leaf)) throw new HttpError(400, 'subReserved', { name: leaf });
-  const abs = join(parentDir, leaf);
-  const at = await inspectFolder(abs);
-  if (at.state !== 'free') throw new HttpError(409, at.state === 'project' ? 'folderHasProject' : 'folderNotEmpty', { path: at.path });
-  const name = idFor(abs);
-  registerNested(name, abs, parentName, true);
-  try {
-    await createProject(name, title, kind, lang, opts);
-  } catch (e) {
-    await unlinkProject(name).catch(() => {});
-    throw e;
-  }
-  return { name, dir: abs };
 }

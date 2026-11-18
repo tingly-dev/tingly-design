@@ -1,10 +1,9 @@
-"""End-to-end checks for sub-projects, a project inside a project (.design/sub-projects.md): a project folder directly
-inside another project's folder is found by looking and listed under its parent, with a name made from its path and
-nothing written to the links file; the parent's files, count, journal, git changes and archive leave it out, and a sub's
-own are its own; a sub of a sub; a reserved folder name refused; moving to the trash and back puts it where it was; the
-launcher shows the count beside the parent's ⋯ and expands the sub-projects under it; New sub-project… from the card and
-from the project menu starts in the parent's folder; the project menu names the parent and the sub-projects; the
-parent's zip imported again brings its sub-projects back under the new copy.
+"""End-to-end checks for projects inside projects (.design/sub-projects.md): a project made at a path inside another
+project's folder (the New dialog's Location preset by New sub-project…) is a project of its own, listed like any other,
+and the project that holds it leaves it out: its files, card count, file watching, git changes and zip. A project folder
+put there by hand, which nobody registered, is left out of the parent's files and watching too. The sub-project's own
+files, journal and zip are its own; a name a project keeps its own files in is refused; New sub-project… from the project
+menu and from a card's ⋯ starts at the parent's folder.
 Run with `pnpm dev` up: python3 e2e/nested.py (or pnpm e2e nested)"""
 import os, re, json, time, shutil, asyncio, zipfile, io, urllib.request, urllib.error
 from playwright.async_api import async_playwright, expect
@@ -36,16 +35,16 @@ def by_path(suffix): return next((c for c in cards().values() if c.get('path', '
 def links():
     f = os.path.join(PROJECTS, '.links.json')
     return json.load(open(f)) if os.path.exists(f) else {}
-def new_sub(parent_dir, leaf, kind='design', title=None):
-    return call('POST', '/api/projects', {'path': os.path.join(parent_dir, leaf), 'title': title or leaf, 'kind': kind})
-def put(project, rel, text):
-    st, files = call('GET', f'/api/projects/{project}/files')
-    cur = files['files'].get(rel)
-    return call('PUT', f'/api/projects/{project}/file?path={rel}', {'content': text, 'baseVersion': cur['version'] if cur else None})
+def new_at(folder, kind='design', title=None):
+    return call('POST', '/api/projects', {'path': folder, 'title': title or os.path.basename(folder), 'kind': kind})
+def files(name): return sorted(call('GET', f'/api/projects/{name}/files')[1]['files'])
+def journal_files(name): return {e.get('file') for e in call('GET', f'/api/projects/{name}/journal')[1]}
 
-def cleanup():
-    for d in os.listdir(PROJECTS):
-        if d.startswith(PARENT): shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)
+def cleanup(before_links):
+    """The sub-projects this suite linked go off the list again, and its folders go."""
+    for name, path in links().items():
+        if f'/{PARENT}/' in path and name not in before_links: call('DELETE', f'/api/links/{name}')
+    shutil.rmtree(os.path.join(PROJECTS, PARENT), ignore_errors=True)
 
 async def shot(pg, name):
     await pg.screenshot(path=OUT + f'nested-{name}.png')
@@ -54,168 +53,105 @@ async def shot(pg, name):
 async def main():
     os.makedirs(OUT, exist_ok=True)
     if SHOTS: os.makedirs(SHOTS, exist_ok=True)
-    cleanup()
     before_links = links()
+    cleanup(before_links)
 
-    # --- the parent, and a sub-project made in its folder ----------------------------------------
+    # --- the parent, and a project made inside its folder ----------------------------------------
     st, r = call('POST', '/api/projects', {'name': PARENT, 'title': 'Zz Nest', 'kind': 'design'})
     check('a parent project is made', st == 200 and r.get('name') == PARENT, str(r))
     parent_dir = os.path.join(PROJECTS, PARENT)
-    st, before = call('GET', f'/api/projects/{PARENT}/files')
-    parent_files = sorted(before['files'])
-    pcard = cards()[PARENT]
+    before = files(PARENT)
+    count = cards()[PARENT]['count']
     st, g0 = call('GET', f'/api/projects/{PARENT}/git')
-    st, r = new_sub(parent_dir, 'logo', 'design', 'Logo')
+    st, r = new_at(os.path.join(parent_dir, 'logo'), 'design', 'Logo')
     logo = r.get('name', '')
-    check('a project is made inside the parent folder, named from its path', st == 200 and re.fullmatch(r'logo-[0-9a-f]{6}', logo) is not None, str(r))
-    check('its folder is inside the parent', os.path.exists(os.path.join(parent_dir, 'logo', 'canvas.json')))
-    check('it is not written into the links file', links() == before_links, str(links()))
-    card = cards().get(logo, {})
-    check('its card says whose it is', card.get('parent') == PARENT and card.get('kind') == 'design' and card.get('title') == 'Logo', str(card))
-    check('a top-level project has no parent', 'parent' not in cards()[PARENT])
-    st, now = call('GET', f'/api/projects/{PARENT}/files')
-    check("the parent's files leave the sub-project's out", sorted(now['files']) == parent_files and not any(f.startswith('logo/') for f in now['files']), str(sorted(now['files'])))
-    st, mine = call('GET', f'/api/projects/{logo}/files')
-    check("the sub-project's files are its own", st == 200 and 'canvas.json' in mine['files'] and any(f.endswith('.dc.html') for f in mine['files']), str(sorted(mine['files'])))
-    check("the parent's card counts only its own boards", cards()[PARENT]['count'] == pcard['count'], f"{cards()[PARENT]['count']} vs {pcard['count']}")
+    check('a project is made at a path inside the parent folder', st == 200 and re.fullmatch(r'logo-[0-9a-f]{6}', logo) is not None and os.path.exists(os.path.join(parent_dir, 'logo', 'canvas.json')), str(r))
+    c = cards().get(logo, {})
+    check('it is listed like any project, with its folder', c.get('title') == 'Logo' and c.get('kind') == 'design' and c.get('path', '').endswith(f'/{PARENT}/logo'), str(c))
+    check('and linked by the links file, which holds nothing the suite did not add', set(links()) - set(before_links) == {logo}, str(links()))
+    check("the parent's files leave the sub-project's out", files(PARENT) == before and not any(f.startswith('logo/') for f in files(PARENT)), str(files(PARENT)))
+    mine = files(logo)
+    check("the sub-project's files are its own", 'canvas.json' in mine and any(f.endswith('.dc.html') for f in mine), str(mine))
+    check("the parent's card still counts only its own boards", cards()[PARENT]['count'] == count, f"{cards()[PARENT]['count']} vs {count}")
 
-    # --- a sub of a sub, another kind, a reserved folder ----------------------------------------
-    st, r = new_sub(os.path.join(parent_dir, 'logo'), 'mark', 'design-system', 'Mark')
-    mark = r.get('name', '')
-    check('a sub-project of a sub-project is found too', st == 200 and cards().get(mark, {}).get('parent') == logo, str(r))
-    st, r = new_sub(parent_dir, 'words', 'docs', 'Words')
+    # --- another kind, a sub of a sub, a reserved name -------------------------------------------
+    st, r = new_at(os.path.join(parent_dir, 'words'), 'docs', 'Words')
     words = r.get('name', '')
-    check('any kind can be a sub-project', st == 200 and cards().get(words, {}).get('kind') == 'docs' and cards()[words]['parent'] == PARENT, str(r))
-    for leaf, kind in (('deck', 'slides'), ('numbers', 'dashboard'), ('promo', 'motion')):
-        st, r = new_sub(parent_dir, leaf, kind, leaf)
-        c = cards().get(r.get('name', ''), {})
-        check(f'a {kind} can be a sub-project too, opened by its own name', st == 200 and c.get('kind') == kind and c.get('parent') == PARENT and call('GET', f"/api/projects/{r['name']}/files")[0] == 200, str(r))
-    st, r = new_sub(parent_dir, 'uploads', 'design')
-    check("a folder a project keeps its own files in cannot be a sub-project's", st == 400 and r.get('code') == 'subReserved', str(r))
-    check('and leaves no project behind', not os.path.exists(os.path.join(parent_dir, 'uploads', 'canvas.json')))
-    st, files = call('GET', f'/api/projects/{PARENT}/files')
-    check("the parent's file list never holds a sub's, at any depth", not any(f.startswith(('logo/', 'words/')) for f in files['files']))
+    check('any kind can be made there', st == 200 and cards().get(words, {}).get('kind') == 'docs', str(r))
+    st, r = new_at(os.path.join(parent_dir, 'logo', 'mark'), 'design-system', 'Mark')
+    mark = r.get('name', '')
+    check("and one inside a sub-project's folder, which the sub-project leaves out in turn", st == 200 and not any(f.startswith('mark/') for f in files(logo)) and not any(f.startswith(('logo/', 'words/')) for f in files(PARENT)), str(r))
+    st, r = new_at(os.path.join(parent_dir, 'uploads'), 'design')
+    check("a folder a project keeps its own files in is refused", st == 400 and r.get('code') == 'subReserved' and not os.path.exists(os.path.join(parent_dir, 'uploads', 'canvas.json')), str(r))
 
-    # --- found by looking: a folder made by hand ------------------------------------------------
-    shutil.copytree(os.path.join(parent_dir, 'words'), os.path.join(parent_dir, 'notes'), ignore=shutil.ignore_patterns('.*'))
-    byhand = by_path('/zz-nest/notes')
-    check('a project folder put inside by hand appears without anyone registering it', byhand is not None and byhand['parent'] == PARENT)
-    shutil.rmtree(os.path.join(parent_dir, 'notes'))
-    check('and goes when the folder does', by_path('/zz-nest/notes') is None)
-
-    # --- editing: the write lands in the sub, the events are the sub's ---------------------------
-    st, r = put(logo, 'Extra.dc.html', '<dc-board title="Extra" width="400" height="300"></dc-board>\n')
-    check('a file is written into the sub-project', st == 200 and os.path.exists(os.path.join(parent_dir, 'logo', 'Extra.dc.html')) and not os.path.exists(os.path.join(parent_dir, 'Extra.dc.html')), str(r))
+    # --- a project folder put there by hand: nobody registered it, it is still not the parent's ---
+    shutil.copytree(os.path.join(parent_dir, 'logo'), os.path.join(parent_dir, 'handmade'), ignore=shutil.ignore_patterns('.*'))
+    check("a project folder put inside by hand is left out of the parent's files", files(PARENT) == before, str(files(PARENT)))
+    check("and out of its git changes", call('GET', f'/api/projects/{PARENT}/git')[1].get('changes') == g0.get('changes'))
+    time.sleep(1.5)
+    open(os.path.join(parent_dir, 'handmade', 'Late.dc.html'), 'w').write('<dc-board title="Late" width="400" height="300"></dc-board>\n')
     open(os.path.join(parent_dir, 'logo', 'Outside.dc.html'), 'w').write('<dc-board title="Outside" width="400" height="300"></dc-board>\n')
-    t = time.time(); seen = []
-    while time.time() - t < 8 and not seen:
-        time.sleep(0.4)
-        seen = [e for e in call('GET', f'/api/projects/{logo}/journal')[1] if e.get('file') == 'Outside.dc.html']
-    check("an edit made outside is the sub-project's journal entry", bool(seen))
-    check("and not the parent's", not any(e.get('file') == 'Outside.dc.html' for e in call('GET', f'/api/projects/{PARENT}/journal')[1]))
-    check("the parent's card still counts only its own boards", cards()[PARENT]['count'] == pcard['count'])
+    t = time.time()
+    while time.time() - t < 8 and 'Outside.dc.html' not in journal_files(logo): time.sleep(0.4)
+    check("an edit made outside is the sub-project's journal entry", 'Outside.dc.html' in journal_files(logo))
+    time.sleep(1)
+    parent_journal = journal_files(PARENT)
+    check("and neither the sub-project's nor the hand-placed folder's file is the parent's", not (parent_journal & {'Outside.dc.html', 'logo/Outside.dc.html', 'handmade/Late.dc.html', 'Late.dc.html'}), str(parent_journal))
+    check("the parent's card still counts only its own boards", cards()[PARENT]['count'] == count)
 
     # --- git: the parent's changes leave the sub-project's out ------------------------------------
     st, g1 = call('GET', f'/api/projects/{PARENT}/git')
     st, gl = call('GET', f'/api/projects/{logo}/git')
-    check("the parent's changes do not count the sub-project's files", g1.get('changes') == g0.get('changes'), f'{g0} -> {g1}')
+    check("the parent's git changes do not count the sub-project's files", g1.get('changes') == g0.get('changes'), f'{g0} -> {g1}')
     check("the sub-project's own changes are counted for it", gl.get('changes', 0) >= 2, str(gl))
 
-    # --- archive: a sub-project's zip is its own, the parent's carries it ------------------------
+    # --- zip: a sub-project's zip is its own, the parent's carries it ------------------------------
     st, z = call('GET', f'/api/projects/{logo}/archive', raw=True)
     names = zipfile.ZipFile(io.BytesIO(z)).namelist()
-    check("a sub-project's zip holds only its own folder", st == 200 and not any('words' in n or 'zz-nest/canvas.json' in n for n in names) and any(n.endswith('/canvas.json') for n in names), str(names[:8]))
+    check("a sub-project's zip holds only its own folder", st == 200 and any(n.endswith('/canvas.json') for n in names) and not any('words' in n for n in names), str(names[:8]))
     st, z = call('GET', f'/api/projects/{PARENT}/archive', raw=True)
     names = zipfile.ZipFile(io.BytesIO(z)).namelist()
-    check('the parent travels with its sub-projects in one zip', any(n.endswith('logo/canvas.json') for n in names) and any(n.endswith('words/doc.json') for n in names), str(names[:12]))
+    check('the parent travels with the sub-projects inside its folder', any(n.endswith('logo/canvas.json') for n in names) and any(n.endswith('words/doc.json') for n in names), str(names[:12]))
 
-    req = urllib.request.Request(BASE + '/api/archive?file=zz-nest.zip', method='POST', data=z, headers={'content-type': 'application/zip'})
-    with urllib.request.urlopen(req) as r: copy = json.loads(r.read())['name']
-    kids = [c for c in cards().values() if c.get('parent') == copy]
-    check('a parent imported again brings its sub-projects back under the copy', copy != PARENT and sorted(c['title'] for c in kids) == ['Logo', 'Words', 'deck', 'numbers', 'promo'] and any(c.get('parent') in {k['name'] for k in kids} for c in cards().values() if c['title'] == 'Mark'), str([(c['title']) for c in kids]))
-    check('and the copy leaves the original alone', cards()[logo]['parent'] == PARENT and cards()[PARENT]['count'] == pcard['count'])
-    shutil.rmtree(os.path.join(PROJECTS, copy), ignore_errors=True)
-
-    # --- trash: back where it was ---------------------------------------------------------------
-    st, r = call('DELETE', f'/api/projects/{words}')
-    check('a sub-project moves to the trash like any project', st == 200 and words not in cards() and not os.path.exists(os.path.join(parent_dir, 'words')), str(r))
-    st, back = call('POST', f"/api/trash/{r['id']}/restore")
-    check('and restoring puts it back under its parent, with the same name', st == 200 and back.get('name') == words and cards().get(words, {}).get('parent') == PARENT and os.path.exists(os.path.join(parent_dir, 'words', 'doc.json')), str(back))
-
-    # --- the editor ---------------------------------------------------------------------------
+    # --- the editor: New sub-project… from the project menu and from a card ----------------------
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         ctx = await b.new_context(locale='en-US', viewport={'width': 1440, 'height': 900})
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + '/')
-        cell = pg.locator('.lcell', has=pg.locator(f'[data-project="{PARENT}"]'))
-        await expect(cell).to_be_visible(timeout=15000)
-        check('the launcher lists the parent with a count of its sub-projects', (await cell.locator('.lsubs').inner_text()).strip() == '5')
-        check('and not its sub-projects on their own', await pg.locator(f'[data-project="{logo}"]').count() == 0)
-        await pg.locator(f'[data-project="{PARENT}"]').scroll_into_view_if_needed()
-        await shot(pg, 'launcher-collapsed')
-        await cell.locator('.lsubs').click()
-        sub = pg.locator('.lcell.lsub', has=pg.locator(f'[data-project="{logo}"]'))
-        await expect(sub).to_be_visible()
-        check('the count shows them right under the parent, one level in', await sub.get_attribute('data-depth') == '1')
-        await expect(pg.locator(f'[data-project="{mark}"]')).to_have_count(0)
-        await pg.locator('.lcell', has=pg.locator(f'[data-project="{logo}"]')).locator('.lsubs').click()
-        await expect(pg.locator('.lcell.lsub', has=pg.locator(f'[data-project="{mark}"]'))).to_have_attribute('data-depth', '2')
-        check('a sub of a sub opens in turn, a level further in', True)
-        await shot(pg, 'launcher-expanded')
-        await pg.goto(BASE + '/')
-        await expect(pg.locator(f'[data-project="{logo}"]')).to_be_visible()
-        check('the open state is remembered by the browser', True)
-
-        # a search finds a sub-project on its own and says whose it is
-        await pg.locator('.lsearch input').fill('Logo')
-        await expect(pg.locator(f'[data-project="{logo}"]')).to_be_visible()
-        await pg.locator('.lsearch input').fill('')
-
-        # New sub-project… from the card's ⋯, in the parent's folder
-        await pg.locator(f'[data-more="{PARENT}"]').click()
+        await pg.goto(f'{BASE}/?p={PARENT}')
+        await pg.get_by_role('button', name='Switch project').click()
         await pg.get_by_role('menuitem', name='New sub-project…').click()
-        dlg = pg.locator('[data-under]')
-        await expect(dlg).to_be_visible()
+        await expect(pg.locator('[data-under]')).to_be_visible()
         loc = pg.get_by_label('Location')
-        check("New sub-project starts at the parent's folder", (await loc.input_value()).endswith('/projects/' + PARENT), await loc.input_value())
+        check("the project menu's New sub-project… starts at the project's folder", (await loc.input_value()).endswith(f'/projects/{PARENT}'), await loc.input_value())
         await pg.get_by_label('Title').fill('Poster')
         await loc.scroll_into_view_if_needed()
         await shot(pg, 'new-sub')
         await pg.locator('button.primary[type=submit]').click()
         await expect(pg).to_have_url(re.compile(r'\?p=poster-[0-9a-f]{6}'), timeout=15000)
         poster = pg.url.split('?p=')[1].split('&')[0]
-        check('creating it opens it, inside the parent folder', os.path.exists(os.path.join(parent_dir, 'poster', 'canvas.json')) and cards().get(poster, {}).get('parent') == PARENT)
-        check('and nothing was added to the links file', links() == before_links)
+        check('creating it opens it, inside the parent folder, and the parent does not list it', os.path.exists(os.path.join(parent_dir, 'poster', 'canvas.json')) and cards().get(poster, {}).get('title') == 'Poster' and not any(f.startswith('poster/') for f in files(PARENT)))
 
-        # the project menu: where it sits, what is in it
-        await pg.get_by_role('button', name='Switch project').click()
-        await expect(pg.get_by_role('menuitem', name='Part of Zz Nest')).to_be_visible()
-        await shot(pg, 'menu-sub')
-        await pg.keyboard.press('Escape')
-        await pg.goto(f'{BASE}/?p={PARENT}')
-        await pg.get_by_role('button', name='Switch project').click()
-        await expect(pg.get_by_text('Inside this project')).to_be_visible()
-        await expect(pg.get_by_role('menuitem', name='Poster')).to_be_visible()
-        check('the parent\'s project menu lists what is inside it', await pg.get_by_role('menuitem', name='Logo').count() == 1)
+        await pg.goto(BASE + '/')
+        await pg.locator(f'[data-more="{PARENT}"]').click()
+        await expect(pg.get_by_role('menuitem', name='New sub-project…')).to_be_visible()
+        await shot(pg, 'card-menu')
         await pg.get_by_role('menuitem', name='New sub-project…').click()
         await expect(pg.locator('[data-under]')).to_be_visible()
-        check('and offers New sub-project… too', True)
+        check("a card's ⋯ offers it too, at the same folder", (await pg.get_by_label('Location').input_value()).endswith(f'/projects/{PARENT}'))
         await pg.keyboard.press('Escape')
-
-        # a sub-project opens and edits like any project
         await pg.goto(f'{BASE}/?p={logo}')
         await expect(pg.locator('.board, .artboard, [data-board]').first).to_be_visible(timeout=15000)
         check('a sub-project opens in its own editor', not errs, str(errs))
-
         await b.close()
 
-    stray = [d for d in os.listdir(PROJECTS) if re.fullmatch(r'(logo|words|mark|deck|numbers|promo|poster)-[0-9a-f]{6}', d)]
-    cleanup()
+    stray = [d for d in os.listdir(PROJECTS) if re.fullmatch(r'(logo|words|mark|handmade|poster)-[0-9a-f]{6}', d)]
+    cleanup(before_links)
     for d in stray: shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)
     check('no sub-project left a folder of its own name in the projects folder', not stray, str(stray))
+    check('the links file is as it was', links() == before_links, str(links()))
     ok = sum(1 for _, k in results if k)
     print(f'\n{ok}/{len(results)} checks passed')
     raise SystemExit(0 if ok == len(results) else 1)

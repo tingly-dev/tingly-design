@@ -18,8 +18,6 @@ export interface ProjectCard {
   group?: string;
   /** the opened folder the project is in (its id and `~/…` path); `derived` when `group` is that folder's name and not one the person chose */
   folderGroup?: { id: string; path: string; derived: boolean };
-  /** the project it is a sub-project of (its name), when its folder sits directly inside that project's folder */
-  parent?: string;
   /** where its folder is, when it lives outside the projects folder (`~/…` under the home folder) */
   path?: string;
   /** names earlier versions gave it, which sources recorded in other projects may still carry */

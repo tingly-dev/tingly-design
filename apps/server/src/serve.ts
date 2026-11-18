@@ -5,10 +5,10 @@
  * the server through `startServer`; neither does anything else on its own.
  */
 import { readFile } from 'node:fs/promises';
-import { basename, isAbsolute, relative, sep } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { serve } from '@hono/node-server';
 import chokidar from 'chokidar';
-import { DS_TOKENS, INDEX_FILE, type Actor } from '@dc/core';
+import { DS_TOKENS, type Actor } from '@dc/core';
 import { app } from './app';
 import { afterTokens } from './routes/shared';
 import { activeDelegates, stopDelegates } from './delegate';
@@ -16,7 +16,7 @@ import { lineDiffSummary, publish, record } from './hub';
 import { BASE_PATH, BUNDLED, PROJECTS_DIR, PROTOCOL, VERSION } from './layout';
 import { logError, logInfo } from './log';
 import { announce, retire, serving } from './running';
-import { assetRel, isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, refreshNested, renameSamples, seedSamples, versionOf } from './store';
+import { assetRel, inNestedProject, isProjectName, isTracked, linkedProjects, onLinksChange, ownWrites, renameSamples, seedSamples, versionOf } from './store';
 
 export interface ServerOptions {
   port: number;
@@ -126,8 +126,6 @@ function underBase(req: Request): Request | Response {
   return new Request(url, req);
 }
 
-const INDEX_FILES = new Set(Object.values(INDEX_FILE));
-
 /** Outside edits (a terminal, Claude Code, git) become live updates and journal entries. */
 function watchProjects() {
   /** Last content seen per file, for diff summaries of outside edits. */
@@ -152,10 +150,14 @@ function watchProjects() {
       if (!rel || rel.startsWith('..') || isAbsolute(rel)) continue;
       if (!best || dir.length > best.dir.length) best = { project, dir };
     }
-    if (best) return { project: best.project, rel: relative(best.dir, abs).split(sep).join('/') };
+    if (best) {
+      const rel = relative(best.dir, abs).split(sep).join('/');
+      return inNestedProject(best.dir, rel) ? null : { project: best.project, rel };
+    }
     const r = relative(PROJECTS_DIR, abs).split(sep);
     if (r.length < 2 || !isProjectName(r[0])) return null;
-    return { project: r[0], rel: r.slice(1).join('/') };
+    const rel = r.slice(1).join('/');
+    return inNestedProject(join(PROJECTS_DIR, r[0]), rel) ? null : { project: r[0], rel };
   }
 
   /** A file of a project the editor does not track (a tool's data beside the project's own files): still not internal. */
@@ -180,8 +182,6 @@ function watchProjects() {
   async function onChange(event: string, abs: string): Promise<void> {
     // the first scan's files are what is already there, not changes; known now, since `ready` can turn while this reads
     const initial = !ready;
-    // an index file that appears or goes is a sub-project that appeared or left, found by looking again
-    if (!initial && (event === 'add' || event === 'unlink') && INDEX_FILES.has(basename(abs))) refreshNested();
     const at = split(abs);
     if (!at) return;
     const key = `${at.project}/${at.rel}`;
