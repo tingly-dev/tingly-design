@@ -10,11 +10,12 @@ describe('what can be linked into what', () => {
     expect(linkModes('design', 'docs')).toEqual(['image']);
     expect(linkModes('design', 'design')).toEqual(['image']);
   });
-  it('gives a dashboard and a motion piece only as pictures, wherever they go', () => {
-    for (const into of ['design', 'slides', 'docs', 'motion'] as const) {
-      expect(linkModes('dashboard', into)).toEqual(['image']);
-      expect(linkModes('motion', into)).toEqual(['image']);
-    }
+  it('takes a dashboard live into slides only (its data frozen), and as a picture elsewhere', () => {
+    expect(linkModes('dashboard', 'slides')).toEqual(['live', 'image']);
+    for (const into of ['design', 'docs', 'motion'] as const) expect(linkModes('dashboard', into)).toEqual(['image']);
+  });
+  it('gives a motion piece only as a picture, wherever it goes', () => {
+    for (const into of ['design', 'slides', 'docs', 'motion'] as const) expect(linkModes('motion', into)).toEqual(['image']);
   });
   it('refuses a dashboard and a design system as the place a page goes, and a design system as a source', () => {
     for (const from of ['design', 'slides', 'docs', 'dashboard', 'motion', 'design-system'] as const) {
@@ -79,6 +80,12 @@ describe('the record', () => {
     const list = linkedPagesOf({ imports: [{ path: 'uploads/linked/k3f9a/hero.png', from: 'projects/brand', rel: 'sub/brand', kind: 'design', page: 'Hero.dc.html', mode: 'image', at: 'sha1:abc', copiedAt: 'x' }, null, { path: 1 }, { path: 'uploads/p.png', from: 'projects/x' }] });
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ rel: 'sub/brand', at: 'sha1:abc', mode: 'image' });
+  });
+  it('keeps a live record\'s poster only when it is a linked picture', () => {
+    const live = { path: 'uploads/linked/k3f9a/Usage.dash.json', from: 'projects/usage', kind: 'dashboard', page: 'index', mode: 'live', copiedAt: 'x' };
+    const [a, b] = linkedPagesOf({ imports: [{ ...live, poster: 'uploads/linked/k3f9a/Usage.png' }, { ...live, path: 'uploads/linked/k3f9b/U.dash.json', poster: '../etc/passwd' }] });
+    expect(a.poster).toBe('uploads/linked/k3f9a/Usage.png');
+    expect(b.poster).toBeUndefined();
   });
   it('puts a record in place of the one with the same path, and drops one by path', () => {
     const a: LinkedPage = { path: 'uploads/linked/aaaaa/x.png', from: 'projects/p', kind: 'slides', page: 's1', mode: 'image', copiedAt: '1' };

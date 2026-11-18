@@ -28,7 +28,7 @@ export function claudeAvailable(): boolean {
 
 /** Added to the canvas, deck, doc and motion prompts: a page of another project linked in is a copy to leave alone (.design/cross-kind-embedding.md). */
 const LINKED_NOTE = `
-A file under uploads/linked/ is a picture of a page of another project that the person linked in; its imports record (in the index file) says where it came from. Treat it as a copy: you may keep, move or resize the picture, but never edit or replace the file or its record, and write no path under uploads/linked/ yourself. To change what it shows, the original in its own project has to change; the person then updates the copy.`;
+A file under uploads/linked/ (a .png, or a .dash.json that is a dashboard frozen with its data) belongs to a page of another project that the person linked in, shown live or as the picture kept beside it; its imports record (in the index file) says where it came from. Treat it as a copy: you may keep, move or resize the element that shows it, but never edit or replace the file or its record, and write no path under uploads/linked/ yourself. To change what it shows, the original in its own project has to change; the person then updates the copy.`;
 
 const SYSTEM = `You are editing a design canvas stored as files. A canvas folder holds canvas.json (artboard layout, notes) and one *.dc.html file per artboard.
 Before you change any file, read .claude/skills/dc-canvas/SKILL.md in the current directory: it is the full format reference.

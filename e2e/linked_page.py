@@ -167,23 +167,62 @@ async def main():
             check('doc: Undo links it again', await wait_for(lambda: len(recs()) == 1))
             open(usage, 'w').write(text)
 
-            # --- slides: a dashboard as a picture on the open slide -------------------------------------
+            # --- slides: a dashboard live on the open slide, frozen, with its picture kept beside it -----
             await pg.goto(base + f'/?p={SLIDES}')
             await pg.wait_for_timeout(2000)
             slide_id = index(SLIDES, 'deck.json')['order'][0]
             slide = lambda: read(SLIDES, 'slides', f'{slide_id}.html')
             await open_picker(pg, 'menu')
             await pick(pg, DASH, 'index')
-            check('slides: linking says so', await toast(pg, 'Linked Tingly Box Usage Dashboard onto the slide'))
+            check('slides: linking says so', await toast(pg, 'Linked Tingly Box Usage Dashboard from'))
             srecs = lambda: imports(SLIDES, 'deck.json')
             sr = [x for x in srecs() if x['kind'] == 'dashboard']
-            check('slides: deck.json records the dashboard', len(sr) == 1 and sr[0]['mode'] == 'image' and sr[0]['page'] == 'index', srecs())
-            check('slides: the slide holds a pinned picture of it', await wait_for(lambda: sr and f'<img src="{sr[0]["path"]}"' in slide() and 'position:absolute' in slide()), slide()[-400:])
-            await pg.wait_for_timeout(800)
+            check('slides: deck.json records the dashboard as a live copy with a picture beside it', len(sr) == 1 and sr[0]['mode'] == 'live' and sr[0]['page'] == 'index' and sr[0]['path'].endswith('.dash.json') and str(sr[0].get('poster', '')).startswith('uploads/linked/'), srecs())
+            bundle = json.loads(read(SLIDES, sr[0]['path'])) if sr else {}
+            check('slides: the copy is the dashboard frozen into one file: its page and its data', bundle.get('v') == 1 and 'index.html' in bundle.get('files', {}) and len(bundle.get('datasets', {})) > 0 and bundle.get('frozenAt'), list(bundle))
+            check('slides: the slide holds a live element for it, named for its picture', await wait_for(lambda: sr and f'<x-embed src="{sr[0]["path"]}"' in slide() and f'data-poster="{sr[0]["poster"]}"' in slide() and 'position:absolute' in slide()), slide()[-500:])
+            check('slides: the picture beside it is drawn in the background', await wait_for(lambda: os.path.exists(P(SLIDES, sr[0]['poster'])) and open(P(SLIDES, sr[0]['poster']), 'rb').read(8) == b'\x89PNG\r\n\x1a\n', 60), sr[0].get('poster'))
+            await pg.wait_for_timeout(1500)
+            ran = None
+            for f in pg.frames:
+                try:
+                    if await f.locator('#dash-root').count(): ran = f
+                except Exception: pass
+            check('slides: the dashboard runs in its frame on the slide', ran is not None and len((await ran.locator('#dash-root').inner_text()).strip()) > 20 if ran else False)
             panel = pg.locator('.linkedp')
             await expect(panel).to_be_visible()
-            check('slides: selecting it shows where it came from', await panel.locator('.linkedp-v', has_text='Tingly Box Usage Dashboard').count() == 1)
+            check('slides: selecting it shows where it came from', await panel.locator('.linkedp-v', has_text='Tingly Box Usage Dashboard').count() >= 1)
+            check('slides: and when its data was frozen', await panel.locator('.linkedp-data').count() == 1)
             await pg.screenshot(path=OUT + 'linked-slides.png')
+            await panel.locator('.seg button', has_text='Picture').click()
+            await pg.wait_for_timeout(1200)
+            await pg.screenshot(path=OUT + 'linked-slides-picture.png')
+            check('slides: Show as Picture swaps in the kept picture in the same place', await wait_for(lambda: f'<img src="{sr[0]["poster"]}"' in slide() and f'<x-embed src="{sr[0]["path"]}"' not in slide() and 'position:absolute' in slide()), slide()[-500:])
+            check('…without touching the record or the copy', srecs() == sr or [ {k: v for k, v in x.items() if k != 'copiedAt'} for x in srecs()] == [{k: v for k, v in x.items() if k != 'copiedAt'} for x in sr])
+            await expect(pg.locator('.linkedp .seg button[aria-pressed="true"]', has_text='Picture')).to_be_visible()
+            await panel.locator('.seg button', has_text='Live').click()
+            check('slides: Show as Live puts the running dashboard back', await wait_for(lambda: f'<x-embed src="{sr[0]["path"]}"' in slide() and f'<img src="{sr[0]["poster"]}"' not in slide()), slide()[-500:])
+
+            # --- the dashboard changes: noticed, frozen again with its picture, taken back ---------------
+            page_file = P(DASH, 'files', 'index.html')
+            page_text = open(page_file).read()
+            open(page_file, 'w').write(page_text + '\n<div style="height:80px;background:#c33;color:#fff">v2</div>\n')
+            before_bundle, before_poster = read(SLIDES, sr[0]['path']), open(P(SLIDES, sr[0]['poster']), 'rb').read()
+            await pg.goto(base + f'/?p={SLIDES}')
+            await pg.wait_for_timeout(2500)
+            emb = pg.frame_locator('.sframe.f-stage iframe').locator('x-embed').first
+            await expect(emb).to_be_visible(timeout=15000)
+            await pg.wait_for_timeout(800)
+            await emb.click(position={'x': 30, 'y': 30})
+            await expect(pg.locator('.linkedp .linkedp-words')).to_contain_text('The original changed', timeout=20000)
+            check('slides: a changed dashboard is noticed when the project opens', True)
+            await pg.locator('.linkedp button', has_text='Update').first.click()
+            check('slides: updating says so', await toast(pg, 'Updated'))
+            check('slides: the dashboard is frozen again', '>v2</div>' in read(SLIDES, sr[0]['path']), 'v2 not in the bundle')
+            check('…and its picture is drawn again', open(P(SLIDES, sr[0]['poster']), 'rb').read() != before_poster)
+            await pg.locator('.toast button', has_text='Undo').first.click()
+            check('slides: Undo puts the earlier freeze and its picture back', await wait_for(lambda: read(SLIDES, sr[0]['path']) == before_bundle and open(P(SLIDES, sr[0]['poster']), 'rb').read() == before_poster))
+            open(page_file, 'w').write(page_text)
 
             # --- canvas: a doc tab as an image on the canvas ---------------------------------------------
             await pg.goto(base + f'/?p={CANVAS}')

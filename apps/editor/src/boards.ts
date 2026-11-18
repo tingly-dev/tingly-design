@@ -12,9 +12,10 @@ import { display, useStore } from './store';
  * An `<x-embed src>` for an imported artboard on a page of `frame` size. One
  * that moves is an effect: it fills the page and goes behind everything
  * (`back`). A still one sits in the middle, at most 60% of the page, keeping
- * its shape. `extra` is attributes to add (`data-seek`, `data-in`).
+ * its shape. `extra` is attributes to add (`data-seek`, `data-in`); `poster` is the picture kept beside it
+ * (a linked page's), which thumbnails draw instead of running it.
  */
-export function boardEmbed(path: string, frame: [number, number], size: [number, number], moving: boolean, extra = ''): { html: string; back: boolean } {
+export function boardEmbed(path: string, frame: [number, number], size: [number, number], moving: boolean, extra = '', poster?: string): { html: string; back: boolean } {
   const [W, H] = frame;
   const box = moving
     ? { left: 0, top: 0, w: W, h: H }
@@ -26,7 +27,7 @@ export function boardEmbed(path: string, frame: [number, number], size: [number,
       })();
   const src = path.replace(/"/g, '&quot;');
   return {
-    html: `<x-embed src="${src}"${extra ? ' ' + extra : ''} style="position:absolute;left:${box.left}px;top:${box.top}px;width:${box.w}px;height:${box.h}px"></x-embed>`,
+    html: `<x-embed src="${src}"${poster ? ` data-poster="${poster.replace(/"/g, '&quot;')}"` : ''}${extra ? ' ' + extra : ''} style="position:absolute;left:${box.left}px;top:${box.top}px;width:${box.w}px;height:${box.h}px"></x-embed>`,
     back: moving,
   };
 }

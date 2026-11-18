@@ -13,7 +13,7 @@ import { boardDeps, isBoardEmbedPath } from './boardEmbed';
 import { deckSize, parseDeck, type ProjectKind } from './deck';
 import { outlineProject, type ProjectFiles } from './project';
 
-/** How the page is shown: the page itself running in a frame (`live`) or a picture of it (`image`). */
+/** What a record keeps: a copy that runs in a frame (`live`, with a picture beside it) or only a picture of the page (`image`). The element on the page is what shows one or the other. */
 export type LinkMode = 'live' | 'image';
 
 export const LINK_DIR = 'uploads/linked';
@@ -30,6 +30,8 @@ export interface LinkedPage {
   kind: ProjectKind;
   page: string;
   mode: LinkMode;
+  /** The picture kept beside a live copy (`uploads/linked/<id>/<stem>.png`); a record that is only a picture has none (`path` is it). */
+  poster?: string;
   /** A hash of the source page when the copy was made; the original changed when it no longer matches. */
   at?: string;
   copiedAt: string;
@@ -41,7 +43,7 @@ export const SINGLE_PAGE = 'index';
 /** What a project may take from another, by the kind taking it: `into` -> `from` -> how it can be shown. A kind not listed under `into` takes nothing. */
 export const LINKABLE: Record<ProjectKind, Partial<Record<ProjectKind, LinkMode[]>>> = {
   design: { design: ['image'], slides: ['image'], docs: ['image'], dashboard: ['image'], motion: ['image'] },
-  slides: { design: ['live', 'image'], slides: ['image'], docs: ['image'], dashboard: ['image'], motion: ['image'] },
+  slides: { design: ['live', 'image'], slides: ['image'], docs: ['image'], dashboard: ['live', 'image'], motion: ['image'] },
   docs: { design: ['image'], slides: ['image'], docs: ['image'], dashboard: ['image'], motion: ['image'] },
   motion: { design: ['live', 'image'], slides: ['image'], docs: ['image'], dashboard: ['image'], motion: ['image'] },
   // a dashboard's page takes only data: pictures of at most 256 KB and drops frames; a design system's README is guidance, not a page to fill
@@ -174,7 +176,7 @@ export function linkedPagesOf(index: { imports?: unknown } | undefined): LinkedP
     const page = typeof r.page === 'string' ? r.page : legacyBoard ? (r.board as string) : null;
     if (!kind || !page) continue;
     const mode: LinkMode = r.mode === 'live' || r.mode === 'image' ? r.mode : legacyBoard ? 'live' : 'image';
-    out.push({ path: r.path, from: r.from, ...(typeof r.rel === 'string' && r.rel ? { rel: r.rel } : {}), kind, page, mode, ...(typeof r.at === 'string' ? { at: r.at } : {}), copiedAt });
+    out.push({ path: r.path, from: r.from, ...(typeof r.rel === 'string' && r.rel ? { rel: r.rel } : {}), kind, page, mode, ...(typeof r.poster === 'string' && isLinkedPicture(r.poster) ? { poster: r.poster } : {}), ...(typeof r.at === 'string' ? { at: r.at } : {}), copiedAt });
   }
   return out;
 }

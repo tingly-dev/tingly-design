@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { attr, isBoardEmbedPath, isLinkedPicture, boardTweaks, embedProps, parseDc, timeSpec, type DcElement } from '@dc/core';
+import { attr, isBoardEmbedPath, isDashBundlePath, isLinkedPicture, boardTweaks, embedProps, parseDc, timeSpec, type DcElement } from '@dc/core';
 import { display, editElement, useStore } from '../../store';
 import { useLinkedRecords } from '../../linkedPages';
 import { LinkedPanel } from './LinkedPanel';
@@ -15,6 +15,8 @@ export function BoardEmbedProps({ file, el }: { file: string; el: DcElement }) {
   const src = attr(el, 'src') ?? '';
   const source = useStore((s) => display(s, src));
   const linked = useLinkedRecords().some((r) => r.path === src);
+  // a frozen dashboard has no tweaks: the linked page form says all there is
+  if (isDashBundlePath(src)) return <LinkedPanel path={src} show={{ file, el }} />;
   const doc = source === undefined ? null : parseDc(source);
   const tweaks = doc ? boardTweaks(doc.props) : [];
   const set = embedProps(attr(el, 'data-props'));
@@ -29,7 +31,7 @@ export function BoardEmbedProps({ file, el }: { file: string; el: DcElement }) {
 
   return (
     <>
-      <LinkedPanel path={src} />
+      <LinkedPanel path={src} show={{ file, el }} />
       <div className="sec bembed">
         <h3>{t('panel.embed.title')}</h3>
         {!linked && <span className="hint">{t('panel.embed.unknown')}</span>}
@@ -55,9 +57,10 @@ export function BoardEmbedProps({ file, el }: { file: string; el: DcElement }) {
   );
 }
 
-/** Is this element an embed of an imported artboard? */
+/** Is this element an embed of an imported artboard or a frozen dashboard? */
 export function isBoardEmbedEl(el: DcElement | undefined): el is DcElement {
-  return !!el && el.tag === 'x-embed' && isBoardEmbedPath(attr(el, 'src') ?? '');
+  const src = el ? (attr(el, 'src') ?? '') : '';
+  return !!el && el.tag === 'x-embed' && (isBoardEmbedPath(src) || isDashBundlePath(src));
 }
 
 /** Is this element a picture that is the copy of a linked page? */
