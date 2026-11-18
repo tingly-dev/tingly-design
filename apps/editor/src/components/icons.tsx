@@ -120,6 +120,7 @@ export const Cursor = tabler(IconPointer);
 export const Hand = tabler(IconHandStop);
 export const TextT = tabler(IconTypography);
 export const Frame = tabler(IconFrame);
+export const Linked = tabler(IconLink);
 export const Note = tabler(IconNote);
 export const Pen = tabler(IconPencil);
 export const Shapes = tabler(IconShape);

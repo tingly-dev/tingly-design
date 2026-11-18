@@ -4,7 +4,8 @@ import type { ProjectCard } from '@dc/core';
 import { api } from '../api';
 import { at } from '../base';
 import { useStore } from '../store';
-import { Caret, FolderOpen, Home, Plus, Sliders } from './icons';
+import { Caret, FolderOpen, Home, Linked, Plus, Sliders } from './icons';
+import { updateAllLinked, useChangedCount } from '../linkedPages';
 import { ReferencesDialog } from './References';
 import { Menu, MenuItem } from './Menu';
 import { open, readRecent } from './launcher/recent';
@@ -42,6 +43,7 @@ export function ProjectMenu() {
   const me = all.find((p) => p.name === current);
   const [referring, setReferring] = useState(false);
   const [refCount, setRefCount] = useState(0);
+  const changed = useChangedCount();
   const btn = useRef<HTMLButtonElement>(null);
   const others = useMemo(() => nextUp(list ?? [], current), [list, current]);
   const toggle = () => {
@@ -99,6 +101,16 @@ export function ProjectMenu() {
               onSelect={() => {
                 setPos(null);
                 setReferring(true);
+              }}
+            />
+          )}
+          {changed > 0 && (
+            <MenuItem
+              label={t('linked.all.update', { count: changed })}
+              icon={<Linked />}
+              onSelect={() => {
+                setPos(null);
+                void updateAllLinked();
               }}
             />
           )}

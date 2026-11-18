@@ -49,3 +49,4 @@ export * from './pptx';
 export * from './theme';
 export * from './review';
 export * from './pointer';
+export * from './linkedPage';

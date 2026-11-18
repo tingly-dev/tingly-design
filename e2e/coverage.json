@@ -778,6 +778,20 @@
       "chat_copy"
     ]
   },
+  "链接的页面": {
+    "design": [
+      "linked_page"
+    ],
+    "slides": [
+      "linked_page"
+    ],
+    "docs": [
+      "linked_page"
+    ],
+    "motion": [
+      "linked_page"
+    ]
+  },
   "子项目：项目里面的项目": {
     "design": [
       "nested"

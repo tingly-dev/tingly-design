@@ -208,6 +208,20 @@
       "w": 1720,
       "h": 960,
       "title": "Conversation at the far left"
+    },
+    "LinkedInsert.dc.html": {
+      "x": 5600,
+      "y": 6300,
+      "w": 1720,
+      "h": 800,
+      "title": "Linked pages: insert"
+    },
+    "LinkedItem.dc.html": {
+      "x": 5600,
+      "y": 7500,
+      "w": 1720,
+      "h": 980,
+      "title": "Linked pages: the item"
     }
   },
   "order": [
@@ -239,7 +253,9 @@
     "LivePointers.dc.html",
     "ChatSide.dc.html",
     "ChatPane.dc.html",
-    "ChatLeft.dc.html"
+    "ChatLeft.dc.html",
+    "LinkedInsert.dc.html",
+    "LinkedItem.dc.html"
   ],
   "notes": {
     "t0": {

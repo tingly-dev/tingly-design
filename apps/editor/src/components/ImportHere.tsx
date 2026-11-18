@@ -3,13 +3,13 @@ import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { importErrorText } from '@dc/import';
 import { toast, useStore } from '../store';
+import { linkPick, type PlacedPage } from '../linkedPages';
 import { clipText } from '../clipboard';
-import { api } from '../api';
 import { t as tNow } from '../i18n';
 import { droppedFiles, expandZips, pickedFromText, readPicked, type Picked } from '../importer';
 import { Menu, MenuItem } from './Menu';
-import { BoardPicker } from './BoardPicker';
-import { FileText, Frame, ImportI } from './icons';
+import { PagePicker } from './PagePicker';
+import { FileText, ImportI, Linked } from './icons';
 
 /**
  * Bringing outside material into the project that is open: one button, a
@@ -48,15 +48,15 @@ export interface ImportTarget {
   /** what this kind takes; a pick holding none of it is refused with this list */
   accepts: Material[];
   /**
-   * What this kind takes from another project: an artboard of a canvas, copied
-   * in by the server and then put on the page by `place` (see
-   * .design/import-from-project.md). Absent: the kind takes nothing from projects.
+   * What this kind takes from another project: a page of it, copied in by the server (a picture of the
+   * page, or an artboard shown live) and then put on the page by `place` (see
+   * .design/cross-kind-embedding.md). Absent: the kind takes nothing from projects.
    */
-  board?: {
-    /** one line, said where people pick an artboard */
+  page?: {
+    /** one line, said where people pick a page */
     readonly what: string;
-    /** put the imported copy on the page; resolves to what to tell the person */
-    place: (path: string, info: { size: [number, number]; moving: boolean; title: string }) => string;
+    /** put the copy on the page; resolves to what to tell the person */
+    place: (placed: PlacedPage) => string;
   };
   /** one line, said where people choose: what each material becomes here (in the language showing: a getter over t()) */
   what: string;
@@ -87,7 +87,7 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
 export interface ImportControls {
   chooseFiles(): void;
   chooseFolder(): void;
-  /** open the artboard picker (only for a target with `board`) */
+  /** open the page picker (only for a target with `page`) */
   pickProject(): void;
 }
 
@@ -97,6 +97,7 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
   const [dropping, setDropping] = useState(false);
   const [busy, setBusy] = useState('');
   const [picking, setPicking] = useState(false);
+  const kind = useStore((st) => st.kind);
   const fileRef = useRef<HTMLInputElement>(null);
   const dirRef = useRef<HTMLInputElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -241,10 +242,10 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
               }}
             />
           )}
-          {target.board && (
+          {target.page && (
             <MenuItem
-              label={tr('importer.here.fromProject')}
-              icon={<Frame />}
+              label={tr('linked.menu')}
+              icon={<Linked />}
               onSelect={() => {
                 setMenu(null);
                 setPicking(true);
@@ -263,23 +264,14 @@ export function ImportHere({ target, label, button = 'icon', controls }: { targe
           </div>
         </div>
       )}
-      {picking && target.board && (
-        <BoardPicker
-          what={target.board.what}
+      {picking && target.page && kind && (
+        <PagePicker
+          kind={kind}
+          what={target.page.what}
           onClose={() => setPicking(false)}
-          onPick={async (from, board, title, moving) => {
-            setPicking(false);
-            setBusy(title);
-            try {
-              const project = useStore.getState().project;
-              if (!project) return;
-              const r = await api.importBoard(project, from, board);
-              toast(live.current.target.board!.place(r.record.path, { size: r.size, moving, title }));
-            } catch (e) {
-              toast((e as Error).message, 'error');
-            } finally {
-              setBusy('');
-            }
+          onPick={async (source, page) => {
+            const placed = await linkPick(source, page);
+            toast(live.current.target.page!.place(placed));
           }}
         />
       )}

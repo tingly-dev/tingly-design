@@ -84,6 +84,7 @@ export default {
     hr: '分割线',
     date: '今天的日期',
     image: '图片',
+    link: '来自另一个项目的页面',
   },
   image: {
     label: '图片',

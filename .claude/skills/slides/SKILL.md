@@ -105,7 +105,7 @@ A background of moving light, drawn with WebGL2: an empty embed whose `data-fx` 
 
 ### Artboards imported from a canvas (effects)
 
-A person can import an artboard of a canvas project into a deck (import menu → From a project). The server copies it, with the sibling artboards it mounts and the pictures it shows, to `uploads/<canvas>-<board>/`, records it in `deck.json` `imports` (`{path, from, board, copiedAt}`), and the editor puts an embed on the slide:
+A person can import an artboard of a canvas project into a deck (import menu → A page from another project). The server copies it, with the sibling artboards it mounts and the pictures it shows, to `uploads/<canvas>-<board>/`, records it in `deck.json` `imports` (`{path, from, kind, page, board, mode, at, copiedAt}`), and the editor puts an embed on the slide:
 
 ```html
 <x-embed src="uploads/box-console-Glow/Glow.dc.html" data-props='{"accent":"#7c3aed"}' style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>
@@ -114,6 +114,13 @@ A person can import an artboard of a canvas project into a deck (import menu →
 - The artboard is drawn by the canvas runtime, scaled to cover the embed. An artboard that declares `"$time"` moves: it loops while presenting and stands at its still otherwise. A moving one usually fills the slide as the first child, so everything paints over it.
 - `data-props` sets the artboard's tweaks (the keys of its own `data-props`, without `$…`); leave a key out to use the artboard's default. Change the look through `data-props`, never by editing the copy under `uploads/`: importing again overwrites it.
 - To reuse an imported artboard on another slide, write another embed with the same `src`. Don't point `src` anywhere else; to bring in a new artboard, ask the person to import it.
+
+## Linked pages
+
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page into `uploads/linked/<id>/<name>.png`, records where it came from in `deck.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture on the open slide as a pinned `<img>`. An artboard of a canvas shown live is the `<x-embed>` described above and has the same record.
+
+- It is a copy: you may leave it, resize it or move it, but never edit or replace the file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
+- To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
 
 ## Creating a deck
 

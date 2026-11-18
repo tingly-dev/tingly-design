@@ -2,12 +2,13 @@ import { SideResizer } from '../SideResizer';
 import { ShortcutLine } from '../Shortcuts';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
-import { attr } from '@dc/core';
+import { attr, isLinkedPicture } from '@dc/core';
 import { display, parsed, useCanvas, useStore } from '../../store';
 import { Close } from '../icons';
 import { CodeTab } from './CodeTab';
 import { ElementProps } from './ElementProps';
-import { BoardEmbedProps, isBoardEmbedEl } from './BoardEmbedProps';
+import { BoardEmbedProps, isBoardEmbedEl, isLinkedImgEl } from './BoardEmbedProps';
+import { LinkedPanel } from './LinkedPanel';
 import { LayerTree } from './LayerTree';
 import { LockNotice } from './LockNotice';
 import { lockOf } from '../../layerFlags';
@@ -70,6 +71,7 @@ function Inspector() {
         <>
           <FormatNote file={file} el={el} />
           {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
+          {isLinkedImgEl(el) && <LinkedPanel key={`l${file}#${el.tid}`} path={attr(el, 'src') ?? ''} />}
           <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
           <AnimRow key={`a${file}#${el.tid}`} file={file} el={el} />
         </>
@@ -80,6 +82,7 @@ function Inspector() {
     body = (
       <>
           {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
+          {isLinkedImgEl(el) && <LinkedPanel key={`l${file}#${el.tid}`} path={attr(el, 'src') ?? ''} />}
           <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
           <BuildRow file={file} tid={el.tid} />
       </>
@@ -126,7 +129,13 @@ function Inspector() {
       );
     else body = <BoardProps file={file} entry={canvas.boards[file]} />;
   } else if (sel?.kind === 'note' && canvas.notes[sel.id]) {
-    body = <ItemProps id={sel.id} note={canvas.notes[sel.id]} />;
+    const note = canvas.notes[sel.id];
+    body = (
+      <>
+        {note.kind === 'image' && isLinkedPicture(note.src ?? '') && <LinkedPanel key={`l${sel.id}`} path={note.src ?? ''} />}
+        <ItemProps id={sel.id} note={note} />
+      </>
+    );
   } else {
     body = (
       <>
