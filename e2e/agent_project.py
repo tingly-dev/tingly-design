@@ -72,8 +72,8 @@ def main():
         check(f'{kind}: the script ran and printed the new folder', ran is not None and ran['code'] == 0 and ran['out'].endswith(f'/{PARENT}/{folder}/'), str(ran))
         c = next((c for c in cards().values() if c.get('path', '').endswith(f'/{PARENT}/{folder}')), None)
         made[folder] = c
-        check(f'{kind}: it is a project of its kind in the list, with its folder inside the open project's', c is not None and c['kind'] == kind and c['title'] == folder.title(), str(c))
-        check(f'{kind}: its index file is on disk inside the open project's folder', any(os.path.exists(os.path.join(parent_dir, folder, f)) for f in ('canvas.json', 'deck.json', 'design-system.json', 'dash.json', 'doc.json', 'motion.json')))
+        check(f'{kind}: it is a project of its kind in the list, with its folder inside the open project', c is not None and c['kind'] == kind and c['title'] == folder.title(), str(c))
+        check(f'{kind}: its index file is on disk inside the open project folder', any(os.path.exists(os.path.join(parent_dir, folder, f)) for f in ('canvas.json', 'deck.json', 'design-system.json', 'dash.json', 'doc.json', 'motion.json')))
     check("the open project's own files are as they were", files(PARENT) == before, f'{before} -> {files(PARENT)}')
     board = next((f for f in os.listdir(os.path.join(parent_dir, 'figure')) if f.endswith('.dc.html')), '')
     check('a size is given to the starter', board and '800' in open(os.path.join(parent_dir, 'figure', board)).read())
