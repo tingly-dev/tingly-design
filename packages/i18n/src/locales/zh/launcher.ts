@@ -189,6 +189,15 @@ export default {
     report: '反馈问题',
     star: '在 GitHub 上点星',
   },
+  sub: {
+    menu: '新建子项目…',
+    show_other: '展开 {{count}} 个子项目',
+    hide_other: '收起 {{count}} 个子项目',
+    in: '在「{{parent}}」里',
+    newUnder: '「{{parent}}」的子项目：它是独立的项目，放在那个项目的文件夹里。',
+    inside: '这个项目里的',
+    partOf: '属于「{{parent}}」',
+  },
   projectMenu: {
     home: '全部项目',
     switch: '切换项目',

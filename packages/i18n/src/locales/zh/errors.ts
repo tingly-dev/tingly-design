@@ -15,6 +15,7 @@ export default {
   folderHasProject: '{{path}} 里已经有项目了，直接打开它就好',
   folderNotEmpty: '{{path}} 里已经有别的文件，请选一个空的或新的文件夹',
   folderIsProject: '{{path}} 本身就是一个项目，请作为项目打开',
+  subReserved: '{{name}} 是项目放自己文件的文件夹，子项目请换个名字',
   folderIsProjectsFolder: '{{path}} 是项目文件夹，已经在列表里了',
   noProjectsInFolder: '{{path}} 里没有 Tingly Design 项目',
   notFolderGroup: '{{name}} 不是打开的目录',

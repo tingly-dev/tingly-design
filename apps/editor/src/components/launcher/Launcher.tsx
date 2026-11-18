@@ -13,13 +13,14 @@ import { ImportDialog } from '../ImportDialog';
 import { droppedFiles, pickedFromText, readPicked, type Picked } from '../../importer';
 import { readPref, writePref } from '../../local';
 import { NewDialog, OpenFolderDialog } from './NewDialog';
-import { Card, NewTile, ProjectActions, Row } from './ProjectCards';
+import { Card, NewTile, ProjectActions, Row, type Nest } from './ProjectCards';
 import { TrashDialog } from './TrashDialog';
 import { KIND, KINDS, KindIcon } from './kinds';
 import { open, readRecent } from './recent';
 
 const VIEW_KEY = 'dc:launcher-view';
 const FOLDED_KEY = 'dc:launcher-folded-groups';
+const SUBS_KEY = 'dc:launcher-open-subs';
 
 function Mark() {
   return (
@@ -63,6 +64,8 @@ export function Launcher() {
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
   const [view, setView] = useState<'grid' | 'list'>(() => (readPref(VIEW_KEY) === 'list' ? 'list' : 'grid'));
   const [folded, setFolded] = useState<Set<string>>(() => new Set(readPref(FOLDED_KEY).split('\n').filter(Boolean)));
+  const [openSubs, setOpenSubs] = useState<Set<string>>(() => new Set(readPref(SUBS_KEY).split('\n').filter(Boolean)));
+  const [subOf, setSubOf] = useState<ProjectCard | null>(null);
   const [acting, setActing] = useState<{ name: string; x: number; y: number } | null>(null);
   const [newMenu, setNewMenu] = useState<DOMRect | null>(null);
   const [creating, setCreating] = useState<ProjectKind | null>(null);
@@ -142,17 +145,62 @@ export function Launcher() {
   const taken = useMemo(() => new Set((list ?? []).map((p) => p.name)), [list]);
   const lastOpened = recent.find((n) => taken.has(n));
   const groups = useMemo(() => [...new Set((list ?? []).map((p) => p.group).filter((g): g is string => !!g))].sort((a, b) => a.localeCompare(b)), [list]);
+  // a sub-project is listed right under its parent while the parent's count is open; one whose parent is not in the list
+  // (another kind's tab, a search) stands on its own and says whose it is
+  const tree = useMemo(() => {
+    const here = new Set(shown.map((p) => p.name));
+    const nested = !q.trim();
+    const kids = new Map<string, ProjectCard[]>();
+    const roots: ProjectCard[] = [];
+    for (const p of shown) {
+      if (nested && p.parent && here.has(p.parent)) kids.set(p.parent, [...(kids.get(p.parent) ?? []), p]);
+      else roots.push(p);
+    }
+    const out: ProjectCard[] = [];
+    const depth = new Map<string, number>();
+    const top = new Map<string, ProjectCard>();
+    const walk = (p: ProjectCard, d: number, root: ProjectCard) => {
+      out.push(p);
+      depth.set(p.name, d);
+      top.set(p.name, root);
+      if (openSubs.has(p.name)) for (const k of kids.get(p.name) ?? []) walk(k, d + 1, root);
+    };
+    for (const r of roots) walk(r, 0, r);
+    return { out, depth, top };
+  }, [shown, q, openSubs]);
+  const subCount = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const p of list ?? []) if (p.parent) c.set(p.parent, (c.get(p.parent) ?? 0) + 1);
+    return c;
+  }, [list]);
+  const nestOf = (p: ProjectCard): Nest => ({
+    subs: q.trim() ? 0 : (subCount.get(p.name) ?? 0),
+    open: openSubs.has(p.name),
+    depth: tree.depth.get(p.name) ?? 0,
+    under: p.parent ? (list?.find((x) => x.name === p.parent)?.title ?? p.parent) : undefined,
+    onToggle: () =>
+      setOpenSubs((s) => {
+        const n = new Set(s);
+        if (!n.delete(p.name)) n.add(p.name);
+        writePref(SUBS_KEY, [...n].join('\n'));
+        return n;
+      }),
+  });
   // with groups, the list falls into one section per group (the most recent first, or by name), the loose ones last; a search flattens it
   const sections = useMemo(() => {
     type Section = { key: string; name: string; items: ProjectCard[]; folder?: { id: string; path: string } };
-    if (!groups.length || q.trim()) return [{ key: '', name: '', items: shown } as Section];
+    if (!groups.length || q.trim()) return [{ key: '', name: '', items: tree.out } as Section];
     const by = new Map<string, ProjectCard[]>();
-    for (const p of shown) by.set(p.group ?? '', [...(by.get(p.group ?? '') ?? []), p]);
+    // a sub-project sits in the group of the project it is under
+    for (const p of tree.out) {
+      const g = tree.top.get(p.name)?.group ?? '';
+      by.set(g, [...(by.get(g) ?? []), p]);
+    }
     const names = [...by.keys()].filter(Boolean);
     // a group that is an opened folder says so, and can be closed from its heading
     const folderOf = (items: ProjectCard[]) => items.find((p) => p.folderGroup?.derived)?.folderGroup;
     return [...names.map((n): Section => ({ key: n, name: n, items: by.get(n)!, folder: folderOf(by.get(n)!) })), ...(by.has('') ? [{ key: '', name: t('launcher.group.ungrouped'), items: by.get('')! } as Section] : [])];
-  }, [shown, groups, q, t]);
+  }, [tree, groups, q, t]);
   const flat = sections.length === 1 && !sections[0].name;
   const apply = (name: string, patch: { title?: string; group?: string }) => {
     const before = list?.find((p) => p.name === name);
@@ -375,7 +423,7 @@ export function Launcher() {
                   )}
                   {!shut && (
                     <div className={view === 'grid' ? 'lgrid' : 'llist'}>
-                      {sec.items.map((p) => (view === 'grid' ? <Card key={p.name} p={p} recent={p.name === lastOpened} flat={flat || !!q.trim()} onMore={onMore} /> : <Row key={p.name} p={p} recent={p.name === lastOpened} onMore={onMore} />))}
+                      {sec.items.map((p) => (view === 'grid' ? <Card key={p.name} p={p} recent={p.name === lastOpened} flat={flat || !!q.trim()} nest={nestOf(p)} onMore={onMore} /> : <Row key={p.name} p={p} recent={p.name === lastOpened} nest={nestOf(p)} onMore={onMore} />))}
                       {view === 'grid' && last && tile}
                     </div>
                   )}
@@ -438,10 +486,11 @@ export function Launcher() {
           )}
         </Menu>
       )}
-      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onUnlink={() => unlink(acted)} onDelete={() => remove(acted)} />}
+      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onSub={linksOn ? () => setSubOf(acted) : undefined} onUnlink={() => unlink(acted)} onDelete={() => remove(acted)} />}
       {trashOpen && <TrashDialog initial={trashed} onClose={() => setTrashOpen(false)} onChanged={() => (reload(), loadTrash())} />}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} at={createAt} onClose={() => (setCreating(null), setCreateAt(undefined))} />}
+      {subOf && <NewDialog initial={subOf.kind} taken={new Set((list ?? []).filter((p) => p.parent === subOf.name && p.path).map((p) => p.path!.split(/[\\/]/).pop()!))} under={{ name: subOf.name, path: subOf.path, title: subOf.title || subOf.name }} onClose={() => setSubOf(null)} />}
       {opening && <OpenFolderDialog onClose={() => setOpening(false)} onOpened={() => (setOpening(false), reload())} onCreateHere={(path) => (setOpening(false), setCreateAt(path), setCreating('design'))} />}
     </div>
   );

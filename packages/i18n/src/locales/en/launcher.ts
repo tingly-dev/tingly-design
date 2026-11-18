@@ -196,6 +196,17 @@ export default {
     report: 'Report an issue',
     star: 'Star on GitHub',
   },
+  sub: {
+    menu: 'New sub-project…',
+    show_one: 'Show {{count}} sub-project',
+    show_other: 'Show {{count}} sub-projects',
+    hide_one: 'Hide {{count}} sub-project',
+    hide_other: 'Hide {{count}} sub-projects',
+    in: 'in {{parent}}',
+    newUnder: 'A sub-project of “{{parent}}”: it is a project of its own, kept in that project’s folder.',
+    inside: 'Inside this project',
+    partOf: 'Part of {{parent}}',
+  },
   projectMenu: {
     home: 'All projects',
     switch: 'Switch project',

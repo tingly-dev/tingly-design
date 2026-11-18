@@ -777,5 +777,25 @@
       "chat_panel",
       "chat_copy"
     ]
+  },
+  "子项目：项目里面的项目": {
+    "design": [
+      "nested"
+    ],
+    "slides": [
+      "nested"
+    ],
+    "design-system": [
+      "nested"
+    ],
+    "dashboard": [
+      "nested"
+    ],
+    "docs": [
+      "nested"
+    ],
+    "motion": [
+      "nested"
+    ]
   }
 }

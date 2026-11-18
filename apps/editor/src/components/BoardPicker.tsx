@@ -30,10 +30,15 @@ export function BoardPicker({
 }) {
   const { t } = useTranslation();
   const [sources, setSources] = useState<Source[] | null>(null);
+  const [titles, setTitles] = useState<Map<string, string>>(new Map());
   useEffect(() => {
     let live = true;
     void (async () => {
-      const canvases = (await api.projects().catch(() => [])).filter((p) => p.kind === 'design');
+      const all = await api.projects().catch(() => []);
+      // the open project's own sub-projects come first: they were drawn to be used here
+      const here = new URLSearchParams(location.search).get('p');
+      const canvases = all.filter((p) => p.kind === 'design').sort((a, b) => Number(b.parent === here) - Number(a.parent === here));
+      setTitles(new Map(all.map((p) => [p.name, p.title || p.name])));
       const out: Source[] = [];
       for (const project of canvases) {
         const r = await api.files(project.name).catch(() => null);
@@ -64,7 +69,7 @@ export function BoardPicker({
       ) : (
         sources.map((s) => (
           <section key={s.project.name} className="bpick-group">
-            <h3>{s.project.title || s.project.name}</h3>
+            <h3>{s.project.parent ? `${titles.get(s.project.parent) ?? s.project.parent} / ` : ''}{s.project.title || s.project.name}</h3>
             <div className="bpick-grid">
               {s.boards.map((b) => (
                 <button

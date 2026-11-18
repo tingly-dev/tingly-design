@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { type ProjectCard, type ProjectKind } from '@dc/core';
-import { FileZip, GroupFolder, More, Rename, Trash, Unlink } from '../icons';
+import { Chevron, FileZip, GroupFolder, More, Plus, Rename, Trash, Unlink } from '../icons';
 import { saveProjectArchive } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { useElementSize } from '../../hooks';
@@ -31,13 +31,35 @@ function MoreButton({ p, onMore }: { p: ProjectCard; onMore: (name: string, at: 
   );
 }
 
-export function Card({ p, recent, flat, onMore }: { p: ProjectCard; recent: boolean; flat: boolean; onMore: (name: string, at: DOMRect) => void }) {
+/** What a list says of a project's place in the tree: how many sub-projects it has and whether they are showing, how deep it is, and the parent it is listed away from. */
+export interface Nest {
+  subs: number;
+  open: boolean;
+  depth: number;
+  /** the title of the parent of a sub-project: a card says it, a row does when it is listed away from its parent (another kind's tab, a search) */
+  under?: string;
+  onToggle: () => void;
+}
+
+/** The count of sub-projects beside the ⋯: a click shows them right under their parent. */
+function SubsButton({ nest }: { nest: Nest }) {
+  const { t } = useTranslation();
+  if (!nest.subs) return null;
+  return (
+    <button className="lsubs" aria-expanded={nest.open} aria-label={t(nest.open ? 'launcher.sub.hide' : 'launcher.sub.show', { count: nest.subs })} title={t(nest.open ? 'launcher.sub.hide' : 'launcher.sub.show', { count: nest.subs })} onClick={nest.onToggle}>
+      <Chevron open={nest.open} />
+      <span>{nest.subs}</span>
+    </button>
+  );
+}
+
+export function Card({ p, recent, flat, nest, onMore }: { p: ProjectCard; recent: boolean; flat: boolean; nest: Nest; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
   const [ref, { w: width }] = useElementSize<HTMLButtonElement>();
   const k = KIND[p.kind];
   const kindName = t(`launcher.kind.${p.kind}.name`);
   return (
-    <div className="lcell">
+    <div className={`lcell${nest.depth ? ' lsub' : ''}`} data-depth={nest.depth || undefined}>
       <button ref={ref} className={`lcard t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={t('launcher.card.open', { title: p.title, kind: kindName })}>
         <Preview p={p.preview} project={p.name} width={width} />
         <div className="lbody">
@@ -59,26 +81,29 @@ export function Card({ p, recent, flat, onMore }: { p: ProjectCard; recent: bool
             </span>
             {flat && p.group && <span className="lgroup">· {p.group}</span>}
           </div>
+          {nest.under && <div className="lunder">↳ {t('launcher.sub.in', { parent: nest.under })}</div>}
         </div>
       </button>
+      <SubsButton nest={nest} />
       <MoreButton p={p} onMore={onMore} />
     </div>
   );
 }
 
 /** One project as a line: no preview, so a long list stays light. */
-export function Row({ p, recent, onMore }: { p: ProjectCard; recent: boolean; onMore: (name: string, at: DOMRect) => void }) {
+export function Row({ p, recent, nest, onMore }: { p: ProjectCard; recent: boolean; nest: Nest; onMore: (name: string, at: DOMRect) => void }) {
   const { t } = useTranslation();
   const k = KIND[p.kind];
   const kindName = t(`launcher.kind.${p.kind}.name`);
   return (
-    <div className="lcell lrowcell">
+    <div className={`lcell lrowcell${nest.depth ? ' lsub' : ''}`} data-depth={nest.depth || undefined}>
       <button className={`lrow t-${k.tone}`} data-project={p.name} data-kind={p.kind} onClick={() => open(p.name)} aria-label={t('launcher.card.open', { title: p.title, kind: kindName })}>
         <span className="c-title">
           <span className="kic" title={kindName}>
             <KindIcon kind={p.kind} size={15} />
           </span>
           <span className="name">{p.title || p.name}</span>
+          {nest.under && !nest.depth && <span className="lunder">↳ {t('launcher.sub.in', { parent: nest.under })}</span>}
           {recent && <span className="recent">{t('launcher.card.recent')}</span>}
         </span>
         <span className={`c-path${p.path ? ' far' : ''}`} title={p.path}>
@@ -88,6 +113,7 @@ export function Row({ p, recent, onMore }: { p: ProjectCard; recent: boolean; on
         <span className="c-size">{t(`launcher.kind.${p.kind}.count`, { count: p.count })}</span>
         <span className="c-when">{p.updatedAt ? ago(t, p.updatedAt) : ''}</span>
       </button>
+      <SubsButton nest={nest} />
       <MoreButton p={p} onMore={onMore} />
     </div>
   );
@@ -114,7 +140,7 @@ function MenuInput({ value, onChange, onEnter, label, placeholder }: { value: st
 }
 
 /** What a project's ⋯ opens: its actions, then the rename box or the group list. */
-export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnlink, onDelete }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void; onUnlink: () => void; onDelete: () => void }) {
+export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onSub, onUnlink, onDelete }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void; onSub?: () => void; onUnlink: () => void; onDelete: () => void }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<'menu' | 'rename' | 'group'>('menu');
   const [text, setText] = useState(p.title || p.name);
@@ -127,15 +153,16 @@ export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnl
       {step === 'menu' && (
         <>
           <MenuItem label={t('launcher.rename.menu')} icon={<Rename />} onSelect={() => setStep('rename')} />
-          <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />
+          {!p.parent && <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />}
+          {onSub && <MenuItem label={t('launcher.sub.menu')} icon={<Plus />} onSelect={() => (onSub(), onClose())} />}
           <MenuItem label={t('launcher.archive.export')} icon={<FileZip />} onSelect={() => (onClose(), void saveProjectArchive(p.name, true))} />
-          {!p.path && (
+          {(!p.path || p.parent) && (
             <>
               <div className="msep" role="separator" />
               <MenuItem label={t('launcher.trash.menu')} icon={<Trash />} danger onSelect={() => (onDelete(), onClose())} />
             </>
           )}
-          {p.path && !p.folderGroup && (
+          {p.path && !p.parent && !p.folderGroup && (
             <>
               <div className="msep" role="separator" />
               <MenuItem label={t('launcher.folder.unlink')} icon={<Unlink />} onSelect={() => (onUnlink(), onClose())} />

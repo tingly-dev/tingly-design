@@ -37,11 +37,16 @@ export function ProjectMenu() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [list, setList] = useState<ProjectCard[] | null>(null);
   const [all, setAll] = useState<ProjectCard[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<false | 'new' | 'sub'>(false);
+  const linksOn = useStore((st) => st.health?.links !== false);
   const [referring, setReferring] = useState(false);
   const [refCount, setRefCount] = useState(0);
   const btn = useRef<HTMLButtonElement>(null);
-  const others = useMemo(() => nextUp(list ?? [], current), [list, current]);
+  const me = useMemo(() => all.find((p) => p.name === current), [all, current]);
+  const parent = me?.parent ? all.find((p) => p.name === me.parent) : undefined;
+  const subs = useMemo(() => all.filter((p) => p.parent === current), [all, current]);
+  // the project this one is under and the ones inside it are offered on their own, not again among the others
+  const others = useMemo(() => nextUp((list ?? []).filter((p) => p.name !== me?.parent && p.parent !== current), current), [list, current, me]);
   const toggle = () => {
     if (pos) return setPos(null);
     const r = btn.current?.getBoundingClientRect();
@@ -66,6 +71,11 @@ export function ProjectMenu() {
       {pos && (
         <Menu {...pos} onClose={() => setPos(null)} label={t('launcher.projectMenu.switch')}>
           <MenuItem label={t('launcher.allProjects')} icon={<Home />} onSelect={() => (location.href = at(''))} />
+          {parent && <MenuItem label={t('launcher.sub.partOf', { parent: parent.title || parent.name })} icon={<KindIcon kind={parent.kind} size={14} />} onSelect={() => open(parent.name)} />}
+          {subs.length > 0 && <div className="head">{t('launcher.sub.inside')}</div>}
+          {subs.map((p) => (
+            <MenuItem key={p.name} label={p.title || p.name} icon={<KindIcon kind={p.kind} size={14} />} onSelect={() => open(p.name)} />
+          ))}
           {others.length > 0 && <div className="head">{t('launcher.projectMenu.jump')}</div>}
           {others.map((p) => (
             <MenuItem key={p.name} label={p.title || p.name} icon={<KindIcon kind={p.kind} size={14} />} onSelect={() => open(p.name)} />
@@ -77,9 +87,19 @@ export function ProjectMenu() {
             icon={<Plus />}
             onSelect={() => {
               setPos(null);
-              setCreating(true);
+              setCreating('new');
             }}
           />
+          {current && linksOn && (
+            <MenuItem
+              label={t('launcher.sub.menu')}
+              icon={<Plus />}
+              onSelect={() => {
+                setPos(null);
+                setCreating('sub');
+              }}
+            />
+          )}
           {current && (
             <MenuItem
               label={refCount ? t('launcher.refs.menuCount', { count: refCount }) : t('launcher.refs.menu')}
@@ -102,7 +122,8 @@ export function ProjectMenu() {
         </Menu>
       )}
       {referring && current && <ReferencesDialog project={current} onClose={() => setReferring(false)} onCount={setRefCount} />}
-      {creating && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} onClose={() => setCreating(false)} />}
+      {creating === 'new' && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} onClose={() => setCreating(false)} />}
+      {creating === 'sub' && me && <NewDialog initial={kind ?? 'design'} taken={new Set(subs.filter((p) => p.path).map((p) => p.path!.split(/[\\/]/).pop()!))} under={{ name: me.name, path: me.path, title: me.title || me.name }} onClose={() => setCreating(false)} />}
     </span>
   );
 }
