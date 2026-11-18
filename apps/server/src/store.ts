@@ -278,6 +278,8 @@ export async function linkFolder(input: string, create = false): Promise<string>
     if (create) throw new HttpError(409, 'folderHasProject', { path: at.path });
     return known;
   }
+  // a folder a project keeps its own files in would be read as part of that project, not as a project beside them
+  if (create && kindOfSync(dirname(abs)) && isSubSkipped(basename(abs))) throw new HttpError(400, 'subReserved', { name: basename(abs) });
   const name = idFor(abs);
   links.set(name, abs);
   await saveLinks();
@@ -596,6 +598,36 @@ export function kindOfSync(dir: string): ProjectKind | null {
   return null;
 }
 
+/**
+ * A project folder directly inside another project's folder is that project's sub-project
+ * (.design/sub-projects.md): it is a project of its own, so the folder that holds it leaves it out of
+ * its files, its file watching and its commits. These are the folders a project keeps its own things
+ * in, and dot folders, which are never a sub-project's.
+ */
+const SUB_RESERVED = new Set(['uploads', 'ds', 'data', 'assets', 'fonts', 'slides', 'scenes', 'tabs', 'datasets', 'files', 'renders', 'node_modules']);
+
+/** A folder name a sub-project cannot have: hidden, or one of a project's own folders. */
+export function isSubSkipped(folder: string): boolean {
+  return folder.startsWith('.') || SUB_RESERVED.has(folder);
+}
+
+/** Whether the folder `dir`, named `name` inside a project, is a project of its own. */
+function isNestedProject(dir: string, name: string): boolean {
+  return !isSubSkipped(name) && kindOfSync(dir) !== null;
+}
+
+/** The sub-projects directly inside a project folder: their folder name, path and kind. */
+export function subsIn(dir: string): { folder: string; dir: string; kind: ProjectKind }[] {
+  return projectsIn(dir).filter((m) => !isSubSkipped(m.folder));
+}
+
+/** Whether `rel` (a path inside the project folder `dir`) is inside a project nested in it, so it is not this project's file. */
+export function inNestedProject(dir: string, rel: string): boolean {
+  const parts = rel.split('/');
+  for (let i = 1; i < parts.length; i++) if (isNestedProject(join(dir, ...parts.slice(0, i)), parts[i - 1])) return true;
+  return false;
+}
+
 export function isTracked(rel: string): boolean {
   try {
     safeRel(rel);
@@ -615,8 +647,11 @@ export async function walk(dir: string, base: string, out: string[]): Promise<vo
   for (const e of entries) {
     if (e.name.startsWith('.') || e.name === 'node_modules') continue;
     const p = join(dir, e.name);
-    if (e.isDirectory()) await walk(p, base, out);
-    else {
+    // a project of its own inside this one is not this project's file
+    if (e.isDirectory()) {
+      if (isNestedProject(p, e.name)) continue;
+      await walk(p, base, out);
+    } else {
       const rel = relative(base, p).split(sep).join('/');
       if (isTracked(rel)) out.push(rel);
     }

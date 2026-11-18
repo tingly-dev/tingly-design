@@ -189,6 +189,10 @@ export default {
     report: '反馈问题',
     star: '在 GitHub 上点星',
   },
+  sub: {
+    menu: '新建子项目…',
+    newUnder: '「{{parent}}」的子项目：它是独立的项目，放在那个项目的文件夹里。',
+  },
   projectMenu: {
     home: '全部项目',
     switch: '切换项目',

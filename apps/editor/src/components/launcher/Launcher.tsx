@@ -63,6 +63,7 @@ export function Launcher() {
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
   const [view, setView] = useState<'grid' | 'list'>(() => (readPref(VIEW_KEY) === 'list' ? 'list' : 'grid'));
   const [folded, setFolded] = useState<Set<string>>(() => new Set(readPref(FOLDED_KEY).split('\n').filter(Boolean)));
+  const [subOf, setSubOf] = useState<ProjectCard | null>(null);
   const [acting, setActing] = useState<{ name: string; x: number; y: number } | null>(null);
   const [newMenu, setNewMenu] = useState<DOMRect | null>(null);
   const [creating, setCreating] = useState<ProjectKind | null>(null);
@@ -438,10 +439,11 @@ export function Launcher() {
           )}
         </Menu>
       )}
-      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onUnlink={() => unlink(acted)} onDelete={() => remove(acted)} />}
+      {acting && acted && <ProjectActions key={acting.name} p={acted} at={acting} groups={groups} onClose={() => setActing(null)} onRename={(title) => apply(acting.name, { title })} onMove={(group) => apply(acting.name, { group })} onSub={linksOn ? () => setSubOf(acted) : undefined} onUnlink={() => unlink(acted)} onDelete={() => remove(acted)} />}
       {trashOpen && <TrashDialog initial={trashed} onClose={() => setTrashOpen(false)} onChanged={() => (reload(), loadTrash())} />}
       {importing && <ImportDialog initial={importing.picked} taken={taken} onClose={() => setImporting(null)} onDone={open} />}
       {creating && <NewDialog initial={creating} taken={taken} at={createAt} onClose={() => (setCreating(null), setCreateAt(undefined))} />}
+      {subOf && <NewDialog initial={subOf.kind} taken={taken} under={{ name: subOf.name, path: subOf.path, title: subOf.title || subOf.name }} onClose={() => setSubOf(null)} />}
       {opening && <OpenFolderDialog onClose={() => setOpening(false)} onOpened={() => (setOpening(false), reload())} onCreateHere={(path) => (setOpening(false), setCreateAt(path), setCreating('design'))} />}
     </div>
   );

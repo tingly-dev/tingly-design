@@ -38,7 +38,9 @@ export function ProjectMenu() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [list, setList] = useState<ProjectCard[] | null>(null);
   const [all, setAll] = useState<ProjectCard[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<false | 'new' | 'sub'>(false);
+  const linksOn = useStore((st) => st.health?.links !== false);
+  const me = all.find((p) => p.name === current);
   const [referring, setReferring] = useState(false);
   const [refCount, setRefCount] = useState(0);
   const changed = useChangedCount();
@@ -79,9 +81,19 @@ export function ProjectMenu() {
             icon={<Plus />}
             onSelect={() => {
               setPos(null);
-              setCreating(true);
+              setCreating('new');
             }}
           />
+          {current && linksOn && (
+            <MenuItem
+              label={t('launcher.sub.menu')}
+              icon={<Plus />}
+              onSelect={() => {
+                setPos(null);
+                setCreating('sub');
+              }}
+            />
+          )}
           {current && (
             <MenuItem
               label={refCount ? t('launcher.refs.menuCount', { count: refCount }) : t('launcher.refs.menu')}
@@ -114,7 +126,8 @@ export function ProjectMenu() {
         </Menu>
       )}
       {referring && current && <ReferencesDialog project={current} onClose={() => setReferring(false)} onCount={setRefCount} />}
-      {creating && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} onClose={() => setCreating(false)} />}
+      {creating === 'new' && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} onClose={() => setCreating(false)} />}
+      {creating === 'sub' && me && <NewDialog initial={kind ?? 'design'} taken={new Set(all.map((p) => p.name))} under={{ name: me.name, path: me.path, title: me.title || me.name }} onClose={() => setCreating(false)} />}
     </span>
   );
 }

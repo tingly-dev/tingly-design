@@ -6,7 +6,7 @@ import { describeTool, isSessionId, parseConversation, resumeLost, sessionFor, t
 import type { Language } from '@dc/i18n';
 import { replyLanguage } from './i18n';
 import { fromRoot, PROJECTS_DIR, PROJECTS_INSIDE_ROOT, ROOT } from './layout';
-import { linkedProjects, projectDir, readRefs, projectsIn, type Reference } from './store';
+import { linkedProjects, projectDir, readRefs, projectsIn, subsIn, type Reference } from './store';
 import { publish } from './hub';
 import { logDebug, logInfo, logWarn } from './log';
 import { aiResolved, claudeLaunch } from './aiconfig';
@@ -197,6 +197,14 @@ export function referenceArgs(own: string, refs: Reference[]): { note: string; d
   };
 }
 
+/** The projects of their own inside this project's folder: Claude is told they are not this project's files. */
+function subNote(abs: string): string {
+  const subs = subsIn(abs);
+  if (!subs.length) return '';
+  const lines = subs.map((m) => `- ${fromRoot(m.dir)}/ (${DELEGATE[m.kind].folder})`);
+  return `Sub-projects. These folders inside this project are projects of their own, drawn separately and used as artifacts elsewhere. Their files are not this project's files: do not list, check or edit them as part of this work, and touch one only when the request is about it.\n${lines.join('\n')}`;
+}
+
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en', imageOn = false): string {
   const id = randomUUID().slice(0, 8);
   const absProject = projectDir(project);
@@ -208,6 +216,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const lines = [
     `${profile.folder} folder: ${dir}/`,
     refs.note,
+    subNote(absProject),
     req.file ? `The person is looking at the ${profile.viewing} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`

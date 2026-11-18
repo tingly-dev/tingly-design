@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { type ProjectCard, type ProjectKind } from '@dc/core';
-import { FileZip, GroupFolder, More, Rename, Trash, Unlink } from '../icons';
+import { FileZip, GroupFolder, More, Plus, Rename, Trash, Unlink } from '../icons';
 import { saveProjectArchive } from '../../projectArchive';
 import { Menu, MenuItem } from '../Menu';
 import { useElementSize } from '../../hooks';
@@ -114,7 +114,7 @@ function MenuInput({ value, onChange, onEnter, label, placeholder }: { value: st
 }
 
 /** What a project's ⋯ opens: its actions, then the rename box or the group list. */
-export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnlink, onDelete }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void; onUnlink: () => void; onDelete: () => void }) {
+export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onSub, onUnlink, onDelete }: { p: ProjectCard; at: { x: number; y: number }; groups: string[]; onClose: () => void; onRename: (title: string) => void; onMove: (group: string) => void; onSub?: () => void; onUnlink: () => void; onDelete: () => void }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<'menu' | 'rename' | 'group'>('menu');
   const [text, setText] = useState(p.title || p.name);
@@ -128,6 +128,7 @@ export function ProjectActions({ p, at, groups, onClose, onRename, onMove, onUnl
         <>
           <MenuItem label={t('launcher.rename.menu')} icon={<Rename />} onSelect={() => setStep('rename')} />
           <MenuItem label={t('launcher.group.moveTo')} icon={<GroupFolder />} onSelect={() => (setText(''), setStep('group'))} />
+          {onSub && <MenuItem label={t('launcher.sub.menu')} icon={<Plus />} onSelect={() => (onSub(), onClose())} />}
           <MenuItem label={t('launcher.archive.export')} icon={<FileZip />} onSelect={() => (onClose(), void saveProjectArchive(p.name, true))} />
           {!p.path && (
             <>

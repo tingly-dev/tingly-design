@@ -196,6 +196,10 @@ export default {
     report: 'Report an issue',
     star: 'Star on GitHub',
   },
+  sub: {
+    menu: 'New sub-project…',
+    newUnder: 'A sub-project of “{{parent}}”: it is a project of its own, kept in that project’s folder.',
+  },
   projectMenu: {
     home: 'All projects',
     switch: 'Switch project',
