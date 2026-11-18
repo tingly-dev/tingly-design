@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Make a sub-project (a project of its own, inside this project's folder) through the running Tingly Design server:
-//   node scripts/new-sub-project.mjs <project> <kind> <folder-name> ["Title"] [--size 1200x760] [--look <id>]
+// Make a project, inside the folder of the project you are working on, through the running Tingly Design server:
+//   node scripts/new-project.mjs <project> <kind> <folder-name> ["Title"] [--size 1200x760] [--look <id>]
 // <kind> is canvas, slides, design-system, dashboard, doc or motion. <project> is the project's name (a folder path works too:
-// its last part is the name). Prints the new project's folder: edit the files in it, as its kind's skill says.
+// its last part is the name); the new project goes in a folder of that name inside its folder and is listed like any project.
+// Prints the new project's folder: edit the files in it, as its kind's skill says.
 // The server is DC_SERVER_URL (set for Claude Code when the server starts it).
 import { basename } from 'node:path';
 
@@ -17,7 +18,7 @@ for (let i = 0; i < argv.length; i++) {
 const [folder, kindWord, name, title] = rest;
 const kind = KINDS[kindWord];
 if (!folder || !kind || !name) {
-  console.error('usage: node scripts/new-sub-project.mjs <project> <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"] [--size 1200x760] [--look <id>]');
+  console.error('usage: node scripts/new-project.mjs <project> <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"] [--size 1200x760] [--look <id>]');
   process.exit(2);
 }
 const size = flags.size ? flags.size.split(/[x×]/i).map(Number) : undefined;
@@ -30,7 +31,7 @@ if (!server) {
   console.error('DC_SERVER_URL is not set: this script is run by the Tingly Design server for Claude Code');
   process.exit(2);
 }
-const res = await fetch(`${server}/api/projects/${encodeURIComponent(folder.includes('/') ? basename(folder.replace(/\/+$/, '')) : folder)}/sub-projects`, {
+const res = await fetch(`${server}/api/projects/${encodeURIComponent(folder.includes('/') ? basename(folder.replace(/\/+$/, '')) : folder)}/new-project`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ name, kind, title, size, look: flags.look }),

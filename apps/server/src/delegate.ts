@@ -197,13 +197,16 @@ export function referenceArgs(own: string, refs: Reference[]): { note: string; d
   };
 }
 
-/** What Claude Code is told about sub-projects (.design/sub-projects.md): how to make one, and which ones are already inside this project. */
-function subNote(project: string, abs: string): string {
-  const make = `Sub-projects. A project can hold projects of its own inside its folder, drawn separately and kept as artifacts (a figure, a doc, a motion piece). Make one only when the request asks for a separate artifact or cannot be done without one, never for an ordinary edit: run node scripts/new-sub-project.mjs ${project} <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"] [--size WxH]. It prints the new folder; read .claude/skills/<its kind>/SKILL.md, then edit that folder's files with Edit and Write. A sub-project's files are not this project's files: do not list or check them as part of this work.`;
+/** The projects of their own inside this project's folder: Claude is told they are not this project's files. */
+function subNote(abs: string): string {
   const subs = subsIn(abs);
-  if (!subs.length) return make;
-  return `${make}\nAlready inside this project; touch one only when the request is about it:\n${subs.map((m) => `- ${fromRoot(m.dir)}/ (${DELEGATE[m.kind].folder})`).join('\n')}`;
+  if (!subs.length) return '';
+  const lines = subs.map((m) => `- ${fromRoot(m.dir)}/ (${DELEGATE[m.kind].folder})`);
+  return `Sub-projects. These folders inside this project are projects of their own, drawn separately and used as artifacts elsewhere. Their files are not this project's files: do not list, check or edit them as part of this work, and touch one only when the request is about it.\n${lines.join('\n')}`;
 }
+
+/** How Claude Code makes a project of its own for a separate artifact (.design/sub-projects.md §7). */
+const newProjectNote = (project: string) => `New projects. When the request asks for a separate artifact (a figure, a doc, a motion piece) or cannot be done without one, make it as a project of its own instead of mixing it into this one; never for an ordinary edit. Run: node scripts/new-project.mjs ${project} <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"] [--size WxH]. It makes the project in a folder inside this project's folder, listed like any project, and prints that folder: read .claude/skills/<its kind>/SKILL.md, then edit its files with Edit and Write. Its files are not this project's files.`;
 
 export function startDelegate(project: string, req: DelegateRequest, kind: ProjectKind = 'design', lang: Language = 'en', imageOn = false): string {
   const id = randomUUID().slice(0, 8);
@@ -216,7 +219,8 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
   const lines = [
     `${profile.folder} folder: ${dir}/`,
     refs.note,
-    subNote(project, absProject),
+    subNote(absProject),
+    newProjectNote(project),
     req.file ? `The person is looking at the ${profile.viewing} ${dir}/${req.file}.` : '',
     req.pointed
       ? `They pointed at ${req.pointed.handle} (<${req.pointed.tag}>${req.pointed.label ? `, "${req.pointed.label}"` : ''}).${req.pointed.snippet ? `\nIts source:\n${req.pointed.snippet}` : ''}`
@@ -240,7 +244,7 @@ export function startDelegate(project: string, req: DelegateRequest, kind: Proje
     '--permission-mode',
     'acceptEdits',
     '--allowedTools',
-    ['Read,Edit,Write,Glob,Grep', ...profile.tools, 'Bash(node scripts/new-sub-project.mjs:*)', images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
+    ['Read,Edit,Write,Glob,Grep', ...profile.tools, 'Bash(node scripts/new-project.mjs:*)', images ? 'Bash(node scripts/image-gen.mjs:*)' : ''].filter(Boolean).join(','),
     '--append-system-prompt',
     `${profile.system}${images ? '\n' + imageNote(project) : ''}\n${PUNCTUATION}\n${STEPWISE}`,
   ];

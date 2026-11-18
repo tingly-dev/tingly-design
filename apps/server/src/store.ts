@@ -1114,12 +1114,11 @@ export async function createProject(name: string, title: string, kind: ProjectKi
 }
 
 /**
- * A new project inside `parent`'s folder: the folder `leaf`, written with `kind`'s starter (the same as the
- * New dialog's) and linked like a project made there by hand (.design/sub-projects.md). What Claude Code
- * reaches through `scripts/new-sub-project.mjs`; like the dialog's Location it needs links, so a host with
- * `DC_LINKS=0` refuses it.
+ * A new project in the folder `leaf` inside `parent`'s folder, written with `kind`'s starter (the same as
+ * the New dialog's) and linked like a project made at that path by hand. What Claude Code reaches through
+ * `scripts/new-project.mjs`; like the dialog's Location it needs links, so a host with `DC_LINKS=0` refuses it.
  */
-export async function createSubProject(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
+export async function createProjectIn(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
   const parentDir = projectDir(resolveKey(parent));
   if (!(await kindOf(parentDir))) throw new HttpError(404, 'noProject', { name: parent });
   if (!isProjectName(leaf)) throw new HttpError(400, 'badProjectName');

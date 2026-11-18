@@ -1,16 +1,17 @@
-"""End-to-end checks for Claude Code opening a sub-project (.design/sub-projects.md §7): a delegated request is allowed
-the one script that makes a sub-project and told how, the stand-in `claude` (e2e/fake-claude, which enforces the
-allowed tools) runs it, and a project of each kind appears inside the project's folder, listed like any project and on
-disk, while the parent's own files stay as they were; a reserved or taken name and a command outside the list are refused.
-Run with `pnpm dev` started with e2e/fake-claude first on PATH: python3 e2e/agent_subproject.py (or pnpm e2e agent_subproject)"""
+"""End-to-end checks for Claude Code making a project (.design/sub-projects.md §7): a delegated request is allowed the
+one script that makes a project and told how, the stand-in `claude` (e2e/fake-claude, which enforces the allowed
+tools) runs it, and a project of each kind appears in a folder inside the open project's, listed like any project and on
+disk, while the open project's own files stay as they were; a reserved or taken name and a command outside the list
+are refused.
+Run with `pnpm dev` started with e2e/fake-claude first on PATH: python3 e2e/agent_project.py (or pnpm e2e agent_project)"""
 import os, json, re, shutil, time, urllib.request, urllib.error
 
 BASE = os.environ.get('DC_URL', 'http://localhost:5173')
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECTS = os.path.join(REPO, 'projects')
 LOG = os.environ.get('FAKE_CLAUDE_LOG', '/tmp/fake-claude.log')
-PARENT = 'zz-agent-sub'
-SCRIPT = 'node scripts/new-sub-project.mjs'
+PARENT = 'zz-agent-new'
+SCRIPT = 'node scripts/new-project.mjs'
 
 results = []
 def check(name, ok, extra=''):
@@ -55,8 +56,8 @@ def cleanup(before_links):
 def main():
     before_links = links()
     cleanup(before_links)
-    st, r = call('POST', '/api/projects', {'name': PARENT, 'title': 'Agent Sub', 'kind': 'design'})
-    check('a parent project is made', st == 200, str(r))
+    st, r = call('POST', '/api/projects', {'name': PARENT, 'title': 'Agent New', 'kind': 'design'})
+    check('the open project is made', st == 200, str(r))
     parent_dir = os.path.join(PROJECTS, PARENT)
     before = files(PARENT)
 
@@ -67,27 +68,27 @@ def main():
         ran, start, denied = run(PARENT, f'{SCRIPT} {PARENT} {word} {folder} "{folder.title()}"{extra}')
         args = start['args'] if start else []
         allowed = args[args.index('--allowedTools') + 1].split(',') if '--allowedTools' in args else []
-        check(f'{kind}: the request is allowed that one script and no other Bash', 'Bash(node scripts/new-sub-project.mjs:*)' in allowed and not any(t == 'Bash' for t in allowed), str(allowed))
+        check(f'{kind}: the request is allowed that one script and no other Bash', 'Bash(node scripts/new-project.mjs:*)' in allowed and not any(t == 'Bash' for t in allowed), str(allowed))
         check(f'{kind}: the script ran and printed the new folder', ran is not None and ran['code'] == 0 and ran['out'].endswith(f'/{PARENT}/{folder}/'), str(ran))
         c = next((c for c in cards().values() if c.get('path', '').endswith(f'/{PARENT}/{folder}')), None)
         made[folder] = c
-        check(f'{kind}: it is a project of its kind in the list, with its folder inside the parent', c is not None and c['kind'] == kind and c['title'] == folder.title(), str(c))
-        check(f'{kind}: its index file is on disk inside the parent folder', any(os.path.exists(os.path.join(parent_dir, folder, f)) for f in ('canvas.json', 'deck.json', 'design-system.json', 'dash.json', 'doc.json', 'motion.json')))
-    check("the parent's own files are as they were", files(PARENT) == before, f'{before} -> {files(PARENT)}')
+        check(f'{kind}: it is a project of its kind in the list, with its folder inside the open project's', c is not None and c['kind'] == kind and c['title'] == folder.title(), str(c))
+        check(f'{kind}: its index file is on disk inside the open project's folder', any(os.path.exists(os.path.join(parent_dir, folder, f)) for f in ('canvas.json', 'deck.json', 'design-system.json', 'dash.json', 'doc.json', 'motion.json')))
+    check("the open project's own files are as they were", files(PARENT) == before, f'{before} -> {files(PARENT)}')
     board = next((f for f in os.listdir(os.path.join(parent_dir, 'figure')) if f.endswith('.dc.html')), '')
     check('a size is given to the starter', board and '800' in open(os.path.join(parent_dir, 'figure', board)).read())
 
     # --- what it is told --------------------------------------------------------------------------
     _, start, _ = run(PARENT, f'{SCRIPT} {PARENT} canvas second')
     prompt = start['prompt'] if start else ''
-    check('the request says how to make a sub-project', f'node scripts/new-sub-project.mjs {PARENT} <canvas|slides' in prompt and 'never for an ordinary edit' in prompt)
-    check('and lists the ones already inside, as not this project\'s files', f'/{PARENT}/figure/ (Canvas)' in prompt and f'/{PARENT}/notes/ (Doc)' in prompt and "not this project's files" in prompt)
+    check('the request says how to make a project', f'node scripts/new-project.mjs {PARENT} <canvas|slides' in prompt and 'never for an ordinary edit' in prompt)
+    check('and lists the projects already inside its folder, as not this project\'s files', f'/{PARENT}/figure/ (Canvas)' in prompt and f'/{PARENT}/notes/ (Doc)' in prompt and "not this project's files" in prompt)
 
-    # --- a sub-project can make its own ------------------------------------------------------------
+    # --- a project made this way makes one of its own too ------------------------------------------------------------
     figure = made['figure']['name']
     ran, _, _ = run(figure, f'{SCRIPT} {figure} canvas inner "Inner"')
     inner = next((c for c in cards().values() if c.get('path', '').endswith(f'/{PARENT}/figure/inner')), None)
-    check('a sub-project makes one of its own', ran is not None and ran['code'] == 0 and inner is not None and not any(f.startswith('inner/') for f in files(figure)), str(ran))
+    check('a project made this way makes one of its own in turn', ran is not None and ran['code'] == 0 and inner is not None and not any(f.startswith('inner/') for f in files(figure)), str(ran))
 
     # --- refusals ---------------------------------------------------------------------------------
     ran, _, _ = run(PARENT, f'{SCRIPT} {PARENT} canvas uploads')
@@ -100,12 +101,12 @@ def main():
     check('a project that does not exist is refused', ran is not None and ran['code'] == 1, str(ran))
     ran, _, denied = run(PARENT, 'rm -rf projects')
     check('any other command is not allowed', ran is None and len(denied) == 1 and os.path.isdir(parent_dir), str(denied))
-    st, r = call('POST', f'/api/projects/{PARENT}/sub-projects', {'name': 'x', 'kind': 'poster'})
+    st, r = call('POST', f'/api/projects/{PARENT}/new-project', {'name': 'x', 'kind': 'poster'})
     check('the route needs one of the six kinds', st == 400 and r.get('code') == 'badKind', str(r))
     check('nothing was left behind by the refused ones', sorted(f for f in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, f))) == ['clip', 'deck', 'figure', 'kit', 'notes', 'numbers', 'second'], str(os.listdir(parent_dir)))
     stray = [d for d in os.listdir(PROJECTS) if re.fullmatch(r'(figure|deck|kit|numbers|notes|clip|second|inner)-[0-9a-f]{6}', d)]
-    check('no sub-project left a folder of its own name in the projects folder', not stray, str(stray))
-    check("the parent's own files are still as they were", files(PARENT) == before)
+    check('no project made this way left a folder of its own name in the projects folder', not stray, str(stray))
+    check("the open project's own files are still as they were", files(PARENT) == before)
 
     cleanup(before_links)
     for d in stray: shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)

@@ -812,24 +812,24 @@
       "nested"
     ]
   },
-  "Claude Code 新建子项目": {
+  "Claude Code 新建项目": {
     "design": [
-      "agent_subproject"
+      "agent_project"
     ],
     "slides": [
-      "agent_subproject"
+      "agent_project"
     ],
     "design-system": [
-      "agent_subproject"
+      "agent_project"
     ],
     "dashboard": [
-      "agent_subproject"
+      "agent_project"
     ],
     "docs": [
-      "agent_subproject"
+      "agent_project"
     ],
     "motion": [
-      "agent_subproject"
+      "agent_project"
     ]
   }
 }

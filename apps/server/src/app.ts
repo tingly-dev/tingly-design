@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, cleanParticipant, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, createSubProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, createProjectIn, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { listTrash, purgeTrash, restoreTrash, trashProject } from './trash';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
@@ -129,16 +129,16 @@ app.post('/api/projects', async (c) => {
 });
 
 /**
- * A sub-project inside this project (.design/sub-projects.md): `name` is its folder, `kind` is required.
- * Claude Code makes one through `scripts/new-sub-project.mjs`; it comes back with the folder to edit.
+ * A new project in a folder inside this project's folder: `name` is the folder, `kind` is required. Claude Code
+ * makes one through `scripts/new-project.mjs`; it comes back with the folder to edit.
  */
-app.post('/api/projects/:p/sub-projects', async (c) => {
+app.post('/api/projects/:p/new-project', async (c) => {
   const p = c.req.param('p');
   const body = await c.req.json<{ name?: string; title?: string; kind?: string; size?: unknown; look?: string }>();
   if (!PROJECT_KINDS.some((k) => k === body.kind)) throw new HttpError(400, 'badKind', { kind: String(body.kind ?? '') });
   const { kind, opts } = startOptions(body.kind, body.size, body.look);
-  const made = await createSubProject(p, String(body.name ?? ''), body.title?.trim() || String(body.name), kind, langOf(c), opts);
-  logInfo('project.sub.created', { project: p, sub: made.name, kind });
+  const made = await createProjectIn(p, String(body.name ?? ''), body.title?.trim() || String(body.name), kind, langOf(c), opts);
+  logInfo('project.created.in', { project: p, created: made.name, kind });
   return c.json({ ok: true, name: made.name, folder: fromRoot(made.dir) });
 });
 
