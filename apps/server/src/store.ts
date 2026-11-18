@@ -291,6 +291,8 @@ export async function linkFolder(input: string, create = false): Promise<string>
     links.set(name, abs);
     nestedNames.add(name);
     parentOf.set(name, parent);
+    // until `createProject` has written it, or the unlink of a failed one
+    if (create) pendingNested.add(name);
     return name;
   }
   links.set(name, abs);
@@ -308,6 +310,7 @@ export async function unlinkProject(key: string): Promise<void> {
     // a sub-project is found on the disk, so only this process forgets it (a new project that failed to be written)
     nestedNames.delete(name);
     parentOf.delete(name);
+    pendingNested.delete(name);
     links.delete(name);
     return;
   }
@@ -411,6 +414,8 @@ export function refreshMembers(): void {
  */
 const nestedNames = new Set<string>();
 const parentOf = new Map<string, string>();
+/** Sub-projects `linkFolder` has named for a folder that is being written: not looked for on the disk yet, so a look in between must not drop them. */
+const pendingNested = new Set<string>();
 /** Folders a project keeps its own things in: never looked in for a sub-project. */
 const SUB_RESERVED = new Set(['uploads', 'ds', 'data', 'assets', 'fonts', 'slides', 'scenes', 'tabs', 'datasets', 'files', 'renders', 'node_modules']);
 const SUB_DEPTH = 4;
@@ -463,7 +468,7 @@ export function refreshNested(): void {
   };
   for (const [name, dir] of roots) visit(name, dir, 1);
   for (const name of [...nestedNames]) {
-    if (seen.has(name)) continue;
+    if (seen.has(name) || pendingNested.has(name)) continue;
     nestedNames.delete(name);
     parentOf.delete(name);
     links.delete(name);
@@ -1168,7 +1173,7 @@ const STARTER: Record<ProjectKind, (c: Starter) => Promise<void>> = {
 };
 
 /** A new project, its starter copy in `lang`: the language of whoever created it. */
-export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
+async function writeNewProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
   const t: TFunction = translator(lang);
   const dir = projectDir(name);
   if (await kindOf(dir)) throw new HttpError(409, 'projectExists', { name });
@@ -1177,4 +1182,12 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
   await mkdir(dir, { recursive: true });
   await STARTER[kind]({ name, title, lang, t, opts, look });
+}
+
+export async function createProject(name: string, title: string, kind: ProjectKind = 'design', lang: Language = 'en', opts: { size?: [number, number]; look?: string } = {}): Promise<void> {
+  try {
+    await writeNewProject(name, title, kind, lang, opts);
+  } finally {
+    pendingNested.delete(name);
+  }
 }

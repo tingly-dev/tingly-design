@@ -3,8 +3,8 @@ inside another project's folder is found by looking and listed under its parent,
 nothing written to the links file; the parent's files, count, journal, git changes and archive leave it out, and a sub's
 own are its own; a sub of a sub; a reserved folder name refused; moving to the trash and back puts it where it was; the
 launcher shows the count beside the parent's ⋯ and expands the sub-projects under it; New sub-project… from the card and
-from the project menu starts in the parent's folder; the project menu names the parent and the sub-projects; Import
-from project lists a sub-project under its parent's name.
+from the project menu starts in the parent's folder; the project menu names the parent and the sub-projects; the
+parent's zip imported again brings its sub-projects back under the new copy.
 Run with `pnpm dev` up: python3 e2e/nested.py (or pnpm e2e nested)"""
 import os, re, json, time, shutil, asyncio, zipfile, io, urllib.request, urllib.error
 from playwright.async_api import async_playwright, expect
@@ -16,7 +16,6 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, 'e2e', 'out') + '/'
 PROJECTS = os.path.join(REPO, 'projects')
 PARENT = 'zz-nest'
-DECK = 'zz-nest-deck'
 
 results = []
 def check(name, ok, extra=''):
@@ -45,8 +44,8 @@ def put(project, rel, text):
     return call('PUT', f'/api/projects/{project}/file?path={rel}', {'content': text, 'baseVersion': cur['version'] if cur else None})
 
 def cleanup():
-    for d in (PARENT, DECK):
-        shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)
+    for d in os.listdir(PROJECTS):
+        if d.startswith(PARENT): shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)
 
 async def shot(pg, name):
     await pg.screenshot(path=OUT + f'nested-{name}.png')
@@ -130,6 +129,13 @@ async def main():
     names = zipfile.ZipFile(io.BytesIO(z)).namelist()
     check('the parent travels with its sub-projects in one zip', any(n.endswith('logo/canvas.json') for n in names) and any(n.endswith('words/doc.json') for n in names), str(names[:12]))
 
+    req = urllib.request.Request(BASE + '/api/archive?file=zz-nest.zip', method='POST', data=z, headers={'content-type': 'application/zip'})
+    with urllib.request.urlopen(req) as r: copy = json.loads(r.read())['name']
+    kids = [c for c in cards().values() if c.get('parent') == copy]
+    check('a parent imported again brings its sub-projects back under the copy', copy != PARENT and sorted(c['title'] for c in kids) == ['Logo', 'Words', 'deck', 'numbers', 'promo'] and any(c.get('parent') in {k['name'] for k in kids} for c in cards().values() if c['title'] == 'Mark'), str([(c['title']) for c in kids]))
+    check('and the copy leaves the original alone', cards()[logo]['parent'] == PARENT and cards()[PARENT]['count'] == pcard['count'])
+    shutil.rmtree(os.path.join(PROJECTS, copy), ignore_errors=True)
+
     # --- trash: back where it was ---------------------------------------------------------------
     st, r = call('DELETE', f'/api/projects/{words}')
     check('a sub-project moves to the trash like any project', st == 200 and words not in cards() and not os.path.exists(os.path.join(parent_dir, 'words')), str(r))
@@ -137,7 +143,6 @@ async def main():
     check('and restoring puts it back under its parent, with the same name', st == 200 and back.get('name') == words and cards().get(words, {}).get('parent') == PARENT and os.path.exists(os.path.join(parent_dir, 'words', 'doc.json')), str(back))
 
     # --- the editor ---------------------------------------------------------------------------
-    call('POST', '/api/projects', {'name': DECK, 'title': 'Zz Deck', 'kind': 'slides'})
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
         ctx = await b.new_context(locale='en-US', viewport={'width': 1440, 'height': 900})
@@ -205,16 +210,12 @@ async def main():
         await expect(pg.locator('.board, .artboard, [data-board]').first).to_be_visible(timeout=15000)
         check('a sub-project opens in its own editor', not errs, str(errs))
 
-        # Import from project: the parent is named
-        await pg.goto(f'{BASE}/?p={DECK}')
-        await pg.locator('button[aria-label="Import / Export"]').first.click()
-        await pg.get_by_role('menuitem', name='Import from a project…').click()
-        await expect(pg.locator('.bpick-group h3', has_text='Zz Nest / Logo')).to_be_visible(timeout=15000)
-        check('Import from project lists a sub-project under its parent\'s name', True)
-        await shot(pg, 'import-source')
         await b.close()
 
+    stray = [d for d in os.listdir(PROJECTS) if re.fullmatch(r'(logo|words|mark|deck|numbers|promo|poster)-[0-9a-f]{6}', d)]
     cleanup()
+    for d in stray: shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)
+    check('no sub-project left a folder of its own name in the projects folder', not stray, str(stray))
     ok = sum(1 for _, k in results if k)
     print(f'\n{ok}/{len(results)} checks passed')
     raise SystemExit(0 if ok == len(results) else 1)
