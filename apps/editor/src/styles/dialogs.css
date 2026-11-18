@@ -536,8 +536,9 @@
 
 .linkedp-k {
   flex: none;
-  width: 44px;
+  width: 56px;
   color: var(--faint);
+  white-space: nowrap;
 }
 
 

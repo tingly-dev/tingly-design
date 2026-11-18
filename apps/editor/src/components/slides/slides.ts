@@ -343,12 +343,12 @@ export const slidesImport: ImportTarget = {
     get what() {
       return t('linked.picker.what', { kind: t('launcher.kind.slides.name').toLowerCase() });
     },
-    place: ({ path, mode, size, moving, title, project }) => {
+    place: ({ path, mode, size, moving, title, project, poster }) => {
       if (mode === 'image') {
         const tid = placePicture(path, { w: size[0], h: size[1] }, t('linked.alt', { title, project }));
         return tid === null ? t('linked.toast.placed.noSlide') : t('linked.toast.placed.slide', { title });
       }
-      const { html, back } = boardEmbed(path, deckSize(deckOf(get())), size, moving ?? false);
+      const { html, back } = boardEmbed(path, deckSize(deckOf(get())), size, moving ?? false, '', poster);
       const tid = back ? insertBehind(html) : insertOnSlide(html, true);
       return tid === null ? t('slides.import.noSlide') : t('slides.import.boardPlaced', { title });
     },

@@ -5,8 +5,8 @@
  */
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { attrsForFormat, fxMarkup, isFxEmbed, FX_STILL_MS, embedProps, isBoardEmbedPath, paintLayer, textBoxIndent, parseDc, styleObject, VOID_ELEMENTS, type DcDoc, type DcElement, type DcNode, type Mode } from '@dc/core';
-import { XArt, XBoard, XEmbed, innerSource, resolveSrc } from './slide';
+import { attrsForFormat, fxMarkup, isFxEmbed, FX_STILL_MS, embedProps, isBoardEmbedPath, isDashBundlePath, paintLayer, textBoxIndent, parseDc, styleObject, VOID_ELEMENTS, type DcDoc, type DcElement, type DcNode, type Mode } from '@dc/core';
+import { XArt, XBoard, XDash, XEmbed, innerSource, resolveSrc } from './slide';
 import { urlsAgainst } from './urls';
 import { SEEK_BRIDGE } from './sceneAnim';
 import { msg } from './msg';
@@ -305,8 +305,10 @@ function renderNode(n: DcNode, scope: Scope, ctx: Ctx, key: React.Key, docSrc: s
               mode={ctx.mode}
               still={ctx.slide.still}
               live={ctx.mode === 'play' && !ctx.motion}
+              poster={a('data-poster') ? String(resolveSrc(a('data-poster'), ctx.slide.base)) : undefined}
             />
           );
+        if (src && isDashBundlePath(src)) return <XDash key={key} props={sp()} src={src} files={ctx.files} mode={ctx.mode} still={ctx.slide.still} poster={a('data-poster') ? String(resolveSrc(a('data-poster'), ctx.slide.base)) : undefined} />;
         const own = innerSource(ctx.slide.source, el.inner);
         const fx = a('data-fx');
         // a built-in effect: on a stage it waits to be sought, presenting a slide it runs on its own clock, editing one it stands still

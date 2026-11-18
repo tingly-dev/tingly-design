@@ -30,6 +30,7 @@ import {
   type ToDash,
 } from '@dc/core';
 import { canvasPng, rasterize } from '@dc/export';
+import { answerSnaps } from '@dc/export/snap';
 import { msg } from './msg';
 
 (window as unknown as { d3: typeof d3 }).d3 = d3;
@@ -760,5 +761,8 @@ addEventListener('message', (e) => {
     }
   }
 });
+
+// a slide that holds this dashboard asks the frame for a picture of itself when it exports
+answerSnaps();
 
 post({ dc: 'ready' });

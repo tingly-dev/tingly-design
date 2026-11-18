@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, LinkCheck, LinkSource, LinkedPage, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, LinkCheck, LinkMode, LinkSource, LinkedPage, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -321,20 +321,15 @@ export const api = {
       body: JSON.stringify(typeof source === 'string' ? { from: source } : source),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
 
-  /** Copy a canvas's artboard into this deck or motion piece (uploads/<from>-<board>/…); the caller puts the embed on the page. */
-  importBoard: (p: string, from: string, board: string) =>
-    call(at(`api/projects/${enc(p)}/import-board`), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ from, board }),
-    }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
-
   /** The projects whose pages this one can take, each with its pages (.design/cross-kind-embedding.md). */
   linkSources: (p: string) => call(at(`api/projects/${enc(p)}/link-sources`)).then((r) => json<{ sources: LinkSource[] }>(r)),
 
-  /** Put a picture of a page of another project in this one; the caller puts it on the page. */
-  linkPage: (p: string, from: string, page: string) =>
-    post(`api/projects/${enc(p)}/link-page`, { from, page }).then((r) => json<{ record: LinkedPage; size: [number, number] | null; title: string }>(r)),
+  /** Put a page of another project in this one, live (an artboard, a frozen dashboard; its picture is drawn after) or as a picture; the caller puts it on the page. */
+  linkPage: (p: string, from: string, page: string, mode?: LinkMode) =>
+    post(`api/projects/${enc(p)}/link-page`, { from, page, ...(mode ? { mode } : {}) }).then((r) => json<{ record: LinkedPage; size: [number, number] | null; title: string }>(r)),
+
+  /** The picture kept beside a live copy (drawn first when it is not there yet), and its pixel size. */
+  linkPoster: (p: string, path: string) => post(`api/projects/${enc(p)}/link-poster`, { path }).then((r) => json<{ poster: string; size: [number, number] | null }>(r)),
 
   /** Where each linked page stands against its original. */
   linkCheck: (p: string) => post(`api/projects/${enc(p)}/link-check`, {}).then((r) => json<{ links: LinkCheck[] }>(r)),

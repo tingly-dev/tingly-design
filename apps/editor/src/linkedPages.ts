@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
-import { INDEX_FILE, linkedPagesOf, type LinkCheck, type LinkedPage, type LinkSource, type SourcePage } from '@dc/core';
+import { INDEX_FILE, attr, linkedPagesOf, parseDc, type DcElement, type LinkCheck, type LinkMode, type LinkedPage, type LinkSource, type SourcePage } from '@dc/core';
 import { api } from './api';
 import { at } from './base';
 import { t } from './i18n';
-import { display, recordChange, toast, useStore } from './store';
+import { display, editElement, recordChange, toast, useStore } from './store';
 
 /**
  * Linked pages in the open project (.design/cross-kind-embedding.md): the records its index keeps, how
@@ -165,32 +165,78 @@ export const originalUrl = (rec: Pick<LinkedPage, 'from'>) => `${at('')}?p=${enc
 
 /** What a pick in the picker became on this project's disk, for the kind to put on its page. */
 export interface PlacedPage {
-  /** the copy's path in this project */
+  /** the copy in this project: the live copy, or the picture when only that is kept */
   path: string;
-  mode: 'live' | 'image';
+  mode: LinkMode;
+  /** the kind of project it came from */
+  from: LinkedPage['kind'];
+  /** the picture kept beside a live copy (it may still be being drawn) */
+  poster?: string;
   /** the page's title in its project, and that project's title */
   title: string;
   project: string;
-  /** a picture's pixel size, or a live artboard's own size */
+  /** a picture's pixel size, or a live page's own size */
   size: [number, number];
   /** a live artboard that moves with time */
   moving?: boolean;
 }
 
-/** Make the copy a pick asks for: an artboard shown live is copied as before, anything else is drawn as a picture. */
+/** Make the copy a pick asks for: live where the page can run in this kind of project, else a picture. */
 export async function linkPick(source: LinkSource, page: SourcePage & { moving?: boolean }): Promise<PlacedPage> {
   const project = useStore.getState().project;
   if (!project) throw new Error('no project');
-  if (source.modes[0] === 'live') {
-    const r = await api.importBoard(project, source.name, page.page);
-    recordChange({ type: 'link', action: 'added', path: r.record.path, page: page.title, project: source.title }, false);
-    toast(t('linked.toast.added', { title: page.title, project: source.title }));
-    return { path: r.record.path, mode: 'live', title: page.title, project: source.title, size: r.size, moving: page.moving };
-  }
-  const r = await api.linkPage(project, source.name, page.page);
+  const mode = source.modes[0];
+  const r = await api.linkPage(project, source.name, page.page, mode);
   recordChange({ type: 'link', action: 'added', path: r.record.path, page: page.title, project: source.title }, false);
   toast(t('linked.toast.added', { title: page.title, project: source.title }));
-  return { path: r.record.path, mode: 'image', title: r.title || page.title, project: source.title, size: r.size ?? [1280, 720] };
+  return { path: r.record.path, mode, from: source.kind, ...(r.record.poster ? { poster: r.record.poster } : {}), title: r.title || page.title, project: source.title, size: r.size ?? [1280, 720], moving: page.moving };
+}
+
+/** The attributes of an element that go with it when it changes form (its place in time, its builds), as markup. */
+function carried(el: DcElement): string {
+  return el.attrs
+    .filter((a) => !['src', 'alt', 'style', 'data-props', 'data-poster', 'data-seek'].includes(a.name))
+    .map((a) => ` ${a.name}="${a.value.replace(/"/g, '&quot;')}"`)
+    .join('');
+}
+
+/**
+ * Show a linked page as the live element or as the picture kept beside it, in place: the element is replaced
+ * by the other form with the same box, in the same layer (one undo step). Nothing is copied or drawn again,
+ * except the picture itself the first time, when it was not there yet. The record does not change: it keeps both.
+ */
+export async function showLinkedAs(file: string, el: DcElement, rec: LinkedPage, to: LinkMode): Promise<void> {
+  const project = useStore.getState().project;
+  const kind = useStore.getState().kind;
+  if (!project || !rec.poster) return;
+  const style = (attr(el, 'style') ?? '').replace(/;?\s*object-fit:[^;]*/g, '');
+  const w = wording(rec.path);
+  let html: string;
+  if (to === 'image') {
+    let r;
+    try {
+      r = await api.linkPoster(project, rec.path);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+      return;
+    }
+    // a picture of a whole page keeps its own shape: a dashboard is taller or wider than the box it ran in
+    const box = /(?:^|;)\s*width:\s*([\d.]+)px[^]*?(?:^|;)\s*height:\s*([\d.]+)px/.exec(style);
+    let st = style;
+    if (r.size && box && rec.kind !== 'design') {
+      const width = Number(box[1]);
+      st = st.replace(/(^|;)(\s*)height:\s*[\d.]+px/, `$1$2height:${Math.round((width * r.size[1]) / r.size[0])}px`);
+    }
+    html = `<img src="${r.poster}" alt="${t('linked.alt', { title: w.title, project: w.project }).replace(/"/g, '&quot;')}"${carried(el)} style="${st};object-fit:cover">`;
+  } else {
+    html = `<x-embed src="${rec.path}"${kind === 'motion' ? ' data-seek' : ` data-poster="${rec.poster}"`}${carried(el)} style="${style}"></x-embed>`;
+  }
+  const ok = editElement(file, [{ kind: 'insert', target: el.tid, where: 'after', html }, { kind: 'remove', tid: el.tid }]);
+  if (!ok) return;
+  // the new form takes the place of the old one: select it
+  const src = display(useStore.getState(), file);
+  const now = src ? parseDc(src).elements.find((e) => e.path.join('.') === el.path.join('.')) : undefined;
+  if (now) useStore.setState({ selection: { kind: 'el', file, tid: now.tid } });
 }
 
 // What is linked changes only when the project opens or a record is added or dropped: ask then, a moment after the change settles.

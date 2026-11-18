@@ -50,3 +50,4 @@ export * from './theme';
 export * from './review';
 export * from './pointer';
 export * from './linkedPage';
+export * from './dashBundle';
