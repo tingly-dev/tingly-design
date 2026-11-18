@@ -288,17 +288,22 @@ export async function linkFolder(input: string, create = false): Promise<string>
   const parent = up ? nameOfFolder(up) : undefined;
   if (create && kindOfSync(dirname(abs)) && isSubSkipped(basename(abs))) throw new HttpError(400, 'subReserved', { name: basename(abs) });
   if (parent) {
-    links.set(name, abs);
-    nestedNames.add(name);
-    parentOf.set(name, parent);
     // until `createProject` has written it, or the unlink of a failed one
-    if (create) pendingNested.add(name);
+    registerNested(name, abs, parent, create);
     return name;
   }
   links.set(name, abs);
   await saveLinks();
   for (const fn of linkListeners) fn(name, abs);
   return name;
+}
+
+/** A sub-project named in memory for a folder: found on the disk from now on, and held until written when `pending`. */
+function registerNested(name: string, abs: string, parent: string, pending: boolean): void {
+  links.set(name, abs);
+  nestedNames.add(name);
+  parentOf.set(name, parent);
+  if (pending) pendingNested.add(name);
 }
 
 /** Takes a linked project off the list. Its folder and files stay where they are. */
@@ -1190,4 +1195,29 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   } finally {
     pendingNested.delete(name);
   }
+}
+
+/**
+ * A new sub-project of `parent`: the folder `leaf` inside the parent's folder, written with `kind`'s
+ * starter (the same as the New dialog's). What Claude Code reaches through `scripts/new-sub-project.mjs`;
+ * it needs no links, so it works on a host that keeps projects to itself too.
+ */
+export async function createSubProject(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
+  const parentName = resolveKey(parent);
+  const parentDir = projectDir(parentName);
+  if (!(await kindOf(parentDir))) throw new HttpError(404, 'noProject', { name: parent });
+  if (!isProjectName(leaf)) throw new HttpError(400, 'badProjectName');
+  if (isSubSkipped(leaf)) throw new HttpError(400, 'subReserved', { name: leaf });
+  const abs = join(parentDir, leaf);
+  const at = await inspectFolder(abs);
+  if (at.state !== 'free') throw new HttpError(409, at.state === 'project' ? 'folderHasProject' : 'folderNotEmpty', { path: at.path });
+  const name = idFor(abs);
+  registerNested(name, abs, parentName, true);
+  try {
+    await createProject(name, title, kind, lang, opts);
+  } catch (e) {
+    await unlinkProject(name).catch(() => {});
+    throw e;
+  }
+  return { name, dir: abs };
 }

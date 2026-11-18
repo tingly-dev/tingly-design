@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { DS_TOKENS, cleanParticipant, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, createSubProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
 import { listTrash, purgeTrash, restoreTrash, trashProject } from './trash';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
@@ -89,25 +89,26 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 /** The name a project answers to now, for an address that carries one an older version gave it. */
 app.get('/api/resolve/:p', (c) => c.json({ name: resolveKey(c.req.param('p')) }));
 
+const PROJECT_KINDS = ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'] as const;
+type NewKind = (typeof PROJECT_KINDS)[number];
+
+/** What a new project's starter takes (a size, a look), checked against its kind; `kind` of anything unknown is a canvas. */
+function startOptions(kind: string | undefined, size: unknown, look: unknown): { kind: NewKind; opts: { size?: [number, number]; look?: string } } {
+  if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  if (look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
+  if (look !== undefined && !lookOf(String(look))) throw new HttpError(400, 'badLook', { look: String(look) });
+  const k: NewKind = PROJECT_KINDS.find((x) => x === kind) ?? 'design';
+  return { kind: k, opts: { ...((k === 'motion' || k === 'slides' || k === 'design') && size !== undefined ? { size: validSize(size)! } : {}), ...(look ? { look: String(look) } : {}) } };
+}
+
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
   const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; look?: string; git?: boolean }>();
-  const { title, kind, size } = body;
+  const { title } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
-  if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
-  if (body.look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
-  if (body.look !== undefined && !lookOf(String(body.look))) throw new HttpError(400, 'badLook', { look: String(body.look) });
+  const { kind, opts } = startOptions(body.kind, body.size, body.look);
   const name = body.path !== undefined ? await linkFolder(String(body.path), true) : body.name!;
-  await createProject(
-    name,
-    title || name,
-    kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
-    langOf(c),
-    {
-      ...((kind === 'motion' || kind === 'slides' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {}),
-      ...(body.look ? { look: String(body.look) } : {}),
-    },
-  ).catch(async (e) => {
+  await createProject(name, title || name, kind, langOf(c), opts).catch(async (e) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});
     throw e;
   });
@@ -124,6 +125,20 @@ app.post('/api/projects', async (c) => {
     }
   }
   return c.json({ ok: true, name });
+});
+
+/**
+ * A sub-project inside this project (.design/sub-projects.md): `name` is its folder, `kind` is required.
+ * Claude Code makes one through `scripts/new-sub-project.mjs`; it comes back with the folder to edit.
+ */
+app.post('/api/projects/:p/sub-projects', async (c) => {
+  const p = c.req.param('p');
+  const body = await c.req.json<{ name?: string; title?: string; kind?: string; size?: unknown; look?: string }>();
+  if (!PROJECT_KINDS.some((k) => k === body.kind)) throw new HttpError(400, 'badKind', { kind: String(body.kind ?? '') });
+  const { kind, opts } = startOptions(body.kind, body.size, body.look);
+  const made = await createSubProject(p, String(body.name ?? ''), body.title?.trim() || String(body.name), kind, langOf(c), opts);
+  logInfo('project.sub.created', { project: p, sub: made.name, kind });
+  return c.json({ ok: true, name: made.name, folder: fromRoot(made.dir) });
 });
 
 /** What is at a folder anywhere on disk, for the launcher to say before it opens or creates there. */

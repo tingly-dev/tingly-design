@@ -797,5 +797,25 @@
     "motion": [
       "nested"
     ]
+  },
+  "Claude Code 新建子项目": {
+    "design": [
+      "agent_subproject"
+    ],
+    "slides": [
+      "agent_subproject"
+    ],
+    "design-system": [
+      "agent_subproject"
+    ],
+    "dashboard": [
+      "agent_subproject"
+    ],
+    "docs": [
+      "agent_subproject"
+    ],
+    "motion": [
+      "agent_subproject"
+    ]
   }
 }
