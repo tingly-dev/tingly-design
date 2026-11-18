@@ -103,6 +103,7 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 | 展开非文字元素去编辑（[expand-to-edit](./expand-to-edit.md)） | core 的 `expand.ts`（`editFields` / `planField`）与 `textRun` 操作、运行时双击发 `expand`、`ContentForm`（双击和 Enter 开的气泡 `ExpandPanel`，属性面板的“内容”区 `ContentSection`）、`expand.ts`（`openExpand` / `expandSelection` / `commitField`） | ✓ 图片（来源 + 图片选择器 + alt）、链接、输入框、混排段落的每段文字、卡片的各部分；洞绑定的值改 tweak，脚本的值只读并说明 | ✓ 同一个运行时和同一个表单 | — 没有元素选择；组件预览是整份源码 | — 部件在沙箱框架里，没有元素选择模型 | — 文档是 ProseMirror 的块，不是元素；图片块的来源 / alt 另议（[block-corner-bar](./block-corner-bar.md) §4） | ✓ 与幻灯片共用 `SlideFrame`；背景里的 `x-embed`、`x-icon` 不收 | 第一期不含：列表和表格的增删排（现有右键菜单的复制 / 删除 / 移动）、图标名、列表行里的值（`{{item.x}}`） |
 | AI 能查到的项目配置（[config-awareness](./config-awareness.md)） | core `settingsProject`（`SETTINGS` 按类型的表）；`open` 的 `settings`、委托请求里的 `Project settings now` | ✓ 画板尺寸、设计系统 | ✓ 页面尺寸、设计系统 | ✓ 主题、颜色、字体名 | ✓ 数据集来源 | ✓ 文档外观 | ✓ 格式、帧率、速度 | 跟进提议（配置变化后的“让 Claude 跟进”）是第 2、3 期，还没做 |
 | 配置变化后的跟进提议（[config-awareness](./config-awareness.md)） | core `followUpFor` / `mergeChange` / `describeChange`；编辑器的 `recordChange`、`FollowUp`（在 `RequestBar` 里） | ✓ 画板改尺寸、装入设计系统 | ✓ 页面改尺寸、装入设计系统 | ✓ 改 token（只在系统有组件时提议，第一次改后提议，忽略后不再提） | — 数据来源在编辑器里没有手动入口 | — 外观（字体、宽度）由编辑器自己应用，没有要 AI 做的事；`Project settings now` 里带着当前外观 | ✓ 新增格式；速度在编辑器里没有手动入口 | 提议不自动运行；每次委托都会带上“自上次运行以来改了什么” |
+| 链接的页面（[cross-kind-embedding](./cross-kind-embedding.md)，**方案**，还没有 ✓） | 推广 `imports` 记录、`BoardPicker` 的选择器、面板里的来源行（`editFields` 的新 case）、`pageExport` 出图 | 方案：图片（画板里的 `<img>`）；活的形态等 `dc-import` 能否指到 `uploads/` | 已有：画板（活的）；方案：图片、看板（冻结数据的活的元素，第 2 期） | ✗ 不接收：README 是怎么用这套系统，别的作品的图放 `assets/` 就行；设计系统的页是来源（按需） | ✗ 不接收：图片只许 `data:`、每个文件 ≤ 256 KB、丢掉 `iframe` | 方案：图片（一张普通 Markdown 图片，微信、Word、Markdown 导出不用新规则） | 已有：画板（活的，逐帧）；方案：图片；看板和别的页只给图片（动效逐帧确定） | 副本在 `uploads/linked/<id>/`，记录在索引的 `imports`（加 `kind`、`page`、`mode`、`at` 哈希）；来源变了提示 + 一键更新；子项目来源见该文 §8 |
 
 ## 4. 做跨类型功能时
 
@@ -119,6 +120,6 @@ motion 的设计见 [motion.md](./motion.md)，编辑见 [motion-editing.md](./m
 - motion 的场景新建 / 复制 / 删除 / 排序、元素时间条和关键帧已在编辑器里（[motion-editing.md](./motion-editing.md) §5、§8）；还不能装入设计系统，时间轴不能缩放，拖动场景块换序仍是右键菜单（剩下的分期见 [motion-editing.md](./motion-editing.md) §5、§7）。
 - 文档的段落改写不带附件；设计系统没有快速 AI。
 - 图层树的隐藏和锁定只拦舞台上的操作，属性面板、Delete 键不受锁定限制；多选后批量切换没做（见 [layers-tree.md](./layers-tree.md) §6）。
-- 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。
+- 从项目导入只有画布的画板 → 幻灯片、动效；启动页预览和 PNG 导出不画嵌入的画板（见 [import-from-project.md](./import-from-project.md) §5）。推广到六种类型、加上“来源变了”提示的方案见 [cross-kind-embedding.md](./cross-kind-embedding.md)。
 - 导出菜单共用了；看板的 PDF 只印现在显示的视图（[export-menu.md](./export-menu.md) §5.2、§7）。PPTX 有新项目导入（对象级尽力而为）、向已开 deck 的整批追加，和整份/范围（`--slide 2-4`）可见 slides 导出（原生优先、逐元素图片化、旋转/SVG/表格双线对角线竖排原生化）；独立 Office 渲染验收仍待完成（[slides-pptx.md](./slides-pptx.md)）。
 - 复制为 PNG 在六种类型的导出菜单里都有（`copyImage`），不进命令行：命令行要文件（[export-menu.md](./export-menu.md) §3）。
