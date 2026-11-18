@@ -14,20 +14,11 @@ export default {
     moves: '会动',
     loading: '正在看你的项目…',
     drawing: '正在画 {{title}} 的图…',
-    note: '设计系统暂时没有可以链接的页面。',
-  },
-  page: {
-    board: '画板',
-    slide: '幻灯片',
-    tab: '标签页',
-    dashboard: '看板',
-    motion: '动效',
   },
   panel: {
     title: '链接的页面',
     from: '来自',
     source: '{{page}} · {{project}}',
-    sourceKind: '{{kind}}',
     updateAgainHint: '现在去看原作品，再复制一次。',
     asOf: '截至 {{when}}',
     update: '更新',
@@ -52,7 +43,6 @@ export default {
     undone: '已撤销这次更新。',
     unlinked: '已断开 {{title}} 的链接，副本保持原样。',
     relinked: '已重新链接 {{title}}。',
-    failed: '没能链接这一页：{{message}}',
     placed: {
       slide: '已把 {{title}} 链接到这一页幻灯片。',
       scene: '已把 {{title}} 链接到场景 {{scene}}。',

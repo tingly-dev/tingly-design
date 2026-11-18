@@ -14,20 +14,11 @@ export default {
     moves: 'Moves',
     loading: 'Looking at your projects…',
     drawing: 'Drawing a picture of {{title}}…',
-    note: 'Design systems have no page to link yet.',
-  },
-  page: {
-    board: 'Artboard',
-    slide: 'Slide',
-    tab: 'Tab',
-    dashboard: 'Dashboard',
-    motion: 'Motion piece',
   },
   panel: {
     title: 'Linked page',
     from: 'From',
     source: '{{page}} · {{project}}',
-    sourceKind: '{{kind}}',
     updateAgainHint: 'Check the original now and copy it again.',
     asOf: 'As of {{when}}',
     update: 'Update',
@@ -52,7 +43,6 @@ export default {
     undone: 'Took the update back.',
     unlinked: 'Unlinked {{title}}. The copy stays as it is.',
     relinked: 'Linked {{title}} again.',
-    failed: 'Could not link the page: {{message}}',
     placed: {
       slide: 'Linked {{title}} onto the slide.',
       scene: 'Linked {{title}} onto scene {{scene}}.',

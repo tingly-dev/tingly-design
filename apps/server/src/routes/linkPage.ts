@@ -7,6 +7,9 @@ import { fingerprint, keepStash, relInside, renderPagePng, resolveSource, source
 import { logInfo } from '../log';
 import { HttpError, isProjectName, kindOf, listProjects, projectDir, readAsset, readOne, resolveKey, withLock, writeAsset, writeAtomic } from '../store';
 
+/** The language the person's editor shows: pictures of a page are drawn with it (what the page says in its own empty states follows it). */
+const langOf = (c: { req: { header(name: string): string | undefined } }) => (c.req.header('x-dc-lang') === 'zh' ? 'zh' : 'en');
+
 /** The project's own records of linked pages, from its index. */
 async function recordsOf(p: string, kind: ProjectKind): Promise<LinkedPage[]> {
   const index = await readOne(p, INDEX_FILE[kind]);
@@ -52,7 +55,7 @@ export function registerLinkPage(app: Hono): void {
     const files = await textFiles(from);
     const found = pagesOf(sourceKind, files).find((x) => x.page === String(page ?? ''));
     if (!found) throw new HttpError(404, 'linkNoPage', { name: from, page: String(page ?? '') });
-    const png = await renderPagePng(from, sourceKind, found.page, files);
+    const png = await renderPagePng(from, sourceKind, found.page, files, langOf(c));
     const at = await fingerprint(from, sourceKind, found.page, files);
     const rel = relInside(projectDir(p), projectDir(from));
     return withLock(p, async () => {
@@ -116,7 +119,7 @@ export function registerLinkPage(app: Hono): void {
     if (typeof src === 'string') throw new HttpError(404, 'linkGone', { name: rec.from.replace(/^projects\//, '') });
     const files = await textFiles(src.name);
     if (!pagesOf(src.kind, files).some((x) => x.page === rec.page)) throw new HttpError(404, 'linkNoPage', { name: src.name, page: rec.page });
-    const png = rec.mode === 'image' ? await renderPagePng(src.name, rec.kind, rec.page, files) : null;
+    const png = rec.mode === 'image' ? await renderPagePng(src.name, rec.kind, rec.page, files, langOf(c)) : null;
     const at = await fingerprint(src.name, rec.kind, rec.page, files);
     return withLock(p, async () => {
       let replaced: { rel: string; bytes: Buffer | null }[];
