@@ -286,14 +286,6 @@ export async function linkFolder(input: string, create = false): Promise<string>
   return name;
 }
 
-/** A sub-project named in memory for a folder: found on the disk from now on, and held until written when `pending`. */
-function registerNested(name: string, abs: string, parent: string, pending: boolean): void {
-  links.set(name, abs);
-  nestedNames.add(name);
-  parentOf.set(name, parent);
-  if (pending) pendingNested.add(name);
-}
-
 /** Takes a linked project off the list. Its folder and files stay where they are. */
 export async function unlinkProject(key: string): Promise<void> {
   const name = resolveKey(key);
@@ -1119,4 +1111,25 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
   await mkdir(dir, { recursive: true });
   await STARTER[kind]({ name, title, lang, t, opts, look });
+}
+
+/**
+ * A new project inside `parent`'s folder: the folder `leaf`, written with `kind`'s starter (the same as the
+ * New dialog's) and linked like a project made there by hand (.design/sub-projects.md). What Claude Code
+ * reaches through `scripts/new-sub-project.mjs`; like the dialog's Location it needs links, so a host with
+ * `DC_LINKS=0` refuses it.
+ */
+export async function createSubProject(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
+  const parentDir = projectDir(resolveKey(parent));
+  if (!(await kindOf(parentDir))) throw new HttpError(404, 'noProject', { name: parent });
+  if (!isProjectName(leaf)) throw new HttpError(400, 'badProjectName');
+  const dir = join(parentDir, leaf);
+  const name = await linkFolder(dir, true);
+  try {
+    await createProject(name, title, kind, lang, opts);
+  } catch (e) {
+    await unlinkProject(name).catch(() => {});
+    throw e;
+  }
+  return { name, dir };
 }

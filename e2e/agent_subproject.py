@@ -1,7 +1,7 @@
-"""End-to-end checks for Claude Code opening a sub-project (.design/sub-projects.md §8): a delegated request is allowed
+"""End-to-end checks for Claude Code opening a sub-project (.design/sub-projects.md §7): a delegated request is allowed
 the one script that makes a sub-project and told how, the stand-in `claude` (e2e/fake-claude, which enforces the
-allowed tools) runs it, and a project of each kind appears inside the project, in the list under it and on disk, while
-the parent's own files stay as they were; a reserved or taken name and a command outside the list are refused.
+allowed tools) runs it, and a project of each kind appears inside the project's folder, listed like any project and on
+disk, while the parent's own files stay as they were; a reserved or taken name and a command outside the list are refused.
 Run with `pnpm dev` started with e2e/fake-claude first on PATH: python3 e2e/agent_subproject.py (or pnpm e2e agent_subproject)"""
 import os, json, re, shutil, time, urllib.request, urllib.error
 
@@ -26,6 +26,9 @@ def call(method, path, body=None):
         return e.code, json.loads(e.read() or b'{}')
 
 def cards(): return {c['name']: c for c in call('GET', '/api/projects')[1]}
+def links():
+    f = os.path.join(PROJECTS, '.links.json')
+    return json.load(open(f)) if os.path.exists(f) else {}
 def files(name): return sorted(call('GET', f'/api/projects/{name}/files')[1]['files'])
 
 def ask(project, prompt):
@@ -44,8 +47,14 @@ def run(project, command):
     ev = ask(project, f'Draw it. FAKE_RUN: {command}')
     return next((e for e in ev if e['ev'] == 'ran'), None), next((e for e in ev if e['ev'] == 'start'), None), [e for e in ev if e['ev'] == 'denied']
 
-def main():
+def cleanup(before_links):
+    for name, path in links().items():
+        if f'/{PARENT}/' in path and name not in before_links: call('DELETE', f'/api/links/{name}')
     shutil.rmtree(os.path.join(PROJECTS, PARENT), ignore_errors=True)
+
+def main():
+    before_links = links()
+    cleanup(before_links)
     st, r = call('POST', '/api/projects', {'name': PARENT, 'title': 'Agent Sub', 'kind': 'design'})
     check('a parent project is made', st == 200, str(r))
     parent_dir = os.path.join(PROJECTS, PARENT)
@@ -62,7 +71,7 @@ def main():
         check(f'{kind}: the script ran and printed the new folder', ran is not None and ran['code'] == 0 and ran['out'].endswith(f'/{PARENT}/{folder}/'), str(ran))
         c = next((c for c in cards().values() if c.get('path', '').endswith(f'/{PARENT}/{folder}')), None)
         made[folder] = c
-        check(f'{kind}: it is a sub-project of its kind in the list, under the parent', c is not None and c['kind'] == kind and c['parent'] == PARENT and c['title'] == folder.title(), str(c))
+        check(f'{kind}: it is a project of its kind in the list, with its folder inside the parent', c is not None and c['kind'] == kind and c['title'] == folder.title(), str(c))
         check(f'{kind}: its index file is on disk inside the parent folder', any(os.path.exists(os.path.join(parent_dir, folder, f)) for f in ('canvas.json', 'deck.json', 'design-system.json', 'dash.json', 'doc.json', 'motion.json')))
     check("the parent's own files are as they were", files(PARENT) == before, f'{before} -> {files(PARENT)}')
     board = next((f for f in os.listdir(os.path.join(parent_dir, 'figure')) if f.endswith('.dc.html')), '')
@@ -78,7 +87,7 @@ def main():
     figure = made['figure']['name']
     ran, _, _ = run(figure, f'{SCRIPT} {figure} canvas inner "Inner"')
     inner = next((c for c in cards().values() if c.get('path', '').endswith(f'/{PARENT}/figure/inner')), None)
-    check('a sub-project makes one of its own', ran is not None and ran['code'] == 0 and inner is not None and inner['parent'] == figure, str(ran))
+    check('a sub-project makes one of its own', ran is not None and ran['code'] == 0 and inner is not None and not any(f.startswith('inner/') for f in files(figure)), str(ran))
 
     # --- refusals ---------------------------------------------------------------------------------
     ran, _, _ = run(PARENT, f'{SCRIPT} {PARENT} canvas uploads')
@@ -98,8 +107,9 @@ def main():
     check('no sub-project left a folder of its own name in the projects folder', not stray, str(stray))
     check("the parent's own files are still as they were", files(PARENT) == before)
 
-    shutil.rmtree(parent_dir, ignore_errors=True)
+    cleanup(before_links)
     for d in stray: shutil.rmtree(os.path.join(PROJECTS, d), ignore_errors=True)
+    check('the links file is as it was', links() == before_links, str(links()))
     ok = sum(1 for _, k in results if k)
     print(f'\n{ok}/{len(results)} checks passed')
     raise SystemExit(0 if ok == len(results) else 1)
