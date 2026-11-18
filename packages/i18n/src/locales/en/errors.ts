@@ -13,6 +13,7 @@ export default {
   folderHasProject: '{{path}} already holds a project; open it instead',
   folderNotEmpty: '{{path}} already has other files in it; pick an empty or new folder',
   folderIsProject: '{{path}} is a project itself; open it as a project',
+  badKind: 'A project kind is one of design, slides, design-system, dashboard, docs or motion, not {{kind}}',
   subReserved: '{{name}} is a folder a project keeps its own files in; give the sub-project another name',
   folderIsProjectsFolder: '{{path}} is the projects folder, which is already listed',
   noProjectsInFolder: 'There are no Tingly Design projects in {{path}}',

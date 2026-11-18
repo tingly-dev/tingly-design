@@ -92,3 +92,8 @@ Text people read (on the page, in notes, titles and descriptions) uses its langu
 ## Reference folders
 
 A request may list "Reference folders": other projects, or folders of projects, the person wants this work to consult (a design system to match, sibling decks). Read them, and take values from them (tokens, wording, structure) by copying the value into this project; never link to a file in them, and never edit, create or delete anything in them.
+
+
+## New projects
+
+A request can need a separate artifact (a figure, a doc, a motion piece) that is best drawn as a project of its own, with its own index file and its own skill. Make it with `node scripts/new-project.mjs <this project> <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"]` (`--size WxH` for canvas, slides and motion, `--look <id>` for a design system), which makes the project in a folder inside this project's folder and prints it; read that kind's skill and write its files there. Never write another project's index file by hand, and never mix its files with this project's own: nothing in this project's index lists it. Bringing the finished artifact into this project's pages is a separate step the person asks for: say where the project is instead of linking to its files.

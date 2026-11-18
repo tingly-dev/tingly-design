@@ -1115,3 +1115,23 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   await mkdir(dir, { recursive: true });
   await STARTER[kind]({ name, title, lang, t, opts, look });
 }
+
+/**
+ * A new project in the folder `leaf` inside `parent`'s folder, written with `kind`'s starter (the same as
+ * the New dialog's) and linked like a project made at that path by hand. What Claude Code reaches through
+ * `scripts/new-project.mjs`; like the dialog's Location it needs links, so a host with `DC_LINKS=0` refuses it.
+ */
+export async function createProjectIn(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
+  const parentDir = projectDir(resolveKey(parent));
+  if (!(await kindOf(parentDir))) throw new HttpError(404, 'noProject', { name: parent });
+  if (!isProjectName(leaf)) throw new HttpError(400, 'badProjectName');
+  const dir = join(parentDir, leaf);
+  const name = await linkFolder(dir, true);
+  try {
+    await createProject(name, title, kind, lang, opts);
+  } catch (e) {
+    await unlinkProject(name).catch(() => {});
+    throw e;
+  }
+  return { name, dir };
+}

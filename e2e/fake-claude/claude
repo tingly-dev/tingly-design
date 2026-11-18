@@ -3,6 +3,7 @@
 // answers with a session id (the one it was resumed with, else a new one) and a result.
 import fs from 'fs';
 import { randomUUID } from 'crypto';
+import { execSync } from 'child_process';
 const args = process.argv.slice(2);
 if (args[0] === '--version') { console.log('0.0.0-fake'); process.exit(0); }
 const i = args.indexOf('--resume');
@@ -13,6 +14,23 @@ if (resume === '00000000-0000-4000-8000-000000000000') {
   process.stderr.write(`No conversation found with session ID: ${resume}\n`);
   log({ ev: 'end', code: 1 });
   process.exit(1);
+}
+// `FAKE_RUN: <command>` in the request: what a model would do, a command of its own, but only one its --allowedTools allows
+const asked = /FAKE_RUN: (.+)/.exec(args[args.indexOf('-p') + 1] ?? '');
+if (asked) {
+  const cmd = asked[1].trim();
+  const allowed = (args[args.indexOf('--allowedTools') + 1] ?? '').split(',').some((t) => {
+    const m = /^Bash\((.*):\*\)$/.exec(t);
+    return !!m && cmd.startsWith(m[1]);
+  });
+  if (!allowed) log({ ev: 'denied', cmd });
+  else {
+    try {
+      log({ ev: 'ran', cmd, code: 0, out: execSync(cmd, { encoding: 'utf8', cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] }).trim() });
+    } catch (e) {
+      log({ ev: 'ran', cmd, code: e.status, err: String(e.stderr ?? e.message).trim() });
+    }
+  }
 }
 const session = resume || randomUUID();
 console.log(JSON.stringify({ type: 'system', subtype: 'init', session_id: session }));
