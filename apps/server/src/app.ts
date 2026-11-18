@@ -18,7 +18,6 @@ import { DC_LANG, langOf, trOf } from './i18n';
 import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 import { registerDesignSystems } from './routes/designSystems';
-import { registerImportBoard } from './routes/importBoard';
 import { registerLinkPage } from './routes/linkPage';
 import { registerPptxSlides } from './routes/pptxSlides';
 import { registerAssets } from './routes/assets';
@@ -350,7 +349,6 @@ app.delete('/api/projects/:p/file', async (c) => {
 });
 
 registerDesignSystems(app);
-registerImportBoard(app);
 registerLinkPage(app);
 registerPptxSlides(app);
 registerAssets(app);

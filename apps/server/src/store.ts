@@ -24,6 +24,7 @@ import {
   DASH_INDEX,
   DASH_PAGE,
   DASH_STARTER_PAGE,
+  isDashBundlePath,
   isDashFile,
   isDataPath,
   newDash,
@@ -524,6 +525,8 @@ export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
   if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
+  // a dashboard frozen into a slide's folder: the one text file of a linked page that is not an artboard
+  if (isDashBundlePath(r)) return r;
   // a design system's text files, and a copy of one installed into a canvas, deck or doc (its tokens, and the description a built-in look carries)
   if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/(tokens\.json|README\.md)$/.test(r)) return r;
   throw new HttpError(400, 'notProjectFile', { path: rel });

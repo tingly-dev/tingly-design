@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
-import { INDEX_FILE, dropLinked, linkModes, linkedDir, linkedPagesOf, linkedStem, newLinkId, pagesOf, pngSize, putLinked, takesPages, type LinkCheck, type LinkedPage, type ProjectKind } from '@dc/core';
+import { DASH_VIEW, INDEX_FILE, dropLinked, importedBoardDir, linkModes, linkedDir, linkedPagesOf, linkedStem, newLinkId, pagesOf, pngSize, putLinked, takesPages, type LinkCheck, type LinkMode, type LinkedPage, type ProjectKind } from '@dc/core';
 import { editIndex } from './shared';
-import { copyArtboard } from './importBoard';
+import { bundleName, copyLive, drawPoster, isLiveText, type Replaced } from '../linkedCopy';
 import { publish, record } from '../hub';
 import { fingerprint, keepStash, relInside, renderPagePng, resolveSource, sourcesFor, takeStash, textFiles } from '../linkedPage';
 import { logInfo } from '../log';
@@ -27,10 +27,11 @@ async function targetKind(p: string): Promise<ProjectKind> {
 }
 
 /**
- * Pages of other projects in this one (.design/cross-kind-embedding.md): the picker's list, a picture of
- * a page copied in with a record of where it came from, whether the original has changed since, and the
- * one-step update, undo and unlink. An artboard shown live in slides and motion is still copied by
- * `import-board`; its record is the same kind of record, so the same check and update apply to it.
+ * Pages of other projects in this one (.design/cross-kind-embedding.md): the picker's list, a page copied
+ * in (live where it can run, with a picture drawn beside it; or only the picture) with a record of where it
+ * came from, whether the original has changed since, and the one-step update, undo and unlink. A live
+ * artboard and a frozen dashboard are the same kind of record as a picture, so the same check and update
+ * apply to all of them.
  */
 export function registerLinkPage(app: Hono): void {
   /** The projects whose pages this one can take, each with its pages, the ones inside this project's folder first. */
@@ -41,34 +42,60 @@ export function registerLinkPage(app: Hono): void {
     return c.json({ sources: await sourcesFor(p, kind) });
   });
 
-  /** Put a picture of a page of another project in this one: drawn the way the original's Export menu draws it, kept under uploads/linked/<id>/. */
+  /**
+   * Put a page of another project in this one. `mode` says what to keep: `live` (an artboard copied with what
+   * it mounts and shows, or a dashboard frozen into one file; the picture beside it is drawn in the
+   * background) or `image` (a picture drawn the way the original's Export menu draws it, kept under
+   * uploads/linked/<id>/). Left out, the source's preferred form for this kind of project.
+   */
   app.post('/api/projects/:p/link-page', async (c) => {
     const p = c.req.param('p');
-    const { from: named, page } = await c.req.json<{ from: string; page: string }>();
+    const { from: named, page, mode: asked } = await c.req.json<{ from: string; page: string; mode?: LinkMode }>();
     if (!isProjectName(named ?? '')) throw new HttpError(400, 'badProjectName');
     const from = resolveKey(named);
     if (from === p) throw new HttpError(400, 'linkSelf');
     const into = await targetKind(p);
     const sourceKind = await kindOf(projectDir(from));
     if (!sourceKind) throw new HttpError(404, 'noProject', { name: from });
-    if (!linkModes(sourceKind, into).includes('image')) throw new HttpError(400, 'linkNotTaken', { into, from: sourceKind });
+    const modes = linkModes(sourceKind, into);
+    const mode: LinkMode = asked === 'live' || asked === 'image' ? asked : modes[0];
+    if (!modes.includes(mode)) throw new HttpError(400, 'linkNotTaken', { into, from: sourceKind });
     const files = await textFiles(from);
     const found = pagesOf(sourceKind, files).find((x) => x.page === String(page ?? ''));
     if (!found) throw new HttpError(404, 'linkNoPage', { name: from, page: String(page ?? '') });
+    const rel = relInside(projectDir(p), projectDir(from));
+    const taken = (records: LinkedPage[]) => records.flatMap((r) => [r.path, r.poster ?? '']).map((x) => /^uploads\/linked\/([^/]+)\//.exec(x)?.[1]).filter((x): x is string => !!x);
+    if (mode === 'live') {
+      const at = await fingerprint(from, sourceKind, found.page, files);
+      const out = await withLock(p, async () => {
+        const records = await recordsOf(p, into);
+        const same = records.find((r) => r.mode === 'live' && r.kind === sourceKind && r.page === found.page && r.from === `projects/${from}`);
+        const path = same?.path ?? (sourceKind === 'design' ? `${importedBoardDir(from, found.page)}/${found.page}` : `${linkedDir(newLinkId(taken(records)))}/${bundleName(found.title)}`);
+        const replaced = await copyLive(p, { name: from, kind: sourceKind }, found.page, path, files, `${found.title} linked from ${from}`);
+        if (same && replaced.length) keepStash(p, { record: same, files: replaced });
+        // where the picture will be kept, so the page can name it before it is drawn
+        const poster = same?.poster ?? `${linkedDir(newLinkId([...taken(records), ...(path.startsWith('uploads/linked/') ? [path.split('/')[2]] : [])]))}/${linkedStem(found.page === 'index' ? found.title : found.page)}.png`;
+        const rec: LinkedPage = { path, from: `projects/${from}`, ...(rel ? { rel } : {}), kind: sourceKind, page: found.page, mode: 'live', poster, at, copiedAt: new Date().toISOString() };
+        await editIndex(p, INDEX_FILE[into], (json) => void (json.imports = putLinked(json.imports, rec)), `${found.title} linked from ${from}`);
+        logInfo('link.added', { project: p, from, page: found.page, kind: sourceKind, mode });
+        return { record: rec, size: sourceKind === 'design' ? (found.size ?? [1280, 720]) : DASH_VIEW, title: found.title };
+      });
+      // the picture beside it is drawn while the person goes on; the panel and the exports use it once it is there
+      void drawPoster(p, into, out.record.path, langOf(c));
+      return c.json(out);
+    }
     const png = await renderPagePng(from, sourceKind, found.page, files, langOf(c));
     const at = await fingerprint(from, sourceKind, found.page, files);
-    const rel = relInside(projectDir(p), projectDir(from));
     return withLock(p, async () => {
       const records = await recordsOf(p, into);
       const same = records.find((r) => r.mode === 'image' && r.kind === sourceKind && r.page === found.page && r.from === `projects/${from}`);
-      const taken = records.map((r) => /^uploads\/linked\/([^/]+)\//.exec(r.path)?.[1]).filter((x): x is string => !!x);
-      const path = same?.path ?? `${linkedDir(newLinkId(taken))}/${linkedStem(found.page)}.png`;
+      const path = same?.path ?? `${linkedDir(newLinkId(taken(records)))}/${linkedStem(found.page)}.png`;
       if (same) keepStash(p, { record: same, files: [{ rel: path, bytes: await readAsset(p, path) }] });
       await writeAsset(p, path, new Uint8Array(png));
       publish(p, { type: 'assets' });
       const rec: LinkedPage = { path, from: `projects/${from}`, ...(rel ? { rel } : {}), kind: sourceKind, page: found.page, mode: 'image', at, copiedAt: new Date().toISOString() };
       await editIndex(p, INDEX_FILE[into], (json) => void (json.imports = putLinked(json.imports, rec)), `${found.title} linked from ${from}`);
-      logInfo('link.added', { project: p, from, page: found.page, kind: sourceKind, bytes: png.length });
+      logInfo('link.added', { project: p, from, page: found.page, kind: sourceKind, mode, bytes: png.length });
       return c.json({ record: rec, size: pngSize(png), title: found.title });
     });
   });
@@ -121,23 +148,49 @@ export function registerLinkPage(app: Hono): void {
     if (!pagesOf(src.kind, files).some((x) => x.page === rec.page)) throw new HttpError(404, 'linkNoPage', { name: src.name, page: rec.page });
     const png = rec.mode === 'image' ? await renderPagePng(src.name, rec.kind, rec.page, files, langOf(c)) : null;
     const at = await fingerprint(src.name, rec.kind, rec.page, files);
-    return withLock(p, async () => {
-      let replaced: { rel: string; bytes: Buffer | null }[];
+    const out = await withLock(p, async () => {
+      let replaced: Replaced[];
       if (png) {
         replaced = [{ rel: rec.path, bytes: await readAsset(p, rec.path) }];
         await writeAsset(p, rec.path, new Uint8Array(png));
         publish(p, { type: 'assets' });
       } else {
-        // the artboard is copied to where its record says it is, whatever the project is called now
-        const dir = rec.path.slice(0, rec.path.lastIndexOf('/'));
-        ({ replaced } = await copyArtboard(p, src.name, rec.page, dir, `artboard ${rec.page} updated from ${src.name}`));
+        // copied to where the record says it is, whatever the project is called now
+        replaced = await copyLive(p, src, rec.page, rec.path, files, `${rec.page} updated from ${src.name}`);
       }
       const next: LinkedPage = { ...rec, at, copiedAt: new Date().toISOString() };
-      keepStash(p, { record: rec, files: replaced });
+      const stash = { record: rec, files: replaced };
+      keepStash(p, stash);
       await editIndex(p, INDEX_FILE[kind], (json) => void (json.imports = putLinked(json.imports, next)), `${rec.page} updated from ${src.name}`);
       logInfo('link.updated', { project: p, from: src.name, page: rec.page, mode: rec.mode });
-      return c.json({ record: next, changed: replaced.length > 0 || !!png, size: png ? pngSize(png) : null });
+      return { next, stash, replaced: replaced.length > 0 };
     });
+    let { next } = out;
+    let changed = out.replaced || !!png;
+    if (rec.mode === 'live') {
+      // the picture kept beside the live copy is drawn again with it; what it replaced goes back with an Undo
+      const old = rec.poster ? await readAsset(p, rec.poster).catch(() => null) : null;
+      const poster = await drawPoster(p, kind, rec.path, langOf(c));
+      if (poster) {
+        if (old) out.stash.files.push({ rel: poster, bytes: old });
+        next = { ...next, poster };
+        changed = true;
+      }
+    }
+    return c.json({ record: next, changed, size: png ? pngSize(png) : null });
+  });
+
+  /** The picture kept beside a live copy: the path of it, drawn first when it is not there yet. */
+  app.post('/api/projects/:p/link-poster', async (c) => {
+    const p = c.req.param('p');
+    const { path } = await c.req.json<{ path: string }>();
+    const kind = await targetKind(p);
+    const rec = (await recordsOf(p, kind)).find((r) => r.path === path);
+    if (!rec) throw new HttpError(404, 'linkNoRecord');
+    const poster = rec.mode === 'image' ? rec.path : (rec.poster ?? (await drawPoster(p, kind, rec.path, langOf(c))));
+    if (!poster) throw new HttpError(503, 'linkNoPoster');
+    const bytes = await readAsset(p, poster).catch(() => null);
+    return c.json({ poster, size: bytes ? pngSize(new Uint8Array(bytes)) : null });
   });
 
   /** Take back the last update of one linked page. */
@@ -150,7 +203,7 @@ export function registerLinkPage(app: Hono): void {
     return withLock(p, async () => {
       for (const f of stash.files) {
         if (!f.bytes) continue;
-        if (f.rel.endsWith('.dc.html')) {
+        if (isLiveText(f.rel)) {
           const content = f.bytes.toString('utf8');
           const version = await writeAtomic(p, f.rel, content);
           publish(p, { type: 'file', path: f.rel, content, version, actor: 'human' });

@@ -71,9 +71,9 @@ A person can import an artboard of a canvas project into a piece (import menu �
 
 ## Linked pages
 
-A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page into `uploads/linked/<id>/<name>.png`, records where it came from in `motion.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture on the scene under the playhead as an `<img>` that enters at the playhead. An artboard of a canvas shown live is the `<x-embed>` described above and has the same record.
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server records where it came from in `motion.json` `imports` (`{path, from, kind, page, mode, poster, at, copiedAt}`) and the editor puts it on the scene under the playhead: a canvas artboard stays the live `<x-embed>` described above (it keeps a picture of itself beside it, `poster`, and the person can switch it to that picture in the panel, which swaps it for an `<img>`); every other page (a slide, a doc tab, a dashboard, a motion piece) is only a picture, an `<img src="uploads/linked/<id>/<name>.png">` that enters at the playhead (a dashboard is not a function of time, so it cannot be seeked).
 
-- It is a copy: you may leave it, resize it or move it, but never edit or replace the file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
+- It is a copy: you may leave it, resize it or move it, but never edit or replace a file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
 - To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
 
 ## Pictures and files people brought in

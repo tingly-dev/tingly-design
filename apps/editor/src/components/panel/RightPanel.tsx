@@ -71,7 +71,7 @@ function Inspector() {
         <>
           <FormatNote file={file} el={el} />
           {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
-          {isLinkedImgEl(el) && <LinkedPanel key={`l${file}#${el.tid}`} path={attr(el, 'src') ?? ''} />}
+          {isLinkedImgEl(el) && <LinkedPanel key={`l${file}#${el.tid}`} path={attr(el, 'src') ?? ''} show={{ file, el }} />}
           <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
           <AnimRow key={`a${file}#${el.tid}`} file={file} el={el} />
         </>
@@ -82,7 +82,7 @@ function Inspector() {
     body = (
       <>
           {isBoardEmbedEl(el) && <BoardEmbedProps key={`b${file}#${el.tid}`} file={file} el={el} />}
-          {isLinkedImgEl(el) && <LinkedPanel key={`l${file}#${el.tid}`} path={attr(el, 'src') ?? ''} />}
+          {isLinkedImgEl(el) && <LinkedPanel key={`l${file}#${el.tid}`} path={attr(el, 'src') ?? ''} show={{ file, el }} />}
           <ElementProps key={`${file}#${el.tid}`} file={file} el={el} info={info} />
           <BuildRow file={file} tid={el.tid} />
       </>

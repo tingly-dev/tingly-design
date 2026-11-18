@@ -5,7 +5,7 @@
  * so selection, dragging and the panel treat it like any other element.
  */
 import React from 'react';
-import { boardFrameDoc, boardSize, connectorArt, coverFit, iconArt, parseDc, parseStyle, shapeArt, styleObject } from '@dc/core';
+import { DASH_VIEW, EMPTY_STATE, boardFrameDoc, boardSize, connectorArt, coverFit, dashFrameDoc, iconArt, parseDashBundle, parseDc, parseStyle, shapeArt, styleObject, type FromDash, type ToDash } from '@dc/core';
 
 type Props = Record<string, unknown> & { style?: Record<string, string> };
 
@@ -93,6 +93,7 @@ export function XBoard({
   mode,
   still,
   live,
+  poster,
 }: {
   props: Props;
   src: string;
@@ -101,6 +102,8 @@ export function XBoard({
   base: string;
   mode: string;
   still?: boolean;
+  /** the picture kept beside the artboard: what a thumbnail draws instead of running it (an artboard with tweaks set differs from it, so it keeps the placeholder) */
+  poster?: string;
   /** run the artboard's clock (presenting a slide) */
   live?: boolean;
 }) {
@@ -147,7 +150,11 @@ export function XBoard({
     return React.createElement(
       'x-embed',
       { ...props, ref: host, style },
-      <div style={{ width: '100%', height: '100%', background: 'repeating-linear-gradient(45deg, rgba(127,127,127,.18) 0 12px, rgba(127,127,127,.08) 12px 24px)' }} />,
+      still && poster && !Object.keys(tweaks).length ? (
+        <img src={poster} alt="" style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <div style={{ width: '100%', height: '100%', background: 'repeating-linear-gradient(45deg, rgba(127,127,127,.18) 0 12px, rgba(127,127,127,.08) 12px 24px)' }} />
+      ),
     );
   }
   const fit = coverFit(size, box[0] && box[1] ? box : size);
@@ -167,6 +174,112 @@ export function XBoard({
         top: 0,
         width: size[0],
         height: size[1],
+        border: 0,
+        background: 'transparent',
+        transform: `translate(${fit.x}px, ${fit.y}px) scale(${fit.scale})`,
+        transformOrigin: '0 0',
+        pointerEvents: mode === 'play' ? 'auto' : 'none',
+      }}
+    />,
+  );
+}
+
+/**
+ * `<x-embed src="uploads/linked/<id>/X.dash.json">`: a dashboard frozen into one file, run by the dashboard
+ * runtime in its own frame (laid out as a window of `DASH_VIEW`, scaled to cover the embed). This is the
+ * dashboard editor's side of the frame, small: it answers the page's questions from what was frozen and
+ * nothing is queried (a loader's `dash.call` is answered with why not). Frozen means it looks the same on
+ * every machine and in every export.
+ */
+export function XDash({ props, src, files, mode, still, poster }: { props: Props; src: string; files: Record<string, string>; mode: string; still?: boolean; poster?: string }) {
+  const host = React.useRef<HTMLElement>(null);
+  const ref = React.useRef<HTMLIFrameElement>(null);
+  const [box, setBox] = React.useState<[number, number]>([0, 0]);
+  const source = files[src];
+  const bundle = React.useMemo(() => parseDashBundle(source), [source]);
+  const doc = React.useMemo(() => dashFrameDoc(RUNTIME_DIR), []);
+  React.useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const measure = () => setBox([el.offsetWidth, el.offsetHeight]);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  React.useEffect(() => {
+    if (!bundle) return;
+    const onMsg = (e: MessageEvent) => {
+      const w = ref.current?.contentWindow;
+      if (!w || e.source !== w) return;
+      const m = e.data as FromDash;
+      if (!m || typeof m !== 'object' || typeof m.dc !== 'string') return;
+      const send = (x: ToDash) => w.postMessage(x, '*');
+      switch (m.dc) {
+        case 'ready':
+          send({ dc: 'dash-page', files: bundle.files, datasets: Object.keys(bundle.datasets), params: bundle.params, theme: bundle.theme, link: '', mode: 'page' });
+          break;
+        case 'dash-want': {
+          const states = Object.fromEntries(m.ids.filter((id) => bundle.datasets[id]).map((id) => [id, bundle.datasets[id].state]));
+          if (Object.keys(states).length) send({ dc: 'dash-data', states });
+          break;
+        }
+        case 'dash-declared': {
+          // a dataset the page reshapes with a loader: it is handed the answer the query gave, and the table stands aside
+          const raw: Record<string, { answer: unknown; args: Record<string, unknown> }> = {};
+          const states: Record<string, typeof EMPTY_STATE> = {};
+          for (const id of m.loaders) {
+            const d = bundle.datasets[id];
+            if (!d?.raw) continue;
+            raw[id] = d.raw;
+            states[id] = { ...EMPTY_STATE, status: 'ok' };
+          }
+          if (Object.keys(raw).length) send({ dc: 'dash-data', states, raw });
+          break;
+        }
+        case 'dash-call':
+          send({ dc: 'dash-call-result', call: m.call, error: 'this dashboard is frozen: it cannot ask the source again' });
+          break;
+        case 'dash-set-params':
+          // filters work on what was frozen; a reset goes back to the dashboard's own
+          send({ dc: 'dash-params', params: m.params ?? bundle.params });
+          break;
+      }
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [bundle]);
+  const style = { ...(props.style ?? {}), overflow: 'hidden' } as Record<string, string>;
+  if (still || !bundle) {
+    // thumbnails and a file that cannot be read: the picture kept beside it when there is one, else a quiet placeholder
+    return React.createElement(
+      'x-embed',
+      { ...props, ref: host, style },
+      still && poster ? (
+        <img src={poster} alt="" style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+      ) : (
+        <div style={{ width: '100%', height: '100%', background: 'repeating-linear-gradient(45deg, rgba(127,127,127,.18) 0 12px, rgba(127,127,127,.08) 12px 24px)' }} />
+      ),
+    );
+  }
+  const fit = coverFit(DASH_VIEW, box[0] && box[1] ? box : DASH_VIEW);
+  return React.createElement(
+    'x-embed',
+    { ...props, ref: host, style },
+    <iframe
+      ref={ref}
+      key={source}
+      srcDoc={doc}
+      sandbox="allow-scripts"
+      referrerPolicy="no-referrer"
+      tabIndex={-1}
+      title={bundle.title}
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: DASH_VIEW[0],
+        height: DASH_VIEW[1],
         border: 0,
         background: 'transparent',
         transform: `translate(${fit.x}px, ${fit.y}px) scale(${fit.scale})`,

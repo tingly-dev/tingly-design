@@ -62,7 +62,7 @@ Text people read (on the page, in notes, titles and descriptions) uses its langu
 
 ## Linked pages
 
-A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page into `uploads/linked/<id>/<name>.png`, records where it came from in `doc.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture at the end of the open tab, or at the cursor, as an ordinary Markdown image `![…](../uploads/linked/<id>/<name>.png)`.
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page (the picture kept for it) into `uploads/linked/<id>/<name>.png`, records where it came from in `doc.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture at the end of the open tab, or at the cursor, as an ordinary Markdown image `![…](../uploads/linked/<id>/<name>.png)`.
 
 - It is a copy: you may leave it, resize it or move it, but never edit or replace the file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
 - To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
