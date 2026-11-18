@@ -356,6 +356,18 @@ export const docsImport: ImportTarget = {
   get what() {
     return t('docs.import.what');
   },
+  page: {
+    get what() {
+      return t('linked.picker.what', { kind: t('launcher.kind.docs.name').toLowerCase() });
+    },
+    place: ({ path, title, project }) => {
+      const tab = openTabId();
+      if (!tab) return t('linked.toast.placed.noTab');
+      const alt = t('linked.alt', { title, project }).replace(/[[\]]/g, '');
+      edit(tabFile(tab), (src) => `${src.replace(/\s*$/, '')}\n\n![${alt}](../${path})\n`, { actor: 'human', summary: `${tabFile(tab)}: linked page ${title}` });
+      return t('linked.toast.placed.doc', { title });
+    },
+  },
   run: async (picked) => {
     const project = useStore.getState().project!;
     const docs = filesOf(picked, 'markdown');
@@ -387,12 +399,17 @@ export const docsImport: ImportTarget = {
   },
 };
 
-/** Pictures onto the end of the open tab, each kept in uploads/ and written as a Markdown image relative to the tab file. */
-async function addPictures(project: string, pictures: Picked['files']): Promise<string> {
+/** The tab that is open, or the first when none is: where a picture dropped on the doc as a whole goes. */
+function openTabId(): string | undefined {
   const d = parseDoc(display(useStore.getState(), DOC_INDEX));
   const order = tabOrder(d);
   const want = useDocs.getState().tab;
-  const tab = want && order.some((x) => x.id === want) ? want : order[0]?.id;
+  return want && order.some((x) => x.id === want) ? want : order[0]?.id;
+}
+
+/** Pictures onto the end of the open tab, each kept in uploads/ and written as a Markdown image relative to the tab file. */
+async function addPictures(project: string, pictures: Picked['files']): Promise<string> {
+  const tab = openTabId();
   if (!tab) return t('docs.import.noTab');
   const lines: string[] = [];
   for (const f of pictures) {

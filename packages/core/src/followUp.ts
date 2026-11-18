@@ -19,7 +19,9 @@ export type ConfigChange =
   /** A design system's tokens were edited; `edits` are the editor's own summaries of what, oldest first. */
   | { type: 'tokens'; edits: string[] }
   /** A whole canvas or deck (or one slide: `file`) was switched to a theme of an installed design system, or back to its original look (`title` null). `stay` colours were not the system's and were left. */
-  | { type: 'theme'; namespace: string; title: string | null; theme: string; stay: number; file?: string };
+  | { type: 'theme'; namespace: string; title: string | null; theme: string; stay: number; file?: string }
+  /** A page of another project was linked in, updated from its original, or let go of (a copy that is not to be edited by hand; `.design/cross-kind-embedding.md`). Nothing to redo. */
+  | { type: 'link'; action: 'added' | 'updated' | 'unlinked'; path: string; page: string; project: string };
 
 /** An offer: `reason` is a key the editor turns into a sentence, `prompt` the request for Claude Code. */
 export interface FollowUp {
@@ -64,6 +66,10 @@ const FOLLOW_UP: { [T in ConfigChange['type']]: (c: Extract<ConfigChange, { type
       prompt: `${c.file ? `${c.file} was` : 'This project was'} just switched to the "${c.theme}" theme of the design system "${c.title}" (ds/${c.namespace}/tokens.json): the colours that were its tokens, the page background, the text colour and the accent now use it, and ${c.stay} other colour${c.stay === 1 ? ' is' : 's are'} still the old ones. Restyle what is left so the work reads in that theme too: use the theme's tokens for surfaces, text, lines and accents (written as their values, not var()), and check text still has enough contrast on what it sits on. Keep the copy, the structure and the layout.`,
     };
   },
+  // a copy of someone else's page: Claude is told so it does not edit it by hand, and there is nothing to redo
+  link() {
+    return null;
+  },
   tokens() {
     return {
       reason: { id: 'tokens' },
@@ -95,6 +101,8 @@ export function changeScope(c: ConfigChange): string {
       return `theme:${c.file ?? ''}`;
     case 'speed':
       return 'speed';
+    case 'link':
+      return `link:${c.path}`;
   }
 }
 
@@ -148,6 +156,8 @@ export function describeChange(c: ConfigChange): string {
     return `${c.file ? `Slide ${JSON.stringify(c.file)}` : 'The whole project'} was ${c.title === null ? 'put back to its original look' : `switched to the ${JSON.stringify(c.theme)} theme of the design system ${JSON.stringify(c.title)} (ds/${c.namespace}/)`}; colours that were not the system's were left as they were.`;
   if (c.type === 'tokens') return `Design tokens were edited: ${c.edits.map((e) => JSON.stringify(e)).join(', ')}.`;
   if (c.type === 'size') return `${c.file ? `Artboard ${JSON.stringify(c.file)}` : 'The deck page'} was resized from ${px(c.from)} to ${px(c.to)}.`;
+  if (c.type === 'link')
+    return `The linked page ${JSON.stringify(c.page)} from the project ${JSON.stringify(c.project)} was ${c.action === 'added' ? 'linked in' : c.action === 'updated' ? 'updated from its original' : 'unlinked (the copy stays as an ordinary picture)'}; the copy is ${c.path}: do not edit it, change the original in its own project instead.`;
   if (c.type === 'speed') return `The motion piece's playback speed (speed in motion.json) was changed from ${c.from}× to ${c.to}×; the timing written in the scene files is unchanged.`;
   if (c.type === 'formatRemoved') return `The motion format ${JSON.stringify(c.format)} was removed, with the scene overrides that were only about it.`;
   return `A motion format ${JSON.stringify(c.format)} (${px(c.to)}) was added; the primary format is ${px(c.from)}.`;

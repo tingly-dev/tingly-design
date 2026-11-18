@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
-import { linkModes, pageDeps, pagesOf, parseDc, parseMotion, timeSpec, type LinkedPage, type ProjectCard, type ProjectKind, type SourcePage } from '@dc/core';
+import { linkModes, pageDeps, pagesOf, parseDc, parseMotion, timeSpec, type LinkSource, type LinkedPage, type ProjectCard, type ProjectKind, type SourcePage } from '@dc/core';
 import { exportFromPage, PageExportError, type PageJob } from './pageExport';
 import { listTrash } from './trash';
 import { ownEditor } from './running';
@@ -65,26 +65,11 @@ export function relInside(outer: string, inner: string): string | null {
   return r && !r.startsWith('..') && !isAbsolute(r) ? r.split('\\').join('/') : null;
 }
 
-export interface SourceProject {
-  name: string;
-  title: string;
-  kind: ProjectKind;
-  /** how this project can be shown where the page goes (the preferred first) */
-  modes: ('live' | 'image')[];
-  /** where it sits inside the open project's folder, when it does */
-  inside?: string;
-  /** the opened folder it shares with the open project */
-  sameFolder?: boolean;
-  /** the folder group's name or the launcher group, to head the list */
-  group?: string;
-  pages: (SourcePage & { moving?: boolean })[];
-}
-
 /** The projects whose pages the open one can take, with each project's pages. */
-export async function sourcesFor(target: string, targetKind: ProjectKind): Promise<SourceProject[]> {
+export async function sourcesFor(target: string, targetKind: ProjectKind): Promise<LinkSource[]> {
   const cards = await listProjects();
   const me = folderGroupOf(target)?.id;
-  const out: SourceProject[] = [];
+  const out: LinkSource[] = [];
   for (const c of cards as ProjectCard[]) {
     if (c.name === target) continue;
     const modes = linkModes(c.kind, targetKind);
@@ -95,11 +80,13 @@ export async function sourcesFor(target: string, targetKind: ProjectKind): Promi
     } catch {
       continue;
     }
-    const pages = pagesOf(c.kind, files).map((p) => {
+    const pages = pagesOf(c.kind, files).map((p): SourcePage & { moving?: boolean } => {
       if (c.kind !== 'design') return p;
       const moving = !!timeSpec(parseDc(files[p.page] ?? '').props);
       return moving ? { ...p, moving } : p;
     });
+    // moving artboards first: an effect is what most people come for
+    if (c.kind === 'design') pages.sort((a, b) => Number(!!b.moving) - Number(!!a.moving));
     if (!pages.length) continue;
     const inside = relInside(projectDir(target), projectDir(c.name));
     const mine = folderGroupOf(c.name)?.id;
@@ -115,7 +102,7 @@ export async function sourcesFor(target: string, targetKind: ProjectKind): Promi
     });
   }
   // inside this project first, then the same folder, then the rest by title
-  const rank = (s: SourceProject) => (s.inside ? 0 : s.sameFolder ? 1 : 2);
+  const rank = (s: LinkSource) => (s.inside ? 0 : s.sameFolder ? 1 : 2);
   return out.sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
 }
 

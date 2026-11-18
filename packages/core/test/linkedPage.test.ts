@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropLinked, isLinkedPicture, linkModes, linkedDir, linkedPagesOf, linkedStem, newLinkId, pageDeps, pagesOf, pngSize, putLinked, takesPages, type LinkedPage } from '../src';
+import { describeChange, dropLinked, followUpFor, mergeChange, settingsProject, isLinkedPicture, linkModes, linkedDir, linkedPagesOf, linkedStem, newLinkId, pageDeps, pagesOf, pngSize, putLinked, takesPages, type LinkedPage } from '../src';
 
 const CANVAS = JSON.stringify({ v: 3, title: 'Site', boards: { 'Hero.dc.html': { x: 0, y: 0, w: 1280, h: 720, title: 'Hero' }, 'Card.dc.html': { x: 0, y: 800, w: 400, h: 300 } }, order: ['Hero.dc.html', 'Card.dc.html'] });
 
@@ -115,5 +115,26 @@ describe('a picture\'s copy', () => {
     new DataView(png.buffer).setUint32(20, 1440);
     expect(pngSize(png)).toEqual([2560, 1440]);
     expect(pngSize(new Uint8Array(30))).toBeNull();
+  });
+});
+
+describe('what Claude Code is told', () => {
+  it('lists the linked pages among a project\'s settings, an old artboard import as a live one', () => {
+    const index = JSON.stringify({ title: 'Deck', order: [], imports: [{ path: 'uploads/box-Glow/Glow.dc.html', from: 'projects/box', board: 'Glow.dc.html' }, { path: 'uploads/linked/aaaaa/s.png', from: 'projects/p', kind: 'slides', page: 's1', mode: 'image' }] });
+    const s = settingsProject('slides', { 'deck.json': index });
+    expect(s.linked).toEqual([
+      { path: 'uploads/box-Glow/Glow.dc.html', from: 'projects/box', page: 'Glow.dc.html', kind: 'design', mode: 'live' },
+      { path: 'uploads/linked/aaaaa/s.png', from: 'projects/p', page: 's1', kind: 'slides', mode: 'image' },
+    ]);
+    expect(settingsProject('slides', { 'deck.json': JSON.stringify({ title: 'Deck', order: [] }) }).linked).toBeUndefined();
+  });
+  it('tells it a page was linked, updated or let go of, says not to edit the copy, and offers nothing', () => {
+    const c = { type: 'link' as const, action: 'updated' as const, path: 'uploads/linked/aaaaa/s.png', page: 'Cover', project: 'Intro' };
+    expect(followUpFor(c)).toBeNull();
+    expect(describeChange(c)).toContain('updated from its original');
+    expect(describeChange(c)).toContain('do not edit it');
+    expect(describeChange({ ...c, action: 'unlinked' })).toContain('unlinked');
+    // one copy, one change: the latest word on it
+    expect(mergeChange({ ...c, action: 'added' }, c)).toEqual(c);
   });
 });

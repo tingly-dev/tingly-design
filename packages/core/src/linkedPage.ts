@@ -205,5 +205,28 @@ export function pngSize(bytes: Uint8Array): [number, number] | null {
 /** The state of one linked page against its original, as `link-check` reports it. */
 export type LinkState = 'current' | 'changed' | 'deleted' | 'missing' | 'unreadable';
 
-/** The words a person reads for one state sit in the editor; this says which problem a state is, for code that must not offer an update to an original it cannot read. */
-export const canUpdate = (s: LinkState): boolean => s === 'changed' || s === 'current';
+/** One project the picker lists: how its pages can be shown here, where it sits relative to the open project, and its pages. */
+export interface LinkSource {
+  name: string;
+  title: string;
+  kind: ProjectKind;
+  /** how this project's pages can be shown where they go (the preferred first) */
+  modes: LinkMode[];
+  /** where it sits inside the open project's folder, when it does */
+  inside?: string;
+  /** the opened folder it shares with the open project */
+  sameFolder?: boolean;
+  /** the launcher group it is filed under */
+  group?: string;
+  pages: (SourcePage & { moving?: boolean })[];
+}
+
+/** What `link-check` says about one record. */
+export interface LinkCheck {
+  path: string;
+  state: LinkState;
+  /** the original project now (its handle) and its title, and the page's title, when it could be found */
+  project?: string;
+  title?: string;
+  page?: string;
+}

@@ -34,17 +34,10 @@ export default {
     button: 'Import',
     importFiles: 'Import {{list}}…',
     importFolder: 'Import a folder…',
-    fromProject: 'Import from a project…',
     drag: 'You can also drag files in.',
     dragOrPaste: 'You can also drag files in, or paste them.',
     dropInto: 'Drop to import into this {{label}}',
     busy: 'Importing {{name}}…',
-  },
-  board: {
-    title: 'Import an artboard from a canvas',
-    none: 'No canvas has an artboard yet. Make one in a canvas (an effect is an artboard that moves with time), then import it here.',
-    pick: 'Import {{title}}',
-    moving: 'Moves',
   },
   dialog: {
     step: {

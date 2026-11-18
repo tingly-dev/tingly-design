@@ -26,6 +26,10 @@ export function claudeAvailable(): boolean {
   return claudeCommand().path !== null;
 }
 
+/** Added to the canvas, deck, doc and motion prompts: a page of another project linked in is a copy to leave alone (.design/cross-kind-embedding.md). */
+const LINKED_NOTE = `
+A file under uploads/linked/ is a picture of a page of another project that the person linked in; its imports record (in the index file) says where it came from. Treat it as a copy: you may keep, move or resize the picture, but never edit or replace the file or its record, and write no path under uploads/linked/ yourself. To change what it shows, the original in its own project has to change; the person then updates the copy.`;
+
 const SYSTEM = `You are editing a design canvas stored as files. A canvas folder holds canvas.json (artboard layout, notes) and one *.dc.html file per artboard.
 Before you change any file, read .claude/skills/dc-canvas/SKILL.md in the current directory: it is the full format reference.
 Edit only files inside the canvas folder you are given, with your Edit and Write tools. Change only what the request asks; the person may have edited these files by hand a moment ago, so read each file right before you edit it.
@@ -165,12 +169,12 @@ export function forgetConversation(project: string): void {
 
 /** What differs per kind in a Claude Code request: how the folder and the open file are named, the system prompt, and the tools beyond reading and editing. */
 const DELEGATE: Record<ProjectKind, { folder: string; viewing: string; system: string; tools: string[]; images: boolean }> = {
-  design: { folder: 'Canvas', viewing: 'artboard', system: SYSTEM, tools: [], images: true },
-  slides: { folder: 'Deck', viewing: 'slide', system: SLIDES_SYSTEM, tools: [], images: true },
+  design: { folder: 'Canvas', viewing: 'artboard', system: SYSTEM + LINKED_NOTE, tools: [], images: true },
+  slides: { folder: 'Deck', viewing: 'slide', system: SLIDES_SYSTEM + LINKED_NOTE, tools: [], images: true },
   'design-system': { folder: 'Design system', viewing: 'file', system: DS_SYSTEM, tools: [], images: false },
   dashboard: { folder: 'Dashboard', viewing: 'page file', system: DASH_SYSTEM, tools: ['Bash(node scripts/dash-query.mjs:*)'], images: false },
-  docs: { folder: 'Doc', viewing: 'tab', system: DOCS_SYSTEM, tools: [], images: true },
-  motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM, tools: [], images: true },
+  docs: { folder: 'Doc', viewing: 'tab', system: DOCS_SYSTEM + LINKED_NOTE, tools: [], images: true },
+  motion: { folder: 'Motion', viewing: 'scene', system: MOTION_SYSTEM + LINKED_NOTE, tools: [], images: true },
 };
 
 /**

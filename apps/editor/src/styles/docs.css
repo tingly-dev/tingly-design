@@ -672,6 +672,18 @@
 }
 
 
+.docimgform:has(.linkedp) {
+  flex-wrap: wrap;
+  width: 388px;
+}
+
+
+/* a linked page's source, state and actions go under the two fields, across the form */
+.docimgform .linkedp.compact {
+  flex: 1 0 100%;
+}
+
+
 .docimgform label {
   display: flex;
   flex-direction: column;

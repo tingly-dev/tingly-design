@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { INDEX_FILE, dropLinked, linkModes, linkedDir, linkedPagesOf, linkedStem, newLinkId, pagesOf, pngSize, putLinked, takesPages, type LinkState, type LinkedPage, type ProjectKind } from '@dc/core';
+import { INDEX_FILE, dropLinked, linkModes, linkedDir, linkedPagesOf, linkedStem, newLinkId, pagesOf, pngSize, putLinked, takesPages, type LinkCheck, type LinkedPage, type ProjectKind } from '@dc/core';
 import { editIndex } from './shared';
 import { copyArtboard } from './importBoard';
 import { publish, record } from '../hub';
@@ -76,7 +76,7 @@ export function registerLinkPage(app: Hono): void {
     const kind = await targetKind(p);
     const cards = new Map((await listProjects()).map((x) => [x.name, x]));
     const texts = new Map<string, Record<string, string>>();
-    const out: { path: string; state: LinkState; project?: string; title?: string; page?: string }[] = [];
+    const out: LinkCheck[] = [];
     for (const rec of await recordsOf(p, kind)) {
       try {
         const src = await resolveSource(p, rec);
@@ -92,7 +92,7 @@ export function registerLinkPage(app: Hono): void {
           out.push({ ...base, state: 'missing' });
           continue;
         }
-        let state: LinkState;
+        let state: LinkCheck['state'];
         if (rec.at) state = rec.at === (await fingerprint(src.name, rec.kind, rec.page, files)) ? 'current' : 'changed';
         else if (rec.mode === 'live') state = (await readOne(p, rec.path))?.content === files[rec.page] ? 'current' : 'changed';
         else state = 'changed';

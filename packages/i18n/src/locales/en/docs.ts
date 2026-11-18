@@ -82,6 +82,7 @@ export default {
     hr: 'Divider',
     date: 'Today’s date',
     image: 'Image',
+    link: 'A page from another project',
   },
   image: {
     label: 'Picture',

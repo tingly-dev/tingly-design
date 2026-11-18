@@ -189,13 +189,8 @@ export default {
   },
   embed: {
     title: '画板',
-    from: '来自 {{project}} 的 {{board}}',
     unknown: '导入的画板，没有记下来源。',
     moving: '随时间变化：在动效里逐帧绘制，放映幻灯片时循环播放。',
-    open: '打开原画板',
-    update: '从原画板更新',
-    updateHint: '从画布重新复制这个画板；这个项目里所有用到它的地方都会跟着变。',
-    updated: '已从画布更新 {{title}}。',
     reset: '还原',
     resetHint: '回到画板自己的取值',
     noTweaks: '这个画板没有可调选项。到画布里给它的 data-props 加上参数，再回来更新。',
