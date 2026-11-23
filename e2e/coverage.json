@@ -478,6 +478,7 @@
       "export_menu",
       "export_image",
       "pptx",
+      "pptx_edit",
       "copy_png"
     ],
     "design-system": [

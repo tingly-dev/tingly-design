@@ -10,7 +10,7 @@ export default {
     progress: '第 {{done}} / {{total}} 页 · {{slide}}',
     done: 'PowerPoint 文件已保存。文字、基础形状和图片仍可编辑。',
     pictures: '有 {{count}} 个元素在 PowerPoint 中没有对应对象（渐变、阴影、图形、嵌入内容等），已作为图片放入：看起来一样，但不是可编辑的形状。',
-    metrics: '文件不嵌入字体。PowerPoint 的换行和字形可能不同；放映前请安装相同字体。',
+    metrics: '每段文字是一个会自动换行的文本框，在 PowerPoint 和 Keynote 里可以直接编辑。文件不嵌入字体：电脑上没有这份幻灯片的字体时，换行位置可能不同。放映前请安装相同字体。',
     failed: '未保存 PowerPoint 文件。请修正下方内容后重新导出。',
     location: '第 {{n}} 页 · {{id}}',
     problem: '{{code}} · {{feature}} · {{path}}',

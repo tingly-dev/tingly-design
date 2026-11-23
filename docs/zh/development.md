@@ -43,6 +43,7 @@ pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
 | `python3 e2e/image_gen.py` | 图像生成：要先用没有 `ANTHROPIC_*`、`DC_IMAGE_*` 变量、`DC_CONFIG` 指向临时文件的 `pnpm dev`，再起 `python3 e2e/mock_anthropic.py` 和 `python3 e2e/mock_images.py <日志>`；对话框里的 ImageGen 卡（Tingly Box 的地址加自己的令牌、OpenAI 风格地址加单独的密钥和模型、错地址被拒）、生成一张图和改一张图都存进 `uploads/`、网关的拒绝原样转给人、`uploads/` 之外的路径被拒、密钥不回传 |
 | `python3 e2e/export_menu.py` | 共用的导入 / 导出菜单：每种类型的栏里都有，列出这种类型收什么、能存什么；幻灯片和文档一键存成 PDF（真的 PDF，页数对）、服务端没有 Chrome 时回到打印窗口、状态条（28 项检查） |
 | `python3 e2e/pptx.py` | 通过真实启动页与幻灯片菜单测试 PowerPoint 交换：picker/drop/API 导入，保留原件/报告/媒体/备注，编辑并重开，失败原子性与重名，整份原生对象导出与不支持内容的诊断；英文/中文、浅色/深色截图；只使用本套件创建的项目 |
+| `python3 e2e/pptx_edit.py` | 可编辑的 PowerPoint 导出：从幻灯片菜单导出七页测试稿（`e2e/fixtures/pptx-edit`）并读回文件——每个文字块一个会换行的文本框、真正的项目符号与编号、标题占位符、分节、牌组自己的主题、替代文字、原生表格——再导回来检查分节、标题和列表是否还在；原页与重新导入页的截图和 `metrics.json` 存在 `e2e/out/pptx_edit/`，供 `scripts/pptx-fidelity/readback.py` 使用 |
 | `python3 e2e/archive.py` | 整个项目导出成 .zip：每种类型导入 / 导出菜单最后的两项；整个项目带改动记录、并排带上设计系统和清单，仅文件两样都不带，都不带本机状态；从启动页“新建”菜单导入、重名换名（没变的设计系统不重复导入）；启动页卡片的导出；没有项目的 zip 会说明原因；英文浅色和中文深色（23 项检查） |
 | `python3 e2e/doc_theme.py` | 文档穿上设计系统：顶栏“主题”里文档自己的样子和每个已装入主题的卡片、在那里装入内置风格就穿上、编辑器的页面和 HTML 导出用同一份值画（浅色系统、带专用文字颜色的深色系统）、文件里只存选择、回到自己的样子、移除正在穿的系统（12 项检查） |
 | `python3 e2e/wechat.py` | 文档导出到微信公众号：菜单项和它的“当前标签页”一项、上下排的预览（问题清单在上、文章按公众号正文栏的宽度在下，默认是文档自己的样子）、复制把带内联样式的富文本（图片在里面，Mermaid 块画成图片）放进剪贴板、保存为 HTML、标签页范围，以及一份含所有要素的文档在两种样式下的样子（24 项检查） |
