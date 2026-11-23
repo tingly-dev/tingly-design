@@ -81,7 +81,7 @@ pnpm --filter @dc/core exec vitest run test/pptxSmoke.test.ts
 | `python3 e2e/side_resize.py` | 侧栏宽度，先跑 `pnpm build`；它自己启动服务端：每种类型里每一列（右侧面板、幻灯片缩略图列、文档的标签页和批注、设计系统的导航、看板的数据来源、对话栏）的边都能拖动、用方向键、双击调整宽窄，刷新后宽度还在，页面不会横向滚动 |
 | `python3 e2e/import_here.py` | 往打开的项目里导入，先跑 `pnpm build`；它自己在示例项目的副本上启动服务端：每种类型的导入按钮、拖到任何地方、粘贴，网页文件夹变成画布上已有内容旁边的新画板（原文件留在 `uploads/`），粘贴 SVG，图片放到画布和幻灯片上，带图片的 Markdown 变成文档标签页，CSV 变成看板数据集，字体和 SVG 进设计系统，拒收，动效不收（29 项） |
 | `python3 e2e/check_snapshots.py` | `check --snapshots` 查版面，先 `pnpm build`；在自己的项目文件夹上跑命令行：示例幻灯片的副本里放一行超出页面边缘的字、一行被框裁掉的字、一行淡色说明和一页空白，每样都报警告，deck 级规则（留下的占位、拆开的单词、和单位分开的数字、过小的字、只占上半页的页、唯一偏了位置的标题）也都报，原样的示例幻灯片一条也不报，每页照样画出来；看板画错的规则也查（26 项） |
-| `python3 e2e/baseline.py` | 截图基线：要先 `pnpm dev`；启动页和每种类型的示例，以及把对话作为最左一栏打开后的同一批示例，明暗 × 中英，外加画布的 Theme 标签和快捷键对话框打开时的两种状态（60 张，1440×900），每张和 `e2e-baselines` 分支上的那张比；超过 0.2% 的像素变了就算失败，截图和差异图留在 `e2e/out/baseline/`；`DC_RECORD=1` 把新截图写到 `e2e/out/baselines-new/`，`DC_BASELINES=<文件夹>` 改成和一个文件夹比 |
+| `python3 e2e/baseline.py` | 截图基线：要先 `pnpm dev`；启动页和每种类型的示例，以及把对话作为最左一栏打开后的同一批示例，明暗 × 中英，外加画布的 Theme 标签和快捷键对话框打开时的两种状态（60 张，1440×900），每张和 `e2e-baselines` 分支上的那张比；超过 0.2% 的像素变了算警告（`WARN`，进报告但不让运行失败），截图、基线图和差异图留在 `e2e/out/baseline-diffs/`；对话框、对话列有没有打开的检查仍然算失败；`DC_RECORD=1` 把新截图写到 `e2e/out/baselines-new/`，`DC_BASELINES=<文件夹>` 改成和一个文件夹比 |
 | `python3 e2e/ai_settings.py` | AI 模型设置：要先用没有 `ANTHROPIC_*` 变量、`DC_CONFIG` 指向临时文件的环境跑 `pnpm dev`，再跑 `python3 e2e/mock_anthropic.py`；请求栏的提示、从启动页和项目里打开对话框、三张卡的顺序（Claude Code、ImageGen、快速 AI）和 Claude Code 的本地 / Tingly Box / 自定义标签、Box 配置档、把令牌交给另外两张卡、拒绝不合法地址、经模拟模型测试、保存后不回传任何密钥、改一张卡不动另外两张 |
 | `python3 e2e/conversation.py` | 项目保存的 Claude Code 对话：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`，由一个冒充 `claude` 的脚本记录每次调用：第一条请求开一段对话、服务端把会话号存在项目文件夹里，下一条接着说，`fresh` 开新的，显式给的会话优先，Claude Code 已不认识的会话自动改开新对话（11 项）|
 | `python3 e2e/follow_up.py` | 手动改了设置之后的提议：要先用 `e2e/fake-claude` 排在 `PATH` 最前面启动 `pnpm dev`；幻灯片尺寸小改不出提议，改成形状差很多时请求栏上方出现“重新排版”提议且不自动运行，“改写请求”把准备好的请求放进输入框，“忽略”收起，改回原样不出提议，装入设计系统会提议换成这套风格，接受则把它连同改了什么、项目设置一起交给 Claude Code（15 项）|
@@ -101,7 +101,7 @@ ANTHROPIC_API_KEY=x ANTHROPIC_BASE_URL=http://127.0.0.1:8790 pnpm dev
 
 ## CI 里的 e2e
 
-`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report-<片号>` 产物（全量切成四片，每片一个作业）。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。界面是有意改的时候，先在红了的那次运行的报告里看差异图，再手动运行 E2E patrol 这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
+`.github/workflows/e2e.yml` 按三种节奏跑 `pnpm e2e`，因为全量太慢，不适合每个 PR 都跑：每晚在 main 上跑，也可以在 Actions 页手动触发，都经过 `e2e-patrol.yml`（全量；每晚的那次红了就开一个 `e2e-patrol` 标签的 issue，已有就追加评论，转绿后自动关掉；手动跑的只出报告）；每次发布前（全量，红了拦住发布）；PR 改了 `apps/`、`packages/`、`e2e/` 或 `projects/` 时跑 `--smoke`。报告和日志是这次运行的 `e2e-report-<片号>` 产物（全量切成四片，每片一个作业）。全量里有 `baseline`：编辑器截图和 `e2e-baselines` 分支上的比。截图和基线不一样不会让运行变红，也不拦发布：它是一条 `::warning::` 注解，写进作业摘要，截图、基线图和差异图是这次运行的 `e2e-baseline-diffs-<片号>` 产物；每晚的那次还会开着一个 `e2e-baseline` 标签的 issue，截图都对上了才关。界面是有意改的时候，先看这些差异图，再手动运行 E2E patrol 这个 workflow 并勾上 "record baselines"，它会在同样的机器上重新截图，推到那个分支。为什么这样分：`.design/harness.md`。
 
 ## 发版
 
