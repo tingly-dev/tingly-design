@@ -286,6 +286,8 @@ export default {
     members: '{{count}} projects',
     add: 'Add {{title}}',
     remove: 'Stop consulting {{title}}',
+    search: 'Search projects and folders',
+    noMatch: 'Nothing matches that.',
     loading: 'Looking…',
   },
   rowMenu: 'More for {{title}}',

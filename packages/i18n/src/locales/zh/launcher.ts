@@ -278,6 +278,8 @@ export default {
     members: '{{count}} 个项目',
     add: '引用 {{title}}',
     remove: '不再引用 {{title}}',
+    search: '搜索项目和文件夹',
+    noMatch: '没有匹配的内容。',
     loading: '正在查看…',
   },
   rowMenu: '{{title}} 的更多操作',
