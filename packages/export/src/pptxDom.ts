@@ -14,7 +14,7 @@
  * This produces drawing data, not validated package bytes: writePptx still validates
  * asset headers/dimensions, text controls and font/physical-unit bounds before writing.
  */
-import type { PptxAsset, PptxCellBorder, PptxDeck, PptxObject, PptxSlide, PptxTextStyle } from './pptx';
+import type { PptxAsset, PptxBullet, PptxCellBorder, PptxDeck, PptxObject, PptxParagraph, PptxRun, PptxSlide, PptxTextStyle } from './pptx';
 
 export interface PptxDomDiagnostic {
   code: 'invalid-input' | 'unsupported' | 'not-ready' | 'budget' | 'asset' | 'rasterized' | 'text-metrics' | 'shape-approximation' | 'approximated';
@@ -52,6 +52,13 @@ const defaults: PptxDomLimits = { maxSlides: 200, maxElements: 10000, maxTextCha
 /** Errors that say the capture itself cannot go on, never "draw this element another way". */
 const FATAL = ['budget', 'asset', 'not-ready'];
 /** Elements drawn by something other than CSS boxes and text. */
+/** CSS list styles PowerPoint draws itself: a bullet character or an automatic number. */
+const BULLETS: Record<string, PptxBullet> = { disc: { type: 'char', char: '•' }, circle: { type: 'char', char: '◦' }, square: { type: 'char', char: '▪' } };
+const NUMBERS: Record<string, 'arabicPeriod' | 'alphaLcPeriod' | 'alphaUcPeriod' | 'romanLcPeriod' | 'romanUcPeriod'> = {
+  decimal: 'arabicPeriod', 'lower-alpha': 'alphaLcPeriod', 'lower-latin': 'alphaLcPeriod', 'upper-alpha': 'alphaUcPeriod', 'upper-latin': 'alphaUcPeriod', 'lower-roman': 'romanLcPeriod', 'upper-roman': 'romanUcPeriod',
+};
+/** How much wider than the browser's line a wrapping text box is: room for a reader whose glyphs measure a little wider. */
+export const TEXT_SLACK = { fraction: 0.01, minPx: 4 };
 const REPLACED = new Set(['SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'OBJECT', 'EMBED', 'PICTURE', 'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'METER', 'PROGRESS', 'MATH', 'X-EMBED', 'X-ICON', 'X-CONNECTOR']);
 
 /** Computed sRGB only. Undefined is fully transparent; partial alpha is unsupported. */
@@ -229,7 +236,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         issue(slide, path, 'rasterized', feature, 'warning');
         if (!drawn || offPage(drawn)) return;
         if (![drawn.x, drawn.y, drawn.width, drawn.height].every(Number.isFinite) || drawn.width <= 0 || drawn.height <= 0) throw new Error('rasterization');
-        push({ type: 'image', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height, asset: asset(drawn.asset), fit: 'stretch' });
+        push({ type: 'image', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height, asset: asset(drawn.asset), fit: 'stretch', ...(mode === 'subtree' ? altOf(el) : {}) });
       }
       function styleText(st: CSSStyleDeclaration, path: string, alpha: number, inherited: { underline: boolean; strike: boolean }): PptxTextStyle {
         if (st.direction !== 'ltr' || st.writingMode !== 'horizontal-tb' || st.getPropertyValue('-webkit-text-stroke-width') !== '0px') throw new Error('text-direction');
@@ -354,6 +361,228 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         const left = (st.listStylePosition === 'inside' ? line.left : contentLeft) - width;
         const at = local({ x: left - rb.left, y: line.top - rb.top, width, height: line.height }, space, spun);
         if (!offPage(at)) push({ type: 'text', ...at, style: styleText(ms, path, alpha, { underline: false, strike: false }), paddingPx: 0, verticalAlign: 'top', wrap: false, paragraphs: [{ runs: [{ text: label }] }] }, space);
+      }
+      /** What a picture says to someone who cannot see it: an image's alt, a drawing's label. */
+      const altOf = (el: Element) => { const alt = (el.getAttribute('alt') ?? el.getAttribute('aria-label') ?? '').trim().slice(0, 4096); return alt ? { altText: alt } : {}; };
+      /** The slide's title: its first h1 or h2 that is shown. It becomes the title placeholder when it is one text block. */
+      const titleEl = Array.from(root.querySelectorAll('h1, h2')).find(h => !h.closest('aside') && h.getClientRects().length > 0);
+      type Block = { paragraphs: PptxParagraph[]; wrap: boolean; first: PptxTextStyle };
+      const INLINE_PAINT = (el: Element, cs: CSSStyleDeclaration) => !bare(el, cs) || cs.position !== 'static' || cs.float !== 'none' || cs.visibility !== 'visible'
+        || cs.verticalAlign !== 'baseline' || parseFloat(cs.paddingLeft) || parseFloat(cs.paddingRight) || parseFloat(cs.marginLeft) || parseFloat(cs.marginRight);
+      /** One block of text as a paragraph (several when pre-formatted text holds line breaks): its inline elements become
+       * runs, a `<br>` a line break inside it. Undefined when anything in it is not text and inline text. */
+      function inlineBlock(container: Element, path: string, alpha: number): Block | undefined {
+        const cs = css(container);
+        // in a flex or grid box every inline element is a box of its own: only plain text reads as one paragraph
+        if (/flex|grid/.test(cs.display) && container.children.length) return undefined;
+        if (!/^(block|list-item|flow-root|flex|grid|table-cell)$/.test(cs.display)) return undefined;
+        if (cs.textOverflow === 'ellipsis' || !['none', ''].includes(cs.getPropertyValue('-webkit-line-clamp'))) return undefined;
+        const ws = cs.whiteSpace;
+        const keepSpaces = /^(pre|pre-wrap|break-spaces)$/.test(ws), keepLines = keepSpaces || ws === 'pre-line';
+        const align = /center/.test(cs.textAlign) ? 'center' : /right|end/.test(cs.textAlign) ? 'right' : cs.textAlign === 'justify' ? 'justify' : 'left';
+        const lineHeightPx = cs.lineHeight !== 'normal' && parseFloat(cs.lineHeight) > 0 ? parseFloat(cs.lineHeight) : undefined;
+        const paragraph = (): PptxParagraph => ({ runs: [], align, ...(lineHeightPx ? { lineHeightPx } : {}) });
+        const paragraphs = [paragraph()];
+        let brk = false;
+        const add = (text: string, style: PptxTextStyle, href?: string) => {
+          const runs = paragraphs[paragraphs.length - 1].runs;
+          const last = runs[runs.length - 1];
+          if (!keepSpaces) {
+            // white space collapses across runs, and at the start of a line
+            if ((!last || brk || last.text.endsWith(' ')) && text.startsWith(' ')) text = text.slice(1);
+            if (!text) return;
+          }
+          if (last && !brk && last.href === href && JSON.stringify(last.style) === JSON.stringify(style)) { last.text += text; return; }
+          runs.push({ text, style, ...(brk && runs.length ? { breakBefore: true } : {}), ...(href ? { href } : {}) });
+          brk = false;
+        };
+        const collect = (el: Element, href?: string): boolean => {
+          for (const node of Array.from(el.childNodes)) {
+            if (node.nodeType === 3) {
+              const parent = node.parentElement!, ps = css(parent);
+              let value = (node as Text).data;
+              if (!keepSpaces) value = keepLines ? value.replace(/[\t ]+/g, ' ').replace(/ ?\n ?/g, '\n') : value.replace(/[\t\r\n ]+/g, ' ');
+              if (!value) continue;
+              value = ps.textTransform === 'capitalize' ? value.replace(/(^|\s)(\S)/g, (_, a: string, b: string) => a + b.toUpperCase()) : transformText(value, '', ps.textTransform);
+              const style = styleText(ps, path, alpha, decorations(parent));
+              const lines = keepLines ? value.split('\n') : [value];
+              for (const [i, line] of lines.entries()) {
+                if (i) paragraphs.push(paragraph());
+                if (line) add(line, style, href);
+              }
+              continue;
+            }
+            if (node.nodeType !== 1) continue;
+            const child = node as Element, ch = css(child);
+            if (ch.display === 'none') continue;
+            if (child.namespaceURI !== 'http://www.w3.org/1999/xhtml' || REPLACED.has(child.tagName.toUpperCase()) || child.tagName === 'IMG') return false;
+            if (child.tagName === 'BR') { brk = true; continue; }
+            if (!/^(inline|contents)$/.test(ch.display) || INLINE_PAINT(child, ch)) return false;
+            const link = child.tagName === 'A' ? (child.getAttribute('href') ?? '') : '';
+            if (!collect(child, /^(https?:\/\/|mailto:)[^\s<>"]+$/i.test(link) && link.length <= 2048 ? link : href)) return false;
+          }
+          return true;
+        };
+        if (!collect(container)) return undefined;
+        for (const p of paragraphs) {
+          const last = p.runs[p.runs.length - 1];
+          if (last && !keepSpaces) last.text = last.text.replace(/ $/, '');
+          p.runs = p.runs.filter(r => r.text);
+        }
+        const first = paragraphs.flatMap(p => p.runs)[0]?.style as PptxTextStyle | undefined;
+        if (!first) return undefined;
+        return { paragraphs, wrap: !/^(pre|nowrap)$/.test(ws), first };
+      }
+      /** The bullet PowerPoint draws for a list item, with its first number; undefined for one it cannot draw. */
+      function bulletOf(li: HTMLElement, ls: CSSStyleDeclaration): PptxBullet | null | undefined {
+        if (ls.listStyleType === 'none') return null;
+        if (ls.listStylePosition !== 'outside' || ls.listStyleImage !== 'none') return undefined;
+        const custom = /^["'](.)["']$/u.exec(ls.listStyleType)?.[1];
+        if (custom && custom.length === 1) return { type: 'char', char: custom };
+        if (BULLETS[ls.listStyleType]) return BULLETS[ls.listStyleType];
+        const style = NUMBERS[ls.listStyleType];
+        if (!style) return undefined;
+        const label = marker(li, ls) ?? '';
+        const list = li.parentElement;
+        const startAt = list?.tagName === 'OL' ? Number(list.getAttribute('start')) || 1 : 1;
+        // PowerPoint counts on from the list's start: an item that sets its own number cannot be said
+        if (Array.from(list?.children ?? []).some(c => c.hasAttribute('value'))) return undefined;
+        return label ? { type: 'number', style, startAt } : undefined;
+      }
+      /** The paragraphs of a list's items, each indented to where its text starts from the box's left edge. */
+      function listParagraphs(items: HTMLElement[], left: number, path: string, alpha: number): { paragraphs: PptxParagraph[]; rects: DOMRect[]; first: PptxTextStyle } | undefined {
+        const paragraphs: PptxParagraph[] = [], rects: DOMRect[] = [];
+        let first: PptxTextStyle | undefined;
+        for (const li of items) {
+          const ls = css(li);
+          if (ls.display !== 'list-item' || ls.visibility !== 'visible' || Number(ls.opacity) < 1) return undefined;
+          const bullet = bulletOf(li, ls);
+          if (bullet === undefined) return undefined;
+          const block = inlineBlock(li, path, alpha);
+          if (!block || block.paragraphs.length !== 1) return undefined;
+          const r = li.getBoundingClientRect();
+          const indentPx = r.left + parseFloat(ls.borderLeftWidth) + parseFloat(ls.paddingLeft) - left;
+          if (indentPx < -0.5) return undefined;
+          paragraphs.push({ ...block.paragraphs[0], ...(bullet ? { bullet, indentPx: Math.max(0, indentPx) } : {}) });
+          if (!bullet && indentPx > 1) return undefined;
+          rects.push(r); first ??= block.first;
+        }
+        return first ? { paragraphs, rects, first } : undefined;
+      }
+      /** How much wider a block's content box can get before one of its lines takes the next line's first word, so a
+       * reader with the same fonts breaks every line where Chrome did. Infinity when no line wraps on its own. */
+      function room(container: Element): number {
+        const cs = css(container);
+        const width = container.getBoundingClientRect().width - parseFloat(cs.borderLeftWidth) - parseFloat(cs.paddingLeft) - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
+        const range = root.ownerDocument.createRange();
+        const walker = root.ownerDocument.createTreeWalker(container, 1 | 4);
+        type Line = { top: number; left: number; right: number; forced: boolean; head: number; headDone: boolean };
+        const lines: Line[] = [];
+        let space = parseFloat(cs.fontSize) * 0.25, forced = false;
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (node.nodeType === 1) { if ((node as Element).tagName === 'BR') forced = true; continue; }
+          const data = (node as Text).data;
+          for (let i = 0; i < data.length;) {
+            const n = data.codePointAt(i)! > 0xffff ? 2 : 1;
+            range.setStart(node, i); range.setEnd(node, i + n);
+            const ch = data.slice(i, i + n); i += n;
+            const b = range.getClientRects()[0];
+            if (!b || b.width <= 0) continue;
+            if (/\s/.test(ch)) { space = b.width; const last = lines[lines.length - 1]; if (last) last.headDone = true; continue; }
+            const last = lines[lines.length - 1];
+            // a line of its own starts below the last one; CJK text may break after any character
+            if (!last || b.top > last.top + b.height / 2) { lines.push({ top: b.top, left: b.left, right: b.right, forced, head: b.width, headDone: ch.codePointAt(0)! >= 0x2e80 }); forced = false; continue; }
+            last.left = Math.min(last.left, b.left); last.right = Math.max(last.right, b.right);
+            if (!last.headDone) last.head += b.width;
+            if (ch.codePointAt(0)! >= 0x2e80) last.headDone = true;
+          }
+        }
+        range.detach();
+        let most = Infinity;
+        for (let k = 1; k < lines.length; k++) if (!lines[k]!.forced) most = Math.min(most, lines[k - 1]!.right - lines[k - 1]!.left + space + lines[k]!.head - width);
+        return most;
+      }
+      /** A wrapping box a little wider than the browser's lines (never so wide that a line takes the next one's first
+       * word: `room`), grown away from where the text is aligned and kept on the page. */
+      function widen(x: number, width: number, align: PptxParagraph['align'], fontSizePx: number, most: number) {
+        const extra = Math.max(0, Math.min(Math.max(TEXT_SLACK.minPx, width * TEXT_SLACK.fraction), fontSizePx, most - 0.5));
+        if (align === 'center') { const side = Math.max(0, Math.min(extra / 2, x, pageW - x - width)); return { x: x - side, width: width + 2 * side }; }
+        if (align === 'right') { const side = Math.max(0, Math.min(extra, x)); return { x: x - side, width: width + side }; }
+        return { x, width: width + Math.max(0, Math.min(extra, pageW - x - width)) };
+      }
+      /** A block of text drawn as one native text box: a heading or paragraph, a list, or a `data-text` box of paragraphs
+       * and lists. False leaves it to the line-by-line path (a text object per line and per run). */
+      function textBlock(el: Element, st: CSSStyleDeclaration, b: { x: number; y: number; width: number; height: number }, path: string, alpha: number, space: Space, spun: number): boolean {
+        if (el === root) return false;
+        try { return drawBlock(el, st, b, path, alpha, space, spun); }
+        catch (error) { if (error instanceof Error && FATAL.includes(error.message)) throw error; return false; }
+      }
+      function drawBlock(el: Element, st: CSSStyleDeclaration, b: { x: number; y: number; width: number; height: number }, path: string, alpha: number, space: Space, spun: number): boolean {
+        const inset = (s: CSSStyleDeclaration) => ({ top: parseFloat(s.borderTopWidth) + parseFloat(s.paddingTop), right: parseFloat(s.borderRightWidth) + parseFloat(s.paddingRight), bottom: parseFloat(s.borderBottomWidth) + parseFloat(s.paddingBottom), left: parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft) });
+        const i = inset(st);
+        const content = { x: b.x + i.left, y: b.y + i.top, width: b.width - i.left - i.right, height: b.height - i.top - i.bottom };
+        if (content.width <= 0 || content.height <= 0) return false;
+        let paragraphs: PptxParagraph[], first: PptxTextStyle, wrap = true, at = content, most = Infinity;
+        const list = el.tagName === 'UL' || el.tagName === 'OL', item = st.display === 'list-item', group = el.hasAttribute('data-text');
+        if (list || item || group) {
+          // lists and text boxes measure their parts where they are drawn: not inside a turned subtree
+          if (spun || space.rot || space.cx || space.cy || space.ox || space.oy) return false;
+          const kids = Array.from(el.childNodes).filter(n => n.nodeType === 1 ? css(n as Element).display !== 'none' : n.nodeType === 3 && !!n.textContent?.trim());
+          if (!item && (!kids.length || kids.some(k => k.nodeType !== 1))) return false;
+          const box0 = el.getBoundingClientRect();
+          // the box starts at the list's padding edge, where its markers are drawn (a lone item's list's)
+          const owner = item ? el.parentElement : el;
+          if (!owner) return false;
+          const os = css(owner), ob = owner.getBoundingClientRect();
+          const left = ob.left + parseFloat(os.borderLeftWidth) + (list || item ? 0 : parseFloat(os.paddingLeft));
+          paragraphs = []; first = undefined as unknown as PptxTextStyle;
+          const rects: DOMRect[] = [];
+          const parts = item ? [el] : kids as Element[];
+          for (const part of parts) {
+            const ps = css(part);
+            if (Number(ps.opacity) < 1 || ps.visibility !== 'visible' || (part !== el && !bare(part, ps))) return false;
+            let got: { paragraphs: PptxParagraph[]; rects: DOMRect[]; first: PptxTextStyle } | undefined;
+            if (item || (list && part.tagName === 'LI')) { got = listParagraphs([part as HTMLElement], left, path, alpha); most = Math.min(most, room(part)); }
+            else if (group && (part.tagName === 'UL' || part.tagName === 'OL')) {
+              const items = Array.from(part.children).filter(c => css(c).display !== 'none') as HTMLElement[];
+              if (items.length !== part.childElementCount || Array.from(part.childNodes).some(n => n.nodeType === 3 && n.textContent?.trim())) return false;
+              got = items.length ? listParagraphs(items, left, path, alpha) : undefined;
+              for (const li of items) most = Math.min(most, room(li));
+            } else if (group && !list) {
+              most = Math.min(most, room(part));
+              const block = inlineBlock(part, path, alpha);
+              const r = part.getBoundingClientRect();
+              if (!block || Math.abs(r.left + inset(ps).left - left) > 1) return false;
+              got = { paragraphs: block.paragraphs, rects: block.paragraphs.map(() => r), first: block.first };
+              if (!block.wrap) wrap = false;
+            }
+            if (!got) return false;
+            first ??= got.first;
+            for (const [k, p] of got.paragraphs.entries()) {
+              const r = got.rects[k], prev = rects[rects.length - 1];
+              // the gap between blocks, as measured; a pre-formatted block's own lines have none
+              const gap = prev && prev !== r ? r.top - prev.bottom : 0;
+              if (gap < -1) return false;
+              paragraphs.push(gap > 0.5 ? { ...p, spaceBeforePx: gap } : p);
+              rects.push(r);
+            }
+          }
+          if (!paragraphs.length) return false;
+          const top = Math.min(...rects.map(r => r.top)), bottom = Math.max(...rects.map(r => r.bottom));
+          const right = box0.right - parseFloat(st.borderRightWidth) - parseFloat(st.paddingRight);
+          at = box(new DOMRect(left, top, right - left, bottom - top));
+          if (at.width <= 0 || at.height <= 0) return false;
+        } else {
+          const block = inlineBlock(el, path, alpha);
+          if (!block) return false;
+          ({ paragraphs, first, wrap } = block);
+          if (wrap) most = room(el);
+        }
+        const title = el === titleEl && !output.objects.some(o => o.type === 'text' && o.role === 'title');
+        const wide = wrap ? widen(at.x, at.width, paragraphs[0].align, first.fontSizePx, most) : { x: at.x, width: at.width };
+        push({ type: 'text', ...at, ...wide, style: first, paddingPx: 0, verticalAlign: 'top', wrap, paragraphs, ...(title ? { role: 'title' as const } : {}) }, space);
+        if (!diagnostics.slice(start).some(d => d.code === 'text-metrics')) issue(slide, path, 'text-metrics', 'font-not-embedded', 'warning');
+        return true;
       }
       /** Whether clipping at this element's padding box cuts anything it contains. */
       function clips(el: Element): boolean {
@@ -482,6 +711,18 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
         if (!laid || Math.abs(laid.width - t.width) > 1 || Math.abs(laid.height - t.height) > 1) return undefined;
         return { box, direction: spin === 90 ? 'vert' : 'vert270' };
       };
+      /** A translucent paint as the solid colour it makes over the first solid background at or behind `el`. */
+      function over(paint: { color: string; opacity: number }, el: Element): string {
+        let under = 'FFFFFF';
+        for (let x: Element | null = el; x; x = x === root ? null : x.parentElement) {
+          const bg = pptxDomPaint(css(x).backgroundColor);
+          if (!bg) continue;
+          if (bg.opacity < 1) throw new Error('border');
+          under = bg.color; break;
+        }
+        const ch = (c: string, k: number) => parseInt(c.slice(k, k + 2), 16);
+        return [0, 2, 4].map(k => Math.round(ch(paint.color, k) * paint.opacity + ch(under, k) * (1 - paint.opacity)).toString(16).padStart(2, '0')).join('').toUpperCase();
+      }
       /** A cell's text, fill, borders, insets and vertical alignment, or undefined when it holds anything else. */
       function cellContent(td: Element, path: string) {
         const st = css(td);
@@ -492,8 +733,10 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           if (!(width > 0) || style === 'none' || style === 'hidden') return null;
           const paint = pptxDomPaint(st[`border${s}Color`]);
           if (!paint) return null;
-          if (paint.opacity < 1 || !['solid', 'double'].includes(style)) throw new Error('border');
-          return { color: paint.color, widthPx: width, ...(style === 'double' ? { double: true } : {}) };
+          if (!['solid', 'double'].includes(style)) throw new Error('border');
+          // a translucent line (the slide's default cell rule) is the colour it shows over what is behind it
+          const color = paint.opacity < 1 ? over(paint, td) : paint.color;
+          return { color, widthPx: width, ...(style === 'double' ? { double: true } : {}) };
         });
         const diagonals = importerDiagonals(td);
         const spun = importerSpunText(td, diagonals.svg);
@@ -717,7 +960,7 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           if (!options.resolveImage) throw new Error('asset');
           const resolved = await bounded(options.resolveImage(image, { slide, signal: options.signal }));
           const id = asset(resolved);
-          push({ type: 'image', ...b, asset: id, fit: st.objectFit === 'fill' ? 'stretch' : st.objectFit as 'contain' | 'cover' }, inner);
+          push({ type: 'image', ...b, asset: id, fit: st.objectFit === 'fill' ? 'stretch' : st.objectFit as 'contain' | 'cover', ...altOf(el) }, inner);
           return;
         }
         if (tag === 'SVG') {
@@ -728,10 +971,12 @@ export async function slidesDomToPptx(roots: readonly HTMLElement[], options: Pp
           if (!drawn || offPage(drawn)) return;
           if (![drawn.x, drawn.y, drawn.width, drawn.height].every(Number.isFinite) || drawn.width <= 0 || drawn.height <= 0) throw new Error('rasterization');
           const id = asset({ bytes: new TextEncoder().encode(el.outerHTML), mime: 'image/svg+xml', widthPx: drawn.asset.widthPx, heightPx: drawn.asset.heightPx, fallback: drawn.asset.bytes });
-          push({ type: 'image', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height, asset: id, fit: 'stretch' }, IDENTITY);
+          push({ type: 'image', x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height, asset: id, fit: 'stretch', ...altOf(el) }, IDENTITY);
           return;
         }
         if (tag === 'TABLE' && nativeTable(el, path, alpha, inner)) return;
+        // a block of text is one text box; its children are in it
+        if (textBlock(el, st, b, path, alpha, inner, spin ?? 0)) return;
         if (tag === 'LI') listMarker(el as HTMLElement, st, path, alpha, inner, 0);
         await children(el, st, path, alpha, layers, true, inner);
       }

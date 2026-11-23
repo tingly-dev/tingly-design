@@ -1,0 +1,1 @@
+{"v":4,"title":"PPTX benchmark","cover":"cover","order":["cover","rich","lists","picture","table","chart","cards"],"sections":{"s1":{"description":"Opening","start":"cover"},"s2":{"description":"Text and lists","start":"rich"},"s3":{"description":"Pictures, tables and charts","start":"picture"},"s4":{"description":"Closing","start":"cards"}},"faces":{},"designSystems":[]}

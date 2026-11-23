@@ -1,9 +1,26 @@
 import { applyHumanOps, parseDc, parseStyle, sandboxDoc, type DcElement, type DeckJson, type HumanOp } from '@dc/core';
-import type { PptxAsset, PptxDeck } from '@dc/export/pptx';
+import type { PptxAsset, PptxDeck, PptxSection } from '@dc/export/pptx';
 import type { PptxDomDiagnostic, PptxDomResult } from '@dc/export/pptx-dom';
 
 /** `boards`: the artboards the slides embed (`<x-embed src="uploads/…">`), by path, as the slide frames get them. */
-export interface DeckSnapshot { title: string; faces: DeckJson['faces']; size: [number, number]; slides: { id: string; source: string }[]; boards?: Record<string, string>; base: string; runtimeOrigin: string }
+export interface DeckSnapshot { title: string; faces: DeckJson['faces']; size: [number, number]; slides: { id: string; source: string }[]; sections?: PptxSection[]; boards?: Record<string, string>; base: string; runtimeOrigin: string }
+
+/** The deck's sections over the slides being exported, in order: each exported slide belongs to the last section
+ * starting at or before it in the deck (`order`, hidden slides included); slides before the first section go in one
+ * named after the deck. Sections with none of the exported slides are left out; a deck without sections has none. */
+export function pptxSections(deck: Pick<DeckJson, 'title' | 'sections'>, order: string[], chosen: string[]): PptxSection[] | undefined {
+  const starts = Object.values(deck.sections ?? {}).map(s => ({ name: s.description.trim().slice(0, 1024), at: order.indexOf(s.start) })).filter(s => s.at >= 0).sort((a, b) => a.at - b.at);
+  if (!starts.length) return undefined;
+  const out: PptxSection[] = [];
+  for (const id of chosen) {
+    const at = order.indexOf(id);
+    const name = [...starts].reverse().find(s => s.at <= at)?.name || deck.title || ' ';
+    const last = out[out.length - 1];
+    if (last?.name === name) last.slides++;
+    else out.push({ name, slides: 1 });
+  }
+  return out;
+}
 export interface DeckPptxProgress { done: number; total: number; slide?: string }
 export class DeckPptxError extends Error {
   constructor(public slide: string, public diagnostics: PptxDomDiagnostic[]) { super(diagnostics.map(d => `${d.code}: ${d.feature ?? ''} (${d.path})`).join('\n')); }
@@ -206,7 +223,9 @@ export async function deckSnapshotToPptx(snapshot: DeckSnapshot, options: { sign
       diagnostics.push(...result.diagnostics.map(diagnostic => ({ slide: slide.id, diagnostic })));
     }
     check(); options.progress?.({ done: slides.length, total: slides.length });
-    const { writePptx } = await bounded(import('@dc/export/pptx'));
+    const { writePptx, pptxTheme } = await bounded(import('@dc/export/pptx'));
+    if (snapshot.sections?.length) deck.sections = snapshot.sections;
+    deck.theme = pptxTheme(deck);
     const bytes = await bounded(writePptx(deck));
     check();
     return { bytes, diagnostics };

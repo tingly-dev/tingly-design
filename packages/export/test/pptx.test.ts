@@ -282,6 +282,70 @@ describe('writePptx native drawing contract', () => {
     await expect(writePptx({ ...deck(), assets: { a: { ...base, fallback: png, widthPx: 3 } } })).rejects.toThrow(/dimensions/);
     await expect(writePptx({ ...deck(), assets: { a: { ...base, fallback: png } } })).resolves.toBeInstanceOf(Uint8Array);
   });
+  it('writes bullets and numbers on the paragraph, not as text, with one paragraph per item and line breaks inside it', async () => {
+    const f = await unpack(deck([{ ...text(), paragraphs: [
+      { runs: [{ text: 'Intro' }] },
+      { bullet: { type: 'char', char: '•' }, indentPx: 40, runs: [{ text: 'one ' }, { text: 'bold', style: { bold: true } }, { text: 'next line', breakBefore: true }] },
+      { bullet: { type: 'number', style: 'romanLcPeriod', startAt: 3 }, indentPx: 40, runs: [{ text: 'three', href: 'https://example.com/?a=1&b=2' }] },
+    ] } as PptxObject]));
+    const s = xml(f, 'ppt/slides/slide1.xml');
+    const paras = s.match(/<a:p>.*?<\/a:p>/g)!;
+    expect(paras).toHaveLength(3);
+    expect(paras[0]).toContain('<a:buNone/>');
+    expect(paras[1]).toMatch(/^<a:p><a:pPr [^>]*marL="365760" indent="-365760"><a:buSzPct val="100000"\/><a:buChar char="&#x2022;"\/><\/a:pPr>/);
+    expect(paras[1]!.match(/<a:pPr/g)).toHaveLength(1);
+    expect(paras[1]).toContain('<a:br/>');
+    expect(paras[1]).not.toMatch(/<a:t>•/);
+    expect(paras[2]).toContain('<a:buAutoNum type="romanLcPeriod" startAt="3"/>');
+    expect(paras[2]).toContain('<a:hlinkClick r:id=');
+    expect(xml(f, 'ppt/slides/_rels/slide1.xml.rels')).toContain('Target="https://example.com/?a=1&amp;b=2" TargetMode="External"');
+  });
+
+  it('puts the title in a title placeholder the master and layout declare, and names text boxes, pictures and shapes', async () => {
+    const d = deck([{ ...text('Heading'), role: 'title' } as PptxObject, text('Body'), { type: 'image', ...box, asset: 'p', altText: 'A chart of <growth>' }, { type: 'shape', shape: 'rect', ...box, fill: '00FF00' }]);
+    d.slides[0]!.notes = 'notes come first on the slide';
+    d.assets = { p: { bytes: png, mime: 'image/png', widthPx: 2, heightPx: 1 } };
+    const f = await unpack(d);
+    const s = xml(f, 'ppt/slides/slide1.xml');
+    expect(s).toMatch(/<p:cNvPr id="\d+" name="Title 1"><\/p:cNvPr><p:cNvSpPr\/><p:nvPr><p:ph type="title"\/><\/p:nvPr>/);
+    expect(s).toMatch(/<p:cNvPr id="\d+" name="TextBox 1"><\/p:cNvPr><p:cNvSpPr txBox="1"\/><p:nvPr><\/p:nvPr>/);
+    expect(s).toContain('name="Picture 1" descr="A chart of &lt;growth&gt;"');
+    expect(s).toContain('name="Rectangle 1"');
+    expect(s).not.toMatch(/name="Text \d+"/);
+    for (const part of ['ppt/slideMasters/slideMaster1.xml', 'ppt/slideLayouts/slideLayout1.xml']) expect(xml(f, part).match(/<p:ph type="title"\/>/g)).toHaveLength(1);
+    expect(xml(f, 'ppt/slideMasters/slideMaster1.xml')).toContain('<a:off x="914400" y="457200"/><a:ext cx="3657600" cy="1828800"/>');
+    await expect(writePptx(deck([{ ...text(), role: 'title' } as PptxObject, { ...text(), role: 'title' } as PptxObject]))).rejects.toThrow(/title/);
+  });
+
+  it('writes deck sections and the theme\'s colours and typefaces', async () => {
+    const d = deck();
+    d.slides = [{ objects: [text('1')] }, { objects: [text('2')] }, { objects: [text('3')] }];
+    d.sections = [{ name: 'Intro & <why>', slides: 1 }, { name: 'Empty', slides: 0 }, { name: 'Rest', slides: 2 }];
+    d.theme = { headingFont: 'Source Serif 4', bodyFont: 'Inter & Co', colors: { dk1: '10233F', lt1: 'F6F4EF', accent1: 'C2410C' } };
+    const f = await unpack(d);
+    const p = xml(f, 'ppt/presentation.xml');
+    expect(p).toMatch(/<p:extLst><p:ext uri="\{521415D9-36F7-43E2-AB2F-B90AF26B5E84\}"><p14:sectionLst [^>]*><p14:section name="Intro &amp; &lt;why&gt;" id="\{[0-9A-F-]+\}"><p14:sldIdLst><p14:sldId id="256"\/><\/p14:sldIdLst><\/p14:section><p14:section name="Empty" [^>]*><p14:sldIdLst><\/p14:sldIdLst><\/p14:section><p14:section name="Rest" [^>]*><p14:sldIdLst><p14:sldId id="257"\/><p14:sldId id="258"\/><\/p14:sldIdLst>/);
+    expect(p.endsWith('</p:extLst></p:presentation>')).toBe(true);
+    const t = xml(f, 'ppt/theme/theme1.xml');
+    expect(t).toContain('<a:dk1><a:srgbClr val="10233F"/></a:dk1><a:lt1><a:srgbClr val="F6F4EF"/></a:lt1>');
+    expect(t).toContain('<a:accent1><a:srgbClr val="C2410C"/></a:accent1>');
+    expect(t).toContain('<a:accent2><a:srgbClr val="ED7D31"/></a:accent2>');
+    expect(t).toContain('<a:majorFont><a:latin typeface="Source Serif 4"/>');
+    expect(t).toContain('<a:minorFont><a:latin typeface="Inter &amp; Co"/>');
+    await expect(writePptx({ ...d, sections: [{ name: 'Short', slides: 2 }] })).rejects.toThrow(/sections/);
+  });
+
+  it('rejects bullets, links and names it cannot write', async () => {
+    const para = (extra: object) => deck([{ ...text(), paragraphs: [{ runs: [{ text: 'x' }], ...extra }] } as PptxObject]);
+    await expect(writePptx(para({ bullet: { type: 'char', char: '••' } }))).rejects.toThrow(/bullet/);
+    await expect(writePptx(para({ bullet: { type: 'char', char: '😀' } }))).rejects.toThrow(/bullet/);
+    await expect(writePptx(para({ bullet: { type: 'number', style: 'hebrew2Minus', startAt: 1 } }))).rejects.toThrow(/bullet/);
+    await expect(writePptx(para({ bullet: { type: 'number', style: 'arabicPeriod', startAt: 0 } }))).rejects.toThrow(/bullet/);
+    await expect(writePptx(deck([{ ...text(), paragraphs: [{ runs: [{ text: 'x', href: 'javascript:alert(1)' }] }] } as PptxObject]))).rejects.toThrow(/href/);
+    await expect(writePptx(deck([{ ...text(), name: ' ' } as PptxObject]))).rejects.toThrow(/name/);
+    await expect(writePptx({ ...deck(), theme: { colors: { accent9: '000000' } as never } })).rejects.toThrow(/theme/);
+  });
+
   it('does not mutate the supplied drawing or typed byte arrays', async () => {
     const d = deck(); const before = structuredClone(d); Object.freeze(d.slides[0].objects[0]);
     await writePptx(d); expect(d).toEqual(before);

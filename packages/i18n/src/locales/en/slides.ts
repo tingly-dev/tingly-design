@@ -7,7 +7,7 @@ export default {
     progress: 'Slide {{done}} of {{total}} · {{slide}}',
     done: 'PowerPoint file saved. Text, basic shapes and pictures remain editable.',
     pictures: 'Some elements have no PowerPoint equivalent (gradients, shadows, graphics, embeds…), so they were placed as pictures ({{count}}): they look the same but are not editable shapes.',
-    metrics: 'Fonts are not embedded. Line breaks and glyphs may differ in PowerPoint; install the same fonts before presenting.',
+    metrics: 'Each block of text is one text box that wraps in PowerPoint and Keynote. Fonts are not embedded: on a computer without the deck’s fonts, lines may break differently. Install the same fonts before presenting.',
     failed: 'No PowerPoint file was saved. Fix the content below and export again.',
     location: 'Slide {{n}} · {{id}}',
     problem: '{{code}} · {{feature}} · {{path}}',
