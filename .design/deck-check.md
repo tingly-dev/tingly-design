@@ -1,6 +1,6 @@
 # 幻灯片的 deck 级检查
 
-状态：已实施（`check` / `check --snapshots`，命令行与 MCP）；编辑器内把这些结果交给 Claude Code 见 #502 的方案。
+状态：已实施（`check` / `check --snapshots`，命令行与 MCP；编辑器里交给 Claude Code 见 [slides-self-check.md](./slides-self-check.md)）。
 
 ## 问题
 
@@ -29,6 +29,5 @@ core 单测（`deckCheck.test.ts`）覆盖占位与不该报的方括号、看�
 
 ## 还开着的
 
-- 编辑器里委托的 Claude Code 还看不到这些结果（#502）。
 - 图表、表格的标签样式跨页一致（pptx 技能清单里的一条）没有做：我们的图表是 SVG 或 div，没有统一的“图表标签”可比。
 - `short` 的阈值是按少量 deck 看图定的，样本多了可以再调。

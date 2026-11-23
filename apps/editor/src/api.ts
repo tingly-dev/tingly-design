@@ -391,6 +391,10 @@ export const api = {
   logExport: (p: string, report: ExportReport, why?: string) =>
     void call(at(`api/projects/${enc(p)}/export-report`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ report, why }) }).catch(() => {}),
   renderedUrl: (p: string, file: string) => `${SERVER}/api/projects/${enc(p)}/render/${enc(file)}`,
+  /** The open page's report for Claude Code (`.runs.json`): a dashboard's, or a deck's self-check. */
+  writeRuns: (p: string, report: unknown) => call(at(`api/projects/${enc(p)}/runs`), { method: 'PUT', body: JSON.stringify(report, null, 1) }).then((r) => json<{ ok: true }>(r)),
+  /** A picture of one slide as the open deck drew it, kept in `renders/look/` for Claude Code to look at. */
+  putSlidePicture: (p: string, id: string, png: Blob) => call(at(`api/projects/${enc(p)}/look/${enc(id)}.png`), { method: 'PUT', body: png }).then((r) => json<{ ok: true; path: string }>(r)),
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
   /** rawBase for the frames that draw a project's pictures: `rev` changes when an outside edit replaces one, so the frame asks for it again */
   frameBase: (p: string, rev: number) => `${SERVER}/api/projects/${enc(p)}/raw/${rev ? `?v=${rev}` : ''}`,

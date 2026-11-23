@@ -66,6 +66,8 @@ export default {
   notDashboard: '不是看板',
   argsMissing: '查询没有参数',
   runsTooLarge: '运行记录超过 {{size}}',
+  slidePictureTooLarge: '幻灯片的图片超过了 {{size}}',
+  slidePictureName: '幻灯片的图片应是以幻灯片命名的 PNG',
   badRequest: '请求格式不对：{{detail}}',
   dashboardIsClaudeCode: '看板的页面交给 Claude Code 写',
   promptMissing: '先写下要做什么',

@@ -1,11 +1,9 @@
 import type { Hono } from 'hono';
-import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { DASH_RUNS, cleanParams, fillArgs } from '@dc/core';
+import { cleanParams, fillArgs } from '@dc/core';
 import { HttpError, kindOf, projectDir } from '../store';
 import { CONNECTORS, ConnectorError, callTool } from '../connectors';
 
-/** Dashboards: data sources, runs and their history. */
+/** Dashboards: data sources and their calls. */
 export function registerDashboards(app: Hono): void {
   app.get('/api/connectors', (c) => c.json(Object.fromEntries(Object.entries(CONNECTORS).map(([k, v]) => [k, { description: v.description, tools: Object.keys(v.tools) }]))));
 
@@ -25,15 +23,5 @@ export function registerDashboards(app: Hono): void {
       if (e instanceof HttpError) throw e;
       return c.json({ ok: false, state: 'failed', message: (e as Error).message, ms: Date.now() - t0 });
     }
-  });
-
-  /** The latest report of an open page (the original's runs document): for Claude Code to read. Not tracked. */
-  app.put('/api/projects/:p/runs', async (c) => {
-    const p = c.req.param('p');
-    const text = await c.req.text();
-    if (text.length > 256 * 1024) throw new HttpError(413, 'runsTooLarge', { size: '256 KB' });
-    JSON.parse(text);
-    await writeFile(join(projectDir(p), DASH_RUNS), text, 'utf8');
-    return c.json({ ok: true });
   });
 }

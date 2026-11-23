@@ -32,6 +32,23 @@ if (asked) {
     }
   }
 }
+// `FAKE_WRITE: <path>` … `FAKE_END`: write a file as the Edit tool would (path from the working directory);
+// `FAKE_WAIT: <path>`: then, like a model told to, wait until that file is newer than the writes and log what it says
+const prompt = args[args.indexOf('-p') + 1] ?? '';
+let wrote = 0;
+for (const m of prompt.matchAll(/FAKE_WRITE: (\S+)\n([\s\S]*?)\nFAKE_END/g)) {
+  fs.mkdirSync(m[1].replace(/\/[^/]*$/, ''), { recursive: true });
+  fs.writeFileSync(m[1], m[2] + '\n');
+  wrote = Date.now();
+  log({ ev: 'wrote', path: m[1] });
+}
+const waitFor = /FAKE_WAIT: (\S+)/.exec(prompt)?.[1];
+if (waitFor) {
+  const until = Date.now() + 30_000;
+  const fresh = () => fs.existsSync(waitFor) && fs.statSync(waitFor).mtimeMs > wrote;
+  while (!fresh() && Date.now() < until) await new Promise((r) => setTimeout(r, 200));
+  log({ ev: 'read', path: waitFor, text: fresh() ? fs.readFileSync(waitFor, 'utf8') : null });
+}
 const session = resume || randomUUID();
 console.log(JSON.stringify({ type: 'system', subtype: 'init', session_id: session }));
 setTimeout(() => {

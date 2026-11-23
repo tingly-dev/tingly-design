@@ -211,8 +211,8 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'md' | 'notes'): Promise
   }
 }
 
-/** One slide drawn on its own page, at the slide's size. Embeds are separate frames and come out empty. */
-async function slidePng(id: string, scale: number): Promise<Blob> {
+/** One slide drawn on its own page, at the slide's size. Embeds are separate frames and come out empty. `inspect` sees the laid-out page before it is drawn (the open deck's self-check). */
+export async function slidePng(id: string, scale: number, inspect?: (win: Window) => void): Promise<Blob> {
   const s = useStore.getState();
   const deck = deckOf(s);
   const [W, H] = deckSize(deck);
@@ -220,7 +220,7 @@ async function slidePng(id: string, scale: number): Promise<Blob> {
   if (!src) throw new Error(id);
   const base = s.project ? api.rawBase(s.project) : '';
   const html = `<!doctype html><html><head><meta charset="utf-8">${faceMarkup(deck)}<style>${sceneBaseCss(W, H, SLIDE_BASE_CSS)}html,body{margin:0;background:#fff}</style></head><body><div class="dc-slide-host">${await standalone(src, base)}</div></body></html>`;
-  return htmlToPng(html, { width: W, height: H, scale });
+  return htmlToPng(html, { width: W, height: H, scale, inspect });
 }
 
 /** The slide at `id` (null: the first; true: every shown slide) as PNG files. */

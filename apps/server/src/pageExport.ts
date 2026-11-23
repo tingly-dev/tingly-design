@@ -8,7 +8,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type LayoutFinding, layoutProbe } from './layoutProbe';
+import { type LayoutFinding, layoutProbe } from '@dc/core';
 import { log } from './log';
 import { findChrome, launchBrowser } from './chrome';
 

@@ -11,6 +11,7 @@ import { Present, stopPresent } from './Present';
 import { SlidesTopBar, TopLeft } from './SlidesBars';
 import { Stage } from './Stage';
 import { Strip } from './Strip';
+import { watchSlides } from './selfCheck';
 
 export function SlidesApp() {
   const loaded = useStore((s) => s.loaded);
@@ -27,6 +28,9 @@ export function SlidesApp() {
     if (!loaded) return;
     if (!slide || !ids.includes(slide)) goToSlide(ids[0] ?? null);
   }, [loaded, slide, ids]);
+
+  // while Claude Code works on the deck, what it drew is looked at and reported back to it (.runs.json)
+  useEffect(() => watchSlides(), []);
 
   useEffect(() => {
     const onFs = () => {
