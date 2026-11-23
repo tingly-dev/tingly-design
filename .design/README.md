@@ -60,6 +60,7 @@
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [selection-image.md](./selection-image.md) | 选中的元素存为图片：共用右键菜单里加 Save as PNG（`dc:'export'` 的 `tid` 一条路），`<img>` 再给复制 / 保存原文件（`src` 加 rawBase 拿原字节，剪贴板只保证 PNG） | 已实施（画布、幻灯片、动效）；多选未定 |
 | [drawn-check.md](./drawn-check.md) | 看板画出来的样子自查：`NaN`、空图表、标签重叠或被裁；同一段探针既在打开的页面里写进 `.runs.json` 的 `drawn`，也在 `check --snapshots` 里报成版面警告 | 已实施 |
+| [deck-check.md](./deck-check.md) | 幻灯片的 deck 级检查：留下的占位、明显过小的字、拆行的单词和数字单位、只占上半页的内容页（版面探针），同类页标题位置漂移（跨页比较）；规则 id 加数值，措辞在命令行 | 已实施（命令行、MCP）；编辑器内交给 Claude Code 见 #502 |
 | [canvas-check.md](./canvas-check.md) | 画布检查器：`checkCanvas` 把 `dc-canvas` 技能里写错了不报错的规则做成纯文本检查，返回规则 id 和参数，措辞留给命令行 / 编辑器 | 核心函数和 `check` 命令已实施；编辑器提示是方案 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |

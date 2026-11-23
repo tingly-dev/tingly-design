@@ -13,7 +13,7 @@
 
 import { DRAWN_CHECK, type DrawnFinding, type DrawnRule } from '@dc/core';
 
-export type LayoutRule = 'clipped' | 'outside' | 'contrast' | 'blank' | 'gap' | 'boxOutside' | 'boxOverflow' | 'squeezed' | DrawnRule;
+export type LayoutRule = 'clipped' | 'outside' | 'contrast' | 'blank' | 'gap' | 'boxOutside' | 'boxOverflow' | 'squeezed' | 'small' | 'broken' | 'unitSplit' | 'short' | 'heading' | DrawnRule;
 
 export interface LayoutFinding extends Partial<Omit<DrawnFinding, 'rule'>> {
   rule: LayoutRule;
@@ -27,20 +27,29 @@ export interface LayoutFinding extends Partial<Omit<DrawnFinding, 'rule'>> {
   size?: number;
   at?: number;
   percent?: number;
+  /** small: the deck's size floor in px (`size` is the font size found); `short` gives where the content ends as `percent` of the height */
+  floor?: number;
+  /** heading (a slide's first heading, a record for the deck-level comparison, not a warning): its tag, size and box in px, and the frame's height */
+  tag?: string;
+  top?: number;
+  left?: number;
+  height?: number;
 }
 
 /**
  * The expression evaluated in a frame; `fixed` when the frame is the work's own size (a board, a slide),
  * so text past its edge is lost. `page` when it is a canvas board, which reads top to bottom, so a wide
  * empty band inside it or below its content is a board taller than its content; a slide keeps its white
- * space on purpose and is not asked about it.
+ * space on purpose and is not asked about it. `slide` when it is a slide of a deck: text under the deck's
+ * size floor, a word or a figure broken across lines, a content slide that stops in its top part, and a
+ * `heading` record of its first heading, which `slideHeadingDrift` compares across the deck.
  */
-export function layoutProbe(fixed: boolean, page = false): string {
-  return `(${PROBE})(${fixed}, ${page})`;
+export function layoutProbe(fixed: boolean, page = false, slide = false): string {
+  return `(${PROBE})(${fixed}, ${page}, ${slide})`;
 }
 
 // runs in the frame, sent as source: plain JavaScript, self-contained
-const PROBE = String.raw`function (fixed, page) {
+const PROBE = String.raw`function (fixed, page, slide) {
   const found = [];
   // the vertical spans something is drawn in, to find a wide empty band between them
   const spans = [];
@@ -139,6 +148,65 @@ const PROBE = String.raw`function (fixed, page) {
       if (c < (large ? 3 : 4.5)) found.push({ rule: 'contrast', text, ratio: Math.floor(c * 10) / 10 });
     }
   }
+  // a slide of a deck; a mistake here must not lose what the rules above found
+  if (slide && document.body) try {
+    // the size floor of the slide skill: 24px at 1080 on the short side, the same share of any other size;
+    // a small-caps eyebrow a pixel or two under it is a choice, clearly under it is not
+    const floor = (24 * Math.min(vw, vh)) / 1080;
+    // a unit or currency that belongs to the figure before it, and the scripts that put spaces between words
+    const units = new Set(['%', '‰', '°', 'k', 'K', 'M', 'B', 'T', 'bn', 'm', 'ms', 's', 'h', 'min', 'kg', 'g', 'km', 'cm', 'mm', 'px', 'pt', 'pp', 'KB', 'MB', 'GB', 'TB', 'x', '×', '€', '$', '£', '¥', 'USD', 'EUR', 'GBP']);
+    const spaced = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{Nd}]/u;
+    let smallest = null;
+    let bottom = 0;
+    let lead = null;
+    for (const el of Array.from(document.body.querySelectorAll('*'))) {
+      if (el.closest('svg, aside')) continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3 && (n.textContent || '').trim());
+      // where the slide's content ends: text and pictures, not the footer band or a backdrop filling the slide
+      const backdrop = r.width * r.height > 0.8 * vw * vh;
+      if (!backdrop && r.top < vh * 0.85 && (own.length || /^(img|svg|table|x-shape|x-icon|x-embed|x-connector)$/i.test(el.tagName))) bottom = Math.max(bottom, Math.min(vh, r.bottom));
+      if (!lead && /^h[12]$/i.test(el.tagName)) lead = { el, r, cs };
+      if (!own.length) continue;
+      const size = parseFloat(cs.fontSize);
+      if (size < floor * 0.9 && (!smallest || size < smallest.size)) smallest = { size, text: start(el) };
+      // a word broken inside, or a figure on one line and its unit on the next: look where each line starts
+      for (const node of own) {
+        const value = node.textContent || '';
+        const range = document.createRange();
+        let prevTop = null, prevChar = '', spaceSince = false, word = '', lastWord = '';
+        for (let i = 0; i < value.length; i++) {
+          const ch = value[i];
+          if (/\s/.test(ch)) { spaceSince = true; if (word) { lastWord = word; word = ''; } continue; }
+          range.setStart(node, i); range.setEnd(node, i + 1);
+          const b = range.getClientRects()[0];
+          if (!b) continue;
+          if (prevTop !== null && b.top > prevTop + size * 0.5) {
+            if (!spaceSince && spaced.test(prevChar) && spaced.test(ch) && prevChar !== '-' && prevChar !== '\u00AD') once('broken', start(el));
+            if (spaceSince) {
+              let next = ch;
+              for (let j = i + 1; j < value.length && !/\s/.test(value[j]); j++) next += value[j];
+              next = next.replace(/[.,;:!?)]+$/, '');
+              if ((/\d$/.test(lastWord) && units.has(next)) || (/^[€$£¥]$/.test(lastWord) && /^\d/.test(next))) once('unitSplit', start(el));
+            }
+          }
+          prevTop = b.top; prevChar = ch; spaceSince = false; word += ch;
+        }
+        range.detach();
+      }
+    }
+    if (smallest) found.push({ rule: 'small', text: smallest.text, size: Math.round(smallest.size), floor: Math.round(floor) });
+    if (lead) {
+      found.push({ rule: 'heading', tag: lead.el.tagName.toLowerCase(), size: Math.round(parseFloat(lead.cs.fontSize)), top: Math.round(lead.r.top), left: Math.round(lead.r.left), height: Math.round(vh), text: start(lead.el) });
+      // a content slide (its heading at the top, something under it) whose content stops at about 60% of the height
+      // reads as unfinished (the slides skill's craft page); a little more is a quiet layout, not a mistake
+      const below = bottom - lead.r.bottom;
+      if (lead.r.top < vh * 0.3 && below > 8 && bottom < vh * 0.62) found.push({ rule: 'short', text: start(lead.el), percent: Math.round((bottom / vh) * 100) });
+    }
+  } catch (e) {}
   // what the page drew wrong: NaN, an empty chart, labels over each other or cut off (core's drawnCheck.ts)
   try { found.push(...(${DRAWN_CHECK})(document.body)); } catch (e) {}
   if (!drawn) found.push({ rule: 'blank' });
