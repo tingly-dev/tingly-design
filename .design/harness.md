@@ -29,7 +29,7 @@
 
 全量在 CI 里是四个作业（矩阵，`fail-fast` 关，一片红不遮住别的片）；报告和日志按片作为 `e2e-report-<片号>` 产物上传，`report.md` 也写进运行页的摘要。
 
-**快照看版面，不只看画没画出来。** `check --snapshots` 每画一项，就在当时显示着的每个作品框架（画板、幻灯片、看板页面、组件预览）里跑一段探针（`apps/server/src/layoutProbe.ts`），看浏览器实际排出来的版面：
+**快照看版面，不只看画没画出来。** `check --snapshots` 每画一项，就在当时显示着的每个作品框架（画板、幻灯片、看板页面、组件预览）里跑一段探针（core 的 `layoutProbe.ts`；打开着的 deck 在 Claude Code 运行时也跑它，见 [slides-self-check.md](./slides-self-check.md)），看浏览器实际排出来的版面：
 
 | 规则 | 什么时候报 | 为什么这样定 |
 |---|---|---|

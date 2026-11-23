@@ -6,6 +6,9 @@
  */
 import { parseDc, type DcNode } from './parse';
 
+/** Where the open deck keeps a picture of each slide it checked, for Claude Code to look at (`<slide id>.png`). */
+export const LOOK_DIR = 'renders/look';
+
 export type DeckRule = 'placeholder' | 'headingMoved';
 
 export interface DeckFinding {

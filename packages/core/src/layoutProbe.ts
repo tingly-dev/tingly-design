@@ -11,7 +11,7 @@
  * text has no one colour to compare with.
  */
 
-import { DRAWN_CHECK, type DrawnFinding, type DrawnRule } from '@dc/core';
+import { DRAWN_CHECK, type DrawnFinding, type DrawnRule } from './drawnCheck';
 
 export type LayoutRule = 'clipped' | 'outside' | 'contrast' | 'blank' | 'gap' | 'boxOutside' | 'boxOverflow' | 'squeezed' | 'small' | 'broken' | 'unitSplit' | 'short' | 'heading' | DrawnRule;
 

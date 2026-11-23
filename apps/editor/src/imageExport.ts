@@ -38,8 +38,8 @@ const clear = (c: string) => !c || c === 'transparent' || /^rgba\(.*,\s*0\)$/.te
 /** The first of these colours that paints, else white: a page with no background still needs one in a picture. */
 export const opaque = (...colors: string[]) => colors.find((c) => !clear(c)) ?? '#fff';
 
-/** A page given as HTML, drawn in an off-screen frame of this width (the height is the page's own unless given). */
-export async function htmlToPng(html: string, o: { width: number; height?: number; scale?: number; backgroundColor?: string }): Promise<Blob> {
+/** A page given as HTML, drawn in an off-screen frame of this width (the height is the page's own unless given); `inspect` sees the laid-out page first. */
+export async function htmlToPng(html: string, o: { width: number; height?: number; scale?: number; backgroundColor?: string; inspect?: (win: Window) => void }): Promise<Blob> {
   const frame = document.createElement('iframe');
   frame.setAttribute('aria-hidden', 'true');
   Object.assign(frame.style, { position: 'fixed', left: '-100000px', top: '0', width: `${o.width}px`, height: `${o.height ?? 800}px`, border: '0', visibility: 'hidden' });
@@ -53,6 +53,7 @@ export async function htmlToPng(html: string, o: { width: number; height?: numbe
     const doc = frame.contentDocument!;
     await doc.fonts?.ready;
     await Promise.all([...doc.images].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = i.onerror = r), undefined)))));
+    o.inspect?.(frame.contentWindow!);
     const height = o.height ?? Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
     const fontEmbedCSS = await fontEmbedCss(doc, (doc.body.textContent ?? '').slice(0, 4000));
     return await nodeToPng(doc.body, { scale: o.scale, width: o.width, height, backgroundColor: o.backgroundColor ?? opaque(getComputedStyle(doc.body).backgroundColor, getComputedStyle(doc.documentElement).backgroundColor), fontEmbedCSS });

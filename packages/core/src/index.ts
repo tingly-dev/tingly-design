@@ -7,6 +7,7 @@ export * from './exec';
 export * from './canvas';
 export * from './canvasCheck';
 export * from './deckCheck';
+export * from './layoutProbe';
 export * from './prompt';
 export * from './protocol';
 export * from './rebase';

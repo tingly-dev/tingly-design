@@ -64,6 +64,8 @@ export default {
   notDashboard: 'Not a dashboard',
   argsMissing: 'The query has no arguments',
   runsTooLarge: 'The run history is larger than {{size}}',
+  slidePictureTooLarge: 'The picture of the slide is larger than {{size}}',
+  slidePictureName: 'A picture of a slide is a PNG named after the slide',
   badRequest: 'The request is malformed: {{detail}}',
   dashboardIsClaudeCode: 'A dashboard page is written by Claude Code',
   promptMissing: 'Write what you want first',
