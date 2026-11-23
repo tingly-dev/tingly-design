@@ -6,6 +6,7 @@ export * from './stream';
 export * from './exec';
 export * from './canvas';
 export * from './canvasCheck';
+export * from './deckCheck';
 export * from './prompt';
 export * from './protocol';
 export * from './rebase';

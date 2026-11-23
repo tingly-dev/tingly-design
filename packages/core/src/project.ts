@@ -16,6 +16,7 @@ import { INDEX_FILE } from './launcher';
 import { MOTION_FILE, motionTimeline, parseMotion, sceneFile, sceneTiming, checkScene } from './motion';
 import { parseDc } from './parse';
 import { checkSlide, type IssueLevel } from './slides';
+import { slidePlaceholders } from './deckCheck';
 
 /** The project's text files, path → content, as the server reads them. */
 export type ProjectFiles = Record<string, string>;
@@ -51,7 +52,7 @@ export interface ProjectOutline {
   duration?: number;
 }
 
-export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded' | 'layout';
+export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded' | 'layout' | 'slides';
 
 export interface ProjectProblem {
   level: Exclude<IssueLevel, 'note'>;
@@ -61,7 +62,7 @@ export interface ProjectProblem {
   message?: string;
   /** The file a missing reference points at (`missingFile`), the index an unlisted file is missing from (`unlisted`), or the cover scene (`badCover`). */
   ref?: string;
-  /** `canvas`: the `checkCanvas` rule id; `layout`: what the snapshot's layout probe found (`clipped`, `outside`, `contrast`, `blank`); and the values its wording needs. */
+  /** `canvas`: the `checkCanvas` rule id; `layout`: what the snapshot's layout probe found (`clipped`, `outside`, `contrast`, `blank`); `slides`: a deck-level rule (`deckCheck.ts`); and the values its wording needs. */
   rule?: string;
   params?: Record<string, string | number>;
 }
@@ -286,10 +287,13 @@ const CHECK: Record<ProjectKind, (c: CheckCtx) => void> = {
       out.push({ level: i.level, file: i.file, code: 'canvas', rule: i.rule, params: { line: i.line, ...i.params } });
     }
   },
-  slides({ files, missing, issues }) {
+  slides({ files, out, missing, issues }) {
     const d = parseDeck(files[DECK_FILE]);
     for (const id of d.order) if (files[slideFile(id)] === undefined) missing(DECK_FILE, slideFile(id));
-    for (const id of deckOrder(d, Object.keys(files))) issues(slideFile(id), checkSlide(parseDc(files[slideFile(id)]), id));
+    for (const id of deckOrder(d, Object.keys(files))) {
+      issues(slideFile(id), checkSlide(parseDc(files[slideFile(id)]), id));
+      for (const f of slidePlaceholders(slideFile(id), files[slideFile(id)])) out.push({ level: 'warning', file: f.file, code: 'slides', rule: f.rule, params: { text: f.text } });
+    }
   },
   motion({ files, out, missing, issues }) {
     const m = parseMotion(files[MOTION_FILE]);
