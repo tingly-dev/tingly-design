@@ -2,8 +2,10 @@
 Chinese, compared with the pictures on the `e2e-baselines` branch. Run with `pnpm dev` up: python3 e2e/baseline.py
 
 A picture counts as the same when fewer than 0.2% of its pixels differ by more than a little (antialiasing and font
-hinting move single pixels); a different one is kept with a diff beside it in e2e/out/baseline/ for a person to look
-at. A picture with no baseline yet passes and says so. Baselines depend on the machine's fonts and Chromium, so they
+hinting move single pixels); a different one is a warning, not a failure (`WARN`, which e2e/run.py reports without
+failing the run): baselines go stale whenever the UI changes on purpose, and a stale picture should not stop a release.
+The picture, its baseline and a diff are kept in e2e/out/baseline-diffs/ for a person to look at. The checks that the
+editor reached a state (a dialog open, a column shown) still fail. A picture with no baseline yet passes and says so. Baselines depend on the machine's fonts and Chromium, so they
 are recorded where they are compared: DC_RECORD=1 writes every picture to e2e/out/baselines-new/ without comparing,
 and the E2E patrol workflow run by hand with "record baselines" pushes that folder to the branch. DC_BASELINES=<folder> compares against
 a folder instead of the branch."""
@@ -15,6 +17,7 @@ CHROME = os.environ.get('DC_CHROME')
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 OUT = os.path.join(HERE, 'out', 'baseline')
+DIFFS = os.path.join(HERE, 'out', 'baseline-diffs')
 NEW = os.path.join(HERE, 'out', 'baselines-new')
 RECORD = os.environ.get('DC_RECORD') == '1'
 BRANCH = 'e2e-baselines'
@@ -29,10 +32,19 @@ STATES = {'canvas-theme-tab': ('tingly-box-console-canvas', 'theme'), 'canvas-sh
 # a pixel differs when a channel moves by more than this; a picture differs when more than this share of pixels do
 PIXEL, SHARE = 24, 0.002
 
-results = []
+results, warnings = [], []
 def check(name, ok, extra=''):
     results.append((name, bool(ok)))
     print(('PASS ' if ok else 'FAIL ') + name + (f'  :: {extra}' if extra and not ok else ''))
+
+def differs(name, known, shot, extra, diff=None):
+    """A picture that is not its baseline: a warning, with the three pictures kept side by side in DIFFS."""
+    warnings.append(name)
+    print(f'WARN {name} differs from its baseline  :: {extra}; see e2e/out/baseline-diffs/')
+    os.makedirs(DIFFS, exist_ok=True)
+    shutil.copyfile(known, os.path.join(DIFFS, name.replace('.png', '-baseline.png')))
+    open(os.path.join(DIFFS, name), 'wb').write(shot)
+    if diff: open(os.path.join(DIFFS, name.replace('.png', '-diff.png')), 'wb').write(diff)
 
 def baselines():
     """The folder to compare with: DC_BASELINES, or the branch's pictures fetched into e2e/out/baselines/."""
@@ -74,6 +86,7 @@ NO_TURNS = '**/api/projects/*/transcript'
 async def main():
     ref = None if RECORD else baselines()
     os.makedirs(OUT, exist_ok=True)
+    shutil.rmtree(DIFFS, ignore_errors=True)
     if RECORD: shutil.rmtree(NEW, ignore_errors=True); os.makedirs(NEW)
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
@@ -123,16 +136,17 @@ async def main():
                 url = lambda data: 'data:image/png;base64,' + base64.b64encode(data).decode()
                 r = await scratch.evaluate(COMPARE, [url(open(known, 'rb').read()), url(shot), PIXEL])
                 if 'size' in r:
-                    check(f'{name} matches its baseline', False, f'size changed: {r["size"]}')
-                    continue
-                same = r['differ'] <= SHARE * r['total']
-                if not same: open(os.path.join(OUT, name.replace('.png', '-diff.png')), 'wb').write(base64.b64decode(r['diff'].split(',')[1]))
-                check(f'{name} matches its baseline', same, f'{r["differ"]} pixels ({100 * r["differ"] / r["total"]:.2f}%) differ; see e2e/out/baseline/')
+                    differs(name, known, shot, f'size changed: {r["size"]}')
+                elif r['differ'] > SHARE * r['total']:
+                    differs(name, known, shot, f'{r["differ"]} pixels ({100 * r["differ"] / r["total"]:.2f}%) differ',
+                            base64.b64decode(r['diff'].split(',')[1]))
+                else:
+                    check(f'{name} matches its baseline', True)
             await ctx.close()
         await b.close()
     if RECORD: print(f'\nrecorded {len(os.listdir(NEW))} pictures in {os.path.relpath(NEW, REPO)}')
     failed = [n for n, ok in results if not ok]
-    print(f'\n{len(results) - len(failed)}/{len(results)} passed')
+    print(f'\n{len(results) - len(failed)}/{len(results)} passed' + (f', {len(warnings)} pictures differ from their baselines' if warnings else ''))
     sys.exit(1 if failed else 0)
 
 asyncio.run(main())
