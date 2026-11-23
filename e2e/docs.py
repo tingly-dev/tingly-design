@@ -167,9 +167,27 @@ async def main():
         ok = await wait_for(lambda: '## Six project kinds and their files' in tab('overview') and '## What Tingly Design does' in tab('overview'))
         check('…and my next edit keeps it', ok, [l for l in tab('overview').splitlines() if l.startswith('#')])
 
+        # the / menu on the window's last line opens above it, not below the window
+        before = tab('overview')
+        await pg.keyboard.press('Enter')
+        # the window ends just under the new line, so there is no room below it
+        line = await pg.evaluate("() => getSelection().anchorNode.getBoundingClientRect().bottom")
+        low = int(line) + 24
+        await pg.set_viewport_size({'width': 1440, 'height': low})
+        await pg.keyboard.type('/')
+        menu = await pg.locator('.slashmenu').bounding_box()
+        caret = await pg.evaluate('() => getSelection().getRangeAt(0).getBoundingClientRect().top')
+        check('the / menu opens above the window\'s last line, inside the window', menu and menu['y'] >= 0 and menu['y'] + menu['height'] <= caret, (menu, caret, low))
+        await pg.set_viewport_size({'width': 1440, 'height': 950})
+        await pg.keyboard.press('Backspace')
+        await pg.keyboard.press('Backspace')
+        check('…and taking the line back leaves the tab as it was', await wait_for(lambda: tab('overview') == before), tab('overview')[-200:])
+
         # --- comments -------------------------------------------------------------------------
         await body.locator('.cmark').click()
         await expect(pg.locator('.cthread.on')).to_contain_text('claude command')
+        # lighting the thread redraws its highlight; the cursor stays where the click put it
+        check('clicking commented words puts the cursor in them', await pg.evaluate("() => !!getSelection().anchorNode?.parentElement?.closest('.cmark')"))
         await pg.locator('.cthread.on textarea').fill('Agreed. Workflow now names Claude Code and the file watcher.')
         await pg.locator('.cthread.on button', has_text='发送').click()
         ok = await wait_for(lambda: threads()[0]['comments'][-1]['text'] == 'Agreed. Workflow now names Claude Code and the file watcher.')
