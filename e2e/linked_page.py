@@ -47,8 +47,12 @@ def api(base, method, path, body=None):
 
 async def open_picker(pg, how):
     if how == 'slash':
-        # a new empty paragraph after the first one: the slash menu opens on a line that holds only the slash
-        await pg.locator('.ProseMirror > p').first.click()
+        # a new empty paragraph after the first one: the slash menu opens on a line that holds only the slash.
+        # The click goes right of the paragraph's last line, so the cursor is at its end whatever the fonts wrap
+        # (End only reaches the end of the line clicked; the middle of the paragraph may be its commented words)
+        first = pg.locator('.ProseMirror > p').first
+        box = await first.bounding_box()
+        await first.click(position={'x': box['width'] - 2, 'y': box['height'] - 4})
         await pg.keyboard.press('End')
         await pg.keyboard.press('Enter')
         await pg.keyboard.type('/linked')

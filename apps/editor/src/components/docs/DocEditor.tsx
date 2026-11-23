@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { NodeSelection } from '@tiptap/pm/state';
+import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
@@ -142,6 +142,36 @@ const SLASH: SlashItem[] = [
 
 /** Where the editor mounted registers how to open the page picker for the cursor: the slash menu's items are plain functions of the editor. */
 let openLinkPicker: (e: Editor) => void = () => {};
+
+/** The slash typed so far and the cursor's line on screen. */
+interface SlashAt {
+  query: string;
+  x: number;
+  top: number;
+  bottom: number;
+  index: number;
+}
+
+/** The slash menu under the cursor's line, flipped above it when the window has no room below, with the chosen item kept in view. */
+function SlashMenu({ at, children }: { at: SlashAt; children: ReactNode }) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: at.x, top: at.bottom + 6 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const below = at.bottom + 6;
+    const top = below + r.height <= innerHeight - 8 ? below : Math.max(8, at.top - 6 - r.height);
+    setPos({ left: Math.max(8, Math.min(at.x, innerWidth - 8 - r.width)), top });
+    (el.querySelector('[aria-selected="true"]') as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
+  }, [at]);
+  return (
+    <div ref={ref} className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={pos}>
+      {children}
+    </div>
+  );
+}
 
 /** A code block with a language and a starting text, selected so typing replaces it. */
 function fence(e: Editor, language: string, text: string): void {
@@ -350,7 +380,7 @@ export function DocEditor({ tab }: { tab: string }) {
   const synced = useRef<string | null>(null);
   const timer = useRef(0);
   const nextActor = useRef<'human' | 'fast-edit'>('human');
-  const [slash, setSlash] = useState<{ query: string; x: number; y: number; index: number } | null>(null);
+  const [slash, setSlash] = useState<SlashAt | null>(null);
   const [spark, setSpark] = useState<Spark | null>(null);
   const [linking, setLinking] = useState(false);
   const rev = useStore((st) => st.assetRev);
@@ -417,7 +447,7 @@ export function DocEditor({ tab }: { tab: string }) {
           void putPictures(e, files, view.posAtCoords({ left: ev.clientX, top: ev.clientY })?.pos);
           return true;
         },
-        handleClick: (_view, _pos, ev) => {
+        handleClick: (view, pos, ev) => {
           const el = ev.target as HTMLElement;
           // ⌘-click / Ctrl-click opens the link; a plain click keeps placing the cursor for editing
           if ((ev.metaKey || ev.ctrlKey) && ev.button === 0) {
@@ -428,8 +458,12 @@ export function DocEditor({ tab }: { tab: string }) {
             }
           }
           const id = el.closest?.('[data-thread]')?.getAttribute('data-thread');
-          if (id) (useDocs.setState({ thread: id }), openPane('comments'));
-          return false;
+          if (!id) return false;
+          // lighting the thread redraws its highlight; the cursor goes where the click was first, or it is lost with the old highlight
+          if (!ev.shiftKey) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos))));
+          useDocs.setState({ thread: id });
+          openPane('comments');
+          return !ev.shiftKey;
         },
       },
       onUpdate: ({ editor: e, transaction }) => {
@@ -477,7 +511,7 @@ export function DocEditor({ tab }: { tab: string }) {
       return;
     }
     const c = e.view.coordsAtPos($from.pos);
-    setSlash((s) => ({ query: text.slice(1), x: c.left, y: c.bottom + 6, index: s?.index ?? 0 }));
+    setSlash((s) => ({ query: text.slice(1), x: c.left, top: c.top, bottom: c.bottom, index: s?.index ?? 0 }));
   }
 
   function choose(item: SlashItem) {
@@ -681,7 +715,7 @@ export function DocEditor({ tab }: { tab: string }) {
       )}
       <EditorContent editor={editor} />
       {slash && list.length > 0 && (
-        <div className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={{ left: slash.x, top: slash.y }}>
+        <SlashMenu at={slash}>
           {list.map((i, n) => (
             <button
               key={i.key}
@@ -695,7 +729,7 @@ export function DocEditor({ tab }: { tab: string }) {
               {t(`docs.block.${i.key}`)}
             </button>
           ))}
-        </div>
+        </SlashMenu>
       )}
       {spark && (
         <div className="sparkpanel" role="dialog" aria-label={t('docs.spark.panelLabel')}>
