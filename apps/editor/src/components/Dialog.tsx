@@ -1,4 +1,5 @@
 import { useEffect, useRef, type FormEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 /** The last control focused outside menus and dialogs: where focus goes back when the dialog was opened from a menu item that is gone by then. */
@@ -104,7 +105,8 @@ export function Dialog({
     </>
   );
   const cls = `ldialog${className ? ` ${className}` : ''}`;
-  return (
+  // drawn on the body: a dialog opened from inside a bar or a panel that has a transform would otherwise be fixed to that box, not the window
+  return createPortal(
     <div className="lmodal" onMouseDown={(e) => e.target === e.currentTarget && closable && onClose()}>
       {onSubmit ? (
         <form
@@ -126,6 +128,7 @@ export function Dialog({
           {body}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

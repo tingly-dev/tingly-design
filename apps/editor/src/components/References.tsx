@@ -36,6 +36,11 @@ export function ReferencesDialog({ project, onClose, onCount }: { project: strin
   const projectChoices: Choice[] = projects
     .filter((p) => p.name !== project)
     .map((p) => ({ path: p.path ?? `${projectsPath ?? ''}/${p.name}`, title: p.title || p.name, kind: p.kind }));
+  const [q, setQ] = useState('');
+  const needle = q.trim().toLowerCase();
+  const match = (c: Choice) => !needle || `${c.title} ${c.path}`.toLowerCase().includes(needle);
+  const shownFolders = folderChoices.filter(match);
+  const shownProjects = projectChoices.filter(match);
   const gone = (refs ?? []).filter((r) => r.state === 'missing');
   const save = (paths: string[]) =>
     api.setReferences(project, paths).then(
@@ -61,16 +66,20 @@ export function ReferencesDialog({ project, onClose, onCount }: { project: strin
       ) : (
         <>
           {!folderChoices.length && !projectChoices.length && <p className="refnote">{t('launcher.refs.noneToAdd')}</p>}
-          {folderChoices.length > 0 && (
+          {(folderChoices.length > 0 || projectChoices.length > 0) && (
+            <input type="search" className="refsearch" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('launcher.refs.search')} aria-label={t('launcher.refs.search')} />
+          )}
+          {needle && !shownFolders.length && !shownProjects.length && <p className="refnote">{t('launcher.refs.noMatch')}</p>}
+          {shownFolders.length > 0 && (
             <section aria-label={t('launcher.refs.folders')}>
               <h3>{t('launcher.refs.folders')}</h3>
-              <ul>{folderChoices.map((c) => row(c, <FolderOpen />))}</ul>
+              <ul>{shownFolders.map((c) => row(c, <FolderOpen />))}</ul>
             </section>
           )}
-          {projectChoices.length > 0 && (
+          {shownProjects.length > 0 && (
             <section aria-label={t('launcher.refs.projects')}>
               <h3>{t('launcher.refs.projects')}</h3>
-              <ul>{projectChoices.map((c) => row(c, <KindIcon kind={c.kind!} size={14} />))}</ul>
+              <ul>{shownProjects.map((c) => row(c, <KindIcon kind={c.kind!} size={14} />))}</ul>
             </section>
           )}
           {gone.length > 0 && (
