@@ -1,0 +1,10 @@
+{
+  "id": "crumb-review",
+  "kind": "slides",
+  "project": "crumb-review",
+  "brief": "Make a slide deck project named `crumb-review`: an 8-slide quarterly business review for a fictional regional bakery chain called Crumb & Co (Q3 revenue up 12% to €4.1M, two new stores opened in Leeds and York, the loyalty app launch slipped from September to January, three priorities for Q4), for the leadership team in a live meeting. The figures are made up. Make it good, then verify it with the tools' own checks and by looking at the pictures, fix anything wrong, and export the slides as PNG.",
+  "export": { "as": "png" },
+  "expect": { "slide": 8 },
+  "mustContain": ["Crumb", "4.1"],
+  "rubric": "Eight slides covering revenue, the two stores, the app slip and three Q4 priorities. A look chosen for this topic (not generic blue, not a default cream page) with one repeated motif; every content slide shows something besides running text (a number, bars, a table, a timeline); neighbouring slides vary their layout; headings sit at the same place on slides of one kind; text readable from the back of a room; content slides use the slide's height rather than stopping in the top half; no line under titles, colour bands or edge stripes; nothing cut off or crowded."
+}
