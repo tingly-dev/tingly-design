@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# After the nightly e2e patrol: a red run opens one issue labelled e2e-patrol
-# (or comments on the open one), a green run closes it. Screenshots that differ
+# After the e2e patrol: a red run opens one issue labelled e2e-patrol (or
+# comments on the open one), a green nightly run closes it. On a release tag
+# (EVENT=push, REF_NAME the tag) the same issues are opened or commented on,
+# naming the tag, but a green run leaves them alone: the tag need not be main's
+# head, so it says nothing about main now. Screenshots that differ
 # from their baselines are warnings, not red: they keep one issue labelled
 # e2e-baseline open (a comment per night), closed when every picture matches.
 # RESULT is the e2e job's result, RUN_URL the run's page, REPORTS the folder
@@ -12,7 +15,7 @@ track() {
   local label="$1" title="$2" body="$3" open
   open="$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty')"
   if [ -z "$body" ]; then
-    if [ -n "$open" ]; then gh issue close "$open" --comment "Green again: $RUN_URL"; fi
+    if [ -n "$open" ] && [ "$EVENT" = schedule ]; then gh issue close "$open" --comment "Green again: $RUN_URL"; fi
   elif [ -n "$open" ]; then
     gh issue comment "$open" --body "$body"
   else
@@ -20,16 +23,25 @@ track() {
   fi
 }
 
+EVENT="${EVENT:-schedule}"
+if [ "$EVENT" = schedule ]; then
+  WHERE="the nightly e2e patrol on main"
+  PATROL_TITLE="test(e2e): nightly patrol is red"
+else
+  WHERE="the full e2e set on release tag ${REF_NAME:?} (the release does not wait on it)"
+  PATROL_TITLE="test(e2e): full set is red on $REF_NAME"
+fi
+
 gh label create e2e-patrol --color B60205 --description "The nightly e2e patrol is red" 2>/dev/null || true
 gh label create e2e-baseline --color FBCA04 --description "Editor screenshots differ from their baselines" 2>/dev/null || true
 
 BODY=""
 if [ "$RESULT" != "success" ]; then
-  BODY="The nightly e2e patrol on main is $RESULT: $RUN_URL
+  BODY="${WHERE^} is $RESULT: $RUN_URL
 
 The \`e2e-report-*\` artifacts on that run (one per slice) have \`report.md\` (which suites failed and their last lines) and every suite's log."
 fi
-track e2e-patrol "test(e2e): nightly patrol is red" "$BODY"
+track e2e-patrol "$PATROL_TITLE" "$BODY"
 
 # the reports are missing when the run was cut short; then nothing is known about the pictures, so leave that issue be
 shopt -s nullglob
@@ -38,7 +50,7 @@ reports=("${REPORTS:-e2e-reports}"/*/report.json)
 WARNINGS="$(jq -r '.suites[] | .warnings // [] | .[] | "- " + .' "${reports[@]}")"
 BODY=""
 if [ -n "$WARNINGS" ]; then
-  BODY="On the nightly e2e patrol ($RUN_URL) these screenshots differ from the \`e2e-baselines\` branch:
+  BODY="On $WHERE ($RUN_URL) these screenshots differ from the \`e2e-baselines\` branch:
 
 $WARNINGS
 

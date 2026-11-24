@@ -4,9 +4,9 @@ name: Release
 # it into package.json before bundling, as Tingly Box's npm.yml does, so nothing
 # is bumped by hand on main.
 #
-#   e2e      every end-to-end suite (e2e.yml); red stops the release
-#   build    tests, typecheck, `pnpm bundle`, start the bundle like a host,
-#            pack it into tingly-design-<ver>.tgz plus its sha256
+#   build    tag and license checks, unit tests, typecheck, `pnpm bundle`,
+#            start the bundle like a host, pack it into tingly-design-<ver>.tgz
+#            plus its sha256; this is what a release must pass
 #   github   a GitHub release on the tag with both files attached
 #   npm      the same bundle published as @tingly-dev/tingly-design and as
 #            tingly-design, behind the `production` environment; a tag with a
@@ -14,6 +14,11 @@ name: Release
 #
 # The release asset and the npm package are one tarball, so a host can pin a
 # version and its sha256 and fetch it from either place. See .design/release.md.
+#
+# The end-to-end suites are not part of the release: the same tag push starts
+# e2e-patrol.yml, which runs the full set on the tagged commit alongside this
+# workflow and, when it is red, opens or comments on the e2e-patrol issue. A red
+# e2e run never stops or undoes a release (.design/harness.md).
 #
 # npm auth: Trusted Publishing only. The job's GitHub OIDC id-token is exchanged
 # for a credential good for one publish; there is no NPM_TOKEN and no
@@ -34,14 +39,8 @@ permissions:
   contents: read
 
 jobs:
-  e2e:
-    name: End-to-end suites
-    # every suite (e2e.yml in its full mode); a red run stops the release before anything is built
-    uses: ./.github/workflows/e2e.yml
-
   build:
     name: Build and check the bundle
-    needs: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:

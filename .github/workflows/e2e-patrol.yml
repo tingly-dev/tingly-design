@@ -1,9 +1,12 @@
 name: E2E patrol
 
-# Every night on main, and by hand from the Actions tab: the full e2e set
-# (e2e.yml). On the nightly run a red result opens one issue labelled
-# e2e-patrol (or comments on the open one) and a green one closes it; a run by
-# hand only reports. Screenshots that differ from their baselines do not make
+# Every night on main, on every release tag, and by hand from the Actions tab:
+# the full e2e set (e2e.yml). On the nightly run a red result opens one issue
+# labelled e2e-patrol (or comments on the open one) and a green one closes it.
+# On a vX.Y.Z tag it runs alongside release.yml and never gates it: a red result
+# (or differing screenshots) opens or comments on the same issues, naming the
+# tag, and a green one leaves them alone (a tag need not be main's head). A run
+# by Screenshots that differ from their baselines do not make
 # the run red; on the nightly run they keep a second issue, labelled
 # e2e-baseline, open until the pictures match again. Run by hand with "record baselines" it instead takes the
 # editor's screenshots again (e2e/baseline.py) and pushes them to the
@@ -13,6 +16,8 @@ name: E2E patrol
 on:
   schedule:
     - cron: '17 18 * * *'  # 02:17 Beijing
+  push:
+    tags: ['v*.*.*']  # the same tags as release.yml, reported only
   workflow_dispatch:
     inputs:
       suites:
@@ -39,7 +44,7 @@ jobs:
   patrol-issue:
     name: Open or close the patrol issue
     needs: e2e
-    if: ${{ always() && github.event_name == 'schedule' }}
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'push') }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -51,10 +56,12 @@ jobs:
         with:
           pattern: e2e-report-*
           path: e2e-reports
-      - name: Report the nightly result
+      - name: Report the result
         env:
           GH_TOKEN: ${{ github.token }}
           RESULT: ${{ needs.e2e.result }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REPORTS: e2e-reports
         run: .github/scripts/e2e-patrol-issue.sh

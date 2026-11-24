@@ -38,6 +38,8 @@
 
 npm 排在 GitHub release 后面：npm 发出去就撤不回，前面任何一步失败都不该走到这里。
 
+e2e 不在这三步里：同一次 tag 推送另外开跑 `e2e-patrol.yml`，对 tag 的提交跑全量，只出报告、红了开或追加 `e2e-patrol` issue，不拦也不撤发布（为什么见 [harness.md](./harness.md)）。发布必须过的检查就是 build 那一步。
+
 `ci.yml` 在每个 PR 和 main 上跑同样的检查（不打包、不发布，只 `npm pack --dry-run` 列出包内容），让发版时不出意外。
 
 ## 鉴权：只走 Trusted Publishing，其余要一次性密码
