@@ -154,12 +154,16 @@ async def main():
             await expect(form).to_be_visible()
             await pg.keyboard.press('Escape')
             await expect(form).to_have_count(0)
+            await pg.keyboard.press('Enter')
+            await expect(pg.locator('.docimgform input').first).to_be_focused()
+            await pg.keyboard.press('Escape')
+            await expect(form).to_have_count(0)
             await img.click()
             await expect(form).to_be_visible()
             await pg.locator('button[aria-label="Import / Export"]').first.click()
             await expect(form).to_have_count(0)
             await pg.keyboard.press('Escape')
-            check('doc: interacting with the form keeps it open; Escape and an outside click close it', True)
+            check('doc: form fields, keyboard opening, Escape and outside dismissal work', True)
 
             # --- the original changes: noticed on reopening, updated from the form, taken back ---------
             usage = P(CANVAS, 'Usage.dc.html')

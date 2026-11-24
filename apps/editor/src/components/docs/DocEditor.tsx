@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
@@ -283,7 +283,7 @@ function imageNodeView(initial: { node: { type: unknown; attrs: Record<string, u
  * its alt text (what a screen reader and a picture that did not load say). No new block and no
  * layout change: the picture stays where it is and the caption is part of its own block.
  */
-function ImageForm({ editor }: { editor: Editor }) {
+function EditorWithImageControls({ editor }: { editor: Editor }) {
   const { t } = useTranslation();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const form = useRef<HTMLDivElement>(null);
@@ -292,28 +292,31 @@ function ImageForm({ editor }: { editor: Editor }) {
     const sel = editor.state.selection;
     return sel instanceof NodeSelection && sel.node.type.name === 'image' ? editor.view.nodeDOM(sel.from) : null;
   }, [editor]);
-  useEffect(() => {
-    const view = editor.view.dom;
-    const click = (ev: MouseEvent) => {
-      const figure = ev.target instanceof Element ? ev.target.closest<HTMLElement>('.docfig') : null;
-      if (figure && figure === selectedImage()) setAnchor(figure);
-    };
-    const openWithKeyboard = (ev: KeyboardEvent) => {
-      if (ev.key !== 'Enter' || ev.isComposing || ev.defaultPrevented) return;
-      const image = selectedImage();
-      if (!(image instanceof HTMLElement)) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      setAnchor(image);
-      requestAnimationFrame(() => form.current?.querySelector('input')?.focus());
-    };
-    view.addEventListener('click', click);
-    view.addEventListener('keydown', openWithKeyboard, true);
-    return () => {
-      view.removeEventListener('click', click);
-      view.removeEventListener('keydown', openWithKeyboard, true);
-    };
-  }, [editor, selectedImage]);
+  const figureOf = (target: EventTarget) => target instanceof Element ? target.closest<HTMLElement>('.docfig') : null;
+  const mouseDown = (ev: ReactMouseEvent) => {
+    // The click selects the whole figure. Suppress the browser's text caret around the image.
+    if (ev.button === 0 && figureOf(ev.target)) ev.preventDefault();
+  };
+  const click = (ev: ReactMouseEvent) => {
+    const figure = figureOf(ev.target);
+    if (!figure) return;
+    if (selectedImage() !== figure) {
+      const pos = editor.view.posAtDOM(figure, 0);
+      if (editor.state.doc.nodeAt(pos)?.type.name !== 'image') return;
+      editor.commands.setNodeSelection(pos);
+    }
+    editor.view.focus();
+    setAnchor(figure);
+  };
+  const openWithKeyboard = (ev: ReactKeyboardEvent) => {
+    if (ev.key !== 'Enter' || ev.nativeEvent.isComposing || ev.defaultPrevented) return;
+    const image = selectedImage();
+    if (!(image instanceof HTMLElement)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    setAnchor(image);
+    requestAnimationFrame(() => form.current?.querySelector('input')?.focus());
+  };
   useEffect(() => {
     if (!anchor) return;
     const sync = () => {
@@ -349,9 +352,10 @@ function ImageForm({ editor }: { editor: Editor }) {
   }, [anchor, editor, selectedImage]);
   const sel = editor.state.selection;
   const dom = anchor;
-  if (!dom || !(sel instanceof NodeSelection) || selectedImage() !== dom) return null;
+  const content = <EditorContent editor={editor} onMouseDownCapture={mouseDown} onClick={click} onKeyDownCapture={openWithKeyboard} />;
+  if (!dom || !(sel instanceof NodeSelection) || selectedImage() !== dom) return <>{content}</>;
   const r = dom.getBoundingClientRect();
-  if (r.bottom <= 0 || r.top >= innerHeight) return null;
+  if (r.bottom <= 0 || r.top >= innerHeight) return <>{content}</>;
   const below = r.bottom + 8;
   const linkedPath = String(sel.node.attrs.src ?? '').replace(/^\.\.\//, '');
   // the form is taller when the picture is a linked page: its source, whether it is current, the actions
@@ -359,7 +363,7 @@ function ImageForm({ editor }: { editor: Editor }) {
   const set = (attrs: { title?: string | null; alt?: string | null }) => editor.chain().updateAttributes('image', attrs).run();
   // on document.body: the column around the page puts a containing block on `fixed` (a transform), which
   // would draw the form beside the page's own corner instead of beside the picture on screen
-  return createPortal(
+  const panel = createPortal(
     <div
       ref={form}
       className="docimgform"
@@ -385,6 +389,7 @@ function ImageForm({ editor }: { editor: Editor }) {
     </div>,
     document.body,
   );
+  return <>{content}{panel}</>;
 }
 
 /** The top-level blocks a selection touches, as positions. */
@@ -743,7 +748,6 @@ export function DocEditor({ tab }: { tab: string }) {
         </div>
       </BubbleMenu>
       <DocPointers editor={editor} file={file} />
-      <ImageForm editor={editor} />
       {linking && editor && (
         <PagePicker
           kind="docs"
@@ -760,7 +764,7 @@ export function DocEditor({ tab }: { tab: string }) {
           }}
         />
       )}
-      <EditorContent editor={editor} />
+      <EditorWithImageControls editor={editor} />
       {slash && list.length > 0 && (
         <SlashMenu at={slash}>
           {list.map((i, n) => (
