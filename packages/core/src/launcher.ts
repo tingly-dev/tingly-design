@@ -99,6 +99,7 @@ export type ProjectPreview =
 const MAX_PREVIEW_SOURCE = 200_000;
 
 interface CardCtx {
+  page?: string;
   files: string[];
   read: (rel: string) => Promise<string | undefined>;
   /** `read`, but nothing for a source too large for the launcher frame to render. */
@@ -109,9 +110,9 @@ type CardBody = Pick<ProjectCard, 'title' | 'count' | 'preview'>;
 
 /** What each kind shows on its card: one entry per kind, so a kind added later fails to compile until it has a preview. */
 const CARD: Record<ProjectKind, (c: CardCtx) => Promise<CardBody>> = {
-  async slides({ read, small }) {
+  async slides({ read, small, page }) {
     const deck = parseDeck(await read(DECK_FILE));
-    const id: string | undefined = deck.cover && deck.order.includes(deck.cover) ? deck.cover : deck.order[0];
+    const id = page ?? (deck.cover && deck.order.includes(deck.cover) ? deck.cover : deck.order[0]);
     const source = id ? await small(slideFile(id)) : undefined;
     return {
       title: deck.title,
@@ -177,14 +178,14 @@ const CARD: Record<ProjectKind, (c: CardCtx) => Promise<CardBody>> = {
     }
     return { title: dash.title, count: sets.length, preview: { kind: 'dashboard', datasets: titles } };
   },
-  async docs({ read }) {
+  async docs({ read, page }) {
     const doc = parseDoc(await read(DOC_INDEX));
     const depth = (parent: string | undefined): number => {
       let n = 0;
       for (let p = parent; p && n < 4; p = doc.tabs.find((x) => x.id === p)?.parent) n++;
       return n;
     };
-    const first = doc.tabs[0];
+    const first = page ? doc.tabs.find((tab) => tab.id === page) : doc.tabs[0];
     const md = first ? ((await read(tabFile(first.id))) ?? '') : '';
     const excerpt =
       md
@@ -197,7 +198,7 @@ const CARD: Record<ProjectKind, (c: CardCtx) => Promise<CardBody>> = {
     return {
       title: doc.title,
       count: doc.tabs.length,
-      preview: { kind: 'docs', tabs: doc.tabs.slice(0, 6).map((t) => ({ title: t.title, depth: depth(t.parent) })), excerpt, lang: doc.settings.lang },
+      preview: { kind: 'docs', tabs: (page ? (first ? [first] : []) : doc.tabs.slice(0, 6)).map((t) => ({ title: t.title, depth: page ? 0 : depth(t.parent) })), excerpt, lang: doc.settings.lang },
     };
   },
   async design({ read, small }) {
@@ -217,6 +218,13 @@ const CARD: Record<ProjectKind, (c: CardCtx) => Promise<CardBody>> = {
     };
   },
 };
+
+/** The same preview as on the launcher, scoped to the selected slide or doc tab. */
+export async function projectPagePreview(kind: ProjectKind, page: string, files: Record<string, string>): Promise<ProjectPreview> {
+  const read = async (rel: string) => files[rel];
+  const small = async (rel: string) => (files[rel]?.length <= MAX_PREVIEW_SOURCE ? files[rel] : undefined);
+  return (await CARD[kind]({ page, files: Object.keys(files), read, small })).preview;
+}
 
 /** The card for one project, from its tracked files and a reader for them. */
 export async function projectCard(

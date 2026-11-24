@@ -31,3 +31,18 @@ export function useElementSize<T extends HTMLElement>(given?: RefObject<T | null
   }, [ref]);
   return [ref, size];
 }
+
+/** Whether the element has come near the viewport at least once. */
+export function useNear<T extends Element>(): [RefObject<T | null>, boolean] {
+  const ref = useRef<T>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return;
+    if (typeof IntersectionObserver === 'undefined') return setNear(true);
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setNear(true), { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near]);
+  return [ref, near];
+}

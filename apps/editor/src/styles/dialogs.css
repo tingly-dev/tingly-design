@@ -255,13 +255,21 @@
 }
 
 
+.bpick-visual {
+  width: 196px;
+}
+
+.bpick-visual .lpreview {
+  margin: 0;
+  border-radius: calc(var(--r) - 2px);
+}
+
 .bpick-card {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 196px;
-  min-height: 96px;
-  max-height: 196px;
+  height: 122.5px;
   border-radius: calc(var(--r) - 2px);
   background: var(--panel-2);
   color: var(--ink-2);
