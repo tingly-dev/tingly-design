@@ -5,12 +5,12 @@ name: E2E
 #
 #   pr smoke     a PR that touches the editor, the sandbox, the server or e2e/:
 #                the smoke subset (open, edit, save in every kind)
-#   patrol       e2e-patrol.yml calls this every night on main and by hand: the
-#                full set, and that workflow opens or closes the patrol issue
-#   release      release.yml calls this before it builds the tarball: the full
-#                set, and a red run stops the release
+#   patrol       e2e-patrol.yml calls this every night on main, on every
+#                release tag (alongside release.yml, never gating it) and by
+#                hand: the full set, and that workflow opens or closes the
+#                patrol issue
 #
-# Kept read-only, so a caller (release.yml) needs to grant it nothing more.
+# Kept read-only, so a caller needs to grant it nothing more.
 # The full set is cut into balanced slices (e2e/run.py --shard), one job each on
 # its own runner, so a run takes the time of its slowest slice, not the sum; the
 # smoke subset is one slice. A slice's report and every suite's output are
