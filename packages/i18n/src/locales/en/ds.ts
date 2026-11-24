@@ -84,7 +84,6 @@ export default {
   app: {
     docTitle: '{{title}} · Design system',
     label: 'Design system',
-    listTab: 'List',
     nameLabel: 'Design system name',
     nothingToSave: 'Nothing on screen to save.',
     renameHint: 'Double-click to rename',

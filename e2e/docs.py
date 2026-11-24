@@ -43,7 +43,7 @@ async def main():
     health = json.loads(urllib.request.urlopen(BASE.replace('5173', '8787') + '/api/health').read())
     async with async_playwright() as p:
         b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
-        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 950})
+        ctx = await b.new_context(locale='zh-CN', viewport={'width': 1440, 'height': 950}, accept_downloads=True)
         pg = await ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -167,9 +167,27 @@ async def main():
         ok = await wait_for(lambda: '## Six project kinds and their files' in tab('overview') and '## What Tingly Design does' in tab('overview'))
         check('…and my next edit keeps it', ok, [l for l in tab('overview').splitlines() if l.startswith('#')])
 
+        # the / menu on the window's last line opens above it, not below the window
+        before = tab('overview')
+        await pg.keyboard.press('Enter')
+        # the window ends just under the new line, so there is no room below it
+        line = await pg.evaluate("() => getSelection().anchorNode.getBoundingClientRect().bottom")
+        low = int(line) + 24
+        await pg.set_viewport_size({'width': 1440, 'height': low})
+        await pg.keyboard.type('/')
+        menu = await pg.locator('.slashmenu').bounding_box()
+        caret = await pg.evaluate('() => getSelection().getRangeAt(0).getBoundingClientRect().top')
+        check('the / menu opens above the window\'s last line, inside the window', menu and menu['y'] >= 0 and menu['y'] + menu['height'] <= caret, (menu, caret, low))
+        await pg.set_viewport_size({'width': 1440, 'height': 950})
+        await pg.keyboard.press('Backspace')
+        await pg.keyboard.press('Backspace')
+        check('…and taking the line back leaves the tab as it was', await wait_for(lambda: tab('overview') == before), tab('overview')[-200:])
+
         # --- comments -------------------------------------------------------------------------
         await body.locator('.cmark').click()
         await expect(pg.locator('.cthread.on')).to_contain_text('claude command')
+        # lighting the thread redraws its highlight; the cursor stays where the click put it
+        check('clicking commented words puts the cursor in them', await pg.evaluate("() => !!getSelection().anchorNode?.parentElement?.closest('.cmark')"))
         await pg.locator('.cthread.on textarea').fill('Agreed. Workflow now names Claude Code and the file watcher.')
         await pg.locator('.cthread.on button', has_text='发送').click()
         ok = await wait_for(lambda: threads()[0]['comments'][-1]['text'] == 'Agreed. Workflow now names Claude Code and the file watcher.')
@@ -253,10 +271,29 @@ async def main():
         ok = await wait_for(lambda: not os.path.exists(os.path.join(hist, '.deleted.json')))
         await expect(pg.locator('.restoretab')).to_have_count(0, timeout=8000)
         check('a restored tab leaves the deleted list', ok)
-        await pg.locator('.dashbar button[aria-label="版式"]').click()
-        await pg.locator('.popmenu.settings .seg').nth(2).locator('button', has_text='宽').click()
-        ok = await wait_for(lambda: index()['settings']['width'] == 'wide')
-        check('layout settings write doc.json', ok and await pg.locator('.app.docs[data-width=wide]').count() == 1)
+        width = pg.locator('.doctools select[data-page-width]')
+        has_width = await width.count() == 1
+        standard_label = await width.locator('option[value=standard]').inner_text() if has_width else ''
+        check('the top bar has no Layout button; the page width is in the formatting bar', await pg.locator('.dashbar button[aria-label="版式"]').count() == 0 and has_width)
+        check('Standard shows its real column in the width menu', '677' in standard_label, standard_label)
+        widths = [('narrow', '728px'), ('standard', '805px'), ('wide', '948px'), ('full', 'none')]
+        ok = has_width
+        for value, maxw in widths:
+            await width.select_option(value)
+            stored = await wait_for(lambda: index()['settings']['width'] == value)
+            drawn = await pg.evaluate("() => getComputedStyle(document.querySelector('.docpage')).maxWidth")
+            on = await pg.locator(f'.app.docs[data-width={value}]').count() == 1
+            ok = ok and stored and drawn == maxw and on
+            if not (stored and drawn == maxw and on): print('  width', value, stored, drawn, on)
+        check('the width menu offers four page widths, writes doc.json and sets the page', ok)
+        # the export reads the same measure as the page: Narrow is a 600px text column
+        await width.select_option('narrow')
+        ok = await wait_for(lambda: index()['settings']['width'] == 'narrow')
+        await pg.locator('.dashbar button[aria-label="导入 / 导出"]').click()
+        async with pg.expect_download() as dl:
+            await pg.get_by_role('menuitem', name='HTML 网页').click()
+        html = open(await (await dl.value).path(), encoding='utf-8').read()
+        check('the HTML export draws at the same measure as the page', ok and 'body{max-width:600px;margin:40px auto;padding:0 24px}' in html)
 
         # --- AI rewrite -------------------------------------------------------------------------
         if health.get('fastEdit'):
@@ -305,6 +342,24 @@ async def main():
         md = read(os.path.join(DOC, 'tabs/architecture.md'))
         check('the file keeps plain fences', all(f in md for f in ('```mermaid', '```latex', '```csv')), md[-300:])
         await pg.screenshot(path=OUT + 'docs-code-blocks.png')
+
+        # --- a picture's caption and alt text ------------------------------------------------------
+        # the tab's picture was written with its alt as the words; a caption is its Markdown title
+        fig = body.locator('figure.docfig')
+        await expect(fig).to_have_count(1)
+        check('a picture is drawn as a figure, its words on the img as alt', await fig.locator('img').get_attribute('alt') == 'Every editor writes to the same project files')
+        await fig.locator('img').click()
+        form = pg.locator('.docimgform')
+        await expect(form).to_be_visible()
+        check('clicking a picture opens the caption and alt form', await form.get_by_label('图片说明').count() == 1 and await form.get_by_label('替代文字').count() == 1)
+        await form.get_by_label('图片说明').fill('One write-back engine')
+        await form.get_by_label('替代文字').fill('The write-back engine')
+        ok = await wait_for(lambda: '![The write-back engine](../uploads/architecture.svg "One write-back engine")' in tab('architecture'))
+        check('the caption is the Markdown title and the alt its words', ok, [l for l in tab('architecture').splitlines() if l.startswith('![')])
+        caption = body.locator('figure.docfig figcaption')
+        await expect(caption).to_have_text('One write-back engine')
+        check('…and the picture is drawn with it underneath at once', True)
+        await pg.screenshot(path=OUT + 'docs-image-caption.png')
 
         # --- earlier versions ---------------------------------------------------------------------
         shutil.rmtree(os.path.join(DOC, '.history'), ignore_errors=True)  # earlier runs leave copies, and one a minute is kept
@@ -363,6 +418,7 @@ async def main():
             await pg.get_by_role('menuitem', name='HTML 网页').click()
         html = read(await (await dl.value).path())
         check('export the whole doc as HTML', '<h1>Project kinds</h1>' in html and '<table>' in html and 'overflow-x:auto' in html)
+        check('…and a picture with a caption is a figure under it', '<figure>' in html and '<figcaption>One write-back engine</figcaption>' in html, html[html.find('architecture.svg') - 80:html.find('architecture.svg') + 160])
 
         # --- a new doc ----------------------------------------------------------------------------
         await pg.goto(BASE + '/')

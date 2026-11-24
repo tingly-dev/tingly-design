@@ -26,6 +26,17 @@ export interface ReviewPin {
   focus?: boolean;
 }
 
+/** A live edit pointer as the runtime draws it (core's `pointer.ts`): a frame round the element in the participant's colour, its name beside it. */
+export interface RuntimePointer {
+  /** the participant's id: the same id moves its one pointer */
+  id: string;
+  tid: number;
+  color: string;
+  label: string;
+  /** idle: fades out */
+  fading: boolean;
+}
+
 export type ToRuntime =
   | {
       dc: 'render';
@@ -47,6 +58,8 @@ export type ToRuntime =
   | { dc: 'hover'; tid: number | null }
   /** review mode: clicks leave remarks instead of selecting; draw these pins, `unit` stage px per screen px so they keep their size at any zoom */
   | { dc: 'review'; on: boolean; pins: ReviewPin[]; unit: number }
+  /** the live edit pointers on this file; `unit` as for review pins */
+  | { dc: 'pointers'; pointers: RuntimePointer[]; unit: number }
   | { dc: 'mode'; mode: Mode }
   | { dc: 'export'; id: string; scale: number; tid?: number }
   /** the artboard as drawn, as a standalone page (the canvas's PDF) */

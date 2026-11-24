@@ -14,6 +14,7 @@ projects/*/.image.json
 projects/*/renders/
 .tingly-design/
 projects/.links.json
+projects/.trash/
 projects/.server.json
 __pycache__/
 evals/out/

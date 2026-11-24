@@ -186,12 +186,7 @@ export function removeCover(): void {
  */
 async function placeOnScene(file: File, nth: number): Promise<boolean> {
   const s = get();
-  const view = s.motionView;
-  if (!s.project || !view?.scene) return false;
-  const f = sceneFile(view.scene);
-  const src = display(s, f) ?? '';
-  const root = rootElement(parsed(src));
-  if (!root) return false;
+  if (!s.project || !s.motionView?.scene) return false;
   const r = await api.upload(s.project, file, 'uploads');
   const dims = await new Promise<{ w: number; h: number }>((resolve) => {
     const img = new Image();
@@ -199,19 +194,31 @@ async function placeOnScene(file: File, nth: number): Promise<boolean> {
     img.onerror = () => resolve({ w: 800, h: 600 });
     img.src = URL.createObjectURL(file);
   });
+  const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
+  return placePictureOnScene(r.path, dims, alt, nth);
+}
+
+/** A picture already in the project onto the scene under the playhead (see `placeOnScene`). */
+function placePictureOnScene(path: string, dims: { w: number; h: number }, alt: string, nth = 0): boolean {
+  const s = get();
+  const view = s.motionView;
+  if (!view?.scene) return false;
+  const f = sceneFile(view.scene);
+  const src = display(s, f) ?? '';
+  const root = rootElement(parsed(src));
+  if (!root) return false;
   const m = motionOf(s);
   const [W, H] = m.formats[primaryFormat(m)]?.size ?? [1920, 1080];
   const k = Math.min(1, (W * 0.5) / dims.w, (H * 0.6) / dims.h);
   const w = Math.round(dims.w * k);
   const h = Math.round(dims.h * k);
-  const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
   const length = parseTime(sceneTiming(src).duration) ?? DEFAULT_SCENE_MS;
   const at = view.landed ? 0 : Math.max(0, Math.min(Math.round(view.at), length - 300));
   const tid = insertHtml(
     f,
     root.tid,
     'last',
-    `<img src="${r.path}" alt="${alt}" data-in="fade 300ms @${formatTime(at)}" style="position:absolute;left:${Math.round((W - w) / 2) + nth * 40}px;top:${Math.round((H - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
+    `<img src="${path}" alt="${alt.replace(/"/g, '')}" data-in="fade 300ms @${formatTime(at)}" style="position:absolute;left:${Math.round((W - w) / 2) + nth * 40}px;top:${Math.round((H - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
   );
   if (tid !== null) useStore.setState({ selection: { kind: 'el', file: f, tid } });
   return tid !== null;
@@ -230,14 +237,15 @@ export const motionImport: ImportTarget = {
     if (!n) return t('motion.import.noScene');
     return n === 1 ? t('motion.import.placedOne', { name: files[0].path.split('/').pop() }) : t('motion.import.placedMany', { count: n });
   },
-  board: {
+  page: {
     get what() {
-      return t('motion.import.boardWhat');
+      return t('linked.picker.what', { kind: t('launcher.kind.motion.name').toLowerCase() });
     },
-    place: (path, { size, moving, title }) => {
+    place: ({ path, mode, size, moving, title, project }) => {
       const s = get();
       const view = s.motionView;
-      if (!view?.scene) return t('motion.import.noScene');
+      if (!view?.scene) return t('linked.toast.placed.noScene');
+      if (mode === 'image') return placePictureOnScene(path, { w: size[0], h: size[1] }, t('linked.alt', { title, project }), 0) ? t('linked.toast.placed.scene', { title, scene: view.scene }) : t('linked.toast.placed.noScene');
       const f = sceneFile(view.scene);
       const src = display(s, f) ?? '';
       const root = rootElement(parsed(src));
@@ -247,7 +255,7 @@ export const motionImport: ImportTarget = {
       // an effect runs with the scene from its start, behind everything; a still artboard enters at the playhead like a picture
       const length = parseTime(sceneTiming(src).duration) ?? DEFAULT_SCENE_MS;
       const at = view.landed ? 0 : Math.max(0, Math.min(Math.round(view.at), length - 300));
-      const { html, back } = boardEmbed(path, frame, size, moving, moving ? 'data-seek' : `data-seek data-in="fade 300ms @${formatTime(at)}"`);
+      const { html, back } = boardEmbed(path, frame, size, moving ?? false, moving ? 'data-seek' : `data-seek data-in="fade 300ms @${formatTime(at)}"`);
       const tid = insertHtml(f, root.tid, back ? 'first' : 'last', html);
       if (tid === null) return t('motion.import.noScene');
       useStore.setState({ selection: { kind: 'el', file: f, tid } });

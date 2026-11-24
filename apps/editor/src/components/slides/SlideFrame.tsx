@@ -6,6 +6,7 @@ import { openExpand } from '../../expand';
 import { frames, post } from '../canvas/Board';
 import { handleKey, leaveField } from '../../shortcuts';
 import { clickRemark, usePins } from '../../review';
+import { useRuntimePointers } from '../../pointers';
 import { SERVER } from '../../base';
 import { htmlLang, t as tr } from '../../i18n';
 import { useBoardFiles } from '../../boards';
@@ -70,6 +71,7 @@ export const SlideFrame = memo(function SlideFrame({
   const hover = useStore((s) => (use === 'stage' && s.layerHover?.file === file ? s.layerHover.tid : null));
   const reviewing = useStore((s) => use === 'stage' && s.pane === 'review');
   const pins = usePins(file);
+  const pointers = useRuntimePointers(file);
   const srcdoc = useMemo(() => sandboxDoc(SERVER, 'runtime', htmlLang()), []);
   const mode = use === 'present' ? 'play' : 'edit';
   const slide = useMemo(() => ({ head, base: project ? api.frameBase(project, assetRev) : '', still: use === 'thumb', size: [W, H] as [number, number] }), [head, project, use, assetRev, W, H]);
@@ -187,6 +189,11 @@ export const SlideFrame = memo(function SlideFrame({
   useEffect(() => {
     if (ready && use === 'stage') post(file, { dc: 'review', on: reviewing, pins: reviewing ? pins : [], unit: Math.min(6, 1 / scale) });
   }, [ready, reviewing, pins, scale, file, use]);
+
+  // who else is changing this slide or scene, and where (live pointers)
+  useEffect(() => {
+    if (ready && use === 'stage') post(file, { dc: 'pointers', pointers, unit: Math.min(6, 1 / scale) });
+  }, [ready, pointers, scale, file, use]);
 
   return (
     <div className={`sframe f-${use}`} style={{ width: W * scale, height: H * scale }}>

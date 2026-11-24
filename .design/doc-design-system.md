@@ -23,7 +23,7 @@
 |---|---|---|
 | 颜色（按主题） | `doc-heading` `doc-link` `doc-quote-bar` `doc-quote-bg` `doc-code-bg` `doc-code-ink` `doc-table-head` `doc-mark` `doc-rule` | 标题字、链接、引用的竖线与底、代码的底与字、表头的底、高亮、线 |
 | 文字样式 | `doc-h1`…`doc-h4` `doc-body` `doc-code` | 字号（px/rem）、行距（倍数或长度）、字重；`doc-h1` 的字重和行距管所有标题，`doc-h4` 的字号管 h4–h6，`doc-code` 管代码块（行内代码大 1px） |
-| 间距 | `doc-column` `doc-gap` `doc-indent` | 正文栏宽、段距、列表缩进（px） |
+| 间距 | `doc-column` `doc-gap` `doc-indent` | 正文栏宽（文档的“标准”宽度用它）、段距、列表缩进（px） |
 
 **值之外：元素的装饰（`doc` 族）。** 上面是“值”。一套文档设计语言还会给元素加**装饰**：标题旁一道色条、图片外一圈相纸边框、分割线换成虚线。这些不是值，用值表达不出来（给每个元素的每种装饰都起一个 token 名会爆炸），所以 `tokens.json` 里有一个 `doc` 族：每个 token 以元素命名（`h1`…`h6`、`p`、`quote`、`code`、`pre`、`img`、`hr`、`table`、`th`、`td`、`a`、`ul`、`ol`、`li`、`mark`、`strong`），值是一串 CSS 声明，里面的 `{名字}` 是系统自己的颜色或长度 token（沿用 tokens.json 里别名的写法），按文档穿着的主题填成值，所以装饰跟着主题、不写 `var()`。`docDecor.ts` 管这一族：只认编辑器页面、导出和公众号编辑器**都保留**的属性（颜色、背景色、边框、圆角、内外边距、字号字重、字距、行距、对齐、缩进、装饰线、宽度、display 三个值、列表符号），阴影、定位、浮动、flex、grid、transform、`url()`、`var()`、`!important` 一律拒绝并在“问题”页说出原因，和别的读不了的 token 一样。它解析成 `DsTokens.docStyles`（不进 `others`，因为它不是谁会当值读的 token，所以生成 CSS、README 附录的数量、间距页都不用动）；`docLookFromSystem` 填成 `DocLook.decor`，编辑器页面（`docDecorCss`，作用域在 `.docbody` 下）、HTML / PDF / PNG（`docLookCss` 末尾）、公众号（`wechatStyles` 写在每个标签自己的值之后，所以优先）读同一份。**文档只读 `tokens.json`**：系统里 `components/bundle.css` 的类（比如 `wx-h1`）是给组件和幻灯片的，对文档没有作用，这一点写进了 design-system 的 skill。设计系统的“文档”页把系统写了的装饰也列在角色清单里，README 附录也列出来。内置的 WeChat 风格自己就带了两条，当作“一个系统怎么给元素加装饰”的样例：`h1` 旁一道绿色竖条（`border-left: 6px solid {accent}`），`img` 外一圈相纸式白框（`box-sizing: border-box` 让它仍在栏内）；文档自己的样子什么都不加。
 
@@ -38,7 +38,9 @@
 | 微信公众号 | `wechatStyles(look)` 把同一份取值写成每个标签的内联样式；页面色带在文章最外一层的 `background-color` 里，所以深色系统贴出去还是它的样子 |
 | Word | 暂不跟（§7） |
 
-字号、行距和栏宽的去处：编辑器页读 `--look-h1…h3`、`--look-size`、`--look-line`、`--look-column`（页宽 = 栏宽 + 左右内边距，文档设成“宽”时仍然宽）；HTML / PDF / PNG 的 `body` 字体和页宽；公众号的 `wechatStyles`。系统没有栏宽就由文档自己的宽度设置决定。
+字号、行距和栏宽的去处：编辑器页读 `--look-h1…h3`、`--look-size`、`--look-line`；HTML / PDF / PNG 的 `body` 字体；公众号的 `wechatStyles`。
+
+**页宽是文档自己的设置**（`doc.json` 的 `settings.width`，四档）：core 的 `docs.ts` 一张表（`DOC_WIDTH_COLUMNS`：窄 600、标准 677、宽 820 px 的正文栏；`full` 通栏）把所有出口对齐，`docColumnOf(width, look.column)` 把选择换成正文栏宽——选“标准”时用系统自己的 `doc-column`（没有就用 677），显式选窄 / 宽 / 通栏时覆盖它。编辑器把“栏宽 + 左右各 64px 内边距”写成 `.docpage` 的 `--doc-page-max`（通栏为 `none`），HTML / PDF 的 `body` 用同一个栏宽作 `max-width`，PNG 的视口是栏宽 + 左右各 24px（通栏按 1200px 的正文画，因为图片没有“读者的宽度”）。公众号文章不受它影响：平台自己决定文章栏宽，文档不是“标准”时预览会说一句。Word 仍用自己的版式。
 
 **交互：顶栏的“主题”（调色板图标）。** 位置：画布和幻灯片的“主题”在右侧面板，文档没有右侧面板，所以是顶栏弹层；同一个词、同一批卡片（`th-card`）。弹层里：“文档自己的样子”一张卡，每个已装入系统的每个主题一张卡（用它自己的页面色、文字色、强调色和字体画一个小样），一句现在穿着什么，最后一节“设计系统”（`DsInstall`：装入、更新、移除，内置风格按组展开）。
 
@@ -66,6 +68,7 @@
 ## 5. 对照 UX 原则
 
 - 一词一义（3）：这里的“主题”和画布、幻灯片的“主题”是同一个词、同一批卡片；编辑器自己的外观仍叫“外观”，在“更多”里。
+- 具体值（5）与聪明的默认（6）：页宽是四个具体的阅读宽度（窄 600、标准 677、宽 820 px，或通栏），默认“标准”，没有自定义输入框；穿着的系统用 `doc-column` 定义它自己的“标准”，显式选择仍能覆盖。
 - 轴要分开（4）：文档穿哪个系统、哪个主题，是一条轴，写在文档里；输出渠道（公众号、PDF）是另一条，不各带一份样式。
 - 聪明的默认（6）：不穿系统是默认，装入即穿上，不多一步“再去选”。
 - 完成不等于锁死（10）：撤销、再点“文档自己的样子”、移除系统，三条路都回得去。

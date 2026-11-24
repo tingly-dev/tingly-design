@@ -1,6 +1,6 @@
 # 从项目导入：把画布的画板带进幻灯片和动效（特效就是会动的画板）
 
-状态：**已实施（第一期）**。来源只有画布的画板，去处只有幻灯片和动效。测试是 `e2e/import_board.py` 和 `packages/core/test/boardEmbed.test.ts`；共用的导入入口见 [import-into-project.md](./import-into-project.md)。
+状态：**已实施（第一期）**，现在是[cross-kind-embedding.md](./cross-kind-embedding.md)里"链接的页面"的一种情形：入口改名为"来自另一个项目的页面…"，选择器是 `PagePicker`，记录也带 `kind`、`page`、`mode`、`at`，所以"源画板变了"现在会被发现（面板的"链接的页面"一栏）。下面的 §3 和 §4 仍是画板导入本身的契约，§5 里"没有源画板变了的提示"一条已经做了；其余没做的见该说明。来源只有画布的画板，去处只有幻灯片和动效。测试是 `e2e/import_board.py` 和 `packages/core/test/boardEmbed.test.ts`；共用的导入入口见 [import-into-project.md](./import-into-project.md)。
 
 ## 1. 要解决的问题
 
@@ -23,13 +23,13 @@
 
 ### 3.1 入口
 
-共用的"导入 / 导出"菜单（`FileMenu`，[export-menu.md](./export-menu.md)）在导入一段的"选择文件…"旁边多一项"从项目导入…"（`ImportTarget.board` 存在的类型才有；`FileMenu` 通过 `ImportControls.pickProject()` 让 `ImportHere` 打开选择器）。点开是一个画板选择器（`BoardPicker.tsx`）：列出每个画布项目的画板，用画板运行时画成缩略图；会动的画板排在前面、带"会动"标记，指针停在上面时播放，所以人是看着效果挑的。
+共用的"导入 / 导出"菜单（`FileMenu`，[export-menu.md](./export-menu.md)）在导入一段的"选择文件…"旁边多一项"从项目导入…"（`ImportTarget.board` 存在的类型才有；`FileMenu` 通过 `ImportControls.pickProject()` 让 `ImportHere` 打开选择器）。点开是一个画板选择器（现在是 `PagePicker.tsx`）：列出每个画布项目的画板，用画板运行时画成缩略图；会动的画板排在前面、带"会动"标记，指针停在上面时播放，所以人是看着效果挑的。
 
 幻灯片原来没有导入入口（图片走"插入图片"）；现在每种类型都有同一个"导入 / 导出"菜单，幻灯片的导入一段因此不只是放图片。
 
 ### 3.2 复制到哪、记在哪
 
-服务端 `POST /api/projects/:p/import-board {from, board}`：
+服务端 `POST /api/projects/:p/link-page {from, page, mode: 'live'}`（原来的 `import-board` 并入它，`copyArtboard` 在 `apps/server/src/linkedCopy.ts`）：
 
 - 画板复制到 `uploads/<来源项目>-<画板名>/<画板文件>`；它用 `<dc-import>` 挂载的兄弟画板一起复制，保持相对位置；它显示的 `uploads/…`、`assets/…` 文件按原路径复制（目标里已有同名文件则不覆盖）。
 - 目标的索引（`deck.json` / `motion.json`）记 `imports: [{path, from: "projects/<名>", board, copiedAt}]`。索引里未知的键本来就会保留，旧版本编辑器打开也不会丢。
@@ -75,9 +75,9 @@
 | `packages/core/src/boardEmbed.ts` | `$time`、尺寸、Tweaks、依赖收集、`imports` 记录、运行时页面、cover 计算 |
 | `packages/sandbox/src/slide.tsx` `XBoard`、`runtime.tsx` | 幻灯片/场景里画嵌入的画板；画板一侧接 seek、给 `time` |
 | `packages/sandbox/src/motion.ts` `mountBoard` | 播放器里的画板嵌入 |
-| `apps/server/src/routes/importBoard.ts` `import-board` | 复制和记录 |
+| `apps/server/src/linkedCopy.ts` `copyArtboard`、`routes/linkPage.ts` `link-page` | 复制和记录 |
 | `apps/server/src/render.ts` | 服务端精确渲染带上画板文件和画板运行时 |
-| `apps/editor/src/components/BoardPicker.tsx`、`ImportHere.tsx`、`FileMenu.tsx` | 选择器和入口 |
+| `apps/editor/src/components/PagePicker.tsx`、`ImportHere.tsx`、`FileMenu.tsx` | 选择器和入口 |
 | `apps/editor/src/boards.ts`、`slides.ts`、`motion.ts` | 嵌入块的写法、放到页面上、给帧准备画板文件 |
 | `apps/editor/src/components/panel/BoardEmbedProps.tsx`、`OtherProps.tsx` | 嵌入块的面板；画布 Tweaks 的时间滑块 |
 | `apps/editor/src/components/slides/exportDeck.tsx`、`apps/server/src/render.ts`（命令行 `tingly-design export`，含 `--as html` 播放器和 `check --snapshots` 的 seek 检查） | 导出 |

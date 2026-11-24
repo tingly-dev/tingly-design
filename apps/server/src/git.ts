@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process';
+import { readdirSync, existsSync } from 'node:fs';
 import { stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
+import { INDEX_FILE } from '@dc/core';
 
 /**
  * A project's place in git (.design/project-git.md): the nearest repository that holds its folder,
@@ -14,6 +16,23 @@ const run = promisify(execFile);
 /** What the server keeps beside a project's files for this machine only: the change log, dashboard runs, rendered videos. Never committed. */
 const LOCAL = ['.journal.jsonl', '.runs.json', '.claude-session.json', '.transcript.jsonl', '.image.json', '.references.json', 'renders/', '.history/'];
 const PATHS = ['.', ...LOCAL.map((f) => `:(exclude)${f.replace(/\/$/, '')}`)];
+const INDEX_FILES = Object.values(INDEX_FILE);
+
+/**
+ * The folders directly inside a project that are projects of their own (.design/sub-projects.md): a
+ * project's commits, stages and jump back never take them, they have their own.
+ */
+function subFolders(dir: string): string[] {
+  try {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.') && INDEX_FILES.some((f) => existsSync(join(dir, e.name, f))))
+      .map((e) => e.name);
+  } catch {
+    return [];
+  }
+}
+/** `.` and the pathspecs that leave the sub-projects out. */
+const here = (dir: string) => ['.', ...subFolders(dir).map((n) => `:(exclude)${n}`)];
 const git = (cwd: string, ...args: string[]) => run('git', args, { cwd }).then((r) => r.stdout.trim());
 const gitRaw = (cwd: string, ...args: string[]) => run('git', args, { cwd, encoding: 'buffer', maxBuffer: 64 * 1024 * 1024 }).then((r) => r.stdout as Buffer);
 const isLocalPath = (rel: string) => LOCAL.some((f) => (f.endsWith('/') ? rel.startsWith(f) : rel === f));
@@ -30,7 +49,7 @@ export interface Stage {
 export async function listStages(dir: string): Promise<Stage[]> {
   if (!(await repoOf(dir))) return [];
   try {
-    const out = await git(dir, 'log', '-n', '50', '--format=%h%x1f%cI%x1f%s', '--', '.');
+    const out = await git(dir, 'log', '-n', '50', '--format=%h%x1f%cI%x1f%s', '--', ...here(dir));
     return out
       ? out.split('\n').map((line) => {
           const [id, at, message] = line.split('\x1f');
@@ -48,11 +67,13 @@ export async function stagePaths(dir: string, id: string): Promise<{ writes: str
     gitRaw(dir, 'ls-tree', '-r', '--name-only', '-z', id, '--', '.'),
     gitRaw(dir, 'ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.'),
   ]);
-  const stage = new Set(tree.toString('utf8').split('\0').filter(Boolean));
+  const subs = subFolders(dir).map((n) => `${n}/`);
+  const own = (f: string) => !subs.some((p) => f.startsWith(p));
+  const stage = new Set(tree.toString('utf8').split('\0').filter((f) => f && own(f)));
   const disk = now
     .toString('utf8')
     .split('\0')
-    .filter((f) => f && !isLocalPath(f));
+    .filter((f) => f && own(f) && !isLocalPath(f));
   return { writes: [...stage], removes: disk.filter((f) => !stage.has(f)) };
 }
 
@@ -98,7 +119,7 @@ export async function gitState(dir: string): Promise<GitState> {
   if (!repo) return { repo: null, branch: '', changes: 0 };
   // symbolic-ref also names the branch of a repository with no commit yet
   const branch = await git(dir, 'symbolic-ref', '--short', '-q', 'HEAD').catch(() => '');
-  const status = await git(dir, 'status', '--porcelain', '--untracked-files=all', '--', ...PATHS).catch(() => '');
+  const status = await git(dir, 'status', '--porcelain', '--untracked-files=all', '--', ...PATHS, ...subFolders(dir).map((n) => `:(exclude)${n}`)).catch(() => '');
   return { repo, branch, changes: status ? status.split('\n').length : 0 };
 }
 
@@ -112,11 +133,12 @@ export async function initRepo(dir: string): Promise<void> {
 /** Commits this project's folder only; null when there was nothing to commit, else git's first line. */
 export async function commitFolder(dir: string, message: string): Promise<string | null> {
   // exclude pathspecs on `add` fail outright when .gitignore also names the file, so add all and take the local files back out
-  await git(dir, 'add', '-A', '--', '.');
+  const only = here(dir);
+  await git(dir, 'add', '-A', '--', ...only);
   const local = await git(dir, 'diff', '--cached', '--name-only', '--relative', '--diff-filter=A', '--', ...LOCAL.map((f) => f.replace(/\/$/, ''))).catch(() => '');
   if (local) await git(dir, 'rm', '--cached', '-q', '--', ...local.split('\n'));
-  if (!(await git(dir, 'diff', '--cached', '--stat', '--', '.'))) return null;
+  if (!(await git(dir, 'diff', '--cached', '--stat', '--', ...only))) return null;
   // `-- .` keeps whatever else is staged in a repository this folder shares with other work out of the commit
-  await git(dir, 'commit', '-q', '-m', message, '--', '.');
+  await git(dir, 'commit', '-q', '-m', message, '--', ...only);
   return (await git(dir, 'log', '-1', '--format=%h %s')).split('\n')[0];
 }

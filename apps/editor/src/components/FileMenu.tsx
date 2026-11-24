@@ -8,7 +8,7 @@ import { offerExports } from '../headless';
 import { saveClaudeDesign, saveProjectArchive } from '../projectArchive';
 import { copyImage, saveImage } from '../imageExport';
 import { t as tNow } from '../i18n';
-import { Caret, CopyPicture, FileText, FileZip, Frame, Picture, Transfer } from './icons';
+import { Caret, CopyPicture, FileText, FileZip, Picture, Transfer, Linked } from './icons';
 
 /**
  * Everything that moves files across the project's edge, in one place: one button in every
@@ -143,11 +143,11 @@ export function FileMenu({
               }}
             />
           )}
-          {target.board && (
+          {target.page && (
             <MenuItem
-              label={t('importer.here.fromProject')}
-              hint={target.board.what}
-              icon={<Frame />}
+              label={t('linked.menu')}
+              hint={target.page.what}
+              icon={<Linked />}
               onSelect={() => {
                 close();
                 controls.current?.pickProject();

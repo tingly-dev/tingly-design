@@ -17,7 +17,7 @@ import { DashApp } from './components/dash/DashApp';
 import { DocsApp } from './components/docs/DocsApp';
 import { MotionApp } from './components/motion/MotionApp';
 import { Launcher } from './components/launcher/Launcher';
-import { ChatShell } from './components/ChatPanel';
+import { ChatPane, ChatSlotsProvider } from './components/ChatPane';
 import { serverDefault } from './theme';
 import { ConfirmHost } from './components/ConfirmDialog';
 import { ShortcutsHost } from './components/Shortcuts';
@@ -52,12 +52,12 @@ function Toasts() {
   );
 }
 
-/** The launcher, or a project in the shell that holds the conversation column. */
+/** The launcher, or a project in the editor that holds the conversation pane. */
 export function App() {
   return (
-    <ChatShell>
+    <ChatSlotsProvider>
       <Project />
-    </ChatShell>
+    </ChatSlotsProvider>
   );
 }
 
@@ -138,10 +138,12 @@ function CanvasApp() {
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
   const pane = useStore((s) => s.pane);
+  const chatOpen = useStore((s) => s.chatOpen);
   return (
     <>
       <CanvasTopBar />
-      <div className={`app ${mode}`} data-tool={tool} data-mode={mode}>
+      <div className={`app ${mode}${chatOpen ? ' with-chat' : ''}`} data-tool={tool} data-mode={mode}>
+        {chatOpen && mode === 'edit' && <ChatPane />}
         <main className="stage">
           <Canvas />
           <LeftBar />

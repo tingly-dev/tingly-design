@@ -1,7 +1,7 @@
 import { appendFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { Actor, AgentStep, JournalEntry } from '@dc/core';
+import type { Actor, AgentStep, JournalEntry, Participant, PointerTarget } from '@dc/core';
 import { projectDir } from './store';
 
 /**
@@ -10,14 +10,17 @@ import { projectDir } from './store';
  */
 
 export type HubEvent =
-  | { type: 'file'; path: string; content: string; version: string; actor: Actor }
+  /** `by`: the editor window that saved it (its `x-dc-client`), so the others can show where it worked */
+  | { type: 'file'; path: string; content: string; version: string; actor: Actor; by?: string }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
   /** images or fonts were added or removed (binary files carry no content in events) */
   | { type: 'assets'; path?: string }
   /** a file the editor does not track changed (a tool's data beside the project's own files): the files pane re-lists */
-  | { type: 'entries' };
+  | { type: 'entries' }
+  /** a participant says where it is working (`POST …/pointer`), or that it stopped (`target` null) */
+  | { type: 'pointer'; participant: Participant; target: PointerTarget | null };
 
 type Listener = (e: HubEvent) => void;
 const listeners = new Map<string, Set<Listener>>();

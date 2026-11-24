@@ -68,7 +68,7 @@ async def main():
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
             await pg.goto(f'{base}/')
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
 
             # the bar at the bottom of the colors page, previewing the dark theme
             await pg.goto(f'{base}/?p=tingly-design-system&v=colors')
@@ -86,9 +86,9 @@ async def main():
             check('the design system is not called an artboard', 'artboard' not in sent[-1])
             check('the edit lands in the open design system', '<!-- run-feed -->' in open(os.path.join(projects, 'tingly-design-system', 'README.md')).read())
 
-            # the conversation column: a request from the components page
+            # the conversation pane: a request from the components page
             await pg.goto(f'{base}/')
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'left')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '1')")
             await pg.goto(f'{base}/?p=tingly-design-system&v=components')
             await pg.wait_for_selector('.chat-composer textarea')
             await pg.locator('.chat-composer textarea').fill('加一个 Tag 组件')
@@ -98,7 +98,7 @@ async def main():
                 await asyncio.sleep(0.1)
             await expect(pg.locator('.turn').last).to_contain_text('加一个 Tag 组件', timeout=20000)
             sent = requests(log)
-            check('a request from the conversation column reaches Claude Code', '加一个 Tag 组件' in sent[-1])
+            check('a request from the conversation pane reaches Claude Code', '加一个 Tag 组件' in sent[-1])
             check('with the components page that is open', 'the components page of the design system' in sent[-1] and 'components/<Comp>/README.md' in sent[-1], sent[-1][-400:])
             check('no page errors', not errs, errs)
             await b.close()
@@ -113,7 +113,7 @@ async def main():
             b = await p.chromium.launch(**({'executable_path': CHROME} if CHROME else {}))
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 860})
             await pg.goto(f'{base2}/')
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
             await pg.goto(f'{base2}/?p=tingly-design-system')
             await pg.wait_for_selector('.dsask textarea')
             check('without the claude command the box says so', '找不到 claude 命令' in (await pg.locator('.dsask textarea').get_attribute('placeholder') or ''))

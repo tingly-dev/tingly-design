@@ -1,31 +1,22 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DECK_FILE, MOTION_FILE, attr, boardImportsOf, isBoardEmbedPath, boardTweaks, embedProps, parseDc, timeSpec, type DcElement } from '@dc/core';
-import { api } from '../../api';
-import { display, editElement, toast, useStore } from '../../store';
+import { attr, isBoardEmbedPath, isDashBundlePath, isLinkedPicture, boardTweaks, embedProps, parseDc, timeSpec, type DcElement } from '@dc/core';
+import { display, editElement, useStore } from '../../store';
+import { useLinkedRecords } from '../../linkedPages';
+import { LinkedPanel } from './LinkedPanel';
 import { TweakControl } from './OtherProps';
 
 /**
- * A selected embed of an imported artboard (see .design/import-from-project.md):
- * where it came from, the artboard's options as this embed sets them
- * (`data-props`, over the artboard's own defaults), and updating the copy from
- * the canvas it came from.
+ * A selected embed of an imported artboard (see .design/import-from-project.md): where it came from and
+ * whether the canvas changed since (the shared linked page form, .design/cross-kind-embedding.md), and
+ * the artboard's options as this embed sets them (`data-props`, over the artboard's own defaults).
  */
 export function BoardEmbedProps({ file, el }: { file: string; el: DcElement }) {
   const { t } = useTranslation();
   const src = attr(el, 'src') ?? '';
-  const project = useStore((s) => s.project);
   const source = useStore((s) => display(s, src));
-  const index = useStore((s) => display(s, s.kind === 'motion' ? MOTION_FILE : DECK_FILE));
-  const [busy, setBusy] = useState(false);
-  const record = (() => {
-    try {
-      return boardImportsOf(JSON.parse(index ?? '{}')).find((r) => r.path === src);
-    } catch {
-      return undefined;
-    }
-  })();
-  const from = record?.from.replace(/^projects\//, '');
+  const linked = useLinkedRecords().some((r) => r.path === src);
+  // a frozen dashboard has no tweaks: the linked page form says all there is
+  if (isDashBundlePath(src)) return <LinkedPanel path={src} show={{ file, el }} />;
   const doc = source === undefined ? null : parseDc(source);
   const tweaks = doc ? boardTweaks(doc.props) : [];
   const set = embedProps(attr(el, 'data-props'));
@@ -37,55 +28,42 @@ export function BoardEmbedProps({ file, el }: { file: string; el: DcElement }) {
     else next[name] = value;
     write(next);
   };
-  const update = async () => {
-    if (!project || !record || !from) return;
-    setBusy(true);
-    try {
-      await api.importBoard(project, from, record.board);
-      toast(t('panel.embed.updated', { title: record.board.replace(/\.dc\.html$/, '') }));
-    } catch (e) {
-      toast((e as Error).message, 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
-    <div className="sec bembed">
-      <h3>{t('panel.embed.title')}</h3>
-      <span className="hint">{record && from ? t('panel.embed.from', { board: record.board.replace(/\.dc\.html$/, ''), project: from }) : t('panel.embed.unknown')}</span>
-      {doc && timeSpec(doc.props) && <span className="hint">{t('panel.embed.moving')}</span>}
-      {source === undefined && <span className="hint">{t('panel.embed.missing', { path: src })}</span>}
-      {record && from && (
-        <div className="bembed-a">
-          <a className="btn ghost" href={`?p=${encodeURIComponent(from)}`} target="_blank" rel="noreferrer">
-            {t('panel.embed.open')}
-          </a>
-          <button className="btn ghost" disabled={busy} onClick={update} title={t('panel.embed.updateHint')}>
-            {t('panel.embed.update')}
-          </button>
-        </div>
-      )}
-      {doc &&
-        (tweaks.length ? (
-          <>
-            {tweaks.map(([k, spec]) => (
-              <TweakControl key={k} name={k} spec={spec} value={k in set ? set[k] : spec.default} onSet={(v) => setOne(k, v, spec.default)} />
-            ))}
-            {Object.keys(set).length > 0 && (
-              <button className="btn ghost" onClick={() => write({})} title={t('panel.embed.resetHint')}>
-                {t('panel.embed.reset')}
-              </button>
-            )}
-          </>
-        ) : (
-          <span className="hint">{t('panel.embed.noTweaks')}</span>
-        ))}
-    </div>
+    <>
+      <LinkedPanel path={src} show={{ file, el }} />
+      <div className="sec bembed">
+        <h3>{t('panel.embed.title')}</h3>
+        {!linked && <span className="hint">{t('panel.embed.unknown')}</span>}
+        {doc && timeSpec(doc.props) && <span className="hint">{t('panel.embed.moving')}</span>}
+        {source === undefined && <span className="hint">{t('panel.embed.missing', { path: src })}</span>}
+        {doc &&
+          (tweaks.length ? (
+            <>
+              {tweaks.map(([k, spec]) => (
+                <TweakControl key={k} name={k} spec={spec} value={k in set ? set[k] : spec.default} onSet={(v) => setOne(k, v, spec.default)} />
+              ))}
+              {Object.keys(set).length > 0 && (
+                <button className="btn ghost" onClick={() => write({})} title={t('panel.embed.resetHint')}>
+                  {t('panel.embed.reset')}
+                </button>
+              )}
+            </>
+          ) : (
+            <span className="hint">{t('panel.embed.noTweaks')}</span>
+          ))}
+      </div>
+    </>
   );
 }
 
-/** Is this element an embed of an imported artboard? */
+/** Is this element an embed of an imported artboard or a frozen dashboard? */
 export function isBoardEmbedEl(el: DcElement | undefined): el is DcElement {
-  return !!el && el.tag === 'x-embed' && isBoardEmbedPath(attr(el, 'src') ?? '');
+  const src = el ? (attr(el, 'src') ?? '') : '';
+  return !!el && el.tag === 'x-embed' && (isBoardEmbedPath(src) || isDashBundlePath(src));
+}
+
+/** Is this element a picture that is the copy of a linked page? */
+export function isLinkedImgEl(el: DcElement | undefined): el is DcElement {
+  return !!el && el.tag === 'img' && isLinkedPicture(attr(el, 'src') ?? '');
 }

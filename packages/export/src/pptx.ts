@@ -1,5 +1,6 @@
 import type PptxGenJS from 'pptxgenjs';
 import { normalizePptx401 } from './pptxNormalize';
+export { pptxTheme } from './pptxTheme';
 
 /** Resolved drawing data only: no HTML, CSS, URLs, original OOXML, or implicit rasterization.
  * Geometry/font sizes are pixels. Every unit uses widthIn / widthPx (including fonts).
@@ -12,7 +13,14 @@ export interface PptxDeck {
   widthIn: number;
   slides: PptxSlide[];
   assets?: Record<string, PptxAsset>;
+  /** PowerPoint sections in order: each names how many slides it holds, together every slide. */
+  sections?: PptxSection[];
+  /** The theme the package declares (its colour and font schemes); objects still carry their own values. */
+  theme?: PptxTheme;
 }
+export interface PptxSection { name: string; slides: number }
+export type PptxThemeColor = 'dk1' | 'lt1' | 'dk2' | 'lt2' | 'accent1' | 'accent2' | 'accent3' | 'accent4' | 'accent5' | 'accent6' | 'hlink' | 'folHlink';
+export interface PptxTheme { headingFont?: string; bodyFont?: string; colors?: Partial<Record<PptxThemeColor, string>> }
 export interface PptxSlide { background?: string; notes?: string; objects: PptxObject[] }
 /** PNG/JPEG header dimensions must match the supplied dimensions; no image decoding occurs here.
  * An SVG asset carries its rendered PNG stand-in (`fallback`): readers without SVG support (and
@@ -20,16 +28,22 @@ export interface PptxSlide { background?: string; notes?: string; objects: PptxO
 export interface PptxAsset { bytes: Uint8Array; mime: 'image/png' | 'image/jpeg' | 'image/svg+xml'; widthPx: number; heightPx: number; fallback?: Uint8Array }
 /** `opacity` 0..1 (1 when absent); `charSpacingPx` is extra space after each character, like CSS letter-spacing. */
 export interface PptxTextStyle { fontFace: string; fontSizePx: number; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; charSpacingPx?: number; opacity?: number }
-export interface PptxRun { text: string; style?: Partial<PptxTextStyle> }
+/** `breakBefore` starts the run on a new line of the same paragraph (a `<br>`); `href` links it (http, https or mailto). */
+export interface PptxRun { text: string; style?: Partial<PptxTextStyle>; breakBefore?: boolean; href?: string }
+/** A paragraph's own bullet or number, drawn by PowerPoint at the paragraph's left edge with its text `indentPx` in. */
+export type PptxBullet = { type: 'char'; char: string } | { type: 'number'; style: PptxNumberStyle; startAt: number };
+export type PptxNumberStyle = 'arabicPeriod' | 'alphaLcPeriod' | 'alphaUcPeriod' | 'romanLcPeriod' | 'romanUcPeriod';
 /** Spacing in pixels: before and after the paragraph, and its line height (single spacing when absent). */
-export interface PptxParagraph { runs: PptxRun[]; align?: 'left' | 'center' | 'right' | 'justify'; spaceBeforePx?: number; spaceAfterPx?: number; lineHeightPx?: number }
+export interface PptxParagraph { runs: PptxRun[]; align?: 'left' | 'center' | 'right' | 'justify'; spaceBeforePx?: number; spaceAfterPx?: number; lineHeightPx?: number; bullet?: PptxBullet; indentPx?: number }
 export interface PptxBox { x: number; y: number; width: number; height: number; rotation?: number }
-/** `wrap: false` keeps each paragraph on one line however the reader's fonts measure it (a line already broken by the browser). */
-export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagraph[]; style: PptxTextStyle; verticalAlign?: 'top' | 'middle' | 'bottom'; paddingPx?: number; wrap?: boolean }
+/** `wrap: false` keeps each paragraph on one line however the reader's fonts measure it (a line already broken by the browser).
+ * `role: 'title'` puts it in the slide's title placeholder (one per slide); any other text is a text box. `name` is the
+ * object's name in PowerPoint's selection pane. */
+export interface PptxText extends PptxBox { type: 'text'; paragraphs: PptxParagraph[]; style: PptxTextStyle; verticalAlign?: 'top' | 'middle' | 'bottom'; paddingPx?: number; wrap?: boolean; role?: 'title'; name?: string }
 /** `radiusPx` is a roundRect's corner radius (PowerPoint's default when absent); `fillOpacity` 0..1. */
 export interface PptxShape extends PptxBox { type: 'shape'; shape: 'rect' | 'roundRect' | 'ellipse' | 'line'; fill?: string; fillOpacity?: number; radiusPx?: number; stroke?: { color: string; widthPx: number } }
 /** cover crops centrally, contain centers within the box, stretch fills the box. */
-export interface PptxImage extends PptxBox { type: 'image'; asset: string; fit?: 'contain' | 'cover' | 'stretch' }
+export interface PptxImage extends PptxBox { type: 'image'; asset: string; fit?: 'contain' | 'cover' | 'stretch'; altText?: string; name?: string }
 /** One side of a cell's border; null for none. `double` draws two same-width lines (cmpd="dbl"). */
 export interface PptxCellBorder { color: string; widthPx: number; double?: boolean }
 /** `borders` are top, right, bottom, left; `paddingPx` the same order. A cell spanning columns or rows
@@ -59,6 +73,10 @@ export type PptxObject = PptxText | PptxShape | PptxImage | PptxTable;
 /** A cell whose double borders or diagonals PptxGenJS cannot write: normalizePptx401 patches the
  * written table XML afterwards. `cell` is the cell's `<a:tc>` index inside its `<a:tbl>` (every grid
  * position, merge continuations included), `double` in top/right/bottom/left order. */
+/** A text object `normalizePptx401` turns into the slide's title placeholder: its shape name and box in EMU. */
+export interface PptxTitlePatch { slide: number; name: string; box: [number, number, number, number] }
+/** What the package says about the deck as a whole, written after PptxGenJS: titles, sections, theme colours. */
+export interface PptxDeckPatch { titles: PptxTitlePatch[]; sections: PptxSection[]; colors: Partial<Record<PptxThemeColor, string>> }
 export interface PptxTablePatch { slide: number; table: number; cell: number; double: [boolean, boolean, boolean, boolean]; tl2br?: { color: string; emu: number }; tr2bl?: { color: string; emu: number } }
 
 export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
@@ -77,6 +95,11 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
   for (const a of Object.values(drawing.assets ?? {})) remember(a);
   pptx.defineLayout({ name: 'DC', width: drawing.widthIn, height: drawing.heightPx * inch });
   pptx.layout = 'DC'; pptx.title = drawing.title; pptx.author = ''; pptx.subject = ''; pptx.company = '';
+  if (drawing.theme?.headingFont || drawing.theme?.bodyFont) pptx.theme = { headFontFace: xmlAttr(drawing.theme.headingFont ?? drawing.theme.bodyFont!), bodyFontFace: xmlAttr(drawing.theme.bodyFont ?? drawing.theme.headingFont!) };
+  const titles: PptxTitlePatch[] = [];
+  const counts: Record<string, number> = {};
+  /** PowerPoint's own naming: the kind of object and a number counting that kind on the slide (4.0.1 escapes names). */
+  const named = (name: string) => { counts[name] = (counts[name] ?? 0) + 1; return `${name} ${counts[name]}`; };
   const assets = new Map(Object.entries(drawing.assets ?? {}).map(([id, a], index) => [id, {
     ...a, data: `${a.mime};base64,${base64(a.bytes)}`,
     // PptxGenJS 4.0.1 deduplicates by path within a slide, even with data.
@@ -88,10 +111,15 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
     if (page.background) slide.background = { color: page.background };
     if (page.notes !== undefined) slide.addNotes(page.notes);
     let tables = 0;
+    for (const k of Object.keys(counts)) delete counts[k];
     for (const obj of page.objects) {
       const pos = { x: obj.x * inch, y: obj.y * inch, w: obj.width * inch, h: obj.height * inch, rotate: obj.rotation ?? 0 };
       if (obj.type === 'text') {
-        slide.addText(textRuns(obj.paragraphs, obj.style, pt), { ...pos, margin: (obj.paddingPx ?? 0) * pt, valign: obj.verticalAlign ?? 'top', fit: 'none', wrap: obj.wrap ?? true, paraSpaceAfter: 0, paraSpaceBefore: 0 });
+        // names are unique on a slide: the title patch finds the shape by its name
+        const objectName = named(obj.name ?? (obj.role === 'title' ? 'Title' : 'TextBox'));
+        if (obj.role === 'title') titles.push({ slide: slideIndex, name: objectName, box: [emu(obj.x), emu(obj.y), emu(obj.width), emu(obj.height)] });
+        slide.addText(textRuns(obj.paragraphs, obj.style, pt), { ...pos, margin: (obj.paddingPx ?? 0) * pt, valign: obj.verticalAlign ?? 'top', fit: 'none', wrap: obj.wrap ?? true, paraSpaceAfter: 0, paraSpaceBefore: 0,
+          objectName, isTextBox: obj.role !== 'title' });
       } else if (obj.type === 'table') {
         const side = (b: PptxCellBorder | null | undefined): PptxGenJS.BorderProps => b ? { type: 'solid', color: b.color, pt: b.widthPx * pt } : { type: 'none' };
         const rows: PptxGenJS.TableRow[] = obj.rows.map(row => row.map(cell => {
@@ -127,15 +155,16 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
           }
           tables++;
         }
-        slide.addTable(rows, { x: pos.x, y: pos.y, w: pos.w, h: pos.h, colW: obj.columnsPx.map(v => v * inch), rowH: obj.rowsPx.map(v => v * inch), autoPage: false });
+        slide.addTable(rows, { objectName: named('Table'), x: pos.x, y: pos.y, w: pos.w, h: pos.h, colW: obj.columnsPx.map(v => v * inch), rowH: obj.rowsPx.map(v => v * inch), autoPage: false });
       } else if (obj.type === 'shape') {
-        slide.addShape(pptx.ShapeType[obj.shape], { ...pos,
+        slide.addShape(pptx.ShapeType[obj.shape], { ...pos, objectName: named(obj.shape === 'line' ? 'Line' : obj.shape === 'ellipse' ? 'Oval' : 'Rectangle'),
           fill: obj.fill ? { color: obj.fill, transparency: transparency(obj.fillOpacity) } : { color: 'FFFFFF', transparency: 100 },
           ...(obj.shape === 'roundRect' && obj.radiusPx !== undefined ? { rectRadius: Math.min(obj.radiusPx, obj.width / 2, obj.height / 2) * inch } : {}),
           line: obj.stroke ? { color: obj.stroke.color, width: obj.stroke.widthPx * pt } : { color: 'FFFFFF', transparency: 100 },
         });
       } else {
         const a = assets.get(obj.asset)!;
+        const about = { objectName: named(obj.name ?? 'Picture'), altText: obj.altText ?? '' };
         let geometry = { x: pos.x, y: pos.y, w: pos.w, h: pos.h };
         if (obj.fit === 'contain' || obj.fit === undefined) {
           const scale = Math.min(pos.w / a.widthPx, pos.h / a.heightPx);
@@ -144,15 +173,16 @@ export async function writePptx(deck: PptxDeck): Promise<Uint8Array> {
         } else if (obj.fit === 'cover') {
           // Verified public ImageProps.sizing API: crop is centered in DrawingML.
           const scale = Math.max(pos.w / a.widthPx, pos.h / a.heightPx);
-          slide.addImage({ data: a.data, path: a.path, ...pos, w: a.widthPx * scale, h: a.heightPx * scale, sizing: { type: 'cover', w: pos.w, h: pos.h } });
+          slide.addImage({ data: a.data, path: a.path, ...about, ...pos, w: a.widthPx * scale, h: a.heightPx * scale, sizing: { type: 'cover', w: pos.w, h: pos.h } });
           continue;
         }
-        slide.addImage({ data: a.data, path: a.path, ...pos, ...geometry });
+        slide.addImage({ data: a.data, path: a.path, ...about, ...pos, ...geometry });
       }
     }
   }
   const result = await pptx.write({ outputType: 'uint8array', compression: true });
-  return normalizePptx401(result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer), drawing.slides.length, patches, fallbacks);
+  return normalizePptx401(result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer), drawing.slides.length, patches, fallbacks,
+    { titles, sections: drawing.sections ?? [], colors: drawing.theme?.colors ?? {} });
 }
 export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
@@ -163,9 +193,13 @@ function textRuns(paragraphs: PptxParagraph[], style: PptxTextStyle, pt: number)
   const runs: PptxGenJS.TextProps[] = [];
   for (const [i, paragraph] of paragraphs.entries()) {
     // an empty paragraph (a blank line, an empty cell) keeps its place with an empty run
-    for (const [j, run] of (paragraph.runs.length ? paragraph.runs : [{ text: '' }]).entries()) {
+    for (const [j, run] of (paragraph.runs.length ? paragraph.runs : [{ text: '' } as PptxRun]).entries()) {
       runs.push({ text: run.text, options: {
         ...textStyle({ ...style, ...Object.fromEntries(Object.entries(run.style ?? {}).filter(([, v]) => v !== undefined)) }, pt), align: paragraph.align ?? 'left',
+        // 4.0.1 starts a new paragraph at every run with a bullet: only the first run carries it, and
+        // normalizePptx401 keeps that run's paragraph properties
+        ...(paragraph.bullet && j === 0 ? { bullet: bulletOf(paragraph.bullet, (paragraph.indentPx ?? 0) * pt) } : {}),
+        ...(run.breakBefore && j > 0 ? { softBreakBefore: true } : {}), ...(run.href ? { hyperlink: { url: run.href } } : {}),
         ...(paragraph.spaceBeforePx ? { paraSpaceBefore: paragraph.spaceBeforePx * pt } : {}), ...(paragraph.spaceAfterPx ? { paraSpaceAfter: paragraph.spaceAfterPx * pt } : {}),
         ...(paragraph.lineHeightPx ? { lineSpacing: paragraph.lineHeightPx * pt } : {}),
         breakLine: i < paragraphs.length - 1 && j === Math.max(1, paragraph.runs.length) - 1,
@@ -174,11 +208,15 @@ function textRuns(paragraphs: PptxParagraph[], style: PptxTextStyle, pt: number)
   }
   return runs;
 }
+function bulletOf(b: PptxBullet, indent: number): PptxGenJS.TextPropsOptions['bullet'] {
+  return b.type === 'number' ? { type: 'number', style: b.style, numberStartAt: b.startAt, indent } : { characterCode: b.char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0'), indent };
+}
+const xmlAttr = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 function textStyle(s: PptxTextStyle, pt: number): PptxGenJS.TextPropsOptions {
   // 4.0.1 inserts fontFace directly into XML attributes (unlike ordinary text).
   // Keep formatting on every run, not the textbox: its inheritance treats false
   // as absent, otherwise a run cannot turn bold/underline off.
-  return { fontFace: s.fontFace.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;'), fontSize: s.fontSizePx * pt, color: s.color ?? '000000', bold: s.bold ?? false, italic: s.italic ?? false, underline: s.underline ? { style: 'sng' } : undefined,
+  return { fontFace: xmlAttr(s.fontFace), fontSize: s.fontSizePx * pt, color: s.color ?? '000000', bold: s.bold ?? false, italic: s.italic ?? false, underline: s.underline ? { style: 'sng' } : undefined,
     strike: s.strike ? 'sngStrike' : undefined, charSpacing: s.charSpacingPx ? s.charSpacingPx * pt : undefined, transparency: transparency(s.opacity) };
 }
 /** PptxGenJS transparency is a whole percentage; fully opaque writes none. */
@@ -201,6 +239,8 @@ function number(v: unknown, path: string, min: number, max: number): asserts v i
 function choice(v: unknown, path: string, values: readonly unknown[]) { if (!values.includes(v)) fail(path); }
 function colour(v: unknown, path: string) { if (typeof v !== 'string' || !/^[\da-f]{6}$/i.test(v)) fail(path); }
 function list(v: unknown, path: string, min: number, max: number): asserts v is unknown[] { if (!Array.isArray(v) || v.length < min || v.length > max) fail(path); }
+const NUMBER_STYLES = ['arabicPeriod', 'alphaLcPeriod', 'alphaUcPeriod', 'romanLcPeriod', 'romanUcPeriod'];
+const THEME_COLORS = ['dk1', 'lt1', 'dk2', 'lt2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'];
 const styleKeys = ['fontFace', 'fontSizePx', 'color', 'bold', 'italic', 'underline', 'strike', 'charSpacingPx', 'opacity'];
 function validate(d: unknown): asserts d is PptxDeck {
   let textUnits = 0, nodes = 0, objects = 0, byteTotal = 0;
@@ -223,15 +263,28 @@ function validate(d: unknown): asserts d is PptxDeck {
   const paragraphs = (v: unknown, q: string, empty = false) => {
     list(v, `${q}.paragraphs`, 1, 50_000);
     for (const para of v) {
-      if (++nodes > 50_000) fail('text node budget'); record(para, q, ['runs', 'align', 'spaceBeforePx', 'spaceAfterPx', 'lineHeightPx']);
+      if (++nodes > 50_000) fail('text node budget'); record(para, q, ['runs', 'align', 'spaceBeforePx', 'spaceAfterPx', 'lineHeightPx', 'bullet', 'indentPx']);
+      if (para.indentPx !== undefined) number(para.indentPx, `${q}.indentPx`, 0, 10_000);
+      if (para.bullet !== undefined) {
+        const b = para.bullet;
+        record(b, `${q}.bullet`, ['type', 'char', 'style', 'startAt']);
+        choice(b.type, `${q}.bullet.type`, ['char', 'number']);
+        // one character of the Basic Multilingual Plane (PowerPoint's buChar), never a control
+        if (b.type === 'char') { if (typeof b.char !== 'string' || b.char.length !== 1 || /[\u0000-\u001f\ud800-\udfff\ufffe\uffff]/.test(b.char) || b.style !== undefined || b.startAt !== undefined) fail(`${q}.bullet`); }
+        else { choice(b.style, `${q}.bullet.style`, NUMBER_STYLES); number(b.startAt, `${q}.bullet.startAt`, 1, 32767); if (!Number.isInteger(b.startAt) || b.char !== undefined) fail(`${q}.bullet`); }
+      }
       if (para.align !== undefined) choice(para.align, q, ['left', 'center', 'right', 'justify']);
       for (const k of ['spaceBeforePx', 'spaceAfterPx']) if (para[k] !== undefined) number(para[k], `${q}.${k}`, 0, 10_000);
       if (para.lineHeightPx !== undefined) number(para.lineHeightPx, `${q}.lineHeightPx`, 0.01, 10_000);
       list(para.runs, `${q}.runs`, empty ? 0 : 1, 50_000);
-      for (const run of para.runs) { if (++nodes > 50_000) fail('text node budget'); record(run, q, ['text', 'style']); text(run.text, `${q}.text`); if (run.style !== undefined) style(run.style, `${q}.run.style`, true); }
+      for (const run of para.runs) {
+        if (++nodes > 50_000) fail('text node budget'); record(run, q, ['text', 'style', 'breakBefore', 'href']); text(run.text, `${q}.text`); if (run.style !== undefined) style(run.style, `${q}.run.style`, true);
+        if (run.breakBefore !== undefined && typeof run.breakBefore !== 'boolean') fail(`${q}.breakBefore`);
+        if (run.href !== undefined) { text(run.href, `${q}.href`, 2048); if (!/^(https?:\/\/|mailto:)[^\s<>"]+$/i.test(run.href as string)) fail(`${q}.href`); }
+      }
     }
   };
-  record(d, 'deck', ['title', 'widthPx', 'heightPx', 'widthIn', 'slides', 'assets']);
+  record(d, 'deck', ['title', 'widthPx', 'heightPx', 'widthIn', 'slides', 'assets', 'sections', 'theme']);
   text(d.title, 'title', 4096);
   number(d.widthPx, 'widthPx', 1, 100_000); number(d.heightPx, 'heightPx', 1, 100_000); number(d.widthIn, 'widthIn', 1, 56);
   number(d.heightPx * d.widthIn / d.widthPx, 'heightIn', 1, 56);
@@ -256,6 +309,21 @@ function validate(d: unknown): asserts d is PptxDeck {
     }
   }
   list(d.slides, 'slides', 1, 500);
+  if (d.sections !== undefined) {
+    list(d.sections, 'sections', 1, 500);
+    let covered = 0;
+    for (const section of d.sections) {
+      record(section, 'section', ['name', 'slides']); text(section.name, 'section.name', 1024);
+      number(section.slides, 'section.slides', 0, 500); if (!Number.isInteger(section.slides)) fail('section.slides');
+      covered += section.slides as number;
+    }
+    if (covered !== d.slides.length) fail('sections');
+  }
+  if (d.theme !== undefined) {
+    record(d.theme, 'theme', ['headingFont', 'bodyFont', 'colors']);
+    for (const k of ['headingFont', 'bodyFont']) if (d.theme[k] !== undefined) { text(d.theme[k], `theme.${k}`, 256); if (!(d.theme[k] as string).trim()) fail(`theme.${k}`); }
+    if (d.theme.colors !== undefined) { record(d.theme.colors, 'theme.colors', THEME_COLORS); for (const v of Object.values(d.theme.colors)) colour(v, 'theme.colors'); }
+  }
   for (const [i, s] of d.slides.entries()) {
     const p = `slides[${i}]`; record(s, p, ['background', 'notes', 'objects']);
     if (s.background !== undefined) colour(s.background, `${p}.background`);
@@ -265,7 +333,8 @@ function validate(d: unknown): asserts d is PptxDeck {
       const q = `${p}.objects[${j}]`; record(o, q);
       const common = ['type', 'x', 'y', 'width', 'height', 'rotation'];
       choice(o.type, `${q}.type`, ['text', 'shape', 'image', 'table']);
-      record(o, q, [...common, ...(o.type === 'text' ? ['paragraphs', 'style', 'verticalAlign', 'paddingPx', 'wrap'] : o.type === 'shape' ? ['shape', 'fill', 'fillOpacity', 'radiusPx', 'stroke'] : o.type === 'table' ? ['columnsPx', 'rowsPx', 'rows'] : ['asset', 'fit'])]);
+      record(o, q, [...common, ...(o.type === 'text' ? ['paragraphs', 'style', 'verticalAlign', 'paddingPx', 'wrap', 'role', 'name'] : o.type === 'shape' ? ['shape', 'fill', 'fillOpacity', 'radiusPx', 'stroke'] : o.type === 'table' ? ['columnsPx', 'rowsPx', 'rows'] : ['asset', 'fit', 'altText', 'name'])]);
+      if (o.name !== undefined) { text(o.name, `${q}.name`, 256); if (!(o.name as string).trim()) fail(`${q}.name`); }
       number(o.x, `${q}.x`, -d.widthPx, 2 * d.widthPx); number(o.y, `${q}.y`, -d.heightPx, 2 * d.heightPx);
       const line = o.type === 'shape' && o.shape === 'line';
       number(o.width, `${q}.width`, line ? 0 : 0.01, 2 * d.widthPx); number(o.height, `${q}.height`, line ? 0 : 0.01, 2 * d.heightPx);
@@ -276,6 +345,7 @@ function validate(d: unknown): asserts d is PptxDeck {
         if (o.verticalAlign !== undefined) choice(o.verticalAlign, q, ['top', 'middle', 'bottom']);
         if (o.paddingPx !== undefined) number(o.paddingPx, q, 0, Math.min(o.width, o.height) / 2);
         if (o.wrap !== undefined && typeof o.wrap !== 'boolean') fail(`${q}.wrap`);
+        if (o.role !== undefined) { choice(o.role, `${q}.role`, ['title']); if (s.objects.filter(x => (x as { role?: unknown }).role === 'title').length > 1) fail(`${p}.title`); }
         paragraphs(o.paragraphs, q);
       } else if (o.type === 'table') {
         if (o.rotation) fail(`${q}.rotation`);
@@ -326,6 +396,7 @@ function validate(d: unknown): asserts d is PptxDeck {
       } else {
         if (typeof o.asset !== 'string' || !Object.hasOwn(assets, o.asset)) fail(`${q}.asset`);
         if (o.fit !== undefined) choice(o.fit, q, ['contain', 'cover', 'stretch']);
+        if (o.altText !== undefined) text(o.altText, `${q}.altText`, 4096);
       }
     }
   }

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { IconBold, IconCode, IconExternalLink, IconHighlight, IconItalic, IconStrikethrough, IconTypography, IconX } from '@tabler/icons-react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
+import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
@@ -18,6 +20,12 @@ import { t as tModule } from '../../i18n';
 import { CommentMarks, commentsKey, docText } from './docText';
 import { RichCodeBlock } from './richCode';
 import { TextColor } from './textColor';
+import { DocPointers } from './DocPointers';
+import { hasLanding, placeLanding } from '../../pointers';
+import { PagePicker } from '../PagePicker';
+import { LinkedPanel } from '../panel/LinkedPanel';
+import { isLinkedPicture } from '@dc/core';
+import { linkPick } from '../../linkedPages';
 
 /** The editor of the open tab, for the toolbar and the outline. */
 export const docEditor: { current: Editor | null } = { current: null };
@@ -105,7 +113,7 @@ function TextColorPicker({ editor }: { editor: Editor }) {
   );
 }
 
-type BlockKey = 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'diagram' | 'formula' | 'table' | 'hr' | 'date' | 'image';
+type BlockKey = 'link' | 'p' | 'h1' | 'h2' | 'h3' | 'ul' | 'ol' | 'todo' | 'quote' | 'code' | 'diagram' | 'formula' | 'table' | 'hr' | 'date' | 'image';
 
 interface SlashItem {
   key: BlockKey;
@@ -129,7 +137,41 @@ const SLASH: SlashItem[] = [
   { key: 'hr', hint: 'divider rule hr', run: (e) => e.chain().focus().setHorizontalRule().run() },
   { key: 'date', hint: 'date today', run: (e) => e.chain().focus().insertContent(new Date().toLocaleDateString(dateLocale(), { year: 'numeric', month: 'long', day: 'numeric' })).run() },
   { key: 'image', hint: 'image picture upload', run: (e) => pickImage(e) },
+  { key: 'link', hint: 'linked page project another canvas slide dashboard picture', run: (e) => openLinkPicker(e) },
 ];
+
+/** Where the editor mounted registers how to open the page picker for the cursor: the slash menu's items are plain functions of the editor. */
+let openLinkPicker: (e: Editor) => void = () => {};
+
+/** The slash typed so far and the cursor's line on screen. */
+interface SlashAt {
+  query: string;
+  x: number;
+  top: number;
+  bottom: number;
+  index: number;
+}
+
+/** The slash menu under the cursor's line, flipped above it when the window has no room below, with the chosen item kept in view. */
+function SlashMenu({ at, children }: { at: SlashAt; children: ReactNode }) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: at.x, top: at.bottom + 6 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const below = at.bottom + 6;
+    const top = below + r.height <= innerHeight - 8 ? below : Math.max(8, at.top - 6 - r.height);
+    setPos({ left: Math.max(8, Math.min(at.x, innerWidth - 8 - r.width)), top });
+    (el.querySelector('[aria-selected="true"]') as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
+  }, [at]);
+  return (
+    <div ref={ref} className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={pos}>
+      {children}
+    </div>
+  );
+}
 
 /** A code block with a language and a starting text, selected so typing replaces it. */
 function fence(e: Editor, language: string, text: string): void {
@@ -169,14 +211,134 @@ const imagesOf = (list?: FileList | null) => [...(list ?? [])].filter((f) => f.t
 function imageSrc(src: string): string {
   const project = useStore.getState().project;
   if (!project || /^(https?:|data:|blob:)/.test(src)) return src;
-  return api.rawBase(project) + src.replace(/^\.\.\//, '').replace(/^\.\//, 'tabs/');
+  const rel = src.replace(/^\.\.\//, '').replace(/^\.\//, 'tabs/');
+  // a linked page's picture is drawn again when its copy is replaced: the address carries the revision
+  return api.rawBase(project) + rel + (isLinkedPicture(rel) ? `?v=${useStore.getState().assetRev}` : '');
 }
 
 const ProjectImage = Image.extend({
   renderHTML({ HTMLAttributes }) {
     return ['img', { ...HTMLAttributes, src: imageSrc(String(HTMLAttributes.src ?? '')), 'data-src': HTMLAttributes.src }];
   },
+  addNodeView() {
+    return imageNodeView;
+  },
+  renderMarkdown(node) {
+    const src = String(node.attrs?.src ?? '');
+    const alt = String(node.attrs?.alt ?? '');
+    const title = String(node.attrs?.title ?? '');
+    if (!title) return `![${alt}](${src})`;
+    // a caption holding a double quote is written with single quotes, which Markdown reads the same
+    const quoted = title.includes('"') ? `'${title.replace(/'/g, "\\'")}'` : `"${title}"`;
+    return `![${alt}](${src} ${quoted})`;
+  },
 });
+
+/**
+ * A picture in the tab, drawn as a figure: Markdown's image title is its caption, shown under it
+ * (`.design/doc-image-caption.md`). The alt text stays the picture's own `alt` attribute, so a screen
+ * reader and a picture that did not load still say what it is.
+ *
+ * Plain DOM rather than a React node view: a tab's content is set once it has loaded, inside an effect,
+ * and TipTap draws a React node view with a `flushSync` from there, which React warns about.
+ */
+function imageNodeView(initial: { node: { type: unknown; attrs: Record<string, unknown> } }) {
+  let node = initial.node as unknown as { type: unknown; attrs: Record<string, unknown> };
+  const figure = document.createElement('figure');
+  figure.className = 'docfig';
+  const img = document.createElement('img');
+  img.draggable = false;
+  figure.appendChild(img);
+  let caption: HTMLElement | null = null;
+  const draw = () => {
+    const src = String(node.attrs.src ?? '');
+    img.src = imageSrc(src);
+    img.alt = String(node.attrs.alt ?? '');
+    img.dataset.src = src;
+    const title = String(node.attrs.title ?? '');
+    if (title) {
+      if (!caption) figure.appendChild((caption = document.createElement('figcaption')));
+      caption.textContent = title;
+    } else if (caption) {
+      caption.remove();
+      caption = null;
+    }
+  };
+  draw();
+  return {
+    dom: figure,
+    update: (next: typeof node) => {
+      if (next.type !== node.type) return false;
+      node = next;
+      draw();
+      return true;
+    },
+    selectNode: () => figure.setAttribute('data-selected', ''),
+    deselectNode: () => figure.removeAttribute('data-selected'),
+  };
+}
+
+/**
+ * The form on the selected picture, beside it: its caption (drawn under the picture as you type) and
+ * its alt text (what a screen reader and a picture that did not load say). No new block and no
+ * layout change: the picture stays where it is and the caption is part of its own block.
+ */
+function ImageForm({ editor }: { editor: Editor }) {
+  const { t } = useTranslation();
+  const [, force] = useState(0);
+  useEffect(() => {
+    const f = () => {
+      if (editor.state.selection instanceof NodeSelection) force((n) => n + 1);
+    };
+    editor.on('transaction', f);
+    editor.on('focus', f);
+    window.addEventListener('scroll', f, true);
+    window.addEventListener('resize', f);
+    return () => {
+      editor.off('transaction', f);
+      editor.off('focus', f);
+      window.removeEventListener('scroll', f, true);
+      window.removeEventListener('resize', f);
+    };
+  }, [editor]);
+  const sel = editor.state.selection;
+  if (!(sel instanceof NodeSelection) || sel.node.type.name !== 'image') return null;
+  const dom = editor.view.nodeDOM(sel.from);
+  if (!(dom instanceof HTMLElement)) return null;
+  const r = dom.getBoundingClientRect();
+  const below = r.bottom + 8;
+  const linkedPath = String(sel.node.attrs.src ?? '').replace(/^\.\.\//, '');
+  // the form is taller when the picture is a linked page: its source, whether it is current, the actions
+  const height = isLinkedPicture(linkedPath) ? 168 : 76;
+  const set = (attrs: { title?: string | null; alt?: string | null }) => editor.chain().updateAttributes('image', attrs).run();
+  // on document.body: the column around the page puts a containing block on `fixed` (a transform), which
+  // would draw the form beside the page's own corner instead of beside the picture on screen
+  return createPortal(
+    <div
+      className="docimgform"
+      role="dialog"
+      aria-label={t('docs.image.label')}
+      style={{ left: Math.max(8, Math.min(r.left, innerWidth - 388)), top: below + height - 4 <= innerHeight ? below : Math.max(8, r.top - height) }}
+      // the picture's own keys are its own: the field handles them, not the editor behind it
+      onKeyDown={(ev) => ev.stopPropagation()}
+    >
+      <label>
+        {t('docs.image.caption')}
+        <input
+          value={String(sel.node.attrs.title ?? '')}
+          placeholder={t('docs.image.captionPlaceholder')}
+          onChange={(ev) => set({ title: ev.currentTarget.value || null })}
+        />
+      </label>
+      <label>
+        {t('docs.image.alt')}
+        <input value={String(sel.node.attrs.alt ?? '')} placeholder={t('docs.image.altPlaceholder')} onChange={(ev) => set({ alt: ev.currentTarget.value || null })} />
+      </label>
+      {isLinkedPicture(linkedPath) && <LinkedPanel path={linkedPath} compact />}
+    </div>,
+    document.body,
+  );
+}
 
 /** The top-level blocks a selection touches, as positions. */
 function blockRange(e: Editor): { from: number; to: number } {
@@ -218,8 +380,10 @@ export function DocEditor({ tab }: { tab: string }) {
   const synced = useRef<string | null>(null);
   const timer = useRef(0);
   const nextActor = useRef<'human' | 'fast-edit'>('human');
-  const [slash, setSlash] = useState<{ query: string; x: number; y: number; index: number } | null>(null);
+  const [slash, setSlash] = useState<SlashAt | null>(null);
   const [spark, setSpark] = useState<Spark | null>(null);
+  const [linking, setLinking] = useState(false);
+  const rev = useStore((st) => st.assetRev);
   const [ask, setAsk] = useState('');
   const abort = useRef<AbortController | null>(null);
 
@@ -283,7 +447,7 @@ export function DocEditor({ tab }: { tab: string }) {
           void putPictures(e, files, view.posAtCoords({ left: ev.clientX, top: ev.clientY })?.pos);
           return true;
         },
-        handleClick: (_view, _pos, ev) => {
+        handleClick: (view, pos, ev) => {
           const el = ev.target as HTMLElement;
           // ⌘-click / Ctrl-click opens the link; a plain click keeps placing the cursor for editing
           if ((ev.metaKey || ev.ctrlKey) && ev.button === 0) {
@@ -294,8 +458,12 @@ export function DocEditor({ tab }: { tab: string }) {
             }
           }
           const id = el.closest?.('[data-thread]')?.getAttribute('data-thread');
-          if (id) (useDocs.setState({ thread: id }), openPane('comments'));
-          return false;
+          if (!id) return false;
+          // lighting the thread redraws its highlight; the cursor goes where the click was first, or it is lost with the old highlight
+          if (!ev.shiftKey) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos))));
+          useDocs.setState({ thread: id });
+          openPane('comments');
+          return !ev.shiftKey;
         },
       },
       onUpdate: ({ editor: e, transaction }) => {
@@ -315,6 +483,21 @@ export function DocEditor({ tab }: { tab: string }) {
   const slashRef = useRef(slash);
   slashRef.current = slash;
 
+  // the slash menu's "A page from another project" opens the picker; the page lands at the cursor
+  useEffect(() => {
+    openLinkPicker = () => setLinking(true);
+    return () => {
+      openLinkPicker = () => {};
+    };
+  }, []);
+  // a linked page's copy was replaced: its picture is asked for again
+  useEffect(() => {
+    editor?.view.dom.querySelectorAll<HTMLImageElement>('img[data-src]').forEach((img) => {
+      const src = img.dataset.src ?? '';
+      if (isLinkedPicture(src.replace(/^\.\.\//, ''))) img.src = imageSrc(src);
+    });
+  }, [rev, editor]);
+
   function matches(q: string): SlashItem[] {
     const s = q.trim().toLowerCase();
     return s ? SLASH.filter((i) => tModule(`docs.block.${i.key}`).toLowerCase().includes(s) || i.hint.includes(s) || i.key.startsWith(s)) : SLASH;
@@ -328,7 +511,7 @@ export function DocEditor({ tab }: { tab: string }) {
       return;
     }
     const c = e.view.coordsAtPos($from.pos);
-    setSlash((s) => ({ query: text.slice(1), x: c.left, y: c.bottom + 6, index: s?.index ?? 0 }));
+    setSlash((s) => ({ query: text.slice(1), x: c.left, top: c.top, bottom: c.bottom, index: s?.index ?? 0 }));
   }
 
   function choose(item: SlashItem) {
@@ -351,6 +534,7 @@ export function DocEditor({ tab }: { tab: string }) {
       return;
     }
     const focused = e.isFocused;
+    const was = e.state.doc;
     const t = docText(e.state.doc);
     const sel = { from: t.offsetAt(e.state.selection.from), to: t.offsetAt(e.state.selection.to) };
     e.chain()
@@ -359,6 +543,12 @@ export function DocEditor({ tab }: { tab: string }) {
       .setContent(source, { contentType: 'markdown', emitUpdate: false })
       .run();
     synced.current = source;
+    // someone else wrote this: their pointer lands on the first top-level block that changed
+    if (hasLanding(file, source)) {
+      const at = was.content.findDiffStart(e.state.doc.content);
+      const doc = e.state.doc;
+      placeLanding(file, source, at === null || !doc.childCount ? null : Math.min(doc.resolve(Math.min(at, doc.content.size)).index(0), doc.childCount - 1));
+    }
     if (focused) {
       const n = docText(e.state.doc);
       const size = e.state.doc.content.size;
@@ -505,9 +695,27 @@ export function DocEditor({ tab }: { tab: string }) {
           />
         </div>
       </BubbleMenu>
+      <DocPointers editor={editor} file={file} />
+      <ImageForm editor={editor} />
+      {linking && editor && (
+        <PagePicker
+          kind="docs"
+          what={t('linked.picker.what', { kind: t('launcher.kind.docs.name').toLowerCase() })}
+          onClose={() => setLinking(false)}
+          onPick={async (source, page) => {
+            const placed = await linkPick(source, page);
+            editor
+              .chain()
+              .focus()
+              .insertContent({ type: 'image', attrs: { src: '../' + placed.path, alt: t('linked.alt', { title: placed.title, project: placed.project }).replace(/[[\]]/g, '') } })
+              .run();
+            toast(t('linked.toast.placed.doc', { title: placed.title }));
+          }}
+        />
+      )}
       <EditorContent editor={editor} />
       {slash && list.length > 0 && (
-        <div className="slashmenu" role="listbox" aria-label={t('docs.editor.slashLabel')} style={{ left: slash.x, top: slash.y }}>
+        <SlashMenu at={slash}>
           {list.map((i, n) => (
             <button
               key={i.key}
@@ -521,7 +729,7 @@ export function DocEditor({ tab }: { tab: string }) {
               {t(`docs.block.${i.key}`)}
             </button>
           ))}
-        </div>
+        </SlashMenu>
       )}
       {spark && (
         <div className="sparkpanel" role="dialog" aria-label={t('docs.spark.panelLabel')}>

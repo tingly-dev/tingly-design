@@ -47,8 +47,6 @@ import {
   IconLayoutGrid,
   IconLayoutRows,
   IconLayoutSidebarRight,
-  IconLayoutSidebar,
-  IconLayoutBottombar,
   IconLine,
   IconLink,
   IconLock,
@@ -99,7 +97,6 @@ import {
   IconCode,
   IconDatabase,
   IconTarget,
-  IconLayoutColumns,
   IconMessage,
   IconMessage2Check,
   IconChecklist,
@@ -123,6 +120,7 @@ export const Cursor = tabler(IconPointer);
 export const Hand = tabler(IconHandStop);
 export const TextT = tabler(IconTypography);
 export const Frame = tabler(IconFrame);
+export const Linked = tabler(IconLink);
 export const Note = tabler(IconNote);
 export const Pen = tabler(IconPencil);
 export const Shapes = tabler(IconShape);
@@ -144,14 +142,14 @@ export const Caret = () => <IconChevronDown size={12} stroke={2} aria-hidden="tr
 export const History = tabler(IconHistory, 14);
 /** A doc tab's saved versions; History is the change log of the whole project, so the two never share an icon. */
 export const VersionsIcon = tabler(IconVersions, 14);
-export const DockLeft = tabler(IconLayoutSidebar, 14);
-export const DockBottom = tabler(IconLayoutBottombar, 14);
 export const Expand = tabler(IconArrowsMaximize, 14);
 export const Download = tabler(IconDownload, 14);
 export const Plus = tabler(IconPlus, 14);
 export const AddReaction = tabler(IconMoodPlus, 15);
 export const Minus = tabler(IconMinus, 14);
 export const Close = tabler(IconX, 14);
+/** The conversation pane (a doc's comments keep `Message`). */
+export const Conversation = tabler(IconMessageCircle, 14);
 export const Home = tabler(IconHome);
 export const Star = tabler(IconStar, 14);
 export const More = tabler(IconDots);
@@ -163,7 +161,6 @@ export const Sun = tabler(IconSun);
 export const CodeI = tabler(IconCode);
 export const Database = tabler(IconDatabase);
 export const Target = tabler(IconTarget);
-export const LayoutCols = tabler(IconLayoutColumns);
 export const Message = tabler(IconMessage);
 export const ReviewI = tabler(IconMessage2Check);
 export const Checklist = tabler(IconChecklist);

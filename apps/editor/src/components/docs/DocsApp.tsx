@@ -2,9 +2,8 @@ import { ItemMenuItems } from '../ItemMenu';
 import { Menu, MenuItem } from '../Menu';
 import { RowMenu } from '../RowMenu';
 import { InlineRename } from '../InlineRename';
-import { Segmented } from '../Segmented';
 import { SideResizer } from '../SideResizer';
-import { ListColumn } from '../ChatPanel';
+import { ChatPane } from '../ChatPane';
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import {
   IconArrowBackUp,
@@ -28,7 +27,7 @@ import {
 } from '@tabler/icons-react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { docDecorCss, docLookCss, docLookVars, docsViewContext, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson } from '@dc/core';
+import { DOC_FULL_COLUMN, DOC_WIDTHS, docColumnOf, docDecorCss, docLookCss, docLookVars, docsViewContext, captionsAsFigures, lookFontCss, outlineOf, tabFile, tabOrder, wordCount, type DocJson, type DocWidth } from '@dc/core';
 import { api, type DeletedTabGroup } from '../../api';
 import { display, isSaving, useStore } from '../../store';
 import { addTab, deleteTab, duplicateTab, docsImport, editDoc, moveTab, openTab, renameTab, restoreDeletedTab, useComments, useCurrentTab, useDocIndex, useDocs } from './docs';
@@ -49,7 +48,7 @@ import { copyDocMarkdown, saveDocMarkdown } from './markdownExport';
 import { saveDocWord } from './wordExport';
 import { pdfHint, printWindow, savePdf, useDirectPdf } from '../../pdfExport';
 import { TopBar, ProjectTitle, BarButton } from '../TopBar';
-import { LayoutCols, VersionsIcon } from '../icons';
+import { VersionsIcon } from '../icons';
 import { useTranslation } from 'react-i18next';
 import { download } from '../../local';
 
@@ -61,7 +60,18 @@ function TabRow({ id, title, sub, current, first, last }: { id: string; title: s
       {renaming ? (
         <InlineRename value={title} label={t('docs.tab.nameLabel')} onCommit={(v) => renameTab(id, v)} onDone={() => setRenaming(false)} />
       ) : (
-        <button className="tabname" aria-current={current ? 'page' : undefined} onClick={() => openTab(id)} onDoubleClick={() => setRenaming(true)}>
+        <button
+          className="tabname"
+          aria-current={current ? 'page' : undefined}
+          onClick={() => openTab(id)}
+          onDoubleClick={() => setRenaming(true)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+            e.preventDefault();
+            e.stopPropagation();
+            void deleteTab(id);
+          }}
+        >
           {title}
         </button>
       )}
@@ -166,6 +176,8 @@ function Outline({ tab }: { tab: string }) {
 
 function Toolbar() {
   const { t } = useTranslation();
+  const d = useDocIndex();
+  const { look } = useDocLook();
   const [, force] = useState(0);
   useEffect(() => {
     const e = docEditor.current;
@@ -229,6 +241,26 @@ function Toolbar() {
       )}
       {b(i(IconPhoto), false, () => pickImage(e), t('docs.block.image'))}
       {b(i(IconSeparatorHorizontal), false, () => e.chain().focus().setHorizontalRule().run(), t('docs.block.hr'))}
+      <span className="sep" />
+      <label className="pagewidth">
+        <span>{t('docs.page.width')}</span>
+        <select
+          data-page-width=""
+          aria-label={t('docs.page.width')}
+          value={d.settings.width}
+          onChange={(ev) => {
+            const w = ev.target.value as DocWidth;
+            editDoc((x) => (x.settings.width = w), `settings width = ${w}`);
+            e.chain().focus().run();
+          }}
+        >
+          {DOC_WIDTHS.map((w) => (
+            <option key={w} value={w}>
+              {w === 'standard' ? t('docs.page.standardPx', { px: docColumnOf('standard', look.column) ?? 677 }) : t(`docs.page.${w}`)}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -241,10 +273,13 @@ function docHtml(d: DocJson, only?: string): string {
     .filter((t) => !only || t.id === only)
     .map((t) => {
       const md = (display(s, tabFile(t.id)) ?? '').replace(/\]\((\.\.\/)?((?:assets|uploads)\/[^)\s]+)\)/g, (_m, _p, path) => `](${api.rawBase(project)}${path})`);
-      return `<section class="tab">${DOMPurify.sanitize(marked.parse(md, { gfm: true, async: false }) as string)}</section>`;
+      return `<section class="tab">${captionsAsFigures(DOMPurify.sanitize(marked.parse(md, { gfm: true, async: false }) as string))}</section>`;
     });
   // what the doc wears is what the page draws: the doc's own look, or the design system and theme it chose (.design/doc-design-system.md)
   const { look, worn, tokens } = currentDocLook();
+  // the doc's width setting: a text column (a worn system's doc-column is what Standard means), or the whole page
+  const column = docColumnOf(d.settings.width, look.column);
+  const measure = column === null ? '' : `max-width:${column}px;`;
   // the serif look names a hosted face: without the link the page (and every picture of it) draws a stand-in
   const serif = !worn && (d.settings.headingFont === 'serif' || d.settings.bodyFont === 'serif');
   const fonts = serif ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap">' : '';
@@ -252,7 +287,7 @@ function docHtml(d: DocJson, only?: string): string {
   const faces = worn && tokens ? lookFontCss(tokens, systemFontBase(worn.system)) : '';
   return `<!doctype html><html lang="${d.settings.lang}"><head><meta charset="utf-8"><title>${d.title.replace(/[<&]/g, '')}</title>${fonts}<style>
 ${faces}
-body{max-width:${d.settings.width === 'wide' ? 1000 : (look.column ?? 720)}px;margin:40px auto;padding:0 24px}
+body{${measure}margin:40px auto;padding:0 24px}
 ${docLookCss(look)}
 img{max-width:100%}.tab+.tab{border-top:1px solid ${look.rule};margin-top:48px;padding-top:24px}@media print{.tab+.tab{break-before:page;border:0}}
 </style></head><body>${parts.join('\n')}</body></html>`;
@@ -261,6 +296,8 @@ img{max-width:100%}.tab+.tab{border-top:1px solid ${look.rule};margin-top:48px;p
 /** What the menu offers for a doc: the PDF first, then the text formats, then the picture. */
 function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null): ExportItem[] {
   const name = d.title.replace(/[\\/:*?"<>|]+/g, '-');
+  // the same measure the page draws: a text column, or (full) a page of its own for the picture
+  const column = docColumnOf(d.settings.width, currentDocLook().look.column);
   return [
     {
       id: 'pdf',
@@ -316,36 +353,8 @@ function docsExportItems(d: DocJson, tab: string | null, direct: boolean | null)
       run: () => copyDocMarkdown(name, tab!),
     },
     { id: 'html', label: tNow('common.transfer.label.html'), hint: tNow('common.transfer.hint.docPage'), icon: <FileText />, run: () => download(`${name}.html`, docHtml(d), 'text/html') },
-    ...imageExportItems({ hint: tNow('common.transfer.hint.docTab'), name: `${name}.png`, disabled: !tab, rule: true, make: () => htmlToPng(docHtml(d, tab!), { width: d.settings.width === 'wide' ? 1048 : 768 }) }),
+    ...imageExportItems({ hint: tNow('common.transfer.hint.docTab'), name: `${name}.png`, disabled: !tab, rule: true, make: () => htmlToPng(docHtml(d, tab!), { width: (column ?? DOC_FULL_COLUMN) + 48 }) }),
   ];
-}
-
-function Settings({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
-  const d = useDocIndex();
-  const set = (k: 'headingFont' | 'bodyFont' | 'width', v: string) => editDoc((x) => ((x.settings as unknown as Record<string, string>)[k] = v), `settings ${k} = ${v}`);
-  const seg = (k: 'headingFont' | 'bodyFont' | 'width', label: string, opts: [string, string][]) => (
-    <Segmented label={label} value={d.settings[k]} onChange={(v) => set(k, v)} options={opts.map(([value, text]) => ({ value, label: text }))} />
-  );
-  return (
-    <div className="popmenu settings" onMouseLeave={onClose}>
-      <label>{t('docs.settings.headingFont')}</label>
-      {seg('headingFont', t('docs.settings.headingFont'), [
-        ['sans', t('docs.settings.sans')],
-        ['serif', t('docs.settings.serif')],
-      ])}
-      <label>{t('docs.settings.bodyFont')}</label>
-      {seg('bodyFont', t('docs.settings.bodyFont'), [
-        ['sans', t('docs.settings.sans')],
-        ['serif', t('docs.settings.serif')],
-      ])}
-      <label>{t('docs.settings.width')}</label>
-      {seg('width', t('docs.settings.width'), [
-        ['default', t('docs.settings.standard')],
-        ['wide', t('docs.settings.wide')],
-      ])}
-    </div>
-  );
 }
 
 function Title() {
@@ -363,9 +372,12 @@ export function DocsApp() {
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
   const rail = useStore((s) => s.pane === 'comments');
+  const chat = useStore((s) => s.chatOpen);
   const comments = useComments();
-  const [pop, setPop] = useState<'settings' | 'versions' | 'theme' | null>(null);
+  const [pop, setPop] = useState<'versions' | 'theme' | null>(null);
   const { look, worn, tokens } = useDocLook();
+  // the page's own width: the text column the doc asks for (a worn system's doc-column is its Standard) plus the two 64px gutters
+  const column = docColumnOf(d.settings.width, look.column);
   // the WeChat preview's "Change…" opens the Theme here
   const themeAsked = useDocs((x) => x.themeAsked);
   useEffect(() => {
@@ -412,13 +424,10 @@ export function DocsApp() {
 
   const order = tabOrder(d);
   return (
-    <div className={`app docs${rail ? ' with-rail' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
+    <div className={`app docs${rail ? ' with-rail' : ''}${chat ? ' with-chat' : ''}`} data-width={d.settings.width} data-hfont={d.settings.headingFont} data-bfont={d.settings.bodyFont} data-wears={worn ? '' : undefined}>
+      {chat && <ChatPane />}
       <TopBar title={<Title />}>
         <span className="hint">{t('docs.app.words', { count: words })}</span>
-        <div className="popwrap">
-          <BarButton icon={<LayoutCols />} label={t('docs.app.layout')} on={pop === 'settings'} onClick={() => setPop(pop === 'settings' ? null : 'settings')} />
-          {pop === 'settings' && <Settings onClose={() => setPop(null)} />}
-        </div>
         <div className="popwrap">
           <BarButton icon={<Palette />} label={t('docs.theme.title')} title={t('docs.theme.hint')} on={pop === 'theme' || !!worn} data-theme-button="" onClick={() => setPop(pop === 'theme' ? null : 'theme')} />
           {pop === 'theme' && <DocTheme />}
@@ -432,27 +441,25 @@ export function DocsApp() {
         <FileMenu target={docsImport} label={t('docs.app.importLabel')} items={docsExportItems(d, tab, direct)} />
       </TopBar>
       <WechatPreview />
-      <ListColumn label={t('docs.app.tabs')} className="docs">
-        <aside className="doctabs" aria-label={t('docs.app.tabs')}>
-          <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
-          <h3>{t('docs.app.tabs')}</h3>
-          <ul>
-            {order.map((x) => {
-              const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
-              return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
-            })}
-          </ul>
-          <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
-            {t('docs.app.addTab')}
-          </button>
-          <RestoreDeleted />
-          {tab && <Outline tab={tab} />}
-        </aside>
-      </ListColumn>
+      <aside className="doctabs" aria-label={t('docs.app.tabs')}>
+        <SideResizer id="doctabs" edge="end" name={t('docs.app.tabs')} />
+        <h3>{t('docs.app.tabs')}</h3>
+        <ul>
+          {order.map((x) => {
+            const siblings = order.filter((y) => (y.parent ?? null) === (x.parent ?? null));
+            return <TabRow key={x.id} id={x.id} title={x.title} sub={!!x.parent} current={x.id === tab} first={siblings[0] === x} last={siblings.at(-1) === x} />;
+          })}
+        </ul>
+        <button className="btn ghost addtab" onClick={() => addTab(t('docs.tab.newTitle'))}>
+          {t('docs.app.addTab')}
+        </button>
+        <RestoreDeleted />
+        {tab && <Outline tab={tab} />}
+      </aside>
       <main className="docmain">
         <Toolbar />
         <div className="docscroll">
-          <div className="docpage" style={worn ? (docLookVars(look) as CSSProperties) : undefined}>
+          <div className="docpage" style={{ ...(worn ? (docLookVars(look) as CSSProperties) : {}), '--doc-page-max': column === null ? 'none' : `${column + 128}px` } as CSSProperties}>
             {worn && <style>{docDecorCss(look, '.app.docs[data-wears] .docpage .docbody')}</style>}
             {tab && <DocEditor key={tab} tab={tab} />}
           </div>

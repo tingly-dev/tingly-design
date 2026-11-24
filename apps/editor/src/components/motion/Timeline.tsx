@@ -313,6 +313,12 @@ export function Timeline(p: {
                       setMenu({ x: e.clientX, y: e.clientY, id: w.id });
                     }}
                     onDoubleClick={() => seek(Math.max(w.start, end - 1000 / (motion.fps || 30)) / rate)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void deleteScene(w.id);
+                    }}
                     title={hint}
                   >
                     <span className="mname">

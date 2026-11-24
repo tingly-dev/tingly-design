@@ -302,13 +302,18 @@ async function placeImage(file: File, nth = 0): Promise<void> {
     img.onerror = () => resolve({ w: 800, h: 600 });
     img.src = URL.createObjectURL(file);
   });
+  const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
+  placePicture(r.path, dims, alt, nth);
+}
+
+/** A picture already in the project onto the open slide, no larger than half its width, centred (the nth one stepped down and right). */
+function placePicture(path: string, dims: { w: number; h: number }, alt: string, nth = 0): number | null {
   const [W, H] = deckSize(deckOf(get()));
   const k = Math.min(1, W / 2 / dims.w, H * 2 / 3 / dims.h);
   const w = Math.round(dims.w * k);
   const h = Math.round(dims.h * k);
-  const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/"/g, '');
-  insertOnSlide(
-    `<img src="${r.path}" alt="${alt}" style="position:absolute;left:${Math.round((W - w) / 2) + nth * 40}px;top:${Math.round((H - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
+  return insertOnSlide(
+    `<img src="${path}" alt="${alt.replace(/"/g, '')}" style="position:absolute;left:${Math.round((W - w) / 2) + nth * 40}px;top:${Math.round((H - h) / 2) + nth * 40}px;width:${w}px;height:${h}px;object-fit:cover">`,
     true,
   );
 }
@@ -334,12 +339,16 @@ export const slidesImport: ImportTarget = {
     if (!parts.length) throw new Error(importFilesLabel(t, ['image', 'drawing', 'pptx']));
     return parts.join(t('importer.listSeparator'));
   },
-  board: {
+  page: {
     get what() {
-      return t('slides.import.boardWhat');
+      return t('linked.picker.what', { kind: t('launcher.kind.slides.name').toLowerCase() });
     },
-    place: (path, { size, moving, title }) => {
-      const { html, back } = boardEmbed(path, deckSize(deckOf(get())), size, moving);
+    place: ({ path, mode, size, moving, title, project, poster }) => {
+      if (mode === 'image') {
+        const tid = placePicture(path, { w: size[0], h: size[1] }, t('linked.alt', { title, project }));
+        return tid === null ? t('linked.toast.placed.noSlide') : t('linked.toast.placed.slide', { title });
+      }
+      const { html, back } = boardEmbed(path, deckSize(deckOf(get())), size, moving ?? false, '', poster);
       const tid = back ? insertBehind(html) : insertOnSlide(html, true);
       return tid === null ? t('slides.import.noSlide') : t('slides.import.boardPlaced', { title });
     },

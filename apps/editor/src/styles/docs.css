@@ -17,6 +17,16 @@
 }
 
 
+.app.docs.with-chat {
+  grid-template-columns: auto var(--w-doctabs, 220px) 1fr;
+}
+
+
+.app.docs.with-chat.with-rail {
+  grid-template-columns: auto var(--w-doctabs, 220px) 1fr var(--w-docrail, 320px);
+}
+
+
 .dashbar .badge.blue {
   background: var(--accent);
 }
@@ -56,13 +66,6 @@
 .popmenu > button:hover {
   background: var(--hover);
 }
-
-
-.popmenu.settings {
-  padding: 10px 12px;
-  gap: 4px;
-}
-
 
 
 .popmenu.versions {
@@ -148,13 +151,6 @@
 
 .popmenu.versions .vdiff .vblock.d-new {
   background: var(--ok-soft);
-}
-
-
-.popmenu.settings label {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 4px;
 }
 
 
@@ -349,6 +345,17 @@
 }
 
 
+/* the doc's page width: page-level, so it sits at the far right of the formatting bar, apart from block tools */
+.doctools .pagewidth {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
 .doctools button svg,
 .bubble button svg {
   display: block;
@@ -381,7 +388,8 @@
 
 
 .docpage {
-  max-width: 760px;
+  /* the doc's own width (setting × design system): DocsApp sets the text column, the page adds its two gutters */
+  max-width: var(--doc-page-max, 805px);
   margin: 0 auto;
   background: var(--panel);
   border-radius: 10px;
@@ -389,11 +397,6 @@
   padding: 48px 64px 80px;
   min-height: calc(100% - 40px);
   box-sizing: border-box;
-}
-
-
-.app.docs[data-width='wide'] .docpage {
-  max-width: 1040px;
 }
 
 
@@ -623,8 +626,83 @@
 }
 
 
-.docbody img.ProseMirror-selectednode {
+.docbody figure.docfig {
+  margin: 0.8em 0;
+  text-align: center;
+}
+
+
+.docbody figure.docfig > img {
+  display: block;
+  margin: 0 auto;
+}
+
+
+/* a picture's caption: Markdown's image title, drawn under it (.design/doc-image-caption.md) */
+.docbody figcaption {
+  margin-top: 0.35em;
+  color: var(--muted);
+  font-size: 0.86em;
+  line-height: 1.5;
+  text-align: center;
+}
+
+
+.app.docs[data-wears] .docbody figcaption {
+  color: var(--look-muted);
+}
+
+
+.docbody img.ProseMirror-selectednode,
+.docbody .docfig[data-selected] > img {
   outline: 2px solid var(--accent);
+}
+
+
+/* the form on a selected picture, beside it: caption and alt text (DocEditor's ImageForm) */
+.docimgform {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+}
+
+
+.docimgform:has(.linkedp) {
+  flex-wrap: wrap;
+  width: 388px;
+}
+
+
+/* a linked page's source, state and actions go under the two fields, across the form */
+.docimgform .linkedp.compact {
+  flex: 1 0 100%;
+}
+
+
+.docimgform label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+
+.docimgform input {
+  width: 168px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
 }
 
 
@@ -1044,10 +1122,7 @@
   caret-color: var(--look-ink);
 }
 
-/* a system with a text column of its own (a platform's reader) sets the page's width; a doc set to wide stays wide */
-.app.docs[data-wears]:not([data-width='wide']) .docpage {
-  max-width: calc(var(--look-column, 632px) + 128px);
-}
+/* a system's text column is what the doc's Standard width means; DocsApp sets --doc-page-max from it (narrow / wide / full override it) */
 
 .app.docs[data-wears] .docbody :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--look-head);
@@ -1106,5 +1181,116 @@
 .popmenu.doctheme .hint { margin: 0; }
 .popmenu.doctheme .th-systems > summary { cursor: pointer; font-size: 12px; color: var(--muted); margin: 4px 0; }
 
+
+.th-fonts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+
+.th-fonts-h {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+
+.th-fontrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+
+.th-fontlabel {
+  width: 62px;
+  flex: none;
+  color: var(--muted);
+}
+
+
+.th-fontval {
+  color: var(--ink-2);
+}
+
+
+.th-fonts .seg {
+  flex: 1;
+}
+
 /* the WeChat preview says which look the article follows */
 .wechat-preview .wp-style { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+
+
+/* live edit pointers (.design/live-pointers.md): a mouse cursor and its name at the lower right corner of the block that changed, a faint frame round the block */
+.docpointers {
+  position: relative;
+  height: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+
+.docpointer {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid color-mix(in srgb, var(--pc) 53%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pc) 6%, transparent);
+  transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s ease;
+  animation: docpointer-in 0.15s ease;
+}
+
+
+.docpointer[data-fading] {
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+
+.docpointer-cursor {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+}
+
+
+.docpointer-cursor svg {
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  width: 14px;
+  height: 20px;
+  overflow: visible;
+  fill: var(--pc);
+  stroke: #fff;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 30%));
+}
+
+
+/* the name goes to the cursor's left: the page's right margin is too narrow to hold it */
+.docpointer-tag {
+  position: absolute;
+  right: 8px;
+  top: 15px;
+  padding: 0 6px;
+  border-radius: 9px 9px 2px 9px;
+  background: var(--pc);
+  color: #fff;
+  font: 600 11px/1.5 system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 22%);
+}
+
+
+@keyframes docpointer-in {
+  from {
+    opacity: 0;
+  }
+}

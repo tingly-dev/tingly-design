@@ -8,6 +8,15 @@ export default {
     external: 'Outside',
     undo: 'Undo',
   },
+  /** a live edit pointer's name tag (core's Participant actor): who is changing the spot it marks */
+  pointer: {
+    human: 'Someone else',
+    jquery: 'jQuery',
+    'fast-edit': 'Fast AI',
+    claude: 'Claude Code',
+    external: 'Outside the editor',
+    undo: 'Undo',
+  },
   open: {
     loading: 'Opening {{name}}…',
     failed: 'This project couldn\'t be opened: {{error}}',
@@ -37,10 +46,8 @@ export default {
     empty: 'The clipboard is empty.',
     selectFirst: 'Select an element or artboard first, then paste.',
   },
-  scene: {
-    notInEditor: 'Adding, duplicating and deleting scenes isn\'t in the editor yet; you can hand it to Claude Code.',
-  },
   board: {
+    lastBoard: 'A canvas needs at least one artboard.',
     rootDelete: 'This is the artboard\'s root element; to delete the whole artboard, select the artboard and delete it.',
     rootWrap: 'The artboard\'s root element can\'t be wrapped.',
     rootUnwrap: 'The artboard\'s root element can\'t be unwrapped.',

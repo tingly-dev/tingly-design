@@ -42,6 +42,7 @@ export type PptxResult = { ok: true; files: Record<string, Uint8Array>; report: 
   | { ok: false; diagnostics: PptxDiagnostic[] };
 const P = 'http://schemas.openxmlformats.org/presentationml/2006/main';
 const A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const P14 = 'http://schemas.microsoft.com/office/powerpoint/2010/main';
 const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -608,6 +609,7 @@ function textBody(shape: X, ancestors: X[], c: Context, extra: X[] = []): Text |
   }
   const base: TextStyle = { size: 18 * 12700 * c.scale, latin: 'Arial', color: '#000000', bold: false, italic: false, underline: false, strike: false, caps: 'none', spacing: 0, baseline: 0 };
   let counter = 0, lastList = '';
+  const heading = type === 'ctrTitle' ? 'h1' : type === 'title' ? 'h2' : 'p';
   const blocks = kids(body, A, 'p').map(p => {
     const own = child(p, A, 'pPr'), level = clamp(Math.round(number(at(own, 'lvl'), 0)), 0, 8), lvl = `lvl${level + 1}pPr`;
     const levels = [path(c.defaults, [A, lvl]), phOf(shape) ? path(c.master, [P, 'txStyles'], [P, styleName], [A, lvl]) : undefined,
@@ -673,7 +675,8 @@ function textBody(shape: X, ancestors: X[], c: Context, extra: X[] = []): Text |
     const style = `font-size:${num(first.size)}px;font-family:${esc(familyOf(first))};line-height:${lineHeight};text-align:${align};white-space:${at(bodyPr, 'wrap') === 'none' ? 'pre' : 'pre-wrap'}${first.color !== '#000000' ? `;color:${first.color}` : ''}${first.spacing ? `;letter-spacing:${num(first.spacing)}px` : ''}${first.caps !== 'none' ? ';text-transform:uppercase' : ''}${first.outline ? `;-webkit-text-stroke:${first.outline}` : ''}${first.shadow ? `;text-shadow:${first.shadow}` : ''}`;
     return list
       ? { list, marL, start: counter, html: `<li style="${style}${pad(0)};margin:0">${runs || '<br>'}</li>` }
-      : { list: '', marL, start: 0, html: `<p style="${style}${pad(Math.max(0, marL + indent))}">${runs || '<br>'}</p>` };
+      // a title placeholder's text is the slide's heading (h1 for a title slide's), so the slide keeps its title
+      : { list: '', marL, start: 0, html: `<${heading} style="${style}${heading === 'p' ? '' : `;font-weight:${first.bold ? 700 : 400}`}${pad(Math.max(0, marL + indent))}">${runs || '<br>'}</${heading}>` };
   });
   let inner = '';
   for (let i = 0; i < blocks.length;) {
@@ -1170,7 +1173,15 @@ export function importPptx(bytes: Uint8Array, options: PptxOptions): PptxResult 
     }
     if (!report.slides.length) throw firstFailure ?? new ImportFailure({ level: 'error', code: 'invalid_package' });
     const sized = size[0] !== 1920 || size[1] !== 1080 ? { size } : {};
-    output['deck.json'] = encode(stringifyDeck({ v: 4, title: options.title, ...sized, order: report.slides.map(s => s.id), cover: report.slides[0].id, sections: {}, faces: {}, designSystems: [], pptxImport: report.path }));
+    // PowerPoint's sections (p14) are the deck's: each starts at its first slide that was imported
+    const slideOf = new Map(ids.map((x, i) => [at(x, 'id'), `${options.id}-${i + 1}`]));
+    const imported = new Set(report.slides.map(s => s.id));
+    const sections: Record<string, { description: string; start: string }> = {};
+    for (const section of walk(child(root, P, 'extLst'), P14, 'section')) {
+      const start = kids(child(section, P14, 'sldIdLst'), P14, 'sldId').map(x => slideOf.get(at(x, 'id'))).find(id => id && imported.has(id));
+      if (start && !Object.values(sections).some(x => x.start === start)) sections[`s${Object.keys(sections).length + 1}`] = { description: (at(section, 'name') ?? '').slice(0, 1000), start };
+    }
+    output['deck.json'] = encode(stringifyDeck({ v: 4, title: options.title, ...sized, order: report.slides.map(s => s.id), cover: report.slides[0].id, sections, faces: {}, designSystems: [], pptxImport: report.path }));
     output[report.source] = bytes.slice(); output[report.path] = encode(JSON.stringify(report, null, 2) + '\n');
     return { ok: true, files: output, report, diagnostics };
   } catch (e) {

@@ -140,6 +140,10 @@ Options:
     boxOutside: 'a box runs past the edge and is cut off: “{{text}}”',
     boxOverflow: 'a box is wider than the row or grid that holds it, so it pushes its neighbours aside: “{{text}}”',
     squeezed: 'text is squeezed into a column a few characters wide ({{lines}} lines): “{{text}}”',
+    small: 'text is {{size}} px, under this deck’s floor of {{floor}} px: “{{text}}”',
+    broken: 'a word is broken across two lines: “{{text}}”; widen the box or shorten the line',
+    unitSplit: 'a figure and its unit or currency sit on different lines: “{{text}}”; widen the box or join them with a no-break space',
+    short: 'the content under “{{text}}” ends at {{percent}}% of the slide’s height; set it larger or spread it down the slide',
     nan: '{{where}} shows a number that did not work out: “{{text}}”; a value reached the chart or figure as text, a missing field or an empty list',
     nanMore: '{{where}} shows a number that did not work out: “{{text}}” (and {{more}} more like it); a value reached the chart or figure as text, a missing field or an empty list',
     empty: '{{where}} drew nothing: no marks, no rows; the data may be empty or the script returned before drawing',
@@ -148,6 +152,10 @@ Options:
     labelOverlapMore: 'labels in {{where}} lie on top of each other: “{{text}}” and “{{other}}” (and {{more}} more pairs); thin the ticks, shorten or rotate the labels',
     labelClipped: 'a label in {{where}} is cut off by the edge of its chart: “{{text}}”; widen the margin',
     labelClippedMore: 'a label in {{where}} is cut off by the edge of its chart: “{{text}}” (and {{more}} more); widen the margin',
+  },
+  slidesRules: {
+    placeholder: 'a placeholder is still on the slide: “{{text}}”',
+    headingMoved: 'the heading “{{text}}” sits {{dy}} px down and {{dx}} px right of where {{others}} other slides of its kind put it',
   },
   canvasRules: {
     'order-unknown': 'order lists {{file}}, which is not a board',

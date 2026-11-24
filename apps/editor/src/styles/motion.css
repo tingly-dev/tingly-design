@@ -689,6 +689,11 @@
 }
 
 
+.app.motion.with-chat {
+  grid-template-columns: auto 1fr auto;
+}
+
+
 .app.motion .panel {
   min-height: 0;
 }
@@ -745,7 +750,7 @@
 }
 
 
-.mprompt.in-column {
+.mprompt.in-pane {
   display: none;
 }
 

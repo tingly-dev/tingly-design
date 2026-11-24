@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { initialPane, KIND_PANE_IDS, rememberPane, type PaneId } from './panes';
+import { chatFits, initialChatOpen, initialPane, KIND_PANE_IDS, rememberChat, rememberPane, type PaneId } from './panes';
 import { turnOfDelegate, turnOfFast } from './turns';
 import { readRemarks, reviewInitial, type ReviewState } from './store/review';
-import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type BarMode, type DelegateState } from './store/agent';
+import { agentInitial, agentReset, delegateEventPatch, endTurnPatch, type AgentState, type DelegateState } from './store/agent';
 import {
   rebaseSwap,
   parseCanvas,
@@ -28,8 +28,10 @@ import {
   isStream,
   mergeChange,
   type ConfigChange,
+  participantOf,
 } from '@dc/core';
-import { api, type FileState, type Health, type ServerEvent } from './api';
+import { api, CLIENT_ID, type FileState, type Health, type ServerEvent } from './api';
+import { clearPointers, pointChange, showPointer } from './pointers';
 import { t } from './i18n';
 import { headlessRun } from './headless';
 import { readPref, writePref } from './local';
@@ -125,6 +127,8 @@ export interface State extends AgentState, ReviewState {
   mode: Mode;
   /** the side pane open in the right column (inspector, data sources, code, comments), or none; see panes.ts */
   pane: PaneId | null;
+  /** the conversation column on the left, open beside the kind's own list and the right pane */
+  chatOpen: boolean;
   panelTab: 'props' | 'code' | 'tweaks' | 'theme';
   /** what the runtime measured about the selected element */
   inspect: Inspect | null;
@@ -172,6 +176,7 @@ export const useStore = create<State>(() => ({
   tool: 'select',
   mode: 'edit',
   pane: null,
+  chatOpen: false,
   panelTab: 'props',
   inspect: null,
   counts: {},
@@ -291,12 +296,14 @@ export async function openProject(name: string): Promise<void> {
     q.set('p', r.name);
     history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
   }, () => {});
+  clearPointers();
   set({ project: name, loaded: false, files: {}, drafts: {}, journal: [], selection: null, undo: [], redo: [], ...agentReset(), remarks: readRemarks(name), remarkFocus: null, slide: null, present: null, motionView: null });
   const [{ files }, journal, conversation, turns] = await Promise.all([api.files(name), api.journal(name), api.conversation(name).catch(() => null), api.transcript(name).catch(() => [] as Turn[])]);
   const entries: Record<string, FileEntry> = {};
   for (const [path, st] of Object.entries(files)) entries[path] = { server: st, pending: [] };
   const kind = projectKind(Object.keys(files));
-  set((s) => ({ files: entries, journal, loaded: true, kind, pane: kind ? initialPane(kind) : null, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
+  const pane = kind ? initialPane(kind) : null;
+  set((s) => ({ files: entries, journal, loaded: true, kind, pane, chatOpen: kind ? initialChatOpen(kind, pane) : false, shortcutsOpen: false, conversation: s.conversation ?? conversation, turns }));
   if (kind === 'slides') {
     const ids = slideIds(get());
     const want = new URLSearchParams(location.search).get('s');
@@ -314,6 +321,10 @@ function bumpAssetRev(): void {
 
 function onEvent(e: ServerEvent): void {
   if (e.type === 'file') {
+    const was = get().files[e.path]?.server;
+    // someone else's write: their pointer goes to what it changed (before the views take the new text in)
+    const who = was?.version === e.version ? null : participantOf(e.actor, e.by, CLIENT_ID);
+    if (who) pointChange(who, e.path, was?.content, e.content);
     set((s) => {
       const cur = s.files[e.path];
       if (cur?.server?.version === e.version) return {};
@@ -342,6 +353,8 @@ function onEvent(e: ServerEvent): void {
   } else if (e.type === 'entries') {
     // a file the editor does not track (a tool's data beside the project's files): the files pane re-lists
     bumpAssetRev();
+  } else if (e.type === 'pointer') {
+    showPointer(e.participant, e.target);
   } else if (e.type === 'journal') {
     set((s) => (s.journal.some((j) => j.id === e.entry.id) ? {} : { journal: [...s.journal, e.entry].slice(-500) }));
   } else if (e.type === 'delegate') {
@@ -358,12 +371,6 @@ function onEvent(e: ServerEvent): void {
       if (!get().feeds) toast(ok ? t('app.delegate.done', { text: (e.text ?? '').slice(0, 120) }) : t('app.delegate.failed', { text: (e.text ?? '').slice(0, 200) }), ok ? 'info' : 'error');
     }
   }
-}
-
-/** Where the prompt lives (kept across sessions, the same in every kind). */
-export function setBarMode(mode: BarMode): void {
-  writePref('dc.barMode', mode);
-  set({ barMode: mode, historyOpen: false, chatNote: null });
 }
 
 /** A setting changed by hand: Claude Code hears of it with the next request, and the bar offers a follow-up when the change is worth one. */
@@ -442,10 +449,21 @@ export function undoDelegate(id: string): void {
   set((s) => ({ delegates: s.delegates.map((x) => (x.id === id ? { ...x, undone: true } : x)) }));
 }
 
-// remember which pane is open, per kind and browser
+// remember which pane is open, per kind and browser; the conversation is one setting for every kind
 useStore.subscribe((st, prev) => {
   if (st.kind && st.kind === prev.kind && st.pane !== prev.pane) rememberPane(st.kind, st.pane);
+  if (st.chatOpen !== prev.chatOpen) rememberChat(st.chatOpen);
 });
+
+/** Open or close the conversation column on the left; a window too narrow to hold it stays closed. */
+export function toggleChat(): void {
+  useStore.setState((s) => {
+    if (!s.kind) return {};
+    if (s.chatOpen) return { chatOpen: false };
+    // opening reads the record and may bring a new result; it is on screen from now on
+    return chatFits(s.kind, s.pane) ? { chatOpen: true, chatNote: null } : {};
+  });
+}
 
 /** Show a pane (a request, a link from a file chip or a comment): never closes it. */
 export function openPane(id: PaneId): void {

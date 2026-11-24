@@ -11,6 +11,7 @@
  * alone, never from a clock of its own.
  */
 import { CANVAS_FILE, isBoardFile, parseCanvas, type CanvasJson } from './canvas';
+import { isDashBundlePath } from './dashBundle';
 import { parseTime } from './motion';
 import { parseDc, type DcDoc, type PropSpec } from './parse';
 
@@ -196,10 +197,10 @@ export function boardImportsOf(index: { imports?: unknown } | undefined): BoardI
     : [];
 }
 
-/** The `src` of every artboard embed in a slide or scene file. */
+/** The `src` of every artboard embed, and every frozen dashboard, in a slide or scene file. */
 export function boardEmbedsIn(source: string): string[] {
   const out = new Set<string>();
-  for (const m of source.matchAll(/<x-embed\b[^>]*?\bsrc\s*=\s*"([^"]+)"/g)) if (isBoardEmbedPath(m[1])) out.add(m[1]);
+  for (const m of source.matchAll(/<x-embed\b[^>]*?\bsrc\s*=\s*"([^"]+)"/g)) if (isBoardEmbedPath(m[1]) || isDashBundlePath(m[1])) out.add(m[1]);
   return [...out];
 }
 
@@ -217,7 +218,8 @@ export function boardFilesFor(sources: Iterable<string | undefined>, files: (pat
     const src = files(f);
     if (src === undefined) continue;
     out[f] = src;
-    todo.push(...boardDeps(src, f).boards);
+    // a frozen dashboard holds everything it shows
+    if (!isDashBundlePath(f)) todo.push(...boardDeps(src, f).boards);
   }
   return out;
 }

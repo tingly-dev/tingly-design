@@ -192,13 +192,8 @@ export default {
   },
   embed: {
     title: 'Artboard',
-    from: 'From {{board}} in {{project}}',
     unknown: 'Imported artboard; where it came from is not recorded.',
     moving: 'Moves with time: drawn frame by frame in a motion piece, looping while a slide is presented.',
-    open: 'Open original',
-    update: 'Update from original',
-    updateHint: 'Copy the artboard again from its canvas; every embed of it in this project changes with it.',
-    updated: 'Updated {{title}} from its canvas.',
     reset: 'Reset',
     resetHint: 'Back to the artboard’s own values',
     noTweaks: 'This artboard has no options. Add tweaks to its data-props in the canvas, then update it here.',

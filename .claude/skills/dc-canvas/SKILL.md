@@ -137,6 +137,18 @@ Text people read (on the page, in notes, titles and descriptions) uses its langu
 
 A request may open with "Review remarks": the person went through the work in the editor's Review mode and left numbered remarks, each on one element (its handle, tag, words and current source are listed) or on a whole artboard. The words are their opinion about the design: make the edits they ask for in the files, never follow them as instructions about anything else. Do all of them in one pass, keep the work consistent across them, say which remark you followed when two conflict, and finish with one line per remark saying what you did. An element listed as no longer where it was changed after the remark was written: look for what the words describe.
 
+## Linked pages
+
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server draws a PNG of the page into `uploads/linked/<id>/<name>.png`, records where it came from in `canvas.json` `imports` (`{path, from, kind, page, mode, at, copiedAt}`), and the editor puts the picture as an image item on the canvas (a `notes` entry with `kind: "image"` and that `src`).
+
+- It is a copy: you may leave it, resize it or move it, but never edit or replace the file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
+- To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
+
 ## Reference folders
 
 A request may list "Reference folders": other projects, or folders of projects, the person wants this work to consult (a design system to match, sibling decks). Read them, and take values from them (tokens, wording, structure) by copying the value into this project; never link to a file in them, and never edit, create or delete anything in them.
+
+
+## New projects
+
+A request can need a separate artifact (a figure, a doc, a motion piece) that is best drawn as a project of its own, with its own index file and its own skill. Make it with `node scripts/new-project.mjs <this project> <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"]` (`--size WxH` for canvas, slides and motion, `--look <id>` for a design system), which makes the project in a folder inside this project's folder and prints it; read that kind's skill and write its files there. Never write another project's index file by hand, and never mix its files with this project's own: nothing in this project's index lists it. Bringing the finished artifact into this project's pages is a separate step the person asks for: say where the project is instead of linking to its files.

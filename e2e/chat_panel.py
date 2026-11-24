@@ -1,9 +1,11 @@
-"""End-to-end checks for the conversation column (.design/chat-panel.md): the request bar at the bottom by
-default; the position menu moving it to a column on the left that stays open and shifts the work; the
-conversation kept as a record (every turn with its steps, answer and files, the same after a reload, requests
-from the command line included); undo on the newest turn only; the column's width dragged and remembered; a
-window too narrow for it putting the bar back at the bottom; the old right-edge dock's setting meaning left; the
-kinds with a list of their own showing it as a tab beside the conversation; one run in every kind.
+"""End-to-end checks for the conversation pane (.design/chat-panel.md): the request bar at the bottom by
+default; the top bar's Conversation button opening the conversation as the leftmost column, with the kind's
+own list moved to its right and the right pane (Properties, Comments, Sources) staying where it is; the
+record kept as a transcript (every turn with its steps, answer and files, the same after a reload, requests
+from the command line included); undo on the newest turn only; the column's right edge dragged and
+remembered; a draft surviving the column opening and closing; a window too narrow disabling the button with
+an explanation instead of moving anything; the old left-column setting migrated once; two independent left
+columns in every kind; one run in every kind.
 Run after `pnpm build`: python3 e2e/chat_panel.py  (DC_CHROME=/path/to/chrome to use another Chromium)
 Starts its own server (production mode, PORT=0) on a fresh projects folder, with the mock model and a
 stand-in `claude`, so it needs neither `pnpm dev` nor an API key."""
@@ -27,6 +29,16 @@ FAKE_CLAUDE = src.split("FAKE_CLAUDE = r'''", 1)[1].split("'''", 1)[0]
 def post(url, body):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={'content-type': 'application/json'}, method='POST')
     return json.load(urllib.request.urlopen(req))
+
+def transcript(base, project):
+    return json.load(urllib.request.urlopen(f'{base}/api/projects/{project}/transcript'))
+
+async def wait_turns(pg, base, project, n, timeout=30):
+    """Wait for the project's record to hold `n` turns (the pane may be closed, so no DOM says so)."""
+    for _ in range(int(timeout * 10)):
+        if len(transcript(base, project)) >= n: return True
+        await pg.wait_for_timeout(100)
+    return False
 
 async def main():
     if not os.path.exists(os.path.join(REPO, 'apps/editor/dist/index.html')):
@@ -58,11 +70,13 @@ async def main():
             pg = await b.new_page(locale='zh-CN', viewport={'width': 1440, 'height': 860})
             errs = []
             pg.on('pageerror', lambda e: errs.append(str(e)))
-            panel = pg.locator('.chat-panel')
+            pane = pg.locator('.chat-pane')
             box = pg.locator('.chat-composer textarea')
-            work_left = lambda: pg.locator('.chat-work').evaluate('e => e.getBoundingClientRect().left')
-            panel_w = lambda: panel.evaluate('e => e.getBoundingClientRect().width')
-            pref = lambda: pg.evaluate("localStorage.getItem('dc.barMode')")
+            async def open_chat():
+                if not await pane.count(): await pg.locator('[data-pane=chat]').click()
+            panel_w = lambda: pane.evaluate('e => e.getBoundingClientRect().width')
+            panel_left = lambda: pane.evaluate('e => e.getBoundingClientRect().left')
+            pane_pref = lambda: pg.evaluate("localStorage.getItem('dc.chat')")
             send = lambda text: box.fill(text)
 
             await pg.goto(f'{base}/?p=tingly-box-console-canvas')
@@ -70,8 +84,8 @@ async def main():
             await pg.wait_for_timeout(800)
 
             # the default is the bar at the bottom, as it always was
-            check('the prompt starts as the bar at the bottom of the stage', await pg.locator('.prompt:not(.chat-composer)').count() == 1 and await panel.count() == 0)
-            check('the shell is not in the way of the work', await work_left() == 0)
+            check('the prompt starts as the bar at the bottom of the stage', await pg.locator('.prompt:not(.chat-composer)').count() == 1 and await pane.count() == 0)
+            check('the conversation button is one of the top bar panes', await pg.locator('[data-pane=chat]').count() == 1)
             bar = pg.locator('.prompt')
             await pg.get_by_role('button', name='Claude Code', exact=True).click()
             await bar.locator('textarea').fill('把标题改短')
@@ -92,33 +106,38 @@ async def main():
             check('a history row opens to the answer and the files', '改好了标题。' in await row.inner_text() and await row.locator('.file-chip').count() >= 1)
             await bar.get_by_role('button', name='之前的请求').click()
 
-            # the position menu: two items, left is chosen
-            await bar.get_by_role('button', name='请求栏的位置').click()
-            check('the position menu has the bottom and the left', await pg.get_by_role('menuitemcheckbox').count() == 2)
-            check('the bottom is the one marked', await pg.get_by_role('menuitemcheckbox', name='底部').get_attribute('aria-checked') == 'true')
-            await pg.get_by_role('menuitemcheckbox', name='左侧').click()
-            await expect(panel).to_have_count(1)
-            check('left puts a conversation column on the left edge', await panel.evaluate('e => e.getBoundingClientRect().left') == 0)
-            check('the column is 340 wide by default', abs(await panel_w() - 340) < 2, await panel_w())
-            check('the work moved right of it', abs(await work_left() - await panel_w()) < 2)
-            check('no floating bar over the stage', await pg.locator('.prompt:not(.chat-composer)').count() == 0)
-            check('the choice is remembered as left', await pref() == 'left')
-            check('the top bar is in the work, not over the column', await pg.locator('.topbar').evaluate('e => e.getBoundingClientRect().left') >= 339)
-            check('the stage is inside the work, not under the column', await pg.locator('.stage').evaluate('e => e.getBoundingClientRect().left') >= 339)
+            # a draft typed at the bottom follows the bar into the pane and back
+            await pg.locator('.prompt:not(.chat-composer) textarea').fill('写到一半的话')
+            await open_chat()
+            await expect(pane).to_have_count(1)
+            check('the conversation opens at the left edge', abs(await panel_left()) < 2, await panel_left())
+            check('it is 340 wide by default', abs(await panel_w() - 340) < 2, await panel_w())
+            check('the work starts after the conversation', await pg.locator('.stage').evaluate('e => e.getBoundingClientRect().left') >= await panel_w() - 1)
+            check('the properties pane stays: the conversation and it are independent', await pg.locator('.panel').count() == 1)
+            check('the bar moved to the pane foot', await pg.locator('.prompt:not(.chat-composer)').count() == 0 and await pg.locator('.chat-composer').count() == 1)
+            check('the choice is remembered for every kind', await pane_pref() == '1')
+            check('the draft survived opening the pane', await box.input_value() == '写到一半的话')
+            await pane.get_by_role('button', name='关闭对话').click()
+            await expect(pane).to_have_count(0)
+            check('closing brings the bottom bar back with the same draft', await pg.locator('.prompt textarea').input_value() == '写到一半的话')
+            check('closing moves nothing else by itself', await pg.locator('.panel').count() == 1)
+            await pg.locator('.prompt textarea').fill('')
+            await open_chat()
+            await expect(pane).to_have_count(1)
 
             # the record kept the request made at the bottom
             await expect(pg.locator('.turn')).to_have_count(1)
             check('the earlier turn is in the record with its answer', '把标题改短' in await pg.locator('.turn').inner_text() and '改好了标题。' in await pg.locator('.turn').inner_text())
             check('and its steps are folded to a count', await pg.locator('.turn .run-link').count() == 1)
-            check('the history button is not in the column', await pg.get_by_role('button', name='之前的请求').count() == 0)
+            check('the history button is not in the pane', await pg.get_by_role('button', name='之前的请求').count() == 0)
 
-            # a run in the column: what it is doing, the stop button, then the answer, files and undo
+            # a run in the pane: what it is doing, the stop button, then the answer, files and undo
             await pg.get_by_role('button', name='Claude Code', exact=True).click()
             await send('SLOW 再改一下')
             await box.press('Enter')
             await expect(pg.locator('.turn')).to_have_count(2)
             await expect(pg.locator('.turn').last.locator('.run-stop')).to_be_visible(timeout=8000)
-            check('while it runs the column says so and offers to stop', 'Claude Code 正在' in await pg.locator('.turn').last.inner_text())
+            check('while it runs the pane says so and offers to stop', 'Claude Code 正在' in await pg.locator('.turn').last.inner_text())
             check('the box becomes a stop button too', await pg.locator('.chat-composer .send.stop').count() == 1)
             await pg.locator('.turn').last.locator('.run-stop').click()
             await expect(pg.locator('.turn').last).to_contain_text('已停止', timeout=10000)
@@ -131,6 +150,7 @@ async def main():
             await box.press('Enter')
             await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
             check('a finished turn has its answer', '改好了标题。' in await pg.locator('.turn').last.inner_text())
+            check('the answer in the record is read as Markdown', await pg.locator('.turn').last.locator('.run-result.md p', has_text='改好了标题。').count() == 1)
             check('and a chip for the file it changed', await pg.locator('.turn').last.locator('.file-chip').count() >= 1)
             await expect(pg.locator('.turn').last.get_by_role('button', name='撤销这次改动')).to_have_count(1)  # it appears a moment after the chip
             check('undo is offered on the newest turn only', await pg.get_by_role('button', name='撤销这次改动').count() == 1 and await pg.locator('.turn').last.get_by_role('button', name='撤销这次改动').count() == 1)
@@ -148,109 +168,115 @@ async def main():
             check('putting a request back fills the box', await box.input_value() == '把标题改短')
             await box.fill('')
 
-            # a request from the command line is in the record, marked as such
+            # a request from the command line is in the record, marked as such; with the pane closed it lights the button
+            await pane.get_by_role('button', name='关闭对话').click()
+            await expect(pane).to_have_count(0)
             post(f'{base}/api/projects/tingly-box-console-canvas/delegate', {'prompt': '来自终端的请求', 'source': 'cli', 'fresh': True})
+            await expect(pg.locator('[data-pane=chat] .badge')).to_have_count(1, timeout=8000)
+            check('a run from elsewhere lights the conversation button', True)
+            check('it finishes while the pane is closed', await wait_turns(pg, base, 'tingly-box-console-canvas', 4))
+            await open_chat()
+            await expect(pane).to_have_count(1)
             await expect(pg.locator('.turn')).to_have_count(4, timeout=8000)
+            await expect(pg.locator('[data-pane=chat] .badge')).to_have_count(0)
+            check('opening the pane clears the button', True)
             check('a request from the command line shows up with its source', '来自命令行' in await pg.locator('.turn').last.inner_text())
             check('a new conversation is a divider in the record, not a clear', await pg.locator('.turn-divider').count() == 1 and await pg.locator('.turn').count() == 4, f'{await pg.locator(".turn-divider").count()} dividers, {await pg.locator(".turn").count()} turns')
             await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
 
-            # reload: the record is the server's, not the page's
+            # reload: the record is the server's, not the page's, and the pane is remembered
             await pg.reload(); await pg.wait_for_selector('.board'); await expect(pg.locator('.turn')).to_have_count(4, timeout=8000)
             check('the record is still there after a reload', '再改' in await pg.locator('.chat-feed').inner_text() and '来自终端的请求' in await pg.locator('.chat-feed').inner_text())
-            check('left is remembered', await panel.count() == 1)
+            check('the conversation pane is remembered', await pane.count() == 1)
             stored = json.load(urllib.request.urlopen(f'{base}/api/projects/tingly-box-console-canvas/transcript'))
             check('the server keeps it in the project folder as local state', len(stored) == 4 and os.path.exists(os.path.join(projects, 'tingly-box-console-canvas', '.transcript.jsonl')))
             check('and not in the files git or a zip would carry', all(not f.endswith('.transcript.jsonl') for f in json.load(urllib.request.urlopen(f'{base}/api/projects/tingly-box-console-canvas/files'))['files']))
 
-            # the column's width: dragged, remembered, back with a double click
+            # the conversation's width: dragged by its right edge, remembered, back with a double click
             sep = pg.get_by_role('separator', name='调整对话的宽度')
             bb = await sep.bounding_box()
             await pg.mouse.move(bb['x'] + bb['width'] / 2, 300); await pg.mouse.down(); await pg.mouse.move(bb['x'] + 100, 300, steps=5); await pg.mouse.up()
             w = await panel_w()
-            check('dragging its edge widens the column', 430 < w < 450, w)
-            check('and the work follows', abs(await work_left() - w) < 2)
-            await pg.reload(); await pg.wait_for_selector('.chat-panel')
+            check('dragging its right edge widens the conversation', 430 < w < 450, w)
+            await pg.reload(); await pg.wait_for_selector('.chat-pane')
             check('the width is remembered', abs(await panel_w() - w) < 2)
-            await sep.focus(); await pg.keyboard.press('ArrowLeft')
-            check('arrow keys move it too', await panel_w() < w)
+            await sep.focus(); await pg.keyboard.press('ArrowRight')
+            check('arrow keys move it too', await panel_w() > w)
             await sep.dblclick()
             check('a double click gives it back its width', abs(await panel_w() - 340) < 2)
 
-            # a narrow window cannot hold it: the bar goes back to the bottom, the preference stays
+            # a narrow window does not move anything by itself; once closed, the button says why it cannot open
             await pg.set_viewport_size({'width': 1000, 'height': 760})
-            await expect(panel).to_have_count(0)
-            check('a narrow window puts the bar back at the bottom', await pg.locator('.prompt:not(.chat-composer)').count() == 1)
-            check('and the preference is kept', await pref() == 'left')
-            await pg.locator('.prompt').get_by_role('button', name='请求栏的位置').click()
-            check('the menu says why left is not offered', await pg.get_by_role('menuitemcheckbox', name='左侧').is_disabled() is False or True)
-            await pg.keyboard.press('Escape')
+            await expect(pane).to_have_count(1)
+            check('a narrow window leaves the open conversation where it is', True)
+            await pane.get_by_role('button', name='关闭对话').click()
+            await expect(pane).to_have_count(0)
+            check('the bar is back at the bottom', await pg.locator('.prompt:not(.chat-composer)').count() == 1)
+            chat_btn = pg.locator('[data-pane=chat]')
+            check('the conversation button is disabled with an explanation', await chat_btn.is_disabled() and '窗口再宽一点' in (await chat_btn.get_attribute('title') or ''), await chat_btn.get_attribute('title'))
             await pg.set_viewport_size({'width': 1440, 'height': 860})
-            await expect(panel).to_have_count(1)
-            check('widening brings the column back', True)
+            await expect(chat_btn).to_be_enabled()
+            await expect(pane).to_have_count(0)
+            check('widening restores the button but does not reopen the conversation', True)
 
-            # the right-edge dock this setting used to mean is the column now
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'auto')")
-            await pg.reload(); await pg.wait_for_selector('.chat-panel')
-            check('the old right-edge setting opens as the left column', True)
+            # the old left-column setting migrates once into the pane
+            await pg.evaluate("localStorage.setItem('dc.barMode', 'left'); localStorage.setItem('dc.chat', '0')")
+            await pg.reload(); await pg.wait_for_selector('.chat-pane')
+            check('the old left setting opens the conversation beside the work', True)
+            check('and is cleared after migrating', await pg.evaluate("localStorage.getItem('dc.barMode')") == '')
+            await pg.reload(); await pg.wait_for_selector('.chat-pane')
+            check('the conversation stays open after migrating, as a remembered choice', True)
+            await pg.evaluate("localStorage.setItem('dc.chat', '0')")
 
-            # back to the bottom
-            await pg.locator('.chat-composer').get_by_role('button', name='请求栏的位置').click()
-            await pg.get_by_role('menuitemcheckbox', name='底部').click()
-            await expect(panel).to_have_count(0)
-            check('choosing the bottom takes the column away', await pg.locator('.prompt').count() == 1 and await pref() == 'float')
-            await pg.evaluate("localStorage.setItem('dc.barMode', 'left')")
-
-            # every kind: the same column; the kinds with a list of their own keep it as the first tab
-            for proj, kind, tab in [('tingly-design-intro-slides', 'slides', '页面'), ('tingly-design-system', 'design-system', '列表'), ('tingly-design-guide-doc', 'docs', '标签页'), ('tingly-box-usage-dashboard', 'dashboard', None), ('tingly-design-motion', 'motion', None)]:
+            # every kind: the conversation at the far left, the kind's own list moved to its right
+            await pg.goto(f'{base}/?p=tingly-box-console-canvas'); await pg.wait_for_timeout(300)
+            for proj, kind, lst, work in [
+                ('tingly-design-intro-slides', 'slides', '.strip', '.stage'),
+                ('tingly-design-system', 'design-system', '.dsnav', '.dsmain'),
+                ('tingly-design-guide-doc', 'docs', '.doctabs', '.docmain'),
+                ('tingly-box-usage-dashboard', 'dashboard', None, '.dashmain'),
+                ('tingly-design-motion', 'motion', None, '.mmain'),
+            ]:
                 await pg.goto(f'{base}/?p={proj}')
-                await pg.wait_for_selector('.chat-panel', timeout=10000)
+                await pg.wait_for_selector('.topbar', timeout=10000)
                 await pg.wait_for_timeout(500)
-                check(f'{kind}: the column on the left with the work beside it', abs(await work_left() - await panel_w()) < 2)
-                if tab:
-                    tabs = pg.locator('.chat-tabs button')
-                    check(f'{kind}: two tabs, {tab} and the conversation', await tabs.count() == 2 and tab in await tabs.nth(0).inner_text() and '对话' in await tabs.nth(1).inner_text())
-                    await tabs.nth(0).click()
-                    lst = {'slides': '.chat-list .strip', 'design-system': '.chat-list .dsnav', 'docs': '.chat-list .doctabs'}[kind]
-                    check(f'{kind}: its own list is in the first tab', await pg.locator(lst).is_visible())
-                    check(f'{kind}: and no longer beside the work', await pg.locator(lst.replace('.chat-list ', '.app ')).count() == 0)
-                    if await pg.locator('.chat-composer .seg').count(): await pg.locator('.chat-composer .seg').get_by_role('button', name='Claude Code', exact=True).click()
-                    await box.fill('把标题改短'); await box.press('Enter')
-                    await expect(pg.locator('.chat-tabs button.on')).to_contain_text('对话')
-                    check(f'{kind}: sending switches to the conversation', True)
-                    await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=20000)
-                    check(f'{kind}: the run is in the record', '把标题改短' in await pg.locator('.turn').last.inner_text())
-                    # a run from the command line lights the dot on the conversation tab instead of switching
-                    await tabs.nth(0).click()
-                    post(f'{base}/api/projects/{proj}/delegate', {'prompt': '终端里的请求', 'source': 'cli', 'fresh': True})
-                    await expect(pg.locator('.chat-tabs .chat-dot')).to_have_count(1, timeout=10000)
-                    check(f'{kind}: a run from elsewhere shows on the tab without switching', 'on' in (await tabs.nth(0).get_attribute('class') or ''))
-                    await expect(pg.locator('.chat-tabs .chat-dot.new')).to_have_count(1, timeout=20000)
-                    await tabs.nth(1).click()
-                    await expect(pg.locator('.chat-tabs .chat-dot')).to_have_count(0)
-                    check(f'{kind}: reading the conversation clears the dot', True)
-                else:
-                    check(f'{kind}: one column of conversation, no tabs', await pg.locator('.chat-tabs').count() == 0)
+                await open_chat()
+                await expect(pane).to_have_count(1)
+                check(f'{kind}: the conversation opens at the left edge', abs(await panel_left()) < 2)
+                if lst:
+                    check(f'{kind}: its own list is still there, moved to the right of the conversation', await pg.locator(lst).is_visible() and await pg.locator(lst).evaluate('e => e.getBoundingClientRect().left') >= await panel_w() - 1)
+                    check(f'{kind}: the list is not inside the conversation column', await pg.locator(f'.chat-pane {lst}').count() == 0)
+                if await pg.locator(work).count():
+                    check(f'{kind}: the work sits between the kind\'s list and the right pane', await pg.locator(work).evaluate('e => e.getBoundingClientRect().left') >= await panel_w() - 1)
                 if kind == 'motion':
-                    check('motion: no empty slot under the timeline', await pg.locator('.mprompt').count() == 0 or not await pg.locator('.mprompt').is_visible())
-            # the position menu works from the bottom bar of every kind: it opens inside the window (the bar is
-            # centred with a transform, which must not move the menu), and left and bottom both take effect
+                    check('motion: no empty slot under the timeline while the pane is open', await pg.locator('.mprompt').count() == 0 or not await pg.locator('.mprompt').is_visible())
+                if await pg.locator('.chat-composer .seg').count(): await pg.locator('.chat-composer .seg').get_by_role('button', name='Claude Code', exact=True).click()
+                await box.fill('把标题改短'); await box.press('Enter')
+                await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=25000)
+                check(f'{kind}: the run is in the pane\'s record', '把标题改短' in await pg.locator('.turn').last.inner_text())
+                # a run from the command line while the pane is closed lights the button instead of opening it
+                await pane.get_by_role('button', name='关闭对话').click()
+                await expect(pane).to_have_count(0)
+                post(f'{base}/api/projects/{proj}/delegate', {'prompt': '终端里的请求', 'source': 'cli', 'fresh': True})
+                await expect(pg.locator('[data-pane=chat] .badge')).to_have_count(1, timeout=10000)
+                check(f'{kind}: a run from elsewhere shows on the button without opening the pane', await pane.count() == 0)
+                check(f'{kind}: the run finished while the pane was closed', await wait_turns(pg, base, proj, 2))
+                await open_chat()
+                await expect(pg.locator('[data-pane=chat] .badge')).to_have_count(0)
+                await expect(pg.locator('.turn').last).to_contain_text('Claude Code 完成', timeout=25000)
+                check(f'{kind}: reading the pane clears the button', True)
+
+            # canvas at the end: the pane opens and closes from the top bar, the menus stay inside the window
             await pg.set_viewport_size({'width': 1440, 'height': 800})
-            for proj, kind in [('tingly-box-console-canvas', 'design'), ('tingly-design-intro-slides', 'slides'), ('tingly-design-system', 'design-system'), ('tingly-design-guide-doc', 'docs'), ('tingly-box-usage-dashboard', 'dashboard'), ('tingly-design-motion', 'motion')]:
-                await pg.evaluate("localStorage.setItem('dc.barMode', 'float')")
-                await pg.goto(f'{base}/?p={proj}')
-                await pg.wait_for_selector('.board, .app', timeout=10000)
-                await pg.wait_for_timeout(700)
-                await pg.get_by_role('button', name='请求栏的位置').first.click()
-                inside = await pg.locator('.menu').evaluate('e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth; }')
-                check(f'{kind}: the position menu opens inside the window', inside)
-                await pg.get_by_role('menuitemcheckbox', name='左侧').click(timeout=5000)
-                await expect(panel).to_have_count(1)
-                check(f'{kind}: choosing the left moves the bar into the column', await pref() == 'left' and await pg.locator('.chat-composer').count() == 1)
-                await pg.locator('.chat-composer').get_by_role('button', name='请求栏的位置').click()
-                await pg.get_by_role('menuitemcheckbox', name='底部').click(timeout=5000)
-                await expect(panel).to_have_count(0)
-                check(f'{kind}: choosing the bottom puts it back', await pref() == 'float' and await pg.locator('.chat-composer').count() == 0)
+            await pg.goto(f'{base}/?p=tingly-box-console-canvas')
+            await pg.wait_for_selector('.board', timeout=10000)
+            await pg.wait_for_timeout(500)
+            await open_chat()
+            await expect(pane).to_have_count(1)
+            check('canvas: the conversation pane opens from the top bar', True)
+            await pane.get_by_role('button', name='关闭对话').click()
+            await expect(pane).to_have_count(0)
+            check('canvas: closing it puts the bottom bar back', await pg.locator('.prompt:not(.chat-composer)').count() == 1)
             check('no page errors', not errs, errs)
             await b.close()
     finally:

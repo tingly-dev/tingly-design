@@ -11,7 +11,7 @@ import { AttachButton, AttachTray } from './Attachments';
 import { FollowUp } from './FollowUp';
 import { RunFeed, useAutoGrow } from './RunFeed';
 import { BarPill, BarTools, HistoryList, useBarKeys } from './AgentBar';
-import { useChat } from './ChatPanel';
+import { useChat } from './ChatPane';
 import { BandResizer } from './BandResizer';
 import { Send, Stop } from './icons';
 
@@ -19,9 +19,9 @@ import { Send, Stop } from './icons';
  * The request bar every kind shares: the run feed (or the request history)
  * above, a head row (what the request is about and the bar's tools), attachments, the
  * box, a toolbar (paperclip, this request's settings, who answers, send or
- * stop) and the hints under it. Floating at the bottom of the work and folding to a pill, or, when
- * the person put it on the left, only the input part at the bottom of the
- * conversation column (the column itself is `ChatPanel`). What the head says and where a request goes are the kind's: the canvas,
+ * stop) and the hints under it. Floating at the bottom of the work and folding to a pill, or, while
+ * the conversation pane is open, only the input part at the pane's foot (the pane itself is
+ * `ChatPane`). What the head says and where a request goes are the kind's: the canvas,
  * deck and motion bar (`PromptBar`) picks Fast AI or Claude Code and names what
  * is pointed at; the other kinds (`AskClaude`) hand everything to Claude Code.
  */
@@ -58,13 +58,16 @@ export function RequestBar({
   onSend: (request: string, files: Attachment[]) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState('');
+  // the box's text lives in the store: opening or closing the conversation pane moves the bar to another
+  // container without rebuilding what was typed (the same draft follows it back to the bottom)
+  const text = useStore((s) => s.draft);
+  const setText = (v: string | ((cur: string) => string)) => useStore.setState((s) => ({ draft: typeof v === 'function' ? v(s.draft) : v }));
   const box = useRef<HTMLTextAreaElement>(null);
   const attach = useAttachments();
   const collapsed = useStore((s) => s.barCollapsed);
   const historyOpen = useStore((s) => s.historyOpen);
   const chat = useChat();
-  const inColumn = chat.left && !!chat.composer;
+  const inPane = !!chat.composer;
   useBarKeys(box);
   // a height the person gave the box holds the text in a fixed box; giving it back measures the text again
   const [regrow, setRegrow] = useState(0);
@@ -101,7 +104,6 @@ export function RequestBar({
     }
     // the request moves into the feed at once; it comes back if the run could not start
     setText('');
-    if (chat.left) useStore.setState({ chatTab: 'chat' });
     if (await onSend(req, files)) attach.clear();
     else setText((cur) => cur || req);
   };
@@ -109,21 +111,20 @@ export function RequestBar({
     setText(p);
     requestAnimationFrame(() => box.current?.focus());
   };
-  // the column's record puts a request back in the box and shows a file through this bar
+  // the record puts a request back in the box and shows a file through this bar
   const { bridge } = chat;
   const kind = useStore((s) => s.kind);
   const onOpen = locator(kind);
   const latest = useRef({ reuse, onOpen });
   latest.current = { reuse, onOpen };
   useEffect(() => {
-    if (!chat.left) return;
     bridge.current = { onOpen: (f) => latest.current.onOpen?.(f), onReuse: (p) => latest.current.reuse(p) };
     return () => {
       bridge.current = {};
     };
-  }, [chat.left, bridge]);
+  }, [bridge]);
 
-  if (collapsed && !inColumn)
+  if (collapsed && !inPane)
     return (
       <div className={`${variant} collapsed`} role="region" aria-label={label}>
         <BarPill />
@@ -132,14 +133,14 @@ export function RequestBar({
 
   const bar = (
     <div
-      className={`${variant}${inColumn ? ' chat-composer' : ''}${attach.over ? ' dropping' : ''}`}
+      className={`${variant}${inPane ? ' chat-composer' : ''}${attach.over ? ' dropping' : ''}`}
       role="region"
       aria-label={label}
       onDragOver={attach.handlers.onDragOver}
       onDragLeave={attach.handlers.onDragLeave}
       onDrop={attach.handlers.onDrop}
     >
-      {!inColumn && (historyOpen ? <HistoryList onReuse={reuse} onOpen={onOpen} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />)}
+      {!inPane && (historyOpen ? <HistoryList onReuse={reuse} onOpen={onOpen} /> : <RunFeed onReuse={reuse} onOpen={onOpen} />)}
       <FollowUp onEdit={reuse} />
       <div className="head">
         {head}
@@ -195,5 +196,5 @@ export function RequestBar({
       )}
     </div>
   );
-  return inColumn ? createPortal(bar, chat.composer!) : bar;
+  return inPane ? createPortal(bar, chat.composer!) : bar;
 }

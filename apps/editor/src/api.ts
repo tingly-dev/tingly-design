@@ -1,4 +1,4 @@
-import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, BoardImport, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, DocTab } from '@dc/core';
+import type { AiResolved, AiSaved, KeyFrom, Actor, AgentStep, ClaudeDesignKind, ClaudeDesignNote, PptxDiagnostic, PptxReport, Turn, LinkCheck, LinkMode, LinkSource, LinkedPage, Conversation, JournalEntry, ModelMessage, ProjectCard, ProjectKind, TrashedProject, DocTab, Participant, PointerTarget } from '@dc/core';
 import type { ExportReport } from '@dc/export/timing';
 import { at, SERVER } from './base';
 import { currentLanguage } from './i18n';
@@ -26,10 +26,14 @@ export interface DeletedTabGroup {
   tabs: DocTab[];
 }
 
-/** fetch, telling the server the language on screen: it answers errors and writes starter copy in it. */
+/** This window, as the server stamps the files it saves: the other windows show where it worked (`.design/live-pointers.md`). */
+export const CLIENT_ID = Math.random().toString(36).slice(2, 10);
+
+/** fetch, telling the server the language on screen (it answers errors and writes starter copy in it) and which window asks. */
 function call(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set('x-dc-lang', currentLanguage());
+  headers.set('x-dc-client', CLIENT_ID);
   return fetch(url, { ...init, headers });
 }
 
@@ -165,12 +169,13 @@ export interface ImageState {
 }
 
 export type ServerEvent =
-  | { type: 'file'; path: string; content: string; version: string; actor: Actor }
+  | { type: 'file'; path: string; content: string; version: string; actor: Actor; by?: string }
   | { type: 'delete'; path: string; actor: Actor }
   | { type: 'journal'; entry: JournalEntry }
   | { type: 'delegate'; id: string; state: 'start' | 'progress' | 'done' | 'error' | 'stopped'; text?: string; step?: AgentStep; at?: number; session?: string; continued?: boolean; source?: 'editor' | 'cli' | 'mcp' }
   | { type: 'assets'; path?: string }
-  | { type: 'entries' };
+  | { type: 'entries' }
+  | { type: 'pointer'; participant: Participant; target: PointerTarget | null };
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -179,6 +184,7 @@ async function json<T>(res: Response): Promise<T> {
 }
 
 const enc = encodeURIComponent;
+const post = (path: string, body: unknown) => call(at(path), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 export const api = {
   resolve: (p: string) => call(at(`api/resolve/${enc(p)}`)).then((r) => json<{ name: string }>(r)),
@@ -223,6 +229,12 @@ export const api = {
     call(at(`api/projects/${enc(p)}/references`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paths }) }).then((r) => json<{ references: Reference[] }>(r)).then((r) => r.references),
   /** take a linked project off the launcher; its folder stays as it is */
   unlink: (p: string) => call(at(`api/links/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
+  /** delete a project: its folder goes to the trash (`id`), from where `restoreTrashed` brings it back */
+  trashProject: (p: string) => call(at(`api/projects/${enc(p)}`), { method: 'DELETE' }).then((r) => json<{ id: string }>(r)),
+  trash: () => call(at('api/trash')).then((r) => json<TrashedProject[]>(r)),
+  restoreTrashed: (id: string) => call(at(`api/trash/${enc(id)}/restore`), { method: 'POST' }).then((r) => json<{ name: string }>(r)),
+  /** delete forever; without an id, the whole trash */
+  purgeTrashed: (id?: string) => call(at(id ? `api/trash/${enc(id)}` : 'api/trash'), { method: 'DELETE' }).then((r) => json<{ ok: true }>(r)),
   /** the whole project as one .zip; `full: false` leaves out the change log and the design systems it installed */
   archive: async (p: string, full: boolean): Promise<Blob> => {
     const res = await call(at(`api/projects/${enc(p)}/archive${full ? '' : '?journal=0&systems=0'}`));
@@ -309,13 +321,27 @@ export const api = {
       body: JSON.stringify(typeof source === 'string' ? { from: source } : source),
     }).then((r) => json<{ record: unknown; fonts: string[] }>(r)),
 
-  /** Copy a canvas's artboard into this deck or motion piece (uploads/<from>-<board>/…); the caller puts the embed on the page. */
-  importBoard: (p: string, from: string, board: string) =>
-    call(at(`api/projects/${enc(p)}/import-board`), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ from, board }),
-    }).then((r) => json<{ record: BoardImport; size: [number, number] }>(r)),
+  /** The projects whose pages this one can take, each with its pages (.design/cross-kind-embedding.md). */
+  linkSources: (p: string) => call(at(`api/projects/${enc(p)}/link-sources`)).then((r) => json<{ sources: LinkSource[] }>(r)),
+
+  /** Put a page of another project in this one, live (an artboard, a frozen dashboard; its picture is drawn after) or as a picture; the caller puts it on the page. */
+  linkPage: (p: string, from: string, page: string, mode?: LinkMode) =>
+    post(`api/projects/${enc(p)}/link-page`, { from, page, ...(mode ? { mode } : {}) }).then((r) => json<{ record: LinkedPage; size: [number, number] | null; title: string }>(r)),
+
+  /** The picture kept beside a live copy (drawn first when it is not there yet), and its pixel size. */
+  linkPoster: (p: string, path: string) => post(`api/projects/${enc(p)}/link-poster`, { path }).then((r) => json<{ poster: string; size: [number, number] | null }>(r)),
+
+  /** Where each linked page stands against its original. */
+  linkCheck: (p: string) => post(`api/projects/${enc(p)}/link-check`, {}).then((r) => json<{ links: LinkCheck[] }>(r)),
+
+  /** Copy the original of a linked page again. */
+  linkRefresh: (p: string, path: string) => post(`api/projects/${enc(p)}/link-refresh`, { path }).then((r) => json<{ record: LinkedPage; changed: boolean; size: [number, number] | null }>(r)),
+
+  /** Take back the last update (or unlink) of a linked page. */
+  linkUndo: (p: string, path: string) => post(`api/projects/${enc(p)}/link-undo`, { path }).then((r) => json<{ record: LinkedPage }>(r)),
+
+  /** Let go of the original: the record goes, the copy stays. */
+  linkUnlink: (p: string, path: string) => post(`api/projects/${enc(p)}/link-unlink`, { path }).then((r) => json<{ record: LinkedPage }>(r)),
 
   /** Convert a PowerPoint into slides for the open deck: a pure conversion (nothing is written);
    * the slides' media rides along as base64 and the editor performs the append transaction. */
@@ -365,6 +391,10 @@ export const api = {
   logExport: (p: string, report: ExportReport, why?: string) =>
     void call(at(`api/projects/${enc(p)}/export-report`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ report, why }) }).catch(() => {}),
   renderedUrl: (p: string, file: string) => `${SERVER}/api/projects/${enc(p)}/render/${enc(file)}`,
+  /** The open page's report for Claude Code (`.runs.json`): a dashboard's, or a deck's self-check. */
+  writeRuns: (p: string, report: unknown) => call(at(`api/projects/${enc(p)}/runs`), { method: 'PUT', body: JSON.stringify(report, null, 1) }).then((r) => json<{ ok: true }>(r)),
+  /** A picture of one slide as the open deck drew it, kept in `renders/look/` for Claude Code to look at. */
+  putSlidePicture: (p: string, id: string, png: Blob) => call(at(`api/projects/${enc(p)}/look/${enc(id)}.png`), { method: 'PUT', body: png }).then((r) => json<{ ok: true; path: string }>(r)),
   rawBase: (p: string) => `${SERVER}/api/projects/${enc(p)}/raw/`,
   /** rawBase for the frames that draw a project's pictures: `rev` changes when an outside edit replaces one, so the frame asks for it again */
   frameBase: (p: string, rev: number) => `${SERVER}/api/projects/${enc(p)}/raw/${rev ? `?v=${rev}` : ''}`,

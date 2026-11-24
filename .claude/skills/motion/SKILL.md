@@ -60,7 +60,7 @@ The editor lists problems it finds: an exit before the entry, text on screen und
 
 ## Artboards imported from a canvas (effects)
 
-A person can import an artboard of a canvas project into a piece (import menu → From a project). The server copies it, with its sibling artboards and pictures, to `uploads/<canvas>-<board>/` and records it in `motion.json` `imports` (`{path, from, board, copiedAt}`); the editor puts it on the scene under the playhead:
+A person can import an artboard of a canvas project into a piece (import menu → A page from another project). The server copies it, with its sibling artboards and pictures, to `uploads/<canvas>-<board>/` and records it in `motion.json` `imports` (`{path, from, kind, page, board, mode, at, copiedAt}`); the editor puts it on the scene under the playhead:
 
 ```html
 <x-embed src="uploads/box-console-Glow/Glow.dc.html" data-seek data-props='{"accent":"#e8590c"}' style="position:absolute;left:0px;top:0px;width:1920px;height:1080px"></x-embed>
@@ -68,6 +68,13 @@ A person can import an artboard of a canvas project into a piece (import menu �
 
 - An artboard that declares `"$time"` is an effect: the player hands it the scene's time on every frame (`data-seek`), so it is drawn frame by frame and renders exactly. Keep `data-seek` on every such embed. A moving one usually fills the frame as the scene's first child, so the scene paints over it; it takes `data-in`/`data-out`/`data-keys` like any element.
 - `data-props` sets the artboard's tweaks; leave a key out for its default. Change the look through `data-props`, never by editing the copy under `uploads/` (importing again overwrites it). Reuse it in another scene with the same `src`; don't point `src` anywhere else.
+
+## Linked pages
+
+A page of another project (a canvas artboard, a slide, a doc tab, a dashboard, a motion piece) can be linked in by the person (import menu → A page from another project). The server records where it came from in `motion.json` `imports` (`{path, from, kind, page, mode, poster, at, copiedAt}`) and the editor puts it on the scene under the playhead: a canvas artboard stays the live `<x-embed>` described above (it keeps a picture of itself beside it, `poster`, and the person can switch it to that picture in the panel, which swaps it for an `<img>`); every other page (a slide, a doc tab, a dashboard, a motion piece) is only a picture, an `<img src="uploads/linked/<id>/<name>.png">` that enters at the playhead (a dashboard is not a function of time, so it cannot be seeked).
+
+- It is a copy: you may leave it, resize it or move it, but never edit or replace a file under `uploads/linked/` or its `imports` record, and never write a path under `uploads/linked/` yourself. When the original changed, the person updates the copy from the panel; "Project settings now" lists the linked pages (`linked`).
+- To change what a linked page shows, change the original in its own project (a referenced project is read-only); ask the person to update the copy afterwards.
 
 ## Pictures and files people brought in
 
@@ -154,3 +161,8 @@ A request may open with "Review remarks": the person went through the work in th
 ## Reference folders
 
 A request may list "Reference folders": other projects, or folders of projects, the person wants this work to consult (a design system to match, sibling decks). Read them, and take values from them (tokens, wording, structure) by copying the value into this project; never link to a file in them, and never edit, create or delete anything in them.
+
+
+## New projects
+
+A request can need a separate artifact (a figure, a doc, a motion piece) that is best drawn as a project of its own, with its own index file and its own skill. Make it with `node scripts/new-project.mjs <this project> <canvas|slides|design-system|dashboard|doc|motion> <folder-name> ["Title"]` (`--size WxH` for canvas, slides and motion, `--look <id>` for a design system), which makes the project in a folder inside this project's folder and prints it; read that kind's skill and write its files there. Never write another project's index file by hand, and never mix its files with this project's own: nothing in this project's index lists it. Bringing the finished artifact into this project's pages is a separate step the person asks for: say where the project is instead of linking to its files.

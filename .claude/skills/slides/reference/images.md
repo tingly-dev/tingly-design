@@ -47,7 +47,7 @@ View each image and decide how it is best shown. Photos fill their box (`object-
 
 If you put text on top of an image, protect it the way the deck's direction would — a card, a scrim (`background:rgba(20,20,19,.6)`), or a `backdrop-filter:blur()` panel. Do it the same way every time.
 
-Do not use emoji or draw your own decorative art, unless the user asks for it. Use the images the user gives you, or a line icon (`<x-icon>`) — but use icons sparingly. If the user does not give you any images, a deck with no images and good structure is a fine deliverable. Never make up an image. Never use an image file that you do not have.
+Do not use emoji or draw your own decorative art, unless the user asks for it. Use the images the user gives you, or a line icon (`<x-icon>`) — but use icons sparingly: one marking each of a few parallel items (a row of features, the steps of a process), all on the same filled chip, earns its place; one beside every heading does not. If the user does not give you any images, a deck with no images and good structure is a fine deliverable. Never make up an image. Never use an image file that you do not have.
 
 ## Borders and shadows
 

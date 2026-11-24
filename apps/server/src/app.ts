@@ -6,8 +6,9 @@ import { Hono } from 'hono';
 import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { DS_TOKENS, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
-import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { DS_TOKENS, cleanParticipant, fastReady, type Actor, validSize, INDEX_FILE, cleanGroup, retitle, lookOf } from '@dc/core';
+import { HttpError, LINKS_ON, folderGroups, openFolderGroup, closeFolderGroup, readRefs, writeRefs, createProject, createProjectIn, inspectFolder, browseFolder, showPath, linkFolder, unlinkProject, isProjectName, kindOf, listProjects, readGroups, resolveKey, setGroup, projectDir, readOne, readProject, removeFile, safeRel, withLock, writeAtomic } from './store';
+import { listTrash, purgeTrash, restoreTrash, trashProject } from './trash';
 import { lineDiffSummary, publish, record } from './hub';
 import { commitFolder, initRepo, repoOf } from './git';
 import { MAX_ARCHIVE_INPUT, PptxImportError, describePptx, packClaudeDesign, packProject, unpackProject } from './archive';
@@ -17,10 +18,11 @@ import { DC_LANG, langOf, trOf } from './i18n';
 import { handleMcp } from './mcp';
 import { BASE_PATH, BUNDLED, EDITOR_DIST, PROJECTS_DIR, PROTOCOL, SANDBOX_DIST, VERSION, fromRoot } from './layout';
 import { registerDesignSystems } from './routes/designSystems';
-import { registerImportBoard } from './routes/importBoard';
+import { registerLinkPage } from './routes/linkPage';
 import { registerPptxSlides } from './routes/pptxSlides';
 import { registerAssets } from './routes/assets';
 import { registerDashboards } from './routes/dashboards';
+import { registerRuns } from './routes/runs';
 import { registerAi } from './routes/ai';
 import { registerDelegate } from './routes/delegate';
 import { registerExport } from './routes/export';
@@ -29,7 +31,9 @@ import { registerGit } from './routes/git';
 import { afterTokens, claudeCliReady } from './routes/shared';
 
 const ACTORS: Actor[] = ['human', 'jquery', 'fast-edit', 'claude', 'external', 'undo'];
-/** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, sunlit, system), inline JSON, or a .json file */
+/** The editor window a save came from (`x-dc-client`), passed on with its file event. */
+const clientOf = (h: string | undefined): string | undefined => (h && /^[\w-]{1,40}$/.test(h) ? h : undefined);
+/** DC_THEME: the editor's default look, a mode name (light, dark, claude, ds, system), inline JSON, or a .json file */
 const DC_THEME: unknown = await (async () => {
   const v = process.env.DC_THEME?.trim();
   if (!v) return null;
@@ -86,25 +90,26 @@ app.get('/api/projects', async (c) => c.json(await listProjects()));
 /** The name a project answers to now, for an address that carries one an older version gave it. */
 app.get('/api/resolve/:p', (c) => c.json({ name: resolveKey(c.req.param('p')) }));
 
+const PROJECT_KINDS = ['design', 'slides', 'design-system', 'dashboard', 'docs', 'motion'] as const;
+type NewKind = (typeof PROJECT_KINDS)[number];
+
+/** What a new project's starter takes (a size, a look), checked against its kind; `kind` of anything unknown is a canvas. */
+function startOptions(kind: string | undefined, size: unknown, look: unknown): { kind: NewKind; opts: { size?: [number, number]; look?: string } } {
+  if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
+  if (look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
+  if (look !== undefined && !lookOf(String(look))) throw new HttpError(400, 'badLook', { look: String(look) });
+  const k: NewKind = PROJECT_KINDS.find((x) => x === kind) ?? 'design';
+  return { kind: k, opts: { ...((k === 'motion' || k === 'slides' || k === 'design') && size !== undefined ? { size: validSize(size)! } : {}), ...(look ? { look: String(look) } : {}) } };
+}
+
 /** A new project: `name` is a folder in the projects folder, or `path` is a missing or empty folder anywhere, linked under a name of its own. */
 app.post('/api/projects', async (c) => {
   const body = await c.req.json<{ name?: string; path?: string; title?: string; kind?: string; size?: unknown; look?: string; git?: boolean }>();
-  const { title, kind, size } = body;
+  const { title } = body;
   if (body.path === undefined && !isProjectName(body.name ?? '')) throw new HttpError(400, 'badProjectName');
-  if (size !== undefined && !validSize(size)) throw new HttpError(400, 'badSize');
-  if (body.look !== undefined && kind !== 'design-system') throw new HttpError(400, 'lookOnlyDs');
-  if (body.look !== undefined && !lookOf(String(body.look))) throw new HttpError(400, 'badLook', { look: String(body.look) });
+  const { kind, opts } = startOptions(body.kind, body.size, body.look);
   const name = body.path !== undefined ? await linkFolder(String(body.path), true) : body.name!;
-  await createProject(
-    name,
-    title || name,
-    kind === 'slides' || kind === 'design-system' || kind === 'dashboard' || kind === 'docs' || kind === 'motion' ? kind : 'design',
-    langOf(c),
-    {
-      ...((kind === 'motion' || kind === 'slides' || kind === undefined || kind === 'design') && size !== undefined ? { size: validSize(size)! } : {}),
-      ...(body.look ? { look: String(body.look) } : {}),
-    },
-  ).catch(async (e) => {
+  await createProject(name, title || name, kind, langOf(c), opts).catch(async (e) => {
     if (body.path !== undefined) await unlinkProject(name).catch(() => {});
     throw e;
   });
@@ -121,6 +126,20 @@ app.post('/api/projects', async (c) => {
     }
   }
   return c.json({ ok: true, name });
+});
+
+/**
+ * A new project in a folder inside this project's folder: `name` is the folder, `kind` is required. Claude Code
+ * makes one through `scripts/new-project.mjs`; it comes back with the folder to edit.
+ */
+app.post('/api/projects/:p/new-project', async (c) => {
+  const p = c.req.param('p');
+  const body = await c.req.json<{ name?: string; title?: string; kind?: string; size?: unknown; look?: string }>();
+  if (!PROJECT_KINDS.some((k) => k === body.kind)) throw new HttpError(400, 'badKind', { kind: String(body.kind ?? '') });
+  const { kind, opts } = startOptions(body.kind, body.size, body.look);
+  const made = await createProjectIn(p, String(body.name ?? ''), body.title?.trim() || String(body.name), kind, langOf(c), opts);
+  logInfo('project.created.in', { project: p, created: made.name, kind });
+  return c.json({ ok: true, name: made.name, folder: fromRoot(made.dir) });
 });
 
 /** What is at a folder anywhere on disk, for the launcher to say before it opens or creates there. */
@@ -222,6 +241,19 @@ app.delete('/api/links/:p', async (c) => {
   return c.json({ ok: true });
 });
 
+/** Delete a project: its folder moves to the trash, where Restore brings it back whole. */
+app.delete('/api/projects/:p', async (c) => c.json(await trashProject(c.req.param('p'))));
+app.get('/api/trash', async (c) => c.json(await listTrash()));
+app.post('/api/trash/:id/restore', async (c) => c.json(await restoreTrash(c.req.param('id'))));
+app.delete('/api/trash/:id', async (c) => {
+  await purgeTrash(c.req.param('id'));
+  return c.json({ ok: true });
+});
+app.delete('/api/trash', async (c) => {
+  await purgeTrash();
+  return c.json({ ok: true });
+});
+
 /** Rename a project's title and/or file it under a launcher group ('' takes it out of its group). The folder name stays. */
 app.patch('/api/projects/:p', async (c) => {
   const p = c.req.param('p');
@@ -272,7 +304,8 @@ app.put('/api/projects/:p/file', async (c) => {
     }
     if (cur && cur.content === body.content) return c.json({ version: cur.version, unchanged: true });
     const version = await writeAtomic(p, rel, body.content);
-    publish(p, { type: 'file', path: rel, content: body.content, version, actor });
+    const by = clientOf(c.req.header('x-dc-client'));
+    publish(p, { type: 'file', path: rel, content: body.content, version, actor, ...(by ? { by } : {}) });
     await record(p, {
       actor,
       file: rel,
@@ -283,6 +316,22 @@ app.put('/api/projects/:p/file', async (c) => {
     if (rel === DS_TOKENS) await afterTokens(p, actor);
     return c.json({ version });
   });
+});
+
+/**
+ * A participant says where it is working before (or without) writing there: another agent, a script, later a guest.
+ * Every open editor of the project shows its pointer (`.design/live-pointers.md`); `file: null` takes it away.
+ */
+app.post('/api/projects/:p/pointer', async (c) => {
+  const p = c.req.param('p');
+  const body = await c.req.json<{ participant?: unknown; file?: unknown; tid?: unknown; block?: unknown }>();
+  const participant = cleanParticipant(body.participant);
+  if (!participant) throw new HttpError(400, 'badParticipant');
+  if (!(await kindOf(projectDir(p)))) throw new HttpError(404, 'noProject', { name: p });
+  const index = (x: unknown) => (Number.isInteger(x) && (x as number) >= 0 ? (x as number) : undefined);
+  const target = typeof body.file === 'string' ? { file: safeRel(body.file), ...(index(body.tid) !== undefined ? { tid: index(body.tid) } : {}), ...(index(body.block) !== undefined ? { block: index(body.block) } : {}) } : null;
+  publish(p, { type: 'pointer', participant, target });
+  return c.json({ ok: true });
 });
 
 app.delete('/api/projects/:p/file', async (c) => {
@@ -301,10 +350,11 @@ app.delete('/api/projects/:p/file', async (c) => {
 });
 
 registerDesignSystems(app);
-registerImportBoard(app);
+registerLinkPage(app);
 registerPptxSlides(app);
 registerAssets(app);
 registerDashboards(app);
+registerRuns(app);
 registerHistory(app);
 registerAi(app);
 registerDelegate(app);

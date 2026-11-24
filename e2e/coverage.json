@@ -54,26 +54,6 @@
       "run_feed"
     ]
   },
-  "请求栏面板": {
-    "design": [
-      "chat_panel"
-    ],
-    "slides": [
-      "chat_panel"
-    ],
-    "design-system": [
-      "chat_panel"
-    ],
-    "dashboard": [
-      "chat_panel"
-    ],
-    "docs": [
-      "chat_panel"
-    ],
-    "motion": [
-      "chat_panel"
-    ]
-  },
   "Claude Code 对话": {
     "design": [
       "conversation"
@@ -151,6 +131,20 @@
     ],
     "motion": [
       "external_edit"
+    ]
+  },
+  "实时编辑指针": {
+    "design": [
+      "pointer"
+    ],
+    "slides": [
+      "pointer"
+    ],
+    "docs": [
+      "pointer"
+    ],
+    "motion": [
+      "pointer"
     ]
   },
   "日志": {
@@ -339,6 +333,40 @@
       "launcher"
     ]
   },
+  "删除项目": {
+    "design": [
+      "delete"
+    ],
+    "slides": [
+      "delete"
+    ],
+    "design-system": [
+      "delete"
+    ],
+    "dashboard": [
+      "delete"
+    ],
+    "docs": [
+      "delete"
+    ],
+    "motion": [
+      "delete"
+    ]
+  },
+  "删除一页": {
+    "design": [
+      "delete"
+    ],
+    "slides": [
+      "slides"
+    ],
+    "docs": [
+      "delete"
+    ],
+    "motion": [
+      "delete"
+    ]
+  },
   "项目放在别处": {
     "design": [
       "folders"
@@ -450,6 +478,7 @@
       "export_menu",
       "export_image",
       "pptx",
+      "pptx_edit",
       "copy_png"
     ],
     "design-system": [
@@ -722,6 +751,86 @@
     ],
     "motion": [
       "gif"
+    ]
+  },
+  "对话面板": {
+    "design": [
+      "chat_panel",
+      "chat_copy"
+    ],
+    "slides": [
+      "chat_panel",
+      "chat_copy"
+    ],
+    "design-system": [
+      "chat_panel",
+      "chat_copy"
+    ],
+    "dashboard": [
+      "chat_panel",
+      "chat_copy"
+    ],
+    "docs": [
+      "chat_panel",
+      "chat_copy"
+    ],
+    "motion": [
+      "chat_panel",
+      "chat_copy"
+    ]
+  },
+  "链接的页面": {
+    "design": [
+      "linked_page"
+    ],
+    "slides": [
+      "linked_page"
+    ],
+    "docs": [
+      "linked_page"
+    ],
+    "motion": [
+      "linked_page"
+    ]
+  },
+  "子项目：项目里面的项目": {
+    "design": [
+      "nested"
+    ],
+    "slides": [
+      "nested"
+    ],
+    "design-system": [
+      "nested"
+    ],
+    "dashboard": [
+      "nested"
+    ],
+    "docs": [
+      "nested"
+    ],
+    "motion": [
+      "nested"
+    ]
+  },
+  "Claude Code 新建项目": {
+    "design": [
+      "agent_project"
+    ],
+    "slides": [
+      "agent_project"
+    ],
+    "design-system": [
+      "agent_project"
+    ],
+    "dashboard": [
+      "agent_project"
+    ],
+    "docs": [
+      "agent_project"
+    ],
+    "motion": [
+      "agent_project"
     ]
   }
 }

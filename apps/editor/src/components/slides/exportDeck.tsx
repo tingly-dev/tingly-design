@@ -1,4 +1,4 @@
-import { deckToMarkdown, SLIDE_BASE_CSS, deckSize, sceneBaseCss, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, fxMarkup, FX_STILL_MS, type HumanOp } from '@dc/core';
+import { deckToMarkdown, SLIDE_BASE_CSS, deckSize, sceneBaseCss, applyHumanOps, boardFilesFor, boardFrameDoc, boardSize, isBoardEmbedPath, isDashBundlePath, timeSpec, drawSlideArt, faceMarkup, paintLayer, parseDc, textBoxIndent, slideFile, EMBED_CSP, fxMarkup, FX_STILL_MS, type HumanOp } from '@dc/core';
 import { inertDocument } from '../../store';
 import { api } from '../../api';
 import { deckOf, display, slideIds, toast, useStore } from '../../store';
@@ -47,6 +47,12 @@ async function standalone(source: string, base: string, live = false): Promise<s
     if (indent !== undefined) ops.push({ kind: 'style', tid: el.tid, prop: '--dc-indent', value: `${indent}px` });
   }
   let out = ops.length ? applyHumanOps(source, ops, inertDocument()).source : source;
+  // <x-embed src="uploads/linked/…dash.json"> → the picture kept beside the frozen dashboard (its runtime stays out of a page that stands alone)
+  out = out.replace(/<x-embed\b([^>]*?)\bsrc="([^"]+)"([^>]*)>[\s\S]*?<\/x-embed>/g, (m, a: string, src: string, b: string) => {
+    if (!isDashBundlePath(src)) return m;
+    const poster = /\bdata-poster="([^"]+)"/.exec(a + b)?.[1];
+    return `<x-embed${a}${b}>${poster ? `<img src="${poster}" alt="" style="display:block;width:100%;height:100%;object-fit:cover;object-position:top">` : ''}</x-embed>`;
+  });
   // images beside the deck
   const srcs = [...new Set([...out.matchAll(/<img\b[^>]*?\bsrc="([^"]+)"/g)].map((m) => m[1]))];
   for (const src of srcs) {
@@ -114,7 +120,8 @@ const BOARDS = `
 /** The data BOARDS runs on, as a script element; empty when no slide embeds an artboard. */
 async function boardData(sources: string[]): Promise<string> {
   const s = useStore.getState();
-  const files = boardFilesFor(sources, (p) => display(s, p));
+  // a frozen dashboard is not run in a page that stands alone: its kept picture is shown (standalone)
+  const files = Object.fromEntries(Object.entries(boardFilesFor(sources, (p) => display(s, p))).filter(([f]) => !isDashBundlePath(f)));
   const embedded = Object.keys(files).filter((f) => sources.some((src) => src.includes(`src="${f}"`)));
   if (!embedded.length) return '';
   const runtime = await fetch(`${SERVER}/sandbox/runtime.js`).then((r) => (r.ok ? r.text() : Promise.reject(new Error(r.statusText))));
@@ -204,8 +211,8 @@ export async function exportDeck(kind: 'pdf' | 'html' | 'md' | 'notes'): Promise
   }
 }
 
-/** One slide drawn on its own page, at the slide's size. Embeds are separate frames and come out empty. */
-async function slidePng(id: string, scale: number): Promise<Blob> {
+/** One slide drawn on its own page, at the slide's size. Embeds are separate frames and come out empty. `inspect` sees the laid-out page before it is drawn (the open deck's self-check). */
+export async function slidePng(id: string, scale: number, inspect?: (win: Window) => void): Promise<Blob> {
   const s = useStore.getState();
   const deck = deckOf(s);
   const [W, H] = deckSize(deck);
@@ -213,7 +220,7 @@ async function slidePng(id: string, scale: number): Promise<Blob> {
   if (!src) throw new Error(id);
   const base = s.project ? api.rawBase(s.project) : '';
   const html = `<!doctype html><html><head><meta charset="utf-8">${faceMarkup(deck)}<style>${sceneBaseCss(W, H, SLIDE_BASE_CSS)}html,body{margin:0;background:#fff}</style></head><body><div class="dc-slide-host">${await standalone(src, base)}</div></body></html>`;
-  return htmlToPng(html, { width: W, height: H, scale });
+  return htmlToPng(html, { width: W, height: H, scale, inspect });
 }
 
 /** The slide at `id` (null: the first; true: every shown slide) as PNG files. */

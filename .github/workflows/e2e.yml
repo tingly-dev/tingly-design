@@ -15,6 +15,11 @@ name: E2E
 # its own runner, so a run takes the time of its slowest slice, not the sum; the
 # smoke subset is one slice. A slice's report and every suite's output are
 # uploaded as the `e2e-report-<slice>` artifact.
+#
+# A screenshot that differs from its baseline (the baseline suite's WARN lines)
+# does not turn a slice red, so it never stops a release: it is a ::warning::
+# annotation, a section of the job summary, and its picture, baseline and diff
+# go to the `e2e-baseline-diffs-<slice>` artifact. Every other check still fails.
 # See .design/harness.md and docs/en/development.md.
 
 on:
@@ -79,6 +84,15 @@ jobs:
         with:
           name: e2e-report-${{ matrix.shard }}
           path: e2e/out/
+          retention-days: 14
+
+      - name: Upload the pictures that differ from their baselines
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-baseline-diffs-${{ matrix.shard }}
+          path: e2e/out/baseline-diffs/
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Show the report on the run page

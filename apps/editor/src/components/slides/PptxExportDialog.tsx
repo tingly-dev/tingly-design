@@ -8,7 +8,7 @@ import { deckOf, display, slideIds, toast, useStore } from '../../store';
 import { Dialog } from '../Dialog';
 import { goToSlide, isHidden } from './slides';
 import { t } from '../../i18n';
-import { deckSnapshotToPptx, DeckPptxError, type DeckPptxProgress } from './pptxExport';
+import { deckSnapshotToPptx, DeckPptxError, pptxSections, type DeckPptxProgress } from './pptxExport';
 import type { PptxDomDiagnostic } from '@dc/export/pptx-dom';
 
 type State = { status: 'running' | 'done' | 'failed' | 'cancelled'; progress?: DeckPptxProgress; error?: DeckPptxError; warnings?: { slide: string; diagnostic: PptxDomDiagnostic }[]; ids: string[] } | null;
@@ -83,6 +83,7 @@ export async function exportDeckPptx(range?: string): Promise<void> {
   const snapshot = {
     title: deck.title, faces: structuredClone(deck.faces), size: deckSize(deck),
     slides: chosen.map(id => ({ id, source: display(s, slideFile(id)) ?? '' })),
+    sections: pptxSections(deck, ids, chosen),
     boards: boardFilesFor(chosen.map(id => display(s, slideFile(id))), p => display(s, p)),
     base: s.project ? api.rawBase(s.project) : '', runtimeOrigin: SERVER,
   };

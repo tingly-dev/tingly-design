@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { IconDeviceDesktop, IconMoon, IconSun } from '@tabler/icons-react';
 import { Language } from './icons';
 import { Menu } from './Menu';
-import { PRESETS, PRESET_IDS, currentTheme, onTheme, pickTheme, type ThemeMode, type Tokens } from '../theme';
+import { PRESETS, THEME_MODES, currentTheme, onTheme, pickTheme, type Tokens } from '../theme';
 import { SUPPORTED_LANGUAGES, chooseLanguage, currentLanguage } from '../i18n';
 
 /** Three stripes of the theme's own colours: what you get, not a name for it. */
@@ -17,8 +17,6 @@ function Swatch({ tokens, split }: { tokens: Tokens; split?: Tokens }) {
     </span>
   );
 }
-
-const MODES: ThemeMode[] = ['system', ...PRESET_IDS];
 
 /**
  * The appearance menu: how the editor looks, a setting of the editor itself rather than of a
@@ -60,7 +58,7 @@ export function Appearance({ className = 'btn' }: { className?: string }) {
               <span className="k">{theme.source === 'host' || theme.source === 'url' || theme.source === 'server' ? t(`appearance.source.${theme.source}`) : ''}</span>
             </button>
           )}
-          {MODES.map((m) => (
+          {THEME_MODES.map((m) => (
             <button
               key={m}
               className="mi amode"

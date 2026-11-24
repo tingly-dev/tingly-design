@@ -1,68 +1,18 @@
-/* The conversation column on the left (ChatPanel.tsx) and the request bar's input inside it (RequestBar.tsx). Last, so the column wins over each kind's placement of the bar. */
+/* The conversation column on the left (ChatPane.tsx) and the request bar's input inside it (RequestBar.tsx). Last, so the column wins over each kind's placement of the bar. */
 
-/* ------------------------------------------------------------- the shell
-   Around every kind's app. Not in the way when the column is closed; a row of [column][the app] when it
-   is open, the app given a containing block so what is fixed in it (the top bar, the stage) follows it
-   to the right of the column instead of the window. Menus and dialogs sit in <body> and stay put. */
-
-
-.chat-shell,
-.chat-work {
-  display: contents;
-}
+/* ------------------------------------------------------- the column
+   The leftmost column (.design/chat-panel.md): the kind's own list moves to its right and the right
+   pane stays where it is. The kinds put <ChatPane> first in their grid, so this file only draws the
+   column itself and its own edge. */
 
 
-.chat-shell.left {
-  position: fixed;
-  inset: 0;
-  display: flex;
-}
-
-
-.chat-shell.left > .chat-work {
-  display: block;
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  z-index: 1;
-  transform: translate(0);
-}
-
-
-/* a kind's own list is in the column's first tab: its grid has one column less */
-
-
-.chat-shell.left .app.slides {
-  grid-template-columns: 1fr auto;
-}
-
-
-.chat-shell.left .app.docs {
-  grid-template-columns: 1fr;
-}
-
-
-.chat-shell.left .app.docs.with-rail {
-  grid-template-columns: 1fr var(--w-docrail, 320px);
-}
-
-
-.chat-shell.left .app.ds {
-  grid-template-columns: 1fr;
-}
-
-
-/* ------------------------------------------------------------ the column */
-
-
-.chat-panel {
+.chat-pane {
   position: relative;
   z-index: 2;
-  flex: none;
+  width: min(var(--w-chat, 340px), max(280px, calc(100vw - var(--chat-rest, 0px) - var(--chat-min, 480px))));
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  width: min(var(--w-chat, 340px), max(280px, calc(100vw - var(--chat-need, 860px))));
-  min-height: 0;
   background: var(--panel);
   border-right: 1px solid var(--line);
 }
@@ -74,13 +24,27 @@
 }
 
 
+/* the work (stage, main) after the conversation and the kind's own list */
+
+
+.app.with-chat {
+  grid-template-columns: auto 1fr auto;
+}
+
+
 .chat-head {
   flex: none;
-  height: var(--topbar-h);
+  height: 42px;
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  gap: 8px;
+  padding: 0 8px 0 12px;
   border-bottom: 1px solid var(--line);
+}
+
+
+.chat-head .x {
+  margin-left: auto;
 }
 
 
@@ -88,76 +52,6 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
-}
-
-
-.chat-tabs {
-  align-self: stretch;
-  display: flex;
-  gap: 2px;
-  margin: 0 -6px;
-}
-
-
-.chat-tabs button {
-  position: relative;
-  border: 0;
-  background: none;
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-
-.chat-tabs button:hover {
-  color: var(--ink);
-}
-
-
-.chat-tabs button.on {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-
-.chat-tabs button.on::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-}
-
-
-.chat-dot {
-  display: inline-flex;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-
-.chat-dot.new {
-  background: var(--accent);
-}
-
-
-.chat-dot.failed {
-  background: var(--danger);
-}
-
-
-.chat-dot.running {
-  width: auto;
-  height: auto;
-  color: var(--actor-claude);
 }
 
 
@@ -170,7 +64,6 @@
 }
 
 
-.chat-list-slot,
 .chat-feed-wrap {
   flex: 1;
   min-height: 0;
@@ -179,30 +72,8 @@
 }
 
 
-.chat-list-slot[hidden],
 .chat-feed-wrap[hidden] {
   display: none;
-}
-
-
-/* a kind's list inside the column takes the column's width */
-
-
-.chat-list {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-
-.chat-list > .strip,
-.chat-list > .doctabs,
-.chat-list > .dsnav {
-  flex: 1;
-  width: auto;
-  min-width: 0;
-  border-right: 0;
 }
 
 
@@ -356,7 +227,7 @@
 }
 
 
-/* ---------------------------------------------- the input at the column's foot */
+/* ---------------------------------------------- the input at the pane's foot */
 
 
 .chat-composer-slot {
@@ -366,13 +237,15 @@
 }
 
 
-.prompt.chat-composer,
-.dsask.chat-composer {
+/* `.app` gives these two the same weight as a kind's own rule (`.app.docs .dsask`, `.app.motion .dsask`); this file is last, so the pane's foot wins. */
+.app :is(.prompt, .dsask).chat-composer {
   position: relative;
   left: auto;
   bottom: auto;
   transform: none;
   width: auto;
+  max-width: none;
+  margin: 0;
   padding: 0;
   gap: 0;
   display: flex;
@@ -420,7 +293,7 @@
 }
 
 
-/* the column is narrow: the request's settings take a row of their own above paperclip, who answers and send */
+/* the pane is narrow: the request's settings take a row of their own above paperclip, who answers and send */
 .chat-composer > .tools {
   flex-wrap: wrap;
   row-gap: 8px;
@@ -451,7 +324,7 @@
 }
 
 
-/* the hint of an empty box is long and the column narrow: where the browser can size a box to its content (hint included), it does; elsewhere the box grows with what is typed */
+/* the hint of an empty box is long and the pane narrow: where the browser can size a box to its content (hint included), it does; elsewhere the box grows with what is typed */
 
 
 @supports (field-sizing: content) {

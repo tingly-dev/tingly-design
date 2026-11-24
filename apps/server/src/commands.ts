@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, resolve } from 'node:path';
-import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, settingsProject, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
+import { DASH_PAGE, checkProject, hasClaudeDesign, journalSince, type ClaudeDesignNote, WIZARD_KINDS, type WizardGiven, type AgentStep, outlineProject, settingsProject, slideHeadingDrift, type SlideHeading, parseBoardSize, BOARD_SIZES, LOOKS, lookOf, parseCanvas, parseDoc, parseMotion, parseSince, tabOrder, validSize, type ProjectProblem } from '@dc/core';
 import { translator, type Language } from '@dc/i18n';
 import { EDITOR_DIST, PROJECTS_DIR, ROOT, SANDBOX_DIST } from './layout';
 import type { PageIssue, PageJob, PageLayout } from './pageExport';
@@ -38,6 +38,8 @@ interface KindCli {
   /** `check --snapshots`: frames are their own size (text past the edge is lost), and the first one is a page of boards. */
   fixed: boolean;
   page: boolean;
+  /** `check --snapshots`: the frames are the slides of one deck, held to its size floor and compared with each other (`deckCheck.ts`). */
+  deck: boolean;
   /** The file a problem is blamed on when the frame names none. */
   blame?: string;
   /** The file behind a frame's title, where the editor titles a frame by something else: a board by its name, a slide by its id. */
@@ -58,6 +60,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     pick: 'board',
     fixed: true,
     page: true,
+    deck: false,
     async frameFiles(p) {
       const out = new Map<string, string>();
       const c = parseCanvas(await readIn(p, 'canvas.json'));
@@ -80,6 +83,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     pick: 'slide',
     fixed: true,
     page: false,
+    deck: true,
     async frameFiles(p) {
       const out = new Map<string, string>();
       for (const f of await readdir(resolve(p.dir, 'slides')).catch(() => [])) if (f.endsWith('.html')) out.set(f.slice(0, -5), `slides/${f}`);
@@ -100,6 +104,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     pick: 'tab',
     fixed: false,
     page: false,
+    deck: false,
     frameFiles: noFrameFiles,
     async jobs(p, as, o, one) {
       const tab = one(o.tab);
@@ -116,6 +121,7 @@ const KIND_CLI: Record<Kind, KindCli> = {
     pick: 'view',
     fixed: false,
     page: false,
+    deck: false,
     frameFiles: noFrameFiles,
     async jobs(_p, _as, o, one, every) {
       const view = one(o.view);
@@ -128,12 +134,13 @@ const KIND_CLI: Record<Kind, KindCli> = {
     fast: false,
     fixed: false,
     page: false,
+    deck: false,
     blame: DASH_PAGE,
     frameFiles: noFrameFiles,
     // the one page as drawn: nothing is shown first
     jobs: async (_p, as) => [{ item: as === 'pdf' ? 'pdf' : 'png' }],
   },
-  motion: { formats: ['mp4', 'gif', 'png', 'html'], size: true, fast: true, fixed: false, page: false, frameFiles: noFrameFiles, jobs: pngOnly },
+  motion: { formats: ['mp4', 'gif', 'png', 'html'], size: true, fast: true, fixed: false, page: false, deck: false, frameFiles: noFrameFiles, jobs: pngOnly },
 };
 
 /** What `export --as` takes for each kind besides `zip`: the Import / Export menu's formats, by their names. */
@@ -370,7 +377,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     return { dir, files };
   }
   // boards and slides are their own size, so text past the edge is lost; a dashboard or a view scrolls
-  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: KIND_CLI[p.kind].fixed, page: KIND_CLI[p.kind].page });
+  const { files, failed, issues = [], layout = [] } = await runPage(ctx, p, await pageJobs(p, 'png', pick, !Object.values(pick).some((v) => v?.trim())), dir, undefined, { fixed: KIND_CLI[p.kind].fixed, page: KIND_CLI[p.kind].page, slide: KIND_CLI[p.kind].deck });
   for (const f of failed) fail(f.what, f.error);
   // a board that threw or a picture that never came still draws something; the picture alone would not say why
   const where = await frameFiles(p);
@@ -390,8 +397,14 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   // how the drawn work is laid out: warnings, since a cut or a quiet caption can be on purpose
   // faint text comes in families (every caption of a board), so it is one line per file: how many, the faintest, one example
   const faint = new Map<string, { count: number; ratio: number; text: string }>();
+  // each slide's first heading, measured where it was drawn: compared across the deck below, not a warning itself
+  const heads = new Map<string, SlideHeading>();
   for (const l of layout) {
     const file = (l.where && where.get(l.where)) ?? (KIND_CLI[p.kind].blame ?? l.where ?? p.name);
+    if (l.rule === 'heading') {
+      if (!heads.has(file)) heads.set(file, { file, tag: l.tag ?? '', size: l.size ?? 0, top: l.top ?? 0, left: l.left ?? 0, height: l.height ?? 0, text: l.text ?? '' });
+      continue;
+    }
     if (l.element !== undefined) {
       // what a dashboard drew wrong: the element, the dataset it shows, the text concerned, and how many more like it
       const more = l.more ?? 0;
@@ -399,7 +412,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
       continue;
     }
     if (l.rule !== 'contrast') {
-      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: l.rule === 'gap' ? { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 } : l.rule === 'squeezed' ? { text: l.text ?? '', lines: l.lines ?? 0 } : { text: l.text ?? '' } });
+      problems.push({ level: 'warning', file, code: 'layout', rule: l.rule, params: layoutParams(l) });
       continue;
     }
     const f = faint.get(file) ?? { count: 0, ratio: Infinity, text: '' };
@@ -408,6 +421,7 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
     faint.set(file, f);
   }
   for (const [file, f] of faint) problems.push({ level: 'warning', file, code: 'layout', rule: f.count > 1 ? 'contrastMany' : 'contrast', params: f });
+  for (const d of slideHeadingDrift([...heads.values()])) problems.push({ level: 'warning', file: d.file, code: 'slides', rule: d.rule, params: { text: d.text, dy: d.dy ?? 0, dx: d.dx ?? 0, others: d.others ?? 0 } });
   // a slide shows in its thumbnail too: the same problem from two frames is one
   const seen = new Set<string>();
   const found = problems.splice(before).filter((x) => {
@@ -416,6 +430,22 @@ async function snapshots(ctx: Ctx, p: Project, problems: ProjectProblem[], out?:
   });
   problems.push(...found);
   return { dir, files };
+}
+
+/** The values a layout warning's wording needs. */
+function layoutParams(l: PageLayout): Record<string, string | number> {
+  switch (l.rule) {
+    case 'gap':
+      return { size: l.size ?? 0, at: l.at ?? 0, percent: l.percent ?? 0 };
+    case 'squeezed':
+      return { text: l.text ?? '', lines: l.lines ?? 0 };
+    case 'small':
+      return { text: l.text ?? '', size: l.size ?? 0, floor: l.floor ?? 0 };
+    case 'short':
+      return { text: l.text ?? '', percent: l.percent ?? 0 };
+    default:
+      return { text: l.text ?? '' };
+  }
 }
 
 /** The file behind a frame's title, where the editor titles a frame by something else: a board by its name, a slide by its id. */
@@ -589,7 +619,7 @@ async function withEditor<T>(ctx: Ctx, p: Project, page: boolean, fn: (at: { api
 }
 
 /** The files the menu's items made, written to `dir`; what failed, in words. */
-async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpening?: () => void, look?: { fixed: boolean; page?: boolean }): Promise<ExportResult & { layout?: PageLayout[] }> {
+async function runPage(ctx: Ctx, p: Project, jobs: PageJob[], dir: string, onOpening?: () => void, look?: { fixed: boolean; page?: boolean; slide?: boolean }): Promise<ExportResult & { layout?: PageLayout[] }> {
   const t = translator(ctx.lang);
   const { exportFromPage, PageExportError } = await import('./pageExport');
   onOpening?.();

@@ -15,16 +15,17 @@ The presets are Tingly Box's own themes, with the same names, so the editor look
 | `dark` | Tingly Box's dark theme: a near-black slate ladder with a brighter blue |
 | `claude` | Anthropic's ivory and orange, Tingly Box's `claude` theme |
 | `ds` | DeepSeek blue on a misty canvas, Tingly Box's `ds` theme |
-| `sunlit` | Sky blue, Tingly Box's `sunlit` theme |
 
 ### Staying in step with Tingly Box
 
-Tingly Box's palettes and font stacks are copied, unchanged, into `apps/editor/src/tingly-box/` (`SOURCE.json` names the commit). `theme.ts` turns each palette into tokens the same way it maps a palette a host passes in (see below), with three adjustments the editor needs: translucent colours are composited over the surface they sit on, so every token is a solid colour; `ds` and `sunlit`, whose page is a gradient, take one colour from it for the canvas; and menu and dialog shadows and the 6 px / 12 px radii come from Tingly Box's component styles. When Tingly Box's theme changes:
+Tingly Box's palettes and font stacks are copied, unchanged, into `apps/editor/src/tingly-box/` (`SOURCE.json` names the commit). `THEMES` in `theme.ts` is the one list of presets: each entry names the palette it uses, the menu and dialog shadows, and the solid colour the canvas takes when the page itself is a gradient; `PRESET_IDS`, `PRESETS`, the appearance menu and the script API are all derived from it, and a preset's name lives only in its `appearance.mode.*` entry in both languages. `theme.ts` turns each palette into tokens the same way it maps a palette a host passes in (see below), with three adjustments the editor needs: translucent colours are composited over the surface they sit on, so every token is a solid colour; `ds`, whose page is a gradient, takes one colour from it for the canvas; and menu and dialog shadows and the 6 px / 12 px radii come from Tingly Box's component styles. When Tingly Box's theme changes:
 
 ```bash
 node scripts/sync-tingly-box-theme.mjs ../tingly-box   # path to a tingly-box checkout
 pnpm typecheck && python3 e2e/theme.py
 ```
+
+The script copies the palette files the folder holds, so adding or removing a preset (one `THEMES` row and the two names) does not change a list inside it.
 
 ## Passing a theme in
 

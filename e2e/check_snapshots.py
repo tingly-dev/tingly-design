@@ -1,5 +1,6 @@
 """`tingly-design check --snapshots` looks at the layout, after `pnpm build`: a copy of the sample deck with a line past
-the slide's edge, a line cut off by its box, a faint caption and an empty slide reports each as a layout warning,
+the slide's edge, a line cut off by its box, a faint caption and an empty slide reports each as a layout warning, the
+deck-level rules (a placeholder, a broken word, a split unit, tiny text, a slide that stops early, a heading that moved) too,
 while the sample deck itself reports none. Runs the command line on its own projects folder; needs Chrome (DC_CHROME)."""
 import os, sys, json, shutil, subprocess, tempfile
 
@@ -42,9 +43,22 @@ try:
         '<div style="position:absolute;left:1500px;top:700px;width:700px;height:200px;background:#FDE68A;font-size:30px;color:#111111">Card cut by the edge</div>'
         '<div style="display:flex;width:800px;margin-top:300px"><div style="flex:none;width:1200px;height:80px;background:#BBF7D0;font-size:30px;color:#111111">Row child that will not fit</div></div>'
         '</section>\n')
+    # deck-level rules: a placeholder left in, a word broken inside, a figure split from its unit, text clearly under
+    # the floor, a content slide that stops in its top half, and one heading of a kind sitting lower than the others
+    plain = 'background:#FFFFFF;color:#111111;font-family:Arial, sans-serif;padding:{top}px 128px 128px;display:flex;flex-direction:column;gap:48px'
+    open(os.path.join(bad, 'slides', 'rules.html'), 'w').write(
+        f'<section id="rules" style="{plain.format(top=128)}"><h2 style="font-size:72px">Revenue grew</h2>'
+        '<p style="font-size:32px">Revenue was [€__] this quarter.</p>'
+        '<div style="display:flex;gap:32px"><p style="font-size:32px;width:200px">Internationalisation</p>'
+        '<p style="font-size:40px;width:214px">Up to 26 M</p><p style="font-size:16px">Small print</p></div></section>\n')
+    for id_, top in (('same1', 128), ('same2', 128), ('lower', 200)):
+        open(os.path.join(bad, 'slides', id_ + '.html'), 'w').write(
+            f'<section id="{id_}" style="{plain.format(top=top)};justify-content:space-between"><h2 style="font-size:72px">Heading of {id_}</h2>'
+            '<p style="font-size:32px">One line at the top.</p><p style="font-size:32px">One line at the bottom.</p></section>\n')
     deck = json.load(open(os.path.join(bad, 'deck.json')))
     deck['order'].append('empty')
     deck['order'].append('grid')
+    deck['order'] += ['rules', 'same1', 'same2', 'lower']
     json.dump(deck, open(os.path.join(bad, 'deck.json'), 'w'), indent=2)
 
     clean = run(projects, 'zz-clean')
@@ -59,6 +73,16 @@ try:
     check('a box pushed past the slide edge is reported', ('slides/grid.html', 'boxOutside') in got or ('slides/grid.html', 'boxOverflow') in got, str(list(got)))
     check('a box wider than its grid is reported', ('slides/grid.html', 'boxOverflow') in got, str(list(got)))
     check('text squeezed into a narrow column is reported', ('slides/grid.html', 'squeezed') in got, str(list(got)))
+    check('a placeholder left on a slide is reported from the file', any(p['code'] == 'slides' and p.get('rule') == 'placeholder' and p['file'] == 'slides/rules.html' and p['params']['text'] == '[€__]' for p in r['problems']), json.dumps(r['problems'])[:400])
+    check('a word broken across two lines is reported', ('slides/rules.html', 'broken') in got, str(list(got)))
+    check('a figure split from its unit is reported', ('slides/rules.html', 'unitSplit') in got, str(list(got)))
+    small = got.get(('slides/rules.html', 'small'))
+    check('text clearly under the deck\'s size floor is reported with the floor', small and small['params']['size'] == 16 and small['params']['floor'] == 24, json.dumps(small))
+    check('a content slide that stops in its top part is reported', ('slides/rules.html', 'short') in got, str(list(got)))
+    check('a slide filled down to its margin is not', not any(k in got for k in (('slides/same1.html', 'short'), ('slides/lower.html', 'short'))), str(list(got)))
+    moved = [p for p in r['problems'] if p['code'] == 'slides' and p.get('rule') == 'headingMoved']
+    check('the one heading lower than the others of its kind is reported, and only it', [p['file'] for p in moved] == ['slides/lower.html'] and moved[0]['params']['dy'] == 72, json.dumps(moved))
+    check('the sample deck has no deck-level warnings', not [p for p in clean['problems'] if p['code'] == 'slides'], json.dumps(clean['problems'])[:300])
     check('layout findings are warnings, so the check still passes', all(p['level'] == 'warning' for p in got.values()))
     check('each slide is still drawn', len(r['snapshots']) == len(deck['order']), str(r.get('snapshots'))[:300])
     # a dashboard: a number that came out as NaN, a chart with nothing in it, labels over each other or cut off

@@ -94,3 +94,19 @@
   border-color: color-mix(in srgb, var(--accent) 30%, var(--panel));
   color: var(--accent-ink);
 }
+
+
+.refsdlg .refsearch {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+
+.refsdlg ul {
+  max-height: min(240px, 32vh);
+}

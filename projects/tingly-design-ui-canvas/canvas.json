@@ -173,6 +173,55 @@
       "w": 1560,
       "h": 620,
       "title": "Doc theme"
+    },
+    "DocPageSettings.dc.html": {
+      "x": 3700,
+      "y": 7220,
+      "w": 1560,
+      "h": 760,
+      "title": "Doc page settings"
+    },
+    "LivePointers.dc.html": {
+      "x": 3900,
+      "y": 9400,
+      "w": 1800,
+      "h": 760,
+      "title": "Live pointers"
+    },
+    "ChatSide.dc.html": {
+      "x": 0,
+      "y": 11600,
+      "w": 1720,
+      "h": 1140,
+      "title": "Conversation and the left side (superseded)"
+    },
+    "ChatPane.dc.html": {
+      "x": 1800,
+      "y": 11600,
+      "w": 1720,
+      "h": 1200,
+      "title": "The conversation pane (superseded)"
+    },
+    "ChatLeft.dc.html": {
+      "x": 3600,
+      "y": 11600,
+      "w": 1720,
+      "h": 960,
+      "title": "Conversation at the far left"
+    },
+    "LinkedInsert.dc.html": {
+      "x": 5600,
+      "y": 6300,
+      "w": 1720,
+      "h": 800,
+      "title": "Linked pages: insert"
+    },
+    "LinkedItem.dc.html": {
+      "x": 5600,
+      "y": 7500,
+      "w": 1720,
+      "h": 980,
+      "title": "Linked pages: the item"
     }
   },
   "order": [
@@ -194,12 +243,19 @@
     "Dashboard.dc.html",
     "Doc.dc.html",
     "DocTheme.dc.html",
+    "DocPageSettings.dc.html",
     "DocWechat.dc.html",
     "Motion.dc.html",
     "AgentBar.dc.html",
     "Composer.dc.html",
     "Expand.dc.html",
-    "Review.dc.html"
+    "Review.dc.html",
+    "LivePointers.dc.html",
+    "ChatSide.dc.html",
+    "ChatPane.dc.html",
+    "ChatLeft.dc.html",
+    "LinkedInsert.dc.html",
+    "LinkedItem.dc.html"
   ],
   "notes": {
     "t0": {
@@ -236,6 +292,13 @@
       "y": 6240,
       "text": "Agent bar",
       "maxW": 1720
+    },
+    "t5": {
+      "kind": "title1",
+      "x": 0,
+      "y": 11360,
+      "text": "The conversation and the left side",
+      "maxW": 3520
     },
     "s1": {
       "x": 3480,

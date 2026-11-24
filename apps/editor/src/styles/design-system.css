@@ -15,6 +15,11 @@
 }
 
 
+.app.ds.with-chat {
+  grid-template-columns: auto var(--w-dsnav, 220px) 1fr;
+}
+
+
 .dsnav {
   background: var(--panel);
   border-right: 1px solid var(--line);

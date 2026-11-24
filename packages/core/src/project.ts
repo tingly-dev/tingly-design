@@ -16,6 +16,7 @@ import { INDEX_FILE } from './launcher';
 import { MOTION_FILE, motionTimeline, parseMotion, sceneFile, sceneTiming, checkScene } from './motion';
 import { parseDc } from './parse';
 import { checkSlide, type IssueLevel } from './slides';
+import { slidePlaceholders } from './deckCheck';
 
 /** The project's text files, path → content, as the server reads them. */
 export type ProjectFiles = Record<string, string>;
@@ -51,7 +52,7 @@ export interface ProjectOutline {
   duration?: number;
 }
 
-export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded' | 'layout';
+export type ProblemCode = 'badIndex' | 'missingFile' | 'unlisted' | 'badFile' | 'issue' | 'badDataset' | 'badTokens' | 'badCover' | 'canvas' | 'snapshot' | 'seek' | 'pageError' | 'notLoaded' | 'layout' | 'slides';
 
 export interface ProjectProblem {
   level: Exclude<IssueLevel, 'note'>;
@@ -61,7 +62,7 @@ export interface ProjectProblem {
   message?: string;
   /** The file a missing reference points at (`missingFile`), the index an unlisted file is missing from (`unlisted`), or the cover scene (`badCover`). */
   ref?: string;
-  /** `canvas`: the `checkCanvas` rule id; `layout`: what the snapshot's layout probe found (`clipped`, `outside`, `contrast`, `blank`); and the values its wording needs. */
+  /** `canvas`: the `checkCanvas` rule id; `layout`: what the snapshot's layout probe found (`clipped`, `outside`, `contrast`, `blank`); `slides`: a deck-level rule (`deckCheck.ts`); and the values its wording needs. */
   rule?: string;
   params?: Record<string, string | number>;
 }
@@ -168,6 +169,8 @@ export interface ProjectSettings {
   look?: { headingFont: string; bodyFont: string; width: string; lang: string };
   /** Dashboard: where each dataset's rows come from (a `data/` file or `connector/tool`), and whether it fails to read. */
   datasets?: { id: string; source?: string; broken?: boolean }[];
+  /** Canvas, slides, docs, motion: the pages of other projects linked in (`.design/cross-kind-embedding.md`): copies, not to be edited by hand. */
+  linked?: { path: string; from: string; page: string; kind: string; mode: string }[];
   /** Design system: its namespace, theme ids, the first colour names (and how many there are) and the typeface stack of each role. */
   namespace?: string;
   themes?: string[];
@@ -183,6 +186,15 @@ const themeSetting = (index: Record<string, unknown>): Pick<ProjectSettings, 'th
   return r ? { theme: { system: r.system, theme: r.theme } } : {};
 };
 
+/** The pages of other projects an index lists as linked (its `imports`), as plain values; an artboard imported before pages were linked is a live one. */
+const linkedSetting = (index: string | undefined): Pick<ProjectSettings, 'linked'> => {
+  const raw = (json(index) as { imports?: unknown } | undefined)?.imports;
+  const list = (Array.isArray(raw) ? raw : []).filter((r): r is Record<string, unknown> => isObject(r) && typeof r.path === 'string' && typeof r.from === 'string');
+  return list.length
+    ? { linked: list.slice(0, 20).map((r) => ({ path: String(r.path), from: String(r.from), page: String(r.page ?? r.board ?? ''), kind: String(r.kind ?? 'design'), mode: String(r.mode ?? (r.board ? 'live' : 'image')) })) }
+    : {};
+};
+
 /** A long list of names is cut here: the files hold the rest, and the same line goes into every request. */
 const NAMES_MAX = 40;
 
@@ -191,19 +203,19 @@ const SETTINGS: Record<ProjectKind, (index: string | undefined, files: ProjectFi
   design(index) {
     const c = parseCanvas(index);
     const order = [...c.order.filter((f) => c.boards[f]), ...Object.keys(c.boards).filter((f) => !c.order.includes(f))];
-    return { designSystems: namespacesOf(c.designSystems), ...themeSetting(c), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
+    return { designSystems: namespacesOf(c.designSystems), ...themeSetting(c), ...linkedSetting(index), boards: order.map((f) => ({ id: f.replace(/\.dc\.html$/, ''), size: [c.boards[f].w, c.boards[f].h] })) };
   },
   slides(index) {
     const d = parseDeck(index);
-    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems), ...themeSetting(d) };
+    return { size: deckSize(d), designSystems: namespacesOf(d.designSystems), ...themeSetting(d), ...linkedSetting(index) };
   },
   motion(index) {
     const m = parseMotion(index);
-    return { formats: Object.entries(m.formats).map(([id, f]) => ({ id, size: f.size })), fps: m.fps, speed: m.speed && m.speed > 0 ? m.speed : 1 };
+    return { formats: Object.entries(m.formats).map(([id, f]) => ({ id, size: f.size })), fps: m.fps, speed: m.speed && m.speed > 0 ? m.speed : 1, ...linkedSetting(index) };
   },
   docs(index) {
     const d = parseDoc(index);
-    return { look: { ...d.settings }, designSystems: namespacesOf(d.designSystems), ...themeSetting(d) };
+    return { look: { ...d.settings }, designSystems: namespacesOf(d.designSystems), ...themeSetting(d), ...linkedSetting(index) };
   },
   dashboard(_index, files) {
     return {
@@ -275,10 +287,13 @@ const CHECK: Record<ProjectKind, (c: CheckCtx) => void> = {
       out.push({ level: i.level, file: i.file, code: 'canvas', rule: i.rule, params: { line: i.line, ...i.params } });
     }
   },
-  slides({ files, missing, issues }) {
+  slides({ files, out, missing, issues }) {
     const d = parseDeck(files[DECK_FILE]);
     for (const id of d.order) if (files[slideFile(id)] === undefined) missing(DECK_FILE, slideFile(id));
-    for (const id of deckOrder(d, Object.keys(files))) issues(slideFile(id), checkSlide(parseDc(files[slideFile(id)]), id));
+    for (const id of deckOrder(d, Object.keys(files))) {
+      issues(slideFile(id), checkSlide(parseDc(files[slideFile(id)]), id));
+      for (const f of slidePlaceholders(slideFile(id), files[slideFile(id)])) out.push({ level: 'warning', file: f.file, code: 'slides', rule: f.rule, params: { text: f.text } });
+    }
   },
   motion({ files, out, missing, issues }) {
     const m = parseMotion(files[MOTION_FILE]);

@@ -11,6 +11,7 @@
 | 问题 | 决定 | 为什么 |
 |---|---|---|
 | 指导放在哪 | `.claude/skills/slides/SKILL.md` 的 "Creating a deck"（先设计系统，再方向/大纲/长度/字体/配色，薄 brief 自己决定并说明假设）与 "Designing the deck"（方向、配色、字阶、一页一个想法、按 deck 尺寸排版、页脚带、节奏）；版式库在 `reference/`（layout、styles、fonts、diagrams、craft、questions）。`SLIDES_SYSTEM`（`apps/server/src/delegate.ts`）不重复这些，只指向它们，并补一句"先定方向，相邻页换版式和背景色调，一个模板不连排三页" | Claude Code 每次都会读 skill；system prompt 保持短，两者不漂移 |
+| 好看从哪来 | 在“方向、版式节奏”之上补四样从 pptx 技能学来的东西（[research-pptx-skill.md](./research-pptx-skill.md)）：配色有主导色并按题目检验、全篇一个母题、每个内容页有取自内容的可看之物、放映场景的字号；一条 “Never” 禁用清单进 SKILL.md（原先只在新 deck 不读的 `craft.md` 末尾）；“Look at what you made” 加看图流程和具体清单（找真问题、改、只重看改过的、停）。只写原则和检验，不给配色表或版式套餐，并写明示例只是语法 | 同题前后对比里母题、版式变化、禁用项立刻见效；“页面用满、字够大”这类程度判断要靠检查和回路补 |
 | 唯一的例子 | SKILL.md 里的完整示例从卡片排换成一个深底大数字页（流式布局、pinned 页脚、备注都保留） | 模型对单个例子锚定很强；唯一的例子是卡片排，生成的就都是卡片排 |
 | 起点是什么 | 新 deck 的封面仍是 `newSlideSource` 写的素样式（`DEFAULT_SECTION_STYLE`）：它是**空白起点，不是人选的样子**。skill、`SLIDES_SYSTEM`、fast AI 三处都这样说 | 起点一旦被当成选择，"两种背景色调 + 一张强调页"的节奏就不会出现 |
 | 识别新 deck | 委托路径：`SLIDES_SYSTEM` 写明"(only the starter cover)"，Claude 按 "Creating a deck" 走（方向、大纲、假设、重写封面）。fast AI 路径：`deckOutline`（`apps/editor/src/fastedit.ts`）在 deck 只剩一张**未被改过的**起始封面时，给 outline 加一行"这个 deck 是新的，空白起点，按请求设计而不是保持起始样式" | 两个生成路径都要能分辨"人选的样子"和"起始模板的样子"；`isStarterCover`（core `deck.ts`）用字节级比较，人改过任何一点就不再算起始 |

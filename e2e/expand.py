@@ -188,7 +188,7 @@ async def main():
             check('a part of the card is retyped from the form', await wait_for(lambda: '>Start free trial</button>' in src()))
             await pop.locator('textarea.crun').nth(0).hover()
             await pg.wait_for_timeout(300)
-            check('the part under the pointer is outlined on the artboard', 'border:1px solid' in await f.locator('div[aria-hidden="true"]').first.inner_html())
+            check('the part under the pointer is outlined on the artboard', 'border:1px solid' in await f.locator('div[aria-hidden="true"]:not([data-dc-pointers])').first.inner_html())
             await pg.keyboard.press('Escape')
 
             # --- values that come from the template

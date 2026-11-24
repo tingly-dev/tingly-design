@@ -24,6 +24,7 @@ import {
   DASH_INDEX,
   DASH_PAGE,
   DASH_STARTER_PAGE,
+  isDashBundlePath,
   isDashFile,
   isDataPath,
   newDash,
@@ -277,6 +278,8 @@ export async function linkFolder(input: string, create = false): Promise<string>
     if (create) throw new HttpError(409, 'folderHasProject', { path: at.path });
     return known;
   }
+  // a folder a project keeps its own files in would be read as part of that project, not as a project beside them
+  if (create && kindOfSync(dirname(abs)) && isSubSkipped(basename(abs))) throw new HttpError(400, 'subReserved', { name: basename(abs) });
   const name = idFor(abs);
   links.set(name, abs);
   await saveLinks();
@@ -522,6 +525,8 @@ export function safeRel(rel: string): string {
   const r = rel.replace(/\\/g, '/').replace(/^\.\//, '');
   if (r === CANVAS_FILE || isBoardFile(r) || r === DECK_FILE || isSlideFile(r)) return r;
   if (isDashFile(r) || isDocFile(r) || isMotionFile(r)) return r;
+  // a dashboard frozen into a slide's folder: the one text file of a linked page that is not an artboard
+  if (isDashBundlePath(r)) return r;
   // a design system's text files, and a copy of one installed into a canvas, deck or doc (its tokens, and the description a built-in look carries)
   if (isDsTextFile(r) || /^ds\/[a-z0-9][a-z0-9_-]{0,63}\/(tokens\.json|README\.md)$/.test(r)) return r;
   throw new HttpError(400, 'notProjectFile', { path: rel });
@@ -593,6 +598,36 @@ export function kindOfSync(dir: string): ProjectKind | null {
   return null;
 }
 
+/**
+ * A project folder directly inside another project's folder is that project's sub-project
+ * (.design/sub-projects.md): it is a project of its own, so the folder that holds it leaves it out of
+ * its files, its file watching and its commits. These are the folders a project keeps its own things
+ * in, and dot folders, which are never a sub-project's.
+ */
+const SUB_RESERVED = new Set(['uploads', 'ds', 'data', 'assets', 'fonts', 'slides', 'scenes', 'tabs', 'datasets', 'files', 'renders', 'node_modules']);
+
+/** A folder name a sub-project cannot have: hidden, or one of a project's own folders. */
+export function isSubSkipped(folder: string): boolean {
+  return folder.startsWith('.') || SUB_RESERVED.has(folder);
+}
+
+/** Whether the folder `dir`, named `name` inside a project, is a project of its own. */
+function isNestedProject(dir: string, name: string): boolean {
+  return !isSubSkipped(name) && kindOfSync(dir) !== null;
+}
+
+/** The sub-projects directly inside a project folder: their folder name, path and kind. */
+export function subsIn(dir: string): { folder: string; dir: string; kind: ProjectKind }[] {
+  return projectsIn(dir).filter((m) => !isSubSkipped(m.folder));
+}
+
+/** Whether `rel` (a path inside the project folder `dir`) is inside a project nested in it, so it is not this project's file. */
+export function inNestedProject(dir: string, rel: string): boolean {
+  const parts = rel.split('/');
+  for (let i = 1; i < parts.length; i++) if (isNestedProject(join(dir, ...parts.slice(0, i)), parts[i - 1])) return true;
+  return false;
+}
+
 export function isTracked(rel: string): boolean {
   try {
     safeRel(rel);
@@ -602,7 +637,7 @@ export function isTracked(rel: string): boolean {
   }
 }
 
-async function walk(dir: string, base: string, out: string[]): Promise<void> {
+export async function walk(dir: string, base: string, out: string[]): Promise<void> {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -612,8 +647,11 @@ async function walk(dir: string, base: string, out: string[]): Promise<void> {
   for (const e of entries) {
     if (e.name.startsWith('.') || e.name === 'node_modules') continue;
     const p = join(dir, e.name);
-    if (e.isDirectory()) await walk(p, base, out);
-    else {
+    // a project of its own inside this one is not this project's file
+    if (e.isDirectory()) {
+      if (isNestedProject(p, e.name)) continue;
+      await walk(p, base, out);
+    } else {
       const rel = relative(base, p).split(sep).join('/');
       if (isTracked(rel)) out.push(rel);
     }
@@ -1076,4 +1114,24 @@ export async function createProject(name: string, title: string, kind: ProjectKi
   if (opts.look && !look) throw new HttpError(400, 'badLook', { look: opts.look });
   await mkdir(dir, { recursive: true });
   await STARTER[kind]({ name, title, lang, t, opts, look });
+}
+
+/**
+ * A new project in the folder `leaf` inside `parent`'s folder, written with `kind`'s starter (the same as
+ * the New dialog's) and linked like a project made at that path by hand. What Claude Code reaches through
+ * `scripts/new-project.mjs`; like the dialog's Location it needs links, so a host with `DC_LINKS=0` refuses it.
+ */
+export async function createProjectIn(parent: string, leaf: string, title: string, kind: ProjectKind, lang: Language, opts: { size?: [number, number]; look?: string } = {}): Promise<{ name: string; dir: string }> {
+  const parentDir = projectDir(resolveKey(parent));
+  if (!(await kindOf(parentDir))) throw new HttpError(404, 'noProject', { name: parent });
+  if (!isProjectName(leaf)) throw new HttpError(400, 'badProjectName');
+  const dir = join(parentDir, leaf);
+  const name = await linkFolder(dir, true);
+  try {
+    await createProject(name, title, kind, lang, opts);
+  } catch (e) {
+    await unlinkProject(name).catch(() => {});
+    throw e;
+  }
+  return { name, dir };
 }

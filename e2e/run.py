@@ -4,6 +4,8 @@ Each suite needs something different running: most want `pnpm dev` with the mock
 with no model configured, a few build the editor and start their own server, embed starts the bundle. This
 starts what each group needs, runs its suites one after another, stops it, and writes e2e/out/report.md
 and report.json with every suite's checks, failures and time; each suite's output is in e2e/out/logs/.
+A suite's `WARN` lines (baseline's pictures that differ from their baselines) are reported, and annotated on GitHub
+Actions, without failing the run; its `FAIL` lines, a crash or a timeout fail it.
 
   python3 e2e/run.py                 every suite but delegate (which calls the real `claude`)
   python3 e2e/run.py slides docs     only these suites (the groups they need still start)
@@ -31,12 +33,12 @@ IMAGES_PORT = MOCK_PORT + 1  # the OpenAI-style images mock (image_gen)
 # suite -> group. A group is what has to be running before the suite starts.
 SUITES = {
     'e2e': 'dev', 'slides': 'dev', 'ds': 'dev', 'dash': 'dev', 'docs': 'dev', 'motion': 'dev', 'layers': 'dev', 'expand': 'dev', 'tweak_text': 'dev', 'template_values': 'dev', 'theme_switch': 'dev', 'files': 'dev', 'gif': 'dev',
-    'launcher': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
-    'export_menu': 'dev', 'wechat': 'dev', 'doc_theme': 'dev', 'export_image': 'dev', 'export': 'dev', 'pptx': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev', 'block_bar': 'dev',
-    'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev',
+    'launcher': 'dev', 'delete': 'dev', 'dialogs': 'dev', 'folders': 'dev', 'nested': 'dev', 'git': 'dev', 'theme': 'dev', 'i18n': 'dev',
+    'export_menu': 'dev', 'wechat': 'dev', 'doc_theme': 'dev', 'export_image': 'dev', 'export': 'dev', 'pptx': 'dev', 'pptx_edit': 'dev', 'archive': 'dev', 'claude_design': 'dev', 'copy_png': 'dev', 'block_bar': 'dev',
+    'fast': 'dev', 'fast_slides': 'dev', 'fast_motion': 'dev', 'baseline': 'dev', 'external_edit': 'dev', 'pointer': 'dev',
     'ai_settings': 'dev-bare', 'image_gen': 'dev-bare',
-    'conversation': 'fake-claude', 'follow_up': 'fake-claude', 'folder_groups': 'fake-claude', 'review': 'fake-claude',
-    'attach': 'build', 'run_feed': 'build', 'ds_ask': 'build', 'chat_panel': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build',
+    'conversation': 'fake-claude', 'follow_up': 'fake-claude', 'folder_groups': 'fake-claude', 'agent_project': 'fake-claude', 'review': 'fake-claude', 'slides_look': 'fake-claude',
+    'attach': 'build', 'run_feed': 'build', 'ds_ask': 'build', 'chat_panel': 'build', 'chat_copy': 'build', 'side_resize': 'build', 'import_here': 'build', 'import_board': 'build', 'linked_page': 'build',
     'check_snapshots': 'build',
     'embed': 'bundle',
     'delegate': 'real',
@@ -44,7 +46,7 @@ SUITES = {
 # The per-PR subset: open, edit and save in every kind, plus the request bar's run feed.
 SMOKE = ['e2e', 'slides', 'ds', 'dash', 'docs', 'motion', 'run_feed']
 # Rough seconds per suite from a full run, to balance the slices (an unlisted suite counts WEIGHT_DEFAULT).
-WEIGHTS = {'baseline': 162, 'run_feed': 40, 'chat_panel': 36, 'external_edit': 32, 'copy_png': 29, 'import_here': 23, 'import_board': 19,
+WEIGHTS = {'baseline': 162, 'run_feed': 40, 'chat_panel': 36, 'chat_copy': 30, 'external_edit': 32, 'copy_png': 29, 'import_here': 23, 'import_board': 19, 'linked_page': 90,
            'side_resize': 17, 'attach': 13, 'ai_settings': 9, 'check_snapshots': 8, 'fast': 6, 'fast_slides': 6, 'fast_motion': 6,
            'embed': 6, 'conversation': 3}
 WEIGHT_DEFAULT = 20
@@ -176,24 +178,31 @@ def run_suite(name, env, timeout, logs):
     text = open(path, encoding='utf-8', errors='replace').read()
     passed = len(re.findall(r'^PASS\b', text, re.M))
     failed = re.findall(r'^FAIL\b ?(.*)$', text, re.M)
+    warned = re.findall(r'^WARN\b ?(.*)$', text, re.M)
     if timed_out: status = 'timeout'
     elif failed: status = 'fail'
-    elif code != 0 or passed == 0: status = 'error'  # crashed, or printed no checks at all
+    elif code != 0 or passed + len(warned) == 0: status = 'error'  # crashed, or printed no checks at all
+    elif warned: status = 'warn'
     else: status = 'pass'
-    tail = '' if status == 'pass' else '\n'.join(text.strip().splitlines()[-8:])
+    tail = '' if status in ('pass', 'warn') else '\n'.join(text.strip().splitlines()[-8:])
     return {'suite': name, 'group': SUITES[name], 'status': status, 'passed': passed, 'failed': len(failed),
-            'failures': [s.strip() for s in failed], 'exit': code, 'seconds': round(time.time() - t, 1),
+            'failures': [s.strip() for s in failed], 'warnings': [s.strip() for s in warned], 'exit': code, 'seconds': round(time.time() - t, 1),
             'log': os.path.relpath(path, REPO), 'tail': tail}
 
 
 def report(results, total_s):
-    icon = {'pass': 'ok', 'fail': 'FAIL', 'error': 'ERROR', 'timeout': 'TIMEOUT', 'skipped': 'skipped'}
+    icon = {'pass': 'ok', 'warn': 'ok, warnings', 'fail': 'FAIL', 'error': 'ERROR', 'timeout': 'TIMEOUT', 'skipped': 'skipped'}
     lines = ['| Suite | Group | Result | Checks | Time |', '|---|---|---|---|---|']
     for r in results:
         checks = f"{r['passed']}/{r['passed'] + r['failed']}" if r['status'] != 'skipped' else ''
         lines.append(f"| {r['suite']} | {r['group']} | {icon[r['status']]} | {checks} | {r.get('seconds', 0):.0f}s |")
-    bad = [r for r in results if r['status'] not in ('pass', 'skipped')]
-    body = '\n'.join(lines) + f"\n\n{len(results) - len(bad)}/{len(results)} suites passed in {total_s / 60:.1f} min\n"
+    bad = [r for r in results if r['status'] not in ('pass', 'warn', 'skipped')]
+    warned = [r for r in results if r.get('warnings')]
+    body = '\n'.join(lines) + f"\n\n{len(results) - len(bad)}/{len(results)} suites passed in {total_s / 60:.1f} min"
+    body += f", {sum(len(r['warnings']) for r in warned)} warnings (a warning does not fail the run)\n" if warned else '\n'
+    for r in warned:
+        body += f"\n## {r['suite']}: warnings\n\n"
+        body += ''.join(f'- {w}\n' for w in r['warnings'])
     for r in bad:
         body += f"\n## {r['suite']}: {r['status']}\n\n"
         body += ''.join(f'- {f}\n' for f in r.get('failures', [])) or ''
@@ -202,6 +211,10 @@ def report(results, total_s):
     os.makedirs(OUT, exist_ok=True)
     open(os.path.join(OUT, 'report.md'), 'w').write('# E2E report\n\n' + body)
     json.dump({'seconds': round(total_s, 1), 'suites': results}, open(os.path.join(OUT, 'report.json'), 'w'), indent=1)
+    if os.environ.get('GITHUB_ACTIONS') == 'true':  # on the run page and the PR's checks, not only in the log
+        for r in warned:
+            for w in r['warnings']:
+                say(f"::warning title=e2e {r['suite']}::{w.replace('%', '%25').replace(chr(10), '%0A')}")
     return body, bad
 
 
@@ -294,7 +307,7 @@ def main(argv):
     # a folder holding only ignored files (a change log left by an earlier run) is not in git status, but takes a name
     tracked = {f.split('/')[1] for f in subprocess.run(['git', 'ls-files', 'projects'], cwd=REPO, capture_output=True, text=True).stdout.split() if f.count('/') >= 2}
     dirty += ''.join(f'?? projects/{d}/ (no tracked files)\n' for d in sorted(os.listdir(os.path.join(REPO, 'projects')))
-                     if os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
+                     if not d.startswith('.') and os.path.isdir(os.path.join(REPO, 'projects', d)) and d not in tracked and f'projects/{d}/' not in dirty)
     if dirty and '--force' not in flags:
         say('projects/ has uncommitted changes, and the suites put the samples back with `git checkout`.\n'
             'Commit or stash them first, or pass --force to run anyway (they will be lost).\n' + dirty)

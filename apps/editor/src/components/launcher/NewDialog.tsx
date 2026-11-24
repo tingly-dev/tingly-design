@@ -49,7 +49,15 @@ function useFolderInfo(path: string | null): FolderInfo | 'checking' | { error: 
   return info;
 }
 
-export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKind; taken: Set<string>; onClose: () => void; at?: string }) {
+/** The project a new one goes inside of: a sub-project's location starts at that project's folder. */
+export interface Under {
+  name: string;
+  /** its folder when it is kept outside the projects folder (`~/…`) */
+  path?: string;
+  title: string;
+}
+
+export function NewDialog({ initial, taken, onClose, at, under }: { initial: ProjectKind; taken: Set<string>; onClose: () => void; at?: string; under?: Under }) {
   const { t } = useTranslation();
   const linksOn = useStore((s) => s.health?.links !== false);
   const projectsInRepo = useStore((s) => !!s.health?.projectsInRepo);
@@ -85,7 +93,7 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
   // the default location is written out in full too, so every place reads the same; the projects folder
   // is just where it starts (a host that keeps projects to itself gets the bare name instead)
   const full = linksOn && !!projectsPath;
-  const base = where ?? projectsPath;
+  const base = where ?? (under ? (under.path ?? joinPath(projectsPath, under.name)) : projectsPath);
   const leafValue = leaf ?? auto;
   const value = full ? (isFolderPath(leafValue) ? leafValue : joinPath(base.trim() || projectsPath, leafValue)) : leafValue;
   const inside = full ? insideProjects(value, projectsPath) : null;
@@ -154,6 +162,11 @@ export function NewDialog({ initial, taken, onClose, at }: { initial: ProjectKin
           ))}
         </div>
         <p className="kblurb">{t(`launcher.kind.${kind}.blurb`)}</p>
+        {under && (
+          <p className="kblurb" data-under={under.name}>
+            {t('launcher.sub.newUnder', { parent: under.title })}
+          </p>
+        )}
         <input ref={titleRef} className="input" placeholder={t(`launcher.kind.${kind}.example`)} aria-label={t('launcher.new.titleField')} value={title} onChange={(e) => setTitle(e.target.value)} />
         {here.Fields && <here.Fields key={kind} s={state} />}
         {(here.Options || offerGit) && (

@@ -40,14 +40,19 @@
 |---|---|---|
 | [self-design.md](./self-design.md) | 自身设计稿：用一个画布项目（`projects/tingly-design-ui-canvas`）画 Tingly Design 自己的界面——整体结构、外壳、启动页、六种类型、顶栏和菜单、请求栏、主题 token；画到什么程度，先画再改代码，代码变了同一个 PR 里重画 | 已实施；§5 是没定的 |
 | [top-bar.md](./top-bar.md) | 顶栏：六种类型共用的一条栏——项目名、同步状态、导入 / 导出放哪，反馈、点星、语言、外观为什么在最右；浮栏只留工具 | 已实施 |
+| [editor-themes.md](./editor-themes.md) | 编辑器外壳的主题：一份注册表（`THEMES`）推出预设、外观菜单和脚本 API，名字只在 i18n；调色板一份预设一份文件、同步脚本按文件夹拷贝；首屏由 `base.css` 兜底 | 已实施 |
 | [dialog.md](./dialog.md) | 对话框：所有模态框共用一个 `Dialog`——遮罩、标题和关闭、焦点进出、Tab 留在框内、Esc 和菜单的先后 | 已实施 |
 | [export-menu.md](./export-menu.md) | 导入 / 导出共用一个菜单：各类型放什么；PDF 一键（服务端 Chrome，没有就回到打印窗口）；视频默认一键、选项折起来；状态条 | 已实施；§7 是没做的 |
 | [slides-pptx.md](./slides-pptx.md) | 幻灯片 PPTX 双向交换：新项目导入（包级严格、对象级尽力而为，74 种内置表格样式、经典与 Office 2016 图表重绘）、向已开 deck 整批追加、整份/范围可见 deck 导出（原生优先、原生表格、逐元素图片化、旋转/SVG/表格双线对角线竖排原生化）、opaque runtime 捕获、来源/报告与诊断、安全和验证门槛 | 独立模块与 launcher/API/CLI/FileMenu/MCP 接入已实施；聚焦产品 e2e 106/106 通过，导入方向曾以 LibreOffice 图像差分作保真度量，成品另经 python-pptx 独立读回，真实 PowerPoint 渲染未验收；未来提案单列 |
+| [research-pptx-skill.md](./research-pptx-skill.md) | 从 Anthropic 的 pptx 技能（Apache-2.0）学什么来提升 slides 的生成效果：它为什么好看（先定调与母题、每页有可看的东西、禁用清单、看图自查）、我们的差距与已吸收的准则、不让 deck 同质化、同题前后对比；附 PPTX 导出可编辑性的实测证据、编辑器内自检与 deck 级检查的缺口、不适用项与许可 | 研究；生成准则已进 slides 技能（#500），deck 级检查（#501）与编辑器内自检（#502）另行实施 |
+| [slides-pptx-editable.md](./slides-pptx-editable.md) | 导出的 PPTX 在 PowerPoint / Keynote 里好改：块级换行文本框与原生项目符号、换行余量上限、标题占位符、分节、推导主题、替代文字与命名、半透明表格分隔线、回退顺序；导入读回分节与标题；“幻灯片内部有限调整”清单 | 已实施；python-pptx 读回、浏览器回归与 `pnpm e2e pptx_edit` 通过，真实 PowerPoint / Keynote 未验收 |
 | [slides-variety.md](./slides-variety.md) | 幻灯片的样式多样性：薄 brief 下的方向选择与版式节奏（skill 与 `SLIDES_SYSTEM` 的分工）、新 deck 的识别（起始封面是空白起点）、装入设计系统时起始封面上色、示例 deck 的重排；设计系统承载版式与方向（模板与 prompt 作为素材）单列为方案 | 指导、识别、上色、示例 deck 已实施；版式库与 @ 引用是方案；调研在 `.research/slides-variety.md` |
 | [docs-markdown.md](./docs-markdown.md) | 文档导出为 Markdown：文档标题和标签页成章节、标题层级理顺、图片路径跟着走（有图片时出带图片的 .zip）、`==高亮==` 转 `<mark>`、评论不导出；文字颜色存成 `<span data-color>` 的名字而不是色值 | 已实施 |
 | [docs-docx.md](./docs-docx.md) | 文档导出为 Word（.docx）：由导出 Markdown 的同一份文本在浏览器里生成，不依赖服务；Google 文档靠传 Drive、Notion 靠贴 Markdown；哪些保留、哪些留作文字 | 已实施 |
 | [wechat-export.md](./wechat-export.md) | 文档导出到微信公众号：所见即所得：菜单项打开上下排的预览（问题清单、公众号栏宽的文章、复制、保存为 HTML），默认样式就是文档自己的样子、绿色等是选出来的样式；核心的纯函数把各标签页原样接成的文章写成只带内联样式的 HTML，外链改成文末编号引用、图片缩到编辑器收得下的大小、Mermaid 和公式画成图片；预览只是模拟，真实后台的行为还没实测 | 已实施（文档）；后台实测、代码高亮、API 发草稿没做 |
-| [doc-design-system.md](./doc-design-system.md) | 文档穿上设计系统：文件只存选择（`designSystems`、`theme`），画的时候从 tokens 解出一份 `DocLook`，编辑器的页面、HTML / PDF / PNG 和微信公众号读同一份；顶栏“主题”、装入即穿上；公众号的样子是内置的 WeChat 风格（自带说明、`doc-*` 文字样式和栏宽）；设计系统的 README 可以“有设计 / 无设计”地看，设计系统有“文档”页（内置样例文档 + 每个文档角色是给定还是推出来的） | 已实施；Word、对比度没做 |
+| [doc-design-system.md](./doc-design-system.md) | 文档穿上设计系统：文件只存选择（`designSystems`、`theme`），画的时候从 tokens 解出一份 `DocLook`，编辑器的页面、HTML / PDF / PNG 和微信公众号读同一份；文档自己的页宽（窄 / 标准 / 宽 / 通栏，标准跟着系统的 `doc-column`）也走这份取值；顶栏“主题”、装入即穿上；公众号的样子是内置的 WeChat 风格（自带说明、`doc-*` 文字样式和栏宽）；设计系统的 README 可以“有设计 / 无设计”地看，设计系统有“文档”页（内置样例文档 + 每个文档角色是给定还是推出来的） | 已实施；Word、对比度没做 |
+| [doc-image-caption.md](./doc-image-caption.md) | 文档图片的替代文字和图片说明：alt 是 Markdown 的图片文字，说明用图片 title（`![alt](x.png "说明")`，没有新语法）；点图片浮出两格表单，编辑器画成 figure + figcaption，HTML / PDF / PNG 和微信公众号导出都跟随；mermaid、公式围栏不做 | 已实施；Word、混排文字的图注、说明里的格式没做 |
+| [doc-page-settings.md](./doc-page-settings.md) | 文档的页面设置放哪：主题留在顶栏，页宽（带当前值和标准的真实 px）进格式栏右端，字体归主题（自己的样子可改，穿主题时只读）；四个方案的权衡、和六种类型 / 窄屏 / 双语的对照 | 已实施；画布 / 幻灯片的页宽入口是开放的 |
 | [docs-comments.md](./docs-comments.md) | 文档评论的表情回应（固定六个、存在评论里、不算请求），以及刻意不做的草稿 / @提及 / 多人光标 | 已实施 |
 | [docs-history.md](./docs-history.md) | 文档的历史版本：写盘前存下被覆盖的标签页文本（本机、不进 zip 和提交），列表、预览、恢复走普通编辑 | 已实施 |
 | [project-archive.md](./project-archive.md) | 整个项目导出成一个 .zip（项目和它用到的设计系统并排、可选带改动记录），再从首页或命令行导入：带什么不带什么、怎么读手工打包的 zip、重名和安全 | 已实施（编辑器、启动页、命令行）；拖入导入是没做的 |
@@ -56,6 +61,8 @@
 | [export-image.md](./export-image.md) | 每种类型保存为 PNG 图片：在浏览器里画，各类型的入口和画法，画不到的东西 | 已实施；视频、PDF 和共用菜单未定 |
 | [selection-image.md](./selection-image.md) | 选中的元素存为图片：共用右键菜单里加 Save as PNG（`dc:'export'` 的 `tid` 一条路），`<img>` 再给复制 / 保存原文件（`src` 加 rawBase 拿原字节，剪贴板只保证 PNG） | 已实施（画布、幻灯片、动效）；多选未定 |
 | [drawn-check.md](./drawn-check.md) | 看板画出来的样子自查：`NaN`、空图表、标签重叠或被裁；同一段探针既在打开的页面里写进 `.runs.json` 的 `drawn`，也在 `check --snapshots` 里报成版面警告 | 已实施 |
+| [deck-check.md](./deck-check.md) | 幻灯片的 deck 级检查：留下的占位、明显过小的字、拆行的单词和数字单位、只占上半页的内容页（版面探针），同类页标题位置漂移（跨页比较）；规则 id 加数值，措辞在命令行 | 已实施（命令行、MCP、编辑器内的自查回路） |
+| [slides-self-check.md](./slides-self-check.md) | 幻灯片的自查回路：Claude Code 在编辑器里改 deck 时，打开着的 deck 按导出画法画出改过的页、跑 `check --snapshots` 的版面探针，图片放 `renders/look/`、结果写 `.runs.json`，提示词让 Claude 读完再改；为什么不给它开命令行 | 已实施（幻灯片）；画布、动效未做 |
 | [canvas-check.md](./canvas-check.md) | 画布检查器：`checkCanvas` 把 `dc-canvas` 技能里写错了不报错的规则做成纯文本检查，返回规则 id 和参数，措辞留给命令行 / 编辑器 | 核心函数和 `check` 命令已实施；编辑器提示是方案 |
 | [layers-tree.md](./layers-tree.md) | 图层树：画布、幻灯片、动效共用一棵树和同一种行；隐藏、锁定写进文件（`data-hide`、`data-lock`、`canvas.json` 的 `hidden`、`locked`）以及它们的含义 | 已实施；没有树的类型见 §5 |
 | [template-text-editing.md](./template-text-editing.md) | 画板里模板文字和颜色的编辑：带洞的文字怎么拆段、改动落在哪一段，循环里的列表项、数据洞为什么不能改并怎么说，属性面板里由洞设置的颜色显示真实颜色并改 tweak | 已实施；整段重打、嵌套循环未定 |
@@ -70,19 +77,24 @@
 | [launcher.md](./launcher.md) | 启动页：项目卡片、实时预览、新建、画布/幻灯片/动效共用分类尺寸选择、PowerPoint / Markdown / 项目包直接导入、分组与列表视图 | 已实施 |
 | [project-git.md](./project-git.md) | 项目和 git：只提交项目自己的文件夹、提交前写出仓库和分支、没有仓库时第一次提交顺带新建（或新建项目时勾选） | 已实施 |
 | [project-stages.md](./project-stages.md) | 跳回早先的阶段：阶段是一次提交，改动记录弹层里列出并跳回；只进不退的前向恢复（旧内容作为一批新改动写回，toast 带 Undo），恢复不跑 git 写命令、Claude Code 运行时拒绝 | 已实施 |
+| [project-trash.md](./project-trash.md) | 删除：项目移进 `projects/.trash/`（启动页“最近删除”里恢复或彻底删除，toast 可撤销）、页面的 Delete 键与“最后一页留下” | 已实施 |
 | [project-folders.md](./project-folders.md) | 项目放在哪：打开或新建项目文件夹之外任意位置的项目（`.links.json` 登记）、npm 安装时的默认数据目录 `~/.tingly-design/` | 已实施 |
 | [folder-groups.md](./folder-groups.md) | 按目录管理：打开一个装着项目的文件夹作为分组（`.folders.json`，成员看磁盘得到）、项目引用其他项目或文件夹，Claude Code 只读授权（`--add-dir` 加拒绝编辑的权限规则） | 已实施 |
+| [sub-projects.md](./sub-projects.md) | 子项目：项目里面的项目，外面的项目不把它当自己的文件（文件列表、文件监听、git、给 Claude 的请求）、新建子项目的入口、Claude Code 新建项目的脚本；启动页嵌套显示和看磁盘发现是方案（#488） | 隔离已实施 |
 | [project-identity.md](./project-identity.md) | 项目身份：文件夹决定是哪个项目，名字不要求唯一，句柄只是地址 | 方案 |
 | [cli.md](./cli.md) | 命令行 `tingly-design`：命令用编辑器里同一个词（`open`、`new`、`list`、`check`、`export`）；服务端拆成路由和启动；核心给数据、命令行给措辞；`server.mjs` 就是 `serve`；找到正在运行的编辑器（`.server.json`）、`history`；其他类型的导出由本机 Chrome 打开编辑器、跑导出菜单自己的项（`headless.ts`、`pageExport.ts`），`check --snapshots`；命令抽成数据（`commands.ts`），同一份作为 MCP 工具（`/mcp`、`tingly-design mcp`），`skills add`；`prompt` 交给编辑器跑 Claude Code；`new -i` 交互式新建（流程在核心、提问在终端） | 第 1–5 步已实施；§6 是还开着的和暂不做的 |
 | [design-system-looks.md](./design-system-looks.md) | 设计系统的起点：从 36 个风格（html-ppt 的主题，MIT）里选一个，按感觉分五组；新建对话框、`new design-system --look`；原始英文名，画布和幻灯片可直接从收起的“内置”组装入；颜色字体圆角阴影之外，还带原主题规则画的组件和封面；DESIGN.md 导入是下一步 | 已实施；§5 是还原度，§6 是没做的 |
 | [design-system-guide.md](./design-system-guide.md) | 设计系统的“怎么用”：README 末尾由 tokens.json 生成的使用说明（链接、主题、变量与备用值、色阶、字体族、文字样式），画布和幻灯片为什么只能用值，以及 `.ttc` 字体集合 | 已实施；开放问题是画板链接样式表 |
 | [design-system-glance.md](./design-system-glance.md) | 设计系统一眼看懂：样张、概览页和启动页卡片怎么说清"这套系统是什么、和另一套差在哪" | 已实施 |
 | [review-remarks.md](./review-remarks.md) | 批阅：在页面上给元素写批注（针脚 + 面板），写完一次交给 Claude Code；面板就是模式、批注怎么跟着元素走、为什么不是便签也不是评论 | 已实施（画布、幻灯片、动效）；§6 是没做的 |
+| [live-pointers.md](./live-pointers.md) | 实时编辑指针：谁在改、改到哪里（每个参与者一个带颜色和名字的鼠标光标，从改动推出位置或先声明，不动就淡出）；为什么不做跟随和 CRDT、为什么放在 core | 已实施（画布、幻灯片、动效、文档）；§7 是没做的 |
 | [agent-feedback.md](./agent-feedback.md) | 请求栏和 agent 执行反馈：请求回显、步骤、计时、停止、改了什么、撤销整次运行 | 已实施；§7 是没做的 |
 | [progressive-edit.md](./progressive-edit.md) | AI 编辑的渐进上屏：输入侧本来逐笔，渲染侧沙箱增量调和（类按脚本缓存、兄弟按开标签记名）、看板页面帧和设计系统预览双帧交接、委托提示的分笔落盘，以及仍整块刷新的地方和原因 | 已实施；§6 是没做的 |
-| [chat-panel.md](./chat-panel.md) | 对话面板：请求栏的位置收成底部和左侧（左侧一直打开，取代右侧自动隐藏；已有左列的类型用页签），面板里是一份能回头读的对话记录（每轮的请求、步骤、回答、改动），存在服务端，命令行和 MCP 的请求也在里面；窄窗口放不下时退回底部 | 已实施；§7 是没做的 |
-| [side-columns.md](./side-columns.md) | 边栏的宽度：检查器、缩略图列、标签页、批注、导航、数据来源、对话列，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的；§6 底部条的固定高度与拖动（动效元素行） |
-| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（卡片平时一行）或左侧的对话列、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
+| [chat-panel.md](./chat-panel.md) | 对话面板：对话是最左边的一条独立栏，类型自己的列表整体右移，右侧属性 / 批注 / 数据来源照旧并可与对话同屏；栏里是一份能回头读的对话记录（每轮的请求、步骤、回答、改动），存在服务端，命令行和 MCP 的请求也在里面；窄窗口禁用而不是自动换；草稿跨开合 | 已实施；§7 是没做的 |
+| [chat-pane.md](./chat-pane.md) | 对话放在右侧一栏（被否掉的方案）：把左边还给类型自己的列表，删掉请求栏的位置菜单、外壳和 `ListColumn`；对话成为每种类型的一个右侧面板，代价是对话和属性不能同屏 | 未采纳；现行设计见 chat-panel.md |
+| [conversation-markdown.md](./conversation-markdown.md) | 对话里的回答按 Markdown 读：共用的 `ChatMarkdown`（GFM + 消毒）、带语言和复制的代码框、只认 http/https/mailto 的链接、不加载图片；快速 AI 的注记和错误说明仍是纯文本 | 已实施；§5 是没做的 |
+| [side-columns.md](./side-columns.md) | 边栏的宽度：对话栏、检查器、缩略图列、标签页、批注、导航、数据来源，每一列都能拖动边来调整宽度、方向键微调、双击恢复，各列分别记在本机 | 已实施；§5 是没做的；§6 底部条的固定高度与拖动（动效元素行） |
+| [agent-panel.md](./agent-panel.md) | 请求栏的位置：底部（默认，卡片平时一行）或最左边的对话栏、请求历史、"新对话 / 接着"标记、项目的 Claude Code 对话由服务端保存 | 已实施；§5 是没做的 |
 | [composer.md](./composer.md) | 请求栏的外形：一张卡三行（头、输入、工具条），设置是药丸、整栏的工具是图标，谁来回答放在发送旁边，窄列里设置独占一行；ImageGen 的命名 | 已实施；§5 是没做的 |
 | [ai-settings.md](./ai-settings.md) | AI 模型设置：Claude Code（本地登录 / Tingly Box / 自定义地址）、ImageGen、快速 AI 三张卡，各带自己的连接；令牌可在保存时取用另一张卡的；环境变量 > 已保存 > 默认；Tingly Box 为推荐；旧的共用连接文件读成三张卡 | 已实施；§6 是没做的 |
 | [image-generation.md](./image-generation.md) | 图像生成：OpenAI 风格的 `/images/generations` 和 `/images/edits`；配好且开着才给 Claude Code 一个生图工具（全局开关 + 每个项目一个开关，默认开），图放进 `uploads/`，没有按钮；地址跟着连接走，Anthropic 没有 | 已实施；§7 是没做的 |
@@ -91,13 +103,14 @@
 | [import-external-material.md](./import-external-material.md) | 导入 HTML、SVG、Markdown、PPTX；历史评估与现行路径分开 | HTML、SVG → 画布已实施；新项目 PPTX 导入已实施、聚焦产品 e2e 已通过（当前契约与验证范围见 slides-pptx）；旧 PPT 评估不作支持声明 |
 | [import-into-project.md](./import-into-project.md) | 往打开的项目里导入：一个入口，各类型收什么、放哪 | 已实施 |
 | [import-from-project.md](./import-from-project.md) | 从项目导入：把画布的画板复制进幻灯片和动效、嵌入、记来源、可更新；会动的画板（`$time`）就是特效 | 第一期已实施（画布 → 幻灯片、动效）；§5 是没做的 |
+| [cross-kind-embedding.md](./cross-kind-embedding.md) | 跨类型嵌入：把另一个项目的一页当作一个元素放进当前作品（文档用画布的页当图、幻灯片放看板……）：副本 + 可更新的链接记录（不是活引用）、图片和活的元素两种形态、来源 × 去处的支持表、选择器与面板、与子项目的关系、分期 | 第 1 期已实施（#53、#480）；第 2 期是方案 |
 | [i18n.md](./i18n.md) | 界面语言：词条放哪、用什么库、语言从哪来，服务端报错、新建文案、模型回复和沙箱各用哪种语言 | 已实施（英文、中文）；§6 是没做的 |
 
 ## 工程协作
 
 | 文档 | 内容 | 状态 / 阅读边界 |
 |---|---|---|
-| [harness.md](./harness.md) | 怎么确认一切都还好用：`pnpm e2e` 按组起环境跑全部套件、出一张表；全量 e2e 走每晚巡检和发布前，PR 只跑冒烟；`check --snapshots` 的版面检查（裁切、出界、对比度、空白）；编辑器截图基线（旁路分支、人看过再重录）；矩阵每个 ✓ 对上套件或写明没测的原因（`e2e/coverage.json`） | 已实施；调研在 `.research/harness.md` |
+| [harness.md](./harness.md) | 怎么确认一切都还好用：`pnpm e2e` 按组起环境跑全部套件、出一张表；全量 e2e 走每晚巡检和发布 tag 上的报告（不拦发布），PR 只跑冒烟；`check --snapshots` 的版面检查（裁切、出界、对比度、空白）；编辑器截图基线（旁路分支、人看过再重录）；矩阵每个 ✓ 对上套件或写明没测的原因（`e2e/coverage.json`） | 已实施；调研在 `.research/harness.md` |
 | [agent-evals.md](./agent-evals.md) | 怎么量 agent 用 skill 或 MCP 能不能把设计做完：`pnpm eval` 用无头的 Claude Code 在两条路线上各做同一个题目，黑盒打分（确定性检查、过程指标、可选的图像评审），出一张对照表；不进 PR 和 CI，约每周手动跑一次 | 已实施 |
 | [issue-resolve.md](./issue-resolve.md) | Issue 自动跟进：每 5 小时拉取，团队的直接推进到 draft PR，外部的先评估回复、等维护者放行；阶段记在 issue 评论里 | 已实施；skill 在 `.claude/skills/issue-resolve/` |
 

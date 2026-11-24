@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOC_COLORS, DOC_COLORS_ON_DARK, DOC_ROLES, docLookCss, docLookFromSystem, docLookOf, docLookVars, docOwnLook, docRoleGiven, docRoleReport, lookFontCss, lookOf, lookTokens, parseDoc, resolveTokens, settingsProject, type ThemeSystem } from '../src';
+import { DOC_COLORS, DOC_COLORS_ON_DARK, DOC_ROLES, docColumnOf, docLookCss, docLookFromSystem, docLookOf, docLookVars, docOwnLook, docRoleGiven, docRoleReport, lookFontCss, lookOf, lookTokens, parseDoc, resolveTokens, settingsProject, type ThemeSystem } from '../src';
 
 const system = (id: string): ThemeSystem => ({ namespace: `look-${id}`, title: id, tokens: resolveTokens(lookTokens(lookOf(id)!, id)) });
 const doc = (extra: object = {}) => parseDoc(JSON.stringify({ title: 'D', tabs: [{ id: 'a', title: 'A' }], ...extra }));
@@ -158,5 +158,25 @@ describe('what a doc tells Claude Code', () => {
     expect(s.designSystems).toEqual(['look-wechat']);
     expect(s.theme).toEqual({ system: 'look-wechat', theme: 'light' });
     expect(s.look).toBeDefined();
+  });
+});
+
+describe('a doc’s page width', () => {
+  const widthOf = (v: unknown) => parseDoc(JSON.stringify({ settings: { width: v } })).settings.width;
+
+  it('reads the four widths, and an older file’s `default` as Standard', () => {
+    expect(['narrow', 'standard', 'wide', 'full'].map(widthOf)).toEqual(['narrow', 'standard', 'wide', 'full']);
+    expect(widthOf('default')).toBe('standard');
+    expect(widthOf('something else')).toBe('standard');
+    expect(parseDoc('{}').settings.width).toBe('standard');
+  });
+
+  it('turns a width into a text column, a design system’s `doc-column` standing for Standard', () => {
+    expect(docColumnOf('narrow')).toBe(600);
+    expect(docColumnOf('standard')).toBe(677);
+    expect(docColumnOf('wide')).toBe(820);
+    expect(docColumnOf('full')).toBeNull();
+    expect(docColumnOf('standard', 720)).toBe(720);
+    expect([docColumnOf('narrow', 720), docColumnOf('wide', 720), docColumnOf('full', 720)]).toEqual([600, 820, null]);
   });
 });

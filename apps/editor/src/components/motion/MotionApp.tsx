@@ -11,8 +11,8 @@ import { display, isSaving, useStore } from '../../store';
 import { ContextMenu, JournalPopover } from '../Overlays';
 import { ExpandPanel } from '../ContentForm';
 import { RightPanel } from '../panel/RightPanel';
+import { ChatPane } from '../ChatPane';
 import { PromptBar } from '../PromptBar';
-import { useChat } from '../ChatPanel';
 import { Checklist, Film, Gif as GifIcon, CopyPicture, Note, Picture } from '../icons';
 import { replaceUrl } from '../../host';
 import { motionKeys } from '../../shortcuts';
@@ -64,9 +64,11 @@ export function MotionApp() {
   const connected = useStore((s) => s.connected);
   const saving = useStore(isSaving);
   const journalOpen = useStore((s) => s.journalOpen);
-  const panelOpen = useStore((s) => s.pane === 'inspector' || s.pane === 'review');
+  const pane = useStore((s) => s.pane);
+  const panelOpen = pane === 'inspector' || pane === 'review';
+  const chatOpen = useStore((s) => s.chatOpen);
   const barCollapsed = useStore((s) => s.barCollapsed);
-  const barInColumn = useChat().left;
+  const barInPane = chatOpen;
   const { t } = useTranslation();
   const project = useStore((s) => s.project);
   const assetRev = useStore((s) => s.assetRev);
@@ -252,7 +254,8 @@ export function MotionApp() {
   const scale = Math.max(0.01, Math.min(box.w / W, box.h / H));
 
   return (
-    <div className={`app dash motion${panelOpen ? ' with-panel' : ''}`}>
+    <div className={`app dash motion${panelOpen ? ' with-panel' : ''}${chatOpen ? ' with-chat' : ''}`}>
+      {chatOpen && <ChatPane />}
       <TopBar
         title={
           <ProjectTitle
@@ -399,7 +402,7 @@ export function MotionApp() {
         />
         {notesOpen && <MotionNotes motion={motion} scenes={scenes} sceneId={stage.id} />}
         {issuesOpen && <MotionIssues info={info} />}
-        <div className={`mprompt${barInColumn ? ' in-column' : barCollapsed ? ' collapsed' : ''}`}>
+        <div className={`mprompt${barInPane ? ' in-pane' : barCollapsed ? ' collapsed' : ''}`}>
           <PromptBar />
         </div>
       </main>
