@@ -1,32 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { DS_COVER, DS_INDEX, DS_TOKENS, SLIDE_H, SLIDE_W, parseCardMarker, parseDsIndex, resolveTokens, sandboxDoc, speedOf, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
+import { DS_COVER, DS_INDEX, DS_TOKENS, SLIDE_H, SLIDE_W, boardFilesFor, parseCardMarker, parseDsIndex, resolveTokens, sandboxDoc, speedOf, type FromRuntime, type MotionJson, type ProjectPreview } from '@dc/core';
 import { api } from '../../api';
 import { SERVER } from '../../base';
 import { MotionFrame } from '../motion/MotionFrame';
 import { htmlLang } from '../../i18n';
 import { Specimen } from '../ds/Specimen';
 import { framePreview } from '../ds/previewDoc';
-import { useElementSize } from '../../hooks';
-
-/** Calls back once the element has scrolled near the viewport. */
-function useNear<T extends Element>(): [React.RefObject<T | null>, boolean] {
-  const ref = useRef<T>(null);
-  const [near, setNear] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || near) return;
-    if (typeof IntersectionObserver === 'undefined') return setNear(true);
-    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setNear(true), { rootMargin: '200px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [near]);
-  return [ref, near];
-}
+import { useElementSize, useNear } from '../../hooks';
 
 /** A board or slide rendered by the sandbox runtime, read only, scaled to the card. */
-function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string; size?: [number, number] }; base?: string }) {
+function LiveFrame({ file, source, w, h, width, slide, base, files }: { file: string; source: string; w: number; h: number; width: number; slide?: { head: string; base: string; size?: [number, number] }; base?: string; files?: Record<string, string> }) {
   const { t: tr } = useTranslation();
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
@@ -44,12 +29,12 @@ function LiveFrame({ file, source, w, h, width, slide, base }: { file: string; s
   useEffect(() => {
     if (!ready) return;
     frame.current?.contentWindow?.postMessage(
-      { dc: 'render', file, source, files: {}, props: {}, mode: 'play', selected: null, ...(slide ? { slide: { ...slide, still: true } } : {}), ...(base ? { base } : {}) },
+      { dc: 'render', file, source, files: files ?? {}, props: {}, mode: 'play', selected: null, ...(slide ? { slide: { ...slide, still: true } } : {}), ...(base ? { base } : {}) },
       '*',
     );
     const t = setTimeout(() => setShown(true), 150);
     return () => clearTimeout(t);
-  }, [ready, file, source, slide, base]);
+  }, [ready, file, source, slide, base, files]);
   const scale = width / w;
   const top = Math.max(0, ((width * 10) / 16 - h * scale) / 2);
   return (
@@ -98,6 +83,7 @@ interface PreviewCtx {
   /** The card has scrolled near the viewport: a live frame may load. */
   near: boolean;
   t: TFunction;
+  embeds?: Record<string, string>;
 }
 
 type PreviewOf<K extends ProjectPreview['kind']> = Extract<ProjectPreview, { kind: K }>;
@@ -113,9 +99,9 @@ const PREVIEW: { [K in ProjectPreview['kind']]: (p: PreviewOf<K>, c: PreviewCtx)
     ) : (
       <Minimap boards={p.boards} />
     ),
-  slides: (p, { project, width, near, t }) =>
+  slides: (p, { project, width, near, t, embeds }) =>
     near && p.cover && width > 0 ? (
-      <LiveFrame file={p.cover.file} source={p.cover.source} w={p.cover.size?.[0] ?? SLIDE_W} h={p.cover.size?.[1] ?? SLIDE_H} width={width} slide={{ head: p.cover.head, size: p.cover.size, base: api.rawBase(project) }} />
+      <LiveFrame file={p.cover.file} source={p.cover.source} w={p.cover.size?.[0] ?? SLIDE_W} h={p.cover.size?.[1] ?? SLIDE_H} width={width} files={embeds} slide={{ head: p.cover.head, size: p.cover.size, base: api.rawBase(project) }} />
     ) : (
       <div className="lp-empty">{p.cover ? '' : t('launcher.preview.noSlides')}</div>
     ),
@@ -157,11 +143,11 @@ const PREVIEW: { [K in ProjectPreview['kind']]: (p: PreviewOf<K>, c: PreviewCtx)
       </ul>
     </div>
   ),
-  motion: (p, { project, width, near, t }) => {
+  motion: (p, { project, width, near, t, embeds }) => {
     const f = p.formats[0];
     return (
       <div className="lp-motion">
-        {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} base={api.rawBase(project)} />}
+        {near && p.still && f && width > 0 && <MotionStill still={p.still} format={f.name} width={width} base={api.rawBase(project)} files={embeds} />}
         {!p.still && <div className="lp-empty">{t('launcher.preview.noScenes')}</div>}
         <div className="lp-mmeta">
           <span>{p.seconds} s</span>
@@ -188,15 +174,17 @@ const PREVIEW: { [K in ProjectPreview['kind']]: (p: PreviewOf<K>, c: PreviewCtx)
   ),
 };
 
-export function Preview({ p, project, width }: { p: ProjectPreview; project: string; width: number }) {
+export function Preview({ p, project, width, files }: { p: ProjectPreview; project: string; width: number; files?: Record<string, string> }) {
   const { t } = useTranslation();
   const hosted = p.kind === 'design-system' ? p.hosted.join('\n') : '';
   useHostedFonts(hosted);
   const [ref, near] = useNear<HTMLDivElement>();
+  const source = p.kind === 'slides' ? p.cover?.source : p.kind === 'motion' ? p.still?.source : undefined;
+  const embeds = useMemo(() => (source && files ? boardFilesFor([source], (path) => files[path]) : undefined), [source, files]);
   const draw = PREVIEW[p.kind] as (p: ProjectPreview, c: PreviewCtx) => ReactNode;
   return (
     <div ref={ref} className={`lpreview k-${p.kind}`}>
-      {draw(p, { project, width, near, t })}
+      {draw(p, { project, width, near, t, embeds })}
     </div>
   );
 }
@@ -268,12 +256,12 @@ function CoverFrame({ project, near }: { project: string; near: boolean }) {
 }
 
 /** A still of a motion piece: its cover scene at the end of its entrances, its cover frame, or most of the way through its first scene. */
-function MotionStill({ still, format, width, base }: { still: { motion: MotionJson; id: string; source: string; at?: number }; format: string; width: number; base: string }) {
+function MotionStill({ still, format, width, base, files }: { still: { motion: MotionJson; id: string; source: string; at?: number }; format: string; width: number; base: string; files?: Record<string, string> }) {
   const { t } = useTranslation();
   const motion = useMemo(() => ({ ...still.motion, order: [still.id] }), [still]);
   const scenes = useMemo(() => ({ [still.id]: still.source }), [still]);
   const cover = !still.motion.order.includes(still.id);
   // the preview sits 6px in from the card on each side, at 16:10
   const bw = width - 12;
-  return <MotionFrame motion={motion} scenes={scenes} format={format} at={cover ? 'end' : still.at !== undefined ? still.at / speedOf(still.motion.speed) : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
+  return <MotionFrame motion={motion} scenes={scenes} files={files} format={format} at={cover ? 'end' : still.at !== undefined ? still.at / speedOf(still.motion.speed) : 'still'} base={base} box={{ w: bw, h: (bw * 10) / 16 }} title={t('launcher.preview.cover', { title: still.motion.title })} />;
 }

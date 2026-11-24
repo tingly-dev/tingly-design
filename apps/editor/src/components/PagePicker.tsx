@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sandboxDoc, type LinkSource, type ProjectKind, type SourcePage } from '@dc/core';
+import { projectPagePreview, sandboxDoc, type LinkSource, type ProjectKind, type ProjectPreview, type SourcePage } from '@dc/core';
 import { api } from '../api';
 import { SERVER } from '../base';
 import { htmlLang } from '../i18n';
 import { useStore } from '../store';
 import { Dialog } from './Dialog';
 import { KindIcon } from './launcher/kinds';
+import { Preview } from './launcher/Preview';
+import { useNear } from '../hooks';
 
 type Page = SourcePage & { moving?: boolean };
 
@@ -14,8 +16,8 @@ const THUMB_W = 196;
 
 /**
  * Taking a page of another project (.design/cross-kind-embedding.md): every project this one can take
- * a page from, its pages drawn small where that is cheap (a canvas's artboards run in the artboard runtime,
- * a moving one plays while the pointer is on it; the others are a titled card). The projects inside this
+ * a page from, with source previews drawn as cards come into view. A moving artboard plays while
+ * the pointer is on it. The projects inside this
  * one come first, then those in the same folder, then the rest. Nothing asks "picture or live": the page's
  * kind and this kind decide, and the panel changes it afterwards.
  */
@@ -34,7 +36,18 @@ export function PagePicker({
   const { t } = useTranslation();
   const project = useStore((st) => st.project);
   const [sources, setSources] = useState<LinkSource[] | null>(null);
-  const [files, setFiles] = useState<Record<string, Record<string, string>>>({});
+  // A deck or canvas can have many visible cards. Share their file request for this picker session.
+  const requests = useRef(new Map<string, Promise<Record<string, string> | undefined>>());
+  const loadFiles = useCallback((name: string) => {
+    let request = requests.current.get(name);
+    if (!request) {
+      request = api.files(name)
+        .then((r) => Object.fromEntries(Object.entries(r.files).map(([path, file]) => [path, file.content])))
+        .catch(() => undefined);
+      requests.current.set(name, request);
+    }
+    return request;
+  }, []);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -46,12 +59,6 @@ export function PagePicker({
       const r = project ? await api.linkSources(project).catch(() => ({ sources: [] as LinkSource[] })) : { sources: [] as LinkSource[] };
       if (!live) return;
       setSources(r.sources);
-      // a canvas's artboards are drawn small: their files
-      for (const s of r.sources.filter((x) => x.kind === 'design')) {
-        const f = await api.files(s.name).catch(() => null);
-        if (!live || !f) continue;
-        setFiles((cur) => ({ ...cur, [s.name]: Object.fromEntries(Object.entries(f.files).map(([k, v]) => [k, v.content])) }));
-      }
     })();
     return () => {
       live = false;
@@ -85,7 +92,7 @@ export function PagePicker({
   };
 
   return (
-    <Dialog label={t('linked.picker.title')} className="bpick" onClose={busy ? () => {} : onClose}>
+    <Dialog label={t('linked.picker.title')} className="bpick" onClose={onClose} closable={!busy}>
       <p className="hint">{what}</p>
       <input className="bpick-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('linked.picker.search')} aria-label={t('linked.picker.search')} disabled={!!busy} />
       {busy && (
@@ -117,13 +124,7 @@ export function PagePicker({
                 <div className="bpick-grid">
                   {s.pages.map((p) => (
                     <button key={p.page} className="bpick-item" data-pick={p.page} data-project={s.name} disabled={!!busy} onClick={() => void pick(s, p)} title={t('linked.picker.pick', { title: p.title })}>
-                      {s.kind === 'design' && files[s.name] && p.size ? (
-                        <BoardThumb from={s.name} file={p.page} files={files[s.name]} size={p.size} moving={!!p.moving} />
-                      ) : (
-                        <span className="bpick-card" style={p.size ? { aspectRatio: `${p.size[0]} / ${p.size[1]}` } : undefined}>
-                          <KindIcon kind={s.kind} size={20} />
-                        </span>
-                      )}
+                      <PageThumb source={s} page={p} loadFiles={loadFiles} />
                       <span className="bpick-name">
                         {p.title}
                         {p.moving && <span className="badge ai">{t('linked.picker.moves')}</span>}
@@ -138,6 +139,49 @@ export function PagePicker({
         ))
       )}
     </Dialog>
+  );
+}
+
+function PageThumb({ source, page, loadFiles }: { source: LinkSource; page: Page; loadFiles: (name: string) => Promise<Record<string, string> | undefined> }) {
+  const [ref, near] = useNear<HTMLDivElement>();
+  const [files, setFiles] = useState<Record<string, string>>();
+  const [preview, setPreview] = useState<ProjectPreview>();
+  const { name, kind } = source;
+  const id = page.page;
+  useEffect(() => {
+    if (!near) return;
+    let active = true;
+    void loadFiles(name).then(async (loaded) => {
+      if (!active || !loaded) return;
+      if (kind === 'design') {
+        setFiles(loaded);
+        return;
+      }
+      const next = await projectPagePreview(kind, id, loaded);
+      if (active) {
+        setFiles(loaded);
+        setPreview(next);
+      }
+    }).catch(() => {
+      // A source can disappear while the picker is open; keep its placeholder.
+    });
+    return () => {
+      active = false;
+    };
+  }, [near, loadFiles, name, kind, id]);
+
+  return (
+    <div ref={ref} className="bpick-visual" aria-hidden="true">
+      {kind === 'design' && files?.[id] !== undefined && page.size ? (
+        <BoardThumb from={name} file={id} files={files} size={page.size} moving={!!page.moving} />
+      ) : preview && (preview.kind !== 'slides' || preview.cover) ? (
+        <div inert><Preview p={preview} project={name} width={THUMB_W} files={files} /></div>
+      ) : (
+        <span className="bpick-card" style={kind === 'design' && page.size ? { height: Math.min(THUMB_W, Math.round((THUMB_W * page.size[1]) / page.size[0])) } : undefined}>
+          <KindIcon kind={kind} size={20} />
+        </span>
+      )}
+    </div>
   );
 }
 
